@@ -2,7 +2,7 @@
 > **Version:** 1.0 · **Status:** Active governance record · **Classification:** Working (governance record)
 > **Governing document:** [Engineering Implementation Programme](engineering-implementation-programme.md)
 > **Source-of-truth path:** `docs/05-implementation/change-tracking/coding-agent-prompt-register.md`
-> **Last controlled update:** 2026-07-17 (Engineering Decision Sprint 2 — ENG-P0-001 status Blocked → Ready; created Engineering Transition Phase 0A)
+> **Last controlled update:** 2026-07-17 (ENG-P0-001 Closure Tracking — ENG-P0-001 status Ready → Complete; ENG-P0-002 status Blocked → Ready; created Engineering Transition Phase 0A)
 
 # 11thONUS Coding-Agent Prompt Register
 
@@ -41,8 +41,8 @@ All 47 work packages from the [Engineering Implementation Programme](engineering
 
 | Prompt ID | Phase | Work Package | Requirement IDs (representative) | Decision Dependencies | Status | Report | Commit | Deployment | Manual QA |
 |---|---|---|---|---|---|---|---|---|---|
-| ENG-P0-001 | P0 | Repository, tooling and test-framework scaffold | IM-006, IM-007, FR-OPS-004 | DEC-TECH-003, DEC-TECH-004 (both CONFIRMED) | Ready | — | — | — | — |
-| ENG-P0-002 | P0 | CI pipeline, templates and change-tracking scaffold | FR-OPS-002, FR-OPS-005, FR-OPS-006 | DEC-TECH-004 | Blocked | — | — | — | — |
+| ENG-P0-001 | P0 | Repository, tooling and test-framework scaffold | IM-006, IM-007, FR-OPS-004 | DEC-TECH-003, DEC-TECH-004 (both CONFIRMED) | Complete | [Implementation Report](../reports/ENG-P0-001-implementation-report-2026-07-17.md) · [Technical Review](../reports/ENG-P0-001-technical-review-2026-07-17.md) (Approved) | `3a50710` | N/A (Phase 0 has no deployment target — see Programme §Phase 0 profile) | N/A (Manual QA Required: No — see Programme §Phase 0 profile) |
+| ENG-P0-002 | P0 | CI pipeline, templates and change-tracking scaffold | FR-OPS-002, FR-OPS-005, FR-OPS-006 | DEC-TECH-004 | Ready | — | — | — | — |
 | ENG-P1-001 | P1 | Firebase project init, App Check, client/admin SDK | FR-OPS-001, FR-OPS-003 | DEC-TECH-005 | Blocked | — | — | — | — |
 | ENG-P1-002 | P1 | Shared command contract (error/log/idempotency/outbox) | DA-005, DA-006, DA-014 | DEC-TECH-006, DEC-TECH-007 (both CONFIRMED; ENG-P1-001 completion still required) | Blocked | — | — | — | — |
 | ENG-P1-003 | P1 | Security/Storage Rules deny-by-default + monitoring | FR-SEC-006, FR-OPS-009 | DEC-PROV-005 | Blocked | — | — | — | — |
@@ -93,12 +93,13 @@ All 47 work packages from the [Engineering Implementation Programme](engineering
 
 | Status | Count |
 |---|---|
+| Complete | 1 |
 | Ready | 1 |
-| Blocked | 46 |
+| Blocked | 45 |
 | Not Yet Scheduled | 0 |
-| In Progress / Under Review / Corrections Required / Approved / Committed / Pushed / Deployed / Manually Verified / Complete | 0 |
+| In Progress / Under Review / Corrections Required / Approved / Committed / Pushed / Deployed / Manually Verified | 0 |
 
-**Update (Engineering Decision Sprint 2, 2026-07-17):** ENG-P0-001 is now `Ready` — its two blocking decisions (DEC-TECH-003, DEC-TECH-004) are both CONFIRMED and Engineering Phase 0 has been authorized (see the [Phase 0 Authorization](../phase-0-authorization.md) record). All 46 remaining work packages stay `Blocked`, each for its own documented reason (sequential precondition, an open decision, or an open provider/legal item) — see the [Engineering Implementation Programme](engineering-implementation-programme.md) for each package's current Decision/Provider/Legal Dependencies and Blocking Reason. `Ready` means eligible to receive a detailed implementation prompt (§3 above) — it does not mean a prompt has been issued; see the [first prompt draft](../prompts/ENG-P0-001-draft.md), still marked **DRAFT** pending finalization and issuance per the [AI Collaboration Workflow](../../06-engineering-governance/ai-collaboration-workflow.md).
+**Update (ENG-P0-001 Closure Tracking, 2026-07-17):** ENG-P0-001 is now `Complete` — implemented, Technical Review returned Approved (both itemized corrections closed within that review), committed (`3a50710`) and pushed to `origin/main`, working tree clean. Per the Definition of Done (§2), the deployment (§2.8), Preview Review (§2.9) and Manual QA (§2.10) criteria are recorded `N/A` for this work package specifically because the [Engineering Implementation Programme](engineering-implementation-programme.md)'s Phase 0 profile states explicitly: *"Expected Deployment State: none — Phase 0 has no deployment target"* and *"Manual QA Requirement: No"* — not because those stages were skipped. See the [ENG-P0-001 Closure and ENG-P0-002 Readiness Report](../reports/ENG-P0-001-closure-and-eng-p0-002-readiness-report-2026-07-17.md) for the full per-criterion evidence. **ENG-P0-002 is now `Ready`** — its own decision dependency (DEC-TECH-004) is CONFIRMED and its sole remaining precondition, ENG-P0-001 completion, is now satisfied; its blocking reason is cleared. All other 45 work packages stay `Blocked`, each for its own documented reason — see the [Engineering Implementation Programme](engineering-implementation-programme.md) for each package's current Decision/Provider/Legal Dependencies and Blocking Reason. `Ready` means eligible to receive a detailed implementation prompt (§3 above); the finalized [ENG-P0-002 prompt](../prompts/ENG-P0-002.md) has been prepared but **not yet issued** per the [AI Collaboration Workflow](../../06-engineering-governance/ai-collaboration-workflow.md) — issuing it remains a distinct Founder/ChatGPT Technical Lead action.
 
 ## 6. Maintenance
 

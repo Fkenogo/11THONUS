@@ -36,3 +36,43 @@
 - **Risks:** unchanged from the Implementation Report — no new risk was discovered during this review. See the Technical Review report §14.
 - **Rollback:** unchanged in substance; the corrected rollback guidance above and in the Technical Review report §16 both avoid `git clean -fdx`.
 - **Report link:** [`docs/05-implementation/reports/ENG-P0-001-technical-review-2026-07-17.md`](../05-implementation/reports/ENG-P0-001-technical-review-2026-07-17.md) — exists in the working tree; not yet committed.
+
+---
+
+## 2026-07-17 — ENG-P0-001 — Closure Tracking and ENG-P0-002 Readiness
+
+- **Date:** 2026-07-17
+- **Phase:** TRD22 §22.10 — Phase 0, Repository and Delivery Foundation
+- **Task:** ENG-P0-001 Closure Tracking and ENG-P0-002 Readiness Preparation (governance/tracking task — no application code, test code, or dependency changed)
+- **Status:** ENG-P0-001 workflow status moved **Approved → Committed → Pushed → Complete**. Evidence for each stage:
+  - **Technical Review:** Approved, both itemized corrections closed within the review (no open corrections) — [Technical Review report](../05-implementation/reports/ENG-P0-001-technical-review-2026-07-17.md).
+  - **Commit:** `3a50710`, message `chore: establish 11thONUS phase 0 engineering foundation`, 205 files changed / 75819 insertions.
+  - **Push:** `origin/main` confirmed at the same commit (`git branch -vv` → `main 3a50710 [origin/main]`); working tree clean.
+  - **Definition of Done (work-package level, §2):** evaluated criterion-by-criterion against the actual repository and governing documents (not assumed):
+    1. Acceptance criteria met verbatim — ✅, re-verified at Technical Review.
+    2. Required tests passed — ✅.
+    3. Local Validation actually run — ✅, run independently twice (implementation + review).
+    4. Implementation Report produced in full — ✅.
+    5. Persistent changes-tracking file updated — ✅ (this file).
+    6. Technical Review Approved, no open corrections — ✅.
+    7. Committed and pushed per Git Workflow — ✅ (see commit evidence above). *Minor process note, not blocking:* the commit message omits the `[<requirement/decision IDs>]` suffix specified in Git Workflow §4; the commit is already pushed and shared history is never rewritten to fix this retroactively — flagged for the next commit's habit, not corrected here.
+    8. Founder deployed the change — **N/A**, not skipped: the [Engineering Implementation Programme](../05-implementation/change-tracking/engineering-implementation-programme.md)'s Phase 0 profile states explicitly *"Expected Deployment State: none — Phase 0 has no deployment target"* and ENG-P0-001's own work-package row states *"Deployment Required: No."*
+    9. Preview Review passed — **N/A** for the same reason (§2.8) — Preview Review presupposes a deployed environment, which does not exist at Phase 0 (Phase 1's Firebase project initialization, ENG-P1-001, remains `Blocked`).
+    10. Manual Testing Standard's checklist passed — **N/A** — the Programme's Phase 0 profile states *"Manual QA Requirement: No"* and ENG-P0-001's own row states *"Manual QA Required: No"*; the Manual Testing Standard itself (§2) scopes its checklist to "every change that reaches Preview Review," which criterion 9 establishes did not occur here.
+    11. No unrelated files modified — ✅, confirmed at Technical Review.
+    12. Risk/rollback note remains accurate — ✅ **as of this entry** (see the corrected rollback note below; the original Implementation Report's rollback note, written when the repository had zero commits, is now superseded by the git-aware note below rather than left inaccurate).
+  - **Conclusion: all applicable Definition of Done criteria are satisfied. ENG-P0-001 is marked `Complete`.**
+- **Files changed:** `docs/05-implementation/change-tracking/coding-agent-prompt-register.md` (ENG-P0-001 → Complete with evidence; ENG-P0-002 → Ready; distribution counts updated), `docs/05-implementation/change-tracking/engineering-implementation-programme.md` (ENG-P0-001 work-package row → Complete; ENG-P0-002 → Ready, blocking reason cleared; Phase 0 status → In Progress in both the profile and the Phase Summary Table), `docs/README.md` (banner status line updated to match), `docs/changes/IMPLEMENTATION_CHANGES.md` (this entry).
+- **Files created:** `docs/05-implementation/prompts/ENG-P0-002.md` (finalized, non-draft prompt — not yet issued), `docs/05-implementation/reports/ENG-P0-001-closure-and-eng-p0-002-readiness-report-2026-07-17.md`.
+- **Tests:** none re-run in this task (no application/tooling file was touched); validated instead via `git diff --check`, `git status --short`, `git diff --stat`, `git diff --name-only`, and a full documentation relative-link check — see the closure report for exact results.
+- **Migrations:** none.
+- **ENG-P0-002 readiness:** moved **Blocked → Ready**. Its only blocking reason (sequential precondition "ENG-P0-001 complete") is now satisfied; its own decision dependency (DEC-TECH-004) was already CONFIRMED. A finalized, execution-ready prompt exists at [`docs/05-implementation/prompts/ENG-P0-002.md`](../05-implementation/prompts/ENG-P0-002.md), grounded in the actual repository ENG-P0-001 produced (not the original planning assumptions). **Issuing that prompt to a coding agent remains a distinct, not-yet-taken Founder/ChatGPT Technical Lead action** — this task does not issue it or begin implementing it.
+- **Phase 0 status:** remains **In Progress** — ENG-P0-001 is Complete, but Phase 0 as a whole (TRD22 §22.10) is not complete until ENG-P0-002 also reaches Complete.
+- **Risks:** unchanged substantively from the Implementation Report and Technical Review; the one new, minor item is the commit-message convention note under criterion 7 above (non-blocking, already pushed, not retroactively fixed).
+- **Rollback (supersedes the note in the first ENG-P0-001 entry above, which was written before any commit existed and is now historically-accurate-as-written but outdated for the current state):** the repository now has one commit (`3a50710`), pushed to the shared `origin/main`. Per [Git Workflow](../06-engineering-governance/git-workflow.md) ("never force-pushes; never rewrites shared history"), rollback of a pushed commit is a **revert, not a reset**:
+  ```bash
+  git revert 3a50710
+  git push origin main
+  ```
+  This creates a new commit that undoes ENG-P0-001's changes while preserving history — it does not touch `.git/` structure, `.env.local`, or force-rewrite `origin/main`. A local-only, pre-push rollback (not applicable now, since the commit is already pushed) would instead have been `git reset --hard` to the parent of `3a50710`; that option no longer applies once a commit is shared with the remote.
+- **Report link:** [`docs/05-implementation/reports/ENG-P0-001-closure-and-eng-p0-002-readiness-report-2026-07-17.md`](../05-implementation/reports/ENG-P0-001-closure-and-eng-p0-002-readiness-report-2026-07-17.md) — exists in the working tree; not yet committed (per this task's explicit instruction not to commit or push).

@@ -1,10 +1,10 @@
 # 11thONUS Documentation Index
 
-**Last controlled update:** 17 July 2026 (Engineering Decision Sprint 2 — DEC-TECH-003/004/006/007 confirmed; Phase 0 authorized)
+**Last controlled update:** 17 July 2026 (ENG-P0-001 Closure Tracking — ENG-P0-001 Complete; ENG-P0-002 Ready; Phase 0 In Progress)
 
 **Documentation status: Version 1.0** — see the [Version 1.0 Documentation Declaration](00-governance/version-1-documentation-declaration.md). Engineering implementation may begin; the suite remains a controlled baseline, not a permanent freeze — see the declaration §4.
 
-**Engineering transition status:** the [Engineering Implementation Programme](05-implementation/change-tracking/engineering-implementation-programme.md) and [Coding-Agent Prompt Register](05-implementation/change-tracking/coding-agent-prompt-register.md) exist and track all 47 planned work packages across TRD22's 17 phases. **DEC-TECH-003, DEC-TECH-004, DEC-TECH-006, and DEC-TECH-007 are now CONFIRMED** (Engineering Decision Sprint 2, 17 July 2026) — see the [Decision Register](00-governance/decisions/decision-register.md). **ENG-P0-001 is `Ready`; Engineering Phase 0 is authorized.** See the [Phase 0 Authorization](05-implementation/phase-0-authorization.md) record and the [Engineering Decision Sprint 2 Report](05-implementation/reports/eng-decision-sprint-2-report-2026-07-17.md).
+**Engineering transition status:** the [Engineering Implementation Programme](05-implementation/change-tracking/engineering-implementation-programme.md) and [Coding-Agent Prompt Register](05-implementation/change-tracking/coding-agent-prompt-register.md) exist and track all 47 planned work packages across TRD22's 17 phases. **DEC-TECH-003, DEC-TECH-004, DEC-TECH-006, and DEC-TECH-007 are CONFIRMED** (Engineering Decision Sprint 2, 17 July 2026) — see the [Decision Register](00-governance/decisions/decision-register.md). **ENG-P0-001 is `Complete`** — implemented, Technical Review Approved, committed `3a50710`, pushed to `origin/main`. **ENG-P0-002 is `Ready`** (prompt prepared, not yet issued). **Phase 0 remains `In Progress`** pending ENG-P0-002. See the [Phase 0 Authorization](05-implementation/phase-0-authorization.md) record, the [ENG-P0-001 Implementation Report](05-implementation/reports/ENG-P0-001-implementation-report-2026-07-17.md), and the [ENG-P0-001 Technical Review](05-implementation/reports/ENG-P0-001-technical-review-2026-07-17.md).
 
 ## 1. Governance Hierarchy
 

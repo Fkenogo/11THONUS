@@ -2,7 +2,7 @@
 > **Version:** 1.0 · **Status:** Active governance record · **Classification:** Working (governance record)
 > **Governing document:** 11thONUS Platform Constitution; TRD Chapter 22
 > **Source-of-truth path:** `docs/05-implementation/change-tracking/engineering-implementation-programme.md`
-> **Last controlled update:** 2026-07-17 (Engineering Decision Sprint 2 — ENG-P0-001 Ready; DEC-TECH-003/004/006/007 confirmed; created Engineering Transition Phase 0A)
+> **Last controlled update:** 2026-07-17 (ENG-P0-001 Closure Tracking — ENG-P0-001 Complete; ENG-P0-002 Ready; Phase 0 In Progress; created Engineering Transition Phase 0A)
 
 # 11thONUS Engineering Implementation Programme
 
@@ -79,7 +79,7 @@ Reporting and Administration → Pilot Readiness
 
 | Phase | Name | Primary Domain(s) | Decision Dependencies (D1 shown bold) | Current Status |
 |---|---|---|---|---|
-| P0 | Repository and Delivery Foundation | Cross-cutting (infrastructure) | **DEC-TECH-003**, **DEC-TECH-004** (both CONFIRMED, Sprint 2) | **Ready** — ENG-P0-001 Ready, Phase 0 authorized |
+| P0 | Repository and Delivery Foundation | Cross-cutting (infrastructure) | **DEC-TECH-003**, **DEC-TECH-004** (both CONFIRMED, Sprint 2) | **In Progress** — ENG-P0-001 Complete; ENG-P0-002 Ready |
 | P1 | Firebase and Shared Platform Foundation | Cross-cutting (server) | **DEC-TECH-005** (open), **DEC-TECH-006**/**DEC-TECH-007** (CONFIRMED, Sprint 2), **DEC-PROV-005** (open) | Blocked (depends on P0 completion + DEC-TECH-005 + DEC-PROV-005) |
 | P2 | Identity, Roles and Business Context | Identity | **DEC-SEC-001**, **DEC-ID-003**, **DEC-DATA-007**, **DEC-PROV-004** | Blocked (depends on P1 + 4 D1 decisions) |
 | P3 | Commerce Knowledge and Business Onboarding | Commerce Knowledge | None D1; DEC-TECH-008 (D2, search) | Blocked (depends on P2) |
@@ -116,7 +116,7 @@ Each profile below follows the same structure: Phase ID, Name, Purpose, Primary 
 - **Expected Tests:** build passes; lint passes; unit test framework runs a placeholder suite; emulator suite starts cleanly.
 - **Expected Deployment State:** none — Phase 0 has no deployment target; CI runs against the repository only.
 - **Manual QA Requirement:** No.
-- **Current Status:** **Ready — both in-phase D1 decisions (DEC-TECH-003, DEC-TECH-004) are CONFIRMED** (Engineering Decision Sprint 2, 2026-07-17). Repository initialization is authorized — see the [Phase 0 Authorization](../phase-0-authorization.md) record and the [Engineering Transition D1 Agenda](../../00-governance/decisions/engineering-transition-d1-agenda.md) for the original decision analysis.
+- **Current Status:** **In Progress — ENG-P0-001 is `Complete`** (implemented, Technical Review Approved, committed `3a50710`, pushed to `origin/main` — see the [Implementation Report](../reports/ENG-P0-001-implementation-report-2026-07-17.md) and [Technical Review](../reports/ENG-P0-001-technical-review-2026-07-17.md)). **ENG-P0-002 is `Ready`** — its sequential precondition (ENG-P0-001 complete) is now satisfied; a finalized prompt has been prepared ([`ENG-P0-002.md`](../prompts/ENG-P0-002.md)) but not yet issued. Phase 0 itself remains `In Progress`, not `Complete`, until ENG-P0-002 also reaches Complete — see the [Phase 0 Authorization](../phase-0-authorization.md) record and the [Engineering Transition D1 Agenda](../../00-governance/decisions/engineering-transition-d1-agenda.md) for the original decision analysis.
 
 **Work Packages**
 
@@ -133,12 +133,12 @@ Each profile below follows the same structure: Phase ID, Name, Purpose, Primary 
 | Required Validation | build, lint, typecheck, unit-test-runner smoke test, emulator start | CI pipeline dry run |
 | Deployment Required | No | No |
 | Manual QA Required | No | No |
-| Status | **Ready** | Blocked |
-| Blocking Reason | — (none; DEC-TECH-003 and DEC-TECH-004 both CONFIRMED, Engineering Decision Sprint 2) | Depends on ENG-P0-001 completion (its own decision dependency, DEC-TECH-004, is now CONFIRMED — sequencing is the only remaining blocker) |
-| Implementation Report | *(future link)* | *(future link)* |
-| Commit Hash | *(future placeholder)* | *(future placeholder)* |
-| Deployment Reference | N/A | N/A |
-| Notes | Per TRD22 §22.10 exit criteria, no product-domain code may be introduced here | Establishes the IM-013 "founder-readable implementation report" habit from the very first phase |
+| Status | **Complete** | **Ready** |
+| Blocking Reason | — (none; complete) | — (cleared; ENG-P0-001 is now Complete, its only precondition) |
+| Implementation Report | [ENG-P0-001 Implementation Report](../reports/ENG-P0-001-implementation-report-2026-07-17.md) · [Technical Review (Approved)](../reports/ENG-P0-001-technical-review-2026-07-17.md) | *(future link)* |
+| Commit Hash | `3a50710` | *(future placeholder)* |
+| Deployment Reference | N/A — Phase 0 has no deployment target (see profile above) | N/A |
+| Notes | Per TRD22 §22.10 exit criteria, no product-domain code may be introduced here. Deployment/Preview Review/Manual QA recorded N/A per the Programme's own Phase 0 profile ("Expected Deployment State: none"; "Manual QA Requirement: No"), not skipped. | Establishes the IM-013 "founder-readable implementation report" habit from the very first phase. Finalized prompt: [`ENG-P0-002.md`](../prompts/ENG-P0-002.md) (prepared, not yet issued) |
 
 ---
 
