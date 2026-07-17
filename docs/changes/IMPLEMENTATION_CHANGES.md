@@ -76,3 +76,19 @@
   ```
   This creates a new commit that undoes ENG-P0-001's changes while preserving history — it does not touch `.git/` structure, `.env.local`, or force-rewrite `origin/main`. A local-only, pre-push rollback (not applicable now, since the commit is already pushed) would instead have been `git reset --hard` to the parent of `3a50710`; that option no longer applies once a commit is shared with the remote.
 - **Report link:** [`docs/05-implementation/reports/ENG-P0-001-closure-and-eng-p0-002-readiness-report-2026-07-17.md`](../05-implementation/reports/ENG-P0-001-closure-and-eng-p0-002-readiness-report-2026-07-17.md) — exists in the working tree; not yet committed (per this task's explicit instruction not to commit or push).
+
+---
+
+## 2026-07-17 — ENG-P0-002 — CI Pipeline, Templates and Change-Tracking Scaffold
+
+- **Date:** 2026-07-17
+- **Phase:** TRD22 §22.10 — Phase 0, Repository and Delivery Foundation
+- **Task:** ENG-P0-002 (second work package of the engineering implementation programme, issued against the finalized prompt at `docs/05-implementation/prompts/ENG-P0-002.md`)
+- **Status:** Implemented and locally validated on branch `feat/eng-p0-002-ci-foundation`; awaiting the branch's own CI run and Technical Review (not marked complete by the implementing agent)
+- **Files changed:** see the [Implementation Report](../05-implementation/reports/ENG-P0-002-implementation-report-2026-07-17.md) for the full created/modified list — summary: new CI workflow (`.github/workflows/ci.yml`), new PR template, new implementation-report template, new change-entry template (kept separate from this live log), plus this entry and the Prompt Register/Programme tracking updates
+- **Tests:** every §11 verification command from the prompt run locally and passed (install/build/lint/format:check/typecheck/test/Playwright e2e/emulator validation); workflow YAML validated with `actionlint` (zero findings); the actual CI run triggered by this work package's own pull request is the primary acceptance evidence — see the Implementation Report's addendum for the observed result
+- **Configuration:** one new GitHub Actions workflow (`.github/workflows/ci.yml`) — pnpm 9.15.9 and Node 20 pinned explicitly (matching the repository's own pinned versions), pnpm store cached via `actions/setup-node`'s built-in `cache: pnpm` mode, failure artifacts (`playwright-report/`, `test-results/`, both emulator debug logs) uploaded on any step failure, zero secrets used anywhere in the pipeline. No existing configuration file was modified.
+- **Migrations:** none.
+- **Risks:** see the Implementation Report §11; primarily whether the Firestore Emulator runs reliably in CI without further setup — answered empirically by the actual CI run rather than assumed.
+- **Rollback:** see the Implementation Report §13 for the full file-by-file list (workflow file, PR template, report template, entry template, this work package's own report, and the tracking-document edits below) — do not describe rollback as merely "delete the workflow and templates."
+- **Report link:** [`docs/05-implementation/reports/ENG-P0-002-implementation-report-2026-07-17.md`](../05-implementation/reports/ENG-P0-002-implementation-report-2026-07-17.md) — exists in the working tree as of this entry; committed to `feat/eng-p0-002-ci-foundation`, not yet merged to `main`.

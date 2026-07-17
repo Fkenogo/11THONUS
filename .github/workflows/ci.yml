@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+
+# Cancel superseded runs on the same ref to avoid queueing stale CI.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: Build, Lint, Test, Emulator Validation
+    runs-on: ubuntu-latest
+    # This pipeline requires zero secrets: the Firebase Emulator Suite runs
+    # against the fake `demo-11thonus` project ID, and nothing else in the
+    # pipeline talks to any external or authenticated service.
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # pnpm must be on PATH before actions/setup-node's `cache: pnpm` option
+      # can detect it, so pnpm is installed first.
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+
+      - name: Install dependencies (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Format check
+        run: pnpm format:check
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Unit / component tests
+        run: pnpm test
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Playwright e2e
+        run: pnpm test:e2e
+
+      # The Firestore Emulator requires a JRE. GitHub's ubuntu-latest runner
+      # image ships one by default, but this step verifies it explicitly in
+      # the CI log rather than assuming it silently works (ENG-P0-002 prompt
+      # §4.4) — no separate actions/setup-java step is added unless this
+      # verification ever fails.
+      - name: Verify Java runtime (required by the Firestore Emulator)
+        run: java -version
+
+      - name: Firebase Emulator Suite validation
+        run: pnpm emulators:validate
+
+      - name: Upload failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-failure-diagnostics
+          if-no-files-found: ignore
+          retention-days: 7
+          path: |
+            playwright-report/
+            test-results/
+            firebase-debug.log
+            firestore-debug.log

@@ -133,12 +133,12 @@ Each profile below follows the same structure: Phase ID, Name, Purpose, Primary 
 | Required Validation | build, lint, typecheck, unit-test-runner smoke test, emulator start | CI pipeline dry run |
 | Deployment Required | No | No |
 | Manual QA Required | No | No |
-| Status | **Complete** | **Ready** |
-| Blocking Reason | — (none; complete) | — (cleared; ENG-P0-001 is now Complete, its only precondition) |
-| Implementation Report | [ENG-P0-001 Implementation Report](../reports/ENG-P0-001-implementation-report-2026-07-17.md) · [Technical Review (Approved)](../reports/ENG-P0-001-technical-review-2026-07-17.md) | *(future link)* |
-| Commit Hash | `3a50710` | *(future placeholder)* |
+| Status | **Complete** | **In Progress** |
+| Blocking Reason | — (none; complete) | — (none; implemented and locally validated on `feat/eng-p0-002-ci-foundation`, pending commit/push/PR and CI result) |
+| Implementation Report | [ENG-P0-001 Implementation Report](../reports/ENG-P0-001-implementation-report-2026-07-17.md) · [Technical Review (Approved)](../reports/ENG-P0-001-technical-review-2026-07-17.md) | [ENG-P0-002 Implementation Report](../reports/ENG-P0-002-implementation-report-2026-07-17.md) |
+| Commit Hash | `3a50710` | *(pending — recorded once committed to `feat/eng-p0-002-ci-foundation`)* |
 | Deployment Reference | N/A — Phase 0 has no deployment target (see profile above) | N/A |
-| Notes | Per TRD22 §22.10 exit criteria, no product-domain code may be introduced here. Deployment/Preview Review/Manual QA recorded N/A per the Programme's own Phase 0 profile ("Expected Deployment State: none"; "Manual QA Requirement: No"), not skipped. | Establishes the IM-013 "founder-readable implementation report" habit from the very first phase. Finalized prompt: [`ENG-P0-002.md`](../prompts/ENG-P0-002.md) (prepared, not yet issued) |
+| Notes | Per TRD22 §22.10 exit criteria, no product-domain code may be introduced here. Deployment/Preview Review/Manual QA recorded N/A per the Programme's own Phase 0 profile ("Expected Deployment State: none"; "Manual QA Requirement: No"), not skipped. | Establishes the IM-013 "founder-readable implementation report" habit from the very first phase. Finalized prompt: [`ENG-P0-002.md`](../prompts/ENG-P0-002.md) (issued and implemented) |
 
 ---
 
