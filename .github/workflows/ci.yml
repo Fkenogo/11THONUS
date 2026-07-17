@@ -60,11 +60,17 @@ jobs:
       - name: Playwright e2e
         run: pnpm test:e2e
 
-      # The Firestore Emulator requires a JRE. GitHub's ubuntu-latest runner
-      # image ships one by default, but this step verifies it explicitly in
-      # the CI log rather than assuming it silently works (ENG-P0-002 prompt
-      # §4.4) — no separate actions/setup-java step is added unless this
-      # verification ever fails.
+      # The Firestore Emulator requires a JRE, and firebase-tools now refuses
+      # to run it on Java below 21. GitHub's ubuntu-latest runner's default
+      # `java` resolves to Temurin 17 (confirmed by CI run 29608691029,
+      # 2026-07-17: "firebase-tools no longer supports Java version before
+      # 21"), so JDK 21 is installed explicitly rather than assumed.
+      - name: Set up Java (JDK 21+ required by the Firestore Emulator)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
       - name: Verify Java runtime (required by the Firestore Emulator)
         run: java -version
 
