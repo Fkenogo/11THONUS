@@ -1,5 +1,5 @@
 > **Title:** ENG-P0-002 Implementation Report — CI Pipeline, Templates and Change-Tracking Scaffold
-> **Status:** Implemented — awaiting Technical Review
+> **Status:** Implemented, CI-fixed and passing — awaiting Technical Review
 > **Date:** 2026-07-17
 > **Classification:** Target-only addition (not part of the migrated documentation baseline)
 
@@ -15,9 +15,10 @@
 
 ## 2. Files Modified
 
-- `docs/changes/IMPLEMENTATION_CHANGES.md` — one new entry appended (§13).
+- `docs/changes/IMPLEMENTATION_CHANGES.md` — one new entry appended (§13), plus a CI-failure-and-fix addendum (§14).
 - `docs/05-implementation/change-tracking/coding-agent-prompt-register.md` — ENG-P0-002 row status updated to reflect this work package's actual progress (see §13).
 - `docs/05-implementation/change-tracking/engineering-implementation-programme.md` — ENG-P0-002 work-package row updated with Implementation Report link (see §13).
+- `.github/workflows/ci.yml` — one step added (`Set up Java`) after the original commit, to fix the real CI failure observed on run `29608691029` — see §14.
 
 ## 3. Files Removed
 
@@ -118,10 +119,49 @@ If the commit implementing this work package has already been pushed and merged,
 
 ## 14. CI Run Result and Persistent Engineering Changes-Log Update
 
-*(Filled in after the branch is pushed and the pull request is opened — see the addendum appended to this report, and the new entry in [`docs/changes/IMPLEMENTATION_CHANGES.md`](../../changes/IMPLEMENTATION_CHANGES.md).)*
+**Pull request:** [`#1`](https://github.com/Fkenogo/11THONUS/pull/1) (`feat/eng-p0-002-ci-foundation` → `main`), opened by the Founder once `gh` was authenticated on this machine.
+
+**Original run — failed:** [`29608691029`](https://github.com/Fkenogo/11THONUS/actions/runs/29608691029) (triggered by commit `0cac74a`).
+
+- Every step through `Playwright e2e` and `Verify Java runtime (required by the Firestore Emulator)` passed. The `Verify Java runtime` step itself only printed the version present (`openjdk 17.0.19`, Temurin) — it did not assert a minimum, so it passed even though the version was insufficient for the next step.
+- **Failed step:** `Firebase Emulator Suite validation`.
+- **Actual error** (from `gh run view 29608691029 --log-failed`, not the summary page): `Error: firebase-tools no longer supports Java version before 21. Please install a JDK at version 21 or above to get a compatible runtime.`
+- **Root cause:** GitHub's `ubuntu-latest` runner's default `java` on `PATH` resolves to Temurin 17. `firebase-tools`' bundled Firestore Emulator now requires Java 21+. This is a genuine CI-only environment difference — this machine's local Java is version 25, so the same command never failed locally, and no amount of local re-validation would have caught it.
+
+**Correction:** added one step, `Set up Java (JDK 21+ required by the Firestore Emulator)` (`actions/setup-java@v4`, `distribution: temurin`, `java-version: "21"`), immediately before the existing `Verify Java runtime` step in `.github/workflows/ci.yml`, so that step now verifies the corrected version rather than the runner's stale default. No other step, script, or file was touched.
+
+**Correction commit:** [`4f625b1`](https://github.com/Fkenogo/11THONUS/commit/4f625b1) — `fix: correct ENG-P0-002 CI failure [ENG-P0-002, DEC-TECH-004]`, 1 file changed (`.github/workflows/ci.yml`, +11/-5).
+
+**Rerun — passed:** [`29609566311`](https://github.com/Fkenogo/11THONUS/actions/runs/29609566311), triggered automatically by the push to the existing PR branch (no new PR was created). Final per-step result, all ✅:
+
+| Step | Result |
+|---|---|
+| Set up job | ✅ |
+| Checkout | ✅ |
+| Set up pnpm | ✅ |
+| Set up Node | ✅ |
+| Install dependencies (frozen lockfile) | ✅ |
+| Build | ✅ |
+| Lint | ✅ |
+| Format check | ✅ |
+| Typecheck | ✅ |
+| Unit / component tests | ✅ |
+| Install Playwright browsers | ✅ |
+| Playwright e2e | ✅ |
+| Set up Java (JDK 21+ required by the Firestore Emulator) | ✅ (new step) |
+| Verify Java runtime (required by the Firestore Emulator) | ✅ — now correctly reports 21 |
+| Firebase Emulator Suite validation | ✅ |
+| Upload failure diagnostics | — skipped (`if: failure()`, correctly did not run) |
+| Complete job | ✅ |
+
+Total run time 1m40s. `gh pr checks 1` confirms: `Build, Lint, Test, Emulator Validation — pass`.
+
+**Minor, non-blocking annotation observed on both runs** (informational, not a failure): GitHub's own log notes several actions (`actions/checkout@v4`, `actions/setup-node@v4`, `pnpm/action-setup@v4`, and now `actions/setup-java@v4`) target Node.js 20 internally but are "being forced to run on Node.js 24" by the runner — this is about the JavaScript runtime the *actions themselves* execute in, unrelated to this repository's own `node-version: "20"` application target, which remains correct and unaffected. Tracked as a future action-version-bump item, not an ENG-P0-002 defect.
+
+**Persistent Engineering Changes-Log Update:** see the CI-failure-and-fix addendum appended to the ENG-P0-002 entry in [`docs/changes/IMPLEMENTATION_CHANGES.md`](../../changes/IMPLEMENTATION_CHANGES.md).
 
 ---
 
 ## Status
 
-Implemented and locally validated (all §11 verification commands pass; `actionlint` reports zero findings). Not marked complete — the actual CI run against this work package's own pull request is required evidence per TRD22 §22.10's exit criterion ("CI passes") and has not yet been observed at the point this section was first written. Submitted for Technical Review once the PR and its CI result exist.
+Implemented, locally validated, and now confirmed by a real, passing CI run on its own pull request ([`#1`](https://github.com/Fkenogo/11THONUS/pull/1), run [`29609566311`](https://github.com/Fkenogo/11THONUS/actions/runs/29609566311)) — satisfying TRD22 §22.10's "CI passes" exit criterion with actual evidence, not a local-only claim. **Not marked complete** — Technical Review and the pull request's merge decision remain distinct, not-yet-taken actions; this report does not merge PR #1.

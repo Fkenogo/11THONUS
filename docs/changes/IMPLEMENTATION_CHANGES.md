@@ -92,3 +92,19 @@
 - **Risks:** see the Implementation Report §11; primarily whether the Firestore Emulator runs reliably in CI without further setup — answered empirically by the actual CI run rather than assumed.
 - **Rollback:** see the Implementation Report §13 for the full file-by-file list (workflow file, PR template, report template, entry template, this work package's own report, and the tracking-document edits below) — do not describe rollback as merely "delete the workflow and templates."
 - **Report link:** [`docs/05-implementation/reports/ENG-P0-002-implementation-report-2026-07-17.md`](../05-implementation/reports/ENG-P0-002-implementation-report-2026-07-17.md) — exists in the working tree as of this entry; committed to `feat/eng-p0-002-ci-foundation`, not yet merged to `main`.
+
+---
+
+## 2026-07-17 — ENG-P0-002 — CI Failure Investigation and Fix
+
+- **Date:** 2026-07-17
+- **Phase:** TRD22 §22.10 — Phase 0, Repository and Delivery Foundation
+- **Task:** ENG-P0-002 CI failure investigation and correction, against the actual pull request (`#1`) and its real Actions run — not a hypothetical
+- **Status:** Fixed and verified — the branch's CI now passes. Not marked complete; PR #1 was not merged (explicitly out of scope for this task)
+- **Files changed:** `.github/workflows/ci.yml` (one step added: `Set up Java (JDK 21+ required by the Firestore Emulator)`, via `actions/setup-java@v4`, immediately before the existing Java-verification step); `docs/05-implementation/reports/ENG-P0-002-implementation-report-2026-07-17.md` §14 addendum
+- **Tests:** original run [`29608691029`](https://github.com/Fkenogo/11THONUS/actions/runs/29608691029) failed at the `Firebase Emulator Suite validation` step (`firebase-tools no longer supports Java version before 21`, runner default is Temurin 17); rerun [`29609566311`](https://github.com/Fkenogo/11THONUS/actions/runs/29609566311) after the fix — all steps pass, `gh pr checks 1` reports `pass`
+- **Configuration:** one new CI step (JDK 21 setup via `actions/setup-java@v4`); no application, tooling, or dependency file changed
+- **Migrations:** none
+- **Risks:** none new; the fix directly addresses a real, evidenced CI-environment difference (this machine's local Java is version 25, so the same failure could not have been caught by local validation alone)
+- **Rollback:** revert commit `4f625b1` (single-file change to `.github/workflows/ci.yml`) — `git revert 4f625b1 && git push origin feat/eng-p0-002-ci-foundation`
+- **Report link:** see the addendum in [`docs/05-implementation/reports/ENG-P0-002-implementation-report-2026-07-17.md`](../05-implementation/reports/ENG-P0-002-implementation-report-2026-07-17.md) §14
