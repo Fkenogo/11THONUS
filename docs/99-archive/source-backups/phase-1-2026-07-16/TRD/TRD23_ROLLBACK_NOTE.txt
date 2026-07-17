@@ -1,0 +1,5 @@
+NOTE: TRD23_Traceability and Completion Review.md was modified AFTER this backup set was taken.
+Changes were spelling-only (two instances of 'programme' -> 'program'):
+  1. 'business-specific programme configuration' -> 'business-specific program configuration' (§23.8)
+  2. 'whether any launch programme may reward' -> 'whether any launch program may reward' (OPD-004)
+Rollback: reverse these two word substitutions. No other content was changed in TRD23.

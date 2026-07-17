@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>11thONUS | Customer Home</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@600;700;800&amp;family=Inter:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-container": "#fffbff",
+                        "primary-container": "#1c1b1b",
+                        "primary": "#000000",
+                        "on-tertiary-fixed-variant": "#5e4200",
+                        "secondary": "#ab2e00",
+                        "tertiary-fixed-dim": "#fcbc2f",
+                        "on-primary-fixed": "#1c1b1b",
+                        "on-secondary-fixed-variant": "#862200",
+                        "surface-container-lowest": "#ffffff",
+                        "outline-variant": "#c4c7c7",
+                        "on-primary": "#ffffff",
+                        "inverse-primary": "#c8c6c5",
+                        "primary-fixed": "#e5e2e1",
+                        "tertiary-fixed": "#ffdea6",
+                        "on-background": "#1a1c1d",
+                        "error": "#ba1a1a",
+                        "outline": "#747878",
+                        "tertiary": "#000000",
+                        "surface-container": "#eeeeef",
+                        "on-secondary-fixed": "#3b0a00",
+                        "surface-container-low": "#f3f3f4",
+                        "on-primary-container": "#858383",
+                        "surface-dim": "#dadadb",
+                        "on-surface": "#1a1c1d",
+                        "secondary-fixed": "#ffdbd1",
+                        "on-tertiary-fixed": "#271900",
+                        "surface-bright": "#f9f9fa",
+                        "primary-fixed-dim": "#c8c6c5",
+                        "on-primary-fixed-variant": "#474646",
+                        "on-surface": "#1a1c1d",
+                        "secondary-fixed-dim": "#ffb59f",
+                        "inverse-surface": "#2f3132",
+                        "inverse-on-surface": "#f0f1f2",
+                        "surface-container-high": "#e8e8e9",
+                        "surface": "#f9f9fa",
+                        "on-tertiary-container": "#ab7b00",
+                        "background": "#f9f9fa",
+                        "error-container": "#ffdad6",
+                        "on-error-container": "#93000a",
+                        "on-surface-variant": "#444748",
+                        "surface-tint": "#5f5e5e",
+                        "on-tertiary": "#ffffff",
+                        "surface-variant": "#e2e2e3",
+                        "tertiary-container": "#271900",
+                        "secondary-container": "#d63c00",
+                        "on-error": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-lg": "48px",
+                        "space-unit": "8px",
+                        "container-padding-desktop": "40px",
+                        "gutter": "16px",
+                        "stack-md": "24px",
+                        "container-padding-mobile": "20px",
+                        "stack-sm": "8px"
+                    },
+                    "fontFamily": {
+                        "headline-xl": ["Hanken Grotesk"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "body-md": ["Inter"],
+                        "headline-lg": ["Hanken Grotesk"],
+                        "label-md": ["Inter"],
+                        "headline-sm": ["Hanken Grotesk"],
+                        "body-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "headline-lg-mobile": ["Hanken Grotesk"]
+                    },
+                    "fontSize": {
+                        "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "headline-lg-mobile": ["28px", {"lineHeight": "34px", "fontWeight": "700"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        .micro-shadow {
+            box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.04);
+        }
+        body {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .progress-block {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .progress-block:hover {
+            transform: scaleY(1.1);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface font-body-md selection:bg-secondary/20">
+<!-- Top Navigation Bar -->
+<header class="bg-surface border-b border-outline-variant fixed top-0 w-full z-50">
+<nav class="flex justify-between items-center w-full px-5 py-4 max-w-7xl mx-auto">
+<div class="flex items-center gap-4">
+<button class="hover:bg-surface-container-low transition-colors p-1 rounded-full">
+<span class="material-symbols-outlined text-primary">menu</span>
+</button>
+<span class="font-headline-md text-headline-md font-bold text-primary tracking-tight">11thONUS</span>
+</div>
+<div class="flex items-center gap-4">
+<button class="hover:bg-surface-container-low transition-colors p-1 rounded-full">
+<span class="material-symbols-outlined text-primary">account_circle</span>
+</button>
+</div>
+</nav>
+</header>
+<main class="pt-24 pb-20 md:pb-8 px-5 md:px-10 max-w-7xl mx-auto">
+<!-- Large Header -->
+<section class="mb-stack-lg">
+<h1 class="font-headline-xl text-headline-xl md:text-headline-xl text-primary">Welcome, Julian</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant mt-2">You're making great progress this month.</p>
+</section>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+<!-- Primary Slot: Urgent Verification Card -->
+<div class="lg:col-span-7 space-y-gutter">
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-8 micro-shadow relative overflow-hidden">
+<!-- Subtle Progress Glow Decor -->
+<div class="absolute -top-12 -right-12 w-32 h-32 bg-secondary/5 rounded-full blur-3xl"></div>
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+<div>
+<div class="flex items-center gap-2 mb-2">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="font-label-md text-label-md text-secondary uppercase tracking-widest">Verification Required</span>
+</div>
+<h2 class="font-headline-lg text-headline-lg text-primary">Recent Visit at Brew &amp; Bean</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Verify this transaction to earn your 7th stamp.</p>
+</div>
+<div class="flex-shrink-0 h-16 w-16 bg-surface-container-low rounded-lg flex items-center justify-center border border-outline-variant">
+<span class="material-symbols-outlined text-primary text-3xl">receipt_long</span>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<button class="bg-primary text-on-primary font-body-md py-4 rounded-lg hover:opacity-90 transition-opacity flex items-center justify-center gap-2">
+                            Approve
+                        </button>
+<button class="bg-surface-container-low text-primary border border-outline-variant font-body-md py-4 rounded-lg hover:bg-surface-container-highest transition-colors flex items-center justify-center gap-2">
+                            Details
+                        </button>
+</div>
+</div>
+<!-- Progress Section: The 11 Steps -->
+<div class="bg-white border border-outline-variant rounded-xl p-8 micro-shadow">
+<div class="flex justify-between items-end mb-6">
+<div>
+<h3 class="font-headline-sm text-headline-sm text-primary">Next Milestone</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">4 stamps until your next 11thONUS reward.</p>
+</div>
+<div class="text-right">
+<span class="font-headline-md text-headline-md text-secondary">6/11</span>
+</div>
+</div>
+<!-- Progress Blocks Grid -->
+<div class="grid grid-cols-11 gap-2 md:gap-3 h-12 mb-4">
+<!-- Filled States -->
+<div class="progress-block bg-secondary rounded-sm"></div>
+<div class="progress-block bg-secondary rounded-sm"></div>
+<div class="progress-block bg-secondary rounded-sm"></div>
+<div class="progress-block bg-secondary rounded-sm"></div>
+<div class="progress-block bg-secondary rounded-sm"></div>
+<div class="progress-block bg-secondary rounded-sm"></div>
+<!-- Empty States -->
+<div class="progress-block bg-surface-container-highest rounded-sm"></div>
+<div class="progress-block bg-surface-container-highest rounded-sm"></div>
+<div class="progress-block bg-surface-container-highest rounded-sm"></div>
+<div class="progress-block bg-surface-container-highest rounded-sm"></div>
+<!-- Goal State (Gold Accented) -->
+<div class="progress-block border-2 border-dashed border-tertiary-fixed-dim bg-white rounded-sm flex items-center justify-center">
+<span class="material-symbols-outlined text-tertiary-fixed-dim text-sm" style="font-variation-settings: 'FILL' 1;">military_tech</span>
+</div>
+</div>
+<div class="flex justify-between text-on-surface-variant">
+<span class="font-label-md text-label-md">START</span>
+<span class="font-label-md text-label-md text-tertiary-fixed-dim">REWARD</span>
+</div>
+</div>
+</div>
+<!-- Secondary: Recent Activity List -->
+<div class="lg:col-span-5">
+<div class="bg-surface-container-low border border-outline-variant rounded-xl p-6 min-h-full">
+<div class="flex justify-between items-center mb-6">
+<h3 class="font-headline-sm text-headline-sm text-primary">Recent Activity</h3>
+<button class="text-secondary font-label-md text-label-md hover:underline">View All</button>
+</div>
+<div class="space-y-4">
+<!-- Activity Item 1 -->
+<div class="flex items-center justify-between p-4 bg-white border border-outline-variant rounded-lg transition-transform active:scale-95 cursor-pointer">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center">
+<span class="material-symbols-outlined text-on-surface-variant text-xl">local_cafe</span>
+</div>
+<div>
+<p class="font-body-md text-body-md font-semibold text-primary">Urban Grind Coffee</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Yesterday, 08:45 AM</p>
+</div>
+</div>
+<span class="px-2 py-1 bg-surface-container-highest text-on-surface text-[10px] font-bold uppercase rounded tracking-wider">Stamp +1</span>
+</div>
+<!-- Activity Item 2 -->
+<div class="flex items-center justify-between p-4 bg-white border border-outline-variant rounded-lg transition-transform active:scale-95 cursor-pointer">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center">
+<span class="material-symbols-outlined text-on-surface-variant text-xl">fitness_center</span>
+</div>
+<div>
+<p class="font-body-md text-body-md font-semibold text-primary">Core Studio Gym</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Oct 12, 05:30 PM</p>
+</div>
+</div>
+<span class="px-2 py-1 bg-surface-container-highest text-on-surface text-[10px] font-bold uppercase rounded tracking-wider">Stamp +1</span>
+</div>
+<!-- Activity Item 3 -->
+<div class="flex items-center justify-between p-4 bg-white border border-outline-variant rounded-lg transition-transform active:scale-95 cursor-pointer">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-tertiary-fixed flex items-center justify-center">
+<span class="material-symbols-outlined text-on-tertiary-fixed text-xl" style="font-variation-settings: 'FILL' 1;">military_tech</span>
+</div>
+<div>
+<p class="font-body-md text-body-md font-semibold text-primary">11thONUS Redeemed</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Oct 10, 01:12 PM</p>
+</div>
+</div>
+<span class="px-2 py-1 bg-tertiary-fixed text-on-tertiary-fixed text-[10px] font-bold uppercase rounded tracking-wider">Reward</span>
+</div>
+<!-- Activity Item 4 -->
+<div class="flex items-center justify-between p-4 bg-white border border-outline-variant rounded-lg transition-transform active:scale-95 cursor-pointer opacity-80">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center">
+<span class="material-symbols-outlined text-on-surface-variant text-xl">restaurant</span>
+</div>
+<div>
+<p class="font-body-md text-body-md font-semibold text-primary">Green Table Bistro</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Oct 08, 07:45 PM</p>
+</div>
+</div>
+<span class="px-2 py-1 bg-surface-container-highest text-on-surface text-[10px] font-bold uppercase rounded tracking-wider">Stamp +1</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Bar (Mobile only) -->
+<footer class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pt-3 pb-safe bg-surface border-t border-outline-variant">
+<!-- Home Active -->
+<a class="flex flex-col items-center justify-center text-secondary font-semibold scale-95 duration-150 ease-in-out" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="font-label-md text-label-md mt-1">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">receipt_long</span>
+<span class="font-label-md text-label-md mt-1">Activity</span>
+</a>
+<!-- Central Scan Action -->
+<div class="relative -top-6">
+<button class="bg-secondary text-on-primary w-14 h-14 rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-3xl">qr_code_scanner</span>
+</button>
+</div>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">military_tech</span>
+<span class="font-label-md text-label-md mt-1">Rewards</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">account_circle</span>
+<span class="font-label-md text-label-md mt-1">Account</span>
+</a>
+</footer>
+<!-- FAB for Desktop (aligned with high-end minimalism) -->
+<button class="hidden md:flex fixed bottom-10 right-10 bg-secondary text-on-primary px-8 py-4 rounded-full items-center gap-3 shadow-xl hover:opacity-90 active:scale-95 transition-all z-50">
+<span class="material-symbols-outlined">qr_code_scanner</span>
+<span class="font-body-md font-semibold">Scan to Earn</span>
+</button>
+<script>
+        // Micro-interaction for approval button
+        const approveBtn = document.querySelector('button.bg-primary');
+        if (approveBtn) {
+            approveBtn.addEventListener('click', function() {
+                this.innerHTML = '<span class="material-symbols-outlined animate-spin">sync</span> Processing...';
+                setTimeout(() => {
+                    this.classList.remove('bg-primary');
+                    this.classList.add('bg-green-600');
+                    this.innerHTML = '<span class="material-symbols-outlined">check_circle</span> Approved';
+                }, 1200);
+            });
+        }
+    </script>
+</body></html>

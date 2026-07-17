@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Purchase Verification | 11thONUS</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=Hanken+Grotesk:wght@600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-secondary-container": "#fffbff",
+                    "primary-container": "#1c1b1b",
+                    "primary": "#000000",
+                    "on-tertiary-fixed-variant": "#5e4200",
+                    "secondary": "#ab2e00",
+                    "tertiary-fixed-dim": "#fcbc2f",
+                    "on-primary-fixed": "#1c1b1b",
+                    "on-secondary-fixed-variant": "#862200",
+                    "surface-container-lowest": "#ffffff",
+                    "outline-variant": "#c4c7c7",
+                    "on-primary": "#ffffff",
+                    "inverse-primary": "#c8c6c5",
+                    "primary-fixed": "#e5e2e1",
+                    "tertiary-fixed": "#ffdea6",
+                    "on-background": "#1a1c1d",
+                    "error": "#ba1a1a",
+                    "outline": "#747878",
+                    "tertiary": "#000000",
+                    "surface-container": "#eeeeef",
+                    "on-secondary-fixed": "#3b0a00",
+                    "surface-container-low": "#f3f3f4",
+                    "on-primary-container": "#858383",
+                    "surface-dim": "#dadadb",
+                    "on-secondary": "#ffffff",
+                    "surface-container-highest": "#e2e2e3",
+                    "secondary-fixed": "#ffdbd1",
+                    "on-tertiary-fixed": "#271900",
+                    "surface-bright": "#f9f9fa",
+                    "primary-fixed-dim": "#c8c6c5",
+                    "on-primary-fixed-variant": "#474646",
+                    "on-surface": "#1a1c1d",
+                    "secondary-fixed-dim": "#ffb59f",
+                    "inverse-surface": "#2f3132",
+                    "inverse-on-surface": "#f0f1f2",
+                    "surface-container-high": "#e8e8e9",
+                    "surface": "#f9f9fa",
+                    "on-tertiary-container": "#ab7b00",
+                    "background": "#f9f9fa",
+                    "error-container": "#ffdad6",
+                    "on-error-container": "#93000a",
+                    "on-surface-variant": "#444748",
+                    "surface-tint": "#5f5e5e",
+                    "on-tertiary": "#ffffff",
+                    "surface-variant": "#e2e2e3",
+                    "tertiary-container": "#271900",
+                    "secondary-container": "#d63c00",
+                    "on-error": "#ffffff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "stack-lg": "48px",
+                    "space-unit": "8px",
+                    "container-padding-desktop": "40px",
+                    "gutter": "16px",
+                    "stack-md": "24px",
+                    "container-padding-mobile": "20px",
+                    "stack-sm": "8px"
+            },
+            "fontFamily": {
+                    "headline-xl": ["Hanken Grotesk"],
+                    "headline-md": ["Hanken Grotesk"],
+                    "body-md": ["Inter"],
+                    "headline-lg": ["Hanken Grotesk"],
+                    "label-md": ["Inter"],
+                    "headline-sm": ["Hanken Grotesk"],
+                    "body-lg": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "headline-lg-mobile": ["Hanken Grotesk"]
+            },
+            "fontSize": {
+                    "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-lg-mobile": ["28px", {"lineHeight": "34px", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            line-height: 1;
+            text-transform: none;
+            letter-spacing: normal;
+            word-wrap: normal;
+            white-space: nowrap;
+            direction: ltr;
+        }
+        .micro-shadow {
+            box-shadow: 0px 4px 30px rgba(0, 0, 0, 0.06);
+        }
+        .bg-mesh-soft {
+            background-color: #f9f9fa;
+            background-image: 
+                radial-gradient(at 0% 0%, hsla(0,0%,100%,1) 0, transparent 50%), 
+                radial-gradient(at 100% 100%, hsla(210,20%,95%,1) 0, transparent 50%);
+        }
+        body {
+          min-height: 100dvh;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md antialiased min-h-screen flex flex-col">
+<!-- TopAppBar -->
+<header class="bg-surface-container-lowest docked full-width top-0 border-b border-outline-variant/30 z-50">
+<div class="flex justify-between items-center w-full px-5 py-4 max-w-7xl mx-auto">
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined text-primary p-2 rounded-full">menu</button>
+<h1 class="font-headline-md text-headline-md font-bold text-primary tracking-tight">11thONUS</h1>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-2xl">account_circle</span>
+</div>
+</div>
+</header>
+<main class="flex-grow flex flex-col items-center px-container-padding-mobile md:px-container-padding-desktop py-8 bg-mesh-soft relative">
+<div class="w-full max-w-md animate-in fade-in slide-in-from-bottom-4 duration-700">
+<!-- Breadcrumb / Status -->
+<div class="flex items-center gap-2 mb-6 px-1">
+<span class="font-label-md text-label-md text-secondary bg-secondary/10 px-2 py-0.5 rounded-full uppercase tracking-wider">Pending Verification</span>
+</div>
+<!-- Focused Verification Card -->
+<div class="bg-surface-container-lowest border border-outline-variant/50 rounded-2xl micro-shadow overflow-hidden">
+<!-- Business Header -->
+<div class="p-stack-md flex flex-col items-center text-center">
+<div class="w-24 h-24 rounded-full bg-surface-container-high mb-4 flex items-center justify-center overflow-hidden border border-outline-variant/30">
+<img class="w-full h-full object-cover" data-alt="A clean, minimalist logo of a high-end specialty coffee roaster featuring a geometric black icon on a stark white background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCoqUuGmSsUyETu3FpRB0KfaIVk4MB_VCTsIWWYtWF-1U57X-aLxssU228biADN3SbogPQEv86QV4rgZ06W8HMF2C6phdUxQkljNh4j_GihLrxLci5olfYVPZJiTWgjjDL8C998oJfdpfCgqCoPgNM7UJ3GIRrezHwh_o408rH3GjBggIt-jlR9VIkEOTyLzfs41GQhJQ9zNDOCzYQNe22hSWO62Gnu0UJh0TrDUcgT5jgRSUWchixixU_PMaBGWyEKXlsqmzg7Naw"/>
+</div>
+<h2 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary">Blue Bottle Coffee</h2>
+<p class="font-label-md text-label-md text-on-surface-variant tracking-widest uppercase mt-1">SOMA • San Francisco</p>
+</div>
+<!-- Transaction Details -->
+<div class="px-stack-md pb-stack-md flex flex-col items-center text-center">
+<div class="py-2 mb-1">
+<span class="font-label-md text-label-md text-on-surface-variant font-semibold tracking-widest">PURCHASE AMOUNT</span>
+</div>
+<div class="mb-4">
+<span class="font-headline-xl text-[56px] leading-tight text-primary">$14.50</span>
+</div>
+<!-- Confidence Indicator -->
+<div class="flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-100 rounded-full mb-6">
+<span class="material-symbols-outlined text-green-600 text-sm" style="font-variation-settings: 'FILL' 1;">verified_user</span>
+<span class="font-label-md text-[11px] text-green-700 font-bold uppercase tracking-wider">Verified Location Match</span>
+</div>
+<div class="w-full space-y-4 pt-6 border-t border-outline-variant/20">
+<div class="flex justify-between items-center px-2">
+<div class="flex items-center gap-2 text-on-surface">
+<span class="material-symbols-outlined text-[20px] text-on-surface-variant">calendar_today</span>
+<span class="font-body-sm text-body-sm font-semibold">Thursday, Oct 24</span>
+</div>
+<div class="flex items-center gap-2 text-on-surface">
+<span class="material-symbols-outlined text-[20px] text-on-surface-variant">schedule</span>
+<span class="font-body-sm text-body-sm font-semibold">10:42 AM</span>
+</div>
+</div>
+<div class="flex justify-between items-center px-2 pt-2">
+<button class="flex items-center gap-1.5 text-secondary hover:opacity-80 transition-opacity">
+<span class="material-symbols-outlined text-[18px]">receipt_long</span>
+<span class="font-label-md text-label-md font-bold uppercase underline underline-offset-4">View Receipt</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Why this matters -->
+<div class="mx-stack-md p-4 bg-surface-container-low rounded-xl mb-stack-md flex gap-3">
+<span class="material-symbols-outlined text-on-surface-variant text-xl">info</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
+<span class="font-semibold text-on-surface">Why this matters:</span> Verification ensures your progress is secure and trusted.
+                    </p>
+</div>
+<!-- Action Footer -->
+<div class="p-stack-md pt-0 space-y-4">
+<button class="w-full py-5 bg-primary text-white font-headline-sm text-headline-sm rounded-xl hover:bg-neutral-800 active:scale-[0.98] transition-all flex flex-col items-center justify-center gap-1 shadow-lg shadow-black/5" id="approve-btn">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">verified</span>
+<span>Confirm &amp; Claim Stamp</span>
+</div>
+<span class="text-[11px] font-label-md opacity-70 tracking-widest uppercase">Verified Purchase</span>
+</button>
+<div class="flex justify-center">
+<button class="text-error font-body-sm text-body-sm font-semibold hover:underline px-4 py-2">
+                            Report Issue
+                        </button>
+</div>
+</div>
+</div>
+<!-- Security Message -->
+<div class="mt-8 flex items-center justify-center gap-2 text-on-surface-variant/50">
+<span class="material-symbols-outlined text-sm">lock</span>
+<span class="font-label-md text-[10px] tracking-widest uppercase">Secure End-to-End Verification</span>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pt-3 pb-8 bg-surface-container-lowest border-t border-outline-variant/30">
+<button class="flex flex-col items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-md text-label-md mt-1">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center text-primary font-semibold">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">receipt_long</span>
+<span class="font-label-md text-label-md mt-1">Activity</span>
+</button>
+<button class="flex flex-col items-center justify-center">
+<div class="w-12 h-12 bg-primary rounded-full flex items-center justify-center text-white -mt-8 shadow-xl">
+<span class="material-symbols-outlined">qr_code_scanner</span>
+</div>
+<span class="font-label-md text-label-md mt-1">Scan</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined">military_tech</span>
+<span class="font-label-md text-label-md mt-1">Rewards</span>
+</button>
+</nav>
+<!-- Success Feedback Overlay -->
+<div class="fixed inset-0 bg-white/98 z-[100] flex flex-col items-center justify-center opacity-0 pointer-events-none transition-opacity duration-500" id="success-overlay">
+<div class="text-center p-stack-lg max-w-sm">
+<div class="w-24 h-24 bg-primary text-white rounded-full flex items-center justify-center mx-auto mb-stack-md animate-bounce">
+<span class="material-symbols-outlined text-5xl" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<h3 class="font-headline-lg text-headline-lg text-primary mb-2">Verified Purchase</h3>
+<p class="font-body-md text-body-md text-on-surface-variant mb-stack-lg">Your transaction at Blue Bottle Coffee has been confirmed. You've earned 1 stamp!</p>
+<button class="w-full py-4 bg-primary text-white font-headline-sm text-headline-sm rounded-xl shadow-xl" onclick="window.location.reload()">
+                Return to Activity
+            </button>
+</div>
+</div>
+<script>
+        const approveBtn = document.getElementById('approve-btn');
+        const successOverlay = document.getElementById('success-overlay');
+
+        approveBtn.addEventListener('click', () => {
+            approveBtn.innerHTML = '<span class="material-symbols-outlined animate-spin">sync</span> <span class="ml-2 uppercase text-[12px] font-bold tracking-widest">Processing...</span>';
+            approveBtn.classList.add('opacity-80', 'pointer-events-none');
+            
+            setTimeout(() => {
+                successOverlay.classList.remove('opacity-0', 'pointer-events-none');
+                successOverlay.classList.add('opacity-100');
+            }, 1000);
+        });
+    </script>
+</body></html>

@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>11thONUS | Notification Center</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700&amp;family=Inter:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .swipe-item {
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .ios-blur {
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        .notification-card {
+            box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.04);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-container": "#fffbff",
+                        "primary-container": "#1c1b1b",
+                        "primary": "#000000",
+                        "on-tertiary-fixed-variant": "#5e4200",
+                        "secondary": "#ab2e00",
+                        "tertiary-fixed-dim": "#fcbc2f",
+                        "on-primary-fixed": "#1c1b1b",
+                        "on-secondary-fixed-variant": "#862200",
+                        "surface-container-lowest": "#ffffff",
+                        "outline-variant": "#c4c7c7",
+                        "on-primary": "#ffffff",
+                        "inverse-primary": "#c8c6c5",
+                        "primary-fixed": "#e5e2e1",
+                        "tertiary-fixed": "#ffdea6",
+                        "on-background": "#1a1c1d",
+                        "error": "#ba1a1a",
+                        "outline": "#747878",
+                        "tertiary": "#000000",
+                        "surface-container": "#eeeeef",
+                        "on-secondary-fixed": "#3b0a00",
+                        "surface-container-low": "#f3f3f4",
+                        "on-primary-container": "#858383",
+                        "surface-dim": "#dadadb",
+                        "on-secondary": "#ffffff",
+                        "surface-container-highest": "#e2e2e3",
+                        "secondary-fixed": "#ffdbd1",
+                        "on-tertiary-fixed": "#271900",
+                        "surface-bright": "#f9f9fa",
+                        "primary-fixed-dim": "#c8c6c5",
+                        "on-primary-fixed-variant": "#474646",
+                        "on-surface": "#1a1c1d",
+                        "secondary-fixed-dim": "#ffb59f",
+                        "inverse-surface": "#2f3132",
+                        "inverse-on-surface": "#f0f1f2",
+                        "surface-container-high": "#e8e8e9",
+                        "surface": "#f9f9fa",
+                        "on-tertiary-container": "#ab7b00",
+                        "background": "#f9f9fa",
+                        "error-container": "#ffdad6",
+                        "on-error-container": "#93000a",
+                        "on-surface-variant": "#444748",
+                        "surface-tint": "#5f5e5e",
+                        "on-tertiary": "#ffffff",
+                        "surface-variant": "#e2e2e3",
+                        "tertiary-container": "#271900",
+                        "secondary-container": "#d63c00",
+                        "on-error": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-lg": "48px",
+                        "space-unit": "8px",
+                        "container-padding-desktop": "40px",
+                        "gutter": "16px",
+                        "stack-md": "24px",
+                        "container-padding-mobile": "20px",
+                        "stack-sm": "8px"
+                    },
+                    "fontFamily": {
+                        "headline-xl": ["Hanken Grotesk"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "body-md": ["Inter"],
+                        "headline-lg": ["Hanken Grotesk"],
+                        "label-md": ["Inter"],
+                        "headline-sm": ["Hanken Grotesk"],
+                        "body-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "headline-lg-mobile": ["Hanken Grotesk"]
+                    },
+                    "fontSize": {
+                        "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "headline-lg-mobile": ["28px", {"lineHeight": "34px", "fontWeight": "700"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background text-on-surface font-body-md min-h-screen pb-24">
+<!-- Top Navigation -->
+<nav class="sticky top-0 z-50 bg-surface/80 ios-blur border-b border-outline-variant">
+<div class="flex justify-between items-center w-full px-5 py-4 max-w-7xl mx-auto">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-primary" data-icon="menu">menu</span>
+<span class="font-headline-md text-headline-md font-bold text-primary tracking-tight">11thONUS</span>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative">
+<span class="material-symbols-outlined text-primary" data-icon="notifications">notifications</span>
+<span class="absolute top-0 right-0 w-2 h-2 bg-secondary rounded-full"></span>
+</div>
+<span class="material-symbols-outlined text-primary" data-icon="account_circle">account_circle</span>
+</div>
+</div>
+</nav>
+<!-- Main Content -->
+<main class="max-w-xl mx-auto px-container-padding-mobile md:px-container-padding-desktop pt-stack-md">
+<!-- Header -->
+<header class="mb-stack-md">
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile md:font-headline-lg md:text-headline-lg text-primary mb-1">Notifications</h1>
+<p class="font-body-sm text-on-surface-variant">Stay updated with your rewards and verifications.</p>
+</header>
+<!-- Search / Filter -->
+<div class="mb-stack-md">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline" data-icon="search">search</span>
+<input class="w-full pl-10 pr-4 py-3 bg-surface-container-low border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all" placeholder="Search notifications..." type="text"/>
+</div>
+</div>
+<!-- Section: Needs Attention -->
+<section class="mb-stack-lg">
+<div class="flex items-center justify-between mb-4">
+<h2 class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+                    Needs Attention
+                </h2>
+<button class="text-label-md font-semibold text-secondary hover:opacity-80 transition-opacity">Clear All</button>
+</div>
+<div class="space-y-3">
+<!-- Actionable Item 1 -->
+<div class="relative overflow-hidden rounded-xl bg-surface-container-lowest border border-outline-variant notification-card">
+<div class="p-4 flex gap-4 swipe-item">
+<div class="flex-shrink-0 w-12 h-12 bg-secondary-fixed rounded-full flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined" data-icon="qr_code_2" style="font-variation-settings: 'FILL' 1;">qr_code_2</span>
+</div>
+<div class="flex-grow">
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-headline-sm text-headline-sm text-primary leading-tight">Pending Verification</h3>
+<span class="text-label-md text-outline">2m ago</span>
+</div>
+<p class="font-body-sm text-on-surface-variant mb-4">Confirm your recent purchase at "The Artisanal Roastery" to claim your 5th stamp.</p>
+<div class="flex gap-2">
+<button class="bg-secondary text-on-secondary px-4 py-2 rounded-lg font-label-md hover:opacity-90 transition-all">Verify Now</button>
+<button class="bg-surface-container-high text-on-surface px-4 py-2 rounded-lg font-label-md hover:bg-surface-container-highest transition-all">Dismiss</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Actionable Item 2 -->
+<div class="relative overflow-hidden rounded-xl bg-surface-container-lowest border border-outline-variant notification-card">
+<div class="p-4 flex gap-4">
+<div class="flex-shrink-0 w-12 h-12 bg-primary-fixed rounded-full flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" data-icon="warning" style="font-variation-settings: 'FILL' 1;">warning</span>
+</div>
+<div class="flex-grow">
+<div class="flex justify-between items-start mb-1">
+<h3 class="font-headline-sm text-headline-sm text-primary leading-tight">Action Required</h3>
+<span class="text-label-md text-outline">1h ago</span>
+</div>
+<p class="font-body-sm text-on-surface-variant mb-4">Your membership card for "Urban Fitness" is expiring in 48 hours. Renew to keep your streak.</p>
+<button class="w-full border border-primary text-primary py-2 rounded-lg font-label-md hover:bg-primary-container hover:text-on-primary-container transition-all">Renew Membership</button>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Section: Updates -->
+<section class="mb-stack-lg">
+<h2 class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest mb-4 flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-outline"></span>
+                Updates
+            </h2>
+<div class="space-y-3">
+<!-- Verified Update -->
+<div class="p-4 bg-surface-container-lowest border border-outline-variant rounded-xl flex gap-4 notification-card opacity-90">
+<div class="flex-shrink-0 w-12 h-12 bg-surface-container-high rounded-full flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined text-tertiary-fixed-dim" data-icon="verified" style="font-variation-settings: 'FILL' 1;">verified</span>
+</div>
+<div class="flex-grow">
+<div class="flex justify-between items-start">
+<h3 class="font-body-md font-semibold text-primary">Reward Unlocked!</h3>
+<span class="text-label-md text-outline">3h ago</span>
+</div>
+<p class="font-body-sm text-on-surface-variant">You've earned a Free Espresso at Blue Bottle Coffee. Present your QR at the counter.</p>
+</div>
+</div>
+<!-- Rejected Update -->
+<div class="p-4 bg-surface-container-lowest border border-outline-variant rounded-xl flex gap-4 notification-card opacity-90">
+<div class="flex-shrink-0 w-12 h-12 bg-error-container rounded-full flex items-center justify-center text-error">
+<span class="material-symbols-outlined" data-icon="block">block</span>
+</div>
+<div class="flex-grow">
+<div class="flex justify-between items-start">
+<h3 class="font-body-md font-semibold text-primary">Scan Rejected</h3>
+<span class="text-label-md text-outline">5h ago</span>
+</div>
+<p class="font-body-sm text-on-surface-variant">The receipt for "Late Night Bites" was blurry. Please try scanning again with better lighting.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Section: Messages -->
+<section class="mb-stack-lg">
+<h2 class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest mb-4 flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-tertiary-fixed-dim"></span>
+                Business Offers
+            </h2>
+<!-- Featured Message Bento Card -->
+<div class="relative overflow-hidden rounded-xl bg-primary-container text-on-primary-container mb-3 notification-card group">
+<div class="absolute inset-0 opacity-10">
+
+</div>
+<div class="relative p-5">
+<div class="flex items-center gap-2 mb-3">
+<span class="bg-tertiary-fixed text-on-tertiary-fixed text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-tighter">Exclusive</span>
+<span class="text-label-md opacity-70">New Message</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-white mb-2">The Wine Loft: VIP Tasting Invite</h3>
+<p class="font-body-sm text-white/80 mb-4">Because you're a Top 1% user, you're invited to an exclusive tasting event this Friday.</p>
+<button class="bg-white text-primary px-5 py-2 rounded-lg font-semibold text-body-sm hover:scale-105 transition-transform active:scale-95">View Invitation</button>
+</div>
+</div>
+<!-- Standard Message Item -->
+<div class="p-4 bg-surface-container-lowest border border-outline-variant rounded-xl flex gap-4 notification-card">
+<div class="flex-shrink-0 w-12 h-12 bg-surface-container-low rounded-lg overflow-hidden border border-outline-variant">
+<img class="w-full h-full object-cover" data-alt="A professional close-up shot of a high-end luxury boutique storefront with elegant gold signage and black marble facade. The lighting is soft and cinematic, emphasizing a premium retail environment. The colors are strictly monochrome with subtle gold accents, matching a minimalist and sophisticated UI aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAO3LnOvOie9yg6mF-nEQx8PGreq8nzK0_gshpWmEtC0F1N9wJxivfmjZRUeAKfbH_Qz8xCM1yJMuZp_gud72LecCEtpBInG9AVAh6uQn0b8dhSpOXWDcBUu23OE2uE8e-yRTl3ht1XJeasluOskZweRj9OBxIzHt6NYmWgNbQd0kSr6UXxPjm3VdpqARkTa34vt3X0av5imKukYa0ldUQ-0R_Ca6vPY0rTzRvOuJeDaB5Sv8vodmYQ7MP_VDDWxsm_0jzKAqXVyKQ"/>
+</div>
+<div class="flex-grow">
+<div class="flex justify-between items-start">
+<h3 class="font-body-md font-semibold text-primary">Velvet &amp; Oak</h3>
+<span class="text-label-md text-outline">Yesterday</span>
+</div>
+<p class="font-body-sm text-on-surface-variant line-clamp-1">Your loyalty points have been doubled for the next 24 hours...</p>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pt-3 pb-8 bg-surface border-t border-outline-variant">
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-md text-label-md mt-1">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center text-secondary font-semibold">
+<span class="material-symbols-outlined" data-icon="notifications" style="font-variation-settings: 'FILL' 1;">notifications</span>
+<span class="font-label-md text-label-md mt-1">Activity</span>
+</button>
+<button class="relative -mt-8 flex flex-col items-center justify-center">
+<div class="w-14 h-14 bg-secondary text-on-secondary rounded-full flex items-center justify-center shadow-lg hover:scale-105 transition-transform active:scale-90">
+<span class="material-symbols-outlined text-3xl" data-icon="qr_code_scanner">qr_code_scanner</span>
+</div>
+<span class="font-label-md text-label-md mt-1 text-on-surface-variant">Scan</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="military_tech">military_tech</span>
+<span class="font-label-md text-label-md mt-1">Rewards</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-md text-label-md mt-1">Profile</span>
+</button>
+</nav>
+<script>
+        // Simple swipe-to-dismiss visual feedback
+        document.querySelectorAll('.swipe-item').forEach(item => {
+            let startX = 0;
+            let currentX = 0;
+            
+            item.addEventListener('touchstart', (e) => {
+                startX = e.touches[0].clientX;
+                item.style.transition = 'none';
+            });
+            
+            item.addEventListener('touchmove', (e) => {
+                currentX = e.touches[0].clientX - startX;
+                if (currentX < 0) { // Only swipe left
+                    item.style.transform = `translateX(${currentX}px)`;
+                    if (currentX < -100) {
+                        item.style.opacity = Math.max(0, 1 + currentX / 200);
+                    }
+                }
+            });
+            
+            item.addEventListener('touchend', () => {
+                item.style.transition = 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s';
+                if (currentX < -150) {
+                    item.style.transform = 'translateX(-100%)';
+                    setTimeout(() => {
+                        item.parentElement.style.display = 'none';
+                    }, 300);
+                } else {
+                    item.style.transform = 'translateX(0)';
+                    item.style.opacity = '1';
+                }
+            });
+        });
+
+        // Search highlight interaction
+        const searchInput = document.querySelector('input');
+        searchInput.addEventListener('focus', () => {
+            searchInput.parentElement.classList.add('ring-2', 'ring-primary/20');
+        });
+        searchInput.addEventListener('blur', () => {
+            searchInput.parentElement.classList.remove('ring-2', 'ring-primary/20');
+        });
+    </script>
+</body></html>

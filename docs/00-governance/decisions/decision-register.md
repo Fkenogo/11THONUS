@@ -1,0 +1,1198 @@
+# 11thONUS Decision Register
+
+> **Title:** 11thONUS Decision Register
+> **Version:** 1.0 · **Status:** Active governance record · **Classification:** Working (governance record)
+> **Governing document:** 11thONUS Platform Constitution
+> **Source-of-truth path:** `docs/00-governance/decisions/decision-register.md`
+> **Last controlled update:** 2026-07-16 (Phase 3B — Batch A decisions recorded: DEC-GOV-001, DEC-GOV-006, DEC-LOY-010, DEC-DATA-003 CONFIRMED)
+
+---
+
+## 1. Governance and Use
+
+**What this register governs.** Every product, commercial, technical, provider, legal and governance decision that shapes 11thONUS implementation is recorded here — confirmed, open, deferred, superseded or rejected. It is the single place to check whether a behavior is decided.
+
+**Relationship to other documents.** The register sits below the Constitution, PRD, TRD and approved standards. It **records** decisions; it does **not** override a higher governing document. Where a register entry would change the Constitution, PRD or TRD, the entry is only implemented through a controlled amendment to that document (logged in the documentation changes log). CONFIRMED entries cite where the governing document already made the decision.
+
+**Rule for coding agents.** An agent encountering behavior governed by an OPEN record (any `OPEN_*` status) must **stop and report** (TRD Ch. 22 §22.40). Agents may never select an option, assume a recommendation is approved, or infer a decision from an example.
+
+**How decisions become approved.** The decision owner (normally the founder for product/commercial items) records the choice in *Final decision*, with *Decision date* and *Approved by*; status changes to CONFIRMED; the *Document corrections required* field drives the follow-up edits; the changes log records the update. Engineering, provider and legal items are approved by their named owner and, where they affect product behavior, countersigned by the founder.
+
+**History.** SUPERSEDED and REJECTED records are never deleted; they preserve the rejected/replaced option and reference the replacing decision.
+
+**Operational process.** The end-to-end lifecycle is defined in [decision-governance-workflow.md](../decision-governance-workflow.md); the step-by-step recording procedure is [decision-update-procedure.md](../decision-update-procedure.md). **Phase 3A governance review (16 July 2026):** all 28 OPEN_FOUNDER records were reviewed for context sufficiency, objective options, recommendation labelling, affected documents, consequences and dependencies; five wording clarifications were applied (no meaning changed, nothing approved). Founder batches referenced in record Notes follow the agenda's Batch A–E structure. **Phase 3B (16 July 2026):** Batch A recorded — DEC-GOV-001, DEC-GOV-006, DEC-LOY-010 and DEC-DATA-003 are now CONFIRMED (Founder-approved 16 July 2026); all four D0 freeze-blocking decisions are resolved. 24 OPEN_FOUNDER records remain (Batches B–E). See changes log Entry 006.
+
+## 2. Status Definitions
+
+| Status | Meaning |
+|---|---|
+| CONFIRMED | Clearly approved in current governing documents (source cited), or approved through this register |
+| OPEN_FOUNDER | Requires the founder's product or commercial decision |
+| OPEN_ENGINEERING | Requires technical investigation, tooling selection or proof of concept |
+| OPEN_PROVIDER | Depends on selection of an external provider |
+| OPEN_LEGAL | Requires legal or regulatory review (no legal conclusions are made here) |
+| DEFERRED | Explicitly outside the MVP or not needed before its relevant phase; not a rejection |
+| SUPERSEDED | Earlier option replaced by a later approved decision (reference preserved) |
+| REJECTED | Explicitly considered and not accepted |
+
+## 3. Priority Definitions
+
+| Priority | Meaning |
+|---|---|
+| D0 | Freeze blocker — must be decided before documentation Version 1.0 freeze |
+| D1 | Required before early implementation (Phases 0–2) |
+| D2 | Required before the dependent implementation phase |
+| D3 | Required before pilot or launch |
+| D4 | Post-MVP or future decision |
+
+Phases refer to TRD Chapter 22 (Phases 0–16).
+
+## 4. Decision Records
+
+Legend: fields with **—** are intentionally blank (OPEN records have no Final decision / Decision date / Approved by). "Pre-register approval" = decided in governing documents before this register existed; exact date not recorded.
+
+---
+
+### GOVERNANCE (DEC-GOV)
+
+**DEC-GOV-001 — Final document hierarchy and Vision & Product Strategy disposition**
+- Category: Governance · Status: **CONFIRMED** · Priority: **D0**
+- Decision question: Which single document hierarchy governs — Constitution Part VII (9 documents incl. Vision & Product Strategy) or TRD23 §23.3 (10 documents incl. Decision Register and Implementation Change Log, without Vision & Product Strategy) — and will a Vision & Product Strategy document be authored or formally dropped?
+- Context: The two governing documents list different hierarchies; arbitration of every other conflict depends on this. Registered per Phase 3 instruction; the Constitution is NOT amended by this record.
+- Options identified: (a) amend Constitution Part VII to the TRD23 list plus explicit positions for Commerce Knowledge Standard and Canonical Reference; (b) amend TRD23 to match the Constitution; (c) author Vision & Product Strategy and keep Constitution list.
+- Recommended direction: (a), as a deliberate versioned constitutional amendment (audit recommendation).
+- Recommendation basis: Audit DOC-P1-008; Consolidation Plan Step 8.
+- Current confirmed position: Constitution governs until amended; conflict is flagged OPEN in `docs/README.md` and the canonical reference.
+- Founder decision required: Yes · Decision owner: Founder · Required by phase: pre-freeze · Blocks: documentation freeze
+- Affected documents: Constitution Part VII; TRD23 §23.3; docs/README.md; canonical reference §9 · Affected domains: all (governance)
+- Source references: audit DOC-P1-008; DR-ARCH-002
+- Dependencies: constitutional amendment process (DEC-GOV-004)
+- Risks if unresolved: conflicting arbitration rules during implementation disputes
+- Final decision: **Approved, option (a).** Adopt the newer (TRD23 §23.3) governance hierarchy as the Constitution's official document hierarchy: Constitution → PRD → TRD → Commerce Knowledge Standard → Platform Design System → Engineering Standards → Operational Playbooks → API & Integration Guide → Decision Register → Implementation Change Log. Do **not** create a Vision & Product Strategy document; it is formally dropped from the hierarchy.
+- Decision date: 2026-07-16 · Approved by: Founder (Kenogo)
+- Implementation consequences: none directly (documentation only); unblocks documentation freeze
+- Document corrections required: Constitution Part VII amendment (executed Phase 3B, versioned 1.0→1.1) + Amendment Record entry; canonical reference §9; docs index
+- Notes: founder agenda Batch A (freeze blocker) — ✅ answered 2026-07-16 (Phase 3B)
+
+**DEC-GOV-002 — Authority and role of the Decision Register**
+- Category: Governance · Status: **CONFIRMED** · Priority: D1
+- Decision question: What authority does this register hold?
+- Context/Current confirmed position: The register records decisions and is listed in the governing hierarchy below Constitution/PRD/TRD (TRD23 §23.3); it does not override higher documents without amendment; open decisions must not be hidden in implementation assumptions (TC-004); coding agents implement only against approved documents (TC-011).
+- Options identified: n/a (governance definition) · Recommended direction: n/a · Recommendation basis: n/a
+- Founder decision required: No · Decision owner: Founder (custodian) · Required by phase: — · Blocks: —
+- Affected documents: this register; decisions index · Affected domains: all
+- Source references: TRD23 §23.3, TC-004, TC-011, §23.44; consolidation audit §22
+- Dependencies: — · Risks if unresolved: —
+- Final decision: as stated · Decision date: Pre-register approval — exact date not recorded · Approved by: Founder (via TRD23 approval)
+- Implementation consequences: agents stop on OPEN records · Document corrections required: none · Notes: —
+
+**DEC-GOV-003 — Canonical Reference is a controlled navigation document**
+- Category: Governance · Status: **CONFIRMED** · Priority: D1
+- Decision question: What is the status of `canonical-reference.md`?
+- Current confirmed position: Controlled navigation and canonical-reference document; consolidates approved content; does not override Constitution, PRD or TRD; corrected accordingly in Phase 2.
+- Options identified: n/a · Recommended direction: n/a · Recommendation basis: n/a
+- Founder decision required: No · Decision owner: Founder · Required by phase: — · Blocks: —
+- Affected documents: canonical reference · Affected domains: all
+- Source references: Phase 2 instruction (founder); Phase 2 report §3; canonical reference header
+- Dependencies: — · Risks if unresolved: —
+- Final decision: as stated · Decision date: 2026-07-16 (Phase 2 instruction) · Approved by: Founder
+- Implementation consequences: agents cite Constitution/PRD/TRD for authority · Document corrections required: none · Notes: —
+
+**DEC-GOV-004 — Constitutional amendment process**
+- Category: Governance · Status: **CONFIRMED** · Priority: D1
+- Decision question: How is the Constitution amended?
+- Current confirmed position: Amendments are deliberate, documented, versioned and backward-conscious (Constitution Part VI); silent hierarchy changes prohibited.
+- Options identified: n/a · Recommended direction: n/a · Recommendation basis: n/a
+- Founder decision required: No (process exists) · Decision owner: Founder · Required by phase: — · Blocks: DEC-GOV-001 execution
+- Affected documents: Constitution · Affected domains: governance
+- Source references: Constitution Part VI
+- Dependencies: — · Risks if unresolved: —
+- Final decision: as stated · Decision date: Pre-register approval — exact date not recorded · Approved by: Founder (Constitution v1.0)
+- Implementation consequences: — · Document corrections required: none · Notes: —
+
+**DEC-GOV-005 — Architecture exception process**
+- Category: Governance · Status: **CONFIRMED** · Priority: D1
+- Decision question: How are deviations from approved architecture handled?
+- Current confirmed position: Formal architecture-exception records (typed structure, approval, expiry/review) are required for any deviation listed in TRD23 §23.26; exceptions are rare and time-bound.
+- Options identified: n/a · Recommended direction: n/a · Recommendation basis: n/a
+- Founder decision required: No · Decision owner: Founder + Engineering Lead · Required by phase: Phase 0 onward · Blocks: —
+- Affected documents: TRD23 · Affected domains: all
+- Source references: TRD23 §23.26–23.27; TC-005
+- Dependencies: — · Risks if unresolved: —
+- Final decision: as stated · Decision date: Pre-register approval — exact date not recorded · Approved by: Founder (TRD approval)
+- Implementation consequences: exception log maintained from Phase 0 · Document corrections required: none · Notes: —
+
+**DEC-GOV-006 — Requirement-ID renumbering mapping approval**
+- Category: Governance · Status: **CONFIRMED** · Priority: **D0**
+- Decision question: Approve the preservation-first renumbering strategy (PRD1 §18 FR-RP→FR-AUTHZ; PRD10 §19 FR-RP→FR-RBAC; PRD6 keeps FR-RP; TRD20 OP→OR; TRD23 A→AS; PRD4 §19 gets FR-CVLE IDs) with a published mapping table?
+- Context: FR-RP is used with three meanings and OP with two; the traceability register cannot be built on colliding IDs.
+- Options identified: (a) strategy as proposed in the ID audit; (b) alternative prefixes; (c) full resequencing (not recommended).
+- Recommended direction: (a) · Recommendation basis: Requirements ID Audit §5; TC-006; FR-TRC-009.
+- Current confirmed position: duplicate IDs prohibited before freeze (TRD23 §23.28); collisions intentionally preserved until this approval.
+- Founder decision required: Yes (mapping approval) · Decision owner: Founder · Required by phase: documentation Phase 4 / pre-freeze · Blocks: freeze; traceability register
+- Affected documents: PRD1, PRD4, PRD6, PRD10, TRD20, TRD23 · Affected domains: all
+- Source references: audit DOC-P1-001, DOC-P3-008; DR-ARCH-004
+- Dependencies: — · Risks if unresolved: unusable traceability
+- Final decision: **Approved, option (a).** Proceed with the requirement-ID renumbering strategy exactly as proposed in the Requirements ID Audit §5 (PRD1 §18 FR-RP→FR-AUTHZ; PRD10 §19 FR-RP→FR-RBAC; PRD6 keeps FR-RP; TRD20 OP→OR; TRD23 A→AS; PRD4 §19 gets FR-CVLE IDs). A complete Old ID → New ID mapping table must be produced and maintained; no requirement meaning may change during renumbering.
+- Decision date: 2026-07-16 · Approved by: Founder (Kenogo)
+- Implementation consequences: none yet (documentation Phase 4 executes the renumbering; this record authorizes it) · Document corrections required: renumbering pass + published mapping appendix — **execution scheduled for documentation Phase 4, not yet performed** · Notes: founder agenda Batch A (freeze blocker) — ✅ answered 2026-07-16 (Phase 3B); unlocks Phase 4
+
+**DEC-GOV-007 — MVP administrator role subset**
+- Category: Governance · Status: **OPEN_FOUNDER** · Priority: D2
+- Decision question: Which of TRD18's eleven administrator roles are staffed/enabled at MVP launch (vs collapsed into fewer people with separated permissions)?
+- Context: PRD10 defines one Super Administrator; TRD18 defines 11 sub-roles with separation of duties. Small-team reality needs an explicit launch subset.
+- Options identified: (a) all 11 as permission sets held by few people; (b) launch subset (Super Admin + Support + Knowledge/Rules editor-approver pairs); (c) single super admin (conflicts with AAP-002).
+- Recommended direction: (b) with separation-of-duties preserved for approvals · Recommendation basis: TRD18 AAP-002/§18.7.
+- Current confirmed position: no universal administrator; separation of duties required (TRD18).
+- Founder decision required: Yes · Decision owner: Founder · Required by phase: Phase 12 · Blocks: Phase 12 admin build
+- Affected documents: TRD18; PRD10 · Affected domains: Administration
+- Source references: audit traceability report §20; DR-ARCH-008
+- Dependencies: — · Risks if unresolved: over-built admin or violated duty separation
+- Final decision: — · Decision date: — · Approved by: —
+- Implementation consequences: admin role seeding · Document corrections required: TRD18 launch-subset note · Notes: founder agenda Batch E
+
+---
+
+### PRODUCT BEHAVIOR (DEC-PROD)
+
+**DEC-PROD-001 — Product category**
+- Category: Product · Status: **CONFIRMED** · Priority: D1
+- Current confirmed position: **11thONUS is a Customer-Verified Loyalty Platform.** "Cloud-based/cloud-hosted" describes delivery only; Verified Commerce™ is the long-term direction, never an MVP label.
+- Decision question / Options / Recommendation: n/a — settled.
+- Founder decision required: No · Decision owner: Founder · Required by phase: — · Blocks: —
+- Affected documents: all · Affected domains: all
+- Source references: Constitution Art. 1; consolidation audit §3.1–3.2; TRD23 §23.9
+- Dependencies: — · Risks if unresolved: —
+- Final decision: as stated · Decision date: Pre-register approval — exact date not recorded · Approved by: Founder (Constitution)
+- Implementation consequences: copy and positioning · Document corrections required: none (applied Phase 1) · Notes: —
+
+**DEC-PROD-002 — Universal customer verification**
+- Category: Product · Status: **CONFIRMED** · Priority: D1
+- Current confirmed position: Every Purchase Record remains `waiting_for_customer` until the registered customer verifies it — regardless of recorder (owner, manager, staff, POS, API, offline sync). No actor exempt in the MVP. Only verified records create Verified Units.
+- Decision question / Options / Recommendation: n/a — cardinal rule.
+- Founder decision required: No · Decision owner: Founder · Required by phase: — · Blocks: —
+- Affected documents: PRD0 §14, PRD1, PRD5; TRD10/11 · Affected domains: Purchase, Loyalty, Trust
+- Source references: PD-013/PD-014; AP-005; BR-005/009/052/058; consolidation audit §3.5, §9.1
+- Dependencies: — · Risks if unresolved: —
+- Final decision: as stated · Decision date: Pre-register approval — exact date not recorded · Approved by: Founder (PRD0 §24)
+- Implementation consequences: IM-004 (verification never deferred from core slice) · Document corrections required: none · Notes: supersedes DEC-PROD-007
+
+**DEC-PROD-003 — Burundi-first launch; RW/UG/KE expansion**
+- Category: Product · Status: **CONFIRMED** · Priority: D1
+- Current confirmed position: Initial market Burundi (Bujumbura-first pilot); planned expansion Rwanda, Uganda, Kenya; country behavior configurable, never hardcoded.
+- Founder decision required: No · Decision owner: Founder · Options/Recommendation: n/a
+- Required by phase: — · Blocks: —
+- Affected documents: PRD0 §8; TRD22 · Affected domains: all
+- Source references: PD-002/PD-003; CP-010; TAP-009
+- Dependencies: country legal reviews (DEC-LEGAL-001..006) · Risks if unresolved: —
+- Final decision: as stated · Decision date: Pre-register approval — exact date not recorded · Approved by: Founder (PRD0 §24)
+- Implementation consequences: BIF seed pricing, Burundi rules · Document corrections required: none · Notes: —
+
+**DEC-PROD-004 — Businesses pay; customers never pay**
+- Category: Product · Status: **CONFIRMED** · Priority: D1
+- Current confirmed position: Businesses are the paying subscribers; consumers do not pay for basic participation; plans never limit customers, purchase recording or verification.
+- Founder decision required: No · Options/Recommendation: n/a
+- Decision owner: Founder · Required by phase: — · Blocks: —
+- Affected documents: PRD0 §18; PRD3; TRD17 · Affected domains: Subscription
+- Source references: PD-004/PD-005; BR-028/BR-030; TRD17 §17.4
+- Dependencies: — · Risks if unresolved: —
+- Final decision: as stated · Decision date: Pre-register approval — exact date not recorded · Approved by: Founder (PRD0 §24)
+- Implementation consequences: entitlement design · Document corrections required: none · Notes: —
+
+**DEC-PROD-005 — No customer purchase-payment processing in the MVP**
+- Category: Product · Status: **CONFIRMED** · Priority: D1
+- Current confirmed position: The platform records qualifying activity but does not process customers' purchase payments; businesses reconcile externally. Subscription payments (business-side) are processed via an external provider.
+- Founder decision required: No · Options/Recommendation: n/a
+- Decision owner: Founder · Required by phase: — · Blocks: —
+- Affected documents: PRD0 §21.4; PRD8 §13; TRD22 · Affected domains: Purchase, Integration
+- Source references: PRD0 §21.4; TRD23 A-004/A-005; TRD22 deferred list (wallet/payments)
+- Dependencies: — · Risks if unresolved: —
+- Final decision: as stated · Decision date: Pre-register approval — exact date not recorded · Approved by: Founder (PRD approval)
+- Implementation consequences: no PCI-type scope in MVP · Document corrections required: none · Notes: wallet is DEC-FUT-002
+
+**DEC-PROD-006 — Offline MVP boundary**
+- Category: Product · Status: **CONFIRMED** · Priority: D1
+- Current confirmed position: Offline permits only: cached app shell, safe cached QR, cached reference data, queued Purchase Record creation with visible sync status. Verification, rejection, disputes, redemption, payment and administration require online confirmation. Unsynchronized records are non-authoritative.
+- Founder decision required: No · Options/Recommendation: n/a
+- Decision owner: Founder · Required by phase: Phases 5, 13 · Blocks: —
+- Affected documents: TRD8 §8.11; TRD16 §16.23–16.26; TRD22 §22.33; TRD23 §23.19 · Affected domains: Purchase, frontend
+- Source references: consolidation audit §12; FR-IMP-008
+- Dependencies: — · Risks if unresolved: —
+- Final decision: as stated · Decision date: Pre-register approval — exact date not recorded · Approved by: Founder (TRD approval)
+- Implementation consequences: offline queue design only · Document corrections required: none · Notes: —
+
+**DEC-PROD-007 — Owner auto-approval of purchases (historical)**
+- Category: Product · Status: **SUPERSEDED** · Priority: —
+- Decision question: Should owner-recorded purchases be automatically approved?
+- Context: Early Product Definition stated "Owner transactions are automatically approved" with configurable customer confirmation.
+- Superseded by: **DEC-PROD-002** (universal customer verification). Historical option preserved in `docs/99-archive/superseded/product-definition-superseded-v1.md` (banner added Phase 1).
+- Options identified: historical · Recommended direction: n/a · Recommendation basis: n/a · Current confirmed position: see DEC-PROD-002
+- Founder decision required: No · Decision owner: — · Required by phase: — · Blocks: —
+- Affected documents: archived Product Definition · Affected domains: Purchase, Trust
+- Source references: audit DOC-P0-001 · Dependencies: — · Risks if unresolved: —
+- Final decision: superseded · Decision date: Pre-register approval — exact date not recorded · Approved by: Founder (PRD0 PD-014)
+- Implementation consequences: none · Document corrections required: none · Notes: —
+
+**DEC-PROD-008 — Partial approval of multi-quantity Purchase Records**
+- Category: Product · Status: **OPEN_FOUNDER** · Priority: D2
+- Decision question: When 5 units are recorded but the customer agrees only 4 were purchased, may the customer partially verify (4 of 5), or must they reject/dispute the whole record for correction?
+- Context: PRD2 §28 open question; PRD5 dispute flow implies dispute→corrected replacement.
+- Options identified: (a) dispute→business issues corrected replacement (no partial verify); (b) customer partial-verify with automatic quantity adjustment; (c) reject whole record.
+- Recommended direction: (a) — preserves immutability and business acknowledgment · Recommendation basis: PRD5 §16–17, BR-056 correction model.
+- Current confirmed position: none (explicitly open).
+- Founder decision required: Yes · Decision owner: Founder · Required by phase: Phase 6 · Blocks: verification UX and dispute flow
+- Affected documents: PRD2 §28, PRD5; TRD11 §11.23–11.24 · Affected domains: Purchase
+- Source references: DR-PROD-004
+- Dependencies: DEC-LOY-010 (batch rejection) · Risks if unresolved: agents invent verification UX
+- Final decision: — · Decision date: — · Approved by: —
+- Implementation consequences: verify command contract · Document corrections required: PRD2/PRD5 clarification · Notes: founder agenda Batch B
+
+**DEC-PROD-009 — Pending-purchase reminder and expiry defaults**
+- Category: Product · Status: **OPEN_FOUNDER** · Priority: D2
+- Decision question: What are the seed values for verification reminder timing, reminder frequency, pending-purchase expiry and archival?
+- Context: The referenced "Business Rules Catalogue" never existed; Phase 1 redirected references to Rules Studio typed rules (TRD22 §22.31); TRD23 §23.18 uses 24h reminder as an example only. No values approved anywhere.
+- Options identified: value sets to be proposed (e.g., reminder at 24h/72h, expiry 30/60/90 days).
+- Recommended direction: none imposable — values genuinely unset · Recommendation basis: —
+- Current confirmed position: rules are typed and configurable via Rules Studio (confirmed); values open.
+- Founder decision required: Yes · Decision owner: Founder · Required by phase: Phases 6 & 9 · Blocks: reminder jobs, expiry state
+- Affected documents: PRD0 §14.5; PRD2 §18; Rules Studio seed · Affected domains: Purchase, Notification, Rules
+- Source references: DR-PROD-008; audit DOC-P1-009
+- Dependencies: DEC-PROD-010 · Risks if unresolved: unverifiable expiry behavior
+- Final decision: — · Decision date: — · Approved by: —
+- Implementation consequences: Rules Studio seed data · Document corrections required: seed-rule documentation · Notes: founder agenda Batch B
+
+**DEC-PROD-010 — Recoverability of expired pending purchases**
+- Category: Product · Status: **OPEN_FOUNDER** · Priority: D2
+- Decision question: Is `expired` terminal, or can a customer still verify an expired Purchase Record (or ask the business to re-issue it)?
+- Context: PRD0 §14.5 wants "approval of older records"; the canonical state model has `expired`; interaction undefined.
+- Options identified: (a) expiry terminal, business may re-record; (b) expired records recoverable within a window; (c) no expiry in MVP (records pend indefinitely with reminders).
+- Recommended direction: none — genuine product choice · Recommendation basis: —
+- Current confirmed position: none.
+- Founder decision required: Yes · Decision owner: Founder · Required by phase: Phase 6 · Blocks: state-transition table
+- Affected documents: PRD5 §7; TRD state models · Affected domains: Purchase
+- Source references: DR-PROD-009; terminology audit C.6
+- Dependencies: DEC-PROD-009 · Risks if unresolved: undefined transition implemented ad hoc
+- Final decision: — · Decision date: — · Approved by: —
+- Implementation consequences: transition validation · Document corrections required: PRD5/Engineering Standards transition table · Notes: founder agenda Batch B
+
+**DEC-PROD-011 — Dispute evidence attachments**
+- Category: Product · Status: **DEFERRED** · Priority: D4
+- Decision question: May customers attach photos/receipts when disputing?
+- Context: PRD2 §28 open question; TRD22 Phase 6 deliverables include customer comments only.
+- Options identified: comments-only MVP (current scope) vs attachments.
+- Recommended direction: revisit after pilot evidence · Recommendation basis: TRD22 Phase 6 scope; scope-protection rule §22.7.
+- Current confirmed position: MVP dispute = reason + comment (TRD22).
+- Founder decision required: Only if pilot shows need · Decision owner: Founder · Required by phase: post-MVP · Blocks: nothing in MVP
+- Affected documents: PRD2 §28; TRD22 · Affected domains: Purchase
+- Source references: DR-PROD-014 · Dependencies: pilot evidence (AS-006 area) · Risks if unresolved: none for MVP
+- Final decision: — · Decision date: — · Approved by: —
+- Implementation consequences: none now · Document corrections required: close PRD2 §28 item at Phase 7 · Notes: —
+
+**DEC-PROD-012 — Optional gender values and wording**
+- Category: Product · Status: **OPEN_FOUNDER** · Priority: D2
+- Decision question: Approve the optional-gender value set and localized wording (TRD10 example enum: female/male/non_binary/prefer_not_to_say/other)?
+- Context: TRD10 enum is provisional (Phase 1 note); OPD-009 requires product + privacy confirmation; cultural/legal input for Burundi advisable.
+- Options identified: (a) TRD10 enum as-is; (b) reduced set with prefer_not_to_say; (c) free-text; (d) omit gender at MVP.
+- Recommended direction: none — no single recommendation is made; options (a) and (d) both remain viable and legal input (EXT-LEG-001) is advised before choosing · Recommendation basis: TRD21 data-minimization.
+- Current confirmed position: gender is optional and never blocks participation (confirmed); values open.
+- Founder decision required: Yes (with legal input) · Decision owner: Founder + legal adviser · Required by phase: Phase 2 (progressive profile) · Blocks: profile schema freeze
+- Affected documents: TRD10 §10.6.2; TRD21 §21.11 · Affected domains: Identity
+- Source references: OPD-009; DR-PROD-011 · Dependencies: EXT-LEG-001 · Risks if unresolved: schema churn
+- Final decision: — · Decision date: — · Approved by: —
+- Implementation consequences: profile schema · Document corrections required: TRD10 enum finalization · Notes: founder agenda Batch D
+
+**DEC-PROD-013 — Birthday visibility and campaign use**
+- Category: Product · Status: **OPEN_FOUNDER** · Priority: D4
+- Decision question: Confirm that businesses receive birthday **campaign eligibility** signals only, never the customer's date of birth.
+- Context: TRD21 §21.10 already prescribes eligibility-not-disclosure; birthday campaigns themselves are post-MVP.
+- Options identified: (a) eligibility-only (documented direction); (b) month-level disclosure with consent.
+- Recommended direction: (a) · Recommendation basis: TRD21 §21.10; consolidation audit §17.
+- Current confirmed position: strong documented direction, awaiting formal confirmation before feature activation.
+- Founder decision required: Yes (at feature activation) · Decision owner: Founder · Required by phase: post-MVP birthday feature gate · Blocks: birthday features only
+- Affected documents: TRD21 · Affected domains: Identity, Notification
+- Source references: OPD-010; DR-PROD-012 · Dependencies: marketing-consent legal review (EXT-LEG-001)
+- Risks if unresolved: none for MVP · Final decision: — · Decision date: — · Approved by: —
+- Implementation consequences: none now · Document corrections required: none now · Notes: founder agenda Batch D
+
+---
+
+### LOYALTY AND REWARDS (DEC-LOY)
+
+**DEC-LOY-001 — Ten-Verified-Unit threshold, fixed in MVP**
+- Category: Loyalty · Status: **CONFIRMED** · Priority: D1
+- Current confirmed position: requiredVerifiedUnits = **10**, a fixed platform rule in the MVP, not business-configurable; position 11 is the On Us reward; stored in versioned configuration; future configurability only through formal product approval, never retroactive. Customer promise: "Every 11th, on us."
+- Decision question / Options / Recommendation: n/a — settled.
+- Founder decision required: No · Decision owner: Founder · Required by phase: — · Blocks: —
+- Affected documents: PRD6 §4.4; TRD10 §10.9.2; Rules Studio · Affected domains: Reward Programs, Loyalty, Rules
+- Source references: PD-006; consolidation audit §4; TRD23 §23.10; TRD22 §22.5
+- Dependencies: — · Risks if unresolved: —
+- Final decision: as stated · Decision date: Pre-register approval — exact date not recorded · Approved by: Founder (PRD0 §24)
+- Implementation consequences: typed platform rule · Document corrections required: none (annotated Phase 1) · Notes: supersedes DEC-LOY-012
+
+**DEC-LOY-002 — One active or reward-available cycle per customer per Reward Program**
+- Category: Loyalty · Status: **CONFIRMED** · Priority: D1
+- Current confirmed position: MVP permits exactly one active or reward-available Loyalty Cycle per customer per Reward Program, enforced transactionally server-side; completed cycles immutable.
+- Founder decision required: No · Options/Recommendation: n/a
+- Decision owner: Founder · Required by phase: Phase 7 · Blocks: —
+- Affected documents: PRD6; TRD10 §10.11.2 · Affected domains: Loyalty
+- Source references: BR-063; FR-RP-007 (PRD6); consolidation audit §3.7
+- Dependencies: DEC-LOY-008 (overflow) · Risks if unresolved: —
+- Final decision: as stated · Decision date: Pre-register approval — exact date not recorded · Approved by: Founder (PRD approval)
+- Implementation consequences: uniqueness enforcement · Document corrections required: none · Notes: —
+
+**DEC-LOY-003 — Multi-quantity purchases allowed; high quantity reviewed, never auto-rejected**
+- Category: Loyalty · Status: **CONFIRMED** · Priority: D1
+- Current confirmed position: One Purchase Record may carry multiple qualifying units; legitimate multi-item purchases are never automatically rejected; configurable review thresholds create visibility only; customer verification remains the primary control.
+- Founder decision required: No · Options/Recommendation: n/a
+- Decision owner: Founder · Required by phase: Phases 5–7 · Blocks: —
+- Affected documents: PRD0 OP-011/PD-022; PRD6 §11; TRD11 §11.20; TRD10 (bulkReviewThreshold) · Affected domains: Purchase, Loyalty, Trust
+- Source references: consolidation audit §8; BR-080
+- Dependencies: threshold seed values (Rules Studio) · Risks if unresolved: —
+- Final decision: as stated · Decision date: Pre-register approval — exact date not recorded · Approved by: Founder (PRD0 §24)
+- Implementation consequences: review-queue rules · Document corrections required: none · Notes: —
+
+**DEC-LOY-004 — Corrections via reversal/replacement only**
+- Category: Loyalty · Status: **CONFIRMED** · Priority: D1
+- Current confirmed position: Commercial history is immutable; corrections occur through replacement records and reversal events, never edits or deletions; corrected records require customer re-verification.
+- Founder decision required: No · Options/Recommendation: n/a
+- Decision owner: Founder · Required by phase: Phase 6 · Blocks: —
+- Affected documents: PRD0 PD-016/017; PRD5 BR-048/056; TRD10 DAP-004 · Affected domains: Purchase, Loyalty, Trust
+- Source references: TAP-007; DA-012
+- Dependencies: — · Risks if unresolved: —
+- Final decision: as stated · Decision date: Pre-register approval — exact date not recorded · Approved by: Founder (PRD0 §24)
+- Implementation consequences: no update-in-place APIs · Document corrections required: none · Notes: —
+
+**DEC-LOY-005 — No automatic reward expiry in MVP**
+- Category: Loyalty · Status: **CONFIRMED** · Priority: D2
+- Current confirmed position: Earned rewards do not auto-expire in the MVP; the `expired` reward state is architecturally supported but not enabled; future expiry policies possible per program.
+- Founder decision required: No · Options/Recommendation: n/a
+- Decision owner: Founder · Required by phase: Phase 8 · Blocks: —
+- Affected documents: PRD6 §20; PRD7 §10; consolidation audit §7.8 · Affected domains: Reward
+- Source references: PRD6 §12/§20; TRD22 deferred list
+- Dependencies: — · Risks if unresolved: —
+- Final decision: as stated · Decision date: Pre-register approval — exact date not recorded · Approved by: Founder (PRD approval)
+- Implementation consequences: state supported, job disabled · Document corrections required: none (Phase 1 aligned PRD7) · Notes: —
+
+**DEC-LOY-006 — Batch verification limited to visible reviewed set**
+- Category: Loyalty · Status: **CONFIRMED** · Priority: D2
+- Current confirmed position: Customer may verify one record, selected visible records, or all records in an explicitly reviewed visible set; the system never verifies hidden/paginated/newly loaded records silently.
+- Founder decision required: No · Options/Recommendation: n/a
+- Decision owner: Founder · Required by phase: Phase 6 · Blocks: —
+- Affected documents: TRD23 §23.13; consolidation audit §9.2; TRD22 Phase 6 · Affected domains: Purchase
+- Source references: as above
+- Dependencies: DEC-LOY-010 (rejection is separate) · Risks if unresolved: —
+- Final decision: as stated · Decision date: Pre-register approval — exact date not recorded · Approved by: Founder (TRD approval)
+- Implementation consequences: verify-visible-set command constraint · Document corrections required: none · Notes: —
+
+**DEC-LOY-007 — Shared loyalty number (friends and family)**
+- Category: Loyalty · Status: **CONFIRMED** · Priority: D1
+- Current confirmed position: Friends/family may quote the registered customer's loyalty number where the Reward Program permits (policy on program version); the Purchase Record attaches to the registered customer, who alone verifies; quoting never grants account access or authentication; no auto-account for the quoting person.
+- Founder decision required: No · Options/Recommendation: n/a
+- Decision owner: Founder · Required by phase: Phases 4–6 · Blocks: —
+- Affected documents: PRD1 §5.5/BR-006/016; PRD2 §12; PRD5 §11; TRD21 §21.41 · Affected domains: Reward Programs, Purchase, Identity
+- Source references: PD-010; BR-021/022; consolidation audit §10
+- Dependencies: DEC-LEGAL-005 (children/family data) · Risks if unresolved: —
+- Final decision: as stated · Decision date: Pre-register approval — exact date not recorded · Approved by: Founder (PRD0 §24)
+- Implementation consequences: program-version policy flag · Document corrections required: none · Notes: —
+
+**DEC-LOY-008 — Overflow Verified Unit allocation policy**
+- Category: Loyalty · Status: **OPEN_FOUNDER** · Priority: **D1**
+- Decision question: When verified quantity crosses the 10-unit threshold (e.g., 4 verified units at progress 8/10), do the 2 overflow units wait as *pending allocation* until the outstanding reward is redeemed, and then apply chronologically to the next cycle?
+- Context: TRD recommends exactly that default (complete cycle → one available reward → hold remainder pending → apply after redemption → possibly complete next cycle); explicitly flagged as requiring formal confirmation.
+- Options identified: (a) documented default (hold pending until redemption); (b) immediately open next cycle and apply overflow (permits multiple stacked rewards — conflicts with DEC-LOY-002); (c) forfeit overflow units (listed for completeness; conflicts with the documented trust principles OP-002/CP-001 and BR-046 transparency).
+- Recommended direction: (a) · Recommendation basis: TRD11 §11.20–11.21; TRD23 §23.11; consolidation audit §8.3.
+- Current confirmed position: none — explicitly open (OPD-006).
+- Founder decision required: **Yes** · Decision owner: Founder · Required by phase: Phase 7 · Blocks: Loyalty Domain implementation
+- Affected documents: TRD11, TRD23 §23.11; PRD6 · Affected domains: Loyalty
+- Source references: OPD-006; DR-PROD-001; canonical reference §2 OPEN marker
+- Dependencies: DEC-LOY-002 · Risks if unresolved: agents cannot implement threshold crossing
+- Final decision: — · Decision date: — · Approved by: —
+- Implementation consequences: pending-unit representation, allocation job · Document corrections required: TRD11/PRD6 confirmation notes; canonical reference §2 update · Notes: founder agenda Batch B — highest-priority founder decision
+
+**DEC-LOY-009 — Reward quantity default and >1 support**
+- Category: Loyalty · Status: **OPEN_FOUNDER** · Priority: D2
+- Decision question: Is the On Us reward always exactly one eligible item/service in the MVP, or may a launch Reward Program configure rewardQuantity > 1?
+- Context: TRD10 stores rewardQuantity as a number; OPD-004 asks whether any launch program needs >1.
+- Options identified: (a) fixed 1 in MVP (schema keeps field); (b) configurable 1–N per program version.
+- Recommended direction: (a) unless a concrete launch program requires more · Recommendation basis: OPD-004 wording; simplicity pillar.
+- Current confirmed position: none.
+- Founder decision required: Yes · Decision owner: Founder · Required by phase: Phase 4 (schema freeze) · Blocks: Reward Program schema freeze
+- Affected documents: TRD10 §10.9.2; PRD6 §4.3 · Affected domains: Reward Programs, Reward
+- Source references: OPD-004; DR-PROD-007
+- Dependencies: — · Risks if unresolved: schema ambiguity
+- Final decision: — · Decision date: — · Approved by: —
+- Implementation consequences: validation rule · Document corrections required: PRD6/TRD10 note · Notes: founder agenda Batch B
+
+**DEC-LOY-010 — Batch rejection of purchases**
+- Category: Loyalty · Status: **CONFIRMED** · Priority: **D0**
+- Decision question: May a customer reject several purchases in one action (PRD0 §14.3 "reject selected purchases"), or is rejection strictly individual with a record-specific reason (TRD23 §23.13)?
+- Context: Direct PRD-vs-TRD contradiction, flagged with a visible OPEN note in PRD0 §14.3 (Phase 1). Because the PRD sits above the TRD, the conflict cannot be resolved editorially.
+- Options identified: (a) individual-only rejection with reason (TRD position); (b) batch rejection with one shared reason; (c) batch rejection requiring per-record reasons (hybrid).
+- Recommended direction: (a) · Recommendation basis: TRD23 §23.13 rationale — rejections need record-specific reasons; trust model favors deliberate rejection.
+- Current confirmed position: contradictory sources; treated as OPEN.
+- Founder decision required: **Yes** · Decision owner: Founder · Required by phase: pre-freeze / Phase 6 · Blocks: documentation freeze; verification UI
+- Affected documents: PRD0 §14.3; TRD23 §23.13; PRD1 §5.2 · Affected domains: Purchase
+- Source references: audit DOC-P1-006; DR-PROD-003
+- Dependencies: DEC-PROD-008 · Risks if unresolved: contradictory implementation instructions
+- Final decision: **Approved, option (a).** Customers reject purchases individually — never in batch. Every rejected purchase records its own reason. Rationale given: different purchases may have different rejection reasons.
+- Decision date: 2026-07-16 · Approved by: Founder (Kenogo)
+- Implementation consequences: reject command contract is single-record only, reason required per rejection (already TRD23 §23.13's position) · Document corrections required: PRD0 §14.3 corrected to remove batch rejection + OPEN note replaced with confirmed note; PRD1 §5.2 clarified · Notes: founder agenda Batch A (freeze blocker) — ✅ answered 2026-07-16 (Phase 3B)
+
+**DEC-LOY-011 — Reward redemption during business suspension**
+- Category: Loyalty · Status: **OPEN_FOUNDER** · Priority: D2
+- Decision question: Are already-earned rewards redeemable while a business subscription is suspended — throughout suspension, during grace only, subject to manual review, or not until reactivation?
+- Context: TRD17 §17.19–17.20 distinguishes platform access from the business's obligation to honour earned rewards, and notes customer trust favors preservation; explicit rule required.
+- Options identified: (a) redeemable throughout suspension; (b) redeemable during grace period only; (c) manual review; (d) blocked until reactivation.
+- Recommended direction: none formally — as an observation, the governing documents lean toward preservation (options (a) or (b)); this is not an approval · Recommendation basis: TRD17 §17.20; OPD-005 ("customer trust strongly favors preservation").
+- Current confirmed position: suspension never erases earned rewards (confirmed); redeemability window open.
+- Founder decision required: Yes · Decision owner: Founder · Required by phase: Phase 10 · Blocks: suspension implementation
+- Affected documents: TRD17 §17.19–17.20 · Affected domains: Reward, Subscription
+- Source references: OPD-005; DR-PROD-002
+- Dependencies: DEC-SUB-003 (grace) · Risks if unresolved: customer-trust incident during first suspension
+- Final decision: — · Decision date: — · Approved by: —
+- Implementation consequences: redemption eligibility check · Document corrections required: TRD17 policy statement · Notes: founder agenda Batch B
+
+**DEC-LOY-012 — Configurable per-listing threshold defaulting to 11 (historical)**
+- Category: Loyalty · Status: **SUPERSEDED** · Priority: —
+- Decision question: Should the redemption threshold be configurable per listing with default 11?
+- Context: Legacy data-model design. Superseded by: **DEC-LOY-001** (fixed 10). Historical option preserved in `docs/99-archive/superseded/legacy-data-model-superseded-v1.md`.
+- Options/Recommendation: historical · Current confirmed position: see DEC-LOY-001
+- Founder decision required: No · Decision owner: — · Required by phase: — · Blocks: —
+- Affected documents: archived data model · Affected domains: Loyalty
+- Source references: audit DOC-P0-002/003 · Dependencies: — · Risks if unresolved: —
+- Final decision: superseded · Decision date: Pre-register approval — exact date not recorded · Approved by: Founder (PD-006)
+- Implementation consequences: none · Document corrections required: none · Notes: —
+
+**DEC-LOY-013 — Reward Program pause/migration/seasonal variants**
+- Category: Loyalty · Status: **OPEN_FOUNDER** · Priority: D2
+- Decision question: (a) Confirm pause preserves accumulated progress and outstanding rewards; (b) may businesses migrate customers between Reward Programs under controlled conditions in MVP; (c) are seasonal variants under one Loyalty Cycle supported in MVP?
+- Context: PRD6 §28 open questions; PRD6 §5 already implies pause preserves progress and retirement preserves redeemability.
+- Options identified: (a) yes (documented direction); (b) MVP: no migration / future controlled migration; (c) MVP: no seasonal variants.
+- Recommended direction: (a) confirm; (b) and (c) defer beyond MVP · Recommendation basis: PRD6 §5; TRD22 scope-protection rule.
+- Current confirmed position: pause/retire semantics documented; migration and variants unaddressed.
+- Founder decision required: Yes · Decision owner: Founder · Required by phase: Phase 4 · Blocks: program lifecycle edge cases
+- Affected documents: PRD6 §5/§28 · Affected domains: Reward Programs, Loyalty
+- Source references: DR-PROD-013
+- Dependencies: — · Risks if unresolved: minor (edge cases)
+- Final decision: — · Decision date: — · Approved by: —
+- Implementation consequences: lifecycle guards · Document corrections required: PRD6 §28 closure · Notes: founder agenda Batch B
+
+---
+
+### IDENTITY, ROLES AND PERMISSIONS (DEC-ID / DEC-SEC)
+
+**DEC-ID-001 — One portable loyalty identity**
+- Category: Identity · Status: **CONFIRMED** · Priority: D1
+- Current confirmed position: Each customer owns one permanent loyalty identity (immutable internal ID + permanent loyalty number + QR) portable across all participating businesses; survives phone/email changes; loyalty numbers never reused.
+- Founder decision required: No · Options/Recommendation: n/a
+- Decision owner: Founder · Required by phase: Phase 2 · Blocks: —
+- Affected documents: PRD1 §3; PRD2 §4/§8 · Affected domains: Identity
+- Source references: OP-005; BR-017/018; FR-CI-001..004
+- Dependencies: DEC-DATA-007 (generation algorithm) · Risks if unresolved: —
+- Final decision: as stated · Decision date: Pre-register approval — exact date not recorded · Approved by: Founder (PRD approval)
+- Implementation consequences: identity service design · Document corrections required: none · Notes: —
+
+**DEC-ID-002 — Individual accounts; shared staff accounts prohibited**
+- Category: Identity · Status: **CONFIRMED** · Priority: D1
+- Current confirmed position: Every business user operates through an individual account; shared staff/manager accounts prohibited; every action attributable.
+- Founder decision required: No · Options/Recommendation: n/a
+- Decision owner: Founder · Required by phase: Phase 2 · Blocks: —
+- Affected documents: PRD1 AP-002/BR-002; PRD10 BR-095 · Affected domains: Identity, Trust
+- Source references: PD-011/PD-012
+- Dependencies: DEC-SEC-003 (shared-device UX) · Risks if unresolved: —
+- Final decision: as stated · Decision date: Pre-register approval — exact date not recorded · Approved by: Founder (PRD0 §24)
+- Implementation consequences: membership model · Document corrections required: none · Notes: —
+
+**DEC-ID-003 — Permission inheritance semantics**
+- Category: Identity · Status: **OPEN_FOUNDER** · Priority: **D1**
+- Decision question: How do PRD10's role inheritance ("Owner inherits all Manager permissions; Manager inherits all Staff") and PRD1's explicit configurable grants (AP-008; manager restrictions unless specifically granted) combine into one permission-resolution algorithm?
+- Context: Two authoritative PRD sections give implementers different algorithms (audit DOC-P1-007).
+- Options identified: (a) inheritance defines the *default template*; explicit per-membership grants/revocations override; sensitive permissions never implicit (audit-recommended reconciliation); (b) strict inheritance; (c) no inheritance, explicit grants only.
+- Recommended direction: (a) · Recommendation basis: reconciles both texts; aligns TRD12 §12.11 permission resolution.
+- Current confirmed position: least-privilege and configurable manager permissions confirmed; combination algorithm open.
+- Founder decision required: Yes · Decision owner: Founder (with Engineering) · Required by phase: Phase 2 · Blocks: authorization implementation; freeze (PRD internal conflict)
+- Affected documents: PRD1 §7/§12; PRD10 §13; TRD12 · Affected domains: Identity
+- Source references: audit DOC-P1-007; DR-ARCH-005
+- Dependencies: — · Risks if unresolved: inconsistent permission checks
+- Final decision: — · Decision date: — · Approved by: —
+- Implementation consequences: permission resolver design · Document corrections required: PRD1/PRD10 clarification · Notes: founder agenda Batch C
+
+**DEC-ID-004 — Customer phone-number lookup by business staff**
+- Category: Identity · Status: **OPEN_FOUNDER** · Priority: D2
+- Decision question: May staff search customers by full phone number, or are QR and loyalty number the only normal methods (phone lookup restricted/fallback with logging)?
+- Context: PRD5 §10 lists phone lookup "subject to permissions"; TRD12 says restricted and logged; OPD-007 leaves the product policy open.
+- Options identified: (a) QR/loyalty number only; (b) phone lookup as restricted, logged fallback (permission-gated); (c) unrestricted phone lookup (conflicts with TRD12).
+- Recommended direction: (b) · Recommendation basis: TRD12 §customer lookup privacy; TRD21 minimization.
+- Current confirmed position: lookup must be privacy-restricted (confirmed); exact policy open.
+- Founder decision required: Yes · Decision owner: Founder · Required by phase: Phase 5 · Blocks: purchase-recording UI
+- Affected documents: PRD5 §10; TRD12; TRD21 · Affected domains: Identity, Purchase
+- Source references: OPD-007; DR-PROD-005
+- Dependencies: — · Risks if unresolved: privacy overexposure or workflow friction
+- Final decision: — · Decision date: — · Approved by: —
+- Implementation consequences: lookup API + rate limits · Document corrections required: PRD5/TRD12 note · Notes: founder agenda Batch C
+
+**DEC-ID-005 — Owner-initiated business self-suspension**
+- Category: Identity · Status: **OPEN_FOUNDER** · Priority: D2
+- Decision question: Does the MVP support owner-initiated suspension/pause of their own business, and with what effects?
+- Context: PRD1 role matrix says "Self-suspend only"; PRD3 lists "Business request" as suspension reason; no workflow defined anywhere (audit DOC-P2-008).
+- Options identified: (a) MVP supports owner pause (blocks new records, preserves history/rewards per suspension rules); (b) defer to post-MVP, owner contacts support.
+- Recommended direction: none — genuine scope choice · Recommendation basis: —
+- Current confirmed position: none.
+- Founder decision required: Yes · Decision owner: Founder · Required by phase: Phase 12 · Blocks: admin workflows
+- Affected documents: PRD1 §11; PRD3 §24; TRD18 §18.12 · Affected domains: Identity, Administration
+- Source references: audit DOC-P2-008
+- Dependencies: DEC-LOY-011 · Risks if unresolved: matrix promise unimplemented
+- Final decision: — · Decision date: — · Approved by: —
+- Implementation consequences: suspension command variants · Document corrections required: PRD1/PRD3/TRD18 alignment · Notes: founder agenda Batch E
+
+**DEC-ID-006 — Preferred language required at registration**
+- Category: Identity · Status: **CONFIRMED** · Priority: D2
+- Current confirmed position: Preferred language is a required registration field (defaultable from device/country) — per CKS Part XII, TRD22 §22.35, consolidation audit §17; PRD2 §6 aligned in Phase 1 with visible note.
+- Founder decision required: No (may veto Phase 1 alignment) · Options/Recommendation: n/a
+- Decision owner: Founder · Required by phase: Phase 2 · Blocks: —
+- Affected documents: PRD2 §6; CKS XII; TRD22 §22.35 · Affected domains: Identity
+- Source references: audit DOC-P2-003; Phase 1 report §4
+- Dependencies: — · Risks if unresolved: —
+- Final decision: as stated · Decision date: Pre-register approval — exact date not recorded (Phase 1 alignment 2026-07-16) · Approved by: Founder (standards approval)
+- Implementation consequences: registration form default · Document corrections required: none · Notes: veto would reopen as OPEN_FOUNDER
+
+**DEC-SEC-001 — Customer authentication approach and fallback**
+- Category: Security · Status: **OPEN_ENGINEERING** · Priority: **D1**
+- Decision question: Confirm Firebase phone OTP as primary customer authentication for Burundi and define the fallback (email link, password+recovery, or assisted registration) if OTP delivery proves unreliable/costly.
+- Context: Phone-primary is approved (PRD10 §15); Burundi delivery feasibility, cost and abuse controls unproven (OTD-004); fallback undefined.
+- Options identified: (a) Firebase phone OTP + email fallback; (b) OTP via external SMS provider + custom auth; (c) password-based with phone verification.
+- Recommended direction: (a) pending proof · Recommendation basis: PRD10 §15; TRD12 §12.4.
+- Current confirmed position: Firebase Authentication with mobile number primary (confirmed); delivery route and fallback open.
+- Founder decision required: Countersign only · Decision owner: Engineering Lead · Required by phase: Phase 2 · Blocks: customer registration
+- Affected documents: TRD12 §12.4; TRD23 OTD-004 · Affected domains: Identity, Integration
+- Source references: OTD-004; DR-TECH-004 · Dependencies: EXT-TECH-001 (Burundi OTP proof); DEC-PROV-004
+- Risks if unresolved: registration failure at pilot
+- Final decision: — · Decision date: — · Approved by: —
+- Implementation consequences: auth module design · Document corrections required: TRD12 fallback section · Notes: —
+
+**DEC-SEC-002 — Administrator MFA**
+- Category: Security · Status: **CONFIRMED** · Priority: D2
+- Current confirmed position: Platform administrators require MFA and enhanced session controls; admin access is permission-scoped and audited.
+- Founder decision required: No · Options/Recommendation: n/a
+- Decision owner: Engineering Lead · Required by phase: Phase 12 · Blocks: —
+- Affected documents: TRD12 §12.4.4; TRD18 §18.8–18.9; TRD22 Phase 12 · Affected domains: Security, Administration
+- Source references: TRD22 §22.22 deliverables; TRD23 §23.32
+- Dependencies: — · Risks if unresolved: —
+- Final decision: as stated · Decision date: Pre-register approval — exact date not recorded · Approved by: Founder (TRD approval)
+- Implementation consequences: MFA enrolment flow · Document corrections required: none · Notes: —
+
+**DEC-SEC-003 — Staff authentication on shared devices**
+- Category: Security · Status: **OPEN_ENGINEERING** · Priority: D2
+- Decision question: How do individual staff accounts work on one shared shop device (fast account switching, PIN re-auth, session timeout) without weakening attribution?
+- Context: PRD1 §8.5 requires simple staff authentication without weakening accountability; no mechanism specified.
+- Options identified: (a) per-staff PIN switch on shared session; (b) full re-login per staff; (c) device-bound staff selection + PIN.
+- Recommended direction: none — needs UX/security prototyping · Recommendation basis: —
+- Current confirmed position: individual accountability mandatory (DEC-ID-002).
+- Founder decision required: Countersign UX · Decision owner: Engineering Lead · Required by phase: Phase 2 · Blocks: staff app UX
+- Affected documents: PRD1 §8.5; TRD12; TRD16 · Affected domains: Security, Identity
+- Source references: Phase 3 task (shared-device handling); PRD1 §8.5
+- Dependencies: DEC-SEC-001 · Risks if unresolved: staff share logins informally
+- Final decision: — · Decision date: — · Approved by: —
+- Implementation consequences: session design · Document corrections required: TRD12/16 addition · Notes: —
+
+---
+
+### SUBSCRIPTION AND COMMERCIAL MODEL (DEC-SUB)
+
+**DEC-SUB-001 — Final plan names**
+- Category: Subscription · Status: **OPEN_FOUNDER** · Priority: D2
+- Decision question: What are the commercial plan names? Working labels: Starter / Growth / Professional.
+- Context: OPD-001; Bronze/Silver/Gold explicitly not approved (consolidation audit §11.2; marked illustrative in Phase 1); architecture uses plan IDs/entitlements, not names.
+- Options identified: (a) Starter/Growth/Professional; (b) localized commercial names; (c) other.
+- Recommended direction: (a) as working default · Recommendation basis: TRD17 §17.7 working labels.
+- Current confirmed position: names open; entitlement-based enforcement confirmed.
+- Founder decision required: Yes · Decision owner: Founder · Required by phase: Phase 10 · Blocks: pricing publication, subscription UI
+- Affected documents: TRD17; PRD3 §9; Rules Studio · Affected domains: Subscription
+- Source references: OPD-001; DR-COMM-001; audit DOC-P2-001
+- Dependencies: DEC-SUB-008 · Risks if unresolved: blocked pricing page only
+- Final decision: — · Decision date: — · Approved by: —
+- Implementation consequences: plan catalogue seed · Document corrections required: TRD17/PRD3 naming pass · Notes: founder agenda Batch D
+
+**DEC-SUB-002 — Staff limits per plan**
+- Category: Subscription · Status: **OPEN_FOUNDER** · Priority: D2
+- Decision question: Exact staff-account limits per plan?
+- Context: OPD-002; Rules Studio examples (5/20/unlimited) illustrative only.
+- Options identified: numeric sets to be proposed with plan catalogue.
+- Recommended direction: none · Recommendation basis: —
+- Current confirmed position: staff limits exist as plan entitlements (confirmed); values open.
+- Founder decision required: Yes · Decision owner: Founder · Required by phase: Phase 10 · Blocks: entitlement service values
+- Affected documents: TRD17 §17.24; TRD10 §10.14.1 · Affected domains: Subscription
+- Source references: OPD-002; DR-COMM-002
+- Dependencies: DEC-SUB-001/008 · Risks if unresolved: seed data blocked
+- Final decision: — · Decision date: — · Approved by: —
+- Implementation consequences: entitlement values · Document corrections required: plan catalogue · Notes: founder agenda Batch D
+
+**DEC-SUB-003 — Trial structure**
+- Category: Subscription · Status: **OPEN_FOUNDER** · Priority: D2
+- Decision question: Trial rule — time only, verified-purchase volume only, or whichever-first (PRD3 example: 30 days or 100 verified purchases)?
+- Context: OPD-003; PRD3 example explicitly unapproved.
+- Options identified: (a) time only; (b) volume only; (c) whichever-first.
+- Recommended direction: (c) with values to set · Recommendation basis: PRD3 §11 example direction.
+- Current confirmed position: a trial exists in MVP (confirmed, TRD17 §17.11); structure open.
+- Founder decision required: Yes · Decision owner: Founder · Required by phase: Phase 10 · Blocks: trial implementation
+- Affected documents: PRD3 §11; TRD17 §17.11–17.14 · Affected domains: Subscription
+- Source references: OPD-003; DR-COMM-003
+- Dependencies: DEC-SUB-008 · Risks if unresolved: trial logic blocked
+- Final decision: — · Decision date: — · Approved by: —
+- Implementation consequences: trial rules seed · Document corrections required: PRD3 §11 finalization · Notes: founder agenda Batch D
+
+**DEC-SUB-004 — Plan capacity counted in active Reward Programs**
+- Category: Subscription · Status: **CONFIRMED** · Priority: D2
+- Current confirmed position: Plan capacity limits count **active Reward Programs**, not individual mapped products; applied to PRD0/PRD3 wording in Phase 1 (with visible note inviting founder veto).
+- Founder decision required: No (veto possible) · Options/Recommendation: n/a
+- Decision owner: Founder · Required by phase: Phase 10 · Blocks: —
+- Affected documents: PRD0 §18/PD-019; PRD3 §9–10; TRD17 §17.7/§17.23 · Affected domains: Subscription, Reward Programs
+- Source references: consolidation audit §11.1; audit DOC-P1-005; Phase 1 report §4
+- Dependencies: — · Risks if unresolved: —
+- Final decision: as stated · Decision date: Pre-register approval — exact date not recorded (Phase 1 application 2026-07-16) · Approved by: Founder (TRD/consolidation-audit approval)
+- Implementation consequences: entitlement counter · Document corrections required: none · Notes: supersedes DEC-SUB-012
+
+**DEC-SUB-005 — Single branch at MVP; branch-ready architecture**
+- Category: Subscription · Status: **CONFIRMED** · Priority: D1
+- Current confirmed position: MVP supports one operational branch per business (auto-created or onboarding-created); every Purchase Record and redemption references the branch; multi-branch operation deferred.
+- Founder decision required: No · Options/Recommendation: n/a
+- Decision owner: Founder · Required by phase: Phases 2–5 · Blocks: —
+- Affected documents: PRD0 PD-023; TRD23 §23.14; TRD22 · Affected domains: Identity, Subscription
+- Source references: PD-023; TRD23 §23.14; A-011
+- Dependencies: — · Risks if unresolved: —
+- Final decision: as stated · Decision date: Pre-register approval — exact date not recorded · Approved by: Founder (PRD0 §24)
+- Implementation consequences: branch record seeding · Document corrections required: none · Notes: multi-branch is DEC-FUT-005
+
+**DEC-SUB-006 — Upgrade immediate; downgrade requires within-limits**
+- Category: Subscription · Status: **CONFIRMED** · Priority: D2
+- Current confirmed position: Upgrades apply immediately; downgrades only when business configuration fits the lower plan (owner resolves excess first).
+- Founder decision required: No · Options/Recommendation: n/a (proration detail sits in DEC-SUB-008)
+- Decision owner: Founder · Required by phase: Phase 10 · Blocks: —
+- Affected documents: PRD3 §22; TRD17 §17.26–17.27 · Affected domains: Subscription
+- Source references: PRD3 §22
+- Dependencies: DEC-SUB-008 (proration) · Risks if unresolved: —
+- Final decision: as stated · Decision date: Pre-register approval — exact date not recorded · Approved by: Founder (PRD approval)
+- Implementation consequences: downgrade validation · Document corrections required: none · Notes: —
+
+**DEC-SUB-007 — Essential trust controls never paywalled**
+- Category: Subscription · Status: **CONFIRMED** · Priority: D1
+- Current confirmed position: Customer verification, individual staff identities, secure roles, purchase history, Verified Unit integrity, redemption controls, dispute handling, basic audit, privacy/security are present in every plan; plans differ by capacity and enhanced capability only.
+- Founder decision required: No · Options/Recommendation: n/a
+- Decision owner: Founder · Required by phase: Phase 10 · Blocks: —
+- Affected documents: TRD17 §17.4; consolidation audit §11.3 · Affected domains: Subscription
+- Source references: as above
+- Dependencies: — · Risks if unresolved: —
+- Final decision: as stated · Decision date: Pre-register approval — exact date not recorded · Approved by: Founder (TRD approval)
+- Implementation consequences: entitlement floor · Document corrections required: none · Notes: —
+
+**DEC-SUB-008 — Plan catalogue: BIF prices, billing intervals, grace values, proration**
+- Category: Subscription · Status: **OPEN_FOUNDER** · Priority: D2
+- Decision question: Approve launch BIF price points, offered billing intervals (monthly/quarterly/annual — quarterly has no PRD basis), grace-period length, and upgrade proration treatment.
+- Context: TRD10 lists three intervals; TRD17 defines grace/proration mechanics without values.
+- Options identified: interval subsets; grace 7/14/30 days; proration vs next-cycle change.
+- Recommended direction: monthly (+annual optional) at launch; values with commercial plan · Recommendation basis: simplicity pillar.
+- Current confirmed position: mechanics confirmed (TRD17); values open.
+- Founder decision required: Yes · Decision owner: Founder · Required by phase: Phase 10 · Blocks: plan catalogue seed, payment flows
+- Affected documents: TRD17; TRD10 §10.14.1 · Affected domains: Subscription
+- Source references: DR-COMM-005; audit traceability §20 (quarterly)
+- Dependencies: DEC-PROV-001 (payment provider capabilities); EXT-LEG-003 (billing rules)
+- Risks if unresolved: Phase 10 blocked · Final decision: — · Decision date: — · Approved by: —
+- Implementation consequences: pricing seed data · Document corrections required: plan catalogue doc · Notes: founder agenda Batch D
+
+**DEC-SUB-009 — Multi-business subscription model**
+- Category: Subscription · Status: **OPEN_FOUNDER** · Priority: D2
+- Decision question: One owner with several businesses — one subscription per business (PRD3 §28 recommendation) or consolidated owner-level subscription?
+- Context: PRD3 §28 recommends per-business subscriptions (marked unapproved in Phase 1); PRD10 §11 confirms independent businesses per owner.
+- Options identified: (a) per-business subscription; (b) owner-level consolidated billing.
+- Recommended direction: (a) · Recommendation basis: PRD3 §28 rationale (reporting, future franchising).
+- Current confirmed position: businesses isolated per owner (confirmed BR-097); billing model open.
+- Founder decision required: Yes · Decision owner: Founder · Required by phase: Phase 10 · Blocks: billing model
+- Affected documents: PRD3 §28; TRD17 · Affected domains: Subscription
+- Source references: DR-COMM-006
+- Dependencies: — · Risks if unresolved: billing schema ambiguity
+- Final decision: — · Decision date: — · Approved by: —
+- Implementation consequences: subscription-business relation · Document corrections required: PRD3 §28 closure · Notes: founder agenda Batch D
+
+**DEC-SUB-010 — MVP export formats**
+- Category: Subscription/Reporting · Status: **OPEN_FOUNDER** · Priority: D2
+- Decision question: PRD9 promises PDF/CSV/Excel exports; TRD22 approves "CSV where approved". What ships at MVP?
+- Options identified: (a) CSV only at launch; PDF for receipts/invoices only; Excel deferred (audit recommendation); (b) PRD9 full set.
+- Recommended direction: (a) · Recommendation basis: TRD22 §22.21; OTD-010 dependency.
+- Current confirmed position: contradictory sources; OPEN.
+- Founder decision required: Yes · Decision owner: Founder · Required by phase: Phase 11 · Blocks: reporting exports
+- Affected documents: PRD9 §16; TRD22 §22.21 · Affected domains: Reporting
+- Source references: audit DOC-P2-002; DR-COMM-007
+- Dependencies: DEC-TECH-009 (PDF tooling) · Risks if unresolved: export scope creep
+- Final decision: — · Decision date: — · Approved by: —
+- Implementation consequences: export module scope · Document corrections required: PRD9 §16 alignment · Notes: founder agenda Batch D
+
+**DEC-SUB-011 — Bronze/Silver/Gold plan naming (historical)**
+- Category: Subscription · Status: **SUPERSEDED** · Priority: —
+- Decision question: Adopt Bronze/Silver/Gold tiers with 5/20/unlimited staff?
+- Context: Rules Studio example tiers. Superseded by: **DEC-SUB-001** (names open; Starter/Growth/Professional working labels). Consolidation audit §11.2: "shall not be treated as approved"; marked illustrative in Phase 1.
+- Options/Recommendation: historical · Current confirmed position: see DEC-SUB-001
+- Founder decision required: No · Decision owner: — · Required by phase: — · Blocks: —
+- Affected documents: Rules Studio · Affected domains: Subscription
+- Source references: consolidation audit §11.2; audit DOC-P2-001 · Dependencies: — · Risks if unresolved: —
+- Final decision: superseded · Decision date: Pre-register approval — exact date not recorded · Approved by: Founder (consolidation-audit approval)
+- Implementation consequences: none · Document corrections required: none · Notes: —
+
+**DEC-SUB-012 — Plan capacity by product count (historical)**
+- Category: Subscription · Status: **SUPERSEDED** · Priority: —
+- Decision question: Count plan capacity in "active loyalty products"?
+- Context: Early PRD/Product Definition basis. Superseded by: **DEC-SUB-004** (active Reward Program limit).
+- Options/Recommendation: historical · Current confirmed position: see DEC-SUB-004
+- Founder decision required: No · Decision owner: — · Required by phase: — · Blocks: —
+- Affected documents: PRD0/PRD3 (corrected Phase 1); archived Product Definition · Affected domains: Subscription
+- Source references: consolidation audit §11.1; audit DOC-P1-005 · Dependencies: — · Risks if unresolved: —
+- Final decision: superseded · Decision date: Pre-register approval — exact date not recorded · Approved by: Founder
+- Implementation consequences: none · Document corrections required: none · Notes: —
+
+**DEC-SUB-013 — Complimentary/free plans policy**
+- Category: Subscription · Status: **OPEN_FOUNDER** · Priority: D4
+- Decision question: Will the platform offer complimentary plans (pilot businesses, partners, promotions), and under what governance?
+- Context: Raised during Phase 3 governance preparation; no documented position in the suite. Pilot businesses may need free access (pilot scope decision).
+- Options identified: (a) pilot-only complimentary via feature flags; (b) permanent free tier; (c) none.
+- Recommended direction: none — commercial choice; (a) likely needed for pilot · Recommendation basis: TRD22 §22.25 pilot scope.
+- Current confirmed position: none.
+- Founder decision required: Yes · Decision owner: Founder · Required by phase: Phase 15 (pilot) at latest · Blocks: pilot billing setup
+- Affected documents: TRD17 · Affected domains: Subscription
+- Source references: Phase 3 task list · Dependencies: DEC-PILOT-001 · Risks if unresolved: ad-hoc pilot billing
+- Final decision: — · Decision date: — · Approved by: —
+- Implementation consequences: plan catalogue entry · Document corrections required: TRD17 note · Notes: founder agenda Batch E
+
+---
+
+### TECHNOLOGY, DATA AND OPERATIONS (DEC-TECH / DEC-DATA / DEC-OPS)
+
+**DEC-TECH-001 — Firebase-first infrastructure**
+- Category: Technology · Status: **CONFIRMED** · Priority: D1
+- Current confirmed position: Firebase ecosystem (Auth, Firestore, Functions, Storage, Hosting, App Check, FCM, Analytics, Performance Monitoring + supporting GCP) is the implementation infrastructure; Firebase implements — never defines — the business architecture.
+- Founder decision required: No · Options/Recommendation: n/a
+- Decision owner: Founder · Required by phase: Phase 1 · Blocks: —
+- Affected documents: PD-020; TRD8; consolidation audit §19 · Affected domains: all technical
+- Source references: PD-020; TRD23 §23.20 (verification duties noted)
+- Dependencies: EXT-TECH-002 (regional availability verification) · Risks if unresolved: —
+- Final decision: as stated · Decision date: Pre-register approval — exact date not recorded · Approved by: Founder (PRD0 §24)
+- Implementation consequences: platform foundation · Document corrections required: none · Notes: —
+
+**DEC-TECH-002 — React + TypeScript, mobile-first PWA**
+- Category: Technology · Status: **CONFIRMED** · Priority: D1
+- Current confirmed position: Frontend is React + TypeScript delivered as a mobile-first PWA (three surfaces: customer, business, administration).
+- Founder decision required: No · Options/Recommendation: n/a
+- Decision owner: Engineering Lead · Required by phase: Phase 0 · Blocks: —
+- Affected documents: PD-021; TRD16 §16.3; TRD23 OTD-001 ("React and TypeScript are approved") · Affected domains: frontend
+- Source references: as above
+- Dependencies: DEC-TECH-003 (tooling) · Risks if unresolved: —
+- Final decision: as stated · Decision date: Pre-register approval — exact date not recorded · Approved by: Founder (PRD/TRD approval)
+- Implementation consequences: — · Document corrections required: none · Notes: Tailwind/Crashlytics claims in archived Product Definition are historical
+
+**DEC-TECH-003 — Frontend tooling set**
+- Category: Technology · Status: **CONFIRMED** · Priority: **D1**
+- Decision question: Select build tool, router, server-state library, form library, component foundation, PWA tooling and test libraries.
+- Options identified: per OTD-001 (proposed by engineering, see Engineering Decision Sprint 1 evaluation).
+- Recommended direction: Vite / React Router / TanStack Query / React Hook Form + Zod / shadcn/ui + Tailwind CSS / Vitest + React Testing Library + Playwright / ESLint + Prettier / pnpm · Recommendation basis: [DEC-TECH-003 Engineering Stack Evaluation & Recommendation](dec-tech-003-engineering-stack-recommendation.md) (Engineering Decision Sprint 1, 2026-07-17)
+- Current confirmed position: React+TS approved (DEC-TECH-002); full Version 1 frontend stack now confirmed (see Final decision).
+- Founder decision required: No (informed) · Decision owner: Engineering Lead · Required by phase: Phase 0 · Blocks: — (resolved)
+- Affected documents: TRD16; Engineering Standards (Linting and Formatting Conventions §5); Version 1 Engineering Blueprint §1.3; ENG-P0-001 draft · Affected domains: frontend
+- Source references: OTD-001; DR-TECH-001; audit DOC-P2-007; [DEC-TECH-003 Engineering Stack Evaluation & Recommendation](dec-tech-003-engineering-stack-recommendation.md); [Engineering Decision Sprint 1 Report](../../05-implementation/reports/eng-decision-sprint-1-dec-tech-003-report-2026-07-17.md)
+- Dependencies: — · Risks if unresolved: — (resolved)
+- Final decision: *"Version 1 frontend stack: Vite (build tool), React Router (routing), TanStack Query (server state), React Hook Form + Zod (forms/validation), shadcn/ui + Tailwind CSS (component foundation/styling), Lucide (icons), Recharts (charts), TanStack Table (tables), vite-plugin-pwa/Workbox (PWA), Vitest + React Testing Library + Playwright (testing), ESLint + Prettier (lint/format), pnpm (package manager). Full evaluation and rationale: [DEC-TECH-003 Engineering Stack Evaluation & Recommendation](dec-tech-003-engineering-stack-recommendation.md)."* · Decision date: 2026-07-17 · Approved by: Engineering Lead (confirmed under Founder-directed Engineering Decision Sprint 2, 2026-07-17)
+- Implementation consequences: unblocks ENG-P0-001 (jointly with DEC-TECH-004, also confirmed this sprint); Linting and Formatting Conventions §5 tool names move from recommended to confirmed; Version 1 Engineering Blueprint §1.3 updated · Document corrections required: Engineering Standards §5 (applied, Sprint 2); Version 1 Engineering Blueprint §1.3 (applied, Sprint 2); ENG-P0-001 draft §4/§11 (applied, Sprint 2) · Notes: Closed under Engineering Decision Sprint 2 (2026-07-17), converting the Sprint 1 prepared recommendation into a confirmed decision per the Decision Update Procedure.
+
+**DEC-TECH-004 — Repository structure (monorepo recommended)**
+- Category: Technology · Status: **CONFIRMED** · Priority: **D1**
+- Decision question: Monorepo (frontend + Functions, shared types) or separate repositories?
+- Options identified: (a) monorepo (TRD-recommended); (b) separate repos.
+- Recommended direction: (a) · Recommendation basis: OTD-002 ("recommends a shared repository or monorepo for strong type and contract reuse").
+- Current confirmed position: Monorepo confirmed (see Final decision).
+- Founder decision required: No · Decision owner: Engineering Lead · Required by phase: Phase 0 · Blocks: — (resolved)
+- Affected documents: TRD22 Phase 0; Engineering Standards; Version 1 Engineering Blueprint §2 · Affected domains: all technical
+- Source references: OTD-002; DR-TECH-002; [Engineering Decision Closure Recommendations](engineering-decision-closure-recommendations.md) §3
+- Dependencies: — · Risks if unresolved: — (resolved)
+- Final decision: *"Monorepo. Frontend and Cloud Functions code, including shared types, live in a single repository, per OTD-002 and the project structure already specified in TRD8 §8.4. No operational reason for separate repositories has been identified."* · Decision date: 2026-07-17 · Approved by: Engineering Lead (confirmed under Founder-directed Engineering Decision Sprint 2, 2026-07-17)
+- Implementation consequences: repository layout for ENG-P0-001/ENG-P0-002 follows this structure directly · Document corrections required: Engineering Standards (already reflects monorepo, no change needed); Version 1 Engineering Blueprint §2 already states this as CONFIRMED · Notes: Closed under Engineering Decision Sprint 2 (2026-07-17), applying the closure prepared in Engineering Transition Phase 0B's Engineering Decision Closure Recommendations §3.
+
+**DEC-TECH-005 — Firebase region**
+- Category: Technology · Status: **OPEN_ENGINEERING** · Priority: **D1**
+- Decision question: Select the Firebase/GCP region balancing Burundi latency, service availability, cost and the cross-border legal position.
+- Options identified: candidate regions to be evaluated (e.g., europe-west vs africa-south) — evaluation not yet performed.
+- Recommended direction: none · Recommendation basis: —
+- Current confirmed position: region must be selected before project creation (OTD-003).
+- Founder decision required: Countersign · Decision owner: Engineering Lead + legal adviser · Required by phase: Phase 1 · Blocks: Firebase project creation
+- Affected documents: TRD8; TRD20 · Affected domains: all technical
+- Source references: OTD-003; DR-TECH-003
+- Dependencies: **EXT-LEG-006** (cross-border hosting), EXT-TECH-002 · Risks if unresolved: project setup blocked
+- Final decision: — · Decision date: — · Approved by: —
+- Implementation consequences: project provisioning · Document corrections required: deployment docs · Notes: —
+
+**DEC-TECH-006 — Event delivery mechanism (outbox)**
+- Category: Technology · Status: **CONFIRMED** · Priority: **D1**
+- Decision question: Validate the recommended Firestore-transaction + event-outbox + background-processor pattern (future Pub/Sub migration path), incl. outbox collection design.
+- Options identified: (a) recommended outbox pattern; (b) direct Pub/Sub from start.
+- Recommended direction: (a) · Recommendation basis: OTD-006; TRD11 §11.17.
+- Current confirmed position: event-driven processing mandatory (CP-009/TAP-006 confirmed); pattern now confirmed (see Final decision) — exact outbox collection schema remains Pass 2 implementation detail, tracked against ENG-P1-002.
+- Founder decision required: No · Decision owner: Engineering Lead · Required by phase: Phase 1 · Blocks: — (pattern resolved; ENG-P1-002 remains sequentially gated on ENG-P1-001 completion, not on this decision)
+- Affected documents: TRD11; Engineering Standards Pass 2 (schema detail, pending) · Affected domains: all server
+- Source references: OTD-006; DR-TECH-006; [Engineering Decision Closure Recommendations](engineering-decision-closure-recommendations.md) §3
+- Dependencies: — · Risks if unresolved: — (pattern resolved)
+- Final decision: *"Adopt the Firestore-transaction + event-outbox + background-processor pattern per TRD11 §11.17, with a future Pub/Sub migration path per OTD-006. The exact outbox collection schema, retry/backoff parameters, and dead-letter handling are implementation detail, specified in Pass 2 Engineering Standards during Phase 1 (ENG-P1-002), not part of this decision."* · Decision date: 2026-07-17 · Approved by: Engineering Lead (confirmed under Founder-directed Engineering Decision Sprint 2, 2026-07-17)
+- Implementation consequences: removes one of Phase 1's two open architectural questions; Pass 2 Engineering Standards can proceed against a settled pattern once ENG-P1-001 completes · Document corrections required: Engineering Standards README §Pass 2 (reword from "CONFIRMED-recommended" to "CONFIRMED"); Engineering Implementation Programme (ENG-P1-002 Decision Dependencies note) · Notes: Closed at the pattern level only, per the scope disclosed in the Engineering Decision Closure Recommendations §3; schema detail intentionally deferred, not silently invented. Closed under Engineering Decision Sprint 2 (2026-07-17).
+
+**DEC-TECH-007 — Idempotency storage approach**
+- Category: Technology · Status: **CONFIRMED** · Priority: **D1**
+- Decision question: Dedicated idempotency collection, deterministic document IDs, or combined per-operation approach?
+- Options identified: per OTD-007 (three options; combined permitted).
+- Recommended direction: combined approach permitted · Recommendation basis: OTD-007.
+- Current confirmed position: idempotency mandatory for all sensitive writes (confirmed, TRD10 §10.30); combined per-operation approach now confirmed at the policy level (see Final decision) — per-operation schema choice remains Pass 2 implementation detail, tracked against ENG-P1-002.
+- Founder decision required: No · Decision owner: Engineering Lead · Required by phase: Phase 1 · Blocks: — (policy resolved; ENG-P1-002 remains sequentially gated on ENG-P1-001 completion, not on this decision)
+- Affected documents: TRD10/TRD11; Engineering Standards Pass 2 (per-operation schema, pending) · Affected domains: all server
+- Source references: OTD-007; DR-TECH-007; [Engineering Decision Closure Recommendations](engineering-decision-closure-recommendations.md) §3 · Dependencies: DEC-TECH-006 (also confirmed this sprint)
+- Risks if unresolved: — (policy resolved) · Final decision: *"Combined, per-operation approach — dedicated idempotency collection or deterministic document IDs, chosen per operation as TRD10 §10.30 and OTD-007 already permit. Each operation's specific choice is documented where that operation's Engineering Standard/work package is authored (Pass 2), not decided globally here."* · Decision date: 2026-07-17 · Approved by: Engineering Lead (confirmed under Founder-directed Engineering Decision Sprint 2, 2026-07-17)
+- Implementation consequences: removes the second of Phase 1's two open architectural questions (paired with DEC-TECH-006) · Document corrections required: Engineering Standards README §Pass 2 (reword from "CONFIRMED-recommended" to "CONFIRMED"); Engineering Implementation Programme (ENG-P1-002 Decision Dependencies note) · Notes: Closed at the policy level only; per-operation schema intentionally deferred, not silently invented. Closed under Engineering Decision Sprint 2 (2026-07-17).
+
+**DEC-TECH-008 — Search implementation**
+- Category: Technology · Status: **OPEN_ENGINEERING** · Priority: D2
+- Decision question: Confirm Firestore-backed taxonomy search + internal filtering for MVP (dedicated search provider deferred), with the abstraction interface still created.
+- Options identified: (a) Firestore-backed (recommended); (b) dedicated provider now.
+- Recommended direction: (a) · Recommendation basis: OTD-005; TRD23 §23.15.
+- Current confirmed position: search-domain abstraction confirmed; provider deferred unless proven necessary.
+- Founder decision required: No · Decision owner: Engineering Lead · Required by phase: Phase 3 · Blocks: onboarding search
+- Affected documents: TRD14 · Affected domains: Search
+- Source references: OTD-005; DR-TECH-005 · Dependencies: —
+- Risks if unresolved: onboarding UX blocked · Final decision: — · Decision date: — · Approved by: —
+- Implementation consequences: search module · Document corrections required: none · Notes: —
+
+**DEC-TECH-009 — PDF and export generation tooling**
+- Category: Technology · Status: **OPEN_ENGINEERING** · Priority: D2
+- Decision question: Server-side method for receipts, invoices and report PDFs.
+- Options identified: to be proposed (headless render, PDF lib, service).
+- Recommended direction: none · Recommendation basis: OTD-010.
+- Current confirmed position: receipts/invoices required (TRD17/TRD22); tooling open.
+- Founder decision required: No · Decision owner: Engineering Lead · Required by phase: Phase 10/11 · Blocks: billing documents
+- Affected documents: TRD17; TRD15 · Affected domains: Subscription, Reporting
+- Source references: OTD-010; DR-TECH-008 · Dependencies: DEC-SUB-010
+- Risks if unresolved: billing docs blocked · Final decision: — · Decision date: — · Approved by: —
+- Implementation consequences: doc-generation service · Document corrections required: Engineering Standards · Notes: —
+
+**DEC-TECH-010 — Backup method and restore procedure**
+- Category: Technology · Status: **OPEN_ENGINEERING** · Priority: D3
+- Decision question: Confirm Firestore backup service, schedule, retention, restore procedure and Storage backup approach.
+- Options identified: per OTD-011.
+- Recommended direction: none · Recommendation basis: OTD-011; ORP-004 (backups must be restorable).
+- Current confirmed position: backup + tested restore is a launch gate (confirmed); method open.
+- Founder decision required: No · Decision owner: Engineering Lead · Required by phase: Phase 14 · Blocks: pilot-readiness gate
+- Affected documents: TRD20 · Affected domains: Operations
+- Source references: OTD-011; DR-TECH-009 · Dependencies: DEC-PROV-006 · Risks if unresolved: pilot gate fails
+- Final decision: — · Decision date: — · Approved by: —
+- Implementation consequences: backup jobs · Document corrections required: runbooks · Notes: —
+
+**DEC-TECH-011 — Administration shell deployment isolation**
+- Category: Technology · Status: **OPEN_ENGINEERING** · Priority: D2
+- Decision question: Separate deployment for the admin application (preferred) or protected shell within the main app?
+- Options identified: (a) separate deployment (TRD-preferred); (b) protected shell.
+- Recommended direction: (a) · Recommendation basis: OTD-012.
+- Current confirmed position: preference recorded, not decided.
+- Founder decision required: No · Decision owner: Engineering Lead · Required by phase: Phase 12 · Blocks: admin build
+- Affected documents: TRD16 §16.4.3; TRD18 · Affected domains: Administration, frontend
+- Source references: OTD-012; DR-TECH-010 · Dependencies: — · Risks if unresolved: admin isolation weaker
+- Final decision: — · Decision date: — · Approved by: —
+- Implementation consequences: hosting targets · Document corrections required: deployment docs · Notes: —
+
+**DEC-DATA-001 — Server-only authoritative writes**
+- Category: Data · Status: **CONFIRMED** · Priority: D1
+- Current confirmed position: Clients never write Purchase Records, verification outcomes, Verified Units, Loyalty Cycles, rewards, redemptions, subscriptions, roles, rules, taxonomy or Trust Events; trusted server processes only; deny-by-default rules.
+- Founder decision required: No · Options/Recommendation: n/a
+- Decision owner: Engineering Lead · Required by phase: Phase 1 · Blocks: —
+- Affected documents: TRD10 DAP-003/DA-006; TRD12 §12.18; consolidation audit §19.2 · Affected domains: all
+- Source references: as above; IM-008
+- Dependencies: — · Risks if unresolved: —
+- Final decision: as stated · Decision date: Pre-register approval — exact date not recorded · Approved by: Founder (TRD approval)
+- Implementation consequences: rules + Functions design · Document corrections required: none · Notes: —
+
+**DEC-DATA-002 — Money as integer minor units; UTC server timestamps**
+- Category: Data · Status: **CONFIRMED** · Priority: D1
+- Current confirmed position: Monetary values use integer minor units (never floating point); authoritative timestamps are server-generated UTC; business/customer timezones stored separately; ISO country/currency/language codes.
+- Founder decision required: No · Options/Recommendation: n/a
+- Decision owner: Engineering Lead · Required by phase: Phase 1 · Blocks: —
+- Affected documents: TRD10 §10.5/§10.27; DA-010/015; FR-DATA-013 · Affected domains: all data
+- Source references: as above
+- Dependencies: — · Risks if unresolved: —
+- Final decision: as stated · Decision date: Pre-register approval — exact date not recorded · Approved by: Founder (TRD approval)
+- Implementation consequences: schema standards · Document corrections required: none · Notes: —
+
+**DEC-DATA-003 — Purchase Record monetary fields**
+- Category: Data · Status: **CONFIRMED** · Priority: **D0**
+- Decision question: Do Purchase Records carry optional Unit Value + Currency (as PRD5 §5 mandates) or no monetary fields (as TRD10 schema implements)?
+- Context: PRD-vs-TRD data-contract conflict (audit DOC-P1-010); money on records raises DA-015 integer rule and privacy/minimization questions; value is never used for loyalty math either way.
+- Options identified: (a) optional integer-minor-unit value+currency, non-authoritative, reporting-only; (b) no monetary fields in MVP (PRD5 §5 corrected); (c) mandatory value.
+- Recommended direction: none — no single recommendation is made; options (a) and (b) are both viable, and engineering input on schema/privacy cost is advised · Recommendation basis: audit DOC-P1-010 analysis.
+- Current confirmed position: contradictory sources; OPEN.
+- Founder decision required: Yes · Decision owner: Founder + Engineering Lead · Required by phase: pre-freeze / Phase 5 · Blocks: freeze; Purchase Record schema
+- Affected documents: PRD5 §5; TRD10 §10.10.1 · Affected domains: Purchase, Data
+- Source references: audit DOC-P1-010; DR-TECH-011
+- Dependencies: — · Risks if unresolved: schema conflict at Phase 5
+- Final decision: **Approved, option (a) with an explicit boundary condition.** Purchase Records include optional monetary fields (Unit Value + Currency). These fields are reporting metadata only: money shall never influence Verified Units, Reward Program progression, Loyalty Cycles or reward eligibility, unless a future founder decision explicitly introduces amount-based Reward Programs. This rule is to be reflected consistently across affected documentation.
+- Decision date: 2026-07-16 · Approved by: Founder (Kenogo)
+- Implementation consequences: record schema gains optional non-authoritative monetary fields; Loyalty Engine logic must not read them · Document corrections required: PRD5 §5 note added; TRD10 §10.10.1 schema gains optional fields + explicit non-influence rule · Notes: founder agenda Batch A (freeze blocker) — ✅ answered 2026-07-16 (Phase 3B)
+
+**DEC-DATA-004 — reward_redeemed: durable state or transition**
+- Category: Data · Status: **OPEN_ENGINEERING** · Priority: D2
+- Decision question: Is Loyalty Cycle `reward_redeemed` a durable stored state or an immediate transition to `closed`?
+- Context: Explicitly delegated to Engineering Standards by consolidation audit §7.7.
+- Options identified: (a) durable state; (b) transition-only.
+- Recommended direction: none · Recommendation basis: —
+- Current confirmed position: canonical four-state list confirmed; durability open.
+- Founder decision required: No · Decision owner: Engineering Lead · Required by phase: Phase 7 · Blocks: cycle transition table
+- Affected documents: TRD10 §10.11.2; Engineering Standards · Affected domains: Loyalty
+- Source references: consolidation audit §7.7; DR-TECH-013 · Dependencies: DEC-LOY-008
+- Risks if unresolved: inconsistent cycle queries · Final decision: — · Decision date: — · Approved by: —
+- Implementation consequences: state machine · Document corrections required: Engineering Standards table · Notes: —
+
+**DEC-DATA-005 — Knowledge/rule state vocabulary unification**
+- Category: Data · Status: **OPEN_ENGINEERING** · Priority: D2
+- Decision question: Unify the three knowledge-object vocabularies (canonical draft/in_review/approved/published/retired/archived vs TRD10 pending_review/active vs Knowledge Studio pipeline) and rule-version variants (suspended/retired/archived differences).
+- Options identified: adopt canonical + map studio pipeline steps as process activities (audit recommendation).
+- Recommended direction: as above · Recommendation basis: terminology audit C.15/C.16.
+- Current confirmed position: canonical lists approved as target; schema alignment pending.
+- Founder decision required: No · Decision owner: Engineering Lead · Required by phase: Phase 3 (Knowledge Studio MVP) · Blocks: knowledge schema
+- Affected documents: TRD10 §10.7/10.8; Knowledge Studio doc · Affected domains: Commerce Knowledge, Rules
+- Source references: DR-ARCH-007; terminology audit C.15/C.16 · Dependencies: —
+- Risks if unresolved: mixed enums · Final decision: — · Decision date: — · Approved by: —
+- Implementation consequences: enum definitions · Document corrections required: TRD10/Knowledge Studio alignment · Notes: —
+
+**DEC-DATA-006 — Support-case and bulk-job state models**
+- Category: Data · Status: **OPEN_ENGINEERING** · Priority: D2
+- Decision question: Define state models for support cases and bulk jobs (none published).
+- Options identified: audit suggestions — support: open/in_progress/waiting_customer/resolved/closed; bulk job: draft/approved/running/paused/completed/failed/cancelled.
+- Recommended direction: audit suggestions as starting point · Recommendation basis: terminology audit C.17/C.19.
+- Current confirmed position: none.
+- Founder decision required: No · Decision owner: Engineering Lead · Required by phase: Phase 12 · Blocks: admin build
+- Affected documents: TRD18; Engineering Standards · Affected domains: Administration
+- Source references: DR-TECH-014 · Dependencies: — · Risks if unresolved: ad-hoc states
+- Final decision: — · Decision date: — · Approved by: —
+- Implementation consequences: admin schemas · Document corrections required: Engineering Standards tables · Notes: —
+
+**DEC-DATA-007 — Loyalty number and QR reference generation**
+- Category: Data · Status: **OPEN_ENGINEERING** · Priority: **D1**
+- Decision question: Define the loyalty-number format/generation algorithm (opaque, non-sequential, non-revealing) and the QR opaque/signed reference scheme.
+- Context: PRD2 §8 delegates the algorithm to the TRD; no TRD section specifies it (audit traceability gap §1); only constraints exist (no registration date/country/sequence disclosure; QR contains no personal data).
+- Options identified: to be proposed (random alphanumeric + checksum; signed QR token).
+- Recommended direction: none · Recommendation basis: constraints in PRD2 §8–9, TRD12 QR privacy.
+- Current confirmed position: constraints confirmed; algorithm open.
+- Founder decision required: No · Decision owner: Engineering Lead · Required by phase: Phase 2 · Blocks: customer identity issuance
+- Affected documents: PRD2 §8; TRD12; Engineering Standards · Affected domains: Identity, Security
+- Source references: DR-TECH-012 · Dependencies: — · Risks if unresolved: identity generation ad hoc
+- Final decision: — · Decision date: — · Approved by: —
+- Implementation consequences: generator service · Document corrections required: Engineering Standards spec · Notes: —
+
+**DEC-OPS-001 — Environment strategy**
+- Category: Operations · Status: **CONFIRMED** · Priority: D1
+- Current confirmed position: Local / development / staging / production with isolated Firebase projects, controlled CI/CD, deny-by-default deployment permissions, configuration classified (public/server/secrets/governed runtime).
+- Founder decision required: No · Options/Recommendation: n/a
+- Decision owner: Engineering Lead · Required by phase: Phases 0–1 · Blocks: —
+- Affected documents: TRD20 §20.4–20.8; TRD8 §8.3 · Affected domains: Operations
+- Source references: as above
+- Dependencies: — · Risks if unresolved: —
+- Final decision: as stated · Decision date: Pre-register approval — exact date not recorded · Approved by: Founder (TRD approval)
+- Implementation consequences: project provisioning · Document corrections required: none · Notes: —
+
+---
+
+### UX, LOCALIZATION (DEC-UX / DEC-L10N)
+
+**DEC-UX-001 — No engineering vocabulary in customer copy**
+- Category: UX · Status: **CONFIRMED** · Priority: D1
+- Current confirmed position: engine, ledger, lifecycle, state machine, event, token never appear in customer copy; stored states have defined UI labels ("Waiting for You" etc.); On Us Moment language is the customer reward experience.
+- Founder decision required: No · Options/Recommendation: n/a
+- Decision owner: Founder · Required by phase: Phases 6–13 · Blocks: —
+- Affected documents: TRD23 §23.9; TRD13 §13.11; canonical reference §4 · Affected domains: frontend, Notification
+- Source references: as above
+- Dependencies: — · Risks if unresolved: —
+- Final decision: as stated · Decision date: Pre-register approval — exact date not recorded · Approved by: Founder (TRD approval)
+- Implementation consequences: copy review gate (Phase 13) · Document corrections required: none · Notes: —
+
+**DEC-UX-002 — Customer action verb: "Verify" vs "Approve"**
+- Category: UX · Status: **OPEN_FOUNDER** · Priority: D2
+- Decision question: Which verb does the customer UI use for confirming a purchase — Verify or Approve (both appear in the PRD)?
+- Context: PRD2 §15 buttons say Approve; PRD5 §14 buttons say Verify; engineering term is "verify" (confirmed). One customer-facing choice + EN/FR translation keys needed.
+- Options identified: (a) Verify; (b) Approve (UI-only, stored action remains verify).
+- Recommended direction: none — brand voice choice · Recommendation basis: —
+- Current confirmed position: engineering vocabulary fixed; UI verb open.
+- Founder decision required: Yes · Decision owner: Founder · Required by phase: Phase 6 (copy freeze Phase 13) · Blocks: customer verification copy
+- Affected documents: PRD2 §15; PRD5 §14; translation keys · Affected domains: frontend
+- Source references: DR-PROD-010; terminology audit Part E
+- Dependencies: — · Risks if unresolved: mixed UI copy
+- Final decision: — · Decision date: — · Approved by: —
+- Implementation consequences: translation keys · Document corrections required: PRD2/PRD5 UI wording · Notes: founder agenda Batch B
+
+**DEC-UX-003 — Public business profile scope at MVP**
+- Category: UX · Status: **OPEN_FOUNDER** · Priority: D3
+- Decision question: Can customers browse a basic public business profile, or is business information visible only through the customer's own activity? (No marketplace either way.)
+- Context: OPD-008; TRD23 §23.15 permits minimal public pages "where required for Reward Program visibility" without expanding into a marketplace.
+- Options identified: (a) minimal profile page (name, category, active Reward Programs); (b) activity-only visibility.
+- Recommended direction: (a) minimal · Recommendation basis: TRD23 §23.15.
+- Current confirmed position: no marketplace/discovery in MVP (confirmed); profile scope open.
+- Founder decision required: Yes · Decision owner: Founder · Required by phase: Phase 13 (customer navigation freeze) · Blocks: customer navigation
+- Affected documents: TRD23 §23.15; TRD14 · Affected domains: frontend, Search
+- Source references: OPD-008; DR-PROD-006 · Dependencies: DEC-FUT-001 boundary
+- Risks if unresolved: navigation churn · Final decision: — · Decision date: — · Approved by: —
+- Implementation consequences: public routes · Document corrections required: TRD14/16 note · Notes: founder agenda Batch E
+
+**DEC-UX-004 — Minimum customer confirmation information shown to business**
+- Category: UX · Status: **CONFIRMED** · Priority: D2
+- Current confirmed position: During lookup businesses see only the minimum confirmation data (display name/loyalty reference) — never phone, email, full profile, or cross-business activity (TRD21 §21.17–21.18; PRD2 §20).
+- Founder decision required: No · Options/Recommendation: n/a
+- Decision owner: Founder · Required by phase: Phase 5 · Blocks: —
+- Affected documents: TRD21 §21.17–21.19; PRD2 §20 · Affected domains: Identity, Purchase
+- Source references: as above; BR-013/014
+- Dependencies: DEC-ID-004 · Risks if unresolved: —
+- Final decision: as stated · Decision date: Pre-register approval — exact date not recorded · Approved by: Founder (TRD approval)
+- Implementation consequences: lookup response contract · Document corrections required: none · Notes: —
+
+**DEC-L10N-001 — Launch languages EN + FR; three languages architecture-ready**
+- Category: Localization · Status: **CONFIRMED** · Priority: D1
+- Current confirmed position: English and French complete for all launch-critical journeys (customer, business, admin-critical, errors, notifications, legal docs, knowledge labels); Kirundi, Swahili, Kinyarwanda architecture-ready (codes, files, fallback, no hardcoded English); translation keys everywhere.
+- Founder decision required: No · Options/Recommendation: n/a
+- Decision owner: Founder · Required by phase: every phase + 13 · Blocks: —
+- Affected documents: TRD13; TRD22 §22.23/FR-IMP-007; TRD23 §23.34; CKS XI · Affected domains: all
+- Source references: consolidation audit §16; A-012
+- Dependencies: — · Risks if unresolved: —
+- Final decision: as stated · Decision date: Pre-register approval — exact date not recorded · Approved by: Founder (TRD approval)
+- Implementation consequences: translation gates per phase · Document corrections required: none · Notes: —
+
+**DEC-L10N-002 — Kirundi completion timing**
+- Category: Localization · Status: **DEFERRED** · Priority: D4
+- Decision question: When is complete Kirundi translation delivered?
+- Context: Architecture-ready at launch; TRD22 §22.46 places broader language work in post-MVP priorities; a concrete commitment date is a future founder call.
+- Options identified: post-pilot; Burundi growth phase; with Rwanda expansion (Kinyarwanda parallel).
+- Recommended direction: revisit at post-launch Priority 2 (Burundi growth) · Recommendation basis: TRD22 §22.46.
+- Current confirmed position: deferred beyond MVP (confirmed); timing unset.
+- Founder decision required: Yes (later) · Decision owner: Founder · Required by phase: post-MVP · Blocks: nothing in MVP
+- Affected documents: TRD13; TRD22 · Affected domains: Localization
+- Source references: TRD22 §22.6/§22.46 · Dependencies: pilot French-comprehension evidence (AS-012)
+- Risks if unresolved: none for MVP · Final decision: — · Decision date: — · Approved by: —
+- Implementation consequences: none now · Document corrections required: none · Notes: —
+
+---
+
+### EXTERNAL PROVIDERS (DEC-PROV) — all OPEN_PROVIDER
+
+**DEC-PROV-001 — Burundi subscription payment provider**
+- Category: Providers · Status: **OPEN_PROVIDER** · Priority: D2
+- Decision question: Select the initial BIF mobile-money collection provider (API, callbacks, settlement, fees, sandbox, agreement).
+- Options identified: Burundi mobile-money providers to be evaluated (none named in suite).
+- Recommended direction: none · Recommendation basis: OTD-009 criteria.
+- Current confirmed position: Subscription Domain stays provider-independent via Integration adapters (confirmed).
+- Founder decision required: Countersign commercial terms · Decision owner: Founder + Engineering Lead · Required by phase: Phase 10 · Blocks: subscription payments
+- Affected documents: TRD9; TRD17 · Affected domains: Integration, Subscription
+- Source references: OTD-009; TRD23 §23.23; DR-PROV-004 · Dependencies: EXT-PROV-001, EXT-LEG-004
+- Risks if unresolved: Phase 10 blocked · Final decision: — · Decision date: — · Approved by: —
+- Implementation consequences: provider adapter · Document corrections required: integration decision record · Notes: —
+
+**DEC-PROV-002 — SMS provider** — Status: **OPEN_PROVIDER** · Priority: D2 · Question: Burundi transactional SMS provider. Owner: Engineering Lead · Required by: Phase 9 · Blocks: SMS notifications · Sources: OTD-008; TRD23 §23.23 · Dependencies: EXT-PROV-002 · Other fields: as template; Final decision/date/approved: — · Notes: push uses FCM (confirmed).
+
+**DEC-PROV-003 — Email provider** — Status: **OPEN_PROVIDER** · Priority: D2 · Question: transactional email delivery + status tracking. Owner: Engineering Lead · Required by: Phase 9 · Blocks: email notifications · Sources: OTD-008 · Dependencies: EXT-PROV-003; domain/DNS (DEC-PROV-007) · Final decision/date/approved: — · Notes: —
+
+**DEC-PROV-004 — Phone OTP delivery route** — Status: **OPEN_PROVIDER** · Priority: **D1** · Question: Firebase-native OTP vs external SMS route for Burundi numbers. Owner: Engineering Lead · Required by: Phase 2 · Blocks: customer authentication · Sources: OTD-004; TRD23 §23.23 · Dependencies: EXT-TECH-001; DEC-SEC-001 · Final decision/date/approved: — · Notes: —
+
+**DEC-PROV-005 — Error monitoring provider** — Status: **OPEN_PROVIDER** · Priority: **D1** · Question: frontend + server error visibility tooling. Owner: Engineering Lead · Required by: Phase 1 · Blocks: observability foundation · Sources: TRD23 §23.23 · Dependencies: — · Final decision/date/approved: — · Notes: —
+
+**DEC-PROV-006 — Backup service** — Status: **OPEN_PROVIDER** · Priority: D3 · Question: Firestore/Storage backup tooling (with DEC-TECH-010). Owner: Engineering Lead · Required by: Phase 14 · Blocks: pilot gate · Sources: OTD-011; TRD23 §23.23 · Dependencies: DEC-TECH-010 · Final decision/date/approved: — · Notes: —
+
+**DEC-PROV-007 — Domain and DNS** — Status: **OPEN_PROVIDER** · Priority: D3 · Question: production domain, DNS and email authentication setup. Owner: Founder + Engineering Lead · Required by: Phase 16 · Blocks: production launch · Sources: TRD23 §23.23 · Dependencies: DEC-PROV-003 · Final decision/date/approved: — · Notes: —
+
+---
+
+### LEGAL AND COMPLIANCE (DEC-LEGAL) — all OPEN_LEGAL; no legal conclusions are made in this register
+
+**DEC-LEGAL-001 — Burundi privacy framework, retention and marketing consent**
+- Category: Legal · Status: **OPEN_LEGAL** · Priority: D3
+- Decision question: Confirm the applicable Burundi privacy framework: customer rights, marketing/consent rules, retention periods, breach obligations.
+- Context: TRD21 architecture (consent, rights service, retention classes) is built; legal values/validation outstanding.
+- Options identified: n/a — external legal review required.
+- Recommended direction: none (no legal conclusion) · Recommendation basis: —
+- Current confirmed position: privacy-by-design architecture confirmed; legal parameters open.
+- Founder decision required: Accept legal advice · Decision owner: Founder + legal adviser · Required by phase: Phase 14 / pilot gate · Blocks: pilot launch
+- Affected documents: TRD21 · Affected domains: Identity, all
+- Source references: LCD-001; DR-LEGAL-001 · Dependencies: EXT-LEG-001
+- Risks if unresolved: launch blocker · Final decision: — · Decision date: — · Approved by: —
+- Implementation consequences: retention job values, consent text · Document corrections required: privacy docs · Notes: includes retention-period values and marketing-consent rules
+
+**DEC-LEGAL-002 — Consumer/loyalty terms and business reward obligations** — Status: **OPEN_LEGAL** · Priority: D3 · Question: Reward Program terms, business obligation to honour rewards, dispute language, platform liability, subscription terms. Owner: Founder + legal adviser · Required by: Phase 14/pilot · Blocks: pilot launch; business agreements · Sources: LCD-002; DR-LEGAL-002 · Dependencies: EXT-LEG-002 · Final decision/date/approved: — · Notes: —
+
+**DEC-LEGAL-003 — Burundi electronic billing requirements** — Status: **OPEN_LEGAL** · Priority: D2 · Question: invoice/receipt content, tax display, e-record retention, possible e-invoicing obligations. Owner: Founder + legal adviser · Required by: Phase 10 · Blocks: billing documents · Sources: LCD-003; DR-LEGAL-003 · Dependencies: EXT-LEG-003; DEC-SUB-008; DEC-TECH-009 · Final decision/date/approved: — · Notes: —
+
+**DEC-LEGAL-004 — Mobile-money merchant agreement** — Status: **OPEN_LEGAL** · Priority: D2 · Question: merchant integration terms, settlement, refunds, callback evidence, support responsibilities. Owner: Founder · Required by: Phase 10 · Blocks: payment provider go-live · Sources: LCD-004; DR-LEGAL-004 · Dependencies: DEC-PROV-001; EXT-PROV-001 · Final decision/date/approved: — · Notes: commercial agreement + legal review
+
+**DEC-LEGAL-005 — Minimum account age, children and family data** — Status: **OPEN_LEGAL** · Priority: D2 · Question: minimum independent account age, guardian requirements, treatment of children's purchases under family loyalty-number use. Owner: Founder + legal adviser · Required by: Phase 2 (registration policy) / Phase 14 gate · Blocks: registration policy text · Sources: LCD-005; DR-LEGAL-005; TRD21 §21.40–21.42 · Dependencies: EXT-LEG-004 · Final decision/date/approved: — · Notes: interacts with DEC-LOY-007
+
+**DEC-LEGAL-006 — Cross-border Firebase hosting position** — Status: **OPEN_LEGAL** · Priority: **D1** · Question: approved hosting regions, notice/contractual safeguards, provider disclosures for Burundi data hosted abroad. Owner: Founder + legal adviser · Required by: Phase 1 (region selection) · Blocks: DEC-TECH-005 · Sources: LCD-006; DR-LEGAL-006 · Dependencies: EXT-LEG-005 · Final decision/date/approved: — · Notes: —
+
+---
+
+### PILOT (DEC-PILOT)
+
+**DEC-PILOT-001 — Pilot cohort: categories, size, location**
+- Category: Pilot · Status: **OPEN_FOUNDER** · Priority: D3
+- Decision question: Which business categories (from TRD22's balanced list: salon/barbershop, coffee/café, restaurant, car wash, bakery, other recurring service), how many businesses, and confirm Bujumbura-first.
+- Options identified: cohort sizes/mixes to be proposed; TRD22 §22.25 criteria: staff-trainable, reward-honouring businesses.
+- Recommended direction: TRD22 balanced-cohort guidance · Recommendation basis: TRD22 §22.25.
+- Current confirmed position: pilot structure and validation areas confirmed (TRD22); cohort specifics open.
+- Founder decision required: Yes · Decision owner: Founder · Required by phase: Phase 15 · Blocks: pilot preparation
+- Affected documents: TRD22 §22.25 · Affected domains: all
+- Source references: TRD22; A-001/A-002 · Dependencies: DEC-SUB-013
+- Risks if unresolved: pilot delay · Final decision: — · Decision date: — · Approved by: —
+- Implementation consequences: pilot onboarding plan · Document corrections required: pilot plan doc · Notes: founder agenda Batch E
+
+**DEC-PILOT-002 — Public-launch go/no-go criteria confirmation**
+- Category: Pilot · Status: **OPEN_FOUNDER** · Priority: D3
+- Decision question: Confirm the pilot-exit and production-launch gates (TRD22 §22.25–22.26) as the go/no-go standard, plus any founder-added thresholds (e.g., minimum verification rate).
+- Options identified: (a) TRD22 gates as-is; (b) gates + quantitative pilot thresholds.
+- Recommended direction: (a) is the documented minimum; (b) is suggested as stronger practice — founder chooses · Recommendation basis: TRD22 §22.45.
+- Current confirmed position: technical exit gates defined (TRD22); founder thresholds open.
+- Founder decision required: Yes · Decision owner: Founder · Required by phase: Phase 15/16 · Blocks: launch decision
+- Affected documents: TRD22 §22.25–22.26/§22.45 · Affected domains: all
+- Source references: TRD22 · Dependencies: assumptions register validations
+- Risks if unresolved: unclear launch bar · Final decision: — · Decision date: — · Approved by: —
+- Implementation consequences: launch checklist · Document corrections required: launch plan · Notes: founder agenda Batch E
+
+---
+
+### FUTURE SCOPE (DEC-FUT) — all DEFERRED per TRD22 §22.6/§22.46; deferral is not rejection
+
+**DEC-FUT-001 — Public marketplace, nearby search, map discovery, recommendations** — Status: **DEFERRED** · Priority: D4 · Deferred to: Verified Business/Commerce layers; revisit post-pilot (TRD22 §22.46 Priority 2+). Sources: TRD22 §22.6; TRD23 §23.15 · Boundary decision at MVP: DEC-UX-003. Final decision/date/approved: — · Other fields: per TRD22.
+
+**DEC-FUT-002 — Customer wallet (funding, payments, transfers)** — Status: **DEFERRED** · Priority: D4 · Deferred to: Verified Commerce (Priority 5). Sources: TRD22 §22.6; PRD6 §22 (architecture-readiness only). Final decision/date/approved: —.
+
+**DEC-FUT-003 — Verified Gift Cards and reward gifting/transfer** — Status: **DEFERRED** · Priority: D4 · Deferred to: Verified Commerce (Priority 5); architecture must not require redesign (FR-RP-011/012 PRD6). Sources: TRD22 §22.6; PRD6 §21–22; PRD7 §16. Final decision/date/approved: —.
+
+**DEC-FUT-004 — POS integration, public API, CRM/accounting integrations** — Status: **DEFERRED** · Priority: D4 · Deferred to: Verified Business (Priority 4); Integration Domain adapters keep readiness. Sources: TRD22 §22.6/§22.37; TRD9 §9.4. Final decision/date/approved: —.
+
+**DEC-FUT-005 — Multi-branch operation and franchises** — Status: **DEFERRED** · Priority: D4 · Deferred to: Verified Business (Priority 4); data stays branch-ready (DEC-SUB-005). Sources: TRD22 §22.6; TRD23 §23.14; PRD10 §12. Final decision/date/approved: —.
+
+**DEC-FUT-006 — Advanced analytics, benchmarking, AI recommendations, Experience/Intelligence Studios** — Status: **DEFERRED** · Priority: D4 · Deferred to: Priorities 4–6; AI never auto-publishes or bypasses verification (BR-085, confirmed). Sources: TRD22 §22.6; PRD9 §18; Rules Studio (studios 3–4 marked future). Final decision/date/approved: —.
+
+**DEC-FUT-007 — Promotions, referral, birthday and seasonal campaigns** — Status: **DEFERRED** · Priority: D4 · Deferred to: Verified Commerce; birthday activation additionally gated by DEC-PROD-013. Sources: TRD22 §22.6; PRD0 §19.2. Final decision/date/approved: —.
+
+**DEC-FUT-008 — Points, tiers, stacked rewards, configurable thresholds, coalition loyalty** — Status: **DEFERRED** · Priority: D4 · Deferred: explicitly excluded from MVP; threshold configurability requires formal product approval (DEC-LOY-001). Sources: TRD22 §22.6; PRD0 §19.2. Final decision/date/approved: —.
+
+---
+
+## 5. Register Summary
+
+| Status | Count |
+|---|---|
+| CONFIRMED | 37 |
+| OPEN_FOUNDER | 24 |
+| OPEN_ENGINEERING | 15 |
+| OPEN_PROVIDER | 7 |
+| OPEN_LEGAL | 6 |
+| DEFERRED | 10 |
+| SUPERSEDED | 4 |
+| REJECTED | 0 (no option in the suite was explicitly considered and rejected outright; exclusions are DEFERRED per TRD22) |
+| **Total records** | **103** |
+
+Freeze blockers (D0 × 4): DEC-GOV-001 (document hierarchy), DEC-GOV-006 (ID renumbering approval), DEC-LOY-010 (batch rejection), DEC-DATA-003 (Purchase Record monetary fields).
+
+Companion files: [Founder Decision Agenda](founder-decision-agenda.md) · [External Dependencies Register](external-dependencies-register.md) · [Assumptions Register](assumptions-register.md) · [Phase 3 Reconciliation](phase-3-reconciliation.md)

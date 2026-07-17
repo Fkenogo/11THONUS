@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>11thONUS | Record Purchase</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700;800&amp;family=Inter:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-secondary-container": "#fffbff",
+                    "primary-container": "#1c1b1b",
+                    "primary": "#000000",
+                    "on-tertiary-fixed-variant": "#5e4200",
+                    "secondary": "#ab2e00",
+                    "tertiary-fixed-dim": "#fcbc2f",
+                    "on-primary-fixed": "#1c1b1b",
+                    "on-secondary-fixed-variant": "#862200",
+                    "surface-container-lowest": "#ffffff",
+                    "outline-variant": "#c4c7c7",
+                    "on-primary": "#ffffff",
+                    "inverse-primary": "#c8c6c5",
+                    "primary-fixed": "#e5e2e1",
+                    "tertiary-fixed": "#ffdea6",
+                    "on-background": "#1a1c1d",
+                    "error": "#ba1a1a",
+                    "outline": "#747878",
+                    "tertiary": "#000000",
+                    "surface-container": "#eeeeef",
+                    "on-secondary-fixed": "#3b0a00",
+                    "surface-container-low": "#f3f3f4",
+                    "on-primary-container": "#858383",
+                    "surface-dim": "#dadadb",
+                    "on-secondary": "#ffffff",
+                    "surface-container-highest": "#e2e2e3",
+                    "secondary-fixed": "#ffdbd1",
+                    "on-tertiary-fixed": "#271900",
+                    "surface-bright": "#f9f9fa",
+                    "primary-fixed-dim": "#c8c6c5",
+                    "on-primary-fixed-variant": "#474646",
+                    "on-surface": "#1a1c1d",
+                    "secondary-fixed-dim": "#ffb59f",
+                    "inverse-surface": "#2f3132",
+                    "inverse-on-surface": "#f0f1f2",
+                    "surface-container-high": "#e8e8e9",
+                    "surface": "#f9f9fa",
+                    "on-tertiary-container": "#ab7b00",
+                    "background": "#f9f9fa",
+                    "error-container": "#ffdad6",
+                    "on-error-container": "#93000a",
+                    "on-surface-variant": "#444748",
+                    "surface-tint": "#5f5e5e",
+                    "on-tertiary": "#ffffff",
+                    "surface-variant": "#e2e2e3",
+                    "tertiary-container": "#271900",
+                    "secondary-container": "#d63c00",
+                    "on-error": "#ffffff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "stack-lg": "48px",
+                    "space-unit": "8px",
+                    "container-padding-desktop": "40px",
+                    "gutter": "16px",
+                    "stack-md": "24px",
+                    "container-padding-mobile": "20px",
+                    "stack-sm": "8px"
+            },
+            "fontFamily": {
+                    "headline-xl": ["Hanken Grotesk"],
+                    "headline-md": ["Hanken Grotesk"],
+                    "body-md": ["Inter"],
+                    "headline-lg": ["Hanken Grotesk"],
+                    "label-md": ["Inter"],
+                    "headline-sm": ["Hanken Grotesk"],
+                    "body-lg": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "headline-lg-mobile": ["Hanken Grotesk"]
+            },
+            "fontSize": {
+                    "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-lg-mobile": ["28px", {"lineHeight": "34px", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .scanner-frame {
+            position: relative;
+            overflow: hidden;
+        }
+        .scanner-line {
+            width: 100%;
+            height: 2px;
+            background: #FF4F11;
+            position: absolute;
+            top: 0;
+            left: 0;
+            box-shadow: 0 0 15px #FF4F11;
+            animation: scan 3s linear infinite;
+        }
+        @keyframes scan {
+            0% { top: 0; }
+            50% { top: 100%; }
+            100% { top: 0; }
+        }
+        .keypad-button:active {
+            transform: scale(0.92);
+            background-color: #eeeeef;
+        }
+        body {
+            background-color: #f9f9fa;
+            overscroll-behavior-y: contain;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-body-md text-on-surface">
+<!-- Top Navigation (Shell suppressed for linear task focus, using simple Back header) -->
+<header class="bg-surface sticky top-0 z-40 border-b border-outline-variant">
+<div class="flex justify-between items-center w-full px-5 py-4 max-w-7xl mx-auto">
+<button class="p-2 -ml-2 rounded-full hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined align-middle">arrow_back</span>
+</button>
+<h1 class="font-headline-sm text-headline-sm font-bold text-primary tracking-tight">Record Purchase</h1>
+<div class="w-10"></div> <!-- Spacer for balance -->
+</div>
+</header>
+<main class="flex flex-col min-h-[calc(100vh-64px)] pb-safe">
+<!-- Scanner Section (60% focus) -->
+<section class="flex-grow flex flex-col bg-black overflow-hidden relative">
+<!-- Simulated Camera View -->
+<div class="absolute inset-0 opacity-60">
+<div class="w-full h-full bg-cover bg-center" data-alt="A POV shot of a point-of-sale environment with a blurred espresso machine and counter in the background. The lighting is moody and industrial, focused on the central scanning area. The overall aesthetic is professional, clean, and utilitarian, emphasizing a high-end commercial setting with deep blacks and sharp focus." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCxL5iUygipbArOR7ICWUFIGPY01yUtSR4FdtIq5JwTJDCIRkcqtL1HM2oosH7QIi2yz9Tm6E8ondIaaoxljWW_nyvaAcVAh9C3dLL8bfCkKrR5dEDeeGxi5Yhca8wBUBrl4kHekeqYtF3S6tbRGIDqkAjfF-AaILPH2SD_xhag-cftMERBLdv-VZFt8a-UtuPB52bGzuMw1pJ6JDhMURUKVpCFAPTnLFY2wSrDi2SvR1oog9bUK4st1Hl0ciOToFT1w95oQEiuc1I')"></div>
+</div>
+<!-- Scanner Overlay -->
+<div class="relative flex-grow flex items-center justify-center p-10">
+<div class="w-full max-w-xs aspect-square border-2 border-white/30 rounded-xl relative overflow-hidden scanner-frame">
+<!-- Corners -->
+<div class="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-[#FF4F11] rounded-tl-lg"></div>
+<div class="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-[#FF4F11] rounded-tr-lg"></div>
+<div class="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-[#FF4F11] rounded-bl-lg"></div>
+<div class="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-[#FF4F11] rounded-br-lg"></div>
+<div class="scanner-line"></div>
+</div>
+</div>
+<!-- Manual Input Trigger (Subtle) -->
+<div class="bg-gradient-to-t from-surface-container-lowest to-transparent pt-12 pb-4 px-5 text-center">
+<p class="font-label-md text-label-md text-on-surface-variant uppercase mb-2">Align customer QR code</p>
+<div class="flex items-center justify-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">keyboard</span>
+<button class="font-label-md text-label-md underline" id="manual-code-toggle">Enter Code Manually</button>
+</div>
+</div>
+</section>
+<!-- Transaction Details Section -->
+<section class="bg-surface-container-lowest px-5 pt-6 pb-4 border-t border-outline-variant">
+<div class="max-w-md mx-auto">
+<div class="flex flex-col gap-1 mb-4">
+<label class="font-label-md text-label-md text-on-surface-variant ml-1">TRANSACTION AMOUNT</label>
+<div class="flex items-baseline justify-between border-b-2 border-primary pb-2">
+<span class="font-headline-lg text-headline-lg text-primary">$</span>
+<div class="font-headline-lg text-headline-lg text-primary" id="display-amount">0.00</div>
+</div>
+</div>
+<!-- Manual Code Input (Hidden by default) -->
+<div class="hidden flex flex-col gap-1 mb-4" id="manual-code-container">
+<label class="font-label-md text-label-md text-on-surface-variant ml-1">CUSTOMER CODE</label>
+<input class="w-full border border-outline rounded-lg px-4 py-3 font-headline-sm focus:border-secondary focus:ring-0 outline-none transition-all uppercase tracking-widest text-center" placeholder="e.g. 883-992" type="text"/>
+</div>
+</div>
+</section>
+<!-- Numeric Keypad (Fixed) -->
+<section class="bg-surface-container-lowest px-2 pb-6">
+<div class="max-w-md mx-auto grid grid-cols-3 gap-2">
+<button class="keypad-button h-16 rounded-xl bg-surface-container-low flex items-center justify-center font-headline-md text-headline-md text-primary transition-all" onclick="appendDigit('1')">1</button>
+<button class="keypad-button h-16 rounded-xl bg-surface-container-low flex items-center justify-center font-headline-md text-headline-md text-primary transition-all" onclick="appendDigit('2')">2</button>
+<button class="keypad-button h-16 rounded-xl bg-surface-container-low flex items-center justify-center font-headline-md text-headline-md text-primary transition-all" onclick="appendDigit('3')">3</button>
+<button class="keypad-button h-16 rounded-xl bg-surface-container-low flex items-center justify-center font-headline-md text-headline-md text-primary transition-all" onclick="appendDigit('4')">4</button>
+<button class="keypad-button h-16 rounded-xl bg-surface-container-low flex items-center justify-center font-headline-md text-headline-md text-primary transition-all" onclick="appendDigit('5')">5</button>
+<button class="keypad-button h-16 rounded-xl bg-surface-container-low flex items-center justify-center font-headline-md text-headline-md text-primary transition-all" onclick="appendDigit('6')">6</button>
+<button class="keypad-button h-16 rounded-xl bg-surface-container-low flex items-center justify-center font-headline-md text-headline-md text-primary transition-all" onclick="appendDigit('7')">7</button>
+<button class="keypad-button h-16 rounded-xl bg-surface-container-low flex items-center justify-center font-headline-md text-headline-md text-primary transition-all" onclick="appendDigit('8')">8</button>
+<button class="keypad-button h-16 rounded-xl bg-surface-container-low flex items-center justify-center font-headline-md text-headline-md text-primary transition-all" onclick="appendDigit('9')">9</button>
+<button class="keypad-button h-16 rounded-xl bg-surface-container-low flex items-center justify-center font-headline-md text-headline-md text-primary transition-all" onclick="clearAmount()">C</button>
+<button class="keypad-button h-16 rounded-xl bg-surface-container-low flex items-center justify-center font-headline-md text-headline-md text-primary transition-all" onclick="appendDigit('0')">0</button>
+<button class="keypad-button h-16 rounded-xl bg-surface-container-low flex items-center justify-center font-headline-md text-headline-md text-primary transition-all" onclick="backspace()">
+<span class="material-symbols-outlined">backspace</span>
+</button>
+</div>
+<!-- Main CTA -->
+<div class="max-w-md mx-auto mt-6">
+<button class="w-full bg-[#FF4F11] text-white font-headline-sm py-5 rounded-xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-3" id="confirm-btn">
+                    Confirm &amp; Send
+                    <span class="material-symbols-outlined">send</span>
+</button>
+</div>
+</section>
+</main>
+<!-- Success Modal (Hidden) -->
+<div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-5 opacity-0 pointer-events-none transition-opacity duration-300" id="success-overlay">
+<div class="bg-surface-container-lowest w-full max-w-sm rounded-2xl p-8 text-center shadow-2xl transform scale-90 transition-transform duration-300" id="success-card">
+<div class="w-20 h-20 bg-secondary/10 rounded-full flex items-center justify-center mx-auto mb-6">
+<span class="material-symbols-outlined text-secondary text-[48px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<h2 class="font-headline-lg text-headline-lg text-primary mb-2">Purchase Recorded</h2>
+<p class="font-body-md text-on-surface-variant mb-8">Customer rewards points have been updated successfully.</p>
+<button class="w-full bg-primary text-white font-headline-sm py-4 rounded-xl" onclick="resetUI()">Next Transaction</button>
+</div>
+</div>
+<script>
+        let currentAmount = "0";
+        const displayEl = document.getElementById('display-amount');
+        const manualCodeToggle = document.getElementById('manual-code-toggle');
+        const manualCodeContainer = document.getElementById('manual-code-container');
+        const confirmBtn = document.getElementById('confirm-btn');
+        const successOverlay = document.getElementById('success-overlay');
+        const successCard = document.getElementById('success-card');
+
+        function updateDisplay() {
+            let val = parseInt(currentAmount);
+            if (isNaN(val)) val = 0;
+            const formatted = (val / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            displayEl.innerText = formatted;
+            
+            if (val > 0) {
+                confirmBtn.classList.replace('opacity-50', 'opacity-100');
+            } else {
+                confirmBtn.classList.add('opacity-50');
+            }
+        }
+
+        function appendDigit(digit) {
+            if (currentAmount.length >= 7) return; // Limit for safety
+            if (currentAmount === "0") {
+                currentAmount = digit;
+            } else {
+                currentAmount += digit;
+            }
+            updateDisplay();
+        }
+
+        function clearAmount() {
+            currentAmount = "0";
+            updateDisplay();
+        }
+
+        function backspace() {
+            if (currentAmount.length > 1) {
+                currentAmount = currentAmount.slice(0, -1);
+            } else {
+                currentAmount = "0";
+            }
+            updateDisplay();
+        }
+
+        manualCodeToggle.addEventListener('click', () => {
+            manualCodeContainer.classList.toggle('hidden');
+            manualCodeToggle.innerText = manualCodeContainer.classList.contains('hidden') ? 'Enter Code Manually' : 'Hide Manual Input';
+        });
+
+        confirmBtn.addEventListener('click', () => {
+            if (parseInt(currentAmount) === 0) return;
+            
+            // Show loading state if needed, but here we go straight to success for "speed"
+            successOverlay.classList.remove('opacity-0', 'pointer-events-none');
+            successCard.classList.remove('scale-90');
+            successCard.classList.add('scale-100');
+        });
+
+        function resetUI() {
+            successOverlay.classList.add('opacity-0', 'pointer-events-none');
+            successCard.classList.add('scale-90');
+            successCard.classList.remove('scale-100');
+            clearAmount();
+            if(!manualCodeContainer.classList.contains('hidden')) {
+                manualCodeContainer.classList.add('hidden');
+                manualCodeToggle.innerText = 'Enter Code Manually';
+            }
+        }
+
+        // Initialize display
+        updateDisplay();
+    </script>
+</body></html>

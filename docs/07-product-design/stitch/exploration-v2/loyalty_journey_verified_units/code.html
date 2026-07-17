@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>11thONUS - Loyalty Journey</title>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700&amp;family=Inter:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Design System Config -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-secondary-container": "#fffbff",
+                    "primary-container": "#1c1b1b",
+                    "primary": "#000000",
+                    "on-tertiary-fixed-variant": "#5e4200",
+                    "secondary": "#ab2e00",
+                    "tertiary-fixed-dim": "#fcbc2f",
+                    "on-primary-fixed": "#1c1b1b",
+                    "on-secondary-fixed-variant": "#862200",
+                    "surface-container-lowest": "#ffffff",
+                    "outline-variant": "#c4c7c7",
+                    "on-primary": "#ffffff",
+                    "inverse-primary": "#c8c6c5",
+                    "primary-fixed": "#e5e2e1",
+                    "tertiary-fixed": "#ffdea6",
+                    "on-background": "#1a1c1d",
+                    "error": "#ba1a1a",
+                    "outline": "#747878",
+                    "tertiary": "#000000",
+                    "surface-container": "#eeeeef",
+                    "on-secondary-fixed": "#3b0a00",
+                    "surface-container-low": "#f3f3f4",
+                    "on-primary-container": "#858383",
+                    "surface-dim": "#dadadb",
+                    "on-secondary": "#ffffff",
+                    "surface-container-highest": "#e2e2e3",
+                    "secondary-fixed": "#ffdbd1",
+                    "on-tertiary-fixed": "#271900",
+                    "surface-bright": "#f9f9fa",
+                    "primary-fixed-dim": "#c8c6c5",
+                    "on-primary-fixed-variant": "#474646",
+                    "on-surface": "#1a1c1d",
+                    "secondary-fixed-dim": "#ffb59f",
+                    "inverse-surface": "#2f3132",
+                    "inverse-on-surface": "#f0f1f2",
+                    "surface-container-high": "#e8e8e9",
+                    "surface": "#f9f9fa",
+                    "on-tertiary-container": "#ab7b00",
+                    "background": "#f9f9fa",
+                    "error-container": "#ffdad6",
+                    "on-error-container": "#93000a",
+                    "on-surface-variant": "#444748",
+                    "surface-tint": "#5f5e5e",
+                    "on-tertiary": "#ffffff",
+                    "surface-variant": "#e2e2e3",
+                    "tertiary-container": "#271900",
+                    "secondary-container": "#d63c00",
+                    "on-error": "#ffffff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "stack-lg": "48px",
+                    "space-unit": "8px",
+                    "container-padding-desktop": "40px",
+                    "gutter": "16px",
+                    "stack-md": "24px",
+                    "container-padding-mobile": "20px",
+                    "stack-sm": "8px"
+            },
+            "fontFamily": {
+                    "headline-xl": ["Hanken Grotesk"],
+                    "headline-md": ["Hanken Grotesk"],
+                    "body-md": ["Inter"],
+                    "headline-lg": ["Hanken Grotesk"],
+                    "label-md": ["Inter"],
+                    "headline-sm": ["Hanken Grotesk"],
+                    "body-lg": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "headline-lg-mobile": ["Hanken Grotesk"]
+            },
+            "fontSize": {
+                    "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-lg-mobile": ["28px", {"lineHeight": "34px", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #f9f9fa;
+            color: #1a1c1d;
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        .timeline-line {
+            width: 1px;
+            background: #e5e2e1;
+            position: absolute;
+            left: 20px;
+            top: 0;
+            bottom: 0;
+            z-index: 0;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .micro-shadow {
+            box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.04);
+        }
+    </style>
+<style>
+        body {
+            min-height: max(884px, 100dvh);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface">
+<!-- TopAppBar -->
+<header class="bg-surface sticky top-0 z-50 border-b border-outline-variant">
+<div class="flex justify-between items-center w-full px-5 py-4 max-w-7xl mx-auto">
+<div class="flex items-center gap-4">
+<button class="p-2 hover:bg-surface-container-low transition-colors rounded-full">
+<span class="material-symbols-outlined text-primary">menu</span>
+</button>
+<h1 class="font-headline-md text-headline-md font-bold text-primary tracking-tight">11thONUS</h1>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-2 hover:bg-surface-container-low transition-colors rounded-full">
+<span class="material-symbols-outlined text-primary">account_circle</span>
+</button>
+</div>
+</div>
+</header>
+<main class="max-w-xl mx-auto px-container-padding-mobile md:px-container-padding-desktop py-stack-lg mb-24">
+<!-- Hero Section -->
+<section class="mb-stack-md">
+<h2 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary mb-2">Verified Units</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Your journey toward professional excellence and curated rewards.</p>
+</section>
+<!-- Status Card -->
+<div class="bg-white border border-outline-variant rounded-xl p-6 mb-stack-md micro-shadow">
+<div class="flex items-end justify-between mb-4">
+<div>
+<span class="font-label-md text-label-md uppercase tracking-widest text-on-surface-variant block mb-1">Loyalty Status</span>
+<span class="font-headline-sm text-headline-sm text-primary">7 of 10 Verified</span>
+</div>
+<div class="text-right">
+<span class="font-label-md text-label-md uppercase tracking-widest text-on-surface-variant block mb-1">Target</span>
+<span class="font-body-md text-body-md font-semibold text-primary">11th On Us</span>
+</div>
+</div>
+<!-- Geometric Grid Status (Visual Indicator) -->
+<div class="grid grid-cols-5 gap-2">
+<!-- Verified -->
+<div class="h-2 rounded-full bg-primary"></div>
+<div class="h-2 rounded-full bg-primary"></div>
+<div class="h-2 rounded-full bg-primary"></div>
+<div class="h-2 rounded-full bg-primary"></div>
+<div class="h-2 rounded-full bg-primary"></div>
+<!-- Verified -->
+<div class="h-2 rounded-full bg-primary"></div>
+<div class="h-2 rounded-full bg-primary"></div>
+<!-- Unverified -->
+<div class="h-2 rounded-full bg-surface-container-highest"></div>
+<div class="h-2 rounded-full bg-surface-container-highest"></div>
+<div class="h-2 rounded-full bg-surface-container-highest"></div>
+</div>
+</div>
+<!-- Vertical Timeline Journey -->
+<div class="relative space-y-8">
+<div class="timeline-line"></div>
+<!-- Verified Units (1-7) -->
+<!-- Simplified for space, showing latest activity and structure -->
+<div class="relative z-10 flex items-start gap-5">
+<div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white shrink-0">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<div class="flex-1 pt-2">
+<div class="flex justify-between items-start">
+<div>
+<h4 class="font-body-md text-body-md font-bold text-primary">Seventh Unit Verified</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Today at 11:42 AM</p>
+</div>
+<span class="font-label-md text-label-md text-on-surface-variant">07</span>
+</div>
+</div>
+</div>
+<!-- Pending Verification -->
+<div class="relative z-10 flex items-start gap-5">
+<div class="w-10 h-10 rounded-full border-2 border-primary flex items-center justify-center text-primary shrink-0 bg-white">
+<span class="font-label-md font-bold">08</span>
+</div>
+<div class="flex-1 bg-surface-container-low p-4 rounded-xl border border-outline-variant">
+<div class="flex justify-between items-center">
+<div>
+<h4 class="font-body-md text-body-md font-bold text-primary">Next Unit</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Ready for verification</p>
+</div>
+<span class="material-symbols-outlined text-primary">qr_code_scanner</span>
+</div>
+</div>
+</div>
+<!-- Moments that Matter (Step 9) -->
+<div class="relative z-10 flex items-start gap-5">
+<div class="w-10 h-10 rounded-full border border-outline flex items-center justify-center text-outline shrink-0 bg-white opacity-40">
+<span class="font-label-md font-bold">09</span>
+</div>
+<div class="flex-1 pt-2">
+<div class="flex justify-between items-start">
+<div>
+<h4 class="font-body-md text-body-md font-semibold text-primary">Moment that Matters</h4>
+<p class="font-body-sm text-body-sm text-secondary font-semibold italic">The next one is on us</p>
+</div>
+<span class="font-label-md text-label-md text-on-surface-variant opacity-40">09</span>
+</div>
+</div>
+</div>
+<!-- Step 10 -->
+<div class="relative z-10 flex items-start gap-5">
+<div class="w-10 h-10 rounded-full border border-outline flex items-center justify-center text-outline shrink-0 bg-white opacity-40">
+<span class="font-label-md font-bold">10</span>
+</div>
+<div class="flex-1 pt-2">
+<div class="flex justify-between items-start">
+<h4 class="font-body-md text-body-md font-semibold text-on-surface-variant">Final Verification</h4>
+<span class="font-label-md text-label-md text-on-surface-variant opacity-40">10</span>
+</div>
+</div>
+</div>
+<!-- The 11th Reward Block: On Us Moment -->
+<div class="relative z-10 flex items-center gap-5 mt-10">
+<div class="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-white shrink-0 ring-4 ring-white shadow-md">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">military_tech</span>
+</div>
+<div class="flex-1 bg-white p-5 rounded-xl border border-secondary/20 micro-shadow ring-1 ring-secondary/10">
+<div class="flex items-center gap-2 mb-1">
+<h3 class="font-headline-sm text-headline-sm text-primary">The 11th On Us</h3>
+<span class="px-2 py-0.5 bg-secondary/10 text-secondary text-[10px] font-bold uppercase tracking-wider rounded">Locked</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">3 more verifications to reach your executive reward.</p>
+</div>
+</div>
+</div>
+<!-- Call to Action -->
+<div class="mt-stack-lg">
+<button class="w-full py-4 bg-primary text-white rounded-lg font-body-md font-bold flex items-center justify-center gap-3 hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined">qr_code_scanner</span>
+                Verify Current Unit
+            </button>
+<p class="text-center mt-4 font-label-md text-label-md text-on-surface-variant uppercase tracking-widest">Authorized Partners Only</p>
+</div>
+<!-- Reward Preview Section -->
+<section class="mt-stack-lg">
+<div class="flex items-center justify-between mb-6">
+<h3 class="font-headline-sm text-headline-sm">Reward Selection</h3>
+<a class="text-label-md font-bold text-primary underline" href="#">View All</a>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div class="col-span-2 relative h-48 rounded-xl overflow-hidden group">
+<div class="w-full h-full bg-cover bg-center transition-transform duration-700 group-hover:scale-110" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBFbxPt_Ucy22Cz_ivJh7LyoV2ouimpeK4diiD1FveWv6WZGKBhXm74aCwK2RLgjPvvYun5mPLM0cICqVuQQdFktlIM1YZW4TtKnWA2B-EWix8p9_gWt_jJgKn8S5xbnL3-45HnA9rUUpuQCacHNAbX41j5QrmI5XXqhmoJjD-oR80Q5DOhzxnnbzR7eWL05rmLY9akYh802F9BGe2pFd9IkqVKfVxCw2alhJFXT7atpC5ot5lTrsUJuXqbrbFwZUprGkvpuMtKbZQ')"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex flex-col justify-end p-6">
+<span class="font-label-md text-label-md text-tertiary-fixed mb-1 uppercase">Next Milestone Reward</span>
+<h4 class="text-white font-headline-md">Executive Blend Kit</h4>
+</div>
+</div>
+<div class="relative h-40 rounded-xl overflow-hidden group">
+<div class="w-full h-full bg-cover bg-center transition-transform duration-700 group-hover:scale-110" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCqFy3JObNl1DpfDBeSh225nhpv03BSfgTmQgJisHUX9MiYGxx4uTQ_XzRBkc39DKlOoOhKKypz1mFV2HH1jA8KfBih6q44nzgCvgIz_Sv5UICAzjJOAm5Dy2_UrXEXW19JzTVqpkCV9PMXDc5j1lmOt2CAsBJBCks_Yn-RTwufeWIdCn4fLrlGbD90VM1opREKk3SE_WrxbE_YobBBR-wtr52YXfB-1URybh_-DyQp9XKSo1HHiFF-ZLCrnhZkG4p6_JTMkD73Kz8')"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex flex-col justify-end p-4">
+<h4 class="text-white font-body-md font-bold">Premium Ledger</h4>
+</div>
+</div>
+<div class="relative h-40 rounded-xl overflow-hidden group">
+<div class="w-full h-full bg-cover bg-center transition-transform duration-700 group-hover:scale-110" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuC5KhKhfbsYRcTF-B8WZkitLSWJ9LAJZAx3pKNdFU6fWjCYq_soEOZaSo2hm1GCsJN8NPAPSaQ0KCXcRbIn8EpS7lpnGEtRu3knZuEtPH3bbtocSXQ-_OtVjJYn2IuNP30I5C8eC0W20SvrJMzryliIggCyBYknGdcPGIdHo7pc0jQ0NLdzuNNvJIwWvpif12272yE339NhMyLVHRHRRKJ2AcWj32YrT0YvOp_AosuVsVXCAkKRkAVsIch6KAkRw3iOD-y8-6LwkYc')"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex flex-col justify-end p-4">
+<h4 class="text-white font-body-md font-bold">Focus Access</h4>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pt-3 pb-6 bg-surface border-t border-outline-variant">
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-md text-label-md mt-1">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary font-semibold" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">receipt_long</span>
+<span class="font-label-md text-label-md mt-1">Journey</span>
+</a>
+<div class="relative -top-4">
+<button class="w-14 h-14 rounded-full bg-primary flex items-center justify-center text-white shadow-lg active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-3xl">qr_code_scanner</span>
+</button>
+</div>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">military_tech</span>
+<span class="font-label-md text-label-md mt-1">Rewards</span>
+</a>
+</nav>
+<script>
+        document.querySelectorAll('button, a').forEach(el => {
+            el.addEventListener('mousedown', () => {
+                el.classList.add('scale-95');
+            });
+            el.addEventListener('mouseup', () => {
+                el.classList.remove('scale-95');
+            });
+            el.addEventListener('mouseleave', () => {
+                el.classList.remove('scale-95');
+            });
+        });
+
+        const observerOptions = {
+            threshold: 0.1
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('opacity-100');
+                    entry.target.classList.remove('translate-y-4');
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.relative.z-10').forEach(el => {
+            el.classList.add('transition-all', 'duration-700', 'ease-out');
+            observer.observe(el);
+        });
+    </script>
+</body></html>
