@@ -108,3 +108,19 @@
 - **Risks:** none new; the fix directly addresses a real, evidenced CI-environment difference (this machine's local Java is version 25, so the same failure could not have been caught by local validation alone)
 - **Rollback:** revert commit `4f625b1` (single-file change to `.github/workflows/ci.yml`) — `git revert 4f625b1 && git push origin feat/eng-p0-002-ci-foundation`
 - **Report link:** see the addendum in [`docs/05-implementation/reports/ENG-P0-002-implementation-report-2026-07-17.md`](../05-implementation/reports/ENG-P0-002-implementation-report-2026-07-17.md) §14
+
+---
+
+## 2026-07-17 — ENG-P0-002 — Technical Review
+
+- **Date:** 2026-07-17
+- **Phase:** TRD22 §22.10 — Phase 0, Repository and Delivery Foundation
+- **Task:** ENG-P0-002 Technical Review (independent verification, per the Coding Agent Standard, Technical Review Standard, and TRD22 §22.41), against the actual `feat/eng-p0-002-ci-foundation` branch, PR #1, and its real GitHub Actions evidence
+- **Status:** Review complete — **outcome APPROVED FOR MERGE**. PR #1 was **not** merged by this review; that decision belongs to the Founder. ENG-P0-002 status moved `In Progress` → `Under Review` in the tracking documents.
+- **Files changed:** `docs/05-implementation/reports/ENG-P0-002-implementation-report-2026-07-17.md` (three stale passages corrected to final-state wording — §8, §11, §12; §14's historical failure evidence untouched); `docs/05-implementation/change-tracking/coding-agent-prompt-register.md` and `docs/05-implementation/change-tracking/engineering-implementation-programme.md` (ENG-P0-002 rows reconciled with real commit/PR/CI evidence — no other row touched); new file `docs/05-implementation/reports/ENG-P0-002-technical-review-2026-07-17.md`.
+- **Tests:** full local validation suite re-executed independently on `HEAD` (`852b104`) — build, lint, format:check, typecheck, unit/component tests, Playwright e2e, Firebase Emulator Suite validation, `actionlint` — all passed; GitHub evidence independently verified via `gh pr checks 1` and a full per-step breakdown of run [`29609818932`](https://github.com/Fkenogo/11THONUS/actions/runs/29609818932) (`gh run view --job=...`), confirming a genuine complete pass, not a partial or skipped run.
+- **Configuration:** no configuration was changed as part of this review — the workflow, templates, and every other ENG-P0-002 artifact were verified as already correct.
+- **Migrations:** none.
+- **Risks:** no new risk found; see the Technical Review report §13.
+- **Rollback:** unchanged — see the Technical Review report §15 (close PR #1 without merging; no revert against `main` needed since `main` was never touched).
+- **Report link:** [`docs/05-implementation/reports/ENG-P0-002-technical-review-2026-07-17.md`](../05-implementation/reports/ENG-P0-002-technical-review-2026-07-17.md) — exists in the working tree; committed to `feat/eng-p0-002-ci-foundation`, not yet merged to `main`.
