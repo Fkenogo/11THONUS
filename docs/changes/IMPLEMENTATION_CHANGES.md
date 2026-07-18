@@ -76,3 +76,51 @@
   ```
   This creates a new commit that undoes ENG-P0-001's changes while preserving history — it does not touch `.git/` structure, `.env.local`, or force-rewrite `origin/main`. A local-only, pre-push rollback (not applicable now, since the commit is already pushed) would instead have been `git reset --hard` to the parent of `3a50710`; that option no longer applies once a commit is shared with the remote.
 - **Report link:** [`docs/05-implementation/reports/ENG-P0-001-closure-and-eng-p0-002-readiness-report-2026-07-17.md`](../05-implementation/reports/ENG-P0-001-closure-and-eng-p0-002-readiness-report-2026-07-17.md) — exists in the working tree; not yet committed (per this task's explicit instruction not to commit or push).
+
+---
+
+## 2026-07-17 — ENG-P0-002 — CI Pipeline, Templates and Change-Tracking Scaffold
+
+- **Date:** 2026-07-17
+- **Phase:** TRD22 §22.10 — Phase 0, Repository and Delivery Foundation
+- **Task:** ENG-P0-002 (second work package of the engineering implementation programme, issued against the finalized prompt at `docs/05-implementation/prompts/ENG-P0-002.md`)
+- **Status:** Implemented and locally validated on branch `feat/eng-p0-002-ci-foundation`; awaiting the branch's own CI run and Technical Review (not marked complete by the implementing agent)
+- **Files changed:** see the [Implementation Report](../05-implementation/reports/ENG-P0-002-implementation-report-2026-07-17.md) for the full created/modified list — summary: new CI workflow (`.github/workflows/ci.yml`), new PR template, new implementation-report template, new change-entry template (kept separate from this live log), plus this entry and the Prompt Register/Programme tracking updates
+- **Tests:** every §11 verification command from the prompt run locally and passed (install/build/lint/format:check/typecheck/test/Playwright e2e/emulator validation); workflow YAML validated with `actionlint` (zero findings); the actual CI run triggered by this work package's own pull request is the primary acceptance evidence — see the Implementation Report's addendum for the observed result
+- **Configuration:** one new GitHub Actions workflow (`.github/workflows/ci.yml`) — pnpm 9.15.9 and Node 20 pinned explicitly (matching the repository's own pinned versions), pnpm store cached via `actions/setup-node`'s built-in `cache: pnpm` mode, failure artifacts (`playwright-report/`, `test-results/`, both emulator debug logs) uploaded on any step failure, zero secrets used anywhere in the pipeline. No existing configuration file was modified.
+- **Migrations:** none.
+- **Risks:** see the Implementation Report §11; primarily whether the Firestore Emulator runs reliably in CI without further setup — answered empirically by the actual CI run rather than assumed.
+- **Rollback:** see the Implementation Report §13 for the full file-by-file list (workflow file, PR template, report template, entry template, this work package's own report, and the tracking-document edits below) — do not describe rollback as merely "delete the workflow and templates."
+- **Report link:** [`docs/05-implementation/reports/ENG-P0-002-implementation-report-2026-07-17.md`](../05-implementation/reports/ENG-P0-002-implementation-report-2026-07-17.md) — exists in the working tree as of this entry; committed to `feat/eng-p0-002-ci-foundation`, not yet merged to `main`.
+
+---
+
+## 2026-07-17 — ENG-P0-002 — CI Failure Investigation and Fix
+
+- **Date:** 2026-07-17
+- **Phase:** TRD22 §22.10 — Phase 0, Repository and Delivery Foundation
+- **Task:** ENG-P0-002 CI failure investigation and correction, against the actual pull request (`#1`) and its real Actions run — not a hypothetical
+- **Status:** Fixed and verified — the branch's CI now passes. Not marked complete; PR #1 was not merged (explicitly out of scope for this task)
+- **Files changed:** `.github/workflows/ci.yml` (one step added: `Set up Java (JDK 21+ required by the Firestore Emulator)`, via `actions/setup-java@v4`, immediately before the existing Java-verification step); `docs/05-implementation/reports/ENG-P0-002-implementation-report-2026-07-17.md` §14 addendum
+- **Tests:** original run [`29608691029`](https://github.com/Fkenogo/11THONUS/actions/runs/29608691029) failed at the `Firebase Emulator Suite validation` step (`firebase-tools no longer supports Java version before 21`, runner default is Temurin 17); rerun [`29609566311`](https://github.com/Fkenogo/11THONUS/actions/runs/29609566311) after the fix — all steps pass, `gh pr checks 1` reports `pass`
+- **Configuration:** one new CI step (JDK 21 setup via `actions/setup-java@v4`); no application, tooling, or dependency file changed
+- **Migrations:** none
+- **Risks:** none new; the fix directly addresses a real, evidenced CI-environment difference (this machine's local Java is version 25, so the same failure could not have been caught by local validation alone)
+- **Rollback:** revert commit `4f625b1` (single-file change to `.github/workflows/ci.yml`) — `git revert 4f625b1 && git push origin feat/eng-p0-002-ci-foundation`
+- **Report link:** see the addendum in [`docs/05-implementation/reports/ENG-P0-002-implementation-report-2026-07-17.md`](../05-implementation/reports/ENG-P0-002-implementation-report-2026-07-17.md) §14
+
+---
+
+## 2026-07-17 — ENG-P0-002 — Technical Review
+
+- **Date:** 2026-07-17
+- **Phase:** TRD22 §22.10 — Phase 0, Repository and Delivery Foundation
+- **Task:** ENG-P0-002 Technical Review (independent verification, per the Coding Agent Standard, Technical Review Standard, and TRD22 §22.41), against the actual `feat/eng-p0-002-ci-foundation` branch, PR #1, and its real GitHub Actions evidence
+- **Status:** Review complete — **outcome APPROVED FOR MERGE**. PR #1 was **not** merged by this review; that decision belongs to the Founder. ENG-P0-002 status moved `In Progress` → `Under Review` in the tracking documents.
+- **Files changed:** `docs/05-implementation/reports/ENG-P0-002-implementation-report-2026-07-17.md` (three stale passages corrected to final-state wording — §8, §11, §12; §14's historical failure evidence untouched); `docs/05-implementation/change-tracking/coding-agent-prompt-register.md` and `docs/05-implementation/change-tracking/engineering-implementation-programme.md` (ENG-P0-002 rows reconciled with real commit/PR/CI evidence — no other row touched); new file `docs/05-implementation/reports/ENG-P0-002-technical-review-2026-07-17.md`.
+- **Tests:** full local validation suite re-executed independently on `HEAD` (`852b104`) — build, lint, format:check, typecheck, unit/component tests, Playwright e2e, Firebase Emulator Suite validation, `actionlint` — all passed; GitHub evidence independently verified via `gh pr checks 1` and a full per-step breakdown of run [`29609818932`](https://github.com/Fkenogo/11THONUS/actions/runs/29609818932) (`gh run view --job=...`), confirming a genuine complete pass, not a partial or skipped run.
+- **Configuration:** no configuration was changed as part of this review — the workflow, templates, and every other ENG-P0-002 artifact were verified as already correct.
+- **Migrations:** none.
+- **Risks:** no new risk found; see the Technical Review report §13.
+- **Rollback:** unchanged — see the Technical Review report §15 (close PR #1 without merging; no revert against `main` needed since `main` was never touched).
+- **Report link:** [`docs/05-implementation/reports/ENG-P0-002-technical-review-2026-07-17.md`](../05-implementation/reports/ENG-P0-002-technical-review-2026-07-17.md) — exists in the working tree; committed to `feat/eng-p0-002-ci-foundation`, not yet merged to `main`.
