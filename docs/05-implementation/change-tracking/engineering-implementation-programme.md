@@ -2,7 +2,7 @@
 > **Version:** 1.0 · **Status:** Active governance record · **Classification:** Working (governance record)
 > **Governing document:** 11thONUS Platform Constitution; TRD Chapter 22
 > **Source-of-truth path:** `docs/05-implementation/change-tracking/engineering-implementation-programme.md`
-> **Last controlled update:** 2026-07-17 (ENG-P0-001 Closure Tracking — ENG-P0-001 Complete; ENG-P0-002 Ready; Phase 0 In Progress; created Engineering Transition Phase 0A)
+> **Last controlled update:** 2026-07-18 (ENG-P0-002 Closure and Phase 0 Completion — ENG-P0-002 Complete; Phase 0 Complete; Phase 1 remains Blocked on DEC-TECH-005/DEC-PROV-005; created Engineering Transition Phase 0A)
 
 # 11thONUS Engineering Implementation Programme
 
@@ -79,7 +79,7 @@ Reporting and Administration → Pilot Readiness
 
 | Phase | Name | Primary Domain(s) | Decision Dependencies (D1 shown bold) | Current Status |
 |---|---|---|---|---|
-| P0 | Repository and Delivery Foundation | Cross-cutting (infrastructure) | **DEC-TECH-003**, **DEC-TECH-004** (both CONFIRMED, Sprint 2) | **In Progress** — ENG-P0-001 Complete; ENG-P0-002 Ready |
+| P0 | Repository and Delivery Foundation | Cross-cutting (infrastructure) | **DEC-TECH-003**, **DEC-TECH-004** (both CONFIRMED, Sprint 2) | **Complete** — ENG-P0-001 Complete; ENG-P0-002 Complete; exit criteria satisfied |
 | P1 | Firebase and Shared Platform Foundation | Cross-cutting (server) | **DEC-TECH-005** (open), **DEC-TECH-006**/**DEC-TECH-007** (CONFIRMED, Sprint 2), **DEC-PROV-005** (open) | Blocked (depends on P0 completion + DEC-TECH-005 + DEC-PROV-005) |
 | P2 | Identity, Roles and Business Context | Identity | **DEC-SEC-001**, **DEC-ID-003**, **DEC-DATA-007**, **DEC-PROV-004** | Blocked (depends on P1 + 4 D1 decisions) |
 | P3 | Commerce Knowledge and Business Onboarding | Commerce Knowledge | None D1; DEC-TECH-008 (D2, search) | Blocked (depends on P2) |
@@ -116,7 +116,7 @@ Each profile below follows the same structure: Phase ID, Name, Purpose, Primary 
 - **Expected Tests:** build passes; lint passes; unit test framework runs a placeholder suite; emulator suite starts cleanly.
 - **Expected Deployment State:** none — Phase 0 has no deployment target; CI runs against the repository only.
 - **Manual QA Requirement:** No.
-- **Current Status:** **In Progress — ENG-P0-001 is `Complete`** (implemented, Technical Review Approved, committed `3a50710`, pushed to `origin/main` — see the [Implementation Report](../reports/ENG-P0-001-implementation-report-2026-07-17.md) and [Technical Review](../reports/ENG-P0-001-technical-review-2026-07-17.md)). **ENG-P0-002 is `Ready`** — its sequential precondition (ENG-P0-001 complete) is now satisfied; a finalized prompt has been prepared ([`ENG-P0-002.md`](../prompts/ENG-P0-002.md)) but not yet issued. Phase 0 itself remains `In Progress`, not `Complete`, until ENG-P0-002 also reaches Complete — see the [Phase 0 Authorization](../phase-0-authorization.md) record and the [Engineering Transition D1 Agenda](../../00-governance/decisions/engineering-transition-d1-agenda.md) for the original decision analysis.
+- **Current Status:** **Complete.** Both work packages are `Complete`: **ENG-P0-001** (implemented, Technical Review Approved, committed `3a50710`, pushed to `origin/main` — see its [Implementation Report](../reports/ENG-P0-001-implementation-report-2026-07-17.md) and [Technical Review](../reports/ENG-P0-001-technical-review-2026-07-17.md)) and **ENG-P0-002** (implemented, Technical Review Approved, merged via [PR #1](https://github.com/Fkenogo/11THONUS/pull/1) at `e316565` on 2026-07-18T09:00:18Z, post-merge CI [passed](https://github.com/Fkenogo/11THONUS/actions/runs/29638421819) — see its [Implementation Report](../reports/ENG-P0-002-implementation-report-2026-07-17.md), [Technical Review](../reports/ENG-P0-002-technical-review-2026-07-17.md), and [Closure Report](../reports/ENG-P0-002-closure-and-phase-0-completion-report-2026-07-18.md)). TRD22 §22.10's exit criteria (project builds; tests run; emulator starts; CI passes; no product-domain implementation) are all satisfied with direct evidence from CI run `29638421819` on `main`. See the [Phase 0 Authorization](../phase-0-authorization.md) record and the [Engineering Transition D1 Agenda](../../00-governance/decisions/engineering-transition-d1-agenda.md) for the original decision analysis. **Phase 1 remains `Blocked`** — see its own profile below; no Phase 1 work package is Ready.
 
 **Work Packages**
 
@@ -133,12 +133,12 @@ Each profile below follows the same structure: Phase ID, Name, Purpose, Primary 
 | Required Validation | build, lint, typecheck, unit-test-runner smoke test, emulator start | CI pipeline dry run |
 | Deployment Required | No | No |
 | Manual QA Required | No | No |
-| Status | **Complete** | **Under Review** |
-| Blocking Reason | — (none; complete) | — (none; implemented, CI-corrected and passing on `feat/eng-p0-002-ci-foundation`; awaiting the Founder's merge decision) |
-| Implementation Report | [ENG-P0-001 Implementation Report](../reports/ENG-P0-001-implementation-report-2026-07-17.md) · [Technical Review (Approved)](../reports/ENG-P0-001-technical-review-2026-07-17.md) | [ENG-P0-002 Implementation Report](../reports/ENG-P0-002-implementation-report-2026-07-17.md) · [Technical Review](../reports/ENG-P0-002-technical-review-2026-07-17.md) |
-| Commit Hash | `3a50710` | `852b104` (branch `feat/eng-p0-002-ci-foundation`) |
-| Deployment Reference | N/A — Phase 0 has no deployment target (see profile above) | N/A |
-| Notes | Per TRD22 §22.10 exit criteria, no product-domain code may be introduced here. Deployment/Preview Review/Manual QA recorded N/A per the Programme's own Phase 0 profile ("Expected Deployment State: none"; "Manual QA Requirement: No"), not skipped. | Establishes the IM-013 "founder-readable implementation report" habit from the very first phase. Finalized prompt: [`ENG-P0-002.md`](../prompts/ENG-P0-002.md) (issued and implemented). Pull request: [#1](https://github.com/Fkenogo/11THONUS/pull/1) (open, mergeable, not merged). Latest passing CI run: [`29609818932`](https://github.com/Fkenogo/11THONUS/actions/runs/29609818932). **Not** marked Complete — merge decision and Phase 0 closure remain outstanding, distinct Founder actions. |
+| Status | **Complete** | **Complete** |
+| Blocking Reason | — (none; complete) | — (none; complete) |
+| Implementation Report | [ENG-P0-001 Implementation Report](../reports/ENG-P0-001-implementation-report-2026-07-17.md) · [Technical Review (Approved)](../reports/ENG-P0-001-technical-review-2026-07-17.md) | [ENG-P0-002 Implementation Report](../reports/ENG-P0-002-implementation-report-2026-07-17.md) · [Technical Review (Approved)](../reports/ENG-P0-002-technical-review-2026-07-17.md) · [Closure Report](../reports/ENG-P0-002-closure-and-phase-0-completion-report-2026-07-18.md) |
+| Commit Hash | `3a50710` | `e316565` (merge commit on `main`) |
+| Deployment Reference | N/A — Phase 0 has no deployment target (see profile above) | N/A — Phase 0 has no deployment target (see profile above) |
+| Notes | Per TRD22 §22.10 exit criteria, no product-domain code may be introduced here. Deployment/Preview Review/Manual QA recorded N/A per the Programme's own Phase 0 profile ("Expected Deployment State: none"; "Manual QA Requirement: No"), not skipped. | Establishes the IM-013 "founder-readable implementation report" habit from the very first phase. Finalized prompt: [`ENG-P0-002.md`](../prompts/ENG-P0-002.md) (issued and implemented). Pull request: [#1](https://github.com/Fkenogo/11THONUS/pull/1) — merged 2026-07-18T09:00:18Z, branch `feat/eng-p0-002-ci-foundation` deleted. Post-merge CI on `main`: [`29638421819`](https://github.com/Fkenogo/11THONUS/actions/runs/29638421819) — passed. |
 
 ---
 
@@ -155,7 +155,7 @@ Each profile below follows the same structure: Phase ID, Name, Purpose, Primary 
 - **Expected Tests:** emulator-based integration tests for the shared command contract; Security Rules tests for deny-by-default; idempotent outbox processing test.
 - **Expected Deployment State:** development and staging Firebase projects provisioned; production project created but access-restricted.
 - **Manual QA Requirement:** No (automated/emulator validation only at this stage).
-- **Current Status:** Blocked — depends on Phase 0 completion and 2 remaining items (**DEC-TECH-005**, **DEC-PROV-005**); DEC-TECH-006/007 are CONFIRMED and no longer block this phase at the architectural level.
+- **Current Status:** Blocked — Phase 0 is now `Complete` (2026-07-18), so that precondition is satisfied; Phase 1 entry still depends on 2 remaining, genuinely open items confirmed against the live Decision Register: **DEC-TECH-005** (Firebase region, `OPEN_ENGINEERING`) and **DEC-PROV-005** (error monitoring provider, `OPEN_PROVIDER`). DEC-TECH-006/007 are CONFIRMED and no longer block this phase at the architectural level. No Phase 1 work package is Ready — see the [DEC-TECH-005 Founder Decision Brief](../../00-governance/decisions/dec-tech-005-firebase-region-decision-brief.md), prepared instead of an implementation prompt.
 
 **Work Packages**
 
