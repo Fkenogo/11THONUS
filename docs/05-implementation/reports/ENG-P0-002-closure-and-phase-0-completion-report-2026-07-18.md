@@ -1,5 +1,5 @@
 > **Title:** ENG-P0-002 Closure, Phase 0 Completion, and Phase 1 Readiness Report
-> **Status:** Governance task complete — submitted for Technical Review. Not committed, not pushed.
+> **Status:** Original Phase 0 closure content committed and pushed as `c8f0bb6` on `main` (2026-07-18). The Rwanda/Burundi jurisdiction correction below (§11a) is a subsequent governance correction, applied after `c8f0bb6`, currently pending review and its own separate commit/push.
 > **Date:** 2026-07-18
 > **Classification:** Target-only addition (did not exist in the migrated documentation source)
 
@@ -93,6 +93,7 @@ Checked directly against the live [Decision Register](../../00-governance/decisi
 - **DEC-TECH-005 — Firebase region:** `OPEN_ENGINEERING`. *"Options identified: candidate regions to be evaluated... evaluation not yet performed."* Depends on **DEC-LEGAL-006** (`OPEN_LEGAL`, cross-border hosting position, owner Founder + legal adviser).
 - **DEC-PROV-005 — Error monitoring provider:** `OPEN_PROVIDER`. No evaluation performed.
 - **DEC-TECH-006 / DEC-TECH-007:** `CONFIRMED` (Engineering Decision Sprint 2) — no longer block Phase 1 at the architectural level.
+- **Jurisdiction context (Founder clarification, 2026-07-18):** 11thONUS is operated and managed from **Kigali, Rwanda**; **Burundi is the pilot and first launch market**, not the operator's base. DEC-LEGAL-006 must therefore establish the legally admissible hosting and cross-border-transfer position for a **Rwanda-based operator serving Burundi pilot users** — covering the Rwanda operator's own obligations, Burundi pilot-user data protections, and the transfer path between Rwanda, Burundi, and the eventual cloud jurisdiction — not a Burundi-only legal question. This does not resolve DEC-LEGAL-006 or DEC-TECH-005; both remain open. See the corrected [DEC-TECH-005 Founder Decision Brief](../../00-governance/decisions/dec-tech-005-firebase-region-decision-brief.md) §0.
 
 Per-work-package assessment:
 
@@ -119,6 +120,14 @@ No Phase 1 work package's status was changed in the tracking documents — none 
 
 - `docs/00-governance/decisions/dec-tech-005-firebase-region-decision-brief.md` — Founder Decision Brief, per §9 above.
 - `docs/05-implementation/reports/ENG-P0-002-closure-and-phase-0-completion-report-2026-07-18.md` — this report.
+
+### 11a. Jurisdiction and Language Baseline Correction (2026-07-18, applied as a subsequent correction after `c8f0bb6`)
+
+The original Phase 0 closure package (this report, the Decision Brief, and the two tracking-document/README updates) was committed and pushed as `c8f0bb6` on `main`. **After** that commit, the Founder clarified the platform's operating geography: **11thONUS is operated and managed from Kigali, Rwanda; Burundi is the pilot and first launch market**, not the operator's base. The Decision Brief (§9/§11 above) and this report (§8) originally used Burundi-only framing in places and have been corrected in place — this is a content correction to an already-committed working governance document, applied on top of `c8f0bb6` and pending its own separate review and commit, not a rewrite of `c8f0bb6`'s own git history and not a rewrite of the append-only changes log (that file instead received a new, separate corrective entry — see its own latest entry). One additional file was created as part of this same correction pass:
+
+- `docs/05-implementation/prompts/DEC-LEGAL-006-DEC-TECH-005-evidence-pack.md` — a decision-*research* prompt (not an implementation prompt), instructing a future agent to gather legal and technical evidence for DEC-LEGAL-006 and DEC-TECH-005 under the corrected Rwanda-operator/Burundi-pilot framing. It does not resolve either decision, select a region, or perform any Phase 1 implementation.
+
+Language scope was also checked against the Founder's restated direction (English and French only; Swahili/Kinyarwanda/Kirundi not currently in scope) and found **already governed** by an existing `CONFIRMED` decision, **DEC-L10N-001** ("Launch languages EN + FR; three languages architecture-ready") — its content already matches the Founder's direction exactly (English/French complete for launch; the other three "architecture-ready" only, meaning the technical design doesn't preclude them, not that they're included in Version 1). No new language decision brief was created and DEC-L10N-001 was **not** modified — modifying a `CONFIRMED` Decision Register entry outside the formal Decision Update Procedure is out of scope for this task, and, more importantly, was not needed since no inconsistency exists. The three tracking documents named in this correction task (`coding-agent-prompt-register.md`, `engineering-implementation-programme.md`, `docs/README.md`) were reviewed for Burundi-as-home-jurisdiction or unsupported-language claims and **none was found** — their existing Burundi references (e.g. "Burundi Pilot," "Burundi electronic billing requirements") correctly describe Burundi as the *pilot/launch market*, consistent with the Founder's clarification, so none of the three was edited.
 
 ## 12. Commands Executed
 
@@ -178,10 +187,10 @@ See the new entry appended to [`docs/changes/IMPLEMENTATION_CHANGES.md`](../../c
 
 ## 20. Next Prompt or Decision-Brief Path
 
-No implementation prompt was prepared — no Phase 1 work package is Ready. Decision-brief path: [`docs/00-governance/decisions/dec-tech-005-firebase-region-decision-brief.md`](../../00-governance/decisions/dec-tech-005-firebase-region-decision-brief.md).
+No implementation prompt was prepared — no Phase 1 work package is Ready. Decision-brief path: [`docs/00-governance/decisions/dec-tech-005-firebase-region-decision-brief.md`](../../00-governance/decisions/dec-tech-005-firebase-region-decision-brief.md). The next actionable step is the decision-*research* prompt (not an implementation prompt): [`docs/05-implementation/prompts/DEC-LEGAL-006-DEC-TECH-005-evidence-pack.md`](../prompts/DEC-LEGAL-006-DEC-TECH-005-evidence-pack.md).
 
 ---
 
 ## Status
 
-ENG-P0-002 is `Complete`. Phase 0 is `Complete`. No Phase 1 work package is `Ready`; a Founder Decision Brief for DEC-TECH-005 is submitted instead of an implementation prompt. This closure package is submitted for Technical Review — nothing in this task was committed or pushed.
+ENG-P0-002 is `Complete`. Phase 0 is `Complete`. No Phase 1 work package is `Ready`; a Founder Decision Brief for DEC-TECH-005 is submitted instead of an implementation prompt. **The original version of this closure package was committed and pushed as `c8f0bb6`.** The Rwanda/Burundi jurisdiction correction (§11a) applied on top of it is submitted for Technical Review and, as of this revision, has not itself been committed or pushed.
