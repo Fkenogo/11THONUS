@@ -97,7 +97,7 @@ Summarized from the [Engineering Implementation Programme](change-tracking/engin
 | Phase | Name | Purpose | Entry Gate | Decision / Provider / Legal Gate | Exit Gate (TRD22, behavioral) | Current Position | Key Blockers | Next Dependency |
 |---|---|---|---|---|---|---|---|---|
 | P0 | Repository and Delivery Foundation | Controlled engineering foundation before product features | Version 1.0 documentation baseline declared | `DEC-TECH-003`, `DEC-TECH-004` — both `CONFIRMED` | Project builds; tests run; emulator starts; CI passes; no product-domain implementation (§22.10) | **Complete** | — | — |
-| P1 | Firebase and Shared Platform Foundation | Reusable infrastructure every domain depends on | Phase 0 exit met | `DEC-TECH-005` `CONFIRMED`; `DEC-TECH-006`/`007` `CONFIRMED`; `DEC-PROV-005` `OPEN_PROVIDER` (blocks `ENG-P1-003` only) | Shared command authenticates/validates/logs/responds; outbox idempotent; unauthorized writes denied; emulator tests pass (§22.11) | **In Progress** — `ENG-P1-001` Approved, infrastructure closure criteria satisfied, not yet Complete | `ENG-P1-001` not committed/pushed/CI'd; `ENG-P1-003` needs `DEC-PROV-005` | `ENG-P1-001` formal closure (§8, `ENG-P1-001-CLOSE`) |
+| P1 | Firebase and Shared Platform Foundation | Reusable infrastructure every domain depends on | Phase 0 exit met | `DEC-TECH-005` `CONFIRMED`; `DEC-TECH-006`/`007` `CONFIRMED`; `DEC-PROV-005` `OPEN_PROVIDER` (blocks `ENG-P1-003` only) | Shared command authenticates/validates/logs/responds; outbox idempotent; unauthorized writes denied; emulator tests pass (§22.11) | **In Progress** — `ENG-P1-001` Pushed (`ba43da1`, [PR #2](https://github.com/Fkenogo/11THONUS/pull/2), CI [passed](https://github.com/Fkenogo/11THONUS/actions/runs/29916547244)), Approved for merge, not yet Complete | `ENG-P1-001` awaiting Founder-controlled merge decision; `ENG-P1-003` needs `DEC-PROV-005` | Founder merge decision on PR #2, then `ENG-P1-001` formal `Complete` transition |
 | P2 | Identity, Roles and Business Context | Customer/business/staff identity and RBAC | Phase 1 exit met | `DEC-SEC-001`, `DEC-ID-003`, `DEC-DATA-007`, `DEC-PROV-004` — all open | Customer registers with a safe loyalty identity; owner can create a business; owner can invite staff; role switching works; security-rule and authorization tests pass (§22.12) | Blocked | 4 open D1 decisions (§12) + Phase 1 not exited | Phase 1 exit + the 4 decisions |
 | P3 | Commerce Knowledge and Business Onboarding | Seed data, onboarding flow, Knowledge Studio MVP | Phase 2 exit met | None D1; `DEC-TECH-008` (D2, search) | Business completes onboarding without creating uncontrolled categories; Knowledge Studio manages launch taxonomy; EN/FR labels display correctly; missing-option suggestion works (§22.13) | Blocked | Depends on P2 | P2 completion |
 | P4 | Reward Program Management | Reward Program CRUD, versioning, plan limits | Phase 3 exit met | `DEC-LOY-009` — `CONFIRMED` 2026-07-18 | Business can activate one valid Reward Program; taxonomy references valid; versioning preserves historical terms; inactive businesses cannot activate; plan limits server-enforced (§22.14) | Blocked | Depends on P3 | P3 completion |
@@ -207,14 +207,14 @@ Full detail for every other work package remains in the [Engineering Implementat
 
 | Field | ENG-P0-001 | ENG-P0-002 | ENG-P1-001 | ENG-P1-002 | ENG-P1-003 |
 |---|---|---|---|---|---|
-| Status | **Complete** | **Complete** | **Approved** (not Complete) | **Blocked** | **Blocked** |
+| Status | **Complete** | **Complete** | **Pushed** (Approved for merge, not Complete) | **Blocked** | **Blocked** |
 | Objective | Buildable, lintable, testable repo skeleton | Every PR checked; report/log templates exist | Firebase projects exist, client initializes safely | One authenticate→validate→log→respond command shape | No write succeeds unless authorized |
 | Decision dependencies | `DEC-TECH-003`/`004` (CONFIRMED) | `DEC-TECH-004` (CONFIRMED) | `DEC-TECH-005` (CONFIRMED) | `DEC-TECH-006`/`007` (CONFIRMED) | — |
-| Sequential dependency | Phase 0 entry | `ENG-P0-001` complete | Phase 0 complete | `ENG-P1-001` **complete** (not merely Approved) | `ENG-P1-002` complete |
+| Sequential dependency | Phase 0 entry | `ENG-P0-001` complete | Phase 0 complete | `ENG-P1-001` **complete** (not merely Approved/Pushed) | `ENG-P1-002` complete |
 | Provider/legal dependency | — | — | `DEC-LEGAL-006` (CONFIRMED, via `DEC-TECH-005`) | — | `DEC-PROV-005` (`OPEN_PROVIDER`) |
-| Current blocker | — (Complete) | — (Complete) | Commit/push/CI/DoD reconciliation not yet performed | `ENG-P1-001` not Complete | `ENG-P1-002` not complete; `DEC-PROV-005` open |
-| Next authorized action | — | — | `ENG-P1-001-CLOSE` (§8) | `ENG-P1-002-PREP` (§8, after `ENG-P1-001-CLOSE`) | `DEC-PROV-005` resolution (§8) |
-| Commit/PR/CI | `3a50710` | `e316565` / [PR #1](https://github.com/Fkenogo/11THONUS/pull/1) / [CI run](https://github.com/Fkenogo/11THONUS/actions/runs/29638421819) | none yet | — | — |
+| Current blocker | — (Complete) | — (Complete) | Founder-controlled merge decision on PR #2 not yet made | `ENG-P1-001` not Complete | `ENG-P1-002` not complete; `DEC-PROV-005` open |
+| Next authorized action | — | — | Founder merge decision on PR #2, then `Complete` transition | `ENG-P1-002-PREP` (§8, after `ENG-P1-001` reaches `Complete`) | `DEC-PROV-005` resolution (§8) |
+| Commit/PR/CI | `3a50710` | `e316565` / [PR #1](https://github.com/Fkenogo/11THONUS/pull/1) / [CI run](https://github.com/Fkenogo/11THONUS/actions/runs/29638421819) | `ba43da1` / [PR #2](https://github.com/Fkenogo/11THONUS/pull/2) / [CI run](https://github.com/Fkenogo/11THONUS/actions/runs/29916547244) (passed) | — | — |
 | Evidence links | [Report](reports/ENG-P0-001-implementation-report-2026-07-17.md) · [Review](reports/ENG-P0-001-technical-review-2026-07-17.md) | [Report](reports/ENG-P0-002-implementation-report-2026-07-17.md) · [Review](reports/ENG-P0-002-technical-review-2026-07-17.md) · [Closure](reports/ENG-P0-002-closure-and-phase-0-completion-report-2026-07-18.md) | Full chain — see §7 and the Prompt Register `ENG-P1-001` row | — | — |
 
 ## 11. Phase Gate Register
@@ -322,11 +322,9 @@ A task is not complete merely because code exists (TRD22 §22.41; [Definition of
 
 ## 17. Current Next Action
 
-`MW-001A`/`MW-002` (Master Workflow creation and tracker integration) and `MW-001B` (this correction-and-approval pass) are complete as of this document's activation (§1, §20).
+`MW-001A`/`MW-002` (Master Workflow creation and tracker integration), `MW-001B` (correction-and-approval pass), and `ENG-P1-001-CLOSE` (commit `ba43da1`, [PR #2](https://github.com/Fkenogo/11THONUS/pull/2), CI [passed](https://github.com/Fkenogo/11THONUS/actions/runs/29916547244) on that exact SHA) are complete as of 2026-07-22 — see the [ENG-P1-001 Closure Report](reports/ENG-P1-001-closure-report-2026-07-22.md). `ENG-P1-001-CLOSE` reached `Pushed`/`Approved for merge`, not `Complete`: Git Workflow does not authorize a coding agent to merge into `main`, so the Founder-controlled merge decision on PR #2 was not executed by this task.
 
-**Next authorized action: `ENG-P1-001-CLOSE`** — prepare and execute the `ENG-P1-001` formal closure task, covering commit, push, CI verification, Definition-of-Done reconciliation, status transition to `Complete`, and `ENG-P1-002`'s transition from `Blocked` to `Ready`.
-
-**This closure task is not executed by the document you are reading.** It requires its own, separately authorized prompt.
+**Next authorized action: Founder merge decision on [PR #2](https://github.com/Fkenogo/11THONUS/pull/2).** Once merged and post-merge CI on `main` is confirmed, `ENG-P1-001` moves to `Complete` and the next authorized action becomes `ENG-P1-002-PREP`. That subsequent transition is not executed by the document you are reading — it requires its own, separately authorized task, exactly as this closure task was.
 
 ## 18. Known Risks and Control Measures
 

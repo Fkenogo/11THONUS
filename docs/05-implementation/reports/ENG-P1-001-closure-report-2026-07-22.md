@@ -129,17 +129,25 @@ Evaluated against `docs/06-engineering-governance/definition-of-done.md` §2 (th
 
 ## 8. Part G — Git Strategy, Commit, Push
 
-Per Git Workflow §7: the default is a single `main` branch; a feature branch is used when a work package "is large, long-running, or explicitly flagged as higher-risk." `ENG-P1-001` spanned seven prior tasks (implementation, review, corrections, three provisioning attempts/retries, billing/storage completion, manual verification) plus this closure task — clearly large and long-running, matching the precedent set by `ENG-P0-002` (comparably scoped, branch + PR #1). A feature branch was used.
+Per Git Workflow §7: the default is a single `main` branch; a feature branch is used when a work package "is large, long-running, or explicitly flagged as higher-risk." `ENG-P1-001` spanned seven prior tasks (implementation, review, corrections, three provisioning attempts/retries, billing/storage completion, manual verification) plus this closure task — clearly large and long-running, matching the precedent set by `ENG-P0-002` (comparably scoped, branch + PR #1). A feature branch, `chore/eng-p1-001-closure`, was created off `main` (which was confirmed in sync with `origin/main`/`origin/HEAD` at task start).
 
-*(This section is completed with the actual commit hash, branch name, and PR link after execution — see the addendum at the end of this report and the corresponding `IMPLEMENTATION_CHANGES.md` entry for the authoritative record.)*
+58 explicitly-approved paths were staged individually (never `git add .`/`-A`, never `git commit -a`) and committed as `ba43da1`: `feat(platform): complete Firebase & shared platform foundation closure [ENG-P1-001, DEC-TECH-005, DEC-LEGAL-006]`. A pre-commit hook (husky/lint-staged) reformatted the staged files with Prettier; the full validation suite (`format:check`/`typecheck`/`test`) was re-run afterward and remained clean. The branch was pushed to `origin/chore/eng-p1-001-closure`, and [PR #2](https://github.com/Fkenogo/11THONUS/pull/2) was opened with scope, validation evidence, infrastructure evidence, the e2e defect fix, deferred items, and rollback guidance.
+
+A follow-up commit on the same branch then updated this report and the tracking documents (Master Workflow, Programme, Prompt Register, `IMPLEMENTATION_CHANGES.md`) with the real commit hash, PR link, and CI evidence below — the chronological order required to record "Committed"/"Pushed"/CI evidence accurately rather than predicting it.
 
 ## 9. Part H — CI Verification
 
-*(Completed after push — see addendum.)*
+CI run [29916547244](https://github.com/Fkenogo/11THONUS/actions/runs/29916547244), triggered by the `pull_request` event on PR #2, independently verified via `gh run view --json headSha,conclusion,status`:
+
+- **`headSha`:** `ba43da147cd0d179284c9ac271af32848c141d76` — confirmed to match the pushed commit exactly (not an old run, not a different commit, not a local-validation substitute).
+- **Status:** `completed`. **Conclusion:** `success`.
+- **Every required job passed:** Checkout, pnpm/Node setup, `Install dependencies (frozen lockfile)`, `Build`, `Lint`, `Format check`, `Typecheck`, `Unit / component tests`, `Install Playwright browsers`, `Playwright e2e` (the job that would have failed before this task's fix), Java setup, `Firebase Emulator Suite validation`. No job failed or was skipped.
+
+CI passed on the first attempt after the e2e fix — no re-push cycle was needed.
 
 ## 10. Part I — Merge Decision
 
-Git Workflow does not explicitly authorize a coding agent to merge a pull request into `main` — it defines the Founder's role as pulling, verifying, and deploying *from* `main`, and states the branch is "protected... so that only the Founder deploys from it." Absent explicit authorization in either the Git Workflow or this task's own prompt to merge autonomously, this task does not merge. *(Final outcome recorded in the addendum.)*
+Git Workflow does not explicitly authorize a coding agent to merge a pull request into `main` — it defines the Founder's role as pulling, verifying, and deploying *from* `main`, and states the branch is "protected... so that only the Founder deploys from it." This task's own prompt likewise only authorizes merging "if this prompt and the Git Workflow clearly authorize" it — neither does. **This task stops here and reports: Approved for merge.** PR #2 is ready for the Founder's merge decision; the branch has not been deleted.
 
 ## 11. Excluded / Deferred Work
 
@@ -148,9 +156,23 @@ Git Workflow does not explicitly authorize a coding agent to merge a pull reques
 
 ## 12. Current Official Status
 
-*(Recorded at the end of this task — see addendum. Per the mandated safe progression, this section is not written as `Complete` until commit, push, and required CI evidence all exist.)*
+```text
+ENG-P1-001: Pushed (Approved for merge — not Complete)
+ENG-P1-002: Blocked (unchanged — its precondition is ENG-P1-001 complete, not merely Pushed/Approved)
+ENG-P1-003: Blocked (unchanged — DEC-PROV-005 still OPEN_PROVIDER)
+Next authorized action: Founder merge decision on PR #2, then ENG-P1-001 → Complete, then ENG-P1-002-PREP
+```
+
+This matches the task's own second defined outcome ("CI passed but Founder merge required") — not the full-closure outcome, and not a blocked closure. Every gate this task could satisfy without a Founder action was satisfied; criteria 8–10 of the Definition of Done (§7) are the only ones remaining, and they are, by design, not something a coding agent can satisfy.
 
 ---
 
-## Addendum (completed after Parts G–I execution)
+## Addendum — Part G–I Evidence
+
+- **Branch:** `chore/eng-p1-001-closure`
+- **Commit:** `ba43da147cd0d179284c9ac271af32848c141d76` (`ba43da1`)
+- **Pull Request:** [#2](https://github.com/Fkenogo/11THONUS/pull/2)
+- **CI:** [run 29916547244](https://github.com/Fkenogo/11THONUS/actions/runs/29916547244) — `success`, verified against the exact `headSha` above
+- **Merge:** not performed (Part I) — Approved for merge, awaiting Founder
+- **Tracking documents updated to reflect this evidence:** Master Workflow (§7, §8, §17), Engineering Implementation Programme (P1 row, §5), Coding-Agent Prompt Register (ENG-P1-001 row, §5 distribution), `docs/README.md`, `IMPLEMENTATION_CHANGES.md` (new entry appended)
 
