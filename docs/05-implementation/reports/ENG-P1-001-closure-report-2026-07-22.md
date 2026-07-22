@@ -143,7 +143,7 @@ Every commit on this branch was independently verified via `gh run view --json h
 |---|---|---|---|---|
 | `ba43da1` | Initial ENG-P1-001 closure (58 files) | [29916547244](https://github.com/Fkenogo/11THONUS/actions/runs/29916547244) | `ba43da147cd0d179284c9ac271af32848c141d76` | `success` |
 | `7f67292` | Tracking-document evidence follow-up | [29921009277](https://github.com/Fkenogo/11THONUS/actions/runs/29921009277) | `7f672921bf110bd07fec3d06ba39413d4eb6082b` | `success` |
-| *(this correction — see §13)* | Broken-link and closure-evidence pre-merge fix | *(recorded in §13 after push)* | *(recorded in §13 after push)* | *(recorded in §13)* |
+| `2c0db00` | Broken-link and closure-evidence pre-merge fix | [29924228309](https://github.com/Fkenogo/11THONUS/actions/runs/29924228309) | `2c0db009d308c96ec07af2038d60d2aca0db056e` | `success` |
 
 Each run's job list matched exactly: Checkout, pnpm/Node setup, `Install dependencies (frozen lockfile)`, `Build`, `Lint`, `Format check`, `Typecheck`, `Unit / component tests`, `Install Playwright browsers`, `Playwright e2e` (the job that would have failed before this task's original fix), Java setup, `Firebase Emulator Suite validation` — no job failed or was skipped in any run. CI passed on the first attempt for both prior commits; no re-push-to-fix-a-failure cycle was needed at either point. The **current PR head and its CI result are authoritative** — see §13 for the final SHA.
 
@@ -188,7 +188,7 @@ Founder/Technical Lead review of PR #2 identified two narrow, legitimate finding
 |---|---|---|---|---|---|---|
 | 1 | `ba43da1` | Initial ENG-P1-001 closure | 58 | [29916547244](https://github.com/Fkenogo/11THONUS/actions/runs/29916547244) | `ba43da147cd0d179284c9ac271af32848c141d76` | `success` |
 | 2 | `7f67292` | Tracking-document evidence follow-up | 6 (subset of the 58) | [29921009277](https://github.com/Fkenogo/11THONUS/actions/runs/29921009277) | `7f672921bf110bd07fec3d06ba39413d4eb6082b` | `success` |
-| 3 | *(recorded below after push)* | Pre-merge correction — de-link + evidence fix | *(recorded below)* | *(recorded below)* | *(recorded below)* | *(recorded below)* |
+| 3 | `2c0db00` | Pre-merge correction — de-link + evidence fix | 2 (subset of the 58) | [29924228309](https://github.com/Fkenogo/11THONUS/actions/runs/29924228309) | `2c0db009d308c96ec07af2038d60d2aca0db056e` | `success` |
 
 - **Branch:** `chore/eng-p1-001-closure` (unchanged throughout)
 - **Pull Request:** [#2](https://github.com/Fkenogo/11THONUS/pull/2) — `OPEN`, `MERGEABLE`, not merged
