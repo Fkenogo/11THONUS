@@ -21,6 +21,7 @@ Start with the [Engineering Governance Charter](engineering-governance-charter.m
 | 9 | [Definition of Done](definition-of-done.md) | Work-package-level completion gate |
 | 10 | [Roles & Responsibilities](roles-and-responsibilities.md) | Founder / ChatGPT Technical Lead / Coding Agent / GitHub / Firebase / Manual QA / future team |
 | 11 | [Engineering Principles](engineering-principles.md) | Judgment principles for situations no specific rule covers |
+| 12 | [Cloud Environment & Deployment Strategy](cloud-environment-and-deployment-strategy.md) | Environment architecture, promotion model, Firebase project strategy, region-selection criteria, infrastructure-access governance, monitoring/DR/cost/security principles — operationalizes `DEC-TECH-005` |
 
 ## Relationship to Existing Governance
 

@@ -4,7 +4,7 @@
 > **Version:** 1.0 · **Status:** Active governance process · **Classification:** Working (governance process)
 > **Governing document:** [Engineering Governance Charter](engineering-governance-charter.md)
 > **Source-of-truth path:** `docs/06-engineering-governance/ai-collaboration-workflow.md`
-> **Last controlled update:** 2026-07-16 (Phase 6 — created)
+> **Last controlled update:** 2026-07-22 (added a Master Workflow Consultation pre-stage (§2, §3 stage table) — see the [11thONUS Version 1.0 Master Delivery Workflow](../05-implementation/11thonus-master-workflow.md); previously: 2026-07-16, Phase 6 — created)
 
 ## 1. Purpose
 
@@ -13,6 +13,8 @@ This is the single, authoritative sequence every unit of engineering work follow
 ## 2. The Workflow
 
 ```
+Master Workflow Consultation
+   ↓
 Founder
    ↓
 ChatGPT Technical Lead
@@ -50,6 +52,7 @@ Phase Complete
 
 | # | Stage | What happens | Who is responsible | Governing document |
 |---|---|---|---|---|
+| 0 | **Master Workflow Consultation** *(added 2026-07-22)* | Before task definition, the current phase, current work package, blockers, and next authorized action are confirmed against the [Master Delivery Workflow](../05-implementation/11thonus-master-workflow.md). | Founder, ChatGPT Technical Lead, Coding Agent (each at their own stage) | [Master Delivery Workflow](../05-implementation/11thonus-master-workflow.md) §3, §15 |
 | 1 | **Founder** | States intent: a goal, a problem, or a phase to begin, in plain language. | Founder | [Roles & Responsibilities](roles-and-responsibilities.md) |
 | 2 | **ChatGPT Technical Lead** | Translates intent into a scoped, technically grounded plan: which documents apply, which requirement IDs are in play, what decisions (if any) are already CONFIRMED, what is out of scope. | ChatGPT Technical Lead | [Roles & Responsibilities](roles-and-responsibilities.md) |
 | 3 | **Implementation Prompt** | The plan is written as a structured work package (Context, Task, In Scope, Out of Scope, Constraints, Acceptance Criteria, Required Tests, Verification Commands, Reporting Requirements). | ChatGPT Technical Lead | [Implementation Prompt Standard](implementation-prompt-standard.md); grounded in TRD22 §22.38 |
