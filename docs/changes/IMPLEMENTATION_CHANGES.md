@@ -585,3 +585,22 @@
 - **Risks:** none new. The disclosure note in `version-1-engineering-baseline-declaration.md` is itself a small piece of technical debt (plain-text references that should become links again once the Loyalty-domain backlog is committed) — explicitly flagged in the note itself for whoever performs that future commit.
 - **Rollback:** revert commit `2c0db00` (restores the 6 links and the "accepted exception" framing — not recommended, since that framing was the finding being corrected) or revert to any earlier commit on this branch; no live Firebase resource or unrelated file was touched.
 - **Report link:** [`docs/05-implementation/reports/ENG-P1-001-closure-report-2026-07-22.md`](../05-implementation/reports/ENG-P1-001-closure-report-2026-07-22.md) §13.
+
+---
+
+## 2026-07-22 — ENG-P1-001 PR #2 Final Merge-Readiness Sync
+
+- **Date:** 2026-07-22
+- **Phase:** Phase 1 — ENG-P1-001 pre-merge metadata synchronization
+- **Task:** `ENG-P1-001-PR2-FINAL-MERGE-READINESS-SYNC` — update the GitHub PR #2 description and correct stale current-status statements in `docs/README.md`. No application code, Firebase configuration, or merge action.
+- **Entry check:** confirmed exactly — PR #2 head was `af5d943c7ec2e8ca5088e02837bbb108ab806fca`, `OPEN`, `MERGEABLE`, 58 changed files; CI run `29926123173` `success` against that exact SHA. No conflict.
+- **PR description corrected:** removed the stale "clean except one disclosed, narrow exception" validation line and the "accepted exception" risk note (both superseded by the prior pre-merge correction); replaced with accurate wording confirming 0 unresolved links, no Loyalty-domain files added, the current PR head/CI evidence, and pending Founder merge/post-merge verification. Implementation, testing, infrastructure, and rollback content preserved.
+- **`docs/README.md` corrected (3 hunks, proven by diff before staging):** (1) the "next authorized task" reference updated from `ENG-P1-001-CLOSE` (now complete) to the Founder merge decision on PR #2; (2) §5 item 20 ("repository initialization... not yet performed") struck through and marked complete, noting engineering has since progressed through ENG-P1-001; (3) §5 item 21 corrected — `DEC-TECH-005` removed from the "remain genuinely OPEN_ENGINEERING" list and noted `CONFIRMED` (19 July 2026, Phase 0E), leaving only `DEC-SEC-001`/`DEC-DATA-007` in that list. No Loyalty-domain content touched.
+- **Validation:** `format:check`, `git diff --check` — clean. Repository-aware link validator (every PR-changed Markdown file against `origin/main` + PR changes) — **0 unresolved internal links**. Current-status consistency confirmed across the Master Workflow, Programme, Prompt Register, `docs/README.md`, and the closure report — all state `ENG-P1-001` = `Pushed`/`Approved for merge`/not `Complete`. Secret-pattern scan of the staged diff — clean.
+- **Files created:** none.
+- **Files changed:** `docs/README.md` (3 proven hunks, staged individually via git plumbing since the working-tree file still carries unrelated, uncommitted Loyalty-domain content).
+- **Dependencies added:** none. **Configuration changes:** none.
+- **Commit:** *(recorded after push, see the closure report addendum)*.
+- **Risks:** none new.
+- **Rollback:** revert the synchronization commit; the PR description edit can be reverted via `gh pr edit 2` with the prior body if ever needed (not itself a commit, has no git rollback).
+- **Report link:** [`docs/05-implementation/reports/ENG-P1-001-closure-report-2026-07-22.md`](../05-implementation/reports/ENG-P1-001-closure-report-2026-07-22.md).
