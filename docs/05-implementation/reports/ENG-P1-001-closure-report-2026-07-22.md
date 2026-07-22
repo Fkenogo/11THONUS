@@ -38,9 +38,9 @@ The working tree at task start mixed three unrelated, never-before-committed wor
 
 Three files (`docs/README.md`, the Engineering Implementation Programme, `docs/changes/IMPLEMENTATION_CHANGES.md`) mixed genuinely ENG-P1-001/Master-Workflow-relevant edits with edits belonging to the unrelated Loyalty-domain track, within the same file. Rather than commit the unrelated content (or leave these tracking documents unrepresented in the closure commit), each file's ENG-P1-001/Master-Workflow-relevant hunks were isolated and staged directly into the Git index via `git hash-object` + `git update-index --cacheinfo`, leaving the working tree's full (mixed) content untouched on disk for a future, separate commit. `git add .` / `git add -A` / `git commit -a` were never used; every path was staged individually.
 
-One file, `docs/00-governance/version-1-engineering-baseline-declaration.md`, is included in full (reversing an initial exclusion) because five other files being committed (`version-1-engineering-authorization-record.md`, `version-1-governance-completion-milestone.md`, `docs/README.md`, `IMPLEMENTATION_CHANGES.md`, two Sprint/Phase-0E reports) link to it by name — excluding it would have produced more dangling links across more files than including it does. Its own 5 internal links to `verified-loyalty-governance-freeze-v1.md`/`verified-loyalty-principles.md` (both genuinely Loyalty-domain, excluded) remain unresolved in this commit — a disclosed, narrow, accepted exception, not silently absorbed. A full relative-link validation across every staged markdown file (checked against post-commit repo state, i.e. HEAD ∪ staged paths) confirmed these 6 link instances as the **only** unresolved links in the entire staged set.
+One file, `docs/00-governance/version-1-engineering-baseline-declaration.md`, is included in full (reversing an initial exclusion) because five other files being committed (`version-1-engineering-authorization-record.md`, `version-1-governance-completion-milestone.md`, `docs/README.md`, `IMPLEMENTATION_CHANGES.md`, two Sprint/Phase-0E reports) link to it by name — excluding it would have produced more dangling links across more files than including it does. A full relative-link validation across every staged markdown file (checked against post-commit repo state, i.e. HEAD ∪ staged paths) initially found 6 unresolved links, all internal to this one file, all pointing to `verified-loyalty-governance-freeze-v1.md`/`verified-loyalty-principles.md` (both genuinely Loyalty-domain, correctly excluded). **This was corrected before merge** (`ENG-P1-001-PR2-PRE-MERGE-CORRECTION`, see §13): the 6 links were converted to plain, unlinked text, with a disclosure note added explaining why and directing a future restoration once the Loyalty-domain backlog is committed on its own. No claim in the document's text was altered — only the broken hyperlink mechanism. Post-correction, the full PR-changed markdown-file set (validated against `origin/main` plus every file this PR changes) has **zero unresolved internal links**.
 
-**Final staged set: 57 files** (`git diff --cached --stat`), none of which is Loyalty-domain content.
+**Final committed set: 58 files** (`git diff --cached --stat` at the first commit, `ba43da1`, which includes the closure report itself; the tracking-document and pre-merge-correction follow-up commits modified files already within this set rather than adding new ones — the PR's total changed-file count remains 58, confirmed via `gh pr view 2 --json changedFiles`). None of the 58 is Loyalty-domain content.
 
 ## 4. Part B — Source and Security Review
 
@@ -90,11 +90,11 @@ Live state matches the approved evidence from the 2026-07-21 Manual Storage Veri
 | `pnpm test:e2e` | **Failed initially, fixed, now passes** — see §6.1 |
 | `pnpm emulators:validate` | Pass — `functions[europe-west1-ping]` initializes at `europe-west1`; `demo-11thonus` confirmed |
 | `git diff --check` | Clean — no whitespace errors in the staged diff |
-| Doc-link validation (all staged `.md`, post-commit state) | Clean except the 6 disclosed link instances in §3.1 |
-| MW/Programme/Register status consistency | Confirmed: all three independently state `ENG-P1-001` = `Approved`, not `Complete`, next action `ENG-P1-001-CLOSE` |
+| Doc-link validation (all PR-changed `.md`, against `origin/main` + PR state) | Initially 6 unresolved links (§3.1); **zero** after the pre-merge correction (§13) |
+| MW/Programme/Register status consistency | Confirmed: all three independently state `ENG-P1-001` = `Approved`, not `Complete`, next action `ENG-P1-001-CLOSE` (at initial commit; updated to `Pushed` after push — see §8) |
 | `.firebaserc` alias validation | `dev`/`staging` only, no `default`/production |
 | Secret-pattern scan | Clean (§4) |
-| No-unrelated-paths confirmation | Confirmed — 57 staged paths, none Loyalty-domain (§3) |
+| No-unrelated-paths confirmation | Confirmed — 58 committed paths, none Loyalty-domain (§3) |
 
 ### 6.1 Defect found and fixed: e2e smoke test crash
 
@@ -118,11 +118,11 @@ Evaluated against `docs/06-engineering-governance/definition-of-done.md` §2 (th
 | 4 | Implementation Report produced in full | Yes | `ENG-P1-001-implementation-report-2026-07-20.md` | **Met** | Predates this task; re-verified accurate |
 | 5 | Changes-tracking file updated | Yes | Programme, Prompt Register, `IMPLEMENTATION_CHANGES.md` all updated across this task's chain | **Met** | — |
 | 6 | Technical Review Approved, no open corrections | Yes | `ENG-P1-001-technical-review-2026-07-20.md` (Approved with non-blocking observations); all 4 findings (CFG-1/AC-1/AT-1/AD-1) corrected 2026-07-21 | **Met** | Zero Critical/blocking-High findings; zero open corrections |
-| 7 | Committed and pushed per Git Workflow | Yes | — | **Pending** | Executed in §8 (Part G) below, after this report's first version was drafted |
-| 8 | Founder pulled, verified, deployed | Yes | — | **Not yet reached** | Requires Founder action after push/merge — see §9 (deployment interpretation) |
-| 9 | Preview Review passed | Yes | — | **Not yet reached** | Founder-owned, after §8 |
-| 10 | Manual Testing Standard passed | No | Programme Phase 1 profile: "Manual QA Requirement: No (automated/emulator validation only at this stage)" | **N/A** | Explicitly not required for this work package |
-| 11 | No unrelated files modified | Yes | §3 classification; 57 staged paths, zero Loyalty-domain content | **Met** | — |
+| 7 | Committed and pushed per Git Workflow | Yes | §8 — commit `ba43da1`, pushed, PR #2 opened; CI verified | **Met** | — |
+| 8 | Founder pulled, verified, deployed | Yes | — | **Pending** | Requires Founder action after merge — see the deployment-interpretation note below |
+| 9 | Preview Review passed | Yes | — | **Pending** | Founder-owned, after criterion 8 |
+| 10 | Manual Testing Standard passed | No | Programme Phase 1 profile: "Manual QA Requirement: No (automated/emulator validation only at this stage)" | **N/A** | Explicitly not required for this work package — not a pending criterion |
+| 11 | No unrelated files modified | Yes | §3 classification; 58 committed paths, zero Loyalty-domain content | **Met** | — |
 | 12 | Risk/rollback notes remain accurate | Yes | Implementation Report §11 rollback guidance re-read; still accurate (no live deploy has occurred that it wouldn't cover) | **Met** | — |
 
 **Deployment interpretation (criterion 8/9):** the Engineering Implementation Programme's own Phase 1 profile defines "Expected Deployment State" for this phase as "development and staging Firebase projects provisioned... production project created but access-restricted" — not an application-code deployment. `ENG-P1-001`'s objective is narrower still: "Firebase projects exist and a client can initialize against them safely," with no business logic and only a pre-existing `ping` placeholder (explicitly "carries no business logic"). Per the Deployment Workflow document, "deployment" in the general sense means assembling and deploying an artifact (Rules, function versions, etc.) for Preview Review — there is no such artifact here worth previewing. Read together, satisfying criteria 8–9 for `ENG-P1-001` specifically means the Founder pulling the merged change and confirming it matches the already-independently-verified provisioned Dev/Staging state (§5) — not running a separate `firebase deploy`. This is consistent with, and does not override, the Programme's own stated Phase 1 deployment expectation. Regardless of this interpretation, criteria 8–9 remain **Pending Founder action** — they cannot be satisfied by a coding agent, and are not marked satisfied here.
@@ -133,17 +133,19 @@ Per Git Workflow §7: the default is a single `main` branch; a feature branch is
 
 58 explicitly-approved paths were staged individually (never `git add .`/`-A`, never `git commit -a`) and committed as `ba43da1`: `feat(platform): complete Firebase & shared platform foundation closure [ENG-P1-001, DEC-TECH-005, DEC-LEGAL-006]`. A pre-commit hook (husky/lint-staged) reformatted the staged files with Prettier; the full validation suite (`format:check`/`typecheck`/`test`) was re-run afterward and remained clean. The branch was pushed to `origin/chore/eng-p1-001-closure`, and [PR #2](https://github.com/Fkenogo/11THONUS/pull/2) was opened with scope, validation evidence, infrastructure evidence, the e2e defect fix, deferred items, and rollback guidance.
 
-A follow-up commit on the same branch then updated this report and the tracking documents (Master Workflow, Programme, Prompt Register, `IMPLEMENTATION_CHANGES.md`) with the real commit hash, PR link, and CI evidence below — the chronological order required to record "Committed"/"Pushed"/CI evidence accurately rather than predicting it.
+Two further commits followed on the same branch, each pushed and independently CI-verified against its own exact SHA (§9): a tracking-document follow-up (`7f67292`) recording the first commit's real evidence, and a pre-merge correction (§13) resolving a broken-link and closure-evidence review finding.
 
 ## 9. Part H — CI Verification
 
-CI run [29916547244](https://github.com/Fkenogo/11THONUS/actions/runs/29916547244), triggered by the `pull_request` event on PR #2, independently verified via `gh run view --json headSha,conclusion,status`:
+Every commit on this branch was independently verified via `gh run view --json headSha,conclusion,status` — never a stale run, a different commit's run, or local validation substituted as evidence:
 
-- **`headSha`:** `ba43da147cd0d179284c9ac271af32848c141d76` — confirmed to match the pushed commit exactly (not an old run, not a different commit, not a local-validation substitute).
-- **Status:** `completed`. **Conclusion:** `success`.
-- **Every required job passed:** Checkout, pnpm/Node setup, `Install dependencies (frozen lockfile)`, `Build`, `Lint`, `Format check`, `Typecheck`, `Unit / component tests`, `Install Playwright browsers`, `Playwright e2e` (the job that would have failed before this task's fix), Java setup, `Firebase Emulator Suite validation`. No job failed or was skipped.
+| Commit | Purpose | CI run | `headSha` verified | Result |
+|---|---|---|---|---|
+| `ba43da1` | Initial ENG-P1-001 closure (58 files) | [29916547244](https://github.com/Fkenogo/11THONUS/actions/runs/29916547244) | `ba43da147cd0d179284c9ac271af32848c141d76` | `success` |
+| `7f67292` | Tracking-document evidence follow-up | [29921009277](https://github.com/Fkenogo/11THONUS/actions/runs/29921009277) | `7f672921bf110bd07fec3d06ba39413d4eb6082b` | `success` |
+| *(this correction — see §13)* | Broken-link and closure-evidence pre-merge fix | *(recorded in §13 after push)* | *(recorded in §13 after push)* | *(recorded in §13)* |
 
-CI passed on the first attempt after the e2e fix — no re-push cycle was needed.
+Each run's job list matched exactly: Checkout, pnpm/Node setup, `Install dependencies (frozen lockfile)`, `Build`, `Lint`, `Format check`, `Typecheck`, `Unit / component tests`, `Install Playwright browsers`, `Playwright e2e` (the job that would have failed before this task's original fix), Java setup, `Firebase Emulator Suite validation` — no job failed or was skipped in any run. CI passed on the first attempt for both prior commits; no re-push-to-fix-a-failure cycle was needed at either point. The **current PR head and its CI result are authoritative** — see §13 for the final SHA.
 
 ## 10. Part I — Merge Decision
 
@@ -163,16 +165,34 @@ ENG-P1-003: Blocked (unchanged — DEC-PROV-005 still OPEN_PROVIDER)
 Next authorized action: Founder merge decision on PR #2, then ENG-P1-001 → Complete, then ENG-P1-002-PREP
 ```
 
-This matches the task's own second defined outcome ("CI passed but Founder merge required") — not the full-closure outcome, and not a blocked closure. Every gate this task could satisfy without a Founder action was satisfied; criteria 8–10 of the Definition of Done (§7) are the only ones remaining, and they are, by design, not something a coding agent can satisfy.
+This matches the task's own second defined outcome ("CI passed but Founder merge required") — not the full-closure outcome, and not a blocked closure. Every gate this task could satisfy without a Founder action was satisfied; **only criteria 8 and 9** of the Definition of Done (§7) remain pending, and they are, by design, not something a coding agent can satisfy. Criterion 10 (Manual Testing) is **N/A** for this work package, not pending — it does not appear in this list of remaining items.
+
+## 13. Pre-Merge Correction (2026-07-22) — `ENG-P1-001-PR2-PRE-MERGE-CORRECTION`
+
+Founder/Technical Lead review of PR #2 identified two narrow, legitimate findings before this correction task began, verified against a fresh entry check (PR #2 head confirmed at `7f672921bf110bd07fec3d06ba39413d4eb6082b` exactly, `OPEN`, `MERGEABLE`, 58 changed files — matching this report's own record above):
+
+1. **Unauthorized "accepted exception":** §3.1 had described the 6 unresolved internal links in `version-1-engineering-baseline-declaration.md` as an accepted exception. No Founder authorization for that exception existed — it should not have shipped as "accepted."
+2. **Stale/inconsistent closure evidence:** the report mixed the first commit's evidence with the actual, later PR head; understated the final file count at one point (57 vs. the true 58); and conflated DoD criterion 10 (N/A) with criteria 8–9 (pending) in its summary prose.
+
+**Correction strategy (smallest governed fix):** rather than absorbing the excluded Loyalty-domain files into this PR (which would violate DoD criterion 11 and this task's explicit constraints) or stripping every reference to them (a much larger edit surface, since 6 other already-committed files legitimately cite `version-1-engineering-baseline-declaration.md` by name), the 6 broken links were converted from Markdown links to plain, unlinked text within that single file, with a disclosure note explaining why and when they should be restored. This preserves every substantive governance claim in the document unchanged — only the hyperlink mechanism to a not-yet-committed path was removed. §3.1, §6, and §7/§12 above were then corrected to describe this as a **resolution**, not an accepted exception, and to report file counts and CI evidence consistently.
+
+**Validation:** the full local suite (`typecheck`/`lint`/`format:check`/`build`/`test`/`test:e2e`/`emulators:validate`/`git diff --check`) was re-run and remained clean (36/36 tests unaffected — this correction touches only prose/links in one Markdown file). A repository-aware link validator checked every PR-changed Markdown file's internal relative links against `origin/main` plus the PR's own changes (i.e. the exact proposed post-merge state) and returned **zero unresolved links** — see §3.1. `.firebaserc`/emulator-project/Rules/secret-pattern checks were re-confirmed unchanged from §4–6 (this correction touches no code, infrastructure, or configuration). No Loyalty-domain file was added to the PR.
+
+**Commit/push/CI for this correction:** recorded in the Addendum below.
 
 ---
 
-## Addendum — Part G–I Evidence
+## Addendum — Full Commit and CI History
 
-- **Branch:** `chore/eng-p1-001-closure`
-- **Commit:** `ba43da147cd0d179284c9ac271af32848c141d76` (`ba43da1`)
-- **Pull Request:** [#2](https://github.com/Fkenogo/11THONUS/pull/2)
-- **CI:** [run 29916547244](https://github.com/Fkenogo/11THONUS/actions/runs/29916547244) — `success`, verified against the exact `headSha` above
-- **Merge:** not performed (Part I) — Approved for merge, awaiting Founder
-- **Tracking documents updated to reflect this evidence:** Master Workflow (§7, §8, §17), Engineering Implementation Programme (P1 row, §5), Coding-Agent Prompt Register (ENG-P1-001 row, §5 distribution), `docs/README.md`, `IMPLEMENTATION_CHANGES.md` (new entry appended)
+| # | Commit | Purpose | Files | CI run | `headSha` verified | CI result |
+|---|---|---|---|---|---|---|
+| 1 | `ba43da1` | Initial ENG-P1-001 closure | 58 | [29916547244](https://github.com/Fkenogo/11THONUS/actions/runs/29916547244) | `ba43da147cd0d179284c9ac271af32848c141d76` | `success` |
+| 2 | `7f67292` | Tracking-document evidence follow-up | 6 (subset of the 58) | [29921009277](https://github.com/Fkenogo/11THONUS/actions/runs/29921009277) | `7f672921bf110bd07fec3d06ba39413d4eb6082b` | `success` |
+| 3 | *(recorded below after push)* | Pre-merge correction — de-link + evidence fix | *(recorded below)* | *(recorded below)* | *(recorded below)* | *(recorded below)* |
+
+- **Branch:** `chore/eng-p1-001-closure` (unchanged throughout)
+- **Pull Request:** [#2](https://github.com/Fkenogo/11THONUS/pull/2) — `OPEN`, `MERGEABLE`, not merged
+- **PR total changed-file count:** 58 (`gh pr view 2 --json changedFiles`) — unchanged across all three commits, since commits 2 and 3 only modify files already introduced in commit 1
+- **Merge:** not performed at any point (Part I) — **Approved for merge**, awaiting the Founder
+- **Tracking documents updated across this history:** Master Workflow (§7, §8, §17), Engineering Implementation Programme (P1 row, §5), Coding-Agent Prompt Register (ENG-P1-001 row, §5 distribution), `docs/README.md`, `IMPLEMENTATION_CHANGES.md` (append-only entries), and this closure report itself
 
