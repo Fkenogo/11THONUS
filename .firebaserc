@@ -1,0 +1,6 @@
+{
+  "projects": {
+    "dev": "eleventh-on-us-dev",
+    "staging": "eleventh-on-us-staging"
+  }
+}

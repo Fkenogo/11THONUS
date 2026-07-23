@@ -21,5 +21,9 @@ export default defineConfig({
     url: "http://localhost:4173",
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,
+    // No Firebase project config exists yet (ENG-P1-001 — dev/staging projects have
+    // no registered Web App). Forcing emulator mode lets env.ts fall back to its
+    // safe demo config instead of failing to build a config it can't have yet.
+    env: { VITE_USE_FIREBASE_EMULATOR: "true" },
   },
 });

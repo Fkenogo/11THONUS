@@ -4,7 +4,7 @@
 > **Version:** 1.0 · **Status:** Active governance process · **Classification:** Working (governance process)
 > **Governing document:** [Engineering Governance Charter](engineering-governance-charter.md)
 > **Source-of-truth path:** `docs/06-engineering-governance/implementation-prompt-standard.md`
-> **Last controlled update:** 2026-07-16 (Phase 6 — created)
+> **Last controlled update:** 2026-07-22 (added mandatory Master Delivery Workflow fields to the Project Context requirement — see §2 row 1 and the [11thONUS Version 1.0 Master Delivery Workflow](../05-implementation/11thonus-master-workflow.md); previously: 2026-07-16, Phase 6 — created)
 
 ## 1. Purpose
 
@@ -16,7 +16,7 @@ Every implementation prompt shall contain the following sections, in this order.
 
 | # | Field | Purpose | Source |
 |---|---|---|---|
-| 1 | **Project Context** | What programme/phase this belongs to, and what has already been completed | Established practice of this programme |
+| 1 | **Project Context** | What programme/phase this belongs to, and what has already been completed. *(Added 2026-07-22)* Must state: the [Master Delivery Workflow](../05-implementation/11thonus-master-workflow.md) version and date consulted; the current authorized position it records; and explicit confirmation that this prompt is the next authorized task per that document's §8 | Established practice of this programme; [Master Delivery Workflow](../05-implementation/11thonus-master-workflow.md) §15 |
 | 2 | **Context** | Relevant Constitution principles, PRD section(s), TRD chapter(s), affected domain(s), current implementation state | TRD22 §22.38 |
 | 3 | **Objective** | The single-sentence goal of this work package | Established practice of this programme |
 | 4 | **Before Making Changes** (where applicable) | Required upfront analysis the agent must complete and report *before* touching any file — e.g. current state, overlaps, namespace/collision analysis, proposed strategy | Established practice of this programme (Phases 4–6) |
