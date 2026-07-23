@@ -191,10 +191,70 @@ Founder/Technical Lead review of PR #2 identified two narrow, legitimate finding
 | 3 | `2c0db00` | Pre-merge correction — de-link + evidence fix | 2 (subset of the 58) | [29924228309](https://github.com/Fkenogo/11THONUS/actions/runs/29924228309) | `2c0db009d308c96ec07af2038d60d2aca0db056e` | `success` |
 | 4 | `af5d943` | Evidence-recording follow-up for commit 3 | 5 (subset of the 58) | [29926123173](https://github.com/Fkenogo/11THONUS/actions/runs/29926123173) | `af5d943c7ec2e8ca5088e02837bbb108ab806fca` | `success` |
 | 5 | `23c6ba0` | `ENG-P1-001-PR2-FINAL-MERGE-READINESS-SYNC` — GitHub PR #2 description corrected (removed superseded link-exception language); `docs/README.md` stale current-status statements corrected (3 hunks: next-authorized-action, repository-init item, `DEC-TECH-005` status) | 2 (subset of the 58) | [29933089968](https://github.com/Fkenogo/11THONUS/actions/runs/29933089968) | `23c6ba03eaae1c01a1271f3e241a225f9cf8f4e9` | `success` |
+| 6 | `ef1de34` | Evidence-recording follow-up for commit 5 | 1 (subset of the 58) | [29933285672](https://github.com/Fkenogo/11THONUS/actions/runs/29933285672) | `ef1de346d6883242dc9137a5aced044cfd53f5f5` | `success` |
 
-- **Branch:** `chore/eng-p1-001-closure` (unchanged throughout)
-- **Pull Request:** [#2](https://github.com/Fkenogo/11THONUS/pull/2) — `OPEN`, `MERGEABLE`, not merged, current head `23c6ba0`
-- **PR total changed-file count:** 58 (`gh pr view 2 --json changedFiles`) — unchanged across all five commits, since commits 2–5 only modify files already introduced in commit 1
-- **Merge:** not performed at any point (Part I) — **Approved for merge**, awaiting the Founder
-- **Tracking documents updated across this history:** Master Workflow (§7, §8, §17), Engineering Implementation Programme (P1 row, §5), Coding-Agent Prompt Register (ENG-P1-001 row, §5 distribution), `docs/README.md`, `IMPLEMENTATION_CHANGES.md` (append-only entries), and this closure report itself
+## 14. Founder-Authorized Merge (`ENG-P1-001-FOUNDER-MERGE`, 2026-07-23)
+
+The Founder reviewed PR #2 at head `ef1de346d6883242dc9137a5aced044cfd53f5f5` (CI run `29933285672`, `success`) and explicitly authorized its merge, scoped to exactly that repository/PR/head SHA/merge method. Pre-merge gate re-verified immediately before merging: PR #2 `OPEN`/`MERGEABLE`/not draft/not merged, base `main`, head matched exactly, 58 changed files, the single required check (`Build, Lint, Test, Emulator Validation`) passing, PR description referencing that exact head/CI. No discrepancy found.
+
+Merged via `gh pr merge 2 --merge --match-head-commit ef1de346d6883242dc9137a5aced044cfd53f5f5` — a genuine two-parent merge commit (confirmed directly via `git show --format=%P`: parents `cd938b8` (prior `main` tip) and `ef1de346` (the exact authorized PR head)), not a squash or rebase. All 6 PR commits (`ba43da1`, `7f67292`, `2c0db00`, `af5d943`, `23c6ba0`, `ef1de34`) confirmed reachable in `main`'s history post-merge.
+
+- **Merge commit:** `571454336600b9df2456f01064af505a3452db27`
+- **Merged at:** 2026-07-23T06:10:37Z
+- **Merged by:** Kenogo (`Fkenogo`)
+- **Post-merge CI:** run [29984247236](https://github.com/Fkenogo/11THONUS/actions/runs/29984247236), event `push` on `main`, `headSha` `571454336600b9df2456f01064af505a3452db27` — `success`; job `Build, Lint, Test, Emulator Validation` — `success`
+- **Merged-tree link validation:** every Markdown file in the merged `main` tree (183 files) checked for internal relative links — **0 unresolved links**
+- **No Loyalty-domain content, no ENG-P1-002 code entered the merge** — confirmed by diffing the full 58-file merge change set by name against the known classification
+
+**Local synchronization note:** the coding agent's own local checkout of `chore/eng-p1-001-closure` still carries the pre-existing, disclosed, unrelated Loyalty-domain backlog as uncommitted working-tree changes (present since before `ENG-P1-001-CLOSE` began). This blocked a plain `git checkout main` in that checkout (`docs/README.md`, the Programme, and `IMPLEMENTATION_CHANGES.md` would have been overwritten). Per instruction, no destructive command was used. Local verification instead used a non-destructive ref update (`git fetch origin main:main`, safe because the prior local `main` tip was a strict ancestor of the new one) confirming local `main` now points at the same commit as `origin/main`, plus direct remote inspection (`git show`, `git merge-base --is-ancestor`) for the merge-commit and reachability checks above. This closure branch and the record here are separate from that pre-existing backlog and do not depend on resolving it.
+
+## 15. Formal Completion Assessment
+
+| # | Requirement | Status | Evidence |
+|---|---|---|---|
+| 1 | Approved changes merged into `main` | **Satisfied** | §14 — merge commit `5714543` |
+| 2 | Expected commits and files present | **Satisfied** | 58 files, all 6 commits reachable in `main` |
+| 3 | Pre-merge CI passed | **Satisfied** | Run `29933285672` on exact PR head |
+| 4 | Post-merge CI (or governed equivalent) passed | **Satisfied** | Run `29984247236` on the merge commit itself |
+| 5 | Documentation-link validation remains satisfied | **Satisfied** | 0/183 unresolved links in the merged tree |
+| 6 | No unauthorized deployment occurred | **Satisfied** | No `firebase deploy`/mutation command run by any task in this chain; live infra re-confirmed read-only in §5 |
+| 7 | No unrelated Loyalty-domain backlog entered the merge | **Satisfied** | File-list diff of the 58 merged files contains none |
+| 8 | No `ENG-P1-002` implementation entered the merge | **Satisfied** | `functions/src` contains only config/index/Admin-SDK infra, no domain services |
+| 9 | Rollback instructions remain valid | **Satisfied** | Implementation Report §11 unchanged in substance; post-merge rollback = revert merge commit `5714543` |
+| 10 | Required implementation and closure reports exist | **Satisfied** | 7 ENG-P1-001 reports + this closure report, all present in the merged tree |
+| 11 | `IMPLEMENTATION_CHANGES.md` contains the required ENG-P1-001 history | **Satisfied** | 12 dated entries present in the merged tree (Implementation through PR2-Final-Sync); this task appends the 13th |
+| 12 | Repository and governance records mutually consistent | **Satisfied pre-decision** | Master Workflow/Programme/Prompt Register all read `Pushed` in the merged tree, consistently, before this task's own updates |
+
+**Full Definition of Done (`docs/06-engineering-governance/definition-of-done.md` §2) re-reconciliation:**
+
+| # | Criterion | Result |
+|---|---|---|
+| 1–6 | Acceptance criteria, tests, local validation, Implementation Report, changes-tracking, Technical Review | **Met** (unchanged from §7) |
+| 7 | Committed and pushed per Git Workflow | **Met** — and now also merged |
+| 8 | Founder pulled, verified, deployed | **Not satisfied.** Git Workflow §3 defines this as the Founder's own `git pull origin main` into their local/deployment environment — "the single point at which the Founder takes possession of the change." Authorizing and the coding agent executing a GitHub merge is a distinct act from that pull. No evidence of the Founder's own pull exists in this session. |
+| 9 | Preview Review passed | **Not satisfied.** Founder-owned, follows criterion 8; no evidence available. |
+| 10 | Manual Testing Standard | **N/A** — unchanged, per the Programme's explicit "Manual QA Requirement: No" for this work package |
+| 11–12 | No unrelated files; risk/rollback notes accurate | **Met** |
+
+## 16. Status Decision
+
+**`ENG-P1-001` is NOT marked `Complete`.** Every mandatory condition this task or the coding agent can evidence is satisfied — but Definition of Done criteria 8 and 9 require a Founder action (their own local pull, and Preview Review) that has not been evidenced in this session and cannot be performed or simulated on the Founder's behalf. This is the exact blocker, precisely identified, per the task's own "blocked closure" fallback: retain the current non-complete status, report the blocker, do not advance `ENG-P1-002`.
+
+```text
+ENG-P1-001: Pushed (merged into main — merge commit 5714543 — not Complete)
+ENG-P1-002: Blocked (unchanged — precondition is ENG-P1-001 Complete)
+ENG-P1-003: Blocked (unchanged — DEC-PROV-005 still open)
+Next authorized action: Founder performs `git pull origin main`, confirms the pulled state, and reports back — only then can the Complete transition be recorded
+```
+
+---
+
+## Addendum — Full Commit and CI History
+
+- **Branch:** `chore/eng-p1-001-closure` (all 6 commits above)
+- **Pull Request:** [#2](https://github.com/Fkenogo/11THONUS/pull/2) — **MERGED** 2026-07-23T06:10:37Z by Kenogo, merge commit `5714543336...`, base `main`, merge method: merge commit (verified two-parent, not squash/rebase)
+- **PR total changed-file count:** 58 (`gh pr view 2 --json changedFiles`) — unchanged across all six commits and the merge itself
+- **Post-merge CI:** run `29984247236`, `success`, on merge-commit SHA `5714543336...`
+- **Merge:** performed under explicit Founder authorization (this document, §14) — not autonomous
+- **Tracking documents updated to record the merge:** Master Workflow (§7, §17), Engineering Implementation Programme (P1 row), Coding-Agent Prompt Register (ENG-P1-001 row), `docs/README.md`, `IMPLEMENTATION_CHANGES.md` (append-only), and this closure report — via a dedicated closure branch (`chore/eng-p1-001-post-merge-record`) and its own PR, per the governing task's explicit "do not commit directly to `main`" instruction; that PR requires its own, separate Founder merge decision
 
