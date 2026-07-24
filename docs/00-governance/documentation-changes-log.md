@@ -2,7 +2,7 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-07-24 (Entry 019 added: `EIR-03`/`GEL-001` — ENG-P1-001 historical closure record)
+> **Last controlled update:** 2026-07-24 (Entry 020 added: `EIR-03`/`GEL-001` — ENG-P1-001 historical closure record)
 
 # 11thONUS Documentation Changes Log
 
@@ -10,14 +10,32 @@ Running log of all controlled changes to the documentation suite. Every consolid
 
 ---
 
-## Entry 019 — `EIR-03` / `GEL-001`: ENG-P1-001 Historical Closure Record
+## Entry 019 — `GOV-GEL-001`: Governed Execution Loops Standard
+
+- **Date:** 24 July 2026
+- **Performed by:** Claude (AI agent), per founder task "GOV-GEL-001: Governed Execution Loops Standard"
+- **Classification:** Material Change (introduces a new governance document and a new document class — Governed Execution Loops; resolves no open decision, authorizes no engineering work, and does not alter the existing authority hierarchy).
+- **Action:** Created the Governed Execution Loops Standard — a new `docs/06-engineering-governance/` document defining how a Founder-authorized objective may be executed continuously by an agent across multiple internal steps (boundaries, checkpoints, stop conditions, loop lifecycle, loop types), grounded in and cross-referenced against the existing Coding Agent Standard, Implementation Prompt Standard, Technical Review Standard, Roles & Responsibilities, Engineering Principles, Master Workflow, and Engineering Implementation Records Standard, rather than restating or duplicating any of them. Establishes six binding governance principles (Governance Before Autonomy, Objectives Over Tasks, Milestones Over Interruptions, Execution Should Only Stop for Decisions Not Discussions, Bounded Autonomy, Founder Authority Preservation). Added the standard to the Engineering Governance section's own document index (README.md row 14) — the same minimum-discoverability step taken for `EIR-01`.
+- **No execution loop created, populated, or authorized by this task.** No loop template, tracking file, or example loop instance was created — the standard's own Examples section (§16) cites already-completed, non-loop-authorized prior tasks purely as illustrative precedent, explicitly disclosed as such. No engineering work package was begun or authorized. No application code, technical decision, or the authority hierarchy was touched.
+
+### Files created (1)
+
+- `docs/06-engineering-governance/governed-execution-loops-standard.md`
+
+### Files modified (1)
+
+- `docs/06-engineering-governance/README.md` — added row 14 to the section's Documents index.
+
+---
+
+## Entry 020 — `EIR-03` / `GEL-001`: ENG-P1-001 Historical Closure Record
 
 - **Date:** 24 July 2026
 - **Performed by:** Claude (AI agent), under Governed Execution Loop `GEL-001` ("EIR-03 — ENG-P1-001 Historical Closure"), per Founder authorization
 - **Classification:** Material Change (creates the first populated Engineering Implementation Record and the `records/version-1/phase-1/` structure it lives in; resolves no open decision, begins no engineering work, and does not alter the existing authority hierarchy).
 - **Action:** Created `EIR-ENG-P1-001` — the historical closure record for `ENG-P1-001`, citing its full evidence chain (Implementation Report, Technical Review, infrastructure reports, Closure Report, PR #2/#3, CI runs) per the Engineering Implementation Records Standard's mandatory content model. Synchronized `records/history-index.md` (linked the new record; corrected `ENG-P1-001`'s row from a stale `Pushed` status to the live `Complete` value, per the index's own authority-disclaimer rule that it must match the authoritative trackers). Updated `records/README.md`'s "What exists today" section, which was the one piece of navigation directly made stale by the new record's existence.
 - **No new governance introduced; no history reinterpreted.** Every fact in the new record is cited to an existing, already-merged primary source — nothing was reconstructed or newly asserted. No engineering work-package status was changed as a side effect (the `Complete` status already existed on `main`; the record only cites it). `ENG-P1-002` was not begun; no Phase 2 work was begun; no application code, infrastructure, architecture, Engineering Governance content, Constitution, or Decision Register entry was touched.
-- **Note on numbering:** this entry is numbered 019 relative to this branch's base (`origin/main` at `67cec797...`), which does not yet include the also-pending `GOV-GEL-001` PR's own Entry 019. If both land, the append-order collision is resolved the same way as the prior `EIR-01`/PR #3 and PR #3/PR #5 collisions (`main`-merged and PR#3 entries), by chronological reordering on merge — a mechanical conflict, not a content conflict.
+- **Note on numbering:** this entry was originally drafted as "Entry 019" against this branch's own base (`origin/main` at `67cec797...`), before the also-pending `GOV-GEL-001` PR (which independently claimed the same number against its own base) merged first. Renumbered to Entry 020 on reconciliation, per true chronological commit order (`GOV-GEL-001`'s original Entry 019 committed 2026-07-24T15:25:15+02:00; this entry's original commit 2026-07-24T16:10:23+02:00) — content and meaning unchanged, only the entry number and its position in the log.
 
 ### Files created (1)
 

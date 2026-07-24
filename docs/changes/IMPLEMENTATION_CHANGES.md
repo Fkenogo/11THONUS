@@ -704,6 +704,24 @@
 
 ---
 
+## 2026-07-24 — GOV-GEL-001: Governed Execution Loops Standard
+
+- **Date:** 2026-07-24
+- **Phase:** Engineering Governance enhancement — not tied to a specific programme phase or work package.
+- **Task:** `GOV-GEL-001` — create the Governed Execution Loops Standard, a new governance document defining how a Founder-authorized objective may be executed continuously by an agent across multiple internal steps (boundaries, checkpoints, stop conditions, loop lifecycle, loop types), without authorizing any engineering work, modifying application code, changing any technical decision, or altering the governance authority hierarchy.
+- **Status:** Governance enhancement only. No execution loop created, populated, or authorized. No loop template or tracking file created. No `ENG-*` work package begun. `EIR-03` not started.
+- **Governance principles established:** Governance Before Autonomy, Objectives Over Tasks, Milestones Over Interruptions, Execution Should Only Stop for Decisions Not Discussions, Bounded Autonomy, Founder Authority Preservation — see the standard §2.
+- **Loop lifecycle established:** `Authorized → Entry-Verified → Executing (⇄ Checkpointed) → Exited (Complete / Stopped / Terminated)` — see the standard §7.
+- **Grounding:** every relationship claim in §14 was checked against the actual current text of the cited document (Coding Agent Standard, Implementation Prompt Standard, Roles & Responsibilities, Engineering Principles, Definition of Done, Master Workflow, Engineering Implementation Records Standard) rather than assumed. §10.1's "Absolute Stop Conditions" list is cited, not restated, from the Coding Agent Standard's own §5/§6, per the Engineering Principles' "one authoritative source" rule.
+- **Files created:** [`docs/06-engineering-governance/governed-execution-loops-standard.md`](../06-engineering-governance/governed-execution-loops-standard.md).
+- **Files changed:** `docs/06-engineering-governance/README.md` (row 14 added to the section's document index), `docs/00-governance/documentation-changes-log.md` (Entry 019 — this governance change's logging location per Charter §8), plus this entry.
+- **Dependencies added:** none. **Configuration changes:** none. **Application code touched:** none. **Live infrastructure touched:** none.
+- **Risks:** none. This is an additive, non-authoritative-until-invoked governance document — every claimed authority boundary (§3, §15) explicitly denies the standard any power to authorize work, skip a stop condition, or change the hierarchy.
+- **Rollback:** delete the new file and revert the `README.md`/changes-log edits, or revert the commit; nothing else references it yet.
+- **Report link:** [`docs/05-implementation/reports/GOV-GEL-001-implementation-report-2026-07-24.md`](../05-implementation/reports/GOV-GEL-001-implementation-report-2026-07-24.md).
+
+---
+
 ## 2026-07-24 — GEL-001: EIR-03 — ENG-P1-001 Historical Closure
 
 - **Date:** 2026-07-24
@@ -715,8 +733,8 @@
 - **Navigation updated (directly affected only):** `records/README.md`'s "What exists today" section, which asserted no populated record existed — now stale by the new record's own existence.
 - **Governance boundaries preserved:** no application code, infrastructure, architecture, Engineering Governance content, Constitution, or Decision Register entry touched. `ENG-P1-002` not begun. No Phase 2 work begun. The Master Workflow's own `EIR-03` status text ("Not yet authorized") was deliberately **not** touched — it is outside this loop's enumerated Authority Boundary, disclosed here rather than silently left or silently fixed.
 - **Files created:** `records/version-1/phase-1/ENG-P1-001.md`.
-- **Files modified:** `records/history-index.md`, `records/README.md`, `docs/00-governance/documentation-changes-log.md` (Entry 019), `docs/changes/IMPLEMENTATION_CHANGES.md` (this entry).
+- **Files modified:** `records/history-index.md`, `records/README.md`, `docs/00-governance/documentation-changes-log.md` (Entry 020 — renumbered from its original draft number, 019, on reconciliation against `GOV-GEL-001`'s independently-numbered Entry 019; see that log's own note), `docs/changes/IMPLEMENTATION_CHANGES.md` (this entry).
 - **Dependencies added:** none. **Configuration changes:** none. **Application code touched:** none. **Live infrastructure touched:** none.
-- **Risks:** none new. One disclosed staleness carried forward, not created by this task: the Master Workflow's `EIR-03` status text is now inconsistent with this record's existence, but correcting it is outside this loop's authority boundary — flagged for a future, separately authorized task.
+- **Risks:** none new. One disclosed staleness carried forward, not created by this task: the Master Workflow's `EIR-03` status text is now inconsistent with this record's existence, but correcting it is outside this loop's authority boundary — flagged for a future, separately authorized task (`GEL-002`).
 - **Rollback:** revert the commit on `docs/gel-001-eir-eng-p1-001`; nothing outside `records/` and the two changes logs references the new record yet.
 - **Report link:** [`docs/05-implementation/reports/GEL-001-implementation-report-2026-07-24.md`](../05-implementation/reports/GEL-001-implementation-report-2026-07-24.md).
