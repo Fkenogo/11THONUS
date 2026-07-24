@@ -259,3 +259,25 @@ This report itself is saved at `docs/05-implementation/reports/EIR-02-implementa
 - `mergeable: MERGEABLE`, `mergeStateStatus: UNSTABLE` at time of writing (no branch-protection review yet recorded — not a merge conflict; this PR is not being merged by this task in any case)
 - CI run: [30079037083](https://github.com/Fkenogo/11THONUS/actions/runs/30079037083) — **success**, all jobs green (build, lint, format check, typecheck, unit tests, Playwright e2e, Firebase Emulator Suite validation) against the exact pushed SHA above
 - **Not merged.** Per the governing task brief, Founder review and a separate, explicit merge authorization are required before this PR is merged.
+
+---
+
+## Addendum — PR #3/PR #5 Merge-Order Reconciliation (2026-07-24, dated integration entry)
+
+*(Appended by the "PR #3 and PR #5 Merge-Order Reconciliation and Controlled Merge" task, after the above sections were written. Nothing above this addendum is edited or removed — this is a strictly additive record of what happened next, per that task's own governing instruction not to falsify or overwrite historical facts.)*
+
+**Trigger:** live verification for that task found PR #3 (`chore/eng-p1-001-post-merge-record`) still open and unmerged, and found `mergeable: CONFLICTING` between it and the then-current `main` (`0e02d05`) — a mechanical append-order conflict in `IMPLEMENTATION_CHANGES.md` between `EIR-01`'s already-merged entry and PR #3's own two entries. PR #3 was reconciled and merged first (merge commit `ffe1f9d`, 2026-07-24T10:33:36Z; post-merge CI [30086591734](https://github.com/Fkenogo/11THONUS/actions/runs/30086591734), success) — full detail in the Founder Completion Record referenced below.
+
+**PR #5 baseline change:** `origin/main` moved from `0e02d05` to `ffe1f9d` (PR #3's merge) between this report's original writing and this addendum. `docs/eir-02-repository-integration`'s starting commit for the remainder of this work is therefore `ffe1f9d928cabe1d51c25979cbaa84a57eda127b`, not the original `0e02d05`.
+
+**Conflict resolution:** `git merge origin/main` into `docs/eir-02-repository-integration` (normal merge, no rebase) produced one conflict, in `docs/README.md`'s banner line — both PR #3 and this branch had updated the same running-history line independently. Resolved by combining both updates in true chronological order: the 24-July `EIR-02` sentence leads, chained via "Previously: 23 July 2026 (...)" to PR #3's full `ENG-P1-001`-Complete paragraph (preserved verbatim), chained to the pre-existing 22-July-and-earlier tail (also preserved verbatim). `docs/05-implementation/11thonus-master-workflow.md` and `docs/changes/IMPLEMENTATION_CHANGES.md` auto-merged cleanly with no conflict — both PR #3's and this branch's content confirmed present in the merged tree by direct inspection. Merge commit: `343b781` — "Merge remote-tracking branch 'origin/main' into docs/eir-02-repository-integration".
+
+**Content corrections applied (per Founder authorization for this reconciliation task):**
+1. Reworded the Master Workflow §8 `EIR-03` table row from "backfill `EIR-ENG-P1-001` from the closed `ENG-P1-001` work package" to "backfill `EIR-ENG-P1-001` for the engineering-complete `ENG-P1-001` work package, which remains without an Engineering Implementation Record", and added a terminology note distinguishing `ENG-P1-001`'s engineering status (`Complete`, Definition of Done) from the EIR standard's own `Administratively Closed` record-lifecycle term (not reached — no EIR exists yet).
+2. Synchronized the Engineering Implementation Programme (P1 overview row, Phase 1 narrative, `ENG-P1-002` Preconditions/Blocking Reason table cells) and the Coding-Agent Prompt Register (`ENG-P1-002` row) to state explicitly that `ENG-P1-002-PREP`/`ENG-P1-002` implementation remain gated behind the Master Workflow §8 EIR governance stream reaching `EIR-03`, or explicit Founder override.
+
+Both PR #5 review threads (`chatgpt-codex-connector[bot]`) were replied to with this evidence and resolved via the GitHub API.
+
+**Additional validation performed:** `git diff --check` (clean), `pnpm format:check` (clean, after `prettier --write`), full-repository-tree Markdown link validation (clean across all tracked `.md` files), secret-pattern scan of the merge/correction diff (clean).
+
+**Additional commit:** recorded in the Founder Completion Record's merge-chronology section, along with the final CI run and PR #5 merge evidence — see `docs/05-implementation/reports/EIR-02-merge-and-reconciliation-founder-completion-record-2026-07-24.md`.

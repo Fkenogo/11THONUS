@@ -181,9 +181,11 @@ These are workflow-control identifiers, not replacements for Engineering Impleme
 |---|---|---|---|
 | `EIR-01` | Author the Engineering Implementation Records Standard | Governance task | **Complete** — merged into `main` at `0e02d05` ([PR #4](https://github.com/Fkenogo/11THONUS/pull/4)), 2026-07-24 |
 | `EIR-02` | Integrate the approved standard into the repository (`records/` structure, README, Engineering History Index, templates, navigation cross-references) | Governance task | **Current** (this task, 2026-07-24) |
-| `EIR-03` | Backfill `EIR-ENG-P1-001` from the closed `ENG-P1-001` work package | Governance task | Not yet authorized |
+| `EIR-03` | Backfill `EIR-ENG-P1-001` for the engineering-complete `ENG-P1-001` work package, which remains without an Engineering Implementation Record | Governance task | Not yet authorized |
 
 Per the Engineering Implementation Records Standard §1/§14, this stream is a secondary, historical, non-authoritative record layer — it does not itself authorize, block, or supersede the engineering sequence above, and it changes no work-package status recorded there. **However, as a distinct, Founder-directed sequencing choice recorded here** (not a consequence the EIR standard itself imposes): `ENG-P1-002-PREP`/`ENG-P1-002` additionally remain **not authorized to begin** until this EIR governance stream reaches at least `EIR-03`, or the Founder explicitly changes this sequencing.
+
+**Terminology note:** `ENG-P1-001` reached `Complete` (engineering status, per the Definition of Done — see [ENG-P1-001 Final Closure Recording](../changes/IMPLEMENTATION_CHANGES.md)) on 2026-07-23. This is distinct from, and does not imply, `Administratively Closed` — the Engineering Implementation Records Standard's own record-lifecycle term (`Engineering Complete → Recorded → Administratively Closed`, standard §6), which applies only to a work package's *record*, not its engineering status. No Engineering Implementation Record exists yet for `ENG-P1-001`, so no record-lifecycle state has been reached at all; `EIR-03` is what will first move it to `Recorded`.
 
 ## 9. Work-Package Gate Template
 
