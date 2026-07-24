@@ -78,7 +78,7 @@ Every record is drafted from its governed template — never freehand — so tha
 
 ## What exists today
 
-As of `EIR-02` (2026-07-24), this directory contains only its own scaffolding — this README, the templates, and the Engineering History Index. **No populated Engineering Implementation Record, Phase Engineering Record, or Version Engineering Record exists yet.** `version-1/` and its phase folders are not created until the first record that belongs in them is actually drafted, per the standard's own repository-structure specification (standard §12) and to avoid empty, unpopulated folders. The first populated record — backfilling `EIR-ENG-P1-001` from the now-closed `ENG-P1-001` work package — is `EIR-03`, a separately authorized future task. This task does not perform it.
+As of `EIR-03` (`GEL-001`, 2026-07-24), one populated record exists: [`EIR-ENG-P1-001`](version-1/phase-1/ENG-P1-001.md) — the historical closure record for `ENG-P1-001`, backfilled per its already-`Complete` engineering status. `version-1/phase-1/` was created to hold it, per the standard's repository-structure specification (standard §12). No Phase Engineering Record or Version Engineering Record exists yet, and no other work-package EIR exists — those remain separately authorized future tasks.
 
 ## Approval authority
 

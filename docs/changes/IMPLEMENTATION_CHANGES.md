@@ -701,3 +701,22 @@
 - **Risks:** none new. Both conflicts resolved were mechanical (append-order/same-line-edit), not semantic — no content was lost or contradicted; verified by direct diff inspection before and after resolution.
 - **Rollback:** PR #3's merge — `git revert` the merge commit `ffe1f9d` on `main`. PR #5's merge (once completed) — `git revert` its own merge commit on `main`, separately. Never reset or rewrite `main`.
 - **Report link:** see the Founder Completion Record for this task: `docs/05-implementation/reports/EIR-02-merge-and-reconciliation-founder-completion-record-2026-07-24.md`.
+
+---
+
+## 2026-07-24 — GEL-001: EIR-03 — ENG-P1-001 Historical Closure
+
+- **Date:** 2026-07-24
+- **Loop:** `GEL-001` — first authorized Governed Execution Loop (pilot), objective `EIR-03 — ENG-P1-001 Historical Closure`. Documentation and governance only; no application code modified.
+- **Task:** Create the Engineering Implementation Record for `ENG-P1-001`, synchronize the Records History Index, and update only the repository navigation directly affected by the new record.
+- **Entry verification:** `origin/main` at `67cec797d9baa6dabae2de0e09a89a6a303dad2e`; `EIR-01`/`EIR-02` confirmed merged (`records/` present); no existing `version-1/` folder (no duplicate-record risk); `ENG-P1-001` confirmed `Complete` on the live Coding-Agent Prompt Register before drafting began. One disclosed, non-blocking observation: `GOV-GEL-001` (PR #7, the standard defining the GEL framework this loop is named after) is itself not yet merged into `main` — not treated as a stop condition, since this task's own written brief is itself complete, specific Founder authorization, and nothing in the actual deliverable depends on that file's merged content.
+- **Record created:** `EIR-ENG-P1-001` (`records/version-1/phase-1/ENG-P1-001.md`) — 22 sections, every fact cited to an already-merged primary source (Implementation Report, Technical Review, 5 infrastructure reports, Closure Report §1–18, PR #2/#3, 3 CI runs). No history reinterpreted; no new governance introduced. Record lifecycle state: `Recorded` (drafted, not yet Founder-approved/locked).
+- **History Index synchronized:** linked the new record; corrected `ENG-P1-001`'s status cell from a stale `Pushed` value (present since the index's own creation, before `EIR-03`) to the live `Complete` value, per the index's own rule that it must match the authoritative trackers, not assert independently.
+- **Navigation updated (directly affected only):** `records/README.md`'s "What exists today" section, which asserted no populated record existed — now stale by the new record's own existence.
+- **Governance boundaries preserved:** no application code, infrastructure, architecture, Engineering Governance content, Constitution, or Decision Register entry touched. `ENG-P1-002` not begun. No Phase 2 work begun. The Master Workflow's own `EIR-03` status text ("Not yet authorized") was deliberately **not** touched — it is outside this loop's enumerated Authority Boundary, disclosed here rather than silently left or silently fixed.
+- **Files created:** `records/version-1/phase-1/ENG-P1-001.md`.
+- **Files modified:** `records/history-index.md`, `records/README.md`, `docs/00-governance/documentation-changes-log.md` (Entry 019), `docs/changes/IMPLEMENTATION_CHANGES.md` (this entry).
+- **Dependencies added:** none. **Configuration changes:** none. **Application code touched:** none. **Live infrastructure touched:** none.
+- **Risks:** none new. One disclosed staleness carried forward, not created by this task: the Master Workflow's `EIR-03` status text is now inconsistent with this record's existence, but correcting it is outside this loop's authority boundary — flagged for a future, separately authorized task.
+- **Rollback:** revert the commit on `docs/gel-001-eir-eng-p1-001`; nothing outside `records/` and the two changes logs references the new record yet.
+- **Report link:** [`docs/05-implementation/reports/GEL-001-implementation-report-2026-07-24.md`](../05-implementation/reports/GEL-001-implementation-report-2026-07-24.md).
