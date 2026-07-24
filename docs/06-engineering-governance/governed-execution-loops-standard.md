@@ -4,7 +4,7 @@
 > **Version:** 1.0 · **Status:** Active governance process · **Classification:** Working (governance process)
 > **Governing document:** [Engineering Governance Charter](engineering-governance-charter.md)
 > **Source-of-truth path:** `docs/06-engineering-governance/governed-execution-loops-standard.md`
-> **Last controlled update:** 2026-07-24 (`GOV-GEL-001` — created)
+> **Last controlled update:** 2026-07-24 (`GEL-003` — pre-merge review correction: §3 reworded to require explicit Founder authorization to begin a loop, removing the "Founder-delegated scoping authority" ambiguity (Finding 1); §9/§13/§7.4/Glossary reworded to distinguish the Implementation Report, produced before any Git exit criterion, from the Final Loop Completion Record, produced only once all exit criteria are met (Finding 2). Previously, same day: `GOV-GEL-001` — created)
 
 ## 1. Purpose and Scope
 
@@ -58,7 +58,7 @@ This standard sits at the same working tier as every other document in `docs/06-
 - grants permission to skip a stop condition — §10.1 is absolute;
 - changes the Constitution → PRD → TRD → Commerce Knowledge Standard → (Decision Register / Changes Log / Traceability Matrix / Engineering Governance) hierarchy (Constitution Part VII; [Documentation Index](../README.md) §1).
 
-**Authority to *begin* a loop** rests with whoever already has authority to issue the underlying task: the Founder, or the ChatGPT Technical Lead acting on Founder-delegated scoping authority (per [Roles & Responsibilities](roles-and-responsibilities.md) §2). **Authority to *stop* a loop** rests with the Founder or the ChatGPT Technical Lead at any time, unconditionally, by simply instructing the agent to stop (§12) — no loop may refuse or defer a stop instruction.
+**Only the Founder authorizes an execution objective.** The ChatGPT Technical Lead may prepare, structure, and issue the execution prompt that carries a Founder-authorized objective into a loop — exactly as it translates intent and writes implementation prompts for any other work package ([Roles & Responsibilities](roles-and-responsibilities.md) §2, [Implementation Prompt Standard](implementation-prompt-standard.md)) — but the Technical Lead never independently authorizes a *new* execution objective; that remains the Founder's decision alone, exactly as the Technical Lead never approves a Founder-level decision or authors a prompt asking a coding agent to do so ([Roles & Responsibilities](roles-and-responsibilities.md) §2). A loop begins only once the Founder has authorized its specific objective — directly, or by approving a Technical-Lead-drafted task brief (§4) — never merely because the Technical Lead holds general scoping responsibility. **Authority to *stop* a loop** rests with the Founder or the ChatGPT Technical Lead at any time, unconditionally, by simply instructing the agent to stop (§12) — no loop may refuse or defer a stop instruction.
 
 ## 4. Roles and Responsibilities
 
@@ -69,7 +69,7 @@ This section extends, and never contradicts, [Roles & Responsibilities](roles-an
 - authorizes the objective, boundaries, entry criteria, and exit criteria a loop executes against (directly, or by approving a Technical-Lead-drafted task brief);
 - may terminate any loop at any time (§12);
 - remains the sole approver of merges, Decision Register entries, and deployment — a loop never substitutes for this (§3);
-- reviews the loop's final report and evidence once it exits (§13).
+- reviews the loop's Implementation Report and Final Loop Completion Record once it exits (§13).
 
 ### ChatGPT Technical Lead
 
@@ -145,7 +145,7 @@ The agent works toward the authorized objective(s). It checkpoints at defined mi
 
 A loop always exits in exactly one of three ways:
 
-- **Complete** — every exit criterion (§9) is satisfied; the loop's final report (§13) is produced.
+- **Complete** — every exit criterion (§9) is satisfied, including any Git operation the objective requires; the loop's Final Loop Completion Record (§13) is produced.
 - **Stopped** — a stop condition (§10) was met; the agent reports the blocking issue and the decision required, and does not resume until the blocker is resolved through the appropriate governance channel.
 - **Terminated** — the Founder or ChatGPT Technical Lead explicitly instructed the loop to stop before it reached Complete or Stopped on its own (§3, §12); the agent reports the loop's state at the point of termination.
 
@@ -168,7 +168,7 @@ Every loop's authorization must state exit criteria that are:
 
 - **specific** — a fact that is either true or false, never a subjective judgment ("looks complete" is not an exit criterion; "CI run succeeds on the exact merge commit SHA" is);
 - **verifiable against live state** — checked directly (a CI run's actual conclusion, a PR's actual merged state, a tracker's actual current text), never assumed;
-- **complete before the loop's final report is written** — a loop's `Complete` state and its final report (§13) are reached together, never separately (a report is never written "assuming" a not-yet-verified exit criterion will hold).
+- **satisfied before the loop's Final Loop Completion Record is written** — the loop's `Complete` state and its Final Loop Completion Record (§13) are reached together, never separately (that record is never written "assuming" a not-yet-verified exit criterion will hold). This is distinct from the loop's Implementation Report (§13), which is produced *during* execution, before any Git operation the objective requires — exactly as the existing workflow requires Technical Review to consume the Implementation Report before Git Commit occurs ([Definition of Done](definition-of-done.md) §2 items 4, 6–7). A loop whose exit criteria include committing or pushing therefore always follows the normal report → review → commit sequence for those operations; only the loop's own Final Loop Completion Record waits for every exit criterion, Git operations included.
 
 A Single-Objective Loop (§6.1) has one exit-criteria set. A Multi-Milestone Loop (§6.2) has one exit-criteria set per milestone, plus one for the loop as a whole (all milestones complete). A Maintenance/Reconciliation Loop (§6.3) exits when the identified inconsistency is resolved and re-validated — never merely "changes made."
 
@@ -218,14 +218,18 @@ A Governed Execution Loop remains supervised throughout, not merely at its start
 
 ## 13. Audit and Evidence Requirements
 
-A Governed Execution Loop produces **exactly the same evidence** a non-looped work package or task produces — GEL changes pacing, never evidentiary discipline:
+A Governed Execution Loop produces **exactly the same evidence** a non-looped work package or task produces — GEL changes pacing, never evidentiary discipline. Two distinct documents are involved, at two distinct points, and a loop never conflates them:
 
-- an Implementation Report (or, for a governance task outside the `ENG-*` pattern, a Founder Completion Record, per the temporary format established during the PR #3/PR #5 reconciliation task) documenting entry verification, what was done, validation performed, and the final state;
+- **Implementation Report** — produced *during* execution, before any Git operation the objective requires, documenting entry verification, what was done, and validation performed so far. This is the same Implementation Report the existing workflow already requires before Technical Review and Git Commit ([Definition of Done](definition-of-done.md) §2 items 4, 6–7) — a loop does not defer it until after those steps, and does not write it twice.
+- **Final Loop Completion Record** — produced only once every exit criterion (§9) is satisfied, including any Git operation. This is the loop's own record of having reached `Exited: Complete` (§7.4), and takes the form of the Founder Completion Record — the temporary governance-task completion format already established for tasks outside the `ENG-*` work-package pattern — a loop introduces no separate or competing document type for this purpose.
+
+Both documents are required for every loop regardless of type, alongside:
+
 - an append-only changes-log entry, per [Documentation Index](../README.md) §6 Rule 1 and Engineering Governance Charter §8;
 - full commit, PR, and CI evidence, cited by exact SHA and run ID, exactly as every other task in this programme already requires;
-- for an `ENG-*` work package specifically: once the underlying work reaches `Engineering Complete`, it becomes eligible for an Engineering Implementation Record exactly as any other work package (§14.7) — a loop does not get a separate record type of its own.
+- for an `ENG-*` work package specifically: once the underlying work reaches `Engineering Complete`, it becomes eligible for an Engineering Implementation Record exactly as any other work package (§14.7) — a loop does not get a separate record type of its own for that either.
 
-A loop's checkpoints (§11) are not a substitute for this final evidence — they are progress markers during execution; the audit trail is completed at exit, in full, regardless of loop type.
+A loop's checkpoints (§11) are not a substitute for either document — they are progress markers during execution; both the Implementation Report and the Final Loop Completion Record are completed in full, at their respective points, regardless of loop type.
 
 ## 14. Relationship with Existing Governance
 
@@ -271,3 +275,5 @@ This standard itself does not authorize any engineering work, does not modify ap
 - **Stop.** An unconditional halt, triggered by an absolute or loop-specific stop condition (§10) or an external instruction (§12), after which the agent reports the blocking issue and does not proceed without the appropriate authority resolving it.
 - **Exit.** The end of a loop's `Executing` state, in exactly one of three forms: Complete, Stopped, or Terminated (§7.4).
 - **Milestone.** A pre-enumerated, authorized sub-objective within a Multi-Milestone Loop (§6.2); each milestone's completion is a checkpoint for the next.
+- **Implementation Report.** Produced during execution, before any Git operation the objective requires; feeds Technical Review exactly as for any non-looped work package (§13).
+- **Final Loop Completion Record.** Produced only once every exit criterion is satisfied, including any Git operation; the loop's own record of reaching `Exited: Complete`, in the Founder Completion Record format (§13).
