@@ -1,6 +1,6 @@
 > **Title:** ENG-P1-001 Formal Closure Report
-> **Status:** Governed closure record — see §12 for the current official status
-> **Date:** 2026-07-22
+> **Status:** Governed closure record — `ENG-P1-001` is `Complete` (2026-07-23); see §18 for the final Definition-of-Done reconciliation and status decision, and §12 for the record of the intermediate (pre-Founder-evidence) blocked-closure state
+> **Date:** 2026-07-22 (created); finalized 2026-07-23
 > **Governing task:** "ENG-P1-001 Formal Closure, Commit, Push, CI and ENG-P1-002 Readiness"
 > **Master Workflow position at start:** v1.0, Active, Phase 1, current work package `ENG-P1-001` (`Approved`), next authorized action `ENG-P1-001-CLOSE` — confirmed via direct file read before any change was made; no conflict found.
 
@@ -178,11 +178,9 @@ Founder/Technical Lead review of PR #2 identified two narrow, legitimate finding
 
 **Validation:** the full local suite (`typecheck`/`lint`/`format:check`/`build`/`test`/`test:e2e`/`emulators:validate`/`git diff --check`) was re-run and remained clean (36/36 tests unaffected — this correction touches only prose/links in one Markdown file). A repository-aware link validator checked every PR-changed Markdown file's internal relative links against `origin/main` plus the PR's own changes (i.e. the exact proposed post-merge state) and returned **zero unresolved links** — see §3.1. `.firebaserc`/emulator-project/Rules/secret-pattern checks were re-confirmed unchanged from §4–6 (this correction touches no code, infrastructure, or configuration). No Loyalty-domain file was added to the PR.
 
-**Commit/push/CI for this correction:** recorded in the Addendum below.
+**Commit/push/CI for this correction:** recorded in the table below.
 
----
-
-## Addendum — Full Commit and CI History
+### Commit and CI History (`chore/eng-p1-001-closure`, through the pre-merge correction)
 
 | # | Commit | Purpose | Files | CI run | `headSha` verified | CI result |
 |---|---|---|---|---|---|---|
@@ -191,10 +189,138 @@ Founder/Technical Lead review of PR #2 identified two narrow, legitimate finding
 | 3 | `2c0db00` | Pre-merge correction — de-link + evidence fix | 2 (subset of the 58) | [29924228309](https://github.com/Fkenogo/11THONUS/actions/runs/29924228309) | `2c0db009d308c96ec07af2038d60d2aca0db056e` | `success` |
 | 4 | `af5d943` | Evidence-recording follow-up for commit 3 | 5 (subset of the 58) | [29926123173](https://github.com/Fkenogo/11THONUS/actions/runs/29926123173) | `af5d943c7ec2e8ca5088e02837bbb108ab806fca` | `success` |
 | 5 | `23c6ba0` | `ENG-P1-001-PR2-FINAL-MERGE-READINESS-SYNC` — GitHub PR #2 description corrected (removed superseded link-exception language); `docs/README.md` stale current-status statements corrected (3 hunks: next-authorized-action, repository-init item, `DEC-TECH-005` status) | 2 (subset of the 58) | [29933089968](https://github.com/Fkenogo/11THONUS/actions/runs/29933089968) | `23c6ba03eaae1c01a1271f3e241a225f9cf8f4e9` | `success` |
+| 6 | `ef1de34` | Evidence-recording follow-up for commit 5 | 1 (subset of the 58) | [29933285672](https://github.com/Fkenogo/11THONUS/actions/runs/29933285672) | `ef1de346d6883242dc9137a5aced044cfd53f5f5` | `success` |
 
-- **Branch:** `chore/eng-p1-001-closure` (unchanged throughout)
-- **Pull Request:** [#2](https://github.com/Fkenogo/11THONUS/pull/2) — `OPEN`, `MERGEABLE`, not merged, current head `23c6ba0`
-- **PR total changed-file count:** 58 (`gh pr view 2 --json changedFiles`) — unchanged across all five commits, since commits 2–5 only modify files already introduced in commit 1
-- **Merge:** not performed at any point (Part I) — **Approved for merge**, awaiting the Founder
-- **Tracking documents updated across this history:** Master Workflow (§7, §8, §17), Engineering Implementation Programme (P1 row, §5), Coding-Agent Prompt Register (ENG-P1-001 row, §5 distribution), `docs/README.md`, `IMPLEMENTATION_CHANGES.md` (append-only entries), and this closure report itself
+## 14. Founder-Authorized Merge (`ENG-P1-001-FOUNDER-MERGE`, 2026-07-23)
+
+The Founder reviewed PR #2 at head `ef1de346d6883242dc9137a5aced044cfd53f5f5` (CI run `29933285672`, `success`) and explicitly authorized its merge, scoped to exactly that repository/PR/head SHA/merge method. Pre-merge gate re-verified immediately before merging: PR #2 `OPEN`/`MERGEABLE`/not draft/not merged, base `main`, head matched exactly, 58 changed files, the single required check (`Build, Lint, Test, Emulator Validation`) passing, PR description referencing that exact head/CI. No discrepancy found.
+
+Merged via `gh pr merge 2 --merge --match-head-commit ef1de346d6883242dc9137a5aced044cfd53f5f5` — a genuine two-parent merge commit (confirmed directly via `git show --format=%P`: parents `cd938b8` (prior `main` tip) and `ef1de346` (the exact authorized PR head)), not a squash or rebase. All 6 PR commits (`ba43da1`, `7f67292`, `2c0db00`, `af5d943`, `23c6ba0`, `ef1de34`) confirmed reachable in `main`'s history post-merge.
+
+- **Merge commit:** `571454336600b9df2456f01064af505a3452db27`
+- **Merged at:** 2026-07-23T06:10:37Z
+- **Merged by:** Kenogo (`Fkenogo`)
+- **Post-merge CI:** run [29984247236](https://github.com/Fkenogo/11THONUS/actions/runs/29984247236), event `push` on `main`, `headSha` `571454336600b9df2456f01064af505a3452db27` — `success`; job `Build, Lint, Test, Emulator Validation` — `success`
+- **Merged-tree link validation:** every Markdown file in the merged `main` tree (183 files) checked for internal relative links — **0 unresolved links**
+- **No Loyalty-domain content, no ENG-P1-002 code entered the merge** — confirmed by diffing the full 58-file merge change set by name against the known classification
+
+**Local synchronization note:** the coding agent's own local checkout of `chore/eng-p1-001-closure` still carries the pre-existing, disclosed, unrelated Loyalty-domain backlog as uncommitted working-tree changes (present since before `ENG-P1-001-CLOSE` began). This blocked a plain `git checkout main` in that checkout (`docs/README.md`, the Programme, and `IMPLEMENTATION_CHANGES.md` would have been overwritten). Per instruction, no destructive command was used. Local verification instead used a non-destructive ref update (`git fetch origin main:main`, safe because the prior local `main` tip was a strict ancestor of the new one) confirming local `main` now points at the same commit as `origin/main`, plus direct remote inspection (`git show`, `git merge-base --is-ancestor`) for the merge-commit and reachability checks above. This closure branch and the record here are separate from that pre-existing backlog and do not depend on resolving it.
+
+## 15. Formal Completion Assessment
+
+| # | Requirement | Status | Evidence |
+|---|---|---|---|
+| 1 | Approved changes merged into `main` | **Satisfied** | §14 — merge commit `5714543` |
+| 2 | Expected commits and files present | **Satisfied** | 58 files, all 6 commits reachable in `main` |
+| 3 | Pre-merge CI passed | **Satisfied** | Run `29933285672` on exact PR head |
+| 4 | Post-merge CI (or governed equivalent) passed | **Satisfied** | Run `29984247236` on the merge commit itself |
+| 5 | Documentation-link validation remains satisfied | **Satisfied** | 0/183 unresolved links in the merged tree |
+| 6 | No unauthorized deployment occurred | **Satisfied** | No `firebase deploy`/mutation command run by any task in this chain; live infra re-confirmed read-only in §5 |
+| 7 | No unrelated Loyalty-domain backlog entered the merge | **Satisfied** | File-list diff of the 58 merged files contains none |
+| 8 | No `ENG-P1-002` implementation entered the merge | **Satisfied** | `functions/src` contains only config/index/Admin-SDK infra, no domain services |
+| 9 | Rollback instructions remain valid | **Satisfied** | Implementation Report §11 unchanged in substance; post-merge rollback = revert merge commit `5714543` |
+| 10 | Required implementation and closure reports exist | **Satisfied** | 7 ENG-P1-001 reports + this closure report, all present in the merged tree |
+| 11 | `IMPLEMENTATION_CHANGES.md` contains the required ENG-P1-001 history | **Satisfied** | 12 dated entries present in the merged tree (Implementation through PR2-Final-Sync); this task appends the 13th |
+| 12 | Repository and governance records mutually consistent | **Satisfied pre-decision** | Master Workflow/Programme/Prompt Register all read `Pushed` in the merged tree, consistently, before this task's own updates |
+
+**Full Definition of Done (`docs/06-engineering-governance/definition-of-done.md` §2) re-reconciliation:**
+
+| # | Criterion | Result |
+|---|---|---|
+| 1–6 | Acceptance criteria, tests, local validation, Implementation Report, changes-tracking, Technical Review | **Met** (unchanged from §7) |
+| 7 | Committed and pushed per Git Workflow | **Met** — and now also merged |
+| 8 | Founder pulled, verified, deployed | **Not satisfied.** Git Workflow §3 defines this as the Founder's own `git pull origin main` into their local/deployment environment — "the single point at which the Founder takes possession of the change." Authorizing and the coding agent executing a GitHub merge is a distinct act from that pull. No evidence of the Founder's own pull exists in this session. |
+| 9 | Preview Review passed | **Not satisfied.** Founder-owned, follows criterion 8; no evidence available. |
+| 10 | Manual Testing Standard | **N/A** — unchanged, per the Programme's explicit "Manual QA Requirement: No" for this work package |
+| 11–12 | No unrelated files; risk/rollback notes accurate | **Met** |
+
+## 16. Status Decision
+
+**`ENG-P1-001` is NOT marked `Complete`.** Every mandatory condition this task or the coding agent can evidence is satisfied — but Definition of Done criteria 8 and 9 require a Founder action (their own local pull, and Preview Review) that has not been evidenced in this session and cannot be performed or simulated on the Founder's behalf. This is the exact blocker, precisely identified, per the task's own "blocked closure" fallback: retain the current non-complete status, report the blocker, do not advance `ENG-P1-002`.
+
+```text
+ENG-P1-001: Pushed (merged into main — merge commit 5714543 — not Complete)
+ENG-P1-002: Blocked (unchanged — precondition is ENG-P1-001 Complete)
+ENG-P1-003: Blocked (unchanged — DEC-PROV-005 still open)
+Next authorized action: Founder performs `git pull origin main`, confirms the pulled state, and reports back — only then can the Complete transition be recorded
+```
+
+*(Superseded by §17–18 below, recorded 2026-07-23, once the Founder completed the two remaining gates. This section is preserved unedited as the accurate record of the closure state at the time it was written.)*
+
+## 17. Founder Possession and Preview Review (2026-07-23)
+
+Following §16's blocked-closure record, the Founder personally completed both remaining gates in a clean review workspace prepared separately from the coding agent's own checkout (which continued to carry the pre-existing, disclosed Loyalty-domain backlog untouched throughout).
+
+**Possession (Definition of Done criterion 8):**
+- Founder ran `cd /Users/theo/11THONUS-founder-review && git pull origin main` personally.
+- Reported result: `Updating ef1de34..5714543 / Fast-forward`.
+- Independently cross-checked by the coding agent directly against that workspace's actual git state: `HEAD` = `571454336600b9df2456f01064af505a3452db27` (the exact merge commit), worktree clean, `git log -1` confirms the merge commit — matching the Founder's report and the generated evidence file exactly.
+- Evidence file: `/Users/theo/11THONUS-founder-review-evidence/eng-p1-001-founder-review-evidence-20260723-095214.md` — `Overall result: PASS`, `HEAD matches expected merge commit: yes`, `Worktree clean: yes`, all automated checks (install, typecheck, lint, format:check, build, test, `emulators:validate`) passing.
+- This is genuine, independently-verifiable evidence of the Founder's own local pull — the distinct act Git Workflow §3 requires, separate from authorizing/executing the GitHub merge.
+
+**Preview Review (Definition of Done criterion 9):** per the governing-text interpretation (no application was deployed for this work package, so the Deployment Workflow's literal "deployed change"/UI-preview language does not apply; the honest equivalent is repository/CI/emulator evidence review). Founder-reported result: the Firebase Emulator Suite started successfully against `demo-11thonus` with all six local emulators active (Authentication, Firestore, Storage, Functions, Hosting, Extensions); the expected function `europe-west1-ping` loaded and initialized at `http://127.0.0.1:5001/demo-11thonus/europe-west1/ping`, confirming the approved region; the Emulator UI was reachable at `http://127.0.0.1:4000`. No live deployment occurred; no production data was accessed. **Founder Preview Review result: `Passed`.**
+
+**Non-blocking warnings recorded, not resolved (pre-existing, unrelated to ENG-P1-001's own correctness — out of scope for this closure):**
+- Application Default Credentials warning (functions emulator) — pre-existing local-environment condition, observed identically in every prior emulator run this session.
+- Outdated `firebase-functions` package warning — a routine dependency-freshness notice, not a defect; upgrading it is explicitly out of scope for this task.
+- Java emulator runtime deprecation warning — an upstream Firestore-emulator/Java-version notice already investigated and worked around during ENG-P0-002 (JDK 21 pinned in CI); not a new finding.
+
+## 18. Final Definition-of-Done Reconciliation and Status Decision
+
+| # | Criterion | Evidence | Result | Governing source |
+|---|---|---|---|---|
+| 1 | Acceptance Criteria met verbatim | §4–6; Implementation Report §1/§9 | **Met** | DoD §2.1 |
+| 2 | All Required Tests passed | 36/36 unit/component + e2e + emulator, pre- and post-merge CI both green | **Met** | DoD §2.2 |
+| 3 | Local Validation actually run | Real command output shown throughout this report and its predecessors | **Met** | DoD §2.3 |
+| 4 | Implementation Report produced in full | `ENG-P1-001-implementation-report-2026-07-20.md` | **Met** | DoD §2.4 |
+| 5 | Changes-tracking file updated | Programme, Prompt Register, `IMPLEMENTATION_CHANGES.md` (13 dated entries) | **Met** | DoD §2.5 |
+| 6 | Technical Review Approved, no open corrections | `ENG-P1-001-technical-review-2026-07-20.md`, 4/4 findings corrected | **Met** | DoD §2.6 |
+| 7 | Committed and pushed per Git Workflow | 6 commits, pushed, PR #2, CI green, **merged** | **Met** | DoD §2.7 |
+| 8 | Founder pulled, verified, deployed | §17 — Founder's own `git pull origin main`, fast-forward to the merge commit, independently cross-checked | **Met** | DoD §2.8; Git Workflow §3 |
+| 9 | Preview Review passed | §17 — Firebase Emulator Suite Preview Review, `Passed` | **Met** | DoD §2.9; Deployment Workflow §3 (governing-text interpretation) |
+| 10 | Manual Testing Standard | Programme: "Manual QA Requirement: No" for this work package | **N/A** | DoD §2.10 |
+| 11 | No unrelated files modified | 58 committed files, zero Loyalty-domain content, confirmed at every stage including the final merged tree | **Met** | DoD §2.11 |
+| 12 | Risk/rollback notes remain accurate | Implementation Report §11 unchanged in substance; rollback = revert merge commit `5714543` | **Met** | DoD §2.12 |
+
+**All applicable criteria satisfied (11 of 12; criterion 10 correctly N/A).**
+
+### Status Decision
+
+**`ENG-P1-001` is `Complete`.**
+
+```text
+ENG-P1-001: Complete (2026-07-23)
+ENG-P1-002: Ready — its only blocker (ENG-P1-001 completion) is resolved; DEC-TECH-006/007 already CONFIRMED; no Provider/Legal dependency
+ENG-P1-003: Blocked — DEC-PROV-005 remains OPEN_PROVIDER, unaffected by ENG-P1-001/ENG-P1-002
+Next authorized action: ENG-P1-002-PREP (prepare the ENG-P1-002 implementation prompt — a separate, not-yet-authorized task; ENG-P1-002 implementation itself has not begun)
+```
+
+### ENG-P1-002 Readiness Assessment
+
+Checked directly against the Programme's own ENG-P1-002 row (Preconditions / Decision Dependencies / Provider Dependencies / Legal Dependencies), not inferred:
+
+| Requirement | Status | Source |
+|---|---|---|
+| Predecessor dependency: `ENG-P1-001` complete | **Satisfied** 2026-07-23 | Programme, ENG-P1-002 row "Preconditions" |
+| Decision dependency: `DEC-TECH-006` (event delivery/outbox) | **CONFIRMED**, Engineering Decision Sprint 2 (pattern level; exact schema is Pass 2 detail authored alongside ENG-P1-002 itself) | Decision Register; Programme ENG-P1-002 row |
+| Decision dependency: `DEC-TECH-007` (idempotency storage) | **CONFIRMED**, Engineering Decision Sprint 2 (policy level; per-operation schema is Pass 2 detail authored alongside ENG-P1-002 itself) | Decision Register; Programme ENG-P1-002 row |
+| Provider dependency | **None** | Programme ENG-P1-002 row: "—" |
+| Legal dependency | **None** | Programme ENG-P1-002 row: "—" |
+| Documentation | Engineering Standards Pass 2 (schema detail) explicitly deferred to be authored *alongside* ENG-P1-002 itself, not a precondition to starting it | Engineering Standards README §"Pass 2 — Reserved" |
+| Founder approval | This task's own explicit authorization to assess (not begin) readiness | This task |
+
+No unresolved dependency remains. **`ENG-P1-002` moves `Blocked` → `Ready`.** This does not authorize implementation — per the Master Workflow's own sequence, `ENG-P1-002-PREP` (drafting the implementation prompt) is a separate, subsequent, not-yet-authorized task.
+
+---
+
+## Addendum — Full Commit and CI History
+
+- **Branch `chore/eng-p1-001-closure`** (6 commits: `ba43da1`, `7f67292`, `2c0db00`, `af5d943`, `23c6ba0`, `ef1de34` — see the table above for individual purpose/CI evidence)
+- **Pull Request:** [#2](https://github.com/Fkenogo/11THONUS/pull/2) — **MERGED** 2026-07-23T06:10:37Z by Kenogo, merge commit `571454336600b9df2456f01064af505a3452db27`, base `main`, merge method: merge commit (verified two-parent, not squash/rebase)
+- **PR #2 total changed-file count:** 58 (`gh pr view 2 --json changedFiles`) — unchanged across all six commits and the merge itself
+- **Post-merge CI (on `main`):** run `29984247236`, `success`, on merge-commit SHA `571454336600b9df2456f01064af505a3452db27`
+- **Merge:** performed under explicit Founder authorization (§14) — not autonomous
+- **Founder possession and Preview Review:** §17 — both confirmed, 2026-07-23
+- **Final status:** `ENG-P1-001` **Complete**; `ENG-P1-002` **Ready**; `ENG-P1-003` **Blocked** (§18)
+- **Branch `chore/eng-p1-001-post-merge-record`** (PR #3, documentation-only): records the merge (commit `1461619`), then this final Complete/Ready recording (commit to be recorded in `IMPLEMENTATION_CHANGES.md`'s corresponding entry) — opened as its own PR per the governing task's "do not commit directly to `main`" instruction; requires its own, separate Founder merge decision, not performed by any task in this chain
 
