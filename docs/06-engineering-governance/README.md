@@ -22,6 +22,7 @@ Start with the [Engineering Governance Charter](engineering-governance-charter.m
 | 10 | [Roles & Responsibilities](roles-and-responsibilities.md) | Founder / ChatGPT Technical Lead / Coding Agent / GitHub / Firebase / Manual QA / future team |
 | 11 | [Engineering Principles](engineering-principles.md) | Judgment principles for situations no specific rule covers |
 | 12 | [Cloud Environment & Deployment Strategy](cloud-environment-and-deployment-strategy.md) | Environment architecture, promotion model, Firebase project strategy, region-selection criteria, infrastructure-access governance, monitoring/DR/cost/security principles — operationalizes `DEC-TECH-005` |
+| 13 | [Engineering Implementation Records Standard](engineering-implementation-records-standard.md) | Historical-record framework for engineering work packages (Engineering Implementation Record / Phase Engineering Record / Version Engineering Record); non-authoritative — always defers to the documents above |
 
 ## Relationship to Existing Governance
 
