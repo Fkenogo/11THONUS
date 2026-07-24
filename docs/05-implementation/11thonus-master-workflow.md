@@ -11,7 +11,7 @@
 | **Owner** | ChatGPT Technical Lead (drafts and maintains); Founder (approves and authorizes status changes) |
 | **Review authority** | Founder and ChatGPT Technical Lead jointly, per [Roles & Responsibilities](../06-engineering-governance/roles-and-responsibilities.md) |
 | **Effective date** | 2026-07-22 |
-| **Last controlled update** | 2026-07-22 (v0.1 → v1.0 — corrections applied per Founder/Technical Lead review, approved, and activated; see §19–20) |
+| **Last controlled update** | 2026-07-24 (`EIR-02` — additive recognition of the EIR governance stream appended to §8 and §17; no existing sequencing, status, or approved content rewritten; version remains 1.0). Previously: 2026-07-22 (v0.1 → v1.0 — corrections applied per Founder/Technical Lead review, approved, and activated; see §19–20) |
 | **Source-of-truth path** | `docs/05-implementation/11thonus-master-workflow.md` |
 | **Change-control rule** | This document is updated *before* the affected implementation proceeds whenever sequencing changes, work is deferred, a corrective task is inserted, or a new component becomes necessary (§14). Every edit is logged in [`docs/changes/IMPLEMENTATION_CHANGES.md`](../changes/IMPLEMENTATION_CHANGES.md). This document does not itself carry Founder/Technical-Lead decision authority over product, technical, legal, or Decision Register content — see §4. |
 
@@ -175,6 +175,18 @@ These are workflow-control identifiers, not replacements for Engineering Impleme
 
 **Immediate authorized sequence after this document's activation begins with `ENG-P1-001-CLOSE`.** This document does not execute it. `ENG-P1-001-CLOSE` is prepared and executed as its own, separately authorized task (§17).
 
+**EIR governance stream (added 2026-07-24, `EIR-02`):** a separate, secondary governance stream, layered on top of the engineering sequence above and governed in full by the [Engineering Implementation Records Standard](../06-engineering-governance/engineering-implementation-records-standard.md):
+
+| ID | Task | Type | Status |
+|---|---|---|---|
+| `EIR-01` | Author the Engineering Implementation Records Standard | Governance task | **Complete** — merged into `main` at `0e02d05` ([PR #4](https://github.com/Fkenogo/11THONUS/pull/4)), 2026-07-24 |
+| `EIR-02` | Integrate the approved standard into the repository (`records/` structure, README, Engineering History Index, templates, navigation cross-references) | Governance task | **Current** (this task, 2026-07-24) |
+| `EIR-03` | Backfill `EIR-ENG-P1-001` for the engineering-complete `ENG-P1-001` work package, which remains without an Engineering Implementation Record | Governance task | Not yet authorized |
+
+Per the Engineering Implementation Records Standard §1/§14, this stream is a secondary, historical, non-authoritative record layer — it does not itself authorize, block, or supersede the engineering sequence above, and it changes no work-package status recorded there. **However, as a distinct, Founder-directed sequencing choice recorded here** (not a consequence the EIR standard itself imposes): `ENG-P1-002-PREP`/`ENG-P1-002` additionally remain **not authorized to begin** until this EIR governance stream reaches at least `EIR-03`, or the Founder explicitly changes this sequencing.
+
+**Terminology note:** `ENG-P1-001` reached `Complete` (engineering status, per the Definition of Done — see [ENG-P1-001 Final Closure Recording](../changes/IMPLEMENTATION_CHANGES.md)) on 2026-07-23. This is distinct from, and does not imply, `Administratively Closed` — the Engineering Implementation Records Standard's own record-lifecycle term (`Engineering Complete → Recorded → Administratively Closed`, standard §6), which applies only to a work package's *record*, not its engineering status. No Engineering Implementation Record exists yet for `ENG-P1-001`, so no record-lifecycle state has been reached at all; `EIR-03` is what will first move it to `Recorded`.
+
 ## 9. Work-Package Gate Template
 
 Every current or future work package shall be recorded (in the Programme and, where active, in §10 below) with these fields:
@@ -327,6 +339,8 @@ A task is not complete merely because code exists (TRD22 §22.41; [Definition of
 `ENG-P1-002`'s only blocker — `ENG-P1-001` completion — is resolved; its own decision dependencies (`DEC-TECH-006`/`007`) were already `CONFIRMED`; it has no Provider or Legal dependency. **`ENG-P1-002` moves `Blocked` → `Ready`.** `ENG-P1-003` remains `Blocked` on the separate, still-open `DEC-PROV-005`.
 
 **Next authorized action: `ENG-P1-002-PREP`** — prepare the `ENG-P1-002` implementation prompt. This is a separate, not-yet-authorized task; `ENG-P1-002` implementation itself has not begun and is not authorized by this document.
+
+**EIR governance stream note (added 2026-07-24, `EIR-02`):** independent of the sequencing above, `EIR-01` is `Complete` (merged into `main`, [PR #4](https://github.com/Fkenogo/11THONUS/pull/4)); this document's own repository-integration task, `EIR-02`, is the current EIR-stream task; `EIR-03` (backfilling `EIR-ENG-P1-001`) is next, once separately authorized — see §8. Per the Founder-directed sequencing recorded there, `ENG-P1-002-PREP` additionally remains unauthorized until that stream reaches `EIR-03` or the Founder explicitly changes the sequence.
 
 ## 18. Known Risks and Control Measures
 
