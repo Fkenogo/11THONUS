@@ -647,3 +647,21 @@
 - **Risks:** none new. The original `chore/eng-p1-001-closure` checkout's disclosed Loyalty-domain backlog remains untouched and unresolved — flagged again for visibility, unchanged status.
 - **Rollback:** revert the commit on `chore/eng-p1-001-post-merge-record` if this recording needs correction before PR #3 is merged; once merged, revert on `main` via standard `git revert`. No live Firebase resource or code was touched by this task.
 - **Report link:** [`docs/05-implementation/reports/ENG-P1-001-closure-report-2026-07-22.md`](../05-implementation/reports/ENG-P1-001-closure-report-2026-07-22.md) §17–18.
+
+---
+
+## 2026-07-23 — EIR-01: Engineering Implementation Records Standard
+
+- **Date:** 2026-07-23
+- **Phase:** Engineering Governance enhancement — not tied to a specific programme phase or work package.
+- **Task:** `EIR-01` — create the Engineering Implementation Records Standard, a new governance document defining a permanent historical-record framework (Engineering Implementation Record → Phase Engineering Record → Version Engineering Record) for engineering work packages, without beginning any engineering implementation work, modifying any work package, or changing any existing status.
+- **Status:** Governance enhancement only. No repository folders, templates, or actual records created (deferred to `EIR-02`/`EIR-03`/`EIR-04`, none of which is authorized or executed by this task). No engineering status, Decision Register entry, Master Workflow position, or Programme/Register status was changed.
+- **Design principles established:** Historical Record Principle, Authority Principle, Story Principle, Immutability Principle, One Record Principle, Hierarchy Principle (three levels only: EIR / Phase Engineering Record / Version Engineering Record) — see the standard §3.
+- **Lifecycle established:** `Engineering Complete → Recorded → Administratively Closed`, distinct from and always later than a work package's own Definition-of-Done `Complete` status — see the standard §6.
+- **Files created:** [`docs/06-engineering-governance/engineering-implementation-records-standard.md`](../06-engineering-governance/engineering-implementation-records-standard.md).
+- **Files changed:** none besides this entry.
+- **Note on logging location:** this entry is recorded in `IMPLEMENTATION_CHANGES.md` (the log actually in continuous use for every engineering-governance and engineering-track change this session, including every prior `docs/06-engineering-governance/` edit), rather than `docs/00-governance/documentation-changes-log.md`, which the Engineering Governance Charter §8 names but which has not been the log actually used for this section in practice since early Phase 1 of the documentation programme. This is a disclosed, narrow judgment call following established practice, not a change to either log's own scope.
+- **Dependencies added:** none. **Configuration changes:** none.
+- **Risks:** none. This is an additive, non-authoritative governance document; §14 of the standard itself enumerates the guarantees that nothing existing was changed.
+- **Rollback:** delete the new file / revert the commit; nothing else references it yet.
+- **Report link:** [`docs/06-engineering-governance/engineering-implementation-records-standard.md`](../06-engineering-governance/engineering-implementation-records-standard.md).
