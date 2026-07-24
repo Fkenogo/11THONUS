@@ -65,7 +65,7 @@ gh run watch <run-id> --exit-status
 
 ## 6. Risks
 
-None new. One disclosed, non-blocking observation carried forward: the [Master Workflow](../11thonus-master-workflow.md) §8's `EIR-03` status text ("Not yet authorized") is now stale relative to this record's existence — correcting it is outside this loop's enumerated Authority Boundary (the Master Workflow is not on the allowed-files list), so it was deliberately not touched, flagged here rather than silently left unaddressed or silently fixed outside scope.
+None new. One disclosed, non-blocking, and explicitly **temporary** state carried forward: the [Master Workflow](../11thonus-master-workflow.md) §8's `EIR-03` status text ("Not yet authorized") does not yet reflect this record's existence. This is not a defect this loop failed to catch or an authority boundary it exceeded — the Master Workflow was correctly outside `GEL-001`'s enumerated Authority Boundary (it is not on the allowed-files list, and this loop's own Authorized Execution Sequence never included it), so touching it here would itself have been an out-of-scope action. Synchronizing it is intentionally deferred to the next authorized Governance Synchronization Loop (`GEL-002`), whose own stated objective is exactly this: bringing every governance tracker that legitimately depends on this merged baseline back into agreement. Until `GEL-002` runs, this one field is correctly understood as transiently inconsistent with the newly-created record, not as an error in either.
 
 ## 7. Rollback Instructions
 
@@ -83,3 +83,9 @@ Revert the commit on `docs/gel-001-eir-eng-p1-001` (or, once merged, `git revert
 - Pull request: [#8](https://github.com/Fkenogo/11THONUS/pull/8) — `docs/gel-001-eir-eng-p1-001` → `main`. `mergeable: MERGEABLE`.
 - CI run: [30099930577](https://github.com/Fkenogo/11THONUS/actions/runs/30099930577) — **success**, all jobs green.
 - **Not merged.** Per the governing loop's checkpoint instruction, execution stops here and returns for Founder review.
+
+---
+
+## Addendum — `GEL-003` Pre-Merge Review Correction (2026-07-24)
+
+Per Founder-approved review findings on PR #8, §6 (Risks) above was reworded in place — the record was still `Recorded`, not yet Founder-approved, so in-place correction before lock is the correct mechanism (Engineering Implementation Records Standard §9.3), not an amendment. The substantive facts are unchanged: the Master Workflow's `EIR-03` status text remains outside this loop's Authority Boundary and was not touched by `GEL-001`. What changed is only the framing — explicitly identifying the resulting inconsistency as temporary and its synchronization as deferred to `GEL-002`, per Founder direction.

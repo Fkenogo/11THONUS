@@ -19,7 +19,7 @@ None to existing authority. This loop:
 - created the repository's first populated Engineering Implementation Record, exactly as `EIR-01`/`EIR-02` anticipated and specified in advance (naming convention, mandatory content model, repository structure);
 - introduced no new governance rule, reinterpreted no history, and resolved no Decision Register entry;
 - did not begin `ENG-P1-002` or any Phase 2 work;
-- left the Master Workflow's own `EIR-03` status text untouched — outside this loop's Authority Boundary — and discloses this rather than silently leaving it stale or silently fixing it out of scope.
+- correctly left the Master Workflow's own `EIR-03` status text untouched, since it sat outside this loop's Authority Boundary and outside its Authorized Execution Sequence — this is not this loop exceeding or falling short of its authority, but the boundary working as designed; the resulting, explicitly temporary inconsistency is disclosed here and its synchronization is intentionally deferred to the next authorized Governance Synchronization Loop (`GEL-002`).
 
 ## Repository Impact
 
@@ -36,7 +36,7 @@ The repository now has a working, populated example of the EIR framework end to 
 ## Recommendation
 
 1. Review and merge PR #8 (this task's own PR, containing the EIR and its navigation/log updates) — the record is drafted (`Recorded`); Founder approval is required to move it to `Administratively Closed` per the Engineering Implementation Records Standard §9.2 (not performed by this loop, which may not self-approve).
-2. Separately, correct the Master Workflow's `EIR-03` status text once this PR merges — flagged here as a small, out-of-boundary follow-up, not performed by this loop.
+2. Correct the Master Workflow's `EIR-03` status text as part of `GEL-002` (Governance Baseline Synchronization) — this is exactly the class of legitimately-changed-state synchronization `GEL-002` exists to perform, not a follow-up outside any loop's plan.
 3. `EIR-04` (the Phase 1 Engineering Record) and any future `EIR-0n` backfill remain separately authorized future tasks — none begun here.
 
 ---
@@ -100,7 +100,7 @@ None.
 ## Decisions Made
 
 - **Proceeded despite `GOV-GEL-001` (PR #7) being unmerged** — disclosed as a non-blocking observation, not a stop condition, since this task's own written brief is complete, specific Founder authorization and no deliverable depends on that file's merged content (full reasoning in the implementation report's Entry Verification section).
-- **Did not touch the Master Workflow's stale `EIR-03` status text** — outside the enumerated Authority Boundary; disclosed rather than silently fixed or silently left.
+- **Did not touch the Master Workflow's `EIR-03` status text**, correctly, because it sat outside this loop's enumerated Authority Boundary — the resulting, explicitly temporary inconsistency with this newly-created record is disclosed, not an authority-boundary lapse, and its synchronization is intentionally deferred to `GEL-002`.
 - **Cited, never restated, the Closure Report's content** — the Engineering Chronicle (§7 of the EIR) links to primary sources for every event rather than reproducing their narrative, per the Historical Record Principle.
 
 ## Validation
@@ -126,7 +126,7 @@ None new — see implementation report §6.
 
 ## Deferred Work
 
-Master Workflow `EIR-03` status-text correction (out of this loop's boundary); `EIR-04` (Phase 1 Engineering Record); any further `EIR-0n` backfill; Founder approval/locking of this record; `ENG-P1-002` and all Phase 2 work.
+Master Workflow `EIR-03` status-text synchronization — a temporary, disclosed inconsistency, correctly outside this loop's boundary, deferred to `GEL-002` (Governance Baseline Synchronization); `EIR-04` (Phase 1 Engineering Record); any further `EIR-0n` backfill; Founder approval/locking of this record; `ENG-P1-002` and all Phase 2 work.
 
 ## Final State
 
@@ -143,3 +143,9 @@ Not determined by this task. Candidates: Founder review/merge of this PR and PR 
 ## Rollback
 
 Revert the commit on `docs/gel-001-eir-eng-p1-001` (or, once merged, `git revert` the merge commit on `main`).
+
+---
+
+## Addendum — `GEL-003` Pre-Merge Review Correction (2026-07-24)
+
+Per Founder-approved review findings on PR #8, the wording describing the Master Workflow `EIR-03` staleness was corrected in place (this record is not yet Founder-approved/locked, so in-place correction is the governed mechanism — standard §9.3). No fact changed: `GEL-001` correctly stayed within its Authority Boundary and did not touch the Master Workflow. What changed is the framing — explicit identification of the inconsistency as temporary, and its synchronization as deferred to `GEL-002`, per Founder direction.
