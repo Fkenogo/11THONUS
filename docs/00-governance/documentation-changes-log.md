@@ -2,11 +2,39 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-07-23 (Entry 017 added: `EIR-01` — Engineering Implementation Records Standard created)
+> **Last controlled update:** 2026-07-24 (Entry 018 added: `EIR-02` — Engineering Implementation Records repository integration)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 018 — `EIR-02`: Engineering Implementation Records Repository Integration
+
+- **Date:** 24 July 2026
+- **Performed by:** Claude (AI agent), per founder task "EIR-02: Engineering Implementation Records Repository Integration"
+- **Classification:** Material Change (introduces a new top-level repository area and adds narrow navigation cross-references; resolves no open decision, changes no work-package status, and does not alter the existing authority hierarchy).
+- **Precondition executed first:** per Founder authorization, merged [PR #4](https://github.com/Fkenogo/11THONUS/pull/4) (`EIR-01`, head `712d8b98`) into `main` via a standard merge commit (`0e02d05`), verified `mergeStateStatus: CLEAN`, `mergeable: MERGEABLE`, all 3 review threads resolved, and post-merge CI green on `main` before proceeding — this satisfied EIR-02's own entry gate (the standard must already be merged before its repository integration begins).
+- **Action:** Created the `records/` repository structure specified by the Engineering Implementation Records Standard §12 — `records/README.md` (section orientation), `records/history-index.md` (the Engineering History Index, standard §13), and the three governed templates (`records/templates/engineering-implementation-record-template.md`, `phase-engineering-record-template.md`, `version-engineering-record-template.md`), each implementing the mandatory content model in standard §10.1–10.3. Added narrow navigation cross-references only where a genuine discoverability requirement existed: [Documentation Index](../README.md) §3 (new "Engineering Implementation Records" document group) and the [Master Workflow](../05-implementation/11thonus-master-workflow.md) §8/§17 (additive recognition of the `EIR-01`/`EIR-02`/`EIR-03` governance stream and its Founder-directed gating of `ENG-P1-002-PREP`). **No populated Engineering Implementation Record, Phase Engineering Record, or Version Engineering Record was created** — `version-1/` and its phase folders are deliberately not created yet (nothing legitimate to place in them before `EIR-03`/`EIR-04`, and empty directories are not tracked by Git). No engineering work-package status, Decision Register entry, Master Workflow sequencing decision (beyond the additive EIR-stream recognition explicitly authorized for this task), or Programme/Register status was changed.
+- **Deliberately not touched, with rationale:** the Documentation Manifest (`docs/00-governance/documentation-manifest-v1.md`) was evaluated and left untouched — it has been substantially stale since Engineering Decision Sprints 1–2 for reasons unrelated to `EIR-02` (missing the Master Workflow, `ENG-P1-001`'s own reports, the Cloud Environment & Deployment Strategy, and `EIR-01` itself, among others); adding one isolated row for the records framework while leaving that larger, pre-existing gap untouched would misleadingly suggest the manifest is "caught up" through `EIR-02` when it is not. A full manifest regeneration is out of this task's narrow scope. The Engineering Governance section README (`docs/06-engineering-governance/README.md`) was also left untouched — its row 13 (added under `EIR-01`'s correction pass) already links the standard, and `records/` itself lives outside that section, discoverable instead via the Documentation Index update above.
+
+### Files created (5)
+
+- `records/README.md`
+- `records/history-index.md`
+- `records/templates/engineering-implementation-record-template.md`
+- `records/templates/phase-engineering-record-template.md`
+- `records/templates/version-engineering-record-template.md`
+
+### Files modified (2)
+
+- `docs/README.md` — new "Engineering Implementation Records" document group in §3; banner updated.
+- `docs/05-implementation/11thonus-master-workflow.md` — additive EIR-governance-stream table and note appended to §8 and §17; Document Control "Last controlled update" field updated. No existing sequencing, status, or approved content rewritten.
+
+### Explicitly NOT done (per constraints)
+
+No populated `EIR-ENG-P1-001` created (that is `EIR-03`). No populated Phase 1 or Version 1 Engineering Record created (that is `EIR-04`/later). No engineering work-package status changed. `ENG-P1-002` was not begun and remains unauthorized. No product, technical, legal, security, or architecture decision was altered. No application code or live infrastructure was touched.
 
 ---
 

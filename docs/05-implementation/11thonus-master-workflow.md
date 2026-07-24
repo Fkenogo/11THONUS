@@ -11,7 +11,7 @@
 | **Owner** | ChatGPT Technical Lead (drafts and maintains); Founder (approves and authorizes status changes) |
 | **Review authority** | Founder and ChatGPT Technical Lead jointly, per [Roles & Responsibilities](../06-engineering-governance/roles-and-responsibilities.md) |
 | **Effective date** | 2026-07-22 |
-| **Last controlled update** | 2026-07-22 (v0.1 → v1.0 — corrections applied per Founder/Technical Lead review, approved, and activated; see §19–20) |
+| **Last controlled update** | 2026-07-24 (`EIR-02` — additive recognition of the EIR governance stream appended to §8 and §17; no existing sequencing, status, or approved content rewritten; version remains 1.0). Previously: 2026-07-22 (v0.1 → v1.0 — corrections applied per Founder/Technical Lead review, approved, and activated; see §19–20) |
 | **Source-of-truth path** | `docs/05-implementation/11thonus-master-workflow.md` |
 | **Change-control rule** | This document is updated *before* the affected implementation proceeds whenever sequencing changes, work is deferred, a corrective task is inserted, or a new component becomes necessary (§14). Every edit is logged in [`docs/changes/IMPLEMENTATION_CHANGES.md`](../changes/IMPLEMENTATION_CHANGES.md). This document does not itself carry Founder/Technical-Lead decision authority over product, technical, legal, or Decision Register content — see §4. |
 
@@ -175,6 +175,16 @@ These are workflow-control identifiers, not replacements for Engineering Impleme
 
 **Immediate authorized sequence after this document's activation begins with `ENG-P1-001-CLOSE`.** This document does not execute it. `ENG-P1-001-CLOSE` is prepared and executed as its own, separately authorized task (§17).
 
+**EIR governance stream (added 2026-07-24, `EIR-02`):** a separate, secondary governance stream, layered on top of the engineering sequence above and governed in full by the [Engineering Implementation Records Standard](../06-engineering-governance/engineering-implementation-records-standard.md):
+
+| ID | Task | Type | Status |
+|---|---|---|---|
+| `EIR-01` | Author the Engineering Implementation Records Standard | Governance task | **Complete** — merged into `main` at `0e02d05` ([PR #4](https://github.com/Fkenogo/11THONUS/pull/4)), 2026-07-24 |
+| `EIR-02` | Integrate the approved standard into the repository (`records/` structure, README, Engineering History Index, templates, navigation cross-references) | Governance task | **Current** (this task, 2026-07-24) |
+| `EIR-03` | Backfill `EIR-ENG-P1-001` from the closed `ENG-P1-001` work package | Governance task | Not yet authorized |
+
+Per the Engineering Implementation Records Standard §1/§14, this stream is a secondary, historical, non-authoritative record layer — it does not itself authorize, block, or supersede the engineering sequence above, and it changes no work-package status recorded there. **However, as a distinct, Founder-directed sequencing choice recorded here** (not a consequence the EIR standard itself imposes): `ENG-P1-002-PREP`/`ENG-P1-002` additionally remain **not authorized to begin** until this EIR governance stream reaches at least `EIR-03`, or the Founder explicitly changes this sequencing.
+
 ## 9. Work-Package Gate Template
 
 Every current or future work package shall be recorded (in the Programme and, where active, in §10 below) with these fields:
@@ -325,6 +335,8 @@ A task is not complete merely because code exists (TRD22 §22.41; [Definition of
 `MW-001A`/`MW-002` (Master Workflow creation and tracker integration), `MW-001B` (correction-and-approval pass), `ENG-P1-001-CLOSE` (commit `ba43da1`, then evidence follow-up `7f67292`), and `ENG-P1-001-PR2-PRE-MERGE-CORRECTION` (commit `2c0db00`, resolving a broken-link and closure-evidence review finding — see the [ENG-P1-001 Closure Report](reports/ENG-P1-001-closure-report-2026-07-22.md) §13) are complete as of 2026-07-22. [PR #2](https://github.com/Fkenogo/11THONUS/pull/2)'s current head is `2c0db00`, CI [passed](https://github.com/Fkenogo/11THONUS/actions/runs/29924228309) on that exact SHA. `ENG-P1-001` remains `Pushed`/`Approved for merge`, not `Complete`: Git Workflow does not authorize a coding agent to merge into `main`, so the Founder-controlled merge decision on PR #2 was not executed by this task.
 
 **Next authorized action: Founder merge decision on [PR #2](https://github.com/Fkenogo/11THONUS/pull/2).** Once merged and post-merge CI on `main` is confirmed, `ENG-P1-001` moves to `Complete` and the next authorized action becomes `ENG-P1-002-PREP`. That subsequent transition is not executed by the document you are reading — it requires its own, separately authorized task, exactly as this closure task was.
+
+**EIR governance stream note (added 2026-07-24, `EIR-02`):** independent of the sequencing above, `EIR-01` is `Complete` (merged into `main`, [PR #4](https://github.com/Fkenogo/11THONUS/pull/4)); this document's own repository-integration task, `EIR-02`, is the current EIR-stream task; `EIR-03` (backfilling `EIR-ENG-P1-001`) is next, once separately authorized — see §8. Per the Founder-directed sequencing recorded there, `ENG-P1-002-PREP` additionally remains unauthorized until that stream reaches `EIR-03` or the Founder explicitly changes the sequence.
 
 ## 18. Known Risks and Control Measures
 
