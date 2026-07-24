@@ -2,11 +2,29 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-07-24 (Entry 018 added: `EIR-02` — Engineering Implementation Records repository integration)
+> **Last controlled update:** 2026-07-24 (Entry 019 added: `GOV-GEL-001` — Governed Execution Loops Standard created)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 019 — `GOV-GEL-001`: Governed Execution Loops Standard
+
+- **Date:** 24 July 2026
+- **Performed by:** Claude (AI agent), per founder task "GOV-GEL-001: Governed Execution Loops Standard"
+- **Classification:** Material Change (introduces a new governance document and a new document class — Governed Execution Loops; resolves no open decision, authorizes no engineering work, and does not alter the existing authority hierarchy).
+- **Action:** Created the Governed Execution Loops Standard — a new `docs/06-engineering-governance/` document defining how a Founder-authorized objective may be executed continuously by an agent across multiple internal steps (boundaries, checkpoints, stop conditions, loop lifecycle, loop types), grounded in and cross-referenced against the existing Coding Agent Standard, Implementation Prompt Standard, Technical Review Standard, Roles & Responsibilities, Engineering Principles, Master Workflow, and Engineering Implementation Records Standard, rather than restating or duplicating any of them. Establishes six binding governance principles (Governance Before Autonomy, Objectives Over Tasks, Milestones Over Interruptions, Execution Should Only Stop for Decisions Not Discussions, Bounded Autonomy, Founder Authority Preservation). Added the standard to the Engineering Governance section's own document index (README.md row 14) — the same minimum-discoverability step taken for `EIR-01`.
+- **No execution loop created, populated, or authorized by this task.** No loop template, tracking file, or example loop instance was created — the standard's own Examples section (§16) cites already-completed, non-loop-authorized prior tasks purely as illustrative precedent, explicitly disclosed as such. No engineering work package was begun or authorized. No application code, technical decision, or the authority hierarchy was touched.
+
+### Files created (1)
+
+- `docs/06-engineering-governance/governed-execution-loops-standard.md`
+
+### Files modified (1)
+
+- `docs/06-engineering-governance/README.md` — added row 14 to the section's Documents index.
 
 ---
 

@@ -23,6 +23,7 @@ Start with the [Engineering Governance Charter](engineering-governance-charter.m
 | 11 | [Engineering Principles](engineering-principles.md) | Judgment principles for situations no specific rule covers |
 | 12 | [Cloud Environment & Deployment Strategy](cloud-environment-and-deployment-strategy.md) | Environment architecture, promotion model, Firebase project strategy, region-selection criteria, infrastructure-access governance, monitoring/DR/cost/security principles — operationalizes `DEC-TECH-005` |
 | 13 | [Engineering Implementation Records Standard](engineering-implementation-records-standard.md) | Historical-record framework for engineering work packages (Engineering Implementation Record / Phase Engineering Record / Version Engineering Record); non-authoritative — always defers to the documents above |
+| 14 | [Governed Execution Loops Standard](governed-execution-loops-standard.md) | How a Founder-authorized objective may be executed continuously across multiple steps (boundaries, checkpoints, stop conditions, loop types); creates no new authority and adds no exception to any existing stop condition |
 
 ## Relationship to Existing Governance
 
