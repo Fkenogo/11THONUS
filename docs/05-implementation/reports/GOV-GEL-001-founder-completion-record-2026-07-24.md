@@ -83,7 +83,11 @@ None.
 
 ## PR / Commit / CI Evidence
 
-See the Addendum in the implementation report (`GOV-GEL-001-implementation-report-2026-07-24.md`) for exact commit SHA, PR number, and CI run ID, recorded once those actions completed.
+- Commit: `06e56130f7e1eece97e62d2e7b714eedf95ac26d`
+- Pull request: [#7](https://github.com/Fkenogo/11THONUS/pull/7) (open, not merged)
+- CI run: [30096837802](https://github.com/Fkenogo/11THONUS/actions/runs/30096837802) — success
+
+Full detail in the implementation report's own Addendum (`GOV-GEL-001-implementation-report-2026-07-24.md`).
 
 ## Risks
 
