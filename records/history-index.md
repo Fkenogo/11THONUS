@@ -5,6 +5,7 @@
 > **Governing document:** [Engineering Implementation Records Standard](../docs/06-engineering-governance/engineering-implementation-records-standard.md) §13
 > **Source-of-truth path:** `records/history-index.md`
 > **Created:** `EIR-02` (repository integration), 2026-07-24
+> **Last controlled update:** 2026-07-24 (`EIR-03`/`GEL-001` — `ENG-P1-001` row synchronized: record created, status corrected to the live `Complete` value)
 > **Update trigger:** whenever a record's lifecycle state changes (standard §13) — not on a fixed schedule.
 
 ## Purpose
@@ -38,13 +39,13 @@ Engineering status (per Programme, as of 2026-07-24): **Complete.**
 
 ### Phase 1 — Firebase and Shared Platform Foundation
 
-Engineering status (per Programme, as of 2026-07-24): **In Progress.**
+Engineering status (per Programme/Register, as of 2026-07-24): **Partially Ready** — `ENG-P1-001` Complete, `ENG-P1-002` Ready (implementation additionally gated behind the EIR governance stream reaching `EIR-03`, per [Master Workflow](../docs/05-implementation/11thonus-master-workflow.md) §8), `ENG-P1-003` Blocked.
 
-| Work package | Engineering status                                                                                                  | Record          | Record lifecycle state |
-| ------------ | ------------------------------------------------------------------------------------------------------------------- | --------------- | ---------------------- |
-| `ENG-P1-001` | Pushed _(Approved for merge, not yet Complete — see the Programme and Prompt Register for the current, live value)_ | Not yet created | —                      |
-| `ENG-P1-002` | Blocked                                                                                                             | Not yet created | —                      |
-| `ENG-P1-003` | Blocked                                                                                                             | Not yet created | —                      |
+| Work package | Engineering status | Record                                              | Record lifecycle state |
+| ------------ | ------------------ | --------------------------------------------------- | ---------------------- |
+| `ENG-P1-001` | Complete           | [`EIR-ENG-P1-001`](version-1/phase-1/ENG-P1-001.md) | `Recorded`             |
+| `ENG-P1-002` | Ready              | Not yet created                                     | —                      |
+| `ENG-P1-003` | Blocked            | Not yet created                                     | —                      |
 
 **Phase 1 Engineering Record:** Not yet created.
 

@@ -2,7 +2,7 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-07-24 (Entry 019 added: `GOV-GEL-001` — Governed Execution Loops Standard created)
+> **Last controlled update:** 2026-07-24 (Entry 020 added: `EIR-03`/`GEL-001` — ENG-P1-001 historical closure record)
 
 # 11thONUS Documentation Changes Log
 
@@ -25,6 +25,26 @@ Running log of all controlled changes to the documentation suite. Every consolid
 ### Files modified (1)
 
 - `docs/06-engineering-governance/README.md` — added row 14 to the section's Documents index.
+
+---
+
+## Entry 020 — `EIR-03` / `GEL-001`: ENG-P1-001 Historical Closure Record
+
+- **Date:** 24 July 2026
+- **Performed by:** Claude (AI agent), under Governed Execution Loop `GEL-001` ("EIR-03 — ENG-P1-001 Historical Closure"), per Founder authorization
+- **Classification:** Material Change (creates the first populated Engineering Implementation Record and the `records/version-1/phase-1/` structure it lives in; resolves no open decision, begins no engineering work, and does not alter the existing authority hierarchy).
+- **Action:** Created `EIR-ENG-P1-001` — the historical closure record for `ENG-P1-001`, citing its full evidence chain (Implementation Report, Technical Review, infrastructure reports, Closure Report, PR #2/#3, CI runs) per the Engineering Implementation Records Standard's mandatory content model. Synchronized `records/history-index.md` (linked the new record; corrected `ENG-P1-001`'s row from a stale `Pushed` status to the live `Complete` value, per the index's own authority-disclaimer rule that it must match the authoritative trackers). Updated `records/README.md`'s "What exists today" section, which was the one piece of navigation directly made stale by the new record's existence.
+- **No new governance introduced; no history reinterpreted.** Every fact in the new record is cited to an existing, already-merged primary source — nothing was reconstructed or newly asserted. No engineering work-package status was changed as a side effect (the `Complete` status already existed on `main`; the record only cites it). `ENG-P1-002` was not begun; no Phase 2 work was begun; no application code, infrastructure, architecture, Engineering Governance content, Constitution, or Decision Register entry was touched.
+- **Note on numbering:** this entry was originally drafted as "Entry 019" against this branch's own base (`origin/main` at `67cec797...`), before the also-pending `GOV-GEL-001` PR (which independently claimed the same number against its own base) merged first. Renumbered to Entry 020 on reconciliation, per true chronological commit order (`GOV-GEL-001`'s original Entry 019 committed 2026-07-24T15:25:15+02:00; this entry's original commit 2026-07-24T16:10:23+02:00) — content and meaning unchanged, only the entry number and its position in the log.
+
+### Files created (1)
+
+- `records/version-1/phase-1/ENG-P1-001.md`
+
+### Files modified (2)
+
+- `records/history-index.md`
+- `records/README.md`
 
 ---
 
