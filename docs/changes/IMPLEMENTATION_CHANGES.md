@@ -701,3 +701,21 @@
 - **Risks:** none new. Both conflicts resolved were mechanical (append-order/same-line-edit), not semantic — no content was lost or contradicted; verified by direct diff inspection before and after resolution.
 - **Rollback:** PR #3's merge — `git revert` the merge commit `ffe1f9d` on `main`. PR #5's merge (once completed) — `git revert` its own merge commit on `main`, separately. Never reset or rewrite `main`.
 - **Report link:** see the Founder Completion Record for this task: `docs/05-implementation/reports/EIR-02-merge-and-reconciliation-founder-completion-record-2026-07-24.md`.
+
+---
+
+## 2026-07-24 — GOV-GEL-001: Governed Execution Loops Standard
+
+- **Date:** 2026-07-24
+- **Phase:** Engineering Governance enhancement — not tied to a specific programme phase or work package.
+- **Task:** `GOV-GEL-001` — create the Governed Execution Loops Standard, a new governance document defining how a Founder-authorized objective may be executed continuously by an agent across multiple internal steps (boundaries, checkpoints, stop conditions, loop lifecycle, loop types), without authorizing any engineering work, modifying application code, changing any technical decision, or altering the governance authority hierarchy.
+- **Status:** Governance enhancement only. No execution loop created, populated, or authorized. No loop template or tracking file created. No `ENG-*` work package begun. `EIR-03` not started.
+- **Governance principles established:** Governance Before Autonomy, Objectives Over Tasks, Milestones Over Interruptions, Execution Should Only Stop for Decisions Not Discussions, Bounded Autonomy, Founder Authority Preservation — see the standard §2.
+- **Loop lifecycle established:** `Authorized → Entry-Verified → Executing (⇄ Checkpointed) → Exited (Complete / Stopped / Terminated)` — see the standard §7.
+- **Grounding:** every relationship claim in §14 was checked against the actual current text of the cited document (Coding Agent Standard, Implementation Prompt Standard, Roles & Responsibilities, Engineering Principles, Definition of Done, Master Workflow, Engineering Implementation Records Standard) rather than assumed. §10.1's "Absolute Stop Conditions" list is cited, not restated, from the Coding Agent Standard's own §5/§6, per the Engineering Principles' "one authoritative source" rule.
+- **Files created:** [`docs/06-engineering-governance/governed-execution-loops-standard.md`](../06-engineering-governance/governed-execution-loops-standard.md).
+- **Files changed:** `docs/06-engineering-governance/README.md` (row 14 added to the section's document index), `docs/00-governance/documentation-changes-log.md` (Entry 019 — this governance change's logging location per Charter §8), plus this entry.
+- **Dependencies added:** none. **Configuration changes:** none. **Application code touched:** none. **Live infrastructure touched:** none.
+- **Risks:** none. This is an additive, non-authoritative-until-invoked governance document — every claimed authority boundary (§3, §15) explicitly denies the standard any power to authorize work, skip a stop condition, or change the hierarchy.
+- **Rollback:** delete the new file and revert the `README.md`/changes-log edits, or revert the commit; nothing else references it yet.
+- **Report link:** [`docs/05-implementation/reports/GOV-GEL-001-implementation-report-2026-07-24.md`](../05-implementation/reports/GOV-GEL-001-implementation-report-2026-07-24.md).
