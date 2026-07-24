@@ -2,11 +2,33 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-07-17 (Entry 016 added: Engineering Decision Sprint 2 — Engineering Decision Confirmation & Phase 0 Authorization)
+> **Last controlled update:** 2026-07-23 (Entry 017 added: `EIR-01` — Engineering Implementation Records Standard created)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 017 — `EIR-01`: Engineering Implementation Records Standard
+
+- **Date:** 23 July 2026
+- **Performed by:** Claude (AI agent), per founder task "EIR-01: Engineering Implementation Records Standard"
+- **Classification:** Material Change (introduces a new governance document and a new document class; resolves no open decision, changes no requirement, and does not alter the existing authority hierarchy — see the standard's own §14 guarantees).
+- **Action:** Created the Engineering Implementation Records Standard — a new `docs/06-engineering-governance/` document defining a governed, non-authoritative historical-record framework (Engineering Implementation Record → Phase Engineering Record → Version Engineering Record) for engineering work packages. Corrected during pre-merge review (PR #4, `chatgpt-codex-connector[bot]`) to: (a) resolve a self-contradiction between the Immutability Principle and the One-Record Principle regarding reopened work packages, by defining an explicit, append-only Amendment procedure (§3.5, §6.4) that never creates a second record for the same work package; (b) record this governance change here, per this log's own requirement ([Documentation Index](../README.md) §6 Rule 1; Engineering Governance Charter §8) — the change was initially logged only in `docs/changes/IMPLEMENTATION_CHANGES.md`, which remains a valid additional record of engineering-track activity but does not substitute for this log; (c) add the new standard to the Engineering Governance section's own document index. **No repository folder, template, or actual Engineering Implementation Record was created** (deferred to `EIR-02`/`EIR-03`/`EIR-04`, none authorized by this task). No engineering status, Decision Register entry, Master Workflow position, or Programme/Register status was changed.
+
+### Files created (1)
+
+- `docs/06-engineering-governance/engineering-implementation-records-standard.md`
+
+### Files modified (2)
+
+- `docs/06-engineering-governance/README.md` — added row 13 to the section's Documents index.
+- `docs/changes/IMPLEMENTATION_CHANGES.md` — original creation entry (2026-07-23), unchanged; this Documentation Changes Log entry is additional, not a replacement.
+
+### Explicitly NOT done (per constraints)
+
+`EIR-02` repository integration (`records/` folder, README, templates, history index; Documentation Index / Manifest / Master Workflow updates beyond this section's own index); `EIR-03` backfill of `EIR-ENG-P1-001`; `EIR-04` Phase 1 Engineering Record; any change to an engineering work-package's status, a Decision Register entry, or the Master Workflow's current position.
 
 ---
 

@@ -4,7 +4,7 @@
 > **Version:** 1.0 · **Status:** Active governance process · **Classification:** Working (governance process)
 > **Governing document:** [Engineering Governance Charter](engineering-governance-charter.md)
 > **Source-of-truth path:** `docs/06-engineering-governance/engineering-implementation-records-standard.md`
-> **Last controlled update:** 2026-07-23 (`EIR-01` — created)
+> **Last controlled update:** 2026-07-23 (pre-merge review correction — resolved the reopened-work-package/One-Record ambiguity via an explicit amendment procedure (§3.5, §6.4, §10.1 item 10); corrected the governance-logging requirement (§11 rule 3); added to the Engineering Governance section index. Previously, same day: `EIR-01` — created)
 
 ## 1. Purpose
 
@@ -56,11 +56,13 @@ Governance answers **"what is true?"** Engineering Implementation Records answer
 
 ### 3.4 Immutability Principle
 
-Once a record reaches `Administratively Closed` (§6.3), it is **locked**. A locked record is never rewritten, and no prior locked record is ever edited to reflect later events. If circumstances change after a record is locked — a defect is found, a decision is revisited, follow-up work begins — that new information is captured in a **new** record (a new EIR for a new or reopened work package, or a dated addendum in the relevant Phase Engineering Record), never by reopening the locked one. This mirrors standard accounting practice: you do not edit a closed ledger entry, you post a new one.
+Once a record reaches `Administratively Closed` (§6.3), it is **locked**: every section written up to that point is never rewritten, and no locked content is ever edited to reflect later events. "Locked" governs the record's *existing* content, not whether the record can ever receive anything further — see §3.5 and §6.4 for the one narrow, explicitly-defined exception (a reopened work package's amendment), which is an **append**, never a rewrite. Outside that one exception, if circumstances change after a record is locked — a new, distinct work package begins as follow-up, or a phase/version-level event occurs — that new information is captured in a **new** record (a new EIR for a genuinely new work package, or a dated entry in the relevant, still-unlocked Phase or Version Engineering Record per §11.1) — never by rewriting a locked EIR's existing content. This mirrors standard accounting practice: you do not edit a closed ledger entry, you post a new one — except that a locked EIR's *own* work package, specifically, uses the amendment mechanism (§3.5, §6.4) rather than a second ledger, because §3.5 requires exactly one EIR to exist for that work package's entire life, including any reopening.
 
 ### 3.5 One Record Principle
 
-Exactly one Engineering Implementation Record exists per engineering work package, for the life of that work package. There is no "Part A" / "Part B" splitting. If a work package's closure spans multiple tasks, sessions, corrections, or pull requests (as is common — see §10.1), all of that activity is recorded **within the single EIR for that work package**, as a chronological sequence of dated entries, not as separate records.
+Exactly one Engineering Implementation Record exists per engineering work package, **for the entire life of that work package, including if it is later reopened.** There is no "Part A" / "Part B" splitting, no second or sub-record, and no new EIR created for the same work package ID under any circumstance. If a work package's closure spans multiple tasks, sessions, corrections, or pull requests (as is common — see §10.1), all of that activity is recorded **within the single EIR for that work package**, as a chronological sequence of dated entries, not as separate records.
+
+**Reopening a work package after its EIR is locked** (§6.4) does not create an exception to this principle and does not create a new EIR. It is recorded as an **Amendment** — a new, clearly dated entry appended to the *end* of the existing, already-locked EIR, under its own "Amendment History" section (§10.1 item 10). An amendment never edits, removes, or renumbers any section the EIR already contained before the amendment was added (§3.4) — it only adds new content, precisely the same append-only discipline §11.1 already permits for Phase and Version Engineering Records. If the reopened work genuinely constitutes a **new**, distinct work package with its own new ID (a Programme-level decision, outside this standard's authority — see §3.2), that new work package gets its own new EIR under this same principle; the original EIR is not touched. The distinction is always the work-package ID: same ID, same EIR (amended); new ID, new EIR.
 
 ### 3.6 Hierarchy Principle
 
@@ -123,6 +125,15 @@ The Founder has reviewed and approved the record (§9.2), and it is **locked** (
 
 A record that has not reached `Administratively Closed` is not authoritative for anything and carries no weight beyond being a work-in-progress draft.
 
+### 6.4 Reopening (Amendment Procedure)
+
+This is not a fourth lifecycle state — the three-state model in §6 is exhaustive and unchanged. Reopening is a **bounded, explicitly-defined exception** that applies only when the *same* work package (§3.5) is formally reopened after its EIR already reached `Administratively Closed`:
+
+1. The reopening is authorized the same way any engineering work is authorized (a new task/prompt against the existing work-package ID, per the Master Workflow and Implementation Prompt Standard) — this standard does not create new authority to reopen work; it only defines how the *record* reflects a reopening that governance has already authorized elsewhere.
+2. A new, dated **Amendment** entry is appended to the work package's existing EIR — under its "Amendment History" section (§10.1 item 10) — describing what changed, why, and citing the same class of primary-source evidence (reports, commits, CI runs) every other EIR entry cites (§10.1 item 3).
+3. The amendment follows the same approval workflow as the original record (§9): drafted, then approved and re-locked by the Founder (§9.2) before the EIR is considered closed again.
+4. The EIR's pre-existing content — everything written before the amendment — is never edited, reordered, or removed (§3.4). The record's lifecycle state remains `Administratively Closed` before, during (as a draft amendment), and after the amendment is itself approved; there is no separate "Reopened" status shown anywhere the work package's status is tracked (Programme, Prompt Register, Master Workflow) unless the reopened *engineering* work itself changes that work package's status through the existing, unrelated governance channels — this standard does not do that.
+
 ## 7. Record Hierarchy
 
 ### 7.1 Engineering Implementation Record (EIR)
@@ -174,6 +185,7 @@ This section defines *what every record of each level must contain*. It does not
 7. **Deviations and Corrections** — any defect found and fixed, any scope correction, any finding from Technical Review or later review, each dated and cited to its source.
 8. **Final Status and Closure** — the work package's final engineering status, the record's own lifecycle state, who approved closure and when.
 9. **Risks and Follow-Up** — any disclosed, still-open risk or deferred item the work package's own reports identified, carried forward for visibility (not re-litigated).
+10. **Amendment History** — present in every EIR from creation (typically empty). Holds zero or more dated Amendment entries, appended only per the Reopening procedure (§6.4, §3.5), each citing what changed, why, and its primary-source evidence. Never contains anything before the EIR's first approval; never edits any other section.
 
 ### 10.2 Phase Engineering Record — mandatory sections
 
@@ -193,10 +205,10 @@ This section defines *what every record of each level must contain*. It does not
 ## 11. Maintenance Rules
 
 1. A record may be updated only while in the `Recorded` state (draft) or, for Phase/Version Engineering Records specifically, by **appending** a new dated entry as constituent EIRs close — this is additive growth, not rewriting prior content, and is explicitly permitted by §6.2/§7.2/§7.3 without contradicting §3.4 (immutability applies to *locking*, not to a Phase/Version record's natural, append-only growth while it remains unlocked).
-2. An EIR itself, once its own work package reaches final closure and the EIR is approved, is locked in full (§6.3) — it does not grow further; any later-discovered issue becomes a new record (§3.4).
-3. Every edit to any not-yet-locked record is itself logged in `IMPLEMENTATION_CHANGES.md`, exactly like every other governed documentation change (Documentation Changes Log taxonomy, per the Engineering Governance Charter §8).
-4. Locked records are never edited. If a locked record is later found to contain an error, the correction is documented in a **new** record or a dated addendum entry in the relevant *unlocked* parent (Phase/Version) record, with an explicit note identifying which locked record it corrects and why — the locked record's own text is never touched.
-5. No record may resolve a Decision Register entry, change a Master Workflow position, or change a work package's Programme/Register status as a side effect of being written or approved. Records report status; they do not set it (§3.2).
+2. An EIR itself, once its own work package reaches final closure and the EIR is approved, is locked in full (§6.3): every section written up to that point is fixed and never rewritten. The one narrow, defined exception is the Reopening/Amendment procedure (§6.4, §3.5, §10.1 item 10) — an append-only addition triggered only when the *same* work package is formally reopened, never a rewrite of prior content and never a new EIR for that work package.
+3. Every edit to any not-yet-locked record, and every amendment appended to a locked EIR under §6.4, is itself logged as an entry in `docs/00-governance/documentation-changes-log.md`, per the [Documentation Index](../README.md) §6 Rule 1 and the Engineering Governance Charter §8 — classified per the standard taxonomy (Editorial / Normalization / Clarification / Decision Required / Material Change). Where the same edit is also part of an active engineering task's own tracked history, it may additionally be noted in `IMPLEMENTATION_CHANGES.md`, but that append-only implementation log is never a substitute for the Documentation Changes Log entry this rule requires.
+4. Locked records are never edited outside the §6.4 amendment procedure. If a locked record is found to contain a genuine defect in its own writing (not a reopened work package — see the distinction in §6.4) — a factual error, a broken citation — the correction is documented in a dated addendum entry in the relevant *unlocked* parent (Phase/Version) record, or, if no such parent exists or is appropriate, in the Documentation Changes Log entry that discovers it, with an explicit note identifying which locked record it corrects and why. The locked record's own text is never touched by this kind of correction either — this rule governs errors in the record's writing, not reopened engineering work, which uses §6.4 instead.
+5. No record may resolve a Decision Register entry, change a Master Workflow position, or change a work package's Programme/Register status as a side effect of being written, amended, or approved. Records report status; they do not set it (§3.2).
 
 ## 12. Repository Structure (specification only)
 
