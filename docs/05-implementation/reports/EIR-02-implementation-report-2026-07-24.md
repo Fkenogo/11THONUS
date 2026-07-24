@@ -234,4 +234,28 @@ This report itself is saved at `docs/05-implementation/reports/EIR-02-implementa
 
 ## Addendum — Commit, Push, and CI Evidence
 
-*(Appended after §18–27 above were written, once validation, commit, push, and PR creation completed — see the body of this report for the full narrative.)*
+*(Appended after §18–27 above were written, once validation, commit, push, and PR creation completed.)*
+
+### Validation (final run, this worktree)
+
+- `git status --short` before staging: exactly the 10 intended files (4 modified, 6 created) — no application, dependency, or infrastructure file present.
+- `git diff --check`: clean (no whitespace/conflict-marker errors).
+- `pnpm install --frozen-lockfile`: succeeded, no dependency added or changed (existing lockfile respected).
+- `pnpm format:check`: clean after `prettier --write` was applied to the 5 new `records/` files (Prettier reformatted list spacing/table alignment only — no content change).
+- Repository-aware Markdown link validator across all 10 changed/created files: **0 unresolved internal links**.
+- Secret-pattern scan (`grep -iE "api[_-]?key|secret|password|token|AIza|BEGIN (RSA|PRIVATE)"`) of the diff: clean — the one match is the validator command itself, quoted verbatim in this report's §17.
+
+### Commit and push
+
+- Branch: `docs/eir-02-repository-integration`
+- Starting commit (worktree base): `0e02d05c395667b2bb10d4b4b81b77fcb93ff4a1` (PR #4 merge commit)
+- Commit: `ccb8ee3bbed4677b52564e541199e3e5dcb7a00b` — "docs(governance): integrate Engineering Implementation Records framework into repository [EIR-02]"
+- Pushed to `origin/docs/eir-02-repository-integration`
+
+### Pull request and CI
+
+- Pull request: [#5](https://github.com/Fkenogo/11THONUS/pull/5) — `docs/eir-02-repository-integration` → `main`
+- Head SHA: `ccb8ee3bbed4677b52564e541199e3e5dcb7a00b`
+- `mergeable: MERGEABLE`, `mergeStateStatus: UNSTABLE` at time of writing (no branch-protection review yet recorded — not a merge conflict; this PR is not being merged by this task in any case)
+- CI run: [30079037083](https://github.com/Fkenogo/11THONUS/actions/runs/30079037083) — **success**, all jobs green (build, lint, format check, typecheck, unit tests, Playwright e2e, Firebase Emulator Suite validation) against the exact pushed SHA above
+- **Not merged.** Per the governing task brief, Founder review and a separate, explicit merge authorization are required before this PR is merged.
