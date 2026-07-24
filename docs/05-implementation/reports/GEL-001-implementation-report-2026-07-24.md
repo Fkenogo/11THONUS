@@ -76,3 +76,10 @@ Revert the commit on `docs/gel-001-eir-eng-p1-001` (or, once merged, `git revert
 ## Addendum — Commit, Push, PR, and CI Evidence
 
 *(Appended once validation, commit, push, and PR creation completed.)*
+
+- Branch: `docs/gel-001-eir-eng-p1-001`, based on `origin/main` at `67cec797d9baa6dabae2de0e09a89a6a303dad2e`.
+- Commit: `afd9610d27f8065d1404aee744eed9d4c0be3edb` — "docs(records): create EIR-ENG-P1-001, the first populated Engineering Implementation Record [EIR-03, GEL-001]".
+- Pushed to `origin/docs/gel-001-eir-eng-p1-001`.
+- Pull request: [#8](https://github.com/Fkenogo/11THONUS/pull/8) — `docs/gel-001-eir-eng-p1-001` → `main`. `mergeable: MERGEABLE`.
+- CI run: [30099930577](https://github.com/Fkenogo/11THONUS/actions/runs/30099930577) — **success**, all jobs green.
+- **Not merged.** Per the governing loop's checkpoint instruction, execution stops here and returns for Founder review.

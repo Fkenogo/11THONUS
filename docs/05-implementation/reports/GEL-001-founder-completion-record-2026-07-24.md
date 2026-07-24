@@ -116,7 +116,9 @@ None.
 
 ## PR / Commit / CI Evidence
 
-See the implementation report's Addendum for exact commit SHA, PR number, and CI run ID.
+- Commit: `afd9610d27f8065d1404aee744eed9d4c0be3edb`
+- Pull request: [#8](https://github.com/Fkenogo/11THONUS/pull/8) (open, not merged)
+- CI run: [30099930577](https://github.com/Fkenogo/11THONUS/actions/runs/30099930577) — success
 
 ## Risks
 
