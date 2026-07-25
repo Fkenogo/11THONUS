@@ -64,7 +64,11 @@ None. This is the terminal, expected transition for a `Recorded` EIR once the Fo
 
 ## Rollback
 
-If this disposition needs to be reversed, standard §3.4/§6.4 govern: a locked EIR's existing content, including this closure section, is never edited outside the Reopening/Amendment procedure. A correction to *this specific closure action itself* (e.g., a genuine defect in how it was recorded) would be handled per standard §11.4 — a dated addendum in the changes log identifying the correction, not a silent edit to this file or the EIR's §19.
+Three distinct cases, not to be conflated:
+
+- **Correcting a documentation defect** in this closure record or in how the EIR's own lifecycle metadata was recorded (e.g., a citation error, a wrong date) is handled per standard §11.4 — a dated addendum in the Documentation Changes Log identifying the correction, never a silent edit to this file or the EIR's already-locked §19.
+- **Revising the approval disposition itself** (the Founder deciding the record should not have been approved) is not a case this standard's §6.4 procedure covers at all — §6.4 governs only a *reopened work package*, not a change of mind about a closure decision already made. Any such reversal is a new, separately authorized Founder governance action outside the scope of this standard, not an amendment.
+- **Reopening `ENG-P1-001` as engineering work** — the only case standard §6.4 actually applies to — is recorded as a dated Amendment appended to the EIR's §22 (Amendment History), per the Reopening procedure (§6.4, §3.5). This is distinct from both cases above and requires its own, separately authorized engineering-work reopening; it is not triggered by anything in this closure action.
 
 ## Next Authorized Task
 
