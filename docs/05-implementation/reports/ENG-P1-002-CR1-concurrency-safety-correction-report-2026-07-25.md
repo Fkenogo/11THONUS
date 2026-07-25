@@ -162,4 +162,8 @@ All changes are confined to the 9 files listed above, on the existing `chore/eng
 
 ## Addendum — Commit, Push, and CI Evidence
 
-*(Appended once validation, commit, and push completed. PR #12 was not merged, per this task's explicit constraint.)*
+- Branch: `chore/eng-p1-002-shared-foundation` (existing, PR #12), based on the pre-correction commit `cbcdb31`.
+- Commit: `4b00b7c1c57f69b7ad309c3606a18d425534d2f2` — "fix(functions): atomic idempotency reservation and outbox claiming [ENG-P1-002-CR1]". Pushed cleanly on the first attempt — no push-protection issue.
+- Pull request: [#12](https://github.com/Fkenogo/11THONUS/pull/12) — unchanged, still `chore/eng-p1-002-shared-foundation` → `main`, `state: OPEN`, `mergeable: MERGEABLE`. **Not merged**, per this task's explicit constraint.
+- CI run [30166229204](https://github.com/Fkenogo/11THONUS/actions/runs/30166229204): **success**, all jobs green on the first attempt — Build, Lint, Format check, Typecheck, Unit/component tests, Playwright e2e, and Firebase Emulator Suite validation (the last of which now runs the 23 real Firestore-backed integration tests, up from 14, including all 7 required concurrency scenarios).
+- `ENG-P1-002` tracker status unaffected — remains `Under Review`, not touched by this correction, not marked `Complete`.
