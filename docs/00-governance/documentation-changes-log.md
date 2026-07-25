@@ -2,11 +2,77 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-07-25 (Entry 022 added: EIR administrative closure — `EIR-ENG-P1-001` approved and locked)
+> **Last controlled update:** 2026-07-25 (Entry 025 added: `ENG-P1-002-TR` — Technical Review Finalization and Merge Preparation)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 025 — `ENG-P1-002-TR`: Technical Review Finalization and Merge Preparation
+
+- **Date:** 25 July 2026
+- **Performed by:** Claude (AI agent), per Founder task "TASK — ENG-P1-002-TR: Technical Review Finalization and Merge Preparation", following the Founder's explicit sequencing decision (Merge PR #11 → synchronize PR #12 evidence → Technical Review → merge PR #12 → post-merge CI → EIR lifecycle).
+- **Classification:** Material Change (merges the Engineering Blueprint PR; records a formal Technical Review verdict; moves `ENG-P1-002`'s lifecycle status; does not merge PR #12, does not mark `ENG-P1-002` `Complete`, does not begin `ENG-P1-003`/Phase 2).
+- **Action:** Verified all 6 entry conditions (PR #11 state, PR #12 exact head `587c9c33de6a93a36191f66ba7ad6f2b052abb68`, PR #12 mergeability, CI green on that head, clean working tree, `ENG-P1-002` `Under Review`), then merged PR #11 (merge commit `82a9af748cc53cfa5afbedfc933ec207e307fcdd`, post-merge CI green). Reviewed PR #11's 4 automated Codex review comments against primary sources: two (non-atomic reservation; unsafe outbox crash window) confirmed already resolved by `ENG-P1-002-CR1`'s implementation, even though the now-merged blueprint text itself was not retroactively edited (historical-document convention); one (actor/identity resolution) confirmed as the already-disclosed `userId`/`authUid` Phase-2 dependency; one (metadata field naming) confirmed as a **genuine, previously-uncaught conflict** between the Version 1 Engineering Blueprint §3.3 and TRD10 §10.5 over the shared `BaseMetadata` shape (`version` vs `schemaVersion`, audit-field nullability, `currencyCode`/`timezone`/`archivedAt`/`archivedBy` vs the implemented shape) — zero current runtime impact (no domain consumer exists yet), recorded as a new non-blocking Technical Review observation rather than corrected in code (no factual validation failure existed to correct).
+- **Technical Review recorded:** verdict **Approved with non-blocking operational observations** — zero Critical or blocking-High findings; six observations (five Founder-specified, one additional from this review's own independent verification, above). `ENG-P1-002` status moved `Under Review` → `Approved` on the Engineering Implementation Programme and Coding-Agent Prompt Register; **not** marked `Complete`.
+- **Evidence synchronized:** PR #12's description updated so it no longer presents the original 87/87 unit / 14/14 emulator counts as final — now shows 92/92 / 23/23, both `CR1` correction commits, the final head, and the Technical Review verdict, with the original summary preserved (not rewritten) and the update appended as its own section.
+- **No new governance introduced; no history reinterpreted; no domain work begun.** PR #12 was **not** merged, per this task's explicit constraint.
+
+### Files created (2)
+
+- `docs/05-implementation/reports/ENG-P1-002-technical-review-2026-07-25.md`
+- `docs/00-governance/documentation-changes-log.md` (this entry) — `docs/changes/IMPLEMENTATION_CHANGES.md` logged separately per its own convention
+
+### Files modified (2)
+
+- `docs/05-implementation/change-tracking/engineering-implementation-programme.md`
+- `docs/05-implementation/change-tracking/coding-agent-prompt-register.md`
+
+---
+
+## Entry 024 — `ENG-P1-002-CR1`: Concurrency Safety Correction
+
+- **Date:** 25 July 2026
+- **Performed by:** Claude (AI agent), per Founder task "TASK — ENG-P1-002-CR1: Concurrency Safety Correction", against defects identified in `FAR-001` (Foundation Architecture Review Package).
+- **Classification:** Material Change (bounded correction to already-committed application code on the still-open `chore/eng-p1-002-shared-foundation` branch; resolves one mid-task decision gap the Founder was asked to and did adjudicate; does not alter the existing authority hierarchy; does not begin domain work).
+- **Action:** Corrected two concurrency-safety defects in `ENG-P1-002`'s shared foundation: (A) idempotency reservation is now a single atomic Firestore transaction (previously two independent calls with no exclusion), and duplicate-handling is now status-aware (previously could fabricate a success from an in-flight or failed record); (B) the outbox processor now atomically claims exclusive ownership of an entry before invoking a handler, with expired-claim recovery and stale-worker rejection (previously no claim step existed at all). Mid-implementation, the originally-planned no-new-schema mechanism for (B) was empirically disproven by its own failing real-emulator tests (Firestore does not advance a document's `updateTime` on a same-value write); execution stopped and reported the gap rather than forcing a broken guarantee or inventing schema silently. The Founder authorized a minimal new field, `OutboxEntry.claimedAt`, which was then implemented and verified — see the Correction Report §"Mid-Implementation Stop."
+- **Test evidence:** unit tests 92/92 (up from 87/87); real Firebase Emulator Suite integration tests 23/23 (up from 14/14), including all 7 concurrency scenarios the task required, each proven against the live emulator rather than assumed.
+- **No new governance introduced; no history reinterpreted; no domain work begun.** `ENG-P1-002` remains `Under Review`, not `Complete`. PR #12 was not merged, per this task's explicit constraint.
+
+### Files modified (9)
+
+- `functions/src/shared/idempotency/idempotencyService.ts`, `.test.ts`, `.emulator.test.ts`
+- `functions/src/shared/commands/commandDispatcher.ts`, `.test.ts`, `.emulator.test.ts`
+- `functions/src/shared/outbox/outboxEntry.ts`, `outboxProcessor.ts`, `outboxProcessor.emulator.test.ts`
+
+### Files created (2)
+
+- `docs/05-implementation/reports/ENG-P1-002-CR1-concurrency-safety-correction-report-2026-07-25.md`
+- `docs/00-governance/documentation-changes-log.md` (this entry) — `docs/changes/IMPLEMENTATION_CHANGES.md` logged separately per its own convention
+
+---
+
+## Entry 023 — `ENG-P1-002`: Shared Engineering Foundation Implementation
+
+- **Date:** 25 July 2026
+- **Performed by:** Claude (AI agent), per Founder task "TASK — ENG-P1-002: Shared Engineering Foundation Implementation", against the approved [Engineering Blueprint](../05-implementation/prompts/ENG-P1-002-engineering-blueprint-2026-07-25.md).
+- **Classification:** Material Change (first application code committed to `functions/src/shared/`; resolves no open decision, does not alter the existing authority hierarchy, does not begin any domain work package).
+- **Action:** Implemented the shared `authenticate → validate → log → respond` command foundation (command/event contracts, correlation-ID service, structured logging, idempotency service, event outbox with retry/dead-letter handling, shared error contract, shared actor/request validation, and the command dispatcher tying them together), test-first (TDD) throughout, every type derived field-for-field from already-approved TRD11/TRD10/TRD20 text per the Engineering Blueprint's own Contract Realization section. Two real defects (a logger false-positive on this project's own `SCREAMING_SNAKE_CASE`/`lower_snake_case` status labels) were found and fixed via the same TDD/real-emulator-testing process before this entry — see the Implementation Report §7. `ENG-P1-002` status moved `Ready` → `Under Review` on the Engineering Implementation Programme and Coding-Agent Prompt Register, pending Technical Review.
+- **No new governance introduced; no history reinterpreted; no domain work begun.** No Firestore Security Rules authored; no new deployed Cloud Function added; no application code outside `functions/src/shared/` touched.
+
+### Files created (39)
+
+- 18 source modules and 20 test files (17 unit, 3 real-Firebase-Emulator-Suite integration) under `functions/src/shared/`
+- `functions/vitest.emulator.config.ts`
+- `docs/05-implementation/reports/ENG-P1-002-implementation-report-2026-07-25.md`
+
+### Files modified (5)
+
+- `functions/vitest.config.ts`, `functions/package.json`, `docs/00-governance/documentation-changes-log.md` (this entry) — `package.json` (root) and `docs/changes/IMPLEMENTATION_CHANGES.md` logged separately per their own conventions
+- `docs/05-implementation/change-tracking/engineering-implementation-programme.md`
+- `docs/05-implementation/change-tracking/coding-agent-prompt-register.md`
 
 ---
 

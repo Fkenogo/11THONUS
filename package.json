@@ -15,7 +15,7 @@
     "test": "pnpm -r run test",
     "test:e2e": "playwright test",
     "emulators": "firebase emulators:start --project demo-11thonus",
-    "emulators:validate": "firebase emulators:exec --project demo-11thonus \"node -e \\\"console.log('emulator smoke check ok')\\\"\"",
+    "emulators:validate": "firebase emulators:exec --project demo-11thonus \"pnpm --filter functions test:emulator\"",
     "prepare": "husky"
   },
   "devDependencies": {
