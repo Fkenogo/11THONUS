@@ -2,11 +2,33 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-07-25 (Entry 024 added: `ENG-P1-002-CR1` — Concurrency Safety Correction)
+> **Last controlled update:** 2026-07-25 (Entry 025 added: `ENG-P1-002-TR` — Technical Review Finalization and Merge Preparation)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 025 — `ENG-P1-002-TR`: Technical Review Finalization and Merge Preparation
+
+- **Date:** 25 July 2026
+- **Performed by:** Claude (AI agent), per Founder task "TASK — ENG-P1-002-TR: Technical Review Finalization and Merge Preparation", following the Founder's explicit sequencing decision (Merge PR #11 → synchronize PR #12 evidence → Technical Review → merge PR #12 → post-merge CI → EIR lifecycle).
+- **Classification:** Material Change (merges the Engineering Blueprint PR; records a formal Technical Review verdict; moves `ENG-P1-002`'s lifecycle status; does not merge PR #12, does not mark `ENG-P1-002` `Complete`, does not begin `ENG-P1-003`/Phase 2).
+- **Action:** Verified all 6 entry conditions (PR #11 state, PR #12 exact head `587c9c33de6a93a36191f66ba7ad6f2b052abb68`, PR #12 mergeability, CI green on that head, clean working tree, `ENG-P1-002` `Under Review`), then merged PR #11 (merge commit `82a9af748cc53cfa5afbedfc933ec207e307fcdd`, post-merge CI green). Reviewed PR #11's 4 automated Codex review comments against primary sources: two (non-atomic reservation; unsafe outbox crash window) confirmed already resolved by `ENG-P1-002-CR1`'s implementation, even though the now-merged blueprint text itself was not retroactively edited (historical-document convention); one (actor/identity resolution) confirmed as the already-disclosed `userId`/`authUid` Phase-2 dependency; one (metadata field naming) confirmed as a **genuine, previously-uncaught conflict** between the Version 1 Engineering Blueprint §3.3 and TRD10 §10.5 over the shared `BaseMetadata` shape (`version` vs `schemaVersion`, audit-field nullability, `currencyCode`/`timezone`/`archivedAt`/`archivedBy` vs the implemented shape) — zero current runtime impact (no domain consumer exists yet), recorded as a new non-blocking Technical Review observation rather than corrected in code (no factual validation failure existed to correct).
+- **Technical Review recorded:** verdict **Approved with non-blocking operational observations** — zero Critical or blocking-High findings; six observations (five Founder-specified, one additional from this review's own independent verification, above). `ENG-P1-002` status moved `Under Review` → `Approved` on the Engineering Implementation Programme and Coding-Agent Prompt Register; **not** marked `Complete`.
+- **Evidence synchronized:** PR #12's description updated so it no longer presents the original 87/87 unit / 14/14 emulator counts as final — now shows 92/92 / 23/23, both `CR1` correction commits, the final head, and the Technical Review verdict, with the original summary preserved (not rewritten) and the update appended as its own section.
+- **No new governance introduced; no history reinterpreted; no domain work begun.** PR #12 was **not** merged, per this task's explicit constraint.
+
+### Files created (2)
+
+- `docs/05-implementation/reports/ENG-P1-002-technical-review-2026-07-25.md`
+- `docs/00-governance/documentation-changes-log.md` (this entry) — `docs/changes/IMPLEMENTATION_CHANGES.md` logged separately per its own convention
+
+### Files modified (2)
+
+- `docs/05-implementation/change-tracking/engineering-implementation-programme.md`
+- `docs/05-implementation/change-tracking/coding-agent-prompt-register.md`
 
 ---
 
