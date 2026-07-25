@@ -2,7 +2,7 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-07-24 (Entry 020 added: `EIR-03`/`GEL-001` — ENG-P1-001 historical closure record)
+> **Last controlled update:** 2026-07-24 (Entry 021 added: `GEL-002` — Governance Baseline Final Synchronization)
 
 # 11thONUS Documentation Changes Log
 
@@ -10,7 +10,27 @@ Running log of all controlled changes to the documentation suite. Every consolid
 
 ---
 
-## Entry 019 — `GOV-GEL-001`: Governed Execution Loops Standard
+## Entry 021 — `GEL-002`: Governance Baseline Final Synchronization
+
+- **Date:** 24 July 2026
+- **Performed by:** Claude (AI agent), under Governed Execution Loop `GEL-002` ("Governance Baseline Final Synchronization"), per Founder authorization
+- **Classification:** Non-material synchronization (corrects status fields and cross-references in existing governance trackers to reflect `GOV-GEL-001` (PR #7) and `EIR-ENG-P1-001` (PR #8) landing on `main`; introduces no new governance, resolves no open decision, begins no engineering work, and does not alter the existing authority hierarchy).
+- **Precondition executed by this loop:** merged PR #7 (`edb4db8f`); diagnosed PR #8's resulting merge conflict against the new `main` read-only via `git merge-tree`, found it to be two purely mechanical append-order collisions (this log and `docs/changes/IMPLEMENTATION_CHANGES.md`), and — under explicit, freshly-obtained Founder authorization for this specific instance — resolved both by chronological reordering (see Entry 020's own "Note on numbering" above) and merged PR #8 (`f4b77ef2`).
+- **Action:** With `EIR-01`–`EIR-03` all `Complete` on `main`, synchronized every live governance tracker whose `EIR-03`/`ENG-P1-002-PREP` gating status field or cross-reference was factually made stale by that baseline: [Master Workflow](../05-implementation/11thonus-master-workflow.md) §8/§17/§1, [Engineering Implementation Programme](../05-implementation/change-tracking/engineering-implementation-programme.md), [Coding-Agent Prompt Register](../05-implementation/change-tracking/coding-agent-prompt-register.md), [Records History Index](../../records/history-index.md), the `EIR-ENG-P1-001` record's own forward-looking cross-references (record still `Recorded`, not locked — in-place correction per Engineering Implementation Records Standard §9.3), and the [Documentation Index](../README.md) banner. Each occurrence now states that the EIR governance stream's sequencing condition is satisfied without declaring `ENG-P1-002-PREP` itself authorized, which remains a separate, not-yet-taken Founder decision.
+- **No new governance introduced; no history reinterpreted; no engineering work-package status changed.** Historical, point-in-time reports and changelog entries (this log's own Entry 020, the `GEL-001` report files, `IMPLEMENTATION_CHANGES.md`'s prior entries) were deliberately left untouched, per the Historical Record Principle. `ENG-P1-002` was not begun; no Phase 2 work was begun; no application code, infrastructure, architecture, Engineering Governance content, Constitution, or Decision Register entry was touched.
+
+### Files modified (6)
+
+- `docs/05-implementation/11thonus-master-workflow.md`
+- `docs/05-implementation/change-tracking/engineering-implementation-programme.md`
+- `docs/05-implementation/change-tracking/coding-agent-prompt-register.md`
+- `records/history-index.md`
+- `records/version-1/phase-1/ENG-P1-001.md`
+- `docs/README.md`
+
+---
+
+## Entry 020 — `EIR-03` / `GEL-001`: ENG-P1-001 Historical Closure Record
 
 - **Date:** 24 July 2026
 - **Performed by:** Claude (AI agent), per founder task "GOV-GEL-001: Governed Execution Loops Standard"

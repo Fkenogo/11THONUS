@@ -39,7 +39,7 @@ Engineering status (per Programme, as of 2026-07-24): **Complete.**
 
 ### Phase 1 — Firebase and Shared Platform Foundation
 
-Engineering status (per Programme/Register, as of 2026-07-24): **Partially Ready** — `ENG-P1-001` Complete, `ENG-P1-002` Ready (implementation additionally gated behind the EIR governance stream reaching `EIR-03`, per [Master Workflow](../docs/05-implementation/11thonus-master-workflow.md) §8), `ENG-P1-003` Blocked.
+Engineering status (per Programme/Register, as of 2026-07-24): **Partially Ready** — `ENG-P1-001` Complete, `ENG-P1-002` Ready (the [Master Workflow](../docs/05-implementation/11thonus-master-workflow.md) §8 EIR governance stream sequencing condition is satisfied — that stream reached `EIR-03` on 2026-07-24; `ENG-P1-002-PREP` itself remains its own, separately Founder-authorized task), `ENG-P1-003` Blocked.
 
 | Work package | Engineering status | Record                                              | Record lifecycle state |
 | ------------ | ------------------ | --------------------------------------------------- | ---------------------- |
