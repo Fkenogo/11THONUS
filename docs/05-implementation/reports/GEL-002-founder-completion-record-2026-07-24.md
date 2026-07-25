@@ -126,7 +126,10 @@ None.
 
 ## PR / Commit / CI Evidence
 
-See the implementation report's Addendum, appended once commit, push, and PR creation completed.
+- Commit: `1597df1f92dd0501a7ff67a8068fe4d4411d4e04`
+- Pull request: [#9](https://github.com/Fkenogo/11THONUS/pull/9) (open, not merged), `mergeable: MERGEABLE`
+- CI run [30149969832](https://github.com/Fkenogo/11THONUS/actions/runs/30149969832): first attempt failed on a transient GitHub-side runner infrastructure fault ("lost communication with the server") after all content-relevant checks had already passed; rerun via `gh run rerun --failed` succeeded, all jobs green.
+- Full detail in the implementation report's Addendum.
 
 ## Risks
 

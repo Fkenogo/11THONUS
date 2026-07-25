@@ -142,3 +142,17 @@ Founder review and approval of `EIR-ENG-P1-001` (to move it from `Recorded` to `
 ## Rollback Instructions
 
 Revert the commit on `docs/gel-002-governance-baseline-sync` (or, once merged, `git revert` the merge commit on `main`). All six synchronized files revert to their pre-`GEL-002` state; PR #7 and PR #8's own merges are unaffected (they are prior, independent commits on `main`).
+
+---
+
+## Addendum — Commit, Push, PR, and CI Evidence
+
+*(Appended once validation, commit, push, and PR creation completed.)*
+
+- Branch: `docs/gel-002-governance-baseline-sync`, based on `origin/main` at `f4b77ef251cd5fbe2055d59959bd2a1815e3bad9`.
+- Commit: `1597df1f92dd0501a7ff67a8068fe4d4411d4e04` — "docs(governance): synchronize governance baseline after GOV-GEL-001 and EIR-03 merges [GEL-002]".
+- Pushed to `origin/docs/gel-002-governance-baseline-sync`.
+- Pull request: [#9](https://github.com/Fkenogo/11THONUS/pull/9) — `docs/gel-002-governance-baseline-sync` → `main`. `mergeable: MERGEABLE`.
+- CI run [30149969832](https://github.com/Fkenogo/11THONUS/actions/runs/30149969832), first attempt: **failed** — not a content failure. Every content-relevant step (Build, Lint, Format check, Typecheck, Unit tests) passed; the job then failed mid-way through Playwright/emulator setup with the annotation "The hosted runner lost communication with the server" — a GitHub-side runner infrastructure fault, matching a previously-observed transient-infrastructure pattern in this programme (see `GEL-001`'s own Addendum for a prior instance of a transient GitHub-side error resolved by retry).
+- Rerun via `gh run rerun 30149969832 --failed`: **success**, all jobs green (job [89662083944](https://github.com/Fkenogo/11THONUS/actions/runs/30149969832/job/89662083944)), including Build, Lint, Format check, Typecheck, Unit/component tests, Playwright e2e, and Firebase Emulator Suite validation.
+- **Not merged.** Per established practice for every prior governance-document-creation loop in this programme (`GOV-GEL-001`, `GEL-001`), a loop's own output PR is not self-merged — execution stops here and returns for Founder review and explicit merge authorization.
