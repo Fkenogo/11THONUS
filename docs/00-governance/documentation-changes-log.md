@@ -30,7 +30,7 @@ Running log of all controlled changes to the documentation suite. Every consolid
 
 ---
 
-## Entry 020 — `EIR-03` / `GEL-001`: ENG-P1-001 Historical Closure Record
+## Entry 019 — `GOV-GEL-001`: Governed Execution Loops Standard
 
 - **Date:** 24 July 2026
 - **Performed by:** Claude (AI agent), per founder task "GOV-GEL-001: Governed Execution Loops Standard"
