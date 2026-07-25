@@ -88,3 +88,10 @@ All work is additive: a new `functions/src/shared/` tree, plus two small, isolat
 ## Addendum — Commit, Push, PR, and CI Evidence
 
 *(Appended once validation, commit, push, and PR creation completed.)*
+
+- Branch: `chore/eng-p1-002-shared-foundation`, based on `origin/main` at `d1c458b356abdb484f4df517fead5a5e0f24d45f`.
+- Commit: `ffaa49245ecca9a7e5b8986e70e0d2b889e5d7cf` — "feat(functions): implement shared engineering foundation [ENG-P1-002]".
+- **Note on push history:** the first attempt to push was rejected by GitHub push protection — a test fixture in `logger.test.ts` (`"sk_live_..."`, a synthetic value used to exercise the "long token/credential-shaped" sensitive-content detection) matched Stripe's live-secret-key format closely enough to be flagged, even though it was never a real credential. Fixed by replacing it with a generic, non-provider-shaped fixture, then squashed into a single clean commit (both prior commits existed only locally and were never pushed to any remote, so no shared history was rewritten) before the successful push.
+- Pull request: [#12](https://github.com/Fkenogo/11THONUS/pull/12) — `chore/eng-p1-002-shared-foundation` → `main`. `mergeable: MERGEABLE`.
+- CI run [30161789044](https://github.com/Fkenogo/11THONUS/actions/runs/30161789044): **success**, all jobs green on the first attempt, including the real Firebase Emulator Suite validation step (Build, Lint, Format check, Typecheck, Unit/component tests, Playwright e2e, Firebase Emulator Suite validation — the last of which now runs the 14 real Firestore-backed integration tests this task added).
+- **Not merged.** Per established practice for every prior loop/work-package PR in this programme, and per the Definition of Done's own requirement that `Complete` status requires an Approved Technical Review (not performed by this task) — execution stops here and returns for Technical Review and Founder merge authorization.
