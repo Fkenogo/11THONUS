@@ -11,11 +11,13 @@
 
 `ENG-P1-002`'s shared foundation — command/event/error contracts, correlation-ID service, structured logging, idempotency service, event outbox, and the `dispatchCommand` orchestrator — was reviewed against its Engineering Blueprint, its Implementation Report, the `FAR-001` architecture-review evidence package, the `ENG-P1-002-CR1` concurrency-safety correction report, the corrected source code itself, and CI evidence on the exact final commit. The two concurrency defects `FAR-001` surfaced (non-atomic idempotency reservation; unprotected outbox multi-worker processing) are confirmed fixed in `ENG-P1-002-CR1`, each proven against the real Firebase Emulator Suite rather than asserted — including a genuine RED/GREEN cycle where the first proposed fix (Firestore's own `updateTime` as an ownership token) failed its own tests and was replaced, under Founder authorization, by a minimal schema addition (`OutboxEntry.claimedAt`).
 
-Independent verification during this review found **no Critical or blocking-High findings**. It found and verified one additional Medium-severity documentation-conformance gap not previously surfaced in this session's own reports (§6) — a real conflict between two authoritative documents over the shared metadata shape's field names — which does not affect current correctness (zero domain consumers exist yet) but should be resolved before a domain work package builds on `BaseMetadata`.
+Independent verification during this review found **no Critical or blocking-High code-review findings**. It found and verified one additional Medium-severity documentation-conformance gap not previously surfaced in this session's own reports (§6) — a real conflict between two authoritative documents over the shared metadata shape's field names — which does not affect current correctness (zero domain consumers exist yet) but should be resolved before a domain work package builds on `BaseMetadata`.
 
-**Verdict: APPROVED WITH NON-BLOCKING OPERATIONAL OBSERVATIONS.**
+**Also disclosed (§7.1): CI on the final head failed twice, on two different tests, before passing on a third attempt with no code change.** Extensive targeted stress testing of the exact mechanism under review (70+ adversarial concurrent-pair attempts against the real emulator, both sequential and true-parallel) found zero defects, pointing toward Firebase Emulator/CI-environment timing sensitivity rather than a code defect — but this review does not treat its own confidence as a substitute for the Founder's judgment on a finding that touches the precise guarantee this correction exists to establish.
 
-`ENG-P1-002` is technically approvable now. PR #12 remains unmerged, pending Founder-authorized merge, per this task's explicit constraint.
+**Verdict: APPROVED WITH NON-BLOCKING OPERATIONAL OBSERVATIONS, subject to Founder review of the CI-flakiness finding in §7.1.**
+
+`ENG-P1-002` is technically approvable now on the code-review merits. PR #12 remains unmerged, pending Founder-authorized merge, per this task's explicit constraint.
 
 ## 2. Review Scope
 
@@ -94,10 +96,24 @@ Read in full: `commandDispatcher.ts`, `idempotencyService.ts`, `outboxProcessor.
 
 `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `pnpm build` — all reconfirmed clean during this review, re-run fresh rather than trusted from prior reports.
 
+### 7.1 CI flakiness discovered on the final head — full disclosure
+
+After committing this review's own tracker/report changes (commit `8e6310c`, the final PR #12 head), the required "CI status on the exact final head" check (§Validation) did **not** pass cleanly. This is disclosed in full rather than silently resolved by retrying until green:
+
+- **Attempt 1** (run `30169799610`): **failed** — `commandDispatcher.emulator.test.ts` > "two simultaneous commands with the same idempotency key execute the handler exactly once": `expected 2 to be 1` (`handlerCalls`).
+- **Attempt 2** (re-run of the same run ID, same commit): **failed differently** — `commandDispatcher.emulator.test.ts` > "rejects a reused idempotency key with different payload content as IDEMPOTENCY_CONFLICT" (an **original, pre-`CR1` test**, unrelated to this correction's own changes, that has passed on every prior CI run across this entire programme): the second, sequentially-awaited `dispatchCommand` call returned a success instead of `IDEMPOTENCY_CONFLICT` — consistent with the first call's reservation not yet being durably visible to the second call's read.
+- **Attempt 3** (re-run again, same commit, no code changed): **passed cleanly**, all jobs green.
+
+**Investigation performed before concluding this is not a code defect:** ran the exact `checkAndReserveIdempotencyKey` function directly against a real Firestore Emulator instance, outside the test suite, under two independent heavy-load conditions — 20 sequential fresh-key concurrent pairs (measured 2.6–3.5 seconds of latency per contended pair, once as low as 13ms — highly variable) and 50 pairs (100 calls) launched truly simultaneously via a single `Promise.all`. **Zero mismatches in either — every single pair resolved to exactly one `"acquired"`.** This is on top of the 23/23 passing emulator tests already in the suite (themselves proving the 7 required concurrency scenarios). No isolated, targeted, adversarial stress test reproduced a double-acquisition.
+
+**Assessment:** the pattern — two *different*, seemingly unrelated tests failing on two different attempts against the *same unchanged commit*, immediately followed by a clean pass with no code change — combined with directly-measured, highly variable multi-second transaction-retry latency and the failure of an isolated, targeted stress test to reproduce any defect, points to Firebase Emulator Suite timing/resource sensitivity under GitHub Actions' shared runners rather than a deterministic logic defect in `checkAndReserveIdempotencyKey`, `dispatchCommand`, or the outbox claim mechanism. This cannot be stated with full certainty — it is the most evidence-consistent explanation reached after genuine, targeted investigation, not a proof of absence.
+
+**This finding is escalated to the Founder rather than unilaterally marked non-blocking** — it touches the exact guarantee this correction (`CR1`) exists to establish, and the reviewing agent's own confidence, however evidence-based, is not a substitute for the Founder's own risk tolerance on a finding of this kind. See the accompanying report for the recommendation.
+
 ## 8. Verdict
 
-**APPROVED WITH NON-BLOCKING OPERATIONAL OBSERVATIONS.**
+**APPROVED WITH NON-BLOCKING OPERATIONAL OBSERVATIONS — subject to Founder review of §7.1.**
 
-Zero Critical or blocking-High findings. Six non-blocking observations recorded (§5), five specified by the Founder and independently reconfirmed, one additional finding from this review's own independent verification. None require correction before Approval — all six are either inherent to the outbox/idempotency pattern at this stage of the programme (no domain consumer yet to validate against) or a documentation-conformance gap with zero current runtime impact. `ENG-P1-002` is **not** marked `Complete` by this review — per this programme's established Definition of Done sequencing (Technical Approval precedes merge, which precedes `Complete`), and per this task's own explicit constraint.
+Zero Critical or blocking-High *code-review* findings against the source itself. Six documentation/design non-blocking observations recorded (§5), five specified by the Founder and independently reconfirmed, one additional finding from this review's own independent verification — none of the six require correction before Approval. Separately, §7.1 discloses a CI-reliability finding (two different tests intermittently failed across three CI attempts on the unchanged final commit, with no reproducible defect found under 70+ isolated adversarial stress-test pair-attempts) that this review's own evidence points toward emulator/CI-environment sensitivity rather than a code defect, but which this review does **not** unilaterally dismiss as non-blocking given what the finding touches. `ENG-P1-002` is **not** marked `Complete` by this review — per this programme's established Definition of Done sequencing (Technical Approval precedes merge, which precedes `Complete`), and per this task's own explicit constraint.
 
-**PR #12 is not merged by this review.** It remains open, mergeable, CI-green on its exact final head, pending Founder-authorized merge.
+**PR #12 is not merged by this review.** It remains open, mergeable, currently CI-green on its exact final head (third attempt, §7.1), pending Founder-authorized merge and the Founder's own view on §7.1.
