@@ -2,11 +2,33 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-07-25 (Entry 022 added: EIR administrative closure — `EIR-ENG-P1-001` approved and locked)
+> **Last controlled update:** 2026-07-25 (Entry 023 added: `ENG-P1-002` — Shared Engineering Foundation Implementation)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 023 — `ENG-P1-002`: Shared Engineering Foundation Implementation
+
+- **Date:** 25 July 2026
+- **Performed by:** Claude (AI agent), per Founder task "TASK — ENG-P1-002: Shared Engineering Foundation Implementation", against the approved [Engineering Blueprint](../05-implementation/prompts/ENG-P1-002-engineering-blueprint-2026-07-25.md).
+- **Classification:** Material Change (first application code committed to `functions/src/shared/`; resolves no open decision, does not alter the existing authority hierarchy, does not begin any domain work package).
+- **Action:** Implemented the shared `authenticate → validate → log → respond` command foundation (command/event contracts, correlation-ID service, structured logging, idempotency service, event outbox with retry/dead-letter handling, shared error contract, shared actor/request validation, and the command dispatcher tying them together), test-first (TDD) throughout, every type derived field-for-field from already-approved TRD11/TRD10/TRD20 text per the Engineering Blueprint's own Contract Realization section. Two real defects (a logger false-positive on this project's own `SCREAMING_SNAKE_CASE`/`lower_snake_case` status labels) were found and fixed via the same TDD/real-emulator-testing process before this entry — see the Implementation Report §7. `ENG-P1-002` status moved `Ready` → `Under Review` on the Engineering Implementation Programme and Coding-Agent Prompt Register, pending Technical Review.
+- **No new governance introduced; no history reinterpreted; no domain work begun.** No Firestore Security Rules authored; no new deployed Cloud Function added; no application code outside `functions/src/shared/` touched.
+
+### Files created (39)
+
+- 18 source modules and 20 test files (17 unit, 3 real-Firebase-Emulator-Suite integration) under `functions/src/shared/`
+- `functions/vitest.emulator.config.ts`
+- `docs/05-implementation/reports/ENG-P1-002-implementation-report-2026-07-25.md`
+
+### Files modified (5)
+
+- `functions/vitest.config.ts`, `functions/package.json`, `docs/00-governance/documentation-changes-log.md` (this entry) — `package.json` (root) and `docs/changes/IMPLEMENTATION_CHANGES.md` logged separately per their own conventions
+- `docs/05-implementation/change-tracking/engineering-implementation-programme.md`
+- `docs/05-implementation/change-tracking/coding-agent-prompt-register.md`
 
 ---
 
