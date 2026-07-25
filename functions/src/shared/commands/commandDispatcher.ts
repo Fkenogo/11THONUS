@@ -1,5 +1,5 @@
 /**
- * Command dispatcher (ENG-P1-002).
+ * Command dispatcher (ENG-P1-002, corrected under ENG-P1-002-CR1).
  *
  * The shared `authenticate → validate → log → respond` orchestrator
  * every future domain command handler wraps itself in — the central
@@ -8,6 +8,14 @@
  * log→respond command shape"; TRD22 §22.11 exit criterion: "shared
  * server command can authenticate, validate, log and return a standard
  * response").
+ *
+ * Idempotency ownership is acquired via a single atomic
+ * `checkAndReserveIdempotencyKey` call (ENG-P1-002-CR1 Correction A) —
+ * only one concurrent caller can ever observe "acquired" for a given key;
+ * every other concurrent caller observes "in_progress"/"duplicate"/
+ * "conflict" instead and never invokes the handler. "in_progress" and a
+ * "duplicate" record with no cached response both return a retryable
+ * `TEMPORARY_UNAVAILABLE` error rather than a fabricated success.
  *
  * Business logic itself is domain-specific and out of this work
  * package's scope — the caller supplies a `handler`. A handler signals
@@ -27,10 +35,9 @@ import { createPlatformError } from "../errors/platformError";
 import type { ErrorCategory } from "../errors/errorCategories";
 import { log } from "../logging/logger";
 import {
-  checkIdempotency,
+  checkAndReserveIdempotencyKey,
   completeIdempotencyKey,
   failIdempotencyKey,
-  reserveIdempotencyKey,
 } from "../idempotency/idempotencyService";
 import { resolveTrustedActor } from "../validation/actorValidation";
 import type { TrustedAuthContext } from "../validation/actorValidation";
@@ -132,39 +139,64 @@ export async function dispatchCommand<TPayload, TResult>(
   };
 
   const requestHash = hashPayload(envelope.payload);
-  const idempotencyResult = await checkIdempotency(
-    params.db,
-    envelope.idempotencyKey,
-    requestHash,
-    correlationId,
-  );
-
-  if (idempotencyResult.outcome === "conflict") {
-    log({
-      ...logBase,
-      severity: "warning",
-      result: "idempotency_conflict",
-      errorCode: idempotencyResult.error.code,
-    });
-    return { outcome: "error", error: idempotencyResult.error };
-  }
-
-  if (idempotencyResult.outcome === "duplicate") {
-    log({ ...logBase, severity: "info", result: "duplicate" });
-    return {
-      outcome: "success",
-      result: idempotencyResult.record.responseSnapshot as TResult,
-      fromCache: true,
-    };
-  }
-
-  await reserveIdempotencyKey(params.db, {
+  const reservation = await checkAndReserveIdempotencyKey(params.db, {
     idempotencyKey: envelope.idempotencyKey,
     operationType: envelope.commandType,
     actorId: actor.userId,
     requestHash,
+    correlationId,
     ...(actor.businessId ? { businessId: actor.businessId } : {}),
   });
+
+  if (reservation.outcome === "conflict") {
+    log({
+      ...logBase,
+      severity: "warning",
+      result: "idempotency_conflict",
+      errorCode: reservation.error.code,
+    });
+    return { outcome: "error", error: reservation.error };
+  }
+
+  if (reservation.outcome === "in_progress") {
+    const error = createPlatformError(
+      "TEMPORARY_UNAVAILABLE",
+      "errors.idempotencyInProgress",
+      correlationId,
+      { retryable: true },
+    );
+    log({ ...logBase, severity: "info", result: "in_progress", errorCode: error.code });
+    return { outcome: "error", error };
+  }
+
+  if (reservation.outcome === "duplicate") {
+    if (reservation.record.responseSnapshot === undefined) {
+      // A "completed" idempotency record with no cached response is an
+      // anomalous state under this dispatcher's own write path (it always
+      // supplies a responseSnapshot to completeIdempotencyKey on success) —
+      // never fabricate a success from an absent body.
+      const error = createPlatformError(
+        "TEMPORARY_UNAVAILABLE",
+        "errors.idempotencyResponseUnavailable",
+        correlationId,
+        { retryable: true },
+      );
+      log({
+        ...logBase,
+        severity: "critical",
+        result: "idempotency_response_missing",
+        errorCode: error.code,
+      });
+      return { outcome: "error", error };
+    }
+
+    log({ ...logBase, severity: "info", result: "duplicate" });
+    return {
+      outcome: "success",
+      result: reservation.record.responseSnapshot as TResult,
+      fromCache: true,
+    };
+  }
 
   try {
     const result = await params.handler(envelope.payload, actor, correlationId);

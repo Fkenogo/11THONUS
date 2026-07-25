@@ -2,11 +2,33 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-07-25 (Entry 023 added: `ENG-P1-002` — Shared Engineering Foundation Implementation)
+> **Last controlled update:** 2026-07-25 (Entry 024 added: `ENG-P1-002-CR1` — Concurrency Safety Correction)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 024 — `ENG-P1-002-CR1`: Concurrency Safety Correction
+
+- **Date:** 25 July 2026
+- **Performed by:** Claude (AI agent), per Founder task "TASK — ENG-P1-002-CR1: Concurrency Safety Correction", against defects identified in `FAR-001` (Foundation Architecture Review Package).
+- **Classification:** Material Change (bounded correction to already-committed application code on the still-open `chore/eng-p1-002-shared-foundation` branch; resolves one mid-task decision gap the Founder was asked to and did adjudicate; does not alter the existing authority hierarchy; does not begin domain work).
+- **Action:** Corrected two concurrency-safety defects in `ENG-P1-002`'s shared foundation: (A) idempotency reservation is now a single atomic Firestore transaction (previously two independent calls with no exclusion), and duplicate-handling is now status-aware (previously could fabricate a success from an in-flight or failed record); (B) the outbox processor now atomically claims exclusive ownership of an entry before invoking a handler, with expired-claim recovery and stale-worker rejection (previously no claim step existed at all). Mid-implementation, the originally-planned no-new-schema mechanism for (B) was empirically disproven by its own failing real-emulator tests (Firestore does not advance a document's `updateTime` on a same-value write); execution stopped and reported the gap rather than forcing a broken guarantee or inventing schema silently. The Founder authorized a minimal new field, `OutboxEntry.claimedAt`, which was then implemented and verified — see the Correction Report §"Mid-Implementation Stop."
+- **Test evidence:** unit tests 92/92 (up from 87/87); real Firebase Emulator Suite integration tests 23/23 (up from 14/14), including all 7 concurrency scenarios the task required, each proven against the live emulator rather than assumed.
+- **No new governance introduced; no history reinterpreted; no domain work begun.** `ENG-P1-002` remains `Under Review`, not `Complete`. PR #12 was not merged, per this task's explicit constraint.
+
+### Files modified (9)
+
+- `functions/src/shared/idempotency/idempotencyService.ts`, `.test.ts`, `.emulator.test.ts`
+- `functions/src/shared/commands/commandDispatcher.ts`, `.test.ts`, `.emulator.test.ts`
+- `functions/src/shared/outbox/outboxEntry.ts`, `outboxProcessor.ts`, `outboxProcessor.emulator.test.ts`
+
+### Files created (2)
+
+- `docs/05-implementation/reports/ENG-P1-002-CR1-concurrency-safety-correction-report-2026-07-25.md`
+- `docs/00-governance/documentation-changes-log.md` (this entry) — `docs/changes/IMPLEMENTATION_CHANGES.md` logged separately per its own convention
 
 ---
 

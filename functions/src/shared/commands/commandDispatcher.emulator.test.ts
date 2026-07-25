@@ -162,3 +162,42 @@ describe("dispatchCommand — real command round trip", () => {
     });
   });
 });
+
+describe("dispatchCommand — concurrent-worker safety (ENG-P1-002-CR1)", () => {
+  it("two simultaneous commands with the same idempotency key execute the handler exactly once", async () => {
+    let handlerCalls = 0;
+    const dispatchOnce = () =>
+      dispatchCommand({
+        db,
+        rawEnvelope: makeEnvelope("key-concurrent", 500),
+        auth,
+        domain: "purchase",
+        service: "s",
+        operation: "o",
+        handler: async (payload) => {
+          handlerCalls += 1;
+          return { purchaseId: "p-concurrent", amount: payload.amount };
+        },
+      });
+
+    const [first, second] = await Promise.all([dispatchOnce(), dispatchOnce()]);
+
+    expect(handlerCalls).toBe(1);
+
+    // Whichever call loses the race must not fabricate a success from an
+    // absent response — it either legitimately replays the winner's cached
+    // result (if it observed the record after completion) or returns a
+    // retryable TEMPORARY_UNAVAILABLE error (if it observed the record
+    // while still "processing"). It must never be a bare, undefined result.
+    for (const result of [first, second]) {
+      if (result.outcome === "success") {
+        expect(result.result).toEqual({ purchaseId: "p-concurrent", amount: 500 });
+      } else {
+        expect(result.error.code).toBe("TEMPORARY_UNAVAILABLE");
+        expect(result.error.retryable).toBe(true);
+      }
+    }
+
+    expect([first.outcome, second.outcome]).toContain("success");
+  });
+});
