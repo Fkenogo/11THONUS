@@ -2,11 +2,29 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-07-24 (Entry 021 added: `GEL-002` — Governance Baseline Final Synchronization)
+> **Last controlled update:** 2026-07-25 (Entry 022 added: EIR administrative closure — `EIR-ENG-P1-001` approved and locked)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 022 — EIR Administrative Closure: `EIR-ENG-P1-001`
+
+- **Date:** 25 July 2026
+- **Performed by:** Claude (AI agent), recording explicit Founder approval given in chat authorization ("Founder Governance Review — GEL-002 disposition" / "FOUNDER AUTHORIZATION — PR #9 MERGE AND EIR ADMINISTRATIVE CLOSURE").
+- **Classification:** Non-material synchronization / EIR lifecycle metadata (moves `EIR-ENG-P1-001` from `Recorded` to `Administratively Closed` per the Founder's explicit approval; introduces no new governance, resolves no open decision, begins no engineering work, and does not alter the existing authority hierarchy).
+- **Action:** Per Engineering Implementation Records Standard §9.2, only the Founder may perform this transition — the Founder did so explicitly in the governing chat authorization, reviewing and approving `EIR-ENG-P1-001` as an accurate historical implementation record. Recorded the approval in the EIR itself (`records/version-1/phase-1/ENG-P1-001.md` §1, §2, §18, §19 — approval authority, date, lifecycle transition, lock confirmation, and future-amendment mechanism per §6.4), and synchronized every other live tracker that explicitly stated the record's prior `Recorded` status: [Records History Index](../../records/history-index.md), [Master Workflow](../05-implementation/11thonus-master-workflow.md) §8 (EIR-03 status cell and Terminology note), and the [Documentation Index](../README.md) banner (new leading entry; the prior `GEL-002` entry's own point-in-time text left untouched, per the Historical Record Principle).
+- **No history reinterpreted; no engineering work-package status changed.** §22 (Amendment History) of the EIR was not touched — administrative closure is not itself an amendment; the Amendment mechanism (standard §6.4) applies only if `ENG-P1-001` is later formally reopened. `ENG-P1-002-PREP`/`ENG-P1-002` were not authorized or begun by this action — the EIR standard note is explicit that record closure does not itself authorize further engineering work (standard §11.5).
+- **Note on `IMPLEMENTATION_CHANGES.md`:** no entry was added there for this action. Standard §11.3 requires this Documentation Changes Log entry unconditionally, but only says an `IMPLEMENTATION_CHANGES.md` entry "may additionally" be made where the edit is also part of an active engineering task's own tracked history. This action is a governance-record lifecycle event, not an engineering implementation task, so this log entry alone satisfies the standard's requirement — disclosed here rather than silently decided.
+
+### Files modified (4)
+
+- `records/version-1/phase-1/ENG-P1-001.md`
+- `records/history-index.md`
+- `docs/05-implementation/11thonus-master-workflow.md`
+- `docs/README.md`
 
 ---
 
