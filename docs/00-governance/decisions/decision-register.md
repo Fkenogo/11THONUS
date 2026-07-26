@@ -4,7 +4,7 @@
 > **Version:** 1.0 · **Status:** Active governance record · **Classification:** Working (governance record)
 > **Governing document:** 11thONUS Platform Constitution
 > **Source-of-truth path:** `docs/00-governance/decisions/decision-register.md`
-> **Last controlled update:** 2026-07-16 (Phase 3B — Batch A decisions recorded: DEC-GOV-001, DEC-GOV-006, DEC-LOY-010, DEC-DATA-003 CONFIRMED)
+> **Last controlled update:** 2026-07-26 (`DEC-PROV-005-DEC` — `DEC-PROV-005` CONFIRMED: Option C, native backend observability with dedicated frontend diagnostics, initial implementation target Sentry, architecture-only approval; see the [Evidence Pack](evidence/DEC-PROV-005-error-monitoring-evidence-2026-07-26.md)). Previously: 2026-07-16 (Phase 3B — Batch A decisions recorded: DEC-GOV-001, DEC-GOV-006, DEC-LOY-010, DEC-DATA-003 CONFIRMED)
 
 ---
 
@@ -1076,7 +1076,7 @@ Legend: fields with **—** are intentionally blank (OPEN records have no Final 
 
 ---
 
-### EXTERNAL PROVIDERS (DEC-PROV) — all OPEN_PROVIDER
+### EXTERNAL PROVIDERS (DEC-PROV)
 
 **DEC-PROV-001 — Burundi subscription payment provider**
 - Category: Providers · Status: **OPEN_PROVIDER** · Priority: D2
@@ -1096,7 +1096,17 @@ Legend: fields with **—** are intentionally blank (OPEN records have no Final 
 
 **DEC-PROV-004 — Phone OTP delivery route** — Status: **OPEN_PROVIDER** · Priority: **D1** · Question: Firebase-native OTP vs external SMS route for Burundi numbers. Owner: Engineering Lead · Required by: Phase 2 · Blocks: customer authentication · Sources: OTD-004; TRD23 §23.23 · Dependencies: EXT-TECH-001; DEC-SEC-001 · Final decision/date/approved: — · Notes: —
 
-**DEC-PROV-005 — Error monitoring provider** — Status: **OPEN_PROVIDER** · Priority: **D1** · Question: frontend + server error visibility tooling. Owner: Engineering Lead · Required by: Phase 1 · Blocks: observability foundation · Sources: TRD23 §23.23 · Dependencies: — · Final decision/date/approved: — · Notes: —
+**DEC-PROV-005 — Error monitoring provider**
+- Category: Providers · Status: **CONFIRMED** · Priority: **D1**
+- Decision question: frontend + server error visibility tooling.
+- Options identified: (a) Firebase/Google Cloud native (Cloud Error Reporting + Cloud Logging + Cloud Monitoring + Cloud Trace); (b) Sentry, full frontend + backend adoption; (c) bounded hybrid — Sentry for frontend only, native for backend/infrastructure/business/security/audit. Full comparison against 18 evaluation criteria: [DEC-PROV-005 Evidence Pack](evidence/DEC-PROV-005-error-monitoring-evidence-2026-07-26.md).
+- Recommended direction: (c), Technical Lead recommendation, not restated here · Recommendation basis: Evidence Pack §11.
+- Current confirmed position: **Option C approved** — native backend observability with dedicated frontend diagnostics. See Final decision below for the exact architecture. This decision approves the architecture only; it does **not** authorize Sentry account creation, API keys/DSNs, dependency installation, implementation, or production integration — those require their own separate authorization at the implementation/integration stage.
+- Founder decision required: Countersign · Decision owner: Engineering Lead, approved by Founder · Required by phase: Phase 1 · Blocks: — (resolved; unblocks `ENG-P1-003`)
+- Affected documents: TRD20 §20.22–20.36; TRD23 §23.23; Engineering Implementation Programme (`ENG-P1-003` Provider Dependency) · Affected domains: all server, frontend
+- Source references: TRD23 §23.23; [Evidence Pack](evidence/DEC-PROV-005-error-monitoring-evidence-2026-07-26.md); [Founder Decision Brief](evidence/DEC-PROV-005-founder-brief-2026-07-26.md); [Source Register](evidence/DEC-PROV-005-source-register-2026-07-26.md) · Dependencies: — · Risks if unresolved: — (resolved)
+- Final decision: *"Approve Option C — Native backend observability with dedicated frontend diagnostics. Firebase/Google Cloud remains the authoritative backend observability platform. Cloud Logging remains the authoritative operational log. Cloud Monitoring remains the authoritative backend monitoring platform. Frontend browser diagnostics will use a dedicated frontend diagnostics platform. Initial implementation target: Sentry. Backend error reporting will remain native unless a future governed decision changes the architecture. This decision approves the architecture only. It does not authorize creation of a Sentry account; API keys or DSNs; dependency installation; implementation; production integration. Those occur only when implementation reaches the integration stage."* · Decision date: 2026-07-26 · Approved by: Founder
+- Implementation consequences: unblocks `ENG-P1-003` (Security/Storage Rules deny-by-default foundation + monitoring init); frontend Sentry integration and backend-native observability implementation both remain scoped to `ENG-P1-003`'s own, separately authorized implementation task — not begun by this decision · Document corrections required: Engineering Implementation Programme (`ENG-P1-003` Provider Dependency cleared, status `Blocked → Ready`); Coding-Agent Prompt Register (matching sync) · Notes: See the [Evidence Pack](evidence/DEC-PROV-005-error-monitoring-evidence-2026-07-26.md) and [Founder Decision Brief](evidence/DEC-PROV-005-founder-brief-2026-07-26.md) for full evidence and rationale — not restated here.
 
 **DEC-PROV-006 — Backup service** — Status: **OPEN_PROVIDER** · Priority: D3 · Question: Firestore/Storage backup tooling (with DEC-TECH-010). Owner: Engineering Lead · Required by: Phase 14 · Blocks: pilot gate · Sources: OTD-011; TRD23 §23.23 · Dependencies: DEC-TECH-010 · Final decision/date/approved: — · Notes: —
 
@@ -1183,10 +1193,10 @@ Legend: fields with **—** are intentionally blank (OPEN records have no Final 
 
 | Status | Count |
 |---|---|
-| CONFIRMED | 37 |
+| CONFIRMED | 38 |
 | OPEN_FOUNDER | 24 |
 | OPEN_ENGINEERING | 15 |
-| OPEN_PROVIDER | 7 |
+| OPEN_PROVIDER | 6 |
 | OPEN_LEGAL | 6 |
 | DEFERRED | 10 |
 | SUPERSEDED | 4 |
