@@ -2,11 +2,32 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-07-25 (Entry 025 added: `ENG-P1-002-TR` — Technical Review Finalization and Merge Preparation)
+> **Last controlled update:** 2026-07-25 (Entry 026 added: `ENG-P1-002-MC` — Merge Verification and Lifecycle Closure Preparation)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 026 — `ENG-P1-002-MC`: Merge Verification and Lifecycle Closure Preparation
+
+- **Date:** 25 July 2026
+- **Performed by:** Claude (AI agent), per Founder task "TASK — ENG-P1-002-MC: Merge Verification and Lifecycle Closure Preparation", following the Founder's explicit merge authorization ("Approval to merge PR #12 now").
+- **Classification:** Material Change (merges application code to `main`; moves `ENG-P1-002` to `Complete`; prepares, but does not create, EIR input material; adds a Phase 2 entry-criterion; does not begin Phase 2).
+- **Action:** Merged PR #12 (merge commit `6230a72079cea69b074b21404ebc33cac5c93d0f`, containing final pre-merge head `87da193f52a2bc129488207b8e274fffe038819f`). Verified all 7 required entry conditions before any change. Re-ran full validation against a fresh checkout of `origin/main` at the exact merge commit — 92/92 `functions` unit tests, 31/31 `apps/web` unit tests, 23/23 real Firebase Emulator Suite integration tests (concurrency tests unmodified, per this task's own explicit instruction not to weaken them over historical CI timing variance), 1/1 Playwright e2e, 0 broken documentation links, 0 secret-pattern matches — and confirmed post-merge CI green on the exact merge commit. Completed a full Definition-of-Done accounting (12 criteria): all satisfied or correctly `N/A` (criteria 8–10 — Founder pull/deploy, Preview Review, Manual Testing — `N/A` for the same documented reason `ENG-P0-002` used: no deployment target, no Manual QA required for this server-only shared foundation). `ENG-P1-002` moved `Approved → Complete`.
+- **Carry-forward observation, not a reopened `ENG-P1-002` defect:** the `BaseMetadata`/TRD10 §10.5 authority conflict (found during Technical Review) is recorded as an explicit additional entry-criterion on the Engineering Implementation Programme's Phase 2 profile — it must be resolved before any Phase 2 work package persists a document using `stampCreate`/`stampUpdate`/`BaseMetadata`. Not resolved by this task.
+- **No new governance introduced; no history reinterpreted; no domain work begun.** No EIR was created (an input package was prepared for a future, separately-authorized task, mirroring the one-day gap between `ENG-P1-001`'s own `Complete` and its `EIR-03` creation). Phase 2 was not begun.
+
+### Files created (2)
+
+- `docs/05-implementation/reports/ENG-P1-002-merge-verification-report-2026-07-25.md`
+- `docs/00-governance/documentation-changes-log.md` (this entry) — `docs/changes/IMPLEMENTATION_CHANGES.md` logged separately per its own convention
+
+### Files modified (2)
+
+- `docs/05-implementation/change-tracking/engineering-implementation-programme.md` (`ENG-P1-002` row → `Complete`; Phase 2 entry-criterion added)
+- `docs/05-implementation/change-tracking/coding-agent-prompt-register.md` (`ENG-P1-002` row → `Complete`; §5 distribution updated)
 
 ---
 
