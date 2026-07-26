@@ -2,11 +2,39 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-07-26 (Entry 031 added: `ENG-P1-003-BP` — Operational Observability Blueprint, design only)
+> **Last controlled update:** 2026-07-26 (Entry 032 added: `ENG-P1-003-IMP-01` — Observability Foundation, first bounded implementation stage)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 032 — `ENG-P1-003-IMP-01`: Observability Foundation
+
+- **Date:** 26 July 2026
+- **Performed by:** Claude (AI agent), per Founder task "TASK — ENG-P1-003-IMP-01: Observability Foundation".
+- **Classification:** Implementation (Stage 1 of `ENG-P1-003`). No Sentry account, SDK, DSN, dependency, or external network call. `ENG-P1-003` moved `Ready → In Progress`, not `Complete`.
+- **Action:** Merged PR #18 (commit `eea58dd013340e666dbe7f41c43b65806fbefbe4`), verified post-merge CI green on that exact commit (run `30202500418`, first attempt). Verified all 12 required entry conditions before writing. Implemented, test-first (TDD), a provider-independent observability foundation under `apps/web/src/observability/`: a provider-neutral `DiagnosticsProvider` contract with no Sentry-specific concept; a no-op provider (the only active provider this stage — no network call, no account, no SDK); a recursive, bounded sanitization/redaction boundary (passwords, tokens, authorization headers, cookies, session secrets, API keys, payment-card data, and personal-data key names, plus JWT/token-shaped value detection); environment-aware configuration (`enabled`/`provider`/`environment`/`release`, no DSN field, fails safely on an unsupported provider identifier); a minimal frontend correlation-context carrier (browser-native `crypto.randomUUID()`, mirroring the backend's "resolve, never regenerate" semantics — the backend's own generator is unreachable from the browser); and a React-error-boundary integration point (a callback + types, no UI component). 53 new tests, all 18 required test behaviors covered; 84/84 total `apps/web` tests pass (zero regression); 92/92 `functions` unit tests unaffected (`functions/` untouched — confirmed via empty `git diff`).
+- **Governance boundaries preserved:** no dependency added (`package.json`/lockfile diff empty); no Sentry import anywhere; no DSN or secret anywhere; `main.tsx`/`App.tsx` deliberately not wired (nothing consumes the service yet — that is future-stage work); `ENG-P1-003`'s Security/Storage Rules scope not begun.
+
+### Files created (9)
+
+- `apps/web/src/observability/types.ts`
+- `apps/web/src/observability/noopProvider.ts` (+ test)
+- `apps/web/src/observability/sanitize.ts` (+ test)
+- `apps/web/src/observability/config.ts` (+ test)
+- `apps/web/src/observability/correlationContext.ts` (+ test)
+- `apps/web/src/observability/observabilityService.ts` (+ test)
+- `apps/web/src/observability/errorBoundaryIntegration.ts` (+ test)
+- `apps/web/src/observability/index.ts`
+- `docs/05-implementation/reports/ENG-P1-003-IMP-01-implementation-report-2026-07-26.md`
+
+### Files modified (3)
+
+- `apps/web/.env.example` (3 new optional, non-secret placeholder lines)
+- `docs/05-implementation/change-tracking/engineering-implementation-programme.md`
+- `docs/05-implementation/change-tracking/coding-agent-prompt-register.md`
 
 ---
 
