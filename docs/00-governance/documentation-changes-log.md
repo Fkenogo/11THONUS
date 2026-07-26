@@ -2,11 +2,33 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-07-26 (Entry 028 added: `EIR-ENG-P1-002-02` — Founder Approval and Administrative Closure)
+> **Last controlled update:** 2026-07-26 (Entry 029 added: `DEC-PROV-005-PREP` — Error Monitoring Provider Decision Evidence and Founder Brief)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 029 — `DEC-PROV-005-PREP`: Error Monitoring Provider Decision Evidence and Founder Brief
+
+- **Date:** 26 July 2026
+- **Performed by:** Claude (AI agent), per Founder task "TASK — DEC-PROV-005-PREP: Error Monitoring Provider Decision Evidence and Founder Brief".
+- **Classification:** Evidence-only addition — decision preparation, not decision-making. `DEC-PROV-005` status unchanged (`OPEN_PROVIDER`); no provider selected, configured, or authorized; no dependency installed; no code modified; `ENG-P1-003` not begun.
+- **Action:** Merged PR #15 (merge commit `1b07b55be9fc92526e2067486ad6014972f4b980`); post-merge CI on that commit required two reruns before passing (2 emulator-suite assertion failures, zero code difference across all 3 runs since PR #15 was documentation-only — a disclosed recurrence of the emulator-timing residual risk already accepted in the `ENG-P1-002` Technical Review, not a new defect). Verified all 8 required entry conditions before research began. Evaluated three qualified options (Firebase/Google Cloud native, Sentry, and a bounded hybrid) against 18 required criteria using current official Sentry/Google Cloud documentation and pricing pages accessed 2026-07-26, distinguishing verified fact from reasoned inference and provisional assumption throughout. Key finding: Cloud Error Reporting has no browser JavaScript SDK and its own documentation directs client apps to the mobile-only Firebase Crashlytics — a confirmed gap against `DEC-PROV-005`'s explicit "frontend + server" decision question. Produced an Evidence Pack, Founder Decision Brief, Source Register, and a proposed-but-unapplied Decision Register update (clearly labeled as such). Technical Lead recommendation (Option C — Sentry for frontend only, Google Cloud native for everything else) offered for discussion, not adopted.
+- **No product, engineering-status, or decision-register change made.** `ENG-P1-002`, `ENG-P1-003`, and Phase 2 statuses are all unchanged; the `BaseMetadata`/TRD10 §10.5 conflict remains unresolved and untouched.
+
+### Files created (5)
+
+- `docs/00-governance/decisions/evidence/DEC-PROV-005-error-monitoring-evidence-2026-07-26.md`
+- `docs/00-governance/decisions/evidence/DEC-PROV-005-founder-brief-2026-07-26.md`
+- `docs/00-governance/decisions/evidence/DEC-PROV-005-source-register-2026-07-26.md`
+- `docs/00-governance/decisions/evidence/DEC-PROV-005-proposed-updates-2026-07-26.md`
+- `docs/05-implementation/reports/DEC-PROV-005-PREP-decision-preparation-report-2026-07-26.md`
+
+### Files modified (0)
+
+None besides this log and `docs/changes/IMPLEMENTATION_CHANGES.md`.
 
 ---
 
