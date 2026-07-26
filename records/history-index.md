@@ -5,7 +5,7 @@
 > **Governing document:** [Engineering Implementation Records Standard](../docs/06-engineering-governance/engineering-implementation-records-standard.md) §13
 > **Source-of-truth path:** `records/history-index.md`
 > **Created:** `EIR-02` (repository integration), 2026-07-24
-> **Last controlled update:** 2026-07-25 (EIR administrative closure — `ENG-P1-001` row's Record lifecycle state updated to `Administratively Closed`, per Founder approval). Previously: 2026-07-24 (`EIR-03`/`GEL-001` — `ENG-P1-001` row synchronized: record created, status corrected to the live `Complete` value)
+> **Last controlled update:** 2026-07-26 (`EIR-ENG-P1-002-01` — `ENG-P1-002` row synchronized: record created at [`EIR-ENG-P1-002`](version-1/phase-1/ENG-P1-002.md), lifecycle state `Recorded`; Engineering status corrected to the live `Complete` value; Phase 1 narrative updated). Previously: 2026-07-25 (EIR administrative closure — `ENG-P1-001` row's Record lifecycle state updated to `Administratively Closed`, per Founder approval). Previously: 2026-07-24 (`EIR-03`/`GEL-001` — `ENG-P1-001` row synchronized: record created, status corrected to the live `Complete` value)
 > **Update trigger:** whenever a record's lifecycle state changes (standard §13) — not on a fixed schedule.
 
 ## Purpose
@@ -39,12 +39,12 @@ Engineering status (per Programme, as of 2026-07-24): **Complete.**
 
 ### Phase 1 — Firebase and Shared Platform Foundation
 
-Engineering status (per Programme/Register, as of 2026-07-24): **Partially Ready** — `ENG-P1-001` Complete, `ENG-P1-002` Ready (the [Master Workflow](../docs/05-implementation/11thonus-master-workflow.md) §8 EIR governance stream sequencing condition is satisfied — that stream reached `EIR-03` on 2026-07-24; `ENG-P1-002-PREP` itself remains its own, separately Founder-authorized task), `ENG-P1-003` Blocked.
+Engineering status (per Programme/Register, as of 2026-07-26): **`ENG-P1-001` Complete, `ENG-P1-002` Complete** (PR #12 merged `6230a72`, Definition-of-Done satisfied — see the [Merge Verification Report](../docs/05-implementation/reports/ENG-P1-002-merge-verification-report-2026-07-25.md)), **`ENG-P1-003` Blocked** on `DEC-PROV-005`. Phase 2 remains `Blocked` on its own decision dependencies and, additionally, on resolving the `BaseMetadata`/TRD10 §10.5 conflict carried forward from `ENG-P1-002`'s Technical Review (see `EIR-ENG-P1-002` §16).
 
 | Work package | Engineering status | Record                                              | Record lifecycle state    |
 | ------------ | ------------------ | --------------------------------------------------- | ------------------------- |
 | `ENG-P1-001` | Complete           | [`EIR-ENG-P1-001`](version-1/phase-1/ENG-P1-001.md) | `Administratively Closed` |
-| `ENG-P1-002` | Ready              | Not yet created                                     | —                         |
+| `ENG-P1-002` | Complete           | [`EIR-ENG-P1-002`](version-1/phase-1/ENG-P1-002.md) | `Recorded`                |
 | `ENG-P1-003` | Blocked            | Not yet created                                     | —                         |
 
 **Phase 1 Engineering Record:** Not yet created.

@@ -2,11 +2,33 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-07-25 (Entry 026 added: `ENG-P1-002-MC` — Merge Verification and Lifecycle Closure Preparation)
+> **Last controlled update:** 2026-07-26 (Entry 027 added: `EIR-ENG-P1-002-01` — Engineering Implementation Record Creation)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 027 — `EIR-ENG-P1-002-01`: Engineering Implementation Record Creation
+
+- **Date:** 26 July 2026
+- **Performed by:** Claude (AI agent), per Founder task "TASK — EIR-ENG-P1-002-01: Engineering Implementation Record Creation", following the Founder's explicit authorization ("PR #13 / Approved for merge... proceed directly to the Engineering Implementation Record for `ENG-P1-002`").
+- **Classification:** Material Change (creates a new governance-record class instance — the first EIR drafted directly within this task, rather than backfilled retroactively; does not approve, lock, or administratively close the record; does not change `ENG-P1-002`'s `Complete` status or any phase status).
+- **Action:** Merged PR #13 (merge commit `650349f97243ea2017a5b37145345762adb71e56`), verified post-merge CI green on that exact commit ([run 30194471724](https://github.com/Fkenogo/11THONUS/actions/runs/30194471724)). Verified all 8 required entry conditions before drafting. Created `EIR-ENG-P1-002` (`records/version-1/phase-1/ENG-P1-002.md`) per the [Engineering Implementation Records Standard](../06-engineering-governance/engineering-implementation-records-standard.md) and its template — all 22 mandatory sections populated, every fact (commit SHAs, PR merge commits/dates, CI run IDs, Decision Register/RTM citations) re-verified fresh against the live repository and GitHub rather than copied from prior summary reports. Record lifecycle state: `Recorded` (drafted, not approved — per standard §9.2, a coding agent never self-approves a record).
+- **`EIR-ENG-P1-001` reviewed as precedent, without copying inapplicable facts:** `ENG-P1-002` has no live-infrastructure or Founder-pull/Preview-Review component (Definition of Done §2.8–2.10 all `N/A`, matching `ENG-P0-002`'s own precedent) — §12/§14 of the new record reflect that accurately rather than adapting `ENG-P1-001`'s own infrastructure-heavy text.
+- **Tracker update — the only one this task performs, per standard §13's own rule tying an index update to a record's lifecycle-state change:** `records/history-index.md`'s `ENG-P1-002` row updated (`Ready` → `Complete` engineering status, corrected to match the live Programme/Register value; Record column linked; Record lifecycle state `Recorded`); Phase 1 narrative line updated to reflect both work packages now `Complete`.
+- **No new governance introduced; no history reinterpreted; no engineering work begun.** `ENG-P1-002`'s `Complete` status, Phase 1's status, and Phase 2's `Blocked` status are all unchanged by this task. `ENG-P1-003` and `ENG-P2-001` were not started. The `BaseMetadata`/TRD10 §10.5 conflict was not resolved.
+
+### Files created (2)
+
+- `records/version-1/phase-1/ENG-P1-002.md` (`EIR-ENG-P1-002`)
+- `docs/05-implementation/reports/EIR-ENG-P1-002-01-implementation-report-2026-07-26.md`
+
+### Files modified (2)
+
+- `records/history-index.md`
+- `docs/00-governance/documentation-changes-log.md` (this entry) — `docs/changes/IMPLEMENTATION_CHANGES.md` logged separately per its own convention
 
 ---
 
