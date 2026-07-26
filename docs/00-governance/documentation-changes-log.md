@@ -2,11 +2,50 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-07-26 (Entry 029 added: `DEC-PROV-005-PREP` — Error Monitoring Provider Decision Evidence and Founder Brief)
+> **Last controlled update:** 2026-07-26 (Entry 030 added: `DEC-PROV-005-DEC` — Founder Decision Recording and Programme Synchronization: `DEC-PROV-005` CONFIRMED)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 030 — `DEC-PROV-005-DEC`: Founder Decision Recording and Programme Synchronization (Decision History)
+
+- **Date:** 26 July 2026
+- **Performed by:** Claude (AI agent), per Founder task "TASK — DEC-PROV-005-DEC: Founder Decision Recording and Programme Synchronization".
+- **Classification:** Decision-history record — this entry is the append-only decision-history mechanism the Decision Register's own §1 designates ("the changes log records the update"); no separate `decision-history.md` file exists in this repository.
+
+**Decision ID:** `DEC-PROV-005` (Error monitoring provider)
+
+**Previous state:** `OPEN_PROVIDER`
+
+**New state:** `CONFIRMED` (2026-07-26)
+
+**Founder disposition (verbatim):**
+
+> "Approve Option C — Native backend observability with dedicated frontend diagnostics. Firebase / Google Cloud remains the authoritative backend observability platform. Cloud Logging remains the authoritative operational log. Cloud Monitoring remains the authoritative backend monitoring platform. Frontend browser diagnostics will use a dedicated frontend diagnostics platform. Initial implementation target: Sentry. Backend error reporting will remain native unless a future governed decision changes the architecture. This decision approves the architecture only. It does not authorize: creation of a Sentry account; API keys or DSNs; dependency installation; implementation; production integration. Those occur only when implementation reaches the integration stage."
+
+**Rationale summary:** the Founder reviewed the `DEC-PROV-005` Evidence Pack and Founder Decision Brief (both prepared under `DEC-PROV-005-PREP`, PR #16), which found that Cloud Error Reporting has no browser JavaScript SDK and directs client apps to the mobile-only Firebase Crashlytics — a confirmed gap against the decision's own explicit "frontend + server" question — while everything else Cloud Logging/Monitoring already does well (backend error capture, structured logging, correlation IDs, business/security/audit logs) requires zero new integration, since `ENG-P1-002` already targets Cloud Logging directly. Option C (the Technical Lead's own recommendation) closes the confirmed frontend gap with a scoped, frontend-only third-party tool rather than either accepting the gap (Option A) or duplicating the already-built backend foundation (Option B).
+
+**Evidence references:** [DEC-PROV-005 Evidence Pack](decisions/evidence/DEC-PROV-005-error-monitoring-evidence-2026-07-26.md); [Founder Decision Brief](decisions/evidence/DEC-PROV-005-founder-brief-2026-07-26.md); [Source Register](decisions/evidence/DEC-PROV-005-source-register-2026-07-26.md); [Decision Register entry](decisions/decision-register.md).
+
+**Implementation boundary:** this decision approves the architecture only. It does **not** authorize creation of a Sentry account, API keys/DSNs, dependency installation, implementation, or production integration — those occur only when implementation reaches the integration stage, under `ENG-P1-003`'s own, separately Founder-authorized implementation task.
+
+**Action taken by this task:** merged PR #16 (Founder-authorized after an entry-condition check found it still open); verified post-merge CI green (one disclosed rerun — the same emulator-timing residual risk recurring on a docs-only commit); updated the Decision Register (`DEC-PROV-005` entry expanded to `CONFIRMED`, §5 summary counts recomputed, section header's now-inaccurate "all `OPEN_PROVIDER`" qualifier removed); cleared `ENG-P1-003`'s provider blocker in the Engineering Implementation Programme, Coding-Agent Prompt Register, and Master Workflow (`Blocked → Ready` — not `Started`/`In Progress`/`Complete`).
+
+**Deliberately not touched, and why:** `DEC-TECH-005` (still `OPEN_ENGINEERING` in the register) and `DEC-LOY-008` (still `OPEN_FOUNDER`) were discovered stale during this task but are unrelated decisions — per this task's explicit "do not resolve any other decision" constraint, neither was touched; flagged in the accompanying report as a governance-integrity risk for separate follow-up. Application code, dependencies, Firebase configuration, EIR files, `BaseMetadata`/TRD10 §10.5, and Phase 1/Phase 2 status are all unchanged. `ENG-P1-003` was not started.
+
+### Files created (1)
+
+- `docs/05-implementation/reports/DEC-PROV-005-DEC-decision-recording-report-2026-07-26.md`
+
+### Files modified (4)
+
+- `docs/00-governance/decisions/decision-register.md`
+- `docs/05-implementation/change-tracking/engineering-implementation-programme.md`
+- `docs/05-implementation/change-tracking/coding-agent-prompt-register.md`
+- `docs/05-implementation/11thonus-master-workflow.md`
 
 ---
 
