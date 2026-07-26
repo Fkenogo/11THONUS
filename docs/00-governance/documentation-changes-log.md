@@ -2,11 +2,30 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-07-26 (Entry 030 added: `DEC-PROV-005-DEC` — Founder Decision Recording and Programme Synchronization: `DEC-PROV-005` CONFIRMED)
+> **Last controlled update:** 2026-07-26 (Entry 031 added: `ENG-P1-003-BP` — Operational Observability Blueprint, design only)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 031 — `ENG-P1-003-BP`: Operational Observability Blueprint
+
+- **Date:** 26 July 2026
+- **Performed by:** Claude (AI agent), per Founder task "TASK — ENG-P1-003-BP: Operational Observability Blueprint".
+- **Classification:** Design-only addition. No implementation, no dependency, no configuration, no provider account, no application-code change. `ENG-P1-003` tracker status unchanged (`Ready`).
+- **Action:** Merged PR #17 (Founder-approved, commit `494dca103b5970e332f64b9f9c9065ac893dc46a`), verified post-merge CI green on that exact commit (run `30200279870`, first attempt). Verified all 6 required entry conditions before writing — `DEC-PROV-005` `CONFIRMED`, `ENG-P1-003` `Ready`, no existing blueprint, governing documents (Platform Constitution CP-013, TRD20, TRD22 §22.11, Decision Register, `ENG-P1-002` blueprint and implementation code, Master Workflow, Engineering Implementation Programme) reviewed. Produced the [ENG-P1-003 Operational Observability Blueprint](../05-implementation/prompts/ENG-P1-003-engineering-blueprint-2026-07-26.md) — 14 design sections (philosophy, architecture with 3 diagrams, 13-row event taxonomy, logging model, frontend diagnostics behavior, backend observability, correlation strategy, incident workflow, closed privacy list, environment strategy, 6 failure modes, 9-row metrics catalogue, future extensibility for 6 named capabilities, non-binding implementation sequencing). Every contract referenced (`OperationalLog`, `ErrorCategory`, `correlationId`, `OutboxStatus`, `IdempotencyStatus`) was read directly from the live `ENG-P1-002` code and cited, not redefined. Terminology mapping applied: the task brief's "tenant" language mapped onto the platform's actual `businessId` field (confirmed via repository search that "tenant" is not this platform's vocabulary).
+- **No monitoring implemented, no Sentry account, no dependency, no application code, no Firebase/Cloud Monitoring configuration, no dashboard, no alert.** `ENG-P1-003` implementation itself was not begun.
+
+### Files created (2)
+
+- `docs/05-implementation/prompts/ENG-P1-003-engineering-blueprint-2026-07-26.md`
+- `docs/05-implementation/reports/ENG-P1-003-BP-implementation-report-2026-07-26.md`
+
+### Files modified (0)
+
+None besides this log and `docs/changes/IMPLEMENTATION_CHANGES.md`.
 
 ---
 
