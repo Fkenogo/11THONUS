@@ -95,4 +95,16 @@ describe("correlationContext", () => {
     endWorkflow(workflowB);
     expect(getCurrentCorrelationId()).toBeUndefined();
   });
+
+  it("ENG-P1-003-IMP-04: handles an unusual or unsafe-looking id value safely — stored as-is, never parsed or thrown on, since correlation ids are deliberately never sanitized (they are an approved-identifier channel, not free text)", () => {
+    const unsafeLooking = "<script>alert(1)</script>".repeat(50);
+    expect(() => setCorrelationId(unsafeLooking)).not.toThrow();
+    expect(getCurrentCorrelationId()).toBe(unsafeLooking);
+
+    expect(() => resolveCorrelationId("")).not.toThrow();
+    // An empty string is falsy, so resolveCorrelationId("") is treated the
+    // same as "no explicit id supplied" — it does not adopt the empty
+    // string, it falls back to the existing/generated id.
+    expect(getCurrentCorrelationId()).not.toBe("");
+  });
 });

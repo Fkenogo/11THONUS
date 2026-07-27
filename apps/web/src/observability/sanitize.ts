@@ -141,6 +141,31 @@ const TEXT_SCAN_PATTERNS: ReadonlyArray<{ pattern: RegExp; replace: (match: stri
     replace: () => REDACTED,
   },
   {
+    // ENG-P1-003-IMP-04: standard email-address shape embedded in free
+    // text (e.g. customer-entered text reaching an exception message or
+    // breadcrumb) — Stage 4 validation found this was previously
+    // protected only when a caller used a structured, email-keyed field
+    // (via `sanitize()`'s key-substring check), not when the same value
+    // appeared in prose.
+    pattern: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g,
+    replace: () => REDACTED,
+  },
+  {
+    // ENG-P1-003-IMP-04 (PR #22 review correction): phone-number-shaped
+    // run embedded in free text — at least 7 actual digits, optionally
+    // grouped with spaces, dashes, dots, parentheses, or a leading '+'.
+    // The digit-count minimum is enforced structurally (each repetition
+    // of the group consumes exactly one digit), not by total match
+    // length — an earlier version measured total characters including
+    // separators, so a widely-spaced two-digit run like "1     2" could
+    // satisfy a 7-character minimum without being anywhere near 7 real
+    // digits, redacting ordinary prose. Broader than the payment-card
+    // pattern above (13-19 digits only), so shorter local phone formats
+    // are also caught.
+    pattern: /\+?\(?\d(?:[\s.\-()]*\d){6,}\b/g,
+    replace: () => REDACTED,
+  },
+  {
     // Long token/API-key-shaped run (checked last so an already-redacted
     // marker, shorter than 20 characters, is never re-matched).
     pattern: /\b[A-Za-z0-9+/=_-]{20,}\b/g,

@@ -2,11 +2,29 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-07-27 (Entry 035 added: `ENG-P1-003-IMP-03` — Frontend Diagnostics Provider Adapter)
+> **Last controlled update:** 2026-07-27 (Entry 036 added: `ENG-P1-003-IMP-04` — Operational Validation and Readiness)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 036 — `ENG-P1-003-IMP-04`: Operational Validation and Readiness
+
+- **Date:** 27 July 2026
+- **Performed by:** Claude (AI agent), per Founder task "TASK — ENG-P1-003-IMP-04: Operational Validation and Readiness", Stage 4 of `ENG-P1-003-EXECUTION-LOOP`.
+- **Classification:** Validation and readiness classification, not new implementation. Two minimal, disclosed, TDD-verified corrections to already-merged code. `ENG-P1-003` remains `In Progress` — this task does not itself close it; closure is separately Founder-authorized. No external account, credential, or production activation.
+- **Action:** Merged PR #21 (Founder-authorized, "Stage 3 passes its gate. PR #21 merge approved"), verified post-merge CI green (commit `310313ea08779bb9c1502cbea31fa1182a5c821c`, run `30277223179`), then performed the required 13-point pre-validation analysis against the merged repository and validated across six required areas (functional, privacy, correlation, resilience, security, regression), cross-referencing every checklist item against actual test titles rather than assuming coverage.
+- **Two genuine defects found and fixed (TDD throughout):** (1) `sanitizeText()` had no pattern for a plain email address or general phone number embedded in free text — only a structured, key-named field was previously protected. Verified with a standalone script before treating as real, then reproduced with two failing tests, then fixed by extending `TEXT_SCAN_PATTERNS` (an already-existing, already-designed extensible mechanism — the same class as Stage 3's own loyalty/QR/customer-name closed-list extension). (2) `RouteTracker`'s `React.StrictMode` double-invocation safety was previously only reasoned about in a doc comment, never proven with a real `<StrictMode>` render test — added one; it passed immediately, confirming the existing guard was already correct.
+- **Readiness classification (four independent states, none manufactured):** Architecture Ready — **PASS**. Integration Ready — **PASS**. Staging Ready — **PASS WITH CONDITIONS** (every unmet condition is an external, Founder-owned action — Sentry account/project/DSN/terms/privacy-review/access/retention/alerts — not a code defect). Production Ready — **NOT YET ASSESSABLE** (no staging evidence exists yet to ground a production assessment; not marked FAIL, since nothing has actually failed).
+- **Tests:** 4 new tests (2 fixing a real gap, 2 proof-only for already-correct behavior). Full `apps/web` suite: 190/190 passing (was 186/186 at Stage 3 baseline), zero regression. `functions`: 92/92 passing, unaffected.
+- **Governance boundaries preserved:** no dependency added; no Sentry account/organisation/project created; no real DSN or credential; no production activation; no source-map upload; no session replay/tracing/profiling enabled; no backend file touched; Firestore Rules untouched; `ENG-P1-003` remains `In Progress`; no self-merge.
+- **Files created:** `docs/05-implementation/reports/ENG-P1-003-IMP-04-operational-readiness-report-2026-07-27.md` (the authoritative readiness report with Appendices A–G — staging/production checklists, provider onboarding action list, rollback procedure, privacy verification checklist, manual validation plan, known limitations); `docs/05-implementation/reports/ENG-P1-003-IMP-04-implementation-report-2026-07-27.md`.
+- **Files modified:** `apps/web/src/observability/sanitize.ts` (+ test — the free-text email/phone fix); `apps/web/src/observability/correlationContext.test.ts` (+1 proof test); `apps/web/src/observability/RouteTracker.test.tsx` (+1 `StrictMode` proof test).
+- **CI flakiness disclosure:** a fourth occurrence was recorded when this stage's own PR #22 was opened — `idempotencyService.emulator.test.ts`'s "reports 'duplicate' with the stored response after completeIdempotencyKey" failed once (identical test/signature to one seen during Stage 3's PR #21 review), then passed on rerun; `functions/` remained untouched throughout. Combined with the three prior documented occurrences (Stage 2's PR #20 once, Stage 3's PR #21 twice), all four are referenced, not re-investigated, per this task's explicit instruction not to modify unrelated backend tests. Recommended, not implemented: `ENG-CI-001 — Firebase Emulator CI Flakiness Investigation and Stabilisation`.
+- **Rollback:** `git revert` of this stage's own commit(s) — both corrections are safe to keep independently even under a partial revert.
+- **Report link:** [`docs/05-implementation/reports/ENG-P1-003-IMP-04-implementation-report-2026-07-27.md`](../05-implementation/reports/ENG-P1-003-IMP-04-implementation-report-2026-07-27.md) and [the readiness report](../05-implementation/reports/ENG-P1-003-IMP-04-operational-readiness-report-2026-07-27.md).
 
 ---
 
