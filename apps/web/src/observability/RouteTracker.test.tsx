@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { StrictMode, useEffect } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useNavigate } from "react-router-dom";
@@ -66,6 +66,23 @@ describe("RouteTracker", () => {
     expect(service.addBreadcrumb).toHaveBeenCalledTimes(2);
     expect(service.addBreadcrumb.mock.calls[0][0]).toMatchObject({ message: "/" });
     expect(service.addBreadcrumb.mock.calls[1][0]).toMatchObject({ message: "/next" });
+  });
+
+  it("ENG-P1-003-IMP-04: under real React.StrictMode double-invocation, still adds exactly one breadcrumb for the initial route (the useRef guard survives StrictMode's dev-only remount, not just a manual double-call)", () => {
+    const service = createServiceSpy();
+
+    render(
+      <StrictMode>
+        <MemoryRouter initialEntries={["/"]}>
+          <RouteTracker service={service} />
+          <Routes>
+            <Route path="/" element={<Page label="home" />} />
+          </Routes>
+        </MemoryRouter>
+      </StrictMode>,
+    );
+
+    expect(service.addBreadcrumb).toHaveBeenCalledTimes(1);
   });
 
   it("renders nothing", () => {

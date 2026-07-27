@@ -141,6 +141,28 @@ const TEXT_SCAN_PATTERNS: ReadonlyArray<{ pattern: RegExp; replace: (match: stri
     replace: () => REDACTED,
   },
   {
+    // ENG-P1-003-IMP-04: standard email-address shape embedded in free
+    // text (e.g. customer-entered text reaching an exception message or
+    // breadcrumb) — Stage 4 validation found this was previously
+    // protected only when a caller used a structured, email-keyed field
+    // (via `sanitize()`'s key-substring check), not when the same value
+    // appeared in prose.
+    pattern: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g,
+    replace: () => REDACTED,
+  },
+  {
+    // ENG-P1-003-IMP-04: phone-number-shaped run embedded in free text —
+    // 7+ digits total, optionally grouped with spaces, dashes, dots,
+    // parentheses, or a leading '+'. Broader than the payment-card
+    // pattern above (13-19 digits only), so shorter local phone formats
+    // are also caught. Deliberately conservative, matching this module's
+    // existing redact-first philosophy: a version string or similar
+    // digit-and-separator run may be redacted as a false positive rather
+    // than risk missing a real phone number.
+    pattern: /\+?\(?\d[\d\s.\-()]{5,}\d\b/g,
+    replace: () => REDACTED,
+  },
+  {
     // Long token/API-key-shaped run (checked last so an already-redacted
     // marker, shorter than 20 characters, is never re-matched).
     pattern: /\b[A-Za-z0-9+/=_-]{20,}\b/g,

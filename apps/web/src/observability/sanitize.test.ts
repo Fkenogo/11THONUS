@@ -142,6 +142,24 @@ describe("sanitizeText", () => {
     expect(text).toBe("purchase.record failed for correlationId short-id-1 at line 42");
   });
 
+  it("ENG-P1-003-IMP-04: redacts an email address embedded in free text (e.g. customer-entered text reaching an exception message or breadcrumb) — a gap Stage 4 validation found: only a structured, email-keyed field was previously protected", () => {
+    const text = sanitizeText("Please contact me at person@example.com about my order");
+    expect(text).not.toContain("person@example.com");
+    expect(text).toContain(REDACTED);
+    expect(text).toContain("Please contact me at");
+    expect(text).toContain("about my order");
+  });
+
+  it("ENG-P1-003-IMP-04: redacts a phone-number-shaped run embedded in free text, including a shorter local format without a country code", () => {
+    const withCountryCode = sanitizeText("Call me back at +257 79 000 0000 as soon as possible");
+    expect(withCountryCode).not.toContain("79 000 0000");
+    expect(withCountryCode).toContain(REDACTED);
+
+    const localFormat = sanitizeText("my number is 790000000, call anytime");
+    expect(localFormat).not.toContain("790000000");
+    expect(localFormat).toContain(REDACTED);
+  });
+
   it("preserves stack-trace structure (file paths, line numbers, function names) while redacting an embedded secret", () => {
     const secret = "sk_live_" + "b".repeat(24);
     const stack = `Error: boom\n    at handleSubmit (src/app/checkout.ts:42:17)\n    at token=${secret}`;
