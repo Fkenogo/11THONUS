@@ -230,19 +230,19 @@ None performed by this stage, and none required for it to be reviewed: creating 
 
 ## 35. Ending Commit
 
-Recorded in the accompanying chat report at push time (this report is written and committed as part of that same commit sequence — see the PR itself for the exact final SHA).
+`cb573a647b7d9d680b709b5db00b35f1af74413d` — includes all Stage 3 code and this report.
 
 ## 36. PR Number and URL
 
-Recorded in the accompanying chat report immediately after this report is committed and the PR is opened (§38 below covers the CI-verification step that follows).
+PR #21 — https://github.com/Fkenogo/11THONUS/pull/21
 
 ## 37. PR Head Commit
 
-Recorded in the accompanying chat report — the commit that includes this report and all Stage 3 code.
+`cb573a647b7d9d680b709b5db00b35f1af74413d` (confirmed via `gh pr view 21 --json headRefOid`, matching the pushed commit exactly).
 
 ## 38. CI Status on That Exact Head Commit
 
-Recorded in the accompanying chat report after the PR is opened and its CI run completes — verified against the PR's own `headRefOid`, not an earlier commit, matching this session's established discipline (Stage 2's PR #20 required exactly this same re-verification after a follow-up push).
+GitHub Actions run `30275092150` — `Build, Lint, Test, Emulator Validation`: **pass**, first attempt, on head commit `cb573a647b7d9d680b709b5db00b35f1af74413d`. `mergeable: "MERGEABLE"`, `state: "OPEN"`.
 
 ## 39. Gate Outcome
 
