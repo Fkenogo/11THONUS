@@ -2,11 +2,64 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-07-26 (Entry 031 added: `ENG-P1-003-BP` — Operational Observability Blueprint, design only)
+> **Last controlled update:** 2026-07-26 (Entry 033 added: `ENG-P1-003-IMP-01-CR1` — Provider-Boundary Privacy Correction)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 033 — `ENG-P1-003-IMP-01-CR1`: Provider-Boundary Privacy Correction
+
+- **Date:** 26 July 2026
+- **Performed by:** Claude (AI agent), per Founder review decision "Review decision — PR #19 — Changes required before merge" and task "TASK — ENG-P1-003-IMP-01-CR1: Provider-Boundary Privacy Correction".
+- **Classification:** Correction applied directly to PR #19's existing branch (no new branch). No Sentry, no application wiring, no work-package expansion, no new stage begun. `ENG-P1-003` remains `In Progress`, not `Complete`. PR #19 remains unmerged.
+- **Finding:** the Stage 1 `observabilityService` sanitized the caller-supplied structured `context` argument but passed several other diagnostic channels to the provider unsanitized — the raw exception/thrown value, the raw `captureMessage` string, the raw breadcrumb `message`/`category`, and the caller's user-context object with no runtime allow-list enforcement. A separate configuration-semantics inconsistency was also found (the internal gate checked only `config.enabled`, not `provider.isEnabled()`, while `isEnabled()` checked both).
+- **Correction:** established and applied the invariant "no uncontrolled application diagnostic value crosses into a provider without sanitization or an explicit approved allow-list rule" across every channel. Added `sanitizeText()` (substring-scanning free-text redaction) and `sanitizeException()` (a plain, provider-neutral exception representation — `name`/`message`/`stack` sanitized as text, custom own properties sanitized structurally, `cause` walked to a bounded depth of 3). `setUserContext` now strictly allow-lists `actorId`/`businessId`/`customerId` as validated strings, never forwarding the caller's object. `addBreadcrumb` sanitizes `message`/`category` in addition to `data`. Unified the configuration gate (`isActive()`) so `guarded()`/`flush()`/`isEnabled()` can never disagree. Documented (without new runtime logic) the correlation-context lifecycle's dormant-risk status.
+- **Tests:** 31 new/changed tests (9 in `sanitize.test.ts`, 11 in the new `sanitizeException.test.ts`, 11 in `observabilityService.test.ts`), all TDD (RED confirmed before each GREEN). Full observability suite: 84/84 passing (was 53). Full `apps/web` suite: 115/115 passing, zero regression. `functions`: 92/92 passing, unaffected (`functions/` confirmed byte-identical to `origin/main`). All 15 required CR1 test behaviors covered explicitly — see the correction report §27.13 for the full mapping.
+- **Governance boundaries preserved:** no dependency added; no `@sentry` import; no DSN or secret; no external network call; `main.tsx`/`App.tsx` untouched; Firestore Rules untouched; no dashboard/alert created; `ENG-P1-003` not marked complete; PR #19 not merged.
+
+### Files created (1)
+
+- `apps/web/src/observability/sanitizeException.ts` (+ test)
+
+### Files modified (7)
+
+- `apps/web/src/observability/sanitize.ts` (+ test)
+- `apps/web/src/observability/observabilityService.ts` (+ test)
+- `apps/web/src/observability/types.ts`
+- `apps/web/src/observability/correlationContext.ts`
+- `apps/web/src/observability/index.ts`
+- `docs/05-implementation/reports/ENG-P1-003-IMP-01-implementation-report-2026-07-26.md` (§27 correction section appended; §1–26 unchanged)
+
+---
+
+## Entry 032 — `ENG-P1-003-IMP-01`: Observability Foundation
+
+- **Date:** 26 July 2026
+- **Performed by:** Claude (AI agent), per Founder task "TASK — ENG-P1-003-IMP-01: Observability Foundation".
+- **Classification:** Implementation (Stage 1 of `ENG-P1-003`). No Sentry account, SDK, DSN, dependency, or external network call. `ENG-P1-003` moved `Ready → In Progress`, not `Complete`.
+- **Action:** Merged PR #18 (commit `eea58dd013340e666dbe7f41c43b65806fbefbe4`), verified post-merge CI green on that exact commit (run `30202500418`, first attempt). Verified all 12 required entry conditions before writing. Implemented, test-first (TDD), a provider-independent observability foundation under `apps/web/src/observability/`: a provider-neutral `DiagnosticsProvider` contract with no Sentry-specific concept; a no-op provider (the only active provider this stage — no network call, no account, no SDK); a recursive, bounded sanitization/redaction boundary (passwords, tokens, authorization headers, cookies, session secrets, API keys, payment-card data, and personal-data key names, plus JWT/token-shaped value detection); environment-aware configuration (`enabled`/`provider`/`environment`/`release`, no DSN field, fails safely on an unsupported provider identifier); a minimal frontend correlation-context carrier (browser-native `crypto.randomUUID()`, mirroring the backend's "resolve, never regenerate" semantics — the backend's own generator is unreachable from the browser); and a React-error-boundary integration point (a callback + types, no UI component). 53 new tests, all 18 required test behaviors covered; 84/84 total `apps/web` tests pass (zero regression); 92/92 `functions` unit tests unaffected (`functions/` untouched — confirmed via empty `git diff`).
+- **Governance boundaries preserved:** no dependency added (`package.json`/lockfile diff empty); no Sentry import anywhere; no DSN or secret anywhere; `main.tsx`/`App.tsx` deliberately not wired (nothing consumes the service yet — that is future-stage work); `ENG-P1-003`'s Security/Storage Rules scope not begun.
+
+### Files created (9)
+
+- `apps/web/src/observability/types.ts`
+- `apps/web/src/observability/noopProvider.ts` (+ test)
+- `apps/web/src/observability/sanitize.ts` (+ test)
+- `apps/web/src/observability/config.ts` (+ test)
+- `apps/web/src/observability/correlationContext.ts` (+ test)
+- `apps/web/src/observability/observabilityService.ts` (+ test)
+- `apps/web/src/observability/errorBoundaryIntegration.ts` (+ test)
+- `apps/web/src/observability/index.ts`
+- `docs/05-implementation/reports/ENG-P1-003-IMP-01-implementation-report-2026-07-26.md`
+
+### Files modified (3)
+
+- `apps/web/.env.example` (3 new optional, non-secret placeholder lines)
+- `docs/05-implementation/change-tracking/engineering-implementation-programme.md`
+- `docs/05-implementation/change-tracking/coding-agent-prompt-register.md`
 
 ---
 
