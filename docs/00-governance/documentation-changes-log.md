@@ -2,11 +2,26 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-07-26 (Entry 033 added: `ENG-P1-003-IMP-01-CR1` — Provider-Boundary Privacy Correction)
+> **Last controlled update:** 2026-07-27 (Entry 034 added: `ENG-P1-003-IMP-02` — Application Integration)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 034 — `ENG-P1-003-IMP-02`: Application Integration
+
+- **Date:** 27 July 2026
+- **Performed by:** Claude (AI agent), per Founder task "TASK — ENG-P1-003-EXECUTION-LOOP: Stages 2–4", Stage 2 only.
+- **Classification:** Implementation (Stage 2 of `ENG-P1-003`). No Sentry account, SDK, DSN, dependency, or external network call. `ENG-P1-003` remains `In Progress`, not `Complete`. Stage 3/4 not begun.
+- **Action:** Merged PR #19 (Stage 1 + CR1, Founder-authorized), verified post-merge CI green (commit `c0e39545c861a9bc8336f5778508a191c24eb0dd`), then performed the task's required pre-edit analysis directly against the live application before writing anything. That analysis found the application materially thinner than the task brief assumed — one placeholder route, no logout UI, no API/network layer — triggering two of the task's own stop-and-ask conditions; both were resolved via explicit Founder decision (`AskUserQuestion`) rather than guessed, recorded in full in the implementation report §3. Implemented, test-first (TDD): a React error boundary at the application root rendering a Founder-approved minimal temporary fallback; global `window` `error`/`unhandledrejection` capture; a workflow-scoped correlation-ID lifecycle (`beginWorkflow`/`endWorkflow`, compare-and-clear against concurrent-workflow clobbering); a Firebase-Auth-driven correlation/identity clear-on-sign-out hook; connectivity (`online`/`offline`) breadcrumbs; route-change breadcrumbs. All wired into `main.tsx`, the observability foundation's first real consumer. 29 new tests, full `apps/web` suite grew from 115 to 144 passing, zero regression.
+- **Governance boundaries preserved:** no dependency added (`package.json`/lockfile diff empty); no Sentry import anywhere; no DSN or secret anywhere; Firestore Rules untouched; frontend-to-backend correlation propagation explicitly recorded as **Blocked**, not implemented and not claimed as ready — see the report's §11 status table; `ENG-P1-003`'s Security/Storage Rules scope not begun; no production deploy; no third-party account or credential of any kind.
+- **Files created:** `apps/web/src/observability/ErrorBoundary.tsx` (+ test), `globalErrorHandlers.ts` (+ test), `authLifecycle.ts` (+ test), `connectivityBreadcrumbs.ts` (+ test), `RouteTracker.tsx` (+ test); `docs/05-implementation/reports/ENG-P1-003-IMP-02-implementation-report-2026-07-27.md`.
+- **Files modified:** `apps/web/src/main.tsx` (composition-root wiring); `apps/web/src/observability/correlationContext.ts` (+ test, `beginWorkflow`/`endWorkflow`); `apps/web/src/observability/index.ts` (barrel exports).
+- **Deferred, not begun this stage:** frontend-to-backend correlation propagation and backend-issued-ID adoption (blocked on the not-yet-built API/network layer); route-level/feature-level error boundaries beyond the single root boundary; a Sentry adapter; Sentry account creation, DSN issuance, dependency installation, production integration (Stage 3 scope, separately Founder-authorized before it may begin).
+- **Rollback:** `git revert` of this stage's own commit(s) on its dedicated branch — every change is additive (5 new files) or narrowly scoped; no existing Stage 1 file's prior behaviour was altered.
+- **Report link:** [`docs/05-implementation/reports/ENG-P1-003-IMP-02-implementation-report-2026-07-27.md`](../05-implementation/reports/ENG-P1-003-IMP-02-implementation-report-2026-07-27.md).
 
 ---
 

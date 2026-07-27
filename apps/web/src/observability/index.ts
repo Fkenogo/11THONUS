@@ -26,13 +26,20 @@ export { loadObservabilityConfig } from "./config";
 export type { ObservabilityService, ObservabilityServiceDeps } from "./observabilityService";
 export { createObservabilityService } from "./observabilityService";
 export {
+  beginWorkflow,
   clearCorrelationId,
+  endWorkflow,
   getCurrentCorrelationId,
   resolveCorrelationId,
   setCorrelationId,
 } from "./correlationContext";
 export type { CapturedRenderInfo } from "./errorBoundaryIntegration";
 export { createRenderErrorHandler } from "./errorBoundaryIntegration";
+export { ObservabilityErrorBoundary } from "./ErrorBoundary";
+export { registerGlobalErrorHandlers } from "./globalErrorHandlers";
+export { registerConnectivityBreadcrumbs } from "./connectivityBreadcrumbs";
+export { registerAuthLifecycle } from "./authLifecycle";
+export { RouteTracker } from "./RouteTracker";
 
 import { loadObservabilityConfig } from "./config";
 import { createNoopProvider } from "./noopProvider";
