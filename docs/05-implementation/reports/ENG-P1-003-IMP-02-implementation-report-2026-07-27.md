@@ -166,7 +166,9 @@ None introduced beyond what Stage 1 already disclosed. This stage only connects 
 
 ## 23. Repository State
 
-`main` unaffected — all Stage 2 work happens on a new dedicated branch, not `main`, per the task's PR-per-stage requirement. `origin/main` remains at the Stage 1/CR1 merge commit (`c0e39545c861a9bc8336f5778508a191c24eb0dd`) until a Stage 2 PR is opened, reviewed, and separately Founder-authorized to merge.
+`main` unaffected — all Stage 2 work happens on a new dedicated branch, not `main`, per the task's PR-per-stage requirement. `origin/main` remains at the Stage 1/CR1 merge commit (`c0e39545c861a9bc8336f5778508a191c24eb0dd`) until a Stage 2 PR is opened, reviewed, and separately Founder-authorized to merge. PR #20 opened on branch `feat/eng-p1-003-imp-02-application-integration`, head commit `7844237aef66fc8ec997d0815c35cd163584a62e`, left unmerged pending Founder/Technical Lead review.
+
+**CI evidence (disclosed):** CI run `30257996074`'s first attempt failed — but the single failing assertion was inside `functions/src/shared/idempotency/idempotencyService.emulator.test.ts` ("re-acquires ownership … for a same-hash key that previously failed"), a real-Firebase-Emulator concurrency test from `ENG-P1-002`, pre-existing and entirely unmodified by this PR (`git diff origin/main --stat -- functions/` is empty — confirmed before concluding this was unrelated, not assumed). This matches the emulator-timing flakiness already disclosed in the `ENG-P1-002` Technical Review record, not a defect introduced by Stage 2. The same run was re-triggered (`gh run rerun 30257996074 --failed`, no code change) and passed cleanly on the identical commit — `gh pr checks 20` now shows `pass`, and `gh pr view 20 --json headRefOid` confirms the passing run is on this PR's actual head commit, not a stale one.
 
 ## 24. Gate Outcome and Next Recommendation
 
