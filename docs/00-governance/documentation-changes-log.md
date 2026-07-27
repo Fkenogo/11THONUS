@@ -2,11 +2,36 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-07-26 (Entry 032 added: `ENG-P1-003-IMP-01` — Observability Foundation, first bounded implementation stage)
+> **Last controlled update:** 2026-07-26 (Entry 033 added: `ENG-P1-003-IMP-01-CR1` — Provider-Boundary Privacy Correction)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 033 — `ENG-P1-003-IMP-01-CR1`: Provider-Boundary Privacy Correction
+
+- **Date:** 26 July 2026
+- **Performed by:** Claude (AI agent), per Founder review decision "Review decision — PR #19 — Changes required before merge" and task "TASK — ENG-P1-003-IMP-01-CR1: Provider-Boundary Privacy Correction".
+- **Classification:** Correction applied directly to PR #19's existing branch (no new branch). No Sentry, no application wiring, no work-package expansion, no new stage begun. `ENG-P1-003` remains `In Progress`, not `Complete`. PR #19 remains unmerged.
+- **Finding:** the Stage 1 `observabilityService` sanitized the caller-supplied structured `context` argument but passed several other diagnostic channels to the provider unsanitized — the raw exception/thrown value, the raw `captureMessage` string, the raw breadcrumb `message`/`category`, and the caller's user-context object with no runtime allow-list enforcement. A separate configuration-semantics inconsistency was also found (the internal gate checked only `config.enabled`, not `provider.isEnabled()`, while `isEnabled()` checked both).
+- **Correction:** established and applied the invariant "no uncontrolled application diagnostic value crosses into a provider without sanitization or an explicit approved allow-list rule" across every channel. Added `sanitizeText()` (substring-scanning free-text redaction) and `sanitizeException()` (a plain, provider-neutral exception representation — `name`/`message`/`stack` sanitized as text, custom own properties sanitized structurally, `cause` walked to a bounded depth of 3). `setUserContext` now strictly allow-lists `actorId`/`businessId`/`customerId` as validated strings, never forwarding the caller's object. `addBreadcrumb` sanitizes `message`/`category` in addition to `data`. Unified the configuration gate (`isActive()`) so `guarded()`/`flush()`/`isEnabled()` can never disagree. Documented (without new runtime logic) the correlation-context lifecycle's dormant-risk status.
+- **Tests:** 31 new/changed tests (9 in `sanitize.test.ts`, 11 in the new `sanitizeException.test.ts`, 11 in `observabilityService.test.ts`), all TDD (RED confirmed before each GREEN). Full observability suite: 84/84 passing (was 53). Full `apps/web` suite: 115/115 passing, zero regression. `functions`: 92/92 passing, unaffected (`functions/` confirmed byte-identical to `origin/main`). All 15 required CR1 test behaviors covered explicitly — see the correction report §27.13 for the full mapping.
+- **Governance boundaries preserved:** no dependency added; no `@sentry` import; no DSN or secret; no external network call; `main.tsx`/`App.tsx` untouched; Firestore Rules untouched; no dashboard/alert created; `ENG-P1-003` not marked complete; PR #19 not merged.
+
+### Files created (1)
+
+- `apps/web/src/observability/sanitizeException.ts` (+ test)
+
+### Files modified (7)
+
+- `apps/web/src/observability/sanitize.ts` (+ test)
+- `apps/web/src/observability/observabilityService.ts` (+ test)
+- `apps/web/src/observability/types.ts`
+- `apps/web/src/observability/correlationContext.ts`
+- `apps/web/src/observability/index.ts`
+- `docs/05-implementation/reports/ENG-P1-003-IMP-01-implementation-report-2026-07-26.md` (§27 correction section appended; §1–26 unchanged)
 
 ---
 

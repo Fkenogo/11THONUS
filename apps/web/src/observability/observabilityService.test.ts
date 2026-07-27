@@ -89,6 +89,78 @@ describe("createObservabilityService", () => {
     expect(context.password).toBe(REDACTED);
   });
 
+  it("CR1: redacts a sensitive value embedded in the raw exception message — not only the context argument", () => {
+    const provider = createSpyProvider();
+    const service = createObservabilityService({ config: enabledConfig, provider });
+    const secret = "e".repeat(32);
+
+    service.captureException(new Error(`db write failed, key=${secret}`));
+
+    const [sanitizedError] = provider.captureException.mock.calls[0];
+    expect(sanitizedError.message).not.toContain(secret);
+    expect(sanitizedError.message).toContain(REDACTED);
+    expect(sanitizedError.kind).toBe("error");
+    expect(sanitizedError.name).toBe("Error");
+  });
+
+  it("CR1: sanitizes a non-Error thrown value before it reaches the provider", () => {
+    const provider = createSpyProvider();
+    const service = createObservabilityService({ config: enabledConfig, provider });
+
+    service.captureException({ reason: "bad state", password: "hunter2" });
+
+    const [sanitizedError] = provider.captureException.mock.calls[0];
+    expect(sanitizedError.kind).toBe("thrown-value");
+    expect(sanitizedError.properties.value.password).toBe(REDACTED);
+    expect(sanitizedError.properties.value.reason).toBe("bad state");
+  });
+
+  it("CR1: sanitizes custom own properties on a thrown Error", () => {
+    const provider = createSpyProvider();
+    const service = createObservabilityService({ config: enabledConfig, provider });
+    const error = new Error("boom") as Error & { apiKey?: string };
+    error.apiKey = "f".repeat(32);
+
+    service.captureException(error);
+
+    const [sanitizedError] = provider.captureException.mock.calls[0];
+    expect(sanitizedError.properties.apiKey).toBe(REDACTED);
+  });
+
+  it("CR1: does not mutate the caller's original Error or context object", () => {
+    const provider = createSpyProvider();
+    const service = createObservabilityService({ config: enabledConfig, provider });
+    const error = new Error("boom");
+    const originalMessage = error.message;
+    const context = { password: "hunter2" };
+
+    service.captureException(error, context);
+
+    expect(error.message).toBe(originalMessage);
+    expect(context.password).toBe("hunter2");
+  });
+
+  it("CR1: does not crash on a circular custom property or a circular cause chain", () => {
+    const provider = createSpyProvider();
+    const service = createObservabilityService({ config: enabledConfig, provider });
+    const error = new Error("boom") as Error & { self?: unknown };
+    error.self = error;
+
+    expect(() => service.captureException(error)).not.toThrow();
+  });
+
+  it("CR1: redacts a sensitive value embedded in a captureMessage string, not only its context", () => {
+    const provider = createSpyProvider();
+    const service = createObservabilityService({ config: enabledConfig, provider });
+    const secret = "g".repeat(32);
+
+    service.captureMessage(`config loaded with key ${secret}`);
+
+    const [sanitizedMessage] = provider.captureMessage.mock.calls[0];
+    expect(sanitizedMessage).not.toContain(secret);
+    expect(sanitizedMessage).toContain(REDACTED);
+  });
+
   it("sanitizes breadcrumb data before delegating", () => {
     const provider = createSpyProvider();
     const service = createObservabilityService({ config: enabledConfig, provider });
@@ -98,6 +170,18 @@ describe("createObservabilityService", () => {
     const [breadcrumb] = provider.addBreadcrumb.mock.calls[0];
     expect(breadcrumb.data.token).toBe(REDACTED);
     expect(breadcrumb.data.step).toBe("checkout");
+  });
+
+  it("CR1: sanitizes the breadcrumb message and category themselves, not only breadcrumb.data", () => {
+    const provider = createSpyProvider();
+    const service = createObservabilityService({ config: enabledConfig, provider });
+    const secret = "h".repeat(32);
+
+    service.addBreadcrumb({ message: `submitted token=${secret}`, category: `cat-${secret}` });
+
+    const [breadcrumb] = provider.addBreadcrumb.mock.calls[0];
+    expect(breadcrumb.message).not.toContain(secret);
+    expect(breadcrumb.category).not.toContain(secret);
   });
 
   it("attaches the current correlation id to captured context when available", () => {
@@ -157,6 +241,45 @@ describe("createObservabilityService", () => {
     expect(provider.setUserContext).toHaveBeenNthCalledWith(2, undefined);
   });
 
+  it("CR1: passes through all three approved identifier fields when present", () => {
+    const provider = createSpyProvider();
+    const service = createObservabilityService({ config: enabledConfig, provider });
+
+    service.setUserContext({ actorId: "a1", businessId: "b1", customerId: "c1" });
+
+    expect(provider.setUserContext).toHaveBeenCalledWith({
+      actorId: "a1",
+      businessId: "b1",
+      customerId: "c1",
+    });
+  });
+
+  it("CR1: strips any field not on the approved allow-list before it reaches the provider, even if the caller supplies one at runtime", () => {
+    const provider = createSpyProvider();
+    const service = createObservabilityService({ config: enabledConfig, provider });
+    // Bypass compile-time typing the way a real caller could at runtime
+    // (e.g. spreading a larger object into the user-context call).
+    const overBroad = { actorId: "a1", name: "Alice Example", email: "alice@example.com" } as never;
+
+    service.setUserContext(overBroad);
+
+    const [passed] = provider.setUserContext.mock.calls[0];
+    expect(passed).toEqual({ actorId: "a1" });
+    expect(passed.name).toBeUndefined();
+    expect(passed.email).toBeUndefined();
+  });
+
+  it("CR1: drops a non-string value smuggled under an approved field name", () => {
+    const provider = createSpyProvider();
+    const service = createObservabilityService({ config: enabledConfig, provider });
+    const overBroad = { actorId: { nested: "object" } } as never;
+
+    service.setUserContext(overBroad);
+
+    const [passed] = provider.setUserContext.mock.calls[0];
+    expect(passed.actorId).toBeUndefined();
+  });
+
   it("isEnabled reflects both configuration and provider readiness", () => {
     expect(
       createObservabilityService({
@@ -176,6 +299,24 @@ describe("createObservabilityService", () => {
         provider: createSpyProvider(true),
       }).isEnabled(),
     ).toBe(false);
+  });
+
+  it("CR1: makes no provider call when configuration is requested enabled but the provider itself is not ready (e.g. the no-op provider) — 'requested' and 'effectively active' are not conflated", () => {
+    const provider = createSpyProvider(false);
+    const service = createObservabilityService({ config: enabledConfig, provider });
+
+    service.captureException(new Error("boom"));
+    service.captureMessage("hello");
+    service.addBreadcrumb({ message: "clicked" });
+    service.setContext("feature", { flag: true });
+    service.setUserContext({ actorId: "a1" });
+
+    expect(provider.captureException).not.toHaveBeenCalled();
+    expect(provider.captureMessage).not.toHaveBeenCalled();
+    expect(provider.addBreadcrumb).not.toHaveBeenCalled();
+    expect(provider.setContext).not.toHaveBeenCalled();
+    expect(provider.setUserContext).not.toHaveBeenCalled();
+    expect(service.isEnabled()).toBe(false);
   });
 
   it("flush resolves even when the configuration is disabled", async () => {

@@ -18,7 +18,9 @@ export type {
   ObservabilityUserContext,
 } from "./types";
 export { createNoopProvider } from "./noopProvider";
-export { REDACTED, sanitize } from "./sanitize";
+export { REDACTED, sanitize, sanitizeText } from "./sanitize";
+export type { SanitizedException } from "./sanitizeException";
+export { sanitizeException } from "./sanitizeException";
 export type { ObservabilityConfig, ObservabilityProviderId } from "./config";
 export { loadObservabilityConfig } from "./config";
 export type { ObservabilityService, ObservabilityServiceDeps } from "./observabilityService";

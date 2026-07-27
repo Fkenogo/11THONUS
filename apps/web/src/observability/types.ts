@@ -27,6 +27,16 @@ export type ObservabilityUserContext = {
 };
 
 export interface DiagnosticsProvider {
+  /**
+   * Contract clarification (ENG-P1-003-IMP-01-CR1): `error` is never the
+   * raw thrown value — `observabilityService` always passes a
+   * `SanitizedException` (see `sanitizeException.ts`), a plain,
+   * provider-neutral representation with free text and flagged values
+   * already redacted. The type remains `unknown` here (not narrowed to
+   * `SanitizedException`) so this interface itself stays provider-
+   * agnostic — but a provider implementation should expect this shape,
+   * not a raw `Error`.
+   */
   captureException(error: unknown, context?: DiagnosticContext): void;
   captureMessage(message: string, context?: DiagnosticContext): void;
   addBreadcrumb(breadcrumb: Breadcrumb): void;
