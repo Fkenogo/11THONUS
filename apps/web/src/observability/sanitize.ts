@@ -56,6 +56,14 @@ const SENSITIVE_KEY_SUBSTRINGS = [
   "dateofbirth",
   "nationalid",
   "ssn",
+  // Added under ENG-P1-003-IMP-03: the Sentry adapter's explicit privacy
+  // list names loyalty numbers, QR values, and customer names as data
+  // that must never reach a provider. `customername` deliberately does
+  // not extend to a bare "name" substring — that would over-redact
+  // legitimate non-personal identifiers like `businessName`.
+  "loyalty",
+  "qrcode",
+  "customername",
 ] as const;
 
 // Mirrors functions/src/shared/logging/logger.ts's own conservative

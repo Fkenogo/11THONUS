@@ -1,31 +1,37 @@
 /**
- * Observability configuration (ENG-P1-003-IMP-01).
+ * Observability configuration (ENG-P1-003-IMP-01, extended under
+ * ENG-P1-003-IMP-03).
  *
  * Mirrors `apps/web/src/config/env.ts`'s pattern exactly: a pure
  * function over an explicit `EnvSource` object (never reading
  * `import.meta.env` directly), so it is testable without Vite's
  * build-time env substitution.
  *
- * Per the ENG-P1-003 Operational Observability Blueprint §6.4: no DSN,
- * no secret — only enabled/disabled, provider identifier, environment,
- * and an optional release identifier. `"noop"` is the only supported
- * provider at this stage (DEC-PROV-005's confirmed architecture defers
- * any real provider integration to a later, separately authorized
- * stage). Safe default is disabled + no-op.
+ * **Stage 3 addition:** `"sentry"` is now a recognized provider
+ * identifier, and `dsn` is a new optional field. A DSN is a public,
+ * client-embeddable identifier by Sentry's own design (analogous to a
+ * Firebase client config value) — not a secret — so its presence here
+ * does not violate Stage 1's "no secret" invariant, which still holds:
+ * no API key, auth token, or other genuine credential is ever read
+ * into this config. Safe default remains disabled + no-op regardless
+ * of what `provider`/`dsn` are set to — see `selectProvider()` in
+ * `providerSelection.ts` for the full activation gate.
  */
 
-export type ObservabilityProviderId = "noop";
+export type ObservabilityProviderId = "noop" | "sentry";
 
 export type ObservabilityConfig = {
   enabled: boolean;
   provider: ObservabilityProviderId;
   environment: string;
   release?: string;
+  /** Sentry DSN (ENG-P1-003-IMP-03). A public identifier, not a secret — see the module doc comment. Undefined unless explicitly configured. */
+  dsn?: string;
 };
 
 type EnvSource = Record<string, string | undefined>;
 
-const KNOWN_PROVIDERS: readonly ObservabilityProviderId[] = ["noop"];
+const KNOWN_PROVIDERS: readonly ObservabilityProviderId[] = ["noop", "sentry"];
 
 function parseBoolean(name: string, value: string | undefined): boolean | undefined {
   if (value === undefined) return undefined;
@@ -55,6 +61,7 @@ export function loadObservabilityConfig(
       provider: "noop",
       environment: viteEnv.MODE,
       release: source.VITE_OBSERVABILITY_RELEASE,
+      dsn: source.VITE_OBSERVABILITY_DSN,
     };
   }
 
@@ -63,5 +70,6 @@ export function loadObservabilityConfig(
     provider: requestedProvider,
     environment: viteEnv.MODE,
     release: source.VITE_OBSERVABILITY_RELEASE,
+    dsn: source.VITE_OBSERVABILITY_DSN,
   };
 }

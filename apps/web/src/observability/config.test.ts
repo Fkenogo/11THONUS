@@ -26,9 +26,12 @@ describe("loadObservabilityConfig", () => {
   });
 
   it("fails safely (forces disabled, forces the noop provider) for an unsupported provider identifier", () => {
+    // ENG-P1-003-IMP-03: "sentry" moved from this test's example unsupported
+    // value to a genuinely supported one (see the tests below) — "bugsnag"
+    // now plays the role of a still-unsupported identifier.
     const config = loadObservabilityConfig({
       VITE_OBSERVABILITY_ENABLED: "true",
-      VITE_OBSERVABILITY_PROVIDER: "sentry",
+      VITE_OBSERVABILITY_PROVIDER: "bugsnag",
     });
     expect(config.provider).toBe("noop");
     expect(config.enabled).toBe(false);
@@ -41,6 +44,26 @@ describe("loadObservabilityConfig", () => {
     });
     expect(config.provider).toBe("noop");
     expect(config.enabled).toBe(true);
+  });
+
+  it("ENG-P1-003-IMP-03: accepts the explicit sentry provider identifier", () => {
+    const config = loadObservabilityConfig({
+      VITE_OBSERVABILITY_ENABLED: "true",
+      VITE_OBSERVABILITY_PROVIDER: "sentry",
+      VITE_OBSERVABILITY_DSN: "https://example.test/1",
+    });
+    expect(config.provider).toBe("sentry");
+    expect(config.enabled).toBe(true);
+  });
+
+  it("ENG-P1-003-IMP-03: reads an optional DSN from VITE_OBSERVABILITY_DSN", () => {
+    const config = loadObservabilityConfig({ VITE_OBSERVABILITY_DSN: "https://example.test/1" });
+    expect(config.dsn).toBe("https://example.test/1");
+  });
+
+  it("ENG-P1-003-IMP-03: leaves dsn undefined when not set — no invented value", () => {
+    const config = loadObservabilityConfig({});
+    expect(config.dsn).toBeUndefined();
   });
 
   it("derives environment from the supplied Vite mode", () => {
@@ -63,10 +86,10 @@ describe("loadObservabilityConfig", () => {
     expect(config.release).toBeUndefined();
   });
 
-  it("never includes a DSN or secret-shaped field on the returned config", () => {
+  it("never includes a secret-shaped field on the returned config (a DSN is a public identifier, not a secret — ENG-P1-003-IMP-03 adds an explicit, optional dsn field, never a secret/apiKey one)", () => {
     const config = loadObservabilityConfig({});
-    expect(config).not.toHaveProperty("dsn");
     expect(config).not.toHaveProperty("secret");
     expect(config).not.toHaveProperty("apiKey");
+    expect(config).not.toHaveProperty("authToken");
   });
 });

@@ -84,16 +84,25 @@ function allowListUserContext(
 export function createObservabilityService(deps: ObservabilityServiceDeps): ObservabilityService {
   const { config, provider } = deps;
 
-  function withCorrelation(context: DiagnosticContext | undefined): DiagnosticContext | undefined {
-    const correlationId = deps.getCorrelationId?.();
-    if (!correlationId) return context;
-    return { ...(context ?? {}), correlationId };
-  }
-
+  // ENG-P1-003-IMP-03 fix: correlation id is merged in *after*
+  // sanitization, never before. Sanitizing first, then merging, is the
+  // only order that honours the module doc comment's "correlationId is
+  // ... treated as an approved identifier rather than arbitrary content
+  // requiring redaction" guarantee — the previous order (merge, then
+  // sanitize the combined object) let `sanitize()`'s generic long-token
+  // value-pattern match a `crypto.randomUUID()`-shaped id (36
+  // hyphen/hex characters, well over the 20-character threshold) and
+  // redact it like any other caller-supplied field, silently breaking
+  // the documented guarantee for any real correlation id. Undetected
+  // until ENG-P1-003-IMP-03 because every prior test used a short
+  // placeholder id (e.g. `"corr-123"`) that never matched the pattern,
+  // and the no-op provider discards whatever it receives regardless.
   function sanitizedContext(context: DiagnosticContext | undefined): DiagnosticContext | undefined {
-    const withCorrelationId = withCorrelation(context);
-    if (withCorrelationId === undefined) return undefined;
-    return sanitize(withCorrelationId) as DiagnosticContext;
+    const sanitizedBase =
+      context !== undefined ? (sanitize(context) as DiagnosticContext) : undefined;
+    const correlationId = deps.getCorrelationId?.();
+    if (!correlationId) return sanitizedBase;
+    return { ...(sanitizedBase ?? {}), correlationId };
   }
 
   // "Requested enabled" (config.enabled) and "effectively active" are
