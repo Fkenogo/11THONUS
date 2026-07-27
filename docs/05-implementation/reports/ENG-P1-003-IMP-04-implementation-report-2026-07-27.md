@@ -213,19 +213,19 @@ No CI run was required for this stage's local validation work (validation happen
 
 ## 44. Ending Commit
 
-Recorded after commit, in the accompanying chat report (this report is committed as part of that same sequence).
+`cef7cd64d74734b2c51049c7e00e2f5ef4e9e539` — includes both Stage 4 corrections and both reports.
 
 ## 45. PR Number and URL
 
-Recorded in the accompanying chat report immediately after this report is committed and the PR is opened.
+PR #22 — https://github.com/Fkenogo/11THONUS/pull/22
 
 ## 46. PR Head Commit
 
-Recorded in the accompanying chat report — the commit that includes this report and all Stage 4 corrections.
+`cef7cd64d74734b2c51049c7e00e2f5ef4e9e539` (confirmed via `gh pr view 22 --json headRefOid`, matching the pushed commit exactly).
 
 ## 47. CI Status on That Exact Head Commit
 
-Recorded in the accompanying chat report after the PR is opened and its CI run completes, verified against the PR's own `headRefOid`.
+GitHub Actions run `30279504301` — `Build, Lint, Test, Emulator Validation`: **pass**, first attempt, on head commit `cef7cd64d74734b2c51049c7e00e2f5ef4e9e539`. `mergeable: "MERGEABLE"`, `state: "OPEN"`.
 
 ## 48. Gate Outcome
 
