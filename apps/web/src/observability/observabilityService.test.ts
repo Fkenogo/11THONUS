@@ -199,6 +199,21 @@ describe("createObservabilityService", () => {
     expect(context.source).toBe("test");
   });
 
+  it("ENG-P1-003-IMP-03: never redacts a UUID-shaped correlation id, as documented — a real crypto.randomUUID() value is long enough to otherwise match sanitize()'s generic long-token pattern", () => {
+    const provider = createSpyProvider();
+    const realUuid = "31199c39-3024-4062-9340-c787edb83bf5"; // crypto.randomUUID()-shaped, 36 chars
+    const service = createObservabilityService({
+      config: enabledConfig,
+      provider,
+      getCorrelationId: () => realUuid,
+    });
+
+    service.captureMessage("hello");
+
+    const [, context] = provider.captureMessage.mock.calls[0];
+    expect(context.correlationId).toBe(realUuid);
+  });
+
   it("handles a missing correlation-context provider safely", () => {
     const provider = createSpyProvider();
     const service = createObservabilityService({ config: enabledConfig, provider });

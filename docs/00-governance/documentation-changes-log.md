@@ -2,11 +2,28 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-07-27 (Entry 034 added: `ENG-P1-003-IMP-02` — Application Integration)
+> **Last controlled update:** 2026-07-27 (Entry 035 added: `ENG-P1-003-IMP-03` — Frontend Diagnostics Provider Adapter)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 035 — `ENG-P1-003-IMP-03`: Frontend Diagnostics Provider Adapter
+
+- **Date:** 27 July 2026
+- **Performed by:** Claude (AI agent), per Founder task "TASK — ENG-P1-003-IMP-03: Frontend Diagnostics Provider Adapter", Stage 3 of `ENG-P1-003-EXECUTION-LOOP`.
+- **Classification:** Implementation (Stage 3 of `ENG-P1-003`). One minimum official SDK dependency added, disabled by default. No Sentry account/organisation/project created, no real DSN, no credential. `ENG-P1-003` remains `In Progress`, not `Complete`. Stage 4 not begun.
+- **Action:** Merged PR #20 (Founder-authorized, "Founder decision — Approve PR #20"), verified post-merge CI green (commit `56b828bdffdf5de5d98c46c1a2c4bb5f3ea757d0`, run `30259380736`), then performed the task's required 10-point pre-edit analysis directly against the merged repository before writing anything. Implemented `sentryProvider.ts` — a `DiagnosticsProvider` adapter backed by `@sentry/react@10.68.0` — mapping all 8 provider-neutral methods, with every one of Sentry's own default automatic integrations explicitly disabled (`integrations: []`: no auto breadcrumbs, no auto error/rejection capture that would duplicate Stage 2's own handlers, no session tracking, no tracing, no replay, no profiling, no feedback). Implemented `providerSelection.ts`, a pure, unit-testable activation gate requiring diagnostics enabled, provider explicitly `"sentry"`, and a non-empty DSN, all three simultaneously — missing any one falls back to the no-op provider, never an error. Added a machine-enforced ESLint rule confining `@sentry/react` imports to the adapter file alone (previously convention-only).
+- **Disclosed finding and fix:** end-to-end correlation-ID testing (using a real `crypto.randomUUID()`-shaped value, as production actually generates) surfaced a genuine, previously-undetected defect in already-merged Stage 1/CR1 code — `observabilityService.ts` merged the correlation id into context *before* sanitizing, so the generic long-token redaction pattern silently matched and redacted any UUID-shaped correlation id, contradicting that file's own documented "never redact correlationId" guarantee. Undetected through Stage 1/CR1/Stage 2 because every prior test used a short placeholder id. Fixed with a minimal, TDD-verified reorder (sanitize the caller's context first, merge the trusted id in after) — full detail in the implementation report §27.
+- **Tests:** 42 new tests across 8 files (`sentryProvider.test.ts` 18, `providerSelection.test.ts` 6, `sentryPrivacy.test.ts` 8, `sentryNetworkSafety.test.ts` 2, `sentryIntegrationBoundaries.test.ts` 3, plus additions to `config.test.ts`/`sanitize.test.ts`/`observabilityService.test.ts`). Full `apps/web` suite: 186/186 passing (was 144/144 at Stage 2 baseline), zero regression. `functions`: 92/92 passing, unaffected.
+- **Governance boundaries preserved:** no dependency added beyond the one minimum SDK package (its own transitive deps confirmed browser-only); no Sentry account/organisation/project created; no real DSN or credential anywhere; no Sentry configuration in `functions/`; no application feature component imports `@sentry/react` (confirmed by scan and by the new ESLint rule, verified to actually fire on a deliberate violation); no source-map-upload tooling; Firestore Rules untouched; `ENG-P1-003` remains `In Progress`, not marked `Complete`; Stage 4 and Phase 2 not begun.
+- **Files created:** `apps/web/src/observability/sentryProvider.ts` (+ test), `providerSelection.ts` (+ test), `sentryPrivacy.test.ts`, `sentryNetworkSafety.test.ts`, `sentryIntegrationBoundaries.test.ts`; `docs/05-implementation/reports/ENG-P1-003-IMP-03-implementation-report-2026-07-27.md`.
+- **Files modified:** `apps/web/package.json` (+ `pnpm-lock.yaml`), `apps/web/src/observability/config.ts` (+ test), `apps/web/src/observability/observabilityService.ts` (+ test — the disclosed fix), `apps/web/src/observability/sanitize.ts` (+ test — closed-list extension for loyalty/QR/customer-name keys), `apps/web/src/observability/index.ts`, `apps/web/.env.example`, `eslint.config.js`.
+- **Deferred, not begun this stage:** every external Founder action (Sentry account/organisation/project creation, real DSN issuance, auth token, source-map upload, production activation); frontend-to-backend correlation propagation (still blocked, unchanged from Stage 2); Stage 4 (Operational Validation and Readiness).
+- **Rollback:** `git revert` of this stage's own commit(s) on its dedicated branch — every change is additive or narrowly scoped; the one behavioral fix (§27) is independently correct.
+- **Report link:** [`docs/05-implementation/reports/ENG-P1-003-IMP-03-implementation-report-2026-07-27.md`](../05-implementation/reports/ENG-P1-003-IMP-03-implementation-report-2026-07-27.md).
 
 ---
 

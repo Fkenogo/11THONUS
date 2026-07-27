@@ -25,6 +25,20 @@ describe("sanitize", () => {
     }
   });
 
+  it("ENG-P1-003-IMP-03: redacts loyalty-number-, QR-code-, and customer-name-shaped keys (closed-list extension for the Sentry adapter's explicit privacy requirements)", () => {
+    const input = {
+      loyaltyNumber: "1234567890123456",
+      customerQrCode: "QR-ABC-123",
+      customerName: "Alice Example",
+      businessId: "biz_123",
+    };
+    const result = sanitize(input) as Record<string, unknown>;
+    expect(result.loyaltyNumber).toBe(REDACTED);
+    expect(result.customerQrCode).toBe(REDACTED);
+    expect(result.customerName).toBe(REDACTED);
+    expect(result.businessId).toBe("biz_123");
+  });
+
   it("redacts sensitive fields nested inside a request-body-shaped object", () => {
     const input = {
       requestBody: {

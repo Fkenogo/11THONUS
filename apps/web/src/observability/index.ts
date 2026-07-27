@@ -40,9 +40,10 @@ export { registerGlobalErrorHandlers } from "./globalErrorHandlers";
 export { registerConnectivityBreadcrumbs } from "./connectivityBreadcrumbs";
 export { registerAuthLifecycle } from "./authLifecycle";
 export { RouteTracker } from "./RouteTracker";
+export { selectProvider } from "./providerSelection";
 
 import { loadObservabilityConfig } from "./config";
-import { createNoopProvider } from "./noopProvider";
+import { selectProvider } from "./providerSelection";
 import { createObservabilityService, type ObservabilityService } from "./observabilityService";
 import { getCurrentCorrelationId } from "./correlationContext";
 
@@ -52,15 +53,20 @@ let cachedService: ObservabilityService | undefined;
  * The application's live observability service, loaded lazily and
  * cached on first access — never at module import time, matching
  * `config/env.ts`'s `getAppEnv()` pattern so importing this module in
- * a test never triggers real env reads. Always backed by the no-op
- * provider at this stage.
+ * a test never triggers real env reads.
+ *
+ * **Provider selection (ENG-P1-003-IMP-03):** delegated entirely to
+ * `selectProvider()` — backed by the no-op provider unless diagnostics
+ * are explicitly enabled, the provider is explicitly `"sentry"`, and a
+ * non-empty DSN is configured (see `providerSelection.ts`). Disabled
+ * by default; no environment variable set here activates Sentry.
  */
 export function getObservability(): ObservabilityService {
   if (!cachedService) {
     const config = loadObservabilityConfig(import.meta.env, { MODE: import.meta.env.MODE });
     cachedService = createObservabilityService({
       config,
-      provider: createNoopProvider(),
+      provider: selectProvider(config),
       getCorrelationId: getCurrentCorrelationId,
     });
   }
