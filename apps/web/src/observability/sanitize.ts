@@ -151,15 +151,18 @@ const TEXT_SCAN_PATTERNS: ReadonlyArray<{ pattern: RegExp; replace: (match: stri
     replace: () => REDACTED,
   },
   {
-    // ENG-P1-003-IMP-04: phone-number-shaped run embedded in free text —
-    // 7+ digits total, optionally grouped with spaces, dashes, dots,
-    // parentheses, or a leading '+'. Broader than the payment-card
+    // ENG-P1-003-IMP-04 (PR #22 review correction): phone-number-shaped
+    // run embedded in free text — at least 7 actual digits, optionally
+    // grouped with spaces, dashes, dots, parentheses, or a leading '+'.
+    // The digit-count minimum is enforced structurally (each repetition
+    // of the group consumes exactly one digit), not by total match
+    // length — an earlier version measured total characters including
+    // separators, so a widely-spaced two-digit run like "1     2" could
+    // satisfy a 7-character minimum without being anywhere near 7 real
+    // digits, redacting ordinary prose. Broader than the payment-card
     // pattern above (13-19 digits only), so shorter local phone formats
-    // are also caught. Deliberately conservative, matching this module's
-    // existing redact-first philosophy: a version string or similar
-    // digit-and-separator run may be redacted as a false positive rather
-    // than risk missing a real phone number.
-    pattern: /\+?\(?\d[\d\s.\-()]{5,}\d\b/g,
+    // are also caught.
+    pattern: /\+?\(?\d(?:[\s.\-()]*\d){6,}\b/g,
     replace: () => REDACTED,
   },
   {

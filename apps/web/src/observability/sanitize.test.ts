@@ -160,6 +160,11 @@ describe("sanitizeText", () => {
     expect(localFormat).toContain(REDACTED);
   });
 
+  it("ENG-P1-003-IMP-04-review: does not redact short, widely-spaced digit runs that are not phone-shaped — the minimum must count actual digits, not total run length including separators (PR #22 review finding)", () => {
+    const text = sanitizeText("values 1     2 differ");
+    expect(text).toBe("values 1     2 differ");
+  });
+
   it("preserves stack-trace structure (file paths, line numbers, function names) while redacting an embedded secret", () => {
     const secret = "sk_live_" + "b".repeat(24);
     const stack = `Error: boom\n    at handleSubmit (src/app/checkout.ts:42:17)\n    at token=${secret}`;
