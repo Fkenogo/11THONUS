@@ -2,11 +2,31 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-07-27 (Entry 037 added: `ENG-P1-003-IMP-05` — Engineering Closure and Handover)
+> **Last controlled update:** 2026-07-29 (Entry 038 added: `ENG-P1-003` — Administrative Closure)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 038 — `ENG-P1-003`: Administrative Closure
+
+- **Date:** 29 July 2026
+- **Performed by:** Claude (AI agent), per Founder task "TASK — ENG-P1-003 Administrative Closure", following Founder Decisions 1–3 on the `ENG-P1-003-IMP-05` closure audit.
+- **Classification:** Administrative closure only. No new implementation, no architecture change. Merges a previously-reviewed PR, changes one tracker status field, and registers three unimplemented successor work packages.
+- **Pre-merge correction (PR #23):** a P1 automated-review finding (Codex) identified that the closure audit's own `FR-SEC-006` traceability claim ("zero evidence, no Rules file was ever created") was factually wrong — `firestore.rules`/`storage.rules` exist at the repository root, deny-by-default, established in Phase 0 (`ENG-P0-001`, commit `3a50710`). The original `git log --all -- "**/firestore.rules" "**/storage.rules"` search used a glob pathspec that fails to match root-level files with no directory nesting, returning an empty result — a search-tooling bug, not a fact about the repository. Corrected across both closure reports and all four governance tracker/log documents (commit `cd844a7`); the PR #23 review thread was replied to and marked resolved; CI re-verified green on the corrected head before merge.
+- **Action:** Verified all merge conditions (PR #23 open, mergeable, CI green on `cd844a7`, review thread resolved, no unreviewed commits), merged PR #23 (merge commit `f8ff1dec9df42cc7c00023ab018044c0362cfe8d`), verified post-merge CI green on that exact commit (one rerun of the same pre-existing, unrelated `functions/` emulator flake — `functions/` confirmed byte-identical to the prior clean merge), confirmed local `main`/`origin/main` synchronized at zero divergence with a clean working tree.
+- **Tracker status change:** `ENG-P1-003` row moved `In Progress → Complete` in both the [Engineering Implementation Programme](../05-implementation/change-tracking/engineering-implementation-programme.md) and the [Coding-Agent Prompt Register](../05-implementation/change-tracking/coding-agent-prompt-register.md), per Founder Decision 2, referencing the [Engineering Closure Report](../05-implementation/reports/ENG-P1-003-IMP-05-engineering-closure-report-2026-07-27.md) and the [Operational Readiness Report](../05-implementation/reports/ENG-P1-003-IMP-04-operational-readiness-report-2026-07-27.md) as the authoritative completion evidence.
+- **Successor work packages registered (none implemented), per Founder Decision 3:** `OBS-OPS-001` — Frontend Diagnostics Operational Enablement (Sentry organisation/project/DSN, staging/production onboarding, operational ownership, privacy approvals, rollout; **Planned / Awaiting Founder Authorization**); `ENG-SEC-001` — Firestore & Storage Security Rules Foundation (domain-specific deny-by-default rules, emulator testing, security readiness, building on the existing Phase 0 blanket-deny placeholder; **Planned**); `ENG-CI-001` — Firebase Emulator CI Stabilisation (investigate and resolve the recurring `functions/` emulator-timing flake without changing application behaviour; **Engineering Improvement Backlog**). Registered in the Programme §C.1 and the Prompt Register §4 note; outside the Phase 0–16 TRD22 roadmap and not counted in the Programme's "Total work packages defined: 47."
+- **Governance boundaries preserved:** no successor work package was implemented, scoped in detail, or given a Decision Dependency; no external provider account, credential, or diagnostics activation; Phase 1's own completion (as distinct from its three individual work packages) was deliberately left undetermined — that is a separate governance question this administrative-closure task was not authorized to decide.
+
+### Files modified (4)
+
+- `docs/05-implementation/change-tracking/engineering-implementation-programme.md` (banner; Phase 1 summary/profile; Work-Packages table Status/Blocking Reason; new §C.1 successor-package registry)
+- `docs/05-implementation/change-tracking/coding-agent-prompt-register.md` (banner; `ENG-P1-003` row; §4 register — 3 new successor rows + note; §5 distribution, including a pre-existing stale `Ready: 1` count corrected to 0; closing narrative)
+- `docs/00-governance/documentation-changes-log.md` (this entry)
+- `docs/changes/IMPLEMENTATION_CHANGES.md` (closing entry appended)
 
 ---
 
