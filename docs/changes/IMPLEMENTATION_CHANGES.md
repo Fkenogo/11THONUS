@@ -1266,3 +1266,33 @@
 - **Risks:** none introduced — corrections close genuine gate-satisfiability gaps found by review; no governance document, decision, or code changed; `RES-005.2b` remains a defined-but-unexecuted work package, consistent with every other package in this plan.
 - **Rollback:** `git revert` of this correction's own commit.
 - **Report link:** [`docs/05-implementation/roadmap/ENG-P2-RES-000-capability-2-resolution-plan.md`](../05-implementation/roadmap/ENG-P2-RES-000-capability-2-resolution-plan.md).
+
+---
+
+## 2026-07-29 — ENG-P2-RES-ADMIN-001: Capability 2 Phase Transition Synchronisation
+
+- **Date:** 2026-07-29
+- **Task:** administrative lifecycle synchronisation of the Engineering Implementation Programme, per Founder task "TASK — ENG-P2-RES-ADMIN-001: Capability 2 Phase Transition Synchronisation." No engineering implementation, no planning redesign, no governance changes.
+- **Lifecycle updates:** three targeted, single-line edits to `docs/05-implementation/change-tracking/engineering-implementation-programme.md` — (1) top-of-document `Last controlled update` banner entry; (2) §B.1 Phase Summary Table's P2 row `Current Status` cell; (3) Phase 2 profile's `Current Status` line — all three recording that the Capability 2 Readiness Programme (`ENG-P2-000`/`ENG-P2-000A`/`ENG-P2-000B`) is `Complete` and the Capability 2 Resolution Sprint has `commenced`, referencing the Founder-approved [Capability 2 Resolution Plan](../05-implementation/roadmap/ENG-P2-RES-000-capability-2-resolution-plan.md) (`ENG-P2-RES-000`, PR #28, merge commit `35ecd444a8e9caeeffa7c22de58f49bcfb58fff9`).
+- **Explicitly unchanged:** Phase 2's Entry/Exit Criteria, Decision/Provider/Legal Dependencies, and the full `ENG-P2-001`–`004` Work Packages table (no Status, Blocking Reason, or Precondition cell touched); no other Phase's profile or Summary Table row; no numbering or identifier anywhere in the document. Both edited passages explicitly restate that the underlying `Blocked` determination is unchanged and no D1 decision has closed — a lifecycle-phase annotation, not a readiness change.
+- **Validation performed:** `git diff --stat` confirmed exactly 3 insertions/3 deletions (one line replaced by one line, three times); direct `grep` for `ENG-P2-00[1-4]` across the diff returned zero matches, confirming the Work Packages table was untouched; `npx prettier --check` passed; the new relative link to the Resolution Plan was resolved programmatically and confirmed to exist.
+- **Files created:** `docs/05-implementation/reports/ENG-P2-RES-ADMIN-001-phase-transition-synchronisation-2026-07-29.md`; `docs/changes/IMPLEMENTATION_CHANGES.md` (this entry).
+- **Files modified:** `docs/05-implementation/change-tracking/engineering-implementation-programme.md`.
+- **Dependencies added:** none. **Configuration changes:** none.
+- **Risks:** none introduced — additive documentation annotation only; no decision, work package, or sequencing field changed.
+- **Rollback:** `git revert` of this task's own commit.
+- **Report link:** [`docs/05-implementation/reports/ENG-P2-RES-ADMIN-001-phase-transition-synchronisation-2026-07-29.md`](../05-implementation/reports/ENG-P2-RES-ADMIN-001-phase-transition-synchronisation-2026-07-29.md).
+
+---
+
+## 2026-07-29 — ENG-P2-RES-ADMIN-001: Pre-Merge Correction (PR #29 Review Finding)
+
+- **Date:** 2026-07-29
+- **Task:** correction of one automated-review finding (P2 severity) on PR #29, raised against `docs/05-implementation/reports/ENG-P2-RES-ADMIN-001-phase-transition-synchronisation-2026-07-29.md` before Founder-authorized merge.
+- **Finding — the recorded validation commands were not reproducible against the final commit.** The report's §3/§4 originally recorded unscoped `git diff --stat`/`grep` results that only held while the report and changes-log entry were still unstaged; once committed together, the full commit-wide diff is 72 insertions/3 deletions across 3 files, and an unscoped `grep` for `ENG-P2-00[1-4]` returns 5 matches — all from this report's and the changes-log entry's own prose referencing "the full `ENG-P2-001`–`004` Work Packages table," not from any actual edit. Corrected §3/§4 to scope both commands to the Programme file specifically (`-- docs/.../engineering-implementation-programme.md`), verified against the actual committed diff (`git diff <parent> <commit> --stat -- <path>` = 3 insertions/3 deletions; scoped grep = 0 matches).
+- **Validation performed:** the finding verified directly by re-running both the unscoped and path-scoped commands against the actual commit before correcting; `npx prettier --check` on the modified file; `git status --short` confirmed only the one report file changed.
+- **Files modified:** `docs/05-implementation/reports/ENG-P2-RES-ADMIN-001-phase-transition-synchronisation-2026-07-29.md`; `docs/changes/IMPLEMENTATION_CHANGES.md` (this entry).
+- **Files created:** none. **Dependencies added:** none. **Configuration changes:** none.
+- **Risks:** none introduced — corrects the report's own reproducibility, no governance document, decision, or code changed.
+- **Rollback:** `git revert` of this correction's own commit.
+- **Report link:** [`docs/05-implementation/reports/ENG-P2-RES-ADMIN-001-phase-transition-synchronisation-2026-07-29.md`](../05-implementation/reports/ENG-P2-RES-ADMIN-001-phase-transition-synchronisation-2026-07-29.md).
