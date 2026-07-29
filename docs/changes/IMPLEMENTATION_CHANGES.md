@@ -1198,3 +1198,22 @@
 - **Risks:** none introduced — corrections narrow the review's own claims to match repository evidence; no governance document, decision, or code changed.
 - **Rollback:** `git revert` of this correction's own commit.
 - **Report link:** [`docs/05-implementation/reports/ENG-P2-000-capability-2-readiness-review-2026-07-29.md`](../05-implementation/reports/ENG-P2-000-capability-2-readiness-review-2026-07-29.md).
+
+---
+
+## 2026-07-29 — ENG-P2-000B: Dependency Resolution Analysis
+
+- **Date:** 2026-07-29
+- **Task:** a focused, read-only analysis of the `DEC-ID-003`/`DEC-SEC-001`/`DEC-PROV-004`/`DEC-DATA-007`/`DEC-LEGAL-005`/`EXT-TECH-001` dependency chain, per Founder task "TASK — ENG-P2-000B: Dependency Resolution Analysis." No code implemented, no governance document modified, no Founder decision resolved.
+- **Key finding — `EXT-TECH-001` is the sole structural blocker.** It is a real-world technical proof (Firebase phone-OTP delivery to Burundi numbers), `Status: PENDING`, owner Engineering Lead, with zero dependencies of its own. `DEC-PROV-004` and `DEC-SEC-001` both depend on it and cannot close without it; `DEC-DATA-007` and `DEC-ID-003` have no dependency on it at all and are independently actionable today.
+- **Key finding — the `DEC-SEC-001`↔`DEC-PROV-004` mutual dependency is not a genuine circular deadlock.** Read against each decision's own question text, a valid one-directional resolution order exists (`EXT-TECH-001` → `DEC-PROV-004` → `DEC-SEC-001`) — `DEC-PROV-004`'s delivery-route question is answerable directly from `EXT-TECH-001` evidence, and `DEC-SEC-001`'s fallback-definition component benefits from knowing `DEC-PROV-004`'s answer first. Classified as a repository modelling issue (the Register's `Dependencies` field cannot express ordered co-resolution against a shared external gate), not a true circularity.
+- **Key finding — the Programme's flat "4 D1 decisions blocked" framing is not optimal sequencing.** Only `DEC-SEC-001`/`DEC-PROV-004` are externally gated; `DEC-DATA-007` (no Founder involvement) and `DEC-ID-003` (self-contained Founder decision, already on "founder agenda Batch C") could close in parallel with `EXT-TECH-001` evidence-gathering, requiring no new engineering work package and no Programme redesign.
+- **Key finding — `DEC-LEGAL-005` sits outside this dependency chain entirely.** Its only dependency is `EXT-LEG-004` (a separate, unrelated external legal review), and per its own Register fields it blocks "registration policy text," not any named Capability 2 work package.
+- **Resolution order produced:** a 7-step table (§5 of the report) distinguishing the one genuinely sequential chain (`EXT-TECH-001` → `DEC-PROV-004` → `DEC-SEC-001`) from the fully parallel, independently actionable items (`DEC-DATA-007`, `DEC-ID-003`), plus the out-of-chain `DEC-LEGAL-005` documentation correction and a final Programme-table synchronization step.
+- **Validation performed:** every dependency edge in the graph was read directly from its source's own `Dependencies`/`Blocks` field (Decision Register or External Dependencies Register), not inferred; cross-checked `EXT-TECH-001`'s own `Blocks` field against both dependent decisions' `Dependencies` fields for mutual consistency (confirmed consistent); the one inference made (`DEC-PROV-004`'s Founder-involvement level, drawn from the absence of a field rather than an explicit statement) is disclosed as an assumption, not presented as a directly confirmed fact.
+- **Files created:** `docs/05-implementation/reports/ENG-P2-000B-dependency-resolution-analysis-2026-07-29.md`; `docs/changes/IMPLEMENTATION_CHANGES.md` (this entry).
+- **Files modified:** none.
+- **Dependencies added:** none. **Configuration changes:** none.
+- **Risks:** none introduced — read-only analysis; no code, decision, or governance document changed.
+- **Rollback:** `git revert` of this task's own commit — a single new report file plus one changes-log append.
+- **Report link:** [`docs/05-implementation/reports/ENG-P2-000B-dependency-resolution-analysis-2026-07-29.md`](../05-implementation/reports/ENG-P2-000B-dependency-resolution-analysis-2026-07-29.md).
