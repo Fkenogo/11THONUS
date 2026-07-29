@@ -1,7 +1,7 @@
 > **Title:** ENG-P1-003 — Engineering Closure and Handover Report
 > **Status:** Administrative closure audit. Recommendation only — `ENG-P1-003`'s tracker status change and administrative closure remain a separate, Founder-authorized decision. This report does not itself close `ENG-P1-003`, begin Operational Enablement, create any external provider account, add any credential, or activate diagnostics.
 > **Date:** 2026-07-27
-> **Classification:** Administrative closure audit for `ENG-P1-003-IMP-05`. No new product capability, no architecture change, no feature work. Two narrow, disclosed documentation-sync corrections applied (Programme and Prompt Register staleness, §12).
+> **Classification:** Administrative closure audit for `ENG-P1-003-IMP-05`. No new product capability, no architecture change, no feature work. Two narrow, disclosed documentation-sync corrections applied (Programme and Prompt Register staleness, §12). **Corrected before merge:** a P1 automated-review finding identified that this report's original `FR-SEC-006` traceability claim ("zero evidence, no Rules file exists") was factually wrong — a git pathspec search bug, not a fact about the repository. `firestore.rules`/`storage.rules` exist since Phase 0 (`ENG-P0-001`, commit `3a50710`). Corrected throughout; recommendation revised from `COMPLETE WITH CONDITIONS` to `COMPLETE` (§1, §9, §13–16).
 
 # ENG-P1-003 — Engineering Closure and Handover Report
 
@@ -9,9 +9,11 @@
 
 `ENG-P1-003`'s frontend-observability scope — Stages 1 through 4 — is fully merged to `main`, tested, documented, and internally consistent. All four PRs (#19, #20, #21, #22) are merged; post-merge CI is green on the final commit; the working tree is clean; local `main` and `origin/main` are synchronized with zero divergence. Full regression re-run against the final merged state: 191/191 frontend tests, 92/92 backend tests, clean typecheck/lint/build.
 
-This audit surfaces one significant, previously-undisclosed-at-closure finding: `ENG-P1-003`'s **original work-package scope**, as defined in the Engineering Implementation Programme and carried through `DEC-PROV-005`, spans three requirement IDs — `FR-SEC-006` (Firestore/Storage Rules deny-by-default), `FR-OPS-009` (health-metric monitoring), `FR-OPS-010` (actionable alerts on critical failure). The approved Blueprint (`ENG-P1-003-BP`) itself explicitly disclosed that Security/Storage Rules deny-by-default was "`ENG-P1-003`'s other named scope... independent of observability" and deferred its work-package split to "the separately-authorized implementation task" — but no implementation stage (`IMP-01` through `IMP-04`) ever addressed it. `FR-SEC-006` has **zero evidence** anywhere in this work package's history: no Rules file was ever created or modified. This is not a defect in the observability work delivered — it is a scope half that was never begun, disclosed at the Blueprint stage but never resolved into a separate authorization.
+**Correction (applied before this report's recommendation was finalized):** this report's original draft claimed `FR-SEC-006` (Firestore/Storage Rules deny-by-default) had "zero evidence" and that "no Rules file was ever created" — a factual error, caught by an automated PR review before merge and independently re-verified here. `firestore.rules` and `storage.rules` **do exist** at the repository root, deny-by-default (`allow read, write: if false` for all documents/paths), wired into `firebase.json` for both deployment and emulator configuration, and were established in **Phase 0** (`ENG-P0-001`, commit `3a50710`) — well before `ENG-P1-003` began. The original audit's `git log` search used a glob pattern (`**/firestore.rules`) that failed to match the root-level file; this was a search error, not a fact about the repository. `git log --oneline -- firestore.rules storage.rules` shows the single Phase 0 commit and nothing from any `ENG-P1-003` stage — confirming `ENG-P1-003` itself never touched these files, but also confirming the deny-by-default posture they establish was never `ENG-P1-003`'s own work to begin with; it predates the work package.
 
-Given this, the administrative recommendation (§16 below, and Part 12 of the governing task) is **`ENG-P1-003 COMPLETE WITH CONDITIONS`** — the observability scope is complete and ready for Operational Enablement handover; the Rules-deny-by-default scope requires a new, separately-authorized work package before `ENG-P1-003` as originally defined can be called fully complete.
+**Corrected finding:** `FR-SEC-006`'s literal requirement — "Firestore and Storage access shall be deny-by-default" — **is satisfied**, by pre-existing Phase 0 work, unchanged and unregressed throughout `ENG-P1-003`. What genuinely remains unbuilt, confirmed by a dedicated search (`find . -iname "*rules*.test.*"`, zero matches anywhere in the repository) and by the Rules files' own doc comments ("Domain-specific rules are Phase 1+ work (ENG-P1-xxx) — this placeholder intentionally grants no access"), is: (1) any automated test validating the Rules' behavior against the emulator, and (2) real, domain-specific (per-collection/per-role) authorization rules — the current posture is a deliberate, safe, blanket-deny placeholder, not a finished access-control model. Neither of these was ever `ENG-P1-003`'s own scope; both remain legitimate future work, now captured as `ENG-SEC-001` (§14).
+
+Given this correction, the administrative recommendation (§16 below) is **`ENG-P1-003 COMPLETE`** — the observability scope (Stages 1–4) is fully delivered, and the Rules-deny-by-default posture nominally listed among `ENG-P1-003`'s original requirement IDs was already satisfied before this work package began, by unrelated Phase 0 work. `ENG-SEC-001` is registered as necessary follow-on work (formal Rules testing and domain-specific authorization rules), not as an unmet condition of `ENG-P1-003`'s own closure.
 
 ## 2. Repository State
 
@@ -78,7 +80,7 @@ Full regression re-run against the final merged commit (`2436920`), this audit, 
 | Post-merge CI on final commit | Green (`30287022705`, after one rerun of a pre-existing, unrelated flake) |
 | Dependency diff vs. pre-`ENG-P1-003` baseline | Exactly `@sentry/react` and its own transitive dependencies, nothing else |
 | Credential/DSN/secret scan | Clean (two matches are synthetic test fixtures — `"sk_live_" + "b".repeat(24)` — proving redaction, not real secrets) |
-| Firestore/Storage Rules file history | Empty — no Rules file was ever created (§1, §11) |
+| Firestore/Storage Rules file history | `firestore.rules`/`storage.rules` exist since Phase 0 (commit `3a50710`), deny-by-default, unmodified by `ENG-P1-003` (§1, §9) |
 
 ## 8. Readiness Summary
 
@@ -97,14 +99,14 @@ Full evidence, appendices, and the manual validation plan remain in the [readine
 
 | Requirement | Stage implemented | Evidence | Validation | Status |
 |---|---|---|---|---|
-| `FR-SEC-006` — Firestore/Storage Rules deny-by-default | **None** | No Rules file exists in the repository (confirmed by `git log` across all history for `firestore.rules`/`storage.rules` paths — empty) | N/A | **Not Started** — disclosed by the Blueprint itself as a separate scope half, never separately authorized |
+| `FR-SEC-006` — Firestore/Storage Rules deny-by-default | Phase 0 (`ENG-P0-001`, commit `3a50710`) — **not `ENG-P1-003`** | `firestore.rules`/`storage.rules` at repository root, `allow read, write: if false`, wired into `firebase.json`; confirmed present and unregressed by `ENG-P1-003` (`git log -- firestore.rules storage.rules` shows only the Phase 0 commit) | No automated Rules test exists anywhere in the repository (`find . -iname "*rules*.test.*"` empty) | **Deny-by-default posture: Satisfied** (pre-existing). **Rules testing / domain-specific authorization: Not Started** — legitimately deferred by the Rules files' own comments to future work, now `ENG-SEC-001` |
 | `FR-OPS-009` — technical/business-workflow health metrics monitored | Stages 1–4 | `apps/web/src/observability/` full module; `sentryProvider.ts` maps exception/message/breadcrumb capture | 191/191 frontend tests | **Partially Implemented** — frontend-only; backend health metrics remain Cloud Monitoring's existing, separate, unmodified responsibility; no dashboards/alerts configured yet (Staging/Production Ready conditions) |
 | `FR-OPS-010` — critical failures generate actionable alerts | Stages 2–4 | `ErrorBoundary.tsx`, `globalErrorHandlers.ts` capture failures; alert *routing* is explicitly listed as an unmet Staging/Production condition | 191/191 frontend tests | **Partially Implemented** — capture path complete; alert configuration itself is an operational, not engineering, task (readiness report Appendix A/B) |
 | Provider-neutral architecture (Blueprint §5/§6, not a numbered FR but the Blueprint's own core requirement) | Stages 1, 3 | `types.ts`, `providerSelection.ts`, ESLint boundary rule | 191/191 frontend tests, boundary-violation test | **Complete** |
 | Privacy/sanitization boundary (Blueprint §9) | Stages 1, CR1, 3, 4 | `sanitize.ts`, `sanitizeException.ts`, allow-listed identity context | 191/191 frontend tests, dedicated `sentryPrivacy.test.ts` (8 tests) | **Complete** |
 | Disabled-by-default external activation (`DEC-PROV-005`'s own explicit non-authorization list) | Stage 3 | `config.ts` default `enabled: false`; `providerSelection.ts` requires all three conditions | 6 dedicated activation-branch tests | **Complete** |
 
-**Anything lacking evidence:** `FR-SEC-006` alone. This is the single, load-bearing traceability gap this audit identifies.
+**Anything lacking evidence:** formal Rules testing and domain-specific (per-collection/per-role) authorization rules — narrower than this report originally (incorrectly) claimed. The deny-by-default posture itself is not lacking evidence; it is pre-existing and confirmed.
 
 ## 10. Security Summary
 
@@ -140,7 +142,7 @@ Both corrections are append-only additions to the current-state sections of each
 
 ## 13. Outstanding Operational Work
 
-Everything listed in the readiness report's Appendices A–C (staging/production activation checklists, provider onboarding action list) remains outstanding and external/Founder-owned — not restated here. Additionally, per §1/§9 above: `FR-SEC-006` (Rules deny-by-default) requires its own new work package, entirely separate from operational enablement.
+Everything listed in the readiness report's Appendices A–C (staging/production activation checklists, provider onboarding action list) remains outstanding and external/Founder-owned — not restated here. Additionally: formal Rules testing and domain-specific Firestore/Storage authorization rules remain outstanding engineering work, now captured as `ENG-SEC-001` — the deny-by-default posture itself (`FR-SEC-006`'s literal text) is already satisfied and does not block anything.
 
 ## 14. Follow-on Work Packages
 
@@ -148,19 +150,19 @@ Recommendations only — none implemented by this task.
 
 1. **`OBS-OPS-001` — Frontend Diagnostics Operational Enablement.** Scope: everything in the readiness report's Appendix A (Staging Activation Checklist) and Appendix B (Production Activation Checklist) — Sentry account/project/DSN/terms, privacy/legal review, access/retention/alert decisions, execution of the Manual Validation Plan (Appendix F) against a real staging environment. Owner: Founder/Technical Lead + Operational Enablement. Not an engineering-implementation task — no further code is required for the frontend side to activate once external conditions are met.
 2. **`ENG-CI-001` — Firebase Emulator CI Stabilisation.** Scope: investigate and stabilize the real-Firestore-emulator concurrency test suite in `functions/src/shared/{commands,idempotency}/*.emulator.test.ts`, now documented across **five** occurrences spanning `ENG-P1-002`'s own Technical Review and three separate `ENG-P1-003` stage PRs, affecting three distinct specific tests, always isolated to the emulator-timing category with every deterministic CI step passing consistently. Owner: Engineering. Independent of and not blocking any `ENG-P1-003` closure decision.
-3. **New work package required — Security/Storage Rules Deny-by-Default Foundation (`FR-SEC-006`).** Scope: the Rules half of `ENG-P1-003`'s original work-package definition, disclosed by the Blueprint as independent of observability but never separately authorized or begun. No Rules file exists in the repository. This is genuinely required follow-on engineering work, not operational or enhancement work — recommend a new work-package identifier (e.g. `ENG-P1-003B` or a renumbered `ENG-P1-00X`, at the Founder's naming discretion) with its own blueprint/authorization cycle, entirely independent of `OBS-OPS-001`.
+3. **`ENG-SEC-001` — Firestore & Storage Security Rules Foundation.** Corrected scope: the deny-by-default *posture* already exists (Phase 0, `ENG-P0-001`, commit `3a50710`) and does not need rebuilding. What remains genuinely undone: (a) formal, automated Rules testing against the real emulator (zero test files exist anywhere in the repository today), and (b) real, domain-specific (per-collection/per-role) authorization rules — the current posture is a deliberate, safe, blanket-deny placeholder, explicitly deferred by its own doc comments to future Phase 1+ work. This is genuinely required follow-on engineering work, independent of `OBS-OPS-001`.
 
 No other genuinely required follow-on engineering work was identified.
 
 ## 15. Residual Risks
 
-- `FR-SEC-006` remaining unaddressed is itself the primary residual risk carried forward by this closure — Firestore/Storage access has no deny-by-default enforcement yet at the application layer (Firebase's own project-level defaults apply, not a governed Rules file).
+- The absence of formal, automated Rules testing and domain-specific authorization rules is a residual risk carried forward — the deny-by-default posture is confirmed in place, but nothing yet validates it holds under a real emulator test, and no real business-logic access rules exist. Captured as `ENG-SEC-001`, not blocking this closure.
 - The `functions/` emulator-timing CI flakiness (five documented occurrences) is an operational-confidence risk to future PRs in this repository generally, not specific to `ENG-P1-003`'s own correctness.
 - `sanitizeText()`'s pattern-based, closed-list design is an accepted, disclosed, permanent boundary — not treated as an open risk requiring further engineering action, per the same reasoning accepted at Stage 1/CR1 and reaffirmed at Stage 4.
 - No other residual risk identified.
 
 ## 16. Final Recommendation
 
-**`ENG-P1-003 COMPLETE WITH CONDITIONS`**
+**`ENG-P1-003 COMPLETE`**
 
-Supported by: all four observability implementation stages merged, tested (191/191 + 92/92), documented, architecturally sound, privacy/security-verified, with zero drift from the approved Blueprint. The condition is precise and singular: `FR-SEC-006` (Security/Storage Rules deny-by-default), part of `ENG-P1-003`'s original work-package definition and explicitly disclosed by the Blueprint as a separate, never-resolved scope half, has zero implementation evidence and requires its own new, separately-authorized work package before `ENG-P1-003` as originally scoped can be called fully complete. The observability half is ready for Operational Enablement handover (`OBS-OPS-001`) independent of that condition.
+Supported by: all four observability implementation stages merged, tested (191/191 + 92/92), documented, architecturally sound, privacy/security-verified, with zero drift from the approved Blueprint. `FR-SEC-006` (Security/Storage Rules deny-by-default), nominally listed among `ENG-P1-003`'s original requirement IDs, was already satisfied before this work package began — by unrelated Phase 0 work (`ENG-P0-001`, commit `3a50710`) — and was neither `ENG-P1-003`'s job to build nor found regressed by any of its stages. `ENG-SEC-001` is registered as necessary, independent follow-on engineering work (formal Rules testing, domain-specific authorization rules), not as an unmet condition of this closure.

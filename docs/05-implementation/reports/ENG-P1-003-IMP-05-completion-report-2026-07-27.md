@@ -7,7 +7,7 @@
 
 ## 1. Executive Summary
 
-Completed the administrative engineering-closure audit for `ENG-P1-003`. All five governing PRs confirmed merged; post-merge CI green on the final commit; local/`origin` `main` synchronized with zero divergence; full regression re-run clean against the final merged state (191/191 `apps/web`, 92/92 `functions`). One pre-merge correction was required and applied to PR #22 (an automated reviewer's genuine finding in the Stage 4 phone-redaction pattern) before this task's own audit work began. The audit itself found one significant, previously-undisclosed-at-closure traceability gap — `FR-SEC-006` (Firestore/Storage Rules deny-by-default), part of `ENG-P1-003`'s original scope and explicitly flagged by the Blueprint as a separate, never-resolved half — has zero implementation evidence. Administrative recommendation: `ENG-P1-003 COMPLETE WITH CONDITIONS`. Two stale governance-tracker documents were corrected as part of closure. Full detail in the companion [Engineering Closure Report](ENG-P1-003-IMP-05-engineering-closure-report-2026-07-27.md).
+Completed the administrative engineering-closure audit for `ENG-P1-003`. All five governing PRs confirmed merged; post-merge CI green on the final commit; local/`origin` `main` synchronized with zero divergence; full regression re-run clean against the final merged state (191/191 `apps/web`, 92/92 `functions`). Two pre-merge corrections were required and applied to this closure's own PR before merge: (1) applied to PR #22 (an automated reviewer's genuine finding in the Stage 4 phone-redaction pattern), and (2) applied to this closure PR itself — a P1 automated-review finding that the original audit's traceability claim on `FR-SEC-006` (Firestore/Storage Rules deny-by-default) was factually wrong: `firestore.rules`/`storage.rules` exist and have been deny-by-default since Phase 0 (`ENG-P0-001`, commit `3a50710`), a git pathspec search bug in the original audit, not a fact about the repository. Corrected before this report was finalized. Administrative recommendation: **`ENG-P1-003 COMPLETE`** (revised from `COMPLETE WITH CONDITIONS`). Two stale governance-tracker documents were also corrected as part of closure. Full detail in the companion [Engineering Closure Report](ENG-P1-003-IMP-05-engineering-closure-report-2026-07-27.md).
 
 ## 2. Entry Gate Verification
 
@@ -43,7 +43,7 @@ Note: `apps/web/src/observability/sanitize.ts`/`sanitize.test.ts` were modified 
 
 ## 6. Documentation Updated
 
-See §4 — the two governance-tracker documents (Programme, Prompt Register), the Documentation Changes Log, and `IMPLEMENTATION_CHANGES.md`. No PRD/TRD chapter required updating (the Requirements Traceability Matrix's own `FR-SEC-006`/`FR-OPS-009`/`FR-OPS-010` rows are consistent with this audit's own findings — `FR-SEC-006` correctly still shows "Not Started"; not edited, since it is already accurate).
+See §4 — the two governance-tracker documents (Programme, Prompt Register), the Documentation Changes Log, and `IMPLEMENTATION_CHANGES.md`. The master Requirements Traceability Matrix's `FR-SEC-006` row (`Status: Not Started`) was not edited by this task — on reflection its status is ambiguous rather than wrong (the deny-by-default posture is satisfied; formal Rules testing and domain-specific rules are genuinely not started), and correcting RTM entries is outside this closure audit's own scope; flagged here for a future, separate documentation pass rather than corrected in place.
 
 ## 7. Code Diff Summary
 
@@ -64,7 +64,7 @@ This task's own diff, isolated from PR #22's already-merged pre-merge correction
 | `apps/web` build | Clean |
 | Dependency diff vs. pre-`ENG-P1-003` baseline | `@sentry/react` and its transitive deps only |
 | Credential/DSN/secret scan | Clean |
-| Firestore/Storage Rules file history | Empty (§ traceability finding) |
+| Firestore/Storage Rules file history | `firestore.rules`/`storage.rules` exist since Phase 0 (commit `3a50710`), deny-by-default, unmodified by `ENG-P1-003` (§1) |
 | `git diff --check` | Clean |
 
 ## 10. CI Results
@@ -75,7 +75,7 @@ PR #22's pre-merge correction: CI green on first attempt after the fix (run `302
 
 ## 11. Risks
 
-None introduced by this closure audit itself. The one residual risk carried forward and explicitly disclosed is `FR-SEC-006`'s absence (§ traceability finding) — Firestore/Storage access has no deny-by-default enforcement at the application layer yet.
+None introduced by this closure audit itself. The residual risk carried forward is narrower than originally reported: the deny-by-default posture is confirmed in place (Phase 0, unaffected by `ENG-P1-003`), but no automated Rules test validates it, and no domain-specific authorization rules exist yet — both captured as `ENG-SEC-001`, not blocking this closure.
 
 ## 12. Deferred Work
 
@@ -83,7 +83,7 @@ Everything in the Closure Report's §13 (Outstanding Operational Work) and §14 
 
 ## 13. Follow-on Work Packages
 
-`OBS-OPS-001` (Frontend Diagnostics Operational Enablement), `ENG-CI-001` (Firebase Emulator CI Stabilisation), and a new, not-yet-numbered work package for `FR-SEC-006` (Security/Storage Rules Deny-by-Default Foundation) — full detail in the Closure Report §14.
+`OBS-OPS-001` (Frontend Diagnostics Operational Enablement), `ENG-SEC-001` (Firestore & Storage Security Rules Foundation — formal Rules testing and domain-specific authorization rules, building on the existing Phase 0 deny-by-default placeholder), and `ENG-CI-001` (Firebase Emulator CI Stabilisation) — full detail in the Closure Report §14.
 
 ## 14. Rollback Instructions
 
@@ -119,8 +119,8 @@ Recorded in the accompanying chat report — the commit that includes this repor
 
 ## 22. Gate Outcome
 
-**PASS — Stage 5 (closure audit) evidence ready for Founder review.** Entry gate fully satisfied; full regression clean; documentation corrections applied; one significant traceability finding (`FR-SEC-006`) disclosed, not hidden or minimized.
+**PASS — Stage 5 (closure audit) evidence ready for Founder review.** Entry gate fully satisfied; full regression clean; documentation corrections applied, including a self-caught-and-corrected factual error in this closure's own original `FR-SEC-006` traceability claim — disclosed, not hidden or minimized.
 
 ## 23. Final Recommendation
 
-Commit this report and the Closure Report, along with the two disclosed documentation corrections, to a dedicated branch; push; open a closure PR against `main`; verify CI on the exact PR head commit; and **stop** — this task does not self-merge the closure PR and does not administratively close `ENG-P1-003`. That decision, and the tracker `Status` field change it would require, remain explicitly reserved for the Founder, informed by this report and the Closure Report's `ENG-P1-003 COMPLETE WITH CONDITIONS` recommendation.
+Commit this report and the Closure Report, along with the two disclosed documentation corrections, to a dedicated branch; push; open a closure PR against `main`; verify CI on the exact PR head commit; and **stop** — this task does not self-merge the closure PR and does not administratively close `ENG-P1-003`. That decision, and the tracker `Status` field change it would require, remain explicitly reserved for the Founder, informed by this report and the Closure Report's `ENG-P1-003 COMPLETE` recommendation.
