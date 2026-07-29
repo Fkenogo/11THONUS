@@ -1266,3 +1266,19 @@
 - **Risks:** none introduced — corrections close genuine gate-satisfiability gaps found by review; no governance document, decision, or code changed; `RES-005.2b` remains a defined-but-unexecuted work package, consistent with every other package in this plan.
 - **Rollback:** `git revert` of this correction's own commit.
 - **Report link:** [`docs/05-implementation/roadmap/ENG-P2-RES-000-capability-2-resolution-plan.md`](../05-implementation/roadmap/ENG-P2-RES-000-capability-2-resolution-plan.md).
+
+---
+
+## 2026-07-29 — ENG-P2-RES-ADMIN-001: Capability 2 Phase Transition Synchronisation
+
+- **Date:** 2026-07-29
+- **Task:** administrative lifecycle synchronisation of the Engineering Implementation Programme, per Founder task "TASK — ENG-P2-RES-ADMIN-001: Capability 2 Phase Transition Synchronisation." No engineering implementation, no planning redesign, no governance changes.
+- **Lifecycle updates:** three targeted, single-line edits to `docs/05-implementation/change-tracking/engineering-implementation-programme.md` — (1) top-of-document `Last controlled update` banner entry; (2) §B.1 Phase Summary Table's P2 row `Current Status` cell; (3) Phase 2 profile's `Current Status` line — all three recording that the Capability 2 Readiness Programme (`ENG-P2-000`/`ENG-P2-000A`/`ENG-P2-000B`) is `Complete` and the Capability 2 Resolution Sprint has `commenced`, referencing the Founder-approved [Capability 2 Resolution Plan](../05-implementation/roadmap/ENG-P2-RES-000-capability-2-resolution-plan.md) (`ENG-P2-RES-000`, PR #28, merge commit `35ecd444a8e9caeeffa7c22de58f49bcfb58fff9`).
+- **Explicitly unchanged:** Phase 2's Entry/Exit Criteria, Decision/Provider/Legal Dependencies, and the full `ENG-P2-001`–`004` Work Packages table (no Status, Blocking Reason, or Precondition cell touched); no other Phase's profile or Summary Table row; no numbering or identifier anywhere in the document. Both edited passages explicitly restate that the underlying `Blocked` determination is unchanged and no D1 decision has closed — a lifecycle-phase annotation, not a readiness change.
+- **Validation performed:** `git diff --stat` confirmed exactly 3 insertions/3 deletions (one line replaced by one line, three times); direct `grep` for `ENG-P2-00[1-4]` across the diff returned zero matches, confirming the Work Packages table was untouched; `npx prettier --check` passed; the new relative link to the Resolution Plan was resolved programmatically and confirmed to exist.
+- **Files created:** `docs/05-implementation/reports/ENG-P2-RES-ADMIN-001-phase-transition-synchronisation-2026-07-29.md`; `docs/changes/IMPLEMENTATION_CHANGES.md` (this entry).
+- **Files modified:** `docs/05-implementation/change-tracking/engineering-implementation-programme.md`.
+- **Dependencies added:** none. **Configuration changes:** none.
+- **Risks:** none introduced — additive documentation annotation only; no decision, work package, or sequencing field changed.
+- **Rollback:** `git revert` of this task's own commit.
+- **Report link:** [`docs/05-implementation/reports/ENG-P2-RES-ADMIN-001-phase-transition-synchronisation-2026-07-29.md`](../05-implementation/reports/ENG-P2-RES-ADMIN-001-phase-transition-synchronisation-2026-07-29.md).
