@@ -2,11 +2,34 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-07-27 (Entry 036 added: `ENG-P1-003-IMP-04` — Operational Validation and Readiness)
+> **Last controlled update:** 2026-07-27 (Entry 037 added: `ENG-P1-003-IMP-05` — Engineering Closure and Handover)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 037 — `ENG-P1-003-IMP-05`: Engineering Closure and Handover
+
+- **Date:** 27 July 2026
+- **Performed by:** Claude (AI agent), per Founder task "TASK — ENG-P1-003-IMP-05: Engineering Closure and Handover", the administrative closure audit for `ENG-P1-003`.
+- **Classification:** Audit and documentation-sync only. No new product capability, no architecture change, no feature work. `ENG-P1-003` remains `In Progress` — this task recommends, but does not itself apply, a closure decision.
+- **Action:** Merged PR #22 (Founder-authorized, one review-comment correction applied first — see below), verified `origin/main`/local `main` synchronized with zero divergence, post-merge CI green on the final commit (one rerun of a pre-existing, unrelated `functions/` emulator flake, its fifth documented occurrence). Audited all five merged PRs (`#18`/`#19` incl. `CR1`/`#20`/`#21`/`#22`) against the live repository, re-ran full regression (191/191 `apps/web`, 92/92 `functions`, clean typecheck/lint/build), produced a requirements-traceability table, and confirmed zero architecture drift from the approved Blueprint.
+- **Pre-merge correction (PR #22):** an automated review (Codex, P2) found the Stage 4 free-text phone-number pattern measured total match length (digits + separators) against its stated 7-digit minimum, not actual digit count, so a widely-spaced two-digit run could be falsely redacted. Fixed via TDD (reproduced RED, restructured the pattern to enforce the minimum per digit, confirmed GREEN, 191/191 full suite) and pushed to PR #22's branch before merging.
+- **Finding:** `ENG-P1-003`'s original work-package scope spans `FR-SEC-006` (Firestore/Storage Rules deny-by-default), `FR-OPS-009`, `FR-OPS-010`. The approved Blueprint itself explicitly disclosed Rules deny-by-default as "`ENG-P1-003`'s other named scope... independent of observability," deferring its work-package split to "the separately-authorized implementation task" — no implementation stage ever addressed it. `FR-SEC-006` has zero evidence: no Rules file exists anywhere in the repository's history.
+- **Administrative recommendation:** **`ENG-P1-003 COMPLETE WITH CONDITIONS`** — the observability scope (Stages 1–4) is complete, tested, documented, and ready for Operational Enablement handover; `FR-SEC-006` requires its own new, separately-authorized work package before `ENG-P1-003` as originally defined is fully complete. The closure decision itself remains with the Founder.
+- **Governance boundaries preserved:** no external provider account, no credential, no diagnostics activation, no production deployment, no self-merge of the closure PR, no administrative closure applied by this task.
+
+### Files created (2)
+
+- `docs/05-implementation/reports/ENG-P1-003-IMP-05-engineering-closure-report-2026-07-27.md`
+- `docs/05-implementation/reports/ENG-P1-003-IMP-05-completion-report-2026-07-27.md`
+
+### Files modified (2)
+
+- `docs/05-implementation/change-tracking/engineering-implementation-programme.md` (staleness correction — `ENG-P1-003` narrative and Work-Packages table updated to reflect Stages 2–4 and this audit; no historical entry rewritten)
+- `docs/05-implementation/change-tracking/coding-agent-prompt-register.md` (same correction — table row and narrative log updated with Stage 2–4/closure report links)
 
 ---
 
