@@ -1282,3 +1282,17 @@
 - **Risks:** none introduced — additive documentation annotation only; no decision, work package, or sequencing field changed.
 - **Rollback:** `git revert` of this task's own commit.
 - **Report link:** [`docs/05-implementation/reports/ENG-P2-RES-ADMIN-001-phase-transition-synchronisation-2026-07-29.md`](../05-implementation/reports/ENG-P2-RES-ADMIN-001-phase-transition-synchronisation-2026-07-29.md).
+
+---
+
+## 2026-07-29 — ENG-P2-RES-ADMIN-001: Pre-Merge Correction (PR #29 Review Finding)
+
+- **Date:** 2026-07-29
+- **Task:** correction of one automated-review finding (P2 severity) on PR #29, raised against `docs/05-implementation/reports/ENG-P2-RES-ADMIN-001-phase-transition-synchronisation-2026-07-29.md` before Founder-authorized merge.
+- **Finding — the recorded validation commands were not reproducible against the final commit.** The report's §3/§4 originally recorded unscoped `git diff --stat`/`grep` results that only held while the report and changes-log entry were still unstaged; once committed together, the full commit-wide diff is 72 insertions/3 deletions across 3 files, and an unscoped `grep` for `ENG-P2-00[1-4]` returns 5 matches — all from this report's and the changes-log entry's own prose referencing "the full `ENG-P2-001`–`004` Work Packages table," not from any actual edit. Corrected §3/§4 to scope both commands to the Programme file specifically (`-- docs/.../engineering-implementation-programme.md`), verified against the actual committed diff (`git diff <parent> <commit> --stat -- <path>` = 3 insertions/3 deletions; scoped grep = 0 matches).
+- **Validation performed:** the finding verified directly by re-running both the unscoped and path-scoped commands against the actual commit before correcting; `npx prettier --check` on the modified file; `git status --short` confirmed only the one report file changed.
+- **Files modified:** `docs/05-implementation/reports/ENG-P2-RES-ADMIN-001-phase-transition-synchronisation-2026-07-29.md`; `docs/changes/IMPLEMENTATION_CHANGES.md` (this entry).
+- **Files created:** none. **Dependencies added:** none. **Configuration changes:** none.
+- **Risks:** none introduced — corrects the report's own reproducibility, no governance document, decision, or code changed.
+- **Rollback:** `git revert` of this correction's own commit.
+- **Report link:** [`docs/05-implementation/reports/ENG-P2-RES-ADMIN-001-phase-transition-synchronisation-2026-07-29.md`](../05-implementation/reports/ENG-P2-RES-ADMIN-001-phase-transition-synchronisation-2026-07-29.md).

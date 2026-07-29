@@ -19,14 +19,16 @@
 
 ## 3. Validation Performed
 
-- **Only lifecycle status changed:** `git diff --stat` shows exactly 3 insertions / 3 deletions (one old line replaced by one new line, three times) — no other content added or removed.
-- **No work packages altered:** direct `grep` for `ENG-P2-00[1-4]` across the diff returns zero matches — the Work Packages table was not touched.
+**Corrected by pre-merge review:** the commands below are scoped to the Programme file specifically (`-- docs/05-implementation/change-tracking/engineering-implementation-programme.md`) so the recorded results are reproducible regardless of when they are rerun. An earlier draft of this section reported unscoped results that only held while this report and the changes-log entry were still unstaged; once committed together, the full commit-wide diff is 72 insertions/3 deletions across 3 files, and an unscoped `grep` for `ENG-P2-00[1-4]` returns matches from this report's and the changes-log entry's own prose (each references "the full `ENG-P2-001`–`004` Work Packages table" when describing what was left unchanged), not from any actual edit to the Work Packages table itself.
+
+- **Only lifecycle status changed:** `git diff --stat -- docs/05-implementation/change-tracking/engineering-implementation-programme.md` against this commit's parent shows exactly 3 insertions / 3 deletions in that one file (one old line replaced by one new line, three times) — no other content in the Programme file was added or removed.
+- **No work packages altered:** `git diff -- docs/05-implementation/change-tracking/engineering-implementation-programme.md | grep -c "ENG-P2-001\|ENG-P2-002\|ENG-P2-003\|ENG-P2-004"` returns `0` — the Work Packages table itself was not touched by this change.
 - **No sequencing changes introduced:** no Preconditions, Decision Dependencies, or Provider Dependencies field was edited anywhere in the document.
 - **Repository consistency maintained:** `npx prettier --check` passes on the modified file; the new relative link (`../roadmap/ENG-P2-RES-000-capability-2-resolution-plan.md`) was resolved programmatically and confirmed to exist at the target path.
 
 ## 4. Commands Executed
 
-`git diff --stat` and `git diff | grep ENG-P2-00[1-4]` to confirm scope of change; `npx prettier --check` on the modified file; a Python one-liner resolving the newly added relative markdown link against the file's own directory to confirm it exists.
+`git diff --stat -- docs/05-implementation/change-tracking/engineering-implementation-programme.md` and `git diff -- docs/05-implementation/change-tracking/engineering-implementation-programme.md | grep -c "ENG-P2-001\|ENG-P2-002\|ENG-P2-003\|ENG-P2-004"`, both scoped to the Programme file specifically, to confirm scope of change; `npx prettier --check` on the modified file; a Python one-liner resolving the newly added relative markdown link against the file's own directory to confirm it exists.
 
 ## 5. Dependencies Added
 
