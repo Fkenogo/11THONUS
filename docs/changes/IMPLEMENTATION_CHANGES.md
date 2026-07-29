@@ -1233,3 +1233,20 @@
 - **Risks:** none introduced — corrections narrow the report's own claims to match repository evidence and governance rules; no governance document, decision, or code changed.
 - **Rollback:** `git revert` of this correction's own commit.
 - **Report link:** [`docs/05-implementation/reports/ENG-P2-000B-dependency-resolution-analysis-2026-07-29.md`](../05-implementation/reports/ENG-P2-000B-dependency-resolution-analysis-2026-07-29.md).
+
+---
+
+## 2026-07-29 — ENG-P2-RES-000: Capability 2 Resolution Plan
+
+- **Date:** 2026-07-29
+- **Task:** convert the completed Capability 2 readiness/governance/dependency analysis (`ENG-P2-000`, `ENG-P2-000A`, `ENG-P2-000B`) into an operational execution plan, per Founder task "TASK — ENG-P2-RES-000: Capability 2 Resolution Plan." No code implemented, no governance document modified, no new Founder decision created, no completed analysis reopened.
+- **Deliverable:** `docs/05-implementation/roadmap/ENG-P2-RES-000-capability-2-resolution-plan.md` — six work packages (`RES-001` EXT-TECH-001 Evidence Package, `RES-002` DEC-PROV-004 Resolution, `RES-003` DEC-SEC-001 Resolution, `RES-004` DEC-ID-003 Founder Decision Package, `RES-005` Repository Synchronisation [DEC-LEGAL-005 correction, BaseMetadata alignment planning, Phase 2 programme synchronisation], `RES-006` DEC-PROD-012 Profile Schema Decision), each traced to a specific finding in the completed analysis chain.
+- **Key addition beyond the brief's named RES-001..005 list:** `RES-006` (`DEC-PROD-012`) was added and explicitly justified against repository evidence — `ENG-P2-000`'s own corrected pre-merge finding established this decision is `Required by phase: Phase 2` and `Blocks: profile schema freeze`, a genuine dependency distinct from the decision's separate "never blocks participation" framing. Flagged distinctly in the document (not silently folded into the brief's named list) to satisfy the task's "do not invent additional work unless supported by repository evidence" constraint.
+- **Capability Authorisation Gate (§7):** defines 8 objectively-verifiable conditions gating `ENG-P2-001`, including a corrected inclusion of `DEC-DATA-007` (independently actionable does not mean non-blocking, per `ENG-P2-000B`'s own corrected finding) and explicit exclusion of `DEC-LEGAL-005`'s underlying decision (blocks registration policy text, not the technical build, per the Register's own fields).
+- **Validation performed:** every work package cross-checked against the live Decision Register and External Dependencies Register to confirm no status had changed since `ENG-P2-000B` merged; traceability to source findings verified against the merged, corrected versions of all three prior reports (not their pre-correction drafts).
+- **Files created:** `docs/05-implementation/roadmap/ENG-P2-RES-000-capability-2-resolution-plan.md`; `docs/changes/IMPLEMENTATION_CHANGES.md` (this entry).
+- **Files modified:** none.
+- **Dependencies added:** none. **Configuration changes:** none.
+- **Risks:** none introduced — planning document only; no code, decision, or governance document changed; no implementation of Capability 2 has begun.
+- **Rollback:** `git revert` of this task's own commit — a single new planning document plus one changes-log append.
+- **Report link:** [`docs/05-implementation/roadmap/ENG-P2-RES-000-capability-2-resolution-plan.md`](../05-implementation/roadmap/ENG-P2-RES-000-capability-2-resolution-plan.md).
