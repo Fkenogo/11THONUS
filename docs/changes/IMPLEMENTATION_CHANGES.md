@@ -1198,3 +1198,38 @@
 - **Risks:** none introduced — corrections narrow the review's own claims to match repository evidence; no governance document, decision, or code changed.
 - **Rollback:** `git revert` of this correction's own commit.
 - **Report link:** [`docs/05-implementation/reports/ENG-P2-000-capability-2-readiness-review-2026-07-29.md`](../05-implementation/reports/ENG-P2-000-capability-2-readiness-review-2026-07-29.md).
+
+---
+
+## 2026-07-29 — ENG-P2-000B: Dependency Resolution Analysis
+
+- **Date:** 2026-07-29
+- **Task:** a focused, read-only analysis of the `DEC-ID-003`/`DEC-SEC-001`/`DEC-PROV-004`/`DEC-DATA-007`/`DEC-LEGAL-005`/`EXT-TECH-001` dependency chain, per Founder task "TASK — ENG-P2-000B: Dependency Resolution Analysis." No code implemented, no governance document modified, no Founder decision resolved.
+- **Key finding — `EXT-TECH-001` is the sole structural blocker.** It is a real-world technical proof (Firebase phone-OTP delivery to Burundi numbers), `Status: PENDING`, owner Engineering Lead, with zero dependencies of its own. `DEC-PROV-004` and `DEC-SEC-001` both depend on it and cannot close without it; `DEC-DATA-007` and `DEC-ID-003` have no dependency on it at all and are independently actionable today.
+- **Key finding — the `DEC-SEC-001`↔`DEC-PROV-004` mutual dependency is not a genuine circular deadlock.** Read against each decision's own question text, a valid one-directional resolution order exists (`EXT-TECH-001` → `DEC-PROV-004` → `DEC-SEC-001`) — `DEC-PROV-004`'s delivery-route question is answerable directly from `EXT-TECH-001` evidence, and `DEC-SEC-001`'s fallback-definition component benefits from knowing `DEC-PROV-004`'s answer first. Classified as a repository modelling issue (the Register's `Dependencies` field cannot express ordered co-resolution against a shared external gate), not a true circularity.
+- **Key finding — the Programme's flat "4 D1 decisions blocked" framing is not optimal sequencing.** Only `DEC-SEC-001`/`DEC-PROV-004` are externally gated; `DEC-DATA-007` (no Founder involvement) and `DEC-ID-003` (self-contained Founder decision, already on "founder agenda Batch C") could close in parallel with `EXT-TECH-001` evidence-gathering, requiring no new engineering work package and no Programme redesign.
+- **Key finding — `DEC-LEGAL-005` sits outside this dependency chain entirely.** Its only dependency is `EXT-LEG-004` (a separate, unrelated external legal review), and per its own Register fields it blocks "registration policy text," not any named Capability 2 work package.
+- **Resolution order produced:** a 7-step table (§5 of the report) distinguishing the one genuinely sequential chain (`EXT-TECH-001` → `DEC-PROV-004` → `DEC-SEC-001`) from the fully parallel, independently actionable items (`DEC-DATA-007`, `DEC-ID-003`), plus the out-of-chain `DEC-LEGAL-005` documentation correction and a final Programme-table synchronization step.
+- **Validation performed:** every dependency edge in the graph was read directly from its source's own `Dependencies`/`Blocks` field (Decision Register or External Dependencies Register), not inferred; cross-checked `EXT-TECH-001`'s own `Blocks` field against both dependent decisions' `Dependencies` fields for mutual consistency (confirmed consistent); the one inference made (`DEC-PROV-004`'s Founder-involvement level, drawn from the absence of a field rather than an explicit statement) is disclosed as an assumption, not presented as a directly confirmed fact.
+- **Files created:** `docs/05-implementation/reports/ENG-P2-000B-dependency-resolution-analysis-2026-07-29.md`; `docs/changes/IMPLEMENTATION_CHANGES.md` (this entry).
+- **Files modified:** none.
+- **Dependencies added:** none. **Configuration changes:** none.
+- **Risks:** none introduced — read-only analysis; no code, decision, or governance document changed.
+- **Rollback:** `git revert` of this task's own commit — a single new report file plus one changes-log append.
+- **Report link:** [`docs/05-implementation/reports/ENG-P2-000B-dependency-resolution-analysis-2026-07-29.md`](../05-implementation/reports/ENG-P2-000B-dependency-resolution-analysis-2026-07-29.md).
+
+---
+
+## 2026-07-29 — ENG-P2-000B: Pre-Merge Correction (PR #27 Review Findings)
+
+- **Date:** 2026-07-29
+- **Task:** correction of three automated-review findings (P2 severity) on PR #27, raised against `docs/05-implementation/reports/ENG-P2-000B-dependency-resolution-analysis-2026-07-29.md` before Founder-authorized merge.
+- **Finding 1 — the DEC-PROV-004/DEC-SEC-001 literal circular edge was reasoned around rather than resolved.** The report's original §4/§5 concluded from the decisions' own question text that a valid resolution order exists (`EXT-TECH-001` → `DEC-PROV-004` → `DEC-SEC-001`) and proceeded to sequence Steps 2/3 accordingly. The Decision Register's own governance rule (§1: agents "may never... infer a decision from an example") makes the literal `Dependencies` field authoritative — `DEC-PROV-004`'s field still names `DEC-SEC-001`, which remains open until the step after it. §5 now inserts a required governance-prerequisite step (formally waiving/correcting the edge, or closing both decisions as one combined action) before the sequential closure can proceed; §4, §8, §9, and §10 were updated to disclose this as a required governance action rather than an inference this report could authorize on its own.
+- **Finding 2 — `DEC-PROV-004` was misclassified as requiring no Founder involvement.** The Decision Register's §1 governance rule states register-wide: "Engineering, provider and legal items are approved by their named owner and, where they affect product behavior, countersigned by the founder." `DEC-PROV-004` (customer OTP delivery route) directly affects authentication behavior. Corrected §1, §5 (Step 3), §6, §9, and §10 to require Founder countersign rather than treating the entry's lack of an explicit per-decision field as "no Founder involvement."
+- **Finding 3 — `ENG-P2-001`'s blocking set was understated as "exactly two" open items.** The original §7 excluded `DEC-DATA-007` from the count because it has no dependency of its own, but the Programme's own table lists it as a current Decision Dependency, Precondition, and open Blocking Reason for `ENG-P2-001` — having zero dependencies makes it independently *actionable*, not *not currently blocking*. Corrected §7 (and cross-references in §5 Step 8, §8) to state `ENG-P2-001` has three open items against it, only two of which sit on the externally-gated critical path.
+- **Validation performed:** all three findings verified directly against the live Decision Register (`§1` governance-rule text; `DEC-PROV-004`'s literal `Dependencies` field) and the Engineering Implementation Programme's Phase 2 Work-Packages table before any correction was applied; step renumbering (1→8, was 1→7) checked line-by-line for consistent cross-references across §5, §8, §9, §10; `npx prettier --check` on the modified file; `git diff --stat` confirmed only the one report file changed.
+- **Files modified:** `docs/05-implementation/reports/ENG-P2-000B-dependency-resolution-analysis-2026-07-29.md`; `docs/changes/IMPLEMENTATION_CHANGES.md` (this entry).
+- **Files created:** none. **Dependencies added:** none. **Configuration changes:** none.
+- **Risks:** none introduced — corrections narrow the report's own claims to match repository evidence and governance rules; no governance document, decision, or code changed.
+- **Rollback:** `git revert` of this correction's own commit.
+- **Report link:** [`docs/05-implementation/reports/ENG-P2-000B-dependency-resolution-analysis-2026-07-29.md`](../05-implementation/reports/ENG-P2-000B-dependency-resolution-analysis-2026-07-29.md).
