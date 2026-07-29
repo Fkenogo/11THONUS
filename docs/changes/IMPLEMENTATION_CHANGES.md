@@ -1183,3 +1183,18 @@
 - **Risks:** none introduced by this task itself; risk of continued drift if the two disclosed-but-uncorrected errors (`DEC-LEGAL-005` mischaracterization in the Programme; `baseMetadata.ts`'s non-conformance with TRD10) are left unaddressed by a future, explicitly-scoped correction task.
 - **Rollback:** `git revert` of this task's own commit — a single new report file plus one changes-log append.
 - **Report link:** [`docs/05-implementation/reports/ENG-P2-000A-phase-2-governance-reconciliation-2026-07-29.md`](../05-implementation/reports/ENG-P2-000A-phase-2-governance-reconciliation-2026-07-29.md).
+
+---
+
+## 2026-07-29 — ENG-P2-000: Pre-Merge Correction (PR #26 Review Findings)
+
+- **Date:** 2026-07-29
+- **Task:** correction of two automated-review findings (P2 severity) on PR #26, raised against `docs/05-implementation/reports/ENG-P2-000-capability-2-readiness-review-2026-07-29.md` before Founder-authorized merge.
+- **Finding 1 — `DEC-PROD-012` mischaracterized as purely deferrable.** The review's original §9/§15 text treated `DEC-PROD-012` (optional gender values) as non-blocking without qualification, citing only the Decision Register's "gender is optional and never blocks participation" line. The Register's own dedicated fields for this decision separately state `Required by phase: Phase 2 (progressive profile)`, `Blocks: profile schema freeze`, `Risks if unresolved: schema churn` — a genuine Phase 2 dependency distinct from whether it blocks the *customer's* registration experience. Corrected §9 and §15 to distinguish these two questions and state both accurately.
+- **Finding 2 — CDR-001 Capability 2/3 sequencing interleaving not disclosed.** The review's original §10/§11 asserted CDR-001's capability sequencing was "correctly understood" and that "no downstream capability is at risk of being started before its prerequisite." Verified against the Engineering Implementation Programme's own Work-Packages table: `ENG-P2-004` (grouped under Capability 2 in CDR-001) has precondition "`ENG-P2-001..003` complete," and `ENG-P2-002`/`ENG-P2-003` are Capability 3's own work packages — meaning `ENG-P2-004` cannot start until part of Capability 3's work is done, directly contradicting CDR-001's Capability Timeline diagram, which depicts Capability 3 as strictly following Capability 2. Corrected §10, §11, §12 (Readiness Matrix), §13 (Overall Recommendation), and §1 (Executive Summary) to disclose this interleaving as a genuine, evidence-backed finding rather than asserting the sequencing was clean. No correction was made to CDR-001 itself — that remains out of scope for a future, explicitly-scoped task, consistent with this review's read-only nature.
+- **Validation performed:** both findings verified directly against the live Decision Register and Engineering Implementation Programme (not assumed from the bot's claim) before any correction was applied; `npx prettier --check` on the modified file; `git diff --stat` confirmed only the one report file changed.
+- **Files modified:** `docs/05-implementation/reports/ENG-P2-000-capability-2-readiness-review-2026-07-29.md`; `docs/changes/IMPLEMENTATION_CHANGES.md` (this entry).
+- **Files created:** none. **Dependencies added:** none. **Configuration changes:** none.
+- **Risks:** none introduced — corrections narrow the review's own claims to match repository evidence; no governance document, decision, or code changed.
+- **Rollback:** `git revert` of this correction's own commit.
+- **Report link:** [`docs/05-implementation/reports/ENG-P2-000-capability-2-readiness-review-2026-07-29.md`](../05-implementation/reports/ENG-P2-000-capability-2-readiness-review-2026-07-29.md).
