@@ -2,7 +2,7 @@
 > **Version:** 1.0 · **Status:** Active governance record · **Classification:** Working (execution-layer record)
 > **Governing document:** [Product Foundation](../../01-product/prd/00-product-foundation.md); [Engineering Implementation Programme](../change-tracking/engineering-implementation-programme.md); TRD Chapter 22
 > **Source-of-truth path:** `docs/05-implementation/roadmap/CDR-001-capability-delivery-roadmap.md`
-> **Last controlled update:** 2026-07-29 (`ENG-PROG-001` — created, following `ENG-P1-003`'s administrative closure)
+> **Last controlled update:** 2026-07-29 (`ENG-PROG-001A` — minor amendment: added §2 Capability Status Summary per Founder review feedback, all following sections renumbered by one; no capability description, work-package mapping, or authority relationship changed. Previously: `ENG-PROG-001` — created, following `ENG-P1-003`'s administrative closure)
 
 # CDR-001 — Capability Delivery Roadmap
 
@@ -14,11 +14,28 @@ That gap is what this document closes. It does not redesign the Product Foundati
 
 **Problem this solves:** without it, "what should be built next" is answered purely by phase number (Phase 2, Phase 3, …) — a sequencing that is correct for engineering dependency order but says nothing about what a customer or business actually experiences at each step, and gives no single place where a future implementation prompt can state "this work package exists because it delivers *this* capability, validated by *this* journey." CDR-001 is that place.
 
-**How it complements existing documentation:** it introduces no new requirements, no new work packages, and no new authority. Every capability in §4 is a re-grouping of existing, already-numbered `ENG-Pn-xxx` work packages (§7); every journey reference points to the already-approved [Moments That Matter](../../07-product-design/moments-that-matter.md); every requirement ID cited already exists in the [Requirements Traceability & Implementation Matrix](../../00-governance/requirements-traceability-matrix.md). Where this document and any of those disagree, the higher document governs and this one is corrected — the same rule the [Product Design section](../../07-product-design/README.md) already applies to itself.
+**How it complements existing documentation:** it introduces no new requirements, no new work packages, and no new authority. Every capability in §5 is a re-grouping of existing, already-numbered `ENG-Pn-xxx` work packages (§8); every journey reference points to the already-approved [Moments That Matter](../../07-product-design/moments-that-matter.md); every requirement ID cited already exists in the [Requirements Traceability & Implementation Matrix](../../00-governance/requirements-traceability-matrix.md). Where this document and any of those disagree, the higher document governs and this one is corrected — the same rule the [Product Design section](../../07-product-design/README.md) already applies to itself.
 
 **A note on terminology:** the Product Foundation already uses the word "Capabilities" for a different concept — the permission-scoped actions each role can take (§"Customer Capabilities," "Business Owner Capabilities," etc., `00-product-foundation.md` ~line 915). This document's "Capability" is a distinct, unrelated concept: a *delivery-sequencing unit* (a coherent slice of the product that becomes usable together), not a role permission. The two are never used interchangeably in this document.
 
-## 2. Relationship to Existing Documents
+## 2. Capability Status Summary
+
+A snapshot only — where the programme currently stands, at a glance. This does not duplicate the [Engineering Implementation Programme](../change-tracking/engineering-implementation-programme.md) or the [Coding-Agent Prompt Register](../change-tracking/coding-agent-prompt-register.md): those remain the authoritative, work-package-level trackers (exact requirement IDs, decision dependencies, PR/commit evidence, per-package status). This table answers one question only — "where are we in capability delivery?" — at the capability level, nothing finer.
+
+| Capability | Name | Status |
+|---|---|---|
+| 0 | Engineering Foundation | Complete |
+| 1 | Platform Foundation | Complete |
+| 2 | Customer Identity | Planned |
+| 3 | Business Identity | Planned |
+| 4 | First Verified Purchase | Planned |
+| 5 | Progress Tracking | Planned |
+| 6 | First Reward | Planned |
+| 7 | Business Operations | Planned |
+| 8 | Platform Operations | Planned |
+| 9 | Platform Optimisation | Planned |
+
+## 3. Relationship to Existing Documents
 
 ```
 Product Definition (docs/01-product/)
@@ -46,7 +63,7 @@ Technical Implementation (an Implementation Prompt → Coding Agent → PR)
 Validation (Definition of Done, Technical Review, real tests — never assumed)
         │
         ▼
-Milestone (§6 — a customer-observable, cross-capability outcome)
+Milestone (§7 — a customer-observable, cross-capability outcome)
 ```
 
 | Document | Authority | What it owns |
@@ -59,16 +76,16 @@ Milestone (§6 — a customer-observable, cross-capability outcome)
 
 This document is **execution-layer, not authoritative** — it cannot create, remove, reorder, or re-scope a work package; it can only describe which existing work packages, taken together, deliver a given capability. Any change to a work package's own definition happens in the Engineering Implementation Programme, never here.
 
-## 3. Guiding Principles
+## 4. Guiding Principles
 
 1. **Capability-first delivery.** Engineering sequencing follows customer-usable capability, not technical convenience — a capability is not "done" until a customer or business can actually use it end-to-end, not merely until its underlying code compiles.
-2. **Customer outcome before implementation detail.** Every capability in §4 states the customer outcome first; the engineering work packages that deliver it are traced second, from outcome to implementation, never the reverse.
+2. **Customer outcome before implementation detail.** Every capability in §5 states the customer outcome first; the engineering work packages that deliver it are traced second, from outcome to implementation, never the reverse.
 3. **Engineering work packages remain authoritative.** This document never overrides a work package's own objective, requirement IDs, or status as recorded in the Engineering Implementation Programme. It only re-describes the *sequence* in capability terms.
-4. **Approved UX references guide implementation but do not replace product specifications.** Stitch artefacts (§8) show one validated way a screen or flow can look; the PRD and TRD remain the binding specification for what it must do.
-5. **Capability completion requires end-to-end validation.** A capability is complete only when its full journey has been validated (§9) — not when its last work package merges. Code merging is necessary; it is not sufficient.
+4. **Approved UX references guide implementation but do not replace product specifications.** Stitch artefacts (§9) show one validated way a screen or flow can look; the PRD and TRD remain the binding specification for what it must do.
+5. **Capability completion requires end-to-end validation.** A capability is complete only when its full journey has been validated (§10) — not when its last work package merges. Code merging is necessary; it is not sufficient.
 6. **No duplicated authority.** Where this document restates a fact already governed elsewhere (a requirement ID, a work-package status, a journey), it cites the governing document rather than copying and risking drift.
 
-## 4. Capability Delivery Model
+## 5. Capability Delivery Model
 
 Each capability below groups one or more Engineering Implementation Programme phases into a single customer- or platform-facing delivery unit. Capabilities 0 and 1 are pure engineering foundation (no customer-facing journey); Capabilities 2–9 each map to a specific journey moment from [Moments That Matter](../../07-product-design/moments-that-matter.md) or [Interaction Patterns](../../07-product-design/interaction-patterns.md).
 
@@ -80,7 +97,7 @@ Each capability below groups one or more Engineering Implementation Programme ph
 - **Major engineering work package(s):** `ENG-P0-001` (repository, tooling, test-framework scaffold), `ENG-P0-002` (CI pipeline, templates, change-tracking scaffold).
 - **Dependencies:** none.
 - **Validation outcome:** both work packages `Complete`; Phase 0 confirmed `Complete` (TRD22 §22.10 exit criteria satisfied) — see the [Engineering Implementation Programme](../change-tracking/engineering-implementation-programme.md) Phase 0 profile.
-- **Milestone contribution:** foundational precondition for every milestone in §6.
+- **Milestone contribution:** foundational precondition for every milestone in §7.
 
 ### Capability 1 — Platform Foundation *(Completed)*
 
@@ -110,7 +127,7 @@ Each capability below groups one or more Engineering Implementation Programme ph
 - **Major engineering work package(s):** `ENG-P2-002` (business identity — create, owner, profile, branch), `ENG-P2-003` (staff identity — invite, membership, suspend/remove), `ENG-P2-004` (role context and permission resolution — shared with Capability 2), `ENG-P3-001` (Commerce Knowledge seed data), `ENG-P3-002` (business onboarding flow), `ENG-P3-003` (Knowledge Studio MVP).
 - **Dependencies:** Capability 1; sequentially follows Capability 2 per the Programme's own Phase 2 → Phase 3 ordering.
 - **Validation outcome:** not started — all listed work packages `Blocked`.
-- **Milestone contribution:** Milestone A, step 2; precondition for Milestone "Business Operational Readiness" (placeholder, §6).
+- **Milestone contribution:** Milestone A, step 2; precondition for Milestone "Business Operational Readiness" (placeholder, §7).
 
 ### Capability 4 — First Verified Purchase
 
@@ -150,7 +167,7 @@ Each capability below groups one or more Engineering Implementation Programme ph
 - **Major engineering work package(s):** `ENG-P9-001` (notification intent and template resolution), `ENG-P9-002` (delivery abstraction — push/email/SMS, preferences), `ENG-P9-003` (launch-critical template set, EN/FR), `ENG-P10-001` (plan catalogue, pricing, trial, entitlement), `ENG-P10-002` (payment provider adapter, webhook validation), `ENG-P10-003` (grace period, suspension, reactivation, billing admin), `ENG-P11-001` (business dashboard), `ENG-P11-002` (reporting foundation), `ENG-P11-003` (operational integrity — review queue, anomaly rules).
 - **Dependencies:** Capability 6 (there must be a working loyalty cycle to report on and operate).
 - **Validation outcome:** not started — all listed work packages `Blocked`.
-- **Milestone contribution:** Milestone "Business Operational Readiness" (placeholder, §6).
+- **Milestone contribution:** Milestone "Business Operational Readiness" (placeholder, §7).
 
 ### Capability 8 — Platform Operations
 
@@ -160,7 +177,7 @@ Each capability below groups one or more Engineering Implementation Programme ph
 - **Major engineering work package(s):** `ENG-P12-001` (administrator roles, MFA, support tooling), `ENG-P12-002` (Knowledge/Rules Studio launch functions, feature flags), `ENG-P14-001` (security hardening — rules, App Check, rate limiting), `ENG-P14-002` (resilience — monitoring, backup/restore, rollback test), `ENG-P14-003` (privacy and compliance readiness).
 - **Dependencies:** Capability 1 (extends the observability/Rules foundation it already established).
 - **Validation outcome:** not started — all listed work packages `Blocked`. Related successor/backlog packages already registered (not yet implemented): `ENG-SEC-001` (Firestore & Storage Security Rules Foundation) and `ENG-CI-001` (Firebase Emulator CI Stabilisation) — see the [Engineering Implementation Programme](../change-tracking/engineering-implementation-programme.md) §C.1.
-- **Milestone contribution:** Milestone "Production Readiness" (placeholder, §6).
+- **Milestone contribution:** Milestone "Production Readiness" (placeholder, §7).
 
 ### Capability 9 — Platform Optimisation
 
@@ -170,11 +187,11 @@ Each capability below groups one or more Engineering Implementation Programme ph
 - **Major engineering work package(s):** `ENG-P13-001` (complete EN/FR launch-critical copy), `ENG-P13-002` (accessibility review and remediation), `ENG-P13-003` (PWA hardening — manifest, offline shell). Also includes the registered-but-unimplemented `OBS-OPS-001` (Frontend Diagnostics Operational Enablement) as an optimisation-adjacent successor package.
 - **Dependencies:** Capabilities 2–8 (optimisation applies across the whole delivered surface, so most of it must exist first).
 - **Validation outcome:** not started — all listed work packages `Blocked`.
-- **Milestone contribution:** precondition for Milestone "Pilot Readiness" (placeholder, §6).
+- **Milestone contribution:** precondition for Milestone "Pilot Readiness" (placeholder, §7).
 
-## 5. Capability Timeline
+## 6. Capability Timeline
 
-Emphasis is on capability evolution, not phase numbers — Phase numbers are cited in §7 for traceability only.
+Emphasis is on capability evolution, not phase numbers — Phase numbers are cited in §8 for traceability only.
 
 ```
 Capability:   0            1              2         3          4                5              6           7            8            9
@@ -193,7 +210,7 @@ Status:       [Complete]───[Complete]────►[Blocked]►[Blocked]�
 
 Capabilities 2 and 3 can proceed in parallel once their shared dependency (`ENG-P2-004`, role context) exists, per the Programme's own Phase 2 profile; Capability 4 requires both to be complete first. Capabilities 5 and 6 are strictly sequential (progress must exist before a reward can be earned; a reward must be earned before it can be redeemed). Capabilities 7, 8, and 9 may proceed in parallel once Capability 6 (7) or Capability 1 (8) are satisfied — none of the three blocks the others.
 
-## 6. Milestone Structure
+## 7. Milestone Structure
 
 ### Milestone A — First Complete Loyalty Cycle
 
@@ -211,19 +228,19 @@ Capabilities 2 and 3 can proceed in parallel once their shared dependency (`ENG-
 8. *(Recognition, Moments That Matter §7, is part of the same redemption experience and is included in Capability 6's scope.)*
 
 **Completion criteria:**
-- Capabilities 2 through 6 are all individually complete per §9's Definition of Capability Completion.
+- Capabilities 2 through 6 are all individually complete per §10's Definition of Capability Completion.
 - The full 8-step sequence above has been executed and validated end-to-end against real Firebase Emulator Suite tests (not mocked), consistent with this engineering programme's established testing discipline.
 - No step in the sequence requires manual data seeding or an unimplemented workaround.
 
 ### Future Milestones *(placeholders — identified, not specified)*
 
-The following milestones are named because §4 already traces specific capabilities toward them, but their completion criteria are **not** defined here — none is yet supported by approved repository documentation detailed enough to specify them without inventing scope. Each will be formalized in a future, separate task once the capabilities that feed it are further along.
+The following milestones are named because §5 already traces specific capabilities toward them, but their completion criteria are **not** defined here — none is yet supported by approved repository documentation detailed enough to specify them without inventing scope. Each will be formalized in a future, separate task once the capabilities that feed it are further along.
 
 - **Business Operational Readiness** — fed by Capability 7. Likely concerns: can a business owner run their loyalty program day-to-day without engineering support.
 - **Pilot Readiness** — fed by Capability 9, and corresponds to the Engineering Implementation Programme's own Phase 15 (End-to-End Validation and Burundi Pilot). Likely concerns: TRD22 §22.25's own pilot validation areas.
 - **Production Readiness** — fed by Capability 8, and corresponds to the Engineering Implementation Programme's own Phase 16 (Production Launch). Likely concerns: TRD22 §22.26's own launch-readiness checklist (18 items) and production smoke test (9 items).
 
-## 7. Engineering Work Package Mapping
+## 8. Engineering Work Package Mapping
 
 Only existing, already-approved work packages from the [Engineering Implementation Programme](../change-tracking/engineering-implementation-programme.md) are listed. No new work package is created by this document.
 
@@ -240,47 +257,47 @@ Only existing, already-approved work packages from the [Engineering Implementati
 | 8 — Platform Operations | `ENG-P12-001`, `ENG-P12-002`, `ENG-P14-001`, `ENG-P14-002`, `ENG-P14-003` | — (platform administration) | Blocked |
 | 9 — Platform Optimisation | `ENG-P13-001`, `ENG-P13-002`, `ENG-P13-003` | — (cross-journey hardening) | Blocked |
 
-`ENG-P4-001`/`ENG-P4-002` (Phase 4 — Reward Program Management) are the business-authoring side of the reward mechanics Capability 5/6 deliver to the customer; they are a precondition for Capability 5 (a Reward Program must exist before progress can be tracked against it) but are omitted from the table above because Phase 4's own sequencing (per the Programme) runs alongside Phase 3, ahead of Capability 4 — noted here for completeness, not re-tabled to avoid double-counting. `ENG-P15-xxx`/`ENG-P16-xxx` are Milestone-level (§6), not Capability-level, work.
+`ENG-P4-001`/`ENG-P4-002` (Phase 4 — Reward Program Management) are the business-authoring side of the reward mechanics Capability 5/6 deliver to the customer; they are a precondition for Capability 5 (a Reward Program must exist before progress can be tracked against it) but are omitted from the table above because Phase 4's own sequencing (per the Programme) runs alongside Phase 3, ahead of Capability 4 — noted here for completeness, not re-tabled to avoid double-counting. `ENG-P15-xxx`/`ENG-P16-xxx` are Milestone-level (§7), not Capability-level, work.
 
 Every requirement ID, decision dependency, and status cell above is sourced directly from the live Engineering Implementation Programme and Coding-Agent Prompt Register at the time this document was written (2026-07-29) — not re-derived or assumed.
 
-## 8. Stitch Usage Guidance
+## 9. Stitch Usage Guidance
 
 Approved Stitch explorations live at [`docs/07-product-design/stitch/exploration-v1/`](../../07-product-design/stitch/exploration-v1/) and [`exploration-v2/`](../../07-product-design/stitch/exploration-v2/), governed by the [Product Design section](../../07-product-design/README.md) and its [Design Decisions Register](../../07-product-design/design-decisions.md).
 
 For engineering purposes, the following rules apply without exception:
 
 - **Stitch artefacts are implementation references.** They show one already-reviewed way a screen or flow *can* look and feel, useful as a starting point for frontend implementation and as evidence that a UX direction has already been considered and approved.
-- **They are not product specifications.** A Stitch concept's HTML/CSS is not binding markup, its exact copy is not binding copy, and its presence does not itself satisfy any PRD or TRD requirement — implementation must still satisfy the actual requirement IDs traced in §7 and the [Requirements Traceability & Implementation Matrix](../../00-governance/requirements-traceability-matrix.md).
+- **They are not product specifications.** A Stitch concept's HTML/CSS is not binding markup, its exact copy is not binding copy, and its presence does not itself satisfy any PRD or TRD requirement — implementation must still satisfy the actual requirement IDs traced in §8 and the [Requirements Traceability & Implementation Matrix](../../00-governance/requirements-traceability-matrix.md).
 - **Product Foundation documents remain authoritative.** Where a Stitch concept and the PRD/TRD appear to diverge, the PRD/TRD governs, exactly as the Product Design section's own README already states for itself; this document creates no exception.
-- **Journey-to-Stitch traceability** for the concepts already used in §4: `signature_verification_experience` (Capability 4, First Verification), `loyalty_journey_verified_units` (Capability 5, Progress), `concept_4_reward_ready` (Capability 5, Reward Earned), `the_on_us_moment_reward_redemption` (Capability 6, Reward Redeemed and Recognition). Capabilities 2, 3, 7, 8, and 9 currently have no Stitch-validated concept — implementation for those capabilities proceeds from the governing PRD/TRD text alone until (if ever) a future exploration pass covers them, consistent with Moments That Matter's own disclosed gaps (§1 Registration, §2 First Purchase, §8 Customer Appreciation).
+- **Journey-to-Stitch traceability** for the concepts already used in §5: `signature_verification_experience` (Capability 4, First Verification), `loyalty_journey_verified_units` (Capability 5, Progress), `concept_4_reward_ready` (Capability 5, Reward Earned), `the_on_us_moment_reward_redemption` (Capability 6, Reward Redeemed and Recognition). Capabilities 2, 3, 7, 8, and 9 currently have no Stitch-validated concept — implementation for those capabilities proceeds from the governing PRD/TRD text alone until (if ever) a future exploration pass covers them, consistent with Moments That Matter's own disclosed gaps (§1 Registration, §2 First Purchase, §8 Customer Appreciation).
 
-## 9. Definition of Capability Completion
+## 10. Definition of Capability Completion
 
 A capability is complete only when **all** of the following are true — this extends, and does not replace, the existing [Definition of Done (Work Package Level)](../../06-engineering-governance/definition-of-done.md), which still governs each individual work package within the capability:
 
 1. **Implementation complete** — every engineering work package listed for the capability in §7 has independently satisfied the Work-Package Definition of Done.
-2. **Validation complete** — the capability's primary user journey(s) (§4) have been exercised end-to-end against real tests (Firebase Emulator Suite integration tests where server state is involved), not merely unit-tested in isolation.
-3. **Documentation updated** — the Engineering Implementation Programme and Coding-Agent Prompt Register reflect every constituent work package's real status; this document's own §7 mapping is checked for staleness at that point.
+2. **Validation complete** — the capability's primary user journey(s) (§5) have been exercised end-to-end against real tests (Firebase Emulator Suite integration tests where server state is involved), not merely unit-tested in isolation.
+3. **Documentation updated** — the Engineering Implementation Programme and Coding-Agent Prompt Register reflect every constituent work package's real status; this document's own §8 mapping is checked for staleness at that point.
 4. **Engineering governance updated** — any Decision Dependency the capability required is `CONFIRMED` in the Decision Register; any Technical Review the capability's work packages required returned `Approved`.
-5. **Customer journey validated end-to-end** — for capabilities with a primary journey (§4), a person (not only automated tests) has walked the actual journey moment described in Moments That Matter and confirmed the Success Criteria stated there are met.
+5. **Customer journey validated end-to-end** — for capabilities with a primary journey (§5), a person (not only automated tests) has walked the actual journey moment described in Moments That Matter and confirmed the Success Criteria stated there are met.
 
 A capability with zero constituent work packages `Complete` is **Blocked** or **Not Started**, matching whatever the least-advanced constituent work package's own status is — this document never reports a capability further along than its own work packages.
 
-## 10. Future Engineering Prompt Standard
+## 11. Future Engineering Prompt Standard
 
-Every future implementation prompt for a work package mapped in §7 should open by stating the following seven items, in this order, before any technical detail:
+Every future implementation prompt for a work package mapped in §8 should open by stating the following seven items, in this order, before any technical detail:
 
-1. **Capability** — which of the ten capabilities in §4 this work package belongs to.
-2. **Customer Outcome** — the customer- or business-facing outcome this specific work package moves toward (drawn from that capability's own Customer Outcome in §4, narrowed to this work package's slice of it).
+1. **Capability** — which of the ten capabilities in §5 this work package belongs to.
+2. **Customer Outcome** — the customer- or business-facing outcome this specific work package moves toward (drawn from that capability's own Customer Outcome in §5, narrowed to this work package's slice of it).
 3. **Engineering Objective** — the specific technical objective, as already stated in the Engineering Implementation Programme's own work-package row.
-4. **Dependencies** — both the capability-level dependency (§4) and the work-package-level Decision/Provider/Legal Dependencies already recorded in the Programme.
-5. **UX References** — the specific Stitch concept(s), if any, per §8's journey-to-Stitch traceability, with the explicit reminder that they are references, not specifications.
+4. **Dependencies** — both the capability-level dependency (§5) and the work-package-level Decision/Provider/Legal Dependencies already recorded in the Programme.
+5. **UX References** — the specific Stitch concept(s), if any, per §9's journey-to-Stitch traceability, with the explicit reminder that they are references, not specifications.
 6. **Validation Criteria** — the Required Validation already stated for this work package's phase in the Programme, plus (where applicable) the specific journey Success Criteria from Moments That Matter.
-7. **Milestone Contribution** — which milestone (§6) this work package's capability feeds, and what specifically it moves closer to completion.
+7. **Milestone Contribution** — which milestone (§7) this work package's capability feeds, and what specifically it moves closer to completion.
 
 This does not replace the [Implementation Prompt Standard](../../06-engineering-governance/implementation-prompt-standard.md)'s own required structure — it is a mandatory preamble to it, giving every future prompt the same capability-first framing this document establishes.
 
-## 11. Relationship to This Task's Constraints
+## 12. Relationship to This Task's Constraints
 
-For transparency: this document was created under an explicit constraint set (`ENG-PROG-001`) that prohibited modifying the Product Definition, the Engineering Implementation Programme, or any other existing approved document, and prohibited inventing any new engineering work package. Every fact in §4 and §7 above was sourced by reading the live Engineering Implementation Programme, Coding-Agent Prompt Register, Product Foundation, and Product Design documents as they stood on 2026-07-29 — none was assumed or invented. See the accompanying implementation report for the full validation record.
+For transparency: this document was created under an explicit constraint set (`ENG-PROG-001`) that prohibited modifying the Product Definition, the Engineering Implementation Programme, or any other existing approved document, and prohibited inventing any new engineering work package. Every fact in §5 and §8 above was sourced by reading the live Engineering Implementation Programme, Coding-Agent Prompt Register, Product Foundation, and Product Design documents as they stood on 2026-07-29 — none was assumed or invented. See the accompanying implementation report for the full validation record.

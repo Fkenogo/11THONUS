@@ -1,6 +1,6 @@
 > **Title:** ENG-PROG-001 — Capability Delivery Roadmap (CDR-001) Formalisation — Implementation Report
-> **Status:** Complete. New execution-layer document created; no existing approved document modified.
-> **Date:** 2026-07-29
+> **Status:** Complete, including the `ENG-PROG-001A` minor amendment (§14). New execution-layer document created; no existing approved document modified.
+> **Date:** 2026-07-29 (amended 2026-07-29, same day)
 > **Classification:** Documentation-only. No application code, no architecture change, no new engineering work package, no requirement or decision created or altered.
 
 # ENG-PROG-001 — Capability Delivery Roadmap (CDR-001) Formalisation — Implementation Report
@@ -14,9 +14,9 @@ Formalise a Capability Delivery Roadmap (CDR-001) — a new, execution-layer doc
 1. **Product Definition** — read `docs/01-product/prd/00-product-foundation.md` (1258 lines): Product Vision (§4), ONUS Principles (§11), Core Loyalty Model (§13), Customer Verification Model (§14), and the existing role-based "Capabilities" terminology (§Customer/Business Owner/Manager/Staff/Super Admin Capabilities, ~line 915) — a different concept from this document's capability-delivery-sequence usage, explicitly disambiguated in CDR-001 §1.
 2. **Engineering Implementation Programme** — re-read the full 17-phase, 47-work-package structure (`docs/05-implementation/change-tracking/engineering-implementation-programme.md`), already familiar from this session's prior work, cross-verified against the live Coding-Agent Prompt Register's flat `ENG-Pn-xxx` table for exact titles, requirement IDs, and current status.
 3. **Approved customer journeys** — `docs/07-product-design/moments-that-matter.md` (8 governed emotional-journey moments, each marked Stitch-validated or governing-document-only) is the repository's actual journey document; `docs/07-product-design/interaction-patterns.md` supplements it for mechanical flow detail.
-4. **Google Stitch design references** — `docs/07-product-design/stitch/exploration-v1/` (8 concepts) and `exploration-v2/` (5 refined concepts + `premium_verification_system` design spec), governed by `docs/07-product-design/README.md` and `design-decisions.md`, which are already explicit that this material is implementation *reference*, not specification — CDR-001 §8 restates rather than overrides that framing.
+4. **Google Stitch design references** — `docs/07-product-design/stitch/exploration-v1/` (8 concepts) and `exploration-v2/` (5 refined concepts + `premium_verification_system` design spec), governed by `docs/07-product-design/README.md` and `design-decisions.md`, which are already explicit that this material is implementation *reference*, not specification — CDR-001 §9 restates rather than overrides that framing.
 5. **Capability-to-work-package alignment** — cross-referenced every one of the 47 work packages' titles and requirement IDs directly from the live Prompt Register table (verbatim `grep` of all `| ENG-P` rows) before assigning it to a capability, to avoid inventing or misremembering scope.
-6. **Decision Dependency verification** — independently re-checked `DEC-SEC-001`, `DEC-DATA-007`, `DEC-PROV-004`, `DEC-ID-003` against the live Decision Register before citing their status in CDR-001 §4 (Capability 2); confirmed all four are open (`OPEN_ENGINEERING` ×2, `OPEN_PROVIDER`, `OPEN_FOUNDER`) rather than assumed.
+6. **Decision Dependency verification** — independently re-checked `DEC-SEC-001`, `DEC-DATA-007`, `DEC-PROV-004`, `DEC-ID-003` against the live Decision Register before citing their status in CDR-001 §5 (Capability 2); confirmed all four are open (`OPEN_ENGINEERING` ×2, `OPEN_PROVIDER`, `OPEN_FOUNDER`) rather than assumed.
 
 The proposed structure (capability-to-phase mapping, repository location, and rationale for each) was stated in chat before the document was created, per the task's own Required Analysis step 6.
 
@@ -24,7 +24,7 @@ The proposed structure (capability-to-phase mapping, repository location, and ra
 
 **Repository location:** `docs/05-implementation/roadmap/CDR-001-capability-delivery-roadmap.md` — a new subfolder alongside the existing `change-tracking/`, `prompts/`, and `reports/` subfolders already under `docs/05-implementation/` (the section whose own stated role is execution/implementation tracking). This satisfies the "maintain the current repository architecture" constraint (no new top-level numbered section invented) while giving CDR-001 its own distinct home, separate from `change-tracking/` (reserved for the two continuously-updated tracker documents — the Programme and Prompt Register).
 
-**Capability-to-phase mapping (summary; full detail in CDR-001 §4/§7):**
+**Capability-to-phase mapping (summary; full detail in CDR-001 §5/§8):**
 
 | Capability | Programme Phase(s) | Work Packages |
 |---|---|---|
@@ -39,24 +39,25 @@ The proposed structure (capability-to-phase mapping, repository location, and ra
 | 8 — Platform Operations | Phase 12 + Phase 14 | `ENG-P12-001..002`, `ENG-P14-001..003` |
 | 9 — Platform Optimisation | Phase 13 | `ENG-P13-001..003` |
 
-Phase 4 (Reward Program Management) is noted in CDR-001 §7 as a business-authoring precondition for Capability 5 rather than re-tabled under any single capability, to avoid double-counting against Phase 3's own parallel sequencing. Phase 15 (Pilot) and Phase 16 (Production Launch) are treated as milestone-level, not capability-level, and appear only in CDR-001 §6.
+Phase 4 (Reward Program Management) is noted in CDR-001 §8 as a business-authoring precondition for Capability 5 rather than re-tabled under any single capability, to avoid double-counting against Phase 3's own parallel sequencing. Phase 15 (Pilot) and Phase 16 (Production Launch) are treated as milestone-level, not capability-level, and appear only in CDR-001 §7.
 
 `ENG-P2-004` (role context and permission resolution) is shared between Capability 2 and Capability 3, since it underlies both customer and business role resolution — disclosed as a shared dependency in both capability entries rather than assigned exclusively to one.
 
 ## 4. Deliverable Summary
 
-Created `docs/05-implementation/roadmap/CDR-001-capability-delivery-roadmap.md` — 286 lines, 11 sections (the 10 required by the task brief plus an added §11 disclosing this task's own constraint set, for transparency): Purpose; Relationship to Existing Documents (with ASCII traceability diagram); Guiding Principles; Capability Delivery Model (all 10 capabilities, each with objective/customer outcome/journey/work packages/dependencies/validation outcome/milestone contribution); Capability Timeline (ASCII progression diagram); Milestone Structure (Milestone A fully specified; three future milestones named but explicitly left unspecified); Engineering Work Package Mapping table; Stitch Usage Guidance; Definition of Capability Completion; Future Engineering Prompt Standard.
+Created `docs/05-implementation/roadmap/CDR-001-capability-delivery-roadmap.md` — originally 286 lines, 11 sections (the 10 required by the task brief plus an added §11 disclosing this task's own constraint set, for transparency): Purpose; Relationship to Existing Documents (with ASCII traceability diagram); Guiding Principles; Capability Delivery Model (all 10 capabilities, each with objective/customer outcome/journey/work packages/dependencies/validation outcome/milestone contribution); Capability Timeline (ASCII progression diagram); Milestone Structure (Milestone A fully specified; three future milestones named but explicitly left unspecified); Engineering Work Package Mapping table; Stitch Usage Guidance; Definition of Capability Completion; Future Engineering Prompt Standard. Amended same day under `ENG-PROG-001A` to add a Capability Status Summary section — see §14 below.
 
 ## 5. Validation Results
 
 | Check | Result |
 |---|---|
 | Prettier formatting | Clean |
-| Internal markdown links (26 total) | All resolve — verified programmatically against the actual filesystem, files and directories both checked |
-| §7 mapping table column consistency | Consistent (5 columns throughout) |
-| §2 relationship table column consistency | Consistent (4 columns throughout) |
-| Decision Dependency statuses cited (§4, Capability 2) | Independently re-verified against the live Decision Register, not assumed |
-| Work-package titles/requirement IDs cited (§4, §7) | Sourced verbatim from the live Coding-Agent Prompt Register table, not recalled from memory |
+| Internal markdown links (28 total, post-amendment) | All resolve — verified programmatically against the actual filesystem, files and directories both checked |
+| §8 mapping table column consistency | Consistent (5 columns throughout) |
+| §3 relationship table column consistency | Consistent (4 columns throughout) |
+| §2 Capability Status Summary table column consistency (added by amendment) | Consistent (3 columns throughout) |
+| Decision Dependency statuses cited (§5, Capability 2) | Independently re-verified against the live Decision Register, not assumed |
+| Work-package titles/requirement IDs cited (§5, §8) | Sourced verbatim from the live Coding-Agent Prompt Register table, not recalled from memory |
 | No engineering work package invented | Confirmed — every `ENG-Pn-xxx` ID in CDR-001 already exists in the Programme/Prompt Register |
 | Product Definition unmodified | Confirmed — `git status` shows no changes under `docs/01-product/` |
 | Engineering Implementation Programme unmodified | Confirmed — `git status` shows no changes under `docs/05-implementation/change-tracking/engineering-implementation-programme.md` for this task |
@@ -82,7 +83,7 @@ No other file was modified. No file under `docs/01-product/`, `docs/02-technical
 ## 9. Risks Identified
 
 - **None to existing systems** — this is a new, additive documentation file; no code, configuration, or existing document was touched.
-- **Staleness risk (disclosed, not mitigated by this task):** CDR-001 §7's status column will drift out of date as work packages move from `Blocked` toward `Complete`, unless a future process keeps it synchronized with the Programme and Prompt Register. This document does not itself establish that synchronization process — flagged here as a known limitation, not fixed, since doing so was outside this task's scope.
+- **Staleness risk (disclosed, not mitigated by this task):** CDR-001 §8's status column, and now also §2's Capability Status Summary (added by the `ENG-PROG-001A` amendment), will drift out of date as work packages move from `Blocked` toward `Complete`, unless a future process keeps both synchronized with the Programme and Prompt Register. Neither document establishes that synchronization process — flagged here as a known limitation, not fixed, since doing so was outside this task's scope.
 
 ## 10. Rollback Instructions
 
@@ -99,3 +100,26 @@ None.
 ## 13. Configuration Changes
 
 None.
+
+## 14. Amendment — `ENG-PROG-001A` (Minor Amendment to CDR-001 Prior to Founder Approval)
+
+Following Founder review of the original document — repository placement, capability mapping, authority boundaries, governance, and implementation quality all confirmed correct — one refinement was requested: a concise capability-status snapshot near the top of the document, so a reader can answer "where are we in capability delivery?" within a few seconds without inspecting every capability section individually.
+
+**Change applied:** inserted a new `## 2. Capability Status Summary` section immediately after §1 Purpose, containing a single 3-column table (Capability | Name | Status) using only the four Founder-specified status values (`Planned`, `In Progress`, `Complete`, `Deferred`) — no percentages, progress bars, dates, milestones, or commentary. Every section from the former §2 onward was renumbered by one (§2→§3 … §11→§12); the document's own internal `§N` cross-references (34 occurrences across the body) were updated to match, verified against a full line-by-line manual audit of the pristine pre-amendment file (not a blanket find/replace, to avoid corrupting the many external `§N` references to Moments That Matter's own numbering, TRD22, and other governed documents that share the same `§N` notation but must not shift).
+
+**A disclosed deviation from the Founder's literal example table:** the Founder's suggested table showed Capability 1 — Platform Foundation as `Planned`. This document's own already-Founder-reviewed §5 (Capability Delivery Model) states Capability 1 as `*(Completed)*`, with full evidence (`ENG-P1-001`/`002`/`003` all `Complete`, `ENG-P1-003` administratively closed 2026-07-29). Rather than silently copying the example's literal value and creating an internal contradiction within the same document, the new §2 table records Capability 0 and Capability 1 as `Complete` and Capabilities 2–9 as `Planned` — treating the Founder's table as a formatting example rather than literal required values, since the underlying facts about Capability 0/1 are unambiguous and already reviewed as accurate. Disclosed in chat at the time of the change and here for the record.
+
+**Validation performed for the amendment:**
+- Confirmed via `diff` against a pristine pre-amendment backup that no capability description, work-package mapping, or table content changed anywhere in the document except the added §2 section, the renumbered headers, the updated internal `§N` cross-references, and the banner's "Last controlled update" line.
+- Prettier clean on the amended file.
+- Section headers confirmed sequential 1–12 (`grep -n "^## "`).
+- All 28 internal markdown links (26 original + 2 new, to the Programme and Prompt Register from the new §2) verified to resolve against the actual filesystem.
+- New §2 table confirmed 3-column-consistent across all 10 rows.
+
+**No authority relationship changed:** §2's own text explicitly states it does not duplicate the Engineering Implementation Programme or Prompt Register, and defers to them as the authoritative, work-package-level trackers — consistent with §3 (Relationship to Existing Documents, formerly §2)'s existing authority table, which is itself unchanged.
+
+**Commands executed for the amendment:** `sed` (line-anchored, not blanket, substitutions for header and cross-reference renumbering, derived from a manual line-by-line audit); `diff` (three-way: pristine backup vs. post-renumber vs. final, to catch every miss — three rounds of gaps were found and corrected this way, all from an overly broad exclusion filter in the first audit pass, not from the renumbering logic itself); `pnpm exec prettier --check`; the same Python link-resolution script re-run post-amendment; `git status`/`git diff --stat`.
+
+**Files modified by the amendment:** `docs/05-implementation/roadmap/CDR-001-capability-delivery-roadmap.md`; this report; `docs/changes/IMPLEMENTATION_CHANGES.md` (new entry appended, not the original entry rewritten).
+
+**Rollback:** `git revert` of the amendment's own commit on the existing PR branch — separable from the original `ENG-PROG-001` commit; reverting restores the pre-amendment 11-section document without affecting anything else.
