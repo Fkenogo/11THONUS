@@ -16,13 +16,13 @@ This plan exists because the completed readiness and governance programme — [`
 ## 2. Resolution Objectives
 
 1. **Remove governance blockers** — close the four D1 decisions (`DEC-SEC-001`, `DEC-PROV-004`, `DEC-ID-003`, `DEC-DATA-007`) that gate `ENG-P2-001`/`ENG-P2-004`, following the resolution order and governance prerequisites `ENG-P2-000B` established.
-2. **Resolve engineering conformance** — plan the correction of the `BaseMetadata` shape conflict between the already-shipped `functions/src/shared/metadata/baseMetadata.ts` and TRD10 §10.5, which `ENG-P2-000A` found blocks any Phase 2 work package from persisting a document at all.
+2. **Resolve engineering conformance** — correct the `BaseMetadata` shape conflict `ENG-P2-000A` found blocks any Phase 2 work package from persisting a document at all: both the Version 1 Engineering Blueprint §3.3 text and the already-shipped `functions/src/shared/metadata/baseMetadata.ts` code must be aligned to TRD10 §10.5, per `ENG-P2-000A`'s own two-part correction finding.
 3. **Synchronise repository documentation** — correct the Engineering Implementation Programme's `DEC-LEGAL-005` mischaracterization (a confirmed Repository Error per `ENG-P2-000A`) and, once the decisions above close, update the Programme's Phase 2 Work-Packages table so it reflects actual state rather than a flat "Blocked" status.
 4. **Prepare Capability 2 for implementation** — produce a single, objective, evidence-based gate (§7) that states exactly what must be true before `ENG-P2-001` may begin, so that authorization is a verification exercise, not a judgment call.
 
 ## 3. Resolution Work Packages
 
-Every work package below is traced to its source finding. None were invented beyond the brief's named list except `RES-006`, which is separately justified against repository evidence at its own entry.
+Every work package below is traced to its source finding. None were invented beyond the brief's named list except `RES-006` and `RES-007`, which are separately justified against repository evidence at their own entries. **Correction made before merge:** the original version of this plan omitted a work package for `DEC-DATA-007` despite naming it as a required Capability Authorisation Gate item (§7), and scoped the `BaseMetadata` correction as planning only, with no owned package to execute the code and Blueprint-text fixes the gate also requires. Both gaps are corrected below (`RES-007`; the expanded `RES-005.2`).
 
 ### RES-001 — EXT-TECH-001 Evidence Package
 
@@ -54,8 +54,10 @@ Every work package below is traced to its source finding. None were invented bey
 - **Traces to:** `ENG-P2-000A` §6 (BaseMetadata Reconciliation), §6 (DEC-LEGAL-005 Reconciliation); `ENG-P2-000B` §5 Steps 7–8.
 - **Scope**, three sub-items:
   1. **`DEC-LEGAL-005` correction** — the Engineering Implementation Programme's Phase 2 profile states "Legal Dependencies: None direct (`DEC-LEGAL-005`... is D3/pilot-tier, not a Phase 2 blocker)," which `ENG-P2-000A` established is a Repository Error: the Decision Register's own fields state `Priority: D2`, `Required by: Phase 2`, `Blocks: registration policy text`. Correct the Programme's text to match the Register. This is a documentation-only fix — it does not change which work packages are blocked (per `ENG-P2-000B` §7, no named work package is currently blocked by `DEC-LEGAL-005`), only the Programme's stated reasoning.
-  2. **`BaseMetadata` alignment planning** — plan the correction of `functions/src/shared/metadata/baseMetadata.ts`, which `ENG-P2-000A` found implements the Version 1 Engineering Blueprint §3.3 shape rather than TRD10 §10.5's shape (four confirmed field-level differences: `version`/`schemaVersion` naming, audit-field nullability, `deletedAt`/`archivedAt` semantics, and `languageCode` vs. `currencyCode`/`timezone` scoped fields). TRD10 governs per the Blueprint's own self-declared §0 authority rule. This work package plans the correction (scope, affected callers, sequencing relative to `ENG-P2-001`); it does not perform the code change, consistent with this document's own no-implementation constraint (§ Constraints).
-  3. **Phase 2 programme synchronisation** — once `RES-002`/`003`/`004` (and `RES-006`, below) close, update the Engineering Implementation Programme's Phase 2 Work-Packages table Status and Blocking Reason cells so it stops stating a flat "Blocked" against decisions that have since resolved.
+  2. **`BaseMetadata` alignment — the two-part correction `ENG-P2-000A` §5 itself defines.** `ENG-P2-000A` found `functions/src/shared/metadata/baseMetadata.ts` implements the Version 1 Engineering Blueprint §3.3 shape rather than TRD10 §10.5's shape (four confirmed field-level differences: `version`/`schemaVersion` naming, audit-field nullability, `deletedAt`/`archivedAt` semantics, and `languageCode` vs. `currencyCode`/`timezone` scoped fields), and that TRD10 governs per the Blueprint's own self-declared §0 authority rule. `ENG-P2-000A` §5 states explicitly this requires a "mechanical, two-part correction: (1) align the Blueprint's §3.3 text to TRD10's shape... (2) align `baseMetadata.ts`'s implementation to the corrected shape." **Corrected in this plan before merge:** the original draft scoped only a correction *plan* for the code, and omitted the Blueprint text entirely — leaving the Capability Authorisation Gate (§7) with no owned path to satisfaction. Both parts are now owned sub-deliverables:
+     - **`RES-005.2a` — Blueprint §3.3 text correction.** Align the Version 1 Engineering Blueprint's §3.3 (Standard Document Metadata) text to TRD10 §10.5's shape. Documentation-only; no Founder decision required per `ENG-P2-000A`'s own finding that this is a mechanical application of the Blueprint's pre-existing self-declared rule.
+     - **`RES-005.2b` — `baseMetadata.ts` code correction.** Update `functions/src/shared/metadata/baseMetadata.ts` to conform to the corrected shape from `RES-005.2a`, following this repository's established Test-Driven Development discipline (failing test first, minimal implementation, full validation suite). This is the actual code change the Capability Authorisation Gate (§7 item 7) requires — it is a defined, owned work package in this plan; its *execution* remains future work, in the same sense that `RES-001`–`004`/`006`/`007` are also defined-but-not-yet-executed work packages.
+  3. **Phase 2 programme synchronisation** — once `RES-002`/`003`/`004`/`006`/`007` close, update the Engineering Implementation Programme's Phase 2 Work-Packages table Status and Blocking Reason cells so it stops stating a flat "Blocked" against decisions that have since resolved.
 
 ### RES-006 — DEC-PROD-012 Profile Schema Decision *(addition beyond the brief's named list, evidence-justified below)*
 
@@ -63,6 +65,13 @@ Every work package below is traced to its source finding. None were invented bey
 - **Why it is included despite not being in the task brief's named RES-001..005 list:** the brief's constraint is "do not invent additional work unless supported by repository evidence." `ENG-P2-000`'s own corrected analysis — merged to `main` as part of the completed readiness programme this plan is required to trace to — found that `DEC-PROD-012` (optional gender values and wording) is a genuine Phase 2 dependency: the Decision Register's own fields state `Required by phase: Phase 2 (progressive profile)`, `Blocks: profile schema freeze`, `Risks if unresolved: schema churn`. This is distinct from, and was previously conflated with, the fact that gender never blocks the *customer's* registration experience. Since `ENG-P2-001`'s own scope (per CDR-001) explicitly includes "profile," and the Programme's own Preconditions do not currently name `DEC-PROD-012`, omitting it here would leave a known, evidence-backed schema-freeze risk out of the resolution programme.
 - **Scope:** the Founder (with legal input per the decision's own `Founder decision required: Yes (with legal input)` field) selects the gender enum value set and wording, or formally adopts a governed defer-and-omit approach for the `customerProfiles.gender` field.
 - **Sequencing:** independent of `RES-001`–`004` — no dependency relationship exists between `DEC-PROD-012` and `EXT-TECH-001`/`DEC-SEC-001`/`DEC-PROV-004`/`DEC-ID-003` in the Decision Register.
+
+### RES-007 — DEC-DATA-007 Resolution *(addition beyond the brief's named list, evidence-justified below)*
+
+- **Traces to:** `ENG-P2-000B` §5 Step 5.
+- **Why it is included despite not being in the task brief's named RES-001..005 list:** `ENG-P2-000B` §5 assigns `DEC-DATA-007` (loyalty-number/QR generation algorithm) to the Engineering Lead as an independent, parallel step, and `ENG-P2-000B`'s own corrected §7 established it is one of the three items that must close before `ENG-P2-001` unblocks — it is already named as a required item in this plan's own Capability Authorisation Gate (§7 item 4). **Corrected before merge:** the original draft named `DEC-DATA-007` in the gate without assigning it any work package, meaning the plan's own six defined packages could all close while this gate condition remained unsatisfiable. This package closes that gap.
+- **Scope:** the Engineering Lead defines the loyalty-number format/generation algorithm (opaque, non-sequential, non-revealing) and the QR opaque/signed reference scheme, within the constraints PRD2 §8–9 and TRD12's QR privacy requirements already establish. No Founder decision required (Register field: `Founder decision required: No`).
+- **Sequencing:** independent — the Register's own field reads `Dependencies: —` for this decision.
 
 ## 4. Ownership Matrix
 
@@ -72,8 +81,12 @@ Every work package below is traced to its source finding. None were invented bey
 | `RES-002` | Engineering Lead | Founder (countersign) | `RES-001` evidence | Governance-prerequisite record; Decision Register entry update | `DEC-PROV-004`: `OPEN_PROVIDER` → Founder-countersigned Final Decision |
 | `RES-003` | Engineering Lead | Founder (countersign) | `RES-001` evidence; `RES-002` outcome | Decision Register entry update | `DEC-SEC-001`: `OPEN_ENGINEERING` → Founder-countersigned Final Decision |
 | `RES-004` | Founder | Engineering Lead | PRD1 §7/§12, PRD10 §13, TRD12 (already cited in the Register's own entry) | Decision Register entry update | `DEC-ID-003`: `OPEN_FOUNDER` → Final Decision, Approved by recorded |
-| `RES-005` | Engineering/governance | Founder + legal adviser (for the underlying `DEC-LEGAL-005` decision only, not the documentation fix) | Live Decision Register text; TRD10 §10.5; Blueprint §3.3/§0 | (1) corrected Programme text; (2) `BaseMetadata` correction plan document; (3) synchronized Programme table | (1) Programme text matches Register fields; (2) plan document exists and is reviewed; (3) Programme Status/Blocking Reason cells reflect actual decision state |
+| `RES-005.1` | Engineering/governance | — | Live Decision Register text | Corrected Programme text | Programme text matches Register's `Priority: D2`/`Required by: Phase 2` fields |
+| `RES-005.2a` | Engineering/governance | — | TRD10 §10.5; Blueprint §3.3/§0 | Corrected Blueprint §3.3 text | Blueprint §3.3 shape matches TRD10 §10.5 |
+| `RES-005.2b` | Engineering Lead | — | `RES-005.2a` corrected shape; existing `baseMetadata.ts` and its callers | Code change (TDD: failing test → implementation → full validation suite) | `functions/src/shared/metadata/baseMetadata.ts` conforms to TRD10 §10.5's shape; existing tests and callers updated accordingly |
+| `RES-005.3` | Engineering/governance | — | Confirmed closure of `RES-002`/`003`/`004`/`006`/`007` | Synchronized Programme table | Programme Status/Blocking Reason cells reflect actual decision state |
 | `RES-006` | Founder (with legal input) | Engineering Lead | TRD10 §10.6.2 enum; OPD-009; DR-PROD-011 (already cited in the Register's own entry) | Decision Register entry update | `DEC-PROD-012`: `OPEN_FOUNDER` → Final Decision, or a formally recorded defer-and-omit adoption |
+| `RES-007` | Engineering Lead | — | PRD2 §8–9; TRD12 QR privacy requirements (already cited in the Register's own entry) | Decision Register entry update | `DEC-DATA-007`: `OPEN_ENGINEERING` → Final Decision |
 
 ## 5. Dependency Diagram
 
@@ -94,10 +107,14 @@ RES-003 (confirm DEC-SEC-001; Founder countersign)
 
 RES-004 (DEC-ID-003 — Founder decision)         ── parallel, no dependency on RES-001..003
 RES-006 (DEC-PROD-012 — Founder decision)       ── parallel, no dependency on RES-001..003
+RES-007 (DEC-DATA-007 — Engineering decision)   ── parallel, no dependency on RES-001..003
 RES-005.1 (DEC-LEGAL-005 doc correction)        ── parallel, no dependency on RES-001..003
-RES-005.2 (BaseMetadata alignment planning)     ── parallel, no dependency on RES-001..003
+RES-005.2a (Blueprint §3.3 text correction)     ── parallel, no dependency on RES-001..003
+   │
+   ▼
+RES-005.2b (baseMetadata.ts code correction, TDD)
 
- ══════════════ GATE B: RES-002/003/004/006 all closed ══════════════
+ ══════════════ GATE B: RES-002/003/004/006/007/005.2b all closed ══════════════
    │
    ▼
 RES-005.3 (Programme table synchronisation)
@@ -109,11 +126,11 @@ RES-005.3 (Programme table synchronisation)
 ENG-P2-001 — Customer Identity Implementation authorized to begin
 ```
 
-**Sequential work:** `RES-001` → `RES-002a` → `RES-002b` → `RES-003` is the one genuinely sequential chain (each step requires the prior step's output; `ENG-P2-000B` §5 established this).
+**Sequential work:** `RES-001` → `RES-002a` → `RES-002b` → `RES-003` is the one genuinely sequential chain gating the OTP decisions (each step requires the prior step's output; `ENG-P2-000B` §5 established this). `RES-005.2a` → `RES-005.2b` is a second, independent sequential pair — the Blueprint text must be corrected before the code can be written to conform to it.
 
-**Parallel work:** `RES-004`, `RES-006`, `RES-005.1`, and `RES-005.2` have no dependency on the OTP chain or on each other and can all run concurrently with `RES-001`–`003` and with each other, starting immediately.
+**Parallel work:** `RES-004`, `RES-006`, `RES-007`, `RES-005.1`, and the `RES-005.2a`→`RES-005.2b` pair have no dependency on the OTP chain and can all run concurrently with `RES-001`–`003` and with each other, starting immediately.
 
-**Completion gates:** Gate A (sequential chain closed) is not itself the authorization gate — it is an internal checkpoint. Gate B requires the sequential chain plus both parallel Founder decisions closed before the Programme table sync (`RES-005.3`) is meaningful. The Capability Authorisation Gate (§7) is the final, external gate.
+**Completion gates:** Gate A (sequential OTP chain closed) is not itself the authorization gate — it is an internal checkpoint. Gate B requires the OTP chain plus all three parallel Founder/Engineering decisions (`RES-004`/`006`/`007`) and the `BaseMetadata` code correction (`RES-005.2b`) closed before the Programme table sync (`RES-005.3`) is meaningful. **Corrected before merge:** the original Gate B omitted `RES-007` (not yet defined) and `RES-005.2b` (not yet an owned package) — both are now included, since the Capability Authorisation Gate (§7) cannot open without them. The Capability Authorisation Gate (§7) is the final, external gate.
 
 ## 6. Parallel Execution Opportunities
 
@@ -121,9 +138,11 @@ All conclusions here are drawn directly from the Decision Register's own `Depend
 
 - **`RES-004` (`DEC-ID-003`) can start immediately, in parallel with `RES-001`.** The Register's own field reads `Dependencies: —` for this decision; it is a self-contained Founder judgment call already flagged as ready ("founder agenda Batch C").
 - **`RES-006` (`DEC-PROD-012`) can start immediately, in parallel with `RES-001`.** No dependency edge exists between it and `EXT-TECH-001`/`DEC-SEC-001`/`DEC-PROV-004`/`DEC-ID-003` in the Register.
+- **`RES-007` (`DEC-DATA-007`) can start immediately, in parallel with `RES-001`.** The Register's own field reads `Dependencies: —` for this decision; it requires no Founder involvement (`Founder decision required: No`) and no external evidence.
 - **`RES-005.1` (`DEC-LEGAL-005` documentation correction) can start immediately.** It is a text correction against already-established evidence (`ENG-P2-000A` §6); it has no technical dependency on any decision closing first.
-- **`RES-005.2` (`BaseMetadata` alignment planning) can start immediately.** Planning the correction does not require any of `RES-001`–`004`/`006` to have closed — the conflict and its correct target shape (TRD10 §10.5) are already established facts, independent of the OTP or profile decisions.
-- **`RES-005.3` (Programme table synchronisation) cannot start until `RES-002`, `RES-003`, `RES-004`, and `RES-006` have all closed** — updating the table before then would itself introduce a new inaccuracy, the same class of error `ENG-P2-000B` found in the original flat "Blocked" framing.
+- **`RES-005.2a` (Blueprint §3.3 text correction) can start immediately.** The conflict and its correct target shape (TRD10 §10.5) are already established facts, independent of the OTP or profile decisions.
+- **`RES-005.2b` (`baseMetadata.ts` code correction) can start once `RES-005.2a` closes, in parallel with `RES-001`–`004`/`006`/`007`.** It depends only on the Blueprint text being corrected first (so the code has a single, unambiguous target shape to conform to), not on any of the OTP or Founder decisions.
+- **`RES-005.3` (Programme table synchronisation) cannot start until `RES-002`, `RES-003`, `RES-004`, `RES-006`, `RES-007`, and `RES-005.2b` have all closed** — updating the table before then would itself introduce a new inaccuracy, the same class of error `ENG-P2-000B` found in the original flat "Blocked" framing.
 
 ## 7. Capability Authorisation Gate
 
@@ -132,11 +151,11 @@ All conclusions here are drawn directly from the Decision Register's own `Depend
 1. `EXT-TECH-001` status in the External Dependencies Register is `EVIDENCE_RECEIVED` or `CLOSED` (not `PENDING`).
 2. `DEC-PROV-004` status in the Decision Register is a Final Decision with `Approved by` recorded, including the Founder countersign this plan's `RES-002` correction requires.
 3. `DEC-SEC-001` status in the Decision Register is a Final Decision with the Founder countersign its own fields already require.
-4. `DEC-DATA-007` status in the Decision Register is a Final Decision. **Included per `ENG-P2-000B`'s corrected §7 finding:** although `DEC-DATA-007` has no dependency of its own and is independently actionable, the Programme's own table lists it as a current Decision Dependency and Precondition for `ENG-P2-001` — it must close before the gate is satisfied, not merely before it is convenient to close.
+4. `DEC-DATA-007` status in the Decision Register is a Final Decision (from `RES-007`). **Included per `ENG-P2-000B`'s corrected §7 finding:** although `DEC-DATA-007` has no dependency of its own and is independently actionable, the Programme's own table lists it as a current Decision Dependency and Precondition for `ENG-P2-001` — it must close before the gate is satisfied, not merely before it is convenient to close.
 5. `DEC-ID-003` status in the Decision Register is a Final Decision (from `RES-004`).
 6. `DEC-PROD-012` status in the Decision Register is a Final Decision, or a formally recorded defer-and-omit adoption (from `RES-006`) — included because `ENG-P2-001`'s own scope includes "profile," and the Register names this decision as blocking profile schema freeze specifically.
-7. `functions/src/shared/metadata/baseMetadata.ts` conforms to TRD10 §10.5's shape (from `RES-005.2`'s plan being executed — execution itself is out of this plan's scope, but the gate cannot open without it, per `ENG-P2-000` §13's finding that this conflict "blocks any Phase 2 work package from persisting a document at all").
-8. The Engineering Implementation Programme's Phase 2 Work-Packages table (from `RES-005.3`) reflects the state confirmed in items 1–6 above — a verification step, not itself a substantive blocker.
+7. The Version 1 Engineering Blueprint §3.3 and `functions/src/shared/metadata/baseMetadata.ts` both conform to TRD10 §10.5's shape (from `RES-005.2a` and `RES-005.2b`, both owned work packages in §3/§4 of this plan, not merely a plan document) — per `ENG-P2-000` §13's finding that this conflict "blocks any Phase 2 work package from persisting a document at all."
+8. The Engineering Implementation Programme's Phase 2 Work-Packages table (from `RES-005.3`) reflects the state confirmed in items 1–7 above — a verification step, not itself a substantive blocker.
 
 **Explicitly not required by this gate:** `DEC-LEGAL-005`'s underlying Founder+legal-adviser decision. Per the Decision Register's own fields (confirmed by `ENG-P2-000`/`ENG-P2-000A`), it blocks "registration policy text," not `ENG-P2-001`'s technical build — only the Programme's documentation text needs correcting (`RES-005.1`), not the decision itself, for this gate to open.
 
@@ -145,26 +164,26 @@ All conclusions here are drawn directly from the Decision Register's own `Depend
 Only remaining execution risk is addressed here — no previously closed analysis is repeated.
 
 - **Founder countersign bottleneck on `RES-002`/`RES-003`:** both decisions require Founder countersign in sequence after Engineering Lead work completes; if Founder availability is constrained, this could stall the one genuinely sequential chain even after the underlying technical work is done.
-- **`RES-005.2` planning outpacing execution:** the `BaseMetadata` alignment plan can be produced quickly (§6), but the Capability Authorisation Gate (§7 item 7) requires the *code* to conform, not merely a plan to exist — if execution of that plan is not scheduled as a distinct follow-on work package, the gate could stall on an unstarted implementation task after all decisions have closed.
-- **`RES-005.3` performed prematurely:** if the Programme table is synchronized before all of `RES-002`/`003`/`004`/`006` have genuinely closed (rather than merely being in progress), it would reintroduce a documentation inaccuracy of the same kind this resolution programme exists to correct.
-- **`RES-006` treated as optional because it is not in the brief's named list:** since this work package was added by this plan rather than named in the task brief, there is a risk a future reader treats it as discretionary; §3's evidence trail and §7 item 6 are written to make clear it is a required gate item, not an optional addition.
+- **`RES-005.2b` executed without `RES-005.2a` closing first:** if the code correction is attempted before the Blueprint §3.3 text itself is corrected, the implementer would be conforming to an as-yet-uncorrected document, risking the same class of drift `ENG-P2-000A` originally found. This is why `RES-005.2a` → `RES-005.2b` is modeled as its own sequential pair (§5), not two independent parallel items.
+- **`RES-005.3` performed prematurely:** if the Programme table is synchronized before all of `RES-002`/`003`/`004`/`006`/`007`/`005.2b` have genuinely closed (rather than merely being in progress), it would reintroduce a documentation inaccuracy of the same kind this resolution programme exists to correct.
+- **`RES-006`/`RES-007` treated as optional because they are not in the brief's named list:** since both work packages were added by this plan rather than named in the task brief, there is a risk a future reader treats them as discretionary; §3's evidence trail and §7 items 4/6 are written to make clear both are required gate items, not optional additions.
 
 ## 9. Success Criteria
 
 The Resolution Programme (not this document) is successful when:
 
-1. All six work packages (`RES-001`–`006`) have reached their individually stated completion criteria (§4).
+1. All work packages (`RES-001`–`007`, with `RES-005` counted as its four sub-items `005.1`/`005.2a`/`005.2b`/`005.3`) have reached their individually stated completion criteria (§4).
 2. The Engineering Implementation Programme's Phase 2 Work-Packages table accurately reflects that state (`RES-005.3`).
 3. No new Founder decision was created in the course of executing this plan — only the four pre-existing D1 decisions (`DEC-SEC-001`, `DEC-PROV-004`, `DEC-ID-003`, `DEC-DATA-007`) plus `DEC-PROD-012` and the already-established `BaseMetadata`/`DEC-LEGAL-005` corrections were resolved.
 4. The Capability Authorisation Gate (§7) can be verified as satisfied purely by reading live repository/register state — no interpretation or inference required.
 
 ## 10. Exit Criteria
 
-The evidence that demonstrates Capability 2 is authorized for implementation is a single, reproducible check against live repository state: all eight items in §7's Capability Authorisation Gate read as satisfied when the Decision Register, External Dependencies Register, `baseMetadata.ts`, and the Engineering Implementation Programme's Phase 2 table are inspected directly. No separate authorization report is required beyond this verification — the gate is the exit criterion.
+The evidence that demonstrates Capability 2 is authorized for implementation is a single, reproducible check against live repository state: all eight items in §7's Capability Authorisation Gate read as satisfied when the Decision Register, External Dependencies Register, `baseMetadata.ts`, the Version 1 Engineering Blueprint §3.3, and the Engineering Implementation Programme's Phase 2 table are inspected directly. No separate authorization report is required beyond this verification — the gate is the exit criterion.
 
 ## 11. Constraints Observed
 
-Per this task's own brief: the Engineering Implementation Programme was not redesigned; CDR-001 was not redesigned; no completed readiness work (`ENG-P2-000`/`ENG-P2-000A`/`ENG-P2-000B`) was reopened or re-analyzed; no new Founder decision was created (`RES-004`/`RES-006` route pre-existing, already-registered decisions to the Founder — they do not create new ones); no unrelated repository file was modified; the current repository architecture is unchanged. No code was implemented and `ENG-P2-001` has not begun.
+Per this task's own brief: the Engineering Implementation Programme was not redesigned; CDR-001 was not redesigned; no completed readiness work (`ENG-P2-000`/`ENG-P2-000A`/`ENG-P2-000B`) was reopened or re-analyzed; no new Founder decision was created (`RES-004`/`RES-006`/`RES-007` route pre-existing, already-registered decisions to the Founder or Engineering Lead — they do not create new ones); no unrelated repository file was modified; the current repository architecture is unchanged. No code was implemented and `ENG-P2-001` has not begun — `RES-005.2b` is a defined, owned work package for a future code change, consistent with how `RES-001`–`004`/`006`/`007` are also defined-but-not-yet-executed.
 
 ## 12. Risks From This Document Itself
 
@@ -173,7 +192,7 @@ None — this is a read-only planning document; no code, governance document, de
 ## 13. Assumptions
 
 - `RES-002` and `RES-003` are presented as a strict sequential chain per `ENG-P2-000B`'s own corrected finding; the Ownership Matrix (§4) presents them separately for the brief's required RES-002/RES-003 split, while §5's diagram makes explicit that `RES-002` internally contains the governance-prerequisite sub-step `ENG-P2-000B` identified as a precondition to sequential closure.
-- `RES-006`'s inclusion is a judgment call, not a directly instructed item — justified at its own entry (§3) with the specific evidence trail, per the task's "do not invent additional work unless supported by repository evidence" constraint, and flagged distinctly rather than folded silently into the brief's named list.
+- `RES-006`'s and `RES-007`'s inclusion are judgment calls, not directly instructed items — each justified at its own entry (§3) with a specific evidence trail, per the task's "do not invent additional work unless supported by repository evidence" constraint, and flagged distinctly rather than folded silently into the brief's named list. `RES-007` was added during pre-merge review after the original draft named `DEC-DATA-007` in the Capability Authorisation Gate (§7) without assigning it any owning work package — the gap was found and closed before merge, not present in this plan's final form.
 
 ## 14. Files Modified
 

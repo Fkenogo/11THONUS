@@ -1250,3 +1250,19 @@
 - **Risks:** none introduced — planning document only; no code, decision, or governance document changed; no implementation of Capability 2 has begun.
 - **Rollback:** `git revert` of this task's own commit — a single new planning document plus one changes-log append.
 - **Report link:** [`docs/05-implementation/roadmap/ENG-P2-RES-000-capability-2-resolution-plan.md`](../05-implementation/roadmap/ENG-P2-RES-000-capability-2-resolution-plan.md).
+
+---
+
+## 2026-07-29 — ENG-P2-RES-000: Pre-Merge Correction (PR #28 Review Findings)
+
+- **Date:** 2026-07-29
+- **Task:** correction of three automated-review findings (two P1, one P2) on PR #28, raised against `docs/05-implementation/roadmap/ENG-P2-RES-000-capability-2-resolution-plan.md` before Founder-authorized merge.
+- **Finding 1 (P1) — `DEC-DATA-007` named in the Capability Authorisation Gate with no owning work package.** The original plan's §7 gate item 4 required `DEC-DATA-007` to close, but none of `RES-001`–`006` covered it — meaning all six defined packages could close while this gate condition remained unsatisfiable. Added `RES-007 — DEC-DATA-007 Resolution` (traces to `ENG-P2-000B` §5 Step 5), with its own ownership-matrix row, dependency-diagram node, and parallel-execution entry.
+- **Finding 2 (P1) — the `BaseMetadata` gate condition had no executing work package.** `RES-005.2` originally scoped only a correction *plan*, but Capability Authorisation Gate item 7 requires actual code conformance. Split `RES-005.2` into `RES-005.2a` (Blueprint §3.3 text correction) and `RES-005.2b` (an owned `baseMetadata.ts` code-correction package with real deliverables and completion criteria, following this repository's TDD discipline), sequenced `RES-005.2a` → `RES-005.2b`, and updated the ownership matrix, dependency diagram, §6, §7, §8, §9, and §10 accordingly.
+- **Finding 3 (P2) — the `BaseMetadata` correction scope omitted the Blueprint text.** `ENG-P2-000A` §5's own evidence defines a "mechanical, two-part correction: (1) align the Blueprint's §3.3 text... (2) align `baseMetadata.ts`'s implementation." The original plan scoped only the code. `RES-005.2a` (added for Finding 2) closes this gap by covering the Blueprint text correction explicitly.
+- **Validation performed:** all three findings verified directly against the merged `ENG-P2-000A`/`ENG-P2-000B` reports before any correction was applied; every downstream cross-reference (Ownership Matrix, Dependency Diagram, §6 Parallel Execution, §7 Gate, §8 Risks, §9 Success Criteria, §10 Exit Criteria, §11 Constraints, §13 Assumptions) checked and updated for consistency with the new `RES-007` and split `RES-005.2a`/`RES-005.2b`; `npx prettier --check` on the modified file; `git diff --stat` confirmed only the one planning document changed.
+- **Files modified:** `docs/05-implementation/roadmap/ENG-P2-RES-000-capability-2-resolution-plan.md`; `docs/changes/IMPLEMENTATION_CHANGES.md` (this entry).
+- **Files created:** none. **Dependencies added:** none. **Configuration changes:** none.
+- **Risks:** none introduced — corrections close genuine gate-satisfiability gaps found by review; no governance document, decision, or code changed; `RES-005.2b` remains a defined-but-unexecuted work package, consistent with every other package in this plan.
+- **Rollback:** `git revert` of this correction's own commit.
+- **Report link:** [`docs/05-implementation/roadmap/ENG-P2-RES-000-capability-2-resolution-plan.md`](../05-implementation/roadmap/ENG-P2-RES-000-capability-2-resolution-plan.md).
