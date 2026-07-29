@@ -10,7 +10,7 @@
 
 The [Product Foundation](../../01-product/prd/00-product-foundation.md) defines *what* 11thONUS is and *why* it exists. The [Engineering Implementation Programme](../change-tracking/engineering-implementation-programme.md) defines *which technical work packages* build it, sequenced by TRD Chapter 22's 17 engineering phases (Phase 0–16). Neither document, by itself, answers a question every future implementation prompt needs answered: **in what order do customers actually gain new, usable capability, and which engineering work packages deliver each one?**
 
-That gap is what this document closes. It does not redesign the Product Foundation or the Engineering Implementation Programme — it is a new, narrower **execution-layer** document that sits between them, re-expressing the same 47 already-approved engineering work packages as a sequence of ten customer-facing (or platform-facing) **capabilities**, each traceable back to a specific product journey and forward to the specific work packages that build it.
+That gap is what this document closes. It does not redesign the Product Foundation or the Engineering Implementation Programme — it is a new, narrower **execution-layer** document that sits between them, re-expressing 42 of the Programme's 47 already-approved engineering work packages as a sequence of ten customer-facing (or platform-facing) **capabilities** (the remaining 5, covering end-to-end pilot validation and production launch, are milestone-level rather than capability-level — see §7), each traceable back to a specific product journey and forward to the specific work packages that build it.
 
 **Problem this solves:** without it, "what should be built next" is answered purely by phase number (Phase 2, Phase 3, …) — a sequencing that is correct for engineering dependency order but says nothing about what a customer or business actually experiences at each step, and gives no single place where a future implementation prompt can state "this work package exists because it delivers *this* capability, validated by *this* journey." CDR-001 is that place.
 
@@ -134,8 +134,8 @@ Each capability below groups one or more Engineering Implementation Programme ph
 - **Objective:** a customer's purchase at a business can be recorded and independently verified by both parties.
 - **Customer outcome:** the customer's first purchase is recorded, they verify it themselves, and it is confirmed — the moment their loyalty record begins.
 - **Primary user journey(s):** Moments That Matter §2 First Purchase *(governing-document only)* and §3 First Verification *(Stitch-validated — `signature_verification_experience`)*.
-- **Major engineering work package(s):** `ENG-P5-001` (purchase recording UI flow), `ENG-P5-002` (server-side Purchase Record creation and idempotency), `ENG-P5-003` (offline queue and pending-sync display), `ENG-P6-001` (verification flow — "Waiting for You"), `ENG-P6-002` (individual rejection with reason), `ENG-P6-003` (dispute and business resolution workflow).
-- **Dependencies:** Capabilities 2 and 3 (a customer and a business must both exist first).
+- **Major engineering work package(s):** `ENG-P4-001` (Reward Program CRUD and lifecycle), `ENG-P4-002` (versioning and plan-limit enforcement), `ENG-P5-001` (purchase recording UI flow), `ENG-P5-002` (server-side Purchase Record creation and idempotency), `ENG-P5-003` (offline queue and pending-sync display), `ENG-P6-001` (verification flow — "Waiting for You"), `ENG-P6-002` (individual rejection with reason), `ENG-P6-003` (dispute and business resolution workflow).
+- **Dependencies:** Capabilities 2 and 3 (a customer and a business must both exist first). `ENG-P4-001`/`ENG-P4-002` are included in this capability, not merely a precondition to it: the Programme's own Phase Summary Table states Phase 5 is `Blocked (depends on P4)`, so a purchase cannot correctly be recorded against a Reward Program that doesn't yet exist — Phase 4 must complete before this capability's own Phase 5/6 work, and is grouped here accordingly (corrected from an earlier draft that treated Phase 4 only as a later precondition for Capability 5, which did not satisfy the Programme's actual sequencing).
 - **Validation outcome:** not started — all listed work packages `Blocked`.
 - **Milestone contribution:** Milestone A, steps 3–4.
 
@@ -171,23 +171,23 @@ Each capability below groups one or more Engineering Implementation Programme ph
 
 ### Capability 8 — Platform Operations
 
-- **Objective:** the platform itself can be administered, secured, and kept resilient across all businesses, independent of any single business's needs.
-- **Customer outcome:** indirect — a safer, more reliable platform for every customer and business, delivered by platform administrators rather than experienced as a direct feature.
-- **Primary user journey(s):** none (platform-administration and security-hardening scope; builds on Capability 1's observability foundation).
-- **Major engineering work package(s):** `ENG-P12-001` (administrator roles, MFA, support tooling), `ENG-P12-002` (Knowledge/Rules Studio launch functions, feature flags), `ENG-P14-001` (security hardening — rules, App Check, rate limiting), `ENG-P14-002` (resilience — monitoring, backup/restore, rollback test), `ENG-P14-003` (privacy and compliance readiness).
-- **Dependencies:** Capability 1 (extends the observability/Rules foundation it already established).
-- **Validation outcome:** not started — all listed work packages `Blocked`. Related successor/backlog packages already registered (not yet implemented): `ENG-SEC-001` (Firestore & Storage Security Rules Foundation) and `ENG-CI-001` (Firebase Emulator CI Stabilisation) — see the [Engineering Implementation Programme](../change-tracking/engineering-implementation-programme.md) §C.1.
-- **Milestone contribution:** Milestone "Production Readiness" (placeholder, §7).
+- **Objective:** the platform itself can be administered, with launch-configurable feature flags and support tooling in place, across all businesses, independent of any single business's needs.
+- **Customer outcome:** indirect — a safer, more manageable platform for every customer and business, delivered by platform administrators rather than experienced as a direct feature.
+- **Primary user journey(s):** none (platform-administration scope; builds on Capability 1's observability foundation).
+- **Major engineering work package(s):** `ENG-P12-001` (administrator roles, MFA, support tooling), `ENG-P12-002` (Knowledge/Rules Studio launch functions, feature flags).
+- **Dependencies:** Capability 7. The Programme's own Phase Summary Table states Phase 12 is `Blocked (depends on P2, P4, P11)` — P2 and P4 are already satisfied by the time Capability 7 (which requires P8–P11) is reached, so Capability 7 is this capability's binding precondition (corrected from an earlier draft that cited only Capability 1, which understated the real dependency and, combined with Capability 8 then also containing Phase 14, produced a circular Capability 8↔9 dependency — see Capability 9's note below).
+- **Validation outcome:** not started — both listed work packages `Blocked`.
+- **Milestone contribution:** precondition for Capability 9 (Phase 14 depends on Phase 12 completing, per the Programme).
 
 ### Capability 9 — Platform Optimisation
 
-- **Objective:** the platform is complete enough, in language, accessibility, and installability, to be usable by its actual target audience (Burundi, EN/FR).
-- **Customer outcome:** the platform works fully in the customer's own language, is usable by customers with accessibility needs, and installs/functions as a PWA on the low/mid-range Android devices the target market actually uses.
+- **Objective:** the platform is complete enough — in language, accessibility, installability, security hardening, resilience, and compliance readiness — to be usable and safe for its actual target audience (Burundi, EN/FR) and ready to enter pilot.
+- **Customer outcome:** the platform works fully in the customer's own language, is usable by customers with accessibility needs, installs/functions as a PWA on the low/mid-range Android devices the target market actually uses, and has undergone a final security/resilience/compliance hardening pass.
 - **Primary user journey(s):** none singular (a hardening pass across every prior journey, not a new one).
-- **Major engineering work package(s):** `ENG-P13-001` (complete EN/FR launch-critical copy), `ENG-P13-002` (accessibility review and remediation), `ENG-P13-003` (PWA hardening — manifest, offline shell). Also includes the registered-but-unimplemented `OBS-OPS-001` (Frontend Diagnostics Operational Enablement) as an optimisation-adjacent successor package.
-- **Dependencies:** Capabilities 2–8 (optimisation applies across the whole delivered surface, so most of it must exist first).
-- **Validation outcome:** not started — all listed work packages `Blocked`.
-- **Milestone contribution:** precondition for Milestone "Pilot Readiness" (placeholder, §7).
+- **Major engineering work package(s):** `ENG-P13-001` (complete EN/FR launch-critical copy), `ENG-P13-002` (accessibility review and remediation), `ENG-P13-003` (PWA hardening — manifest, offline shell), `ENG-P14-001` (security hardening — rules, App Check, rate limiting), `ENG-P14-002` (resilience — monitoring, backup/restore, rollback test), `ENG-P14-003` (privacy and compliance readiness), and the registered-but-unimplemented `OBS-OPS-001` (Frontend Diagnostics Operational Enablement).
+- **Dependencies:** Capabilities 2–8. The Programme states Phase 13 is `Blocked (depends on core journeys existing, P2–P8)` and Phase 14 is `Blocked (depends on P0–P13 substantially complete)` — the latter includes Phase 12 (Capability 8), so this capability depends on Capability 8, not the reverse (corrected from an earlier draft that grouped Phase 14 with Phase 12 into Capability 8 while also making this capability depend on Capability 8, producing a circular dependency; Phase 14 is grouped here instead, resolving it).
+- **Validation outcome:** not started — all listed work packages `Blocked`. Related successor/backlog packages already registered (not yet implemented): `ENG-SEC-001` (Firestore & Storage Security Rules Foundation, thematically aligned with `ENG-P14-001`'s Rules-hardening scope) and `ENG-CI-001` (Firebase Emulator CI Stabilisation) — see the [Engineering Implementation Programme](../change-tracking/engineering-implementation-programme.md) §C.1.
+- **Milestone contribution:** precondition for Milestone "Pilot Readiness" (placeholder, §7) — Phase 15 depends directly on Phase 14, which is now this capability's own work.
 
 ## 6. Capability Timeline
 
@@ -208,7 +208,7 @@ Status:       [Complete]───[Complete]────►[Blocked]►[Blocked]�
                                                                                         Readiness" (Capability 7, placeholder)
 ```
 
-Capabilities 2 and 3 can proceed in parallel once their shared dependency (`ENG-P2-004`, role context) exists, per the Programme's own Phase 2 profile; Capability 4 requires both to be complete first. Capabilities 5 and 6 are strictly sequential (progress must exist before a reward can be earned; a reward must be earned before it can be redeemed). Capabilities 7, 8, and 9 may proceed in parallel once Capability 6 (7) or Capability 1 (8) are satisfied — none of the three blocks the others.
+Capabilities 2 and 3 can proceed in parallel once their shared dependency (`ENG-P2-004`, role context) exists, per the Programme's own Phase 2 profile; Capability 4 requires both to be complete first, and now also includes Phase 4 (Reward Program Management) as its own leading work, since the Programme states Phase 5 is `Blocked (depends on P4)`. Capabilities 5 and 6 are strictly sequential (progress must exist before a reward can be earned; a reward must be earned before it can be redeemed). Capabilities 7, 8, and 9 are **not** parallel — the Programme's own dependency chain makes them sequential: Capability 7 needs Capability 6 (Phase 9–11 need Phase 8); Capability 8 needs Capability 7 (Phase 12 needs Phase 11); Capability 9 needs Capability 8 (Phase 14, now part of Capability 9, needs Phase 0–13 substantially complete, which includes Phase 12). This corrects an earlier draft that described Capabilities 7/8/9 as independently parallel, which combined with Phase 14 originally being grouped into Capability 8 produced a genuine Capability 8↔9 circular dependency — resolved by regrouping Phase 14 into Capability 9 (see §5) and stating the true linear chain here.
 
 ## 7. Milestone Structure
 
@@ -236,9 +236,9 @@ Capabilities 2 and 3 can proceed in parallel once their shared dependency (`ENG-
 
 The following milestones are named because §5 already traces specific capabilities toward them, but their completion criteria are **not** defined here — none is yet supported by approved repository documentation detailed enough to specify them without inventing scope. Each will be formalized in a future, separate task once the capabilities that feed it are further along.
 
-- **Business Operational Readiness** — fed by Capability 7. Likely concerns: can a business owner run their loyalty program day-to-day without engineering support.
-- **Pilot Readiness** — fed by Capability 9, and corresponds to the Engineering Implementation Programme's own Phase 15 (End-to-End Validation and Burundi Pilot). Likely concerns: TRD22 §22.25's own pilot validation areas.
-- **Production Readiness** — fed by Capability 8, and corresponds to the Engineering Implementation Programme's own Phase 16 (Production Launch). Likely concerns: TRD22 §22.26's own launch-readiness checklist (18 items) and production smoke test (9 items).
+- **Business Operational Readiness** — fed by Capability 7. Mapped work packages: Capability 7's own set (`ENG-P9-001..003`, `ENG-P10-001..003`, `ENG-P11-001..003`); no separate Phase-15/16 package feeds this milestone. Likely concerns: can a business owner run their loyalty program day-to-day without engineering support.
+- **Pilot Readiness** — fed by Capability 9 (Phase 15 is `Blocked (depends on P14)` per the Programme, and Phase 14 is now part of Capability 9). Mapped work packages: `ENG-P15-001`, `ENG-P15-002`, `ENG-P15-003`. Corresponds to the Engineering Implementation Programme's own Phase 15 (End-to-End Validation and Burundi Pilot). Likely concerns: TRD22 §22.25's own pilot validation areas.
+- **Production Readiness** — fed by the Pilot Readiness milestone completing (Phase 16 is `Blocked (depends on P15)` per the Programme — not directly by Capability 8, corrected from an earlier draft). Mapped work packages: `ENG-P16-001`, `ENG-P16-002`. Corresponds to the Engineering Implementation Programme's own Phase 16 (Production Launch). Likely concerns: TRD22 §22.26's own launch-readiness checklist (18 items) and production smoke test (9 items).
 
 ## 8. Engineering Work Package Mapping
 
@@ -250,14 +250,14 @@ Only existing, already-approved work packages from the [Engineering Implementati
 | 1 — Platform Foundation | `ENG-P1-001`, `ENG-P1-002`, `ENG-P1-003` | — | Complete |
 | 2 — Customer Identity | `ENG-P2-001`, `ENG-P2-004` | Registration | Blocked |
 | 3 — Business Identity | `ENG-P2-002`, `ENG-P2-003`, `ENG-P2-004`, `ENG-P3-001`, `ENG-P3-002`, `ENG-P3-003` | — (business onboarding) | Blocked |
-| 4 — First Verified Purchase | `ENG-P5-001`, `ENG-P5-002`, `ENG-P5-003`, `ENG-P6-001`, `ENG-P6-002`, `ENG-P6-003` | First Purchase, First Verification | Blocked |
+| 4 — First Verified Purchase | `ENG-P4-001`, `ENG-P4-002`, `ENG-P5-001`, `ENG-P5-002`, `ENG-P5-003`, `ENG-P6-001`, `ENG-P6-002`, `ENG-P6-003` | First Purchase, First Verification | Blocked |
 | 5 — Progress Tracking | `ENG-P7-001`, `ENG-P7-002`, `ENG-P7-003` | Progress, Reward Earned | Blocked |
 | 6 — First Reward | `ENG-P8-001`, `ENG-P8-002` | Reward Redeemed, Recognition | Blocked |
 | 7 — Business Operations | `ENG-P9-001`, `ENG-P9-002`, `ENG-P9-003`, `ENG-P10-001`, `ENG-P10-002`, `ENG-P10-003`, `ENG-P11-001`, `ENG-P11-002`, `ENG-P11-003` | — (business operations) | Blocked |
-| 8 — Platform Operations | `ENG-P12-001`, `ENG-P12-002`, `ENG-P14-001`, `ENG-P14-002`, `ENG-P14-003` | — (platform administration) | Blocked |
-| 9 — Platform Optimisation | `ENG-P13-001`, `ENG-P13-002`, `ENG-P13-003` | — (cross-journey hardening) | Blocked |
+| 8 — Platform Operations | `ENG-P12-001`, `ENG-P12-002` | — (platform administration) | Blocked |
+| 9 — Platform Optimisation | `ENG-P13-001`, `ENG-P13-002`, `ENG-P13-003`, `ENG-P14-001`, `ENG-P14-002`, `ENG-P14-003`, `OBS-OPS-001` | — (cross-journey hardening) | Blocked |
 
-`ENG-P4-001`/`ENG-P4-002` (Phase 4 — Reward Program Management) are the business-authoring side of the reward mechanics Capability 5/6 deliver to the customer; they are a precondition for Capability 5 (a Reward Program must exist before progress can be tracked against it) but are omitted from the table above because Phase 4's own sequencing (per the Programme) runs alongside Phase 3, ahead of Capability 4 — noted here for completeness, not re-tabled to avoid double-counting. `ENG-P15-xxx`/`ENG-P16-xxx` are Milestone-level (§7), not Capability-level, work.
+This table accounts for 42 of the Programme's 47 work packages. The remaining 5 — `ENG-P15-001`/`002`/`003` and `ENG-P16-001`/`002` — are milestone-level, not capability-level, work: they validate and launch the whole assembled platform rather than deliver a single new customer capability, so they are mapped in §7 (Milestone Structure) to the two future-milestone placeholders instead of to a row here.
 
 Every requirement ID, decision dependency, and status cell above is sourced directly from the live Engineering Implementation Programme and Coding-Agent Prompt Register at the time this document was written (2026-07-29) — not re-derived or assumed.
 
@@ -276,7 +276,7 @@ For engineering purposes, the following rules apply without exception:
 
 A capability is complete only when **all** of the following are true — this extends, and does not replace, the existing [Definition of Done (Work Package Level)](../../06-engineering-governance/definition-of-done.md), which still governs each individual work package within the capability:
 
-1. **Implementation complete** — every engineering work package listed for the capability in §7 has independently satisfied the Work-Package Definition of Done.
+1. **Implementation complete** — every engineering work package listed for the capability in §8 has independently satisfied the Work-Package Definition of Done.
 2. **Validation complete** — the capability's primary user journey(s) (§5) have been exercised end-to-end against real tests (Firebase Emulator Suite integration tests where server state is involved), not merely unit-tested in isolation.
 3. **Documentation updated** — the Engineering Implementation Programme and Coding-Agent Prompt Register reflect every constituent work package's real status; this document's own §8 mapping is checked for staleness at that point.
 4. **Engineering governance updated** — any Decision Dependency the capability required is `CONFIRMED` in the Decision Register; any Technical Review the capability's work packages required returned `Approved`.
