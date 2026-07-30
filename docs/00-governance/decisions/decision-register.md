@@ -4,7 +4,7 @@
 > **Version:** 1.0 · **Status:** Active governance record · **Classification:** Working (governance record)
 > **Governing document:** 11thONUS Platform Constitution
 > **Source-of-truth path:** `docs/00-governance/decisions/decision-register.md`
-> **Last controlled update:** 2026-07-30 (`RES-002B` — `DEC-PROV-004` CONFIRMED: Approved with Conditions, Firebase-native OTP + Google Sign-In within a broader Founder-approved Identity and Authentication Strategy; `DEC-SEC-001` remains open and unresolved by this recording; see the [Decision Package](evidence/DEC-PROV-004-decision-package-2026-07-30.md)). Previously: 2026-07-26 (`DEC-PROV-005-DEC` — `DEC-PROV-005` CONFIRMED: Option C, native backend observability with dedicated frontend diagnostics, initial implementation target Sentry, architecture-only approval; see the [Evidence Pack](evidence/DEC-PROV-005-error-monitoring-evidence-2026-07-26.md)). Previously: 2026-07-16 (Phase 3B — Batch A decisions recorded: DEC-GOV-001, DEC-GOV-006, DEC-LOY-010, DEC-DATA-003 CONFIRMED)
+> **Last controlled update:** 2026-07-30 (`RES-003B` — `DEC-SEC-001` CONFIRMED: authentication recovery order (SMS OTP → Retry/Resend → Google Sign-In → Email Verification → Assisted Support), progressive phone verification, merchant-assistance boundary, and 8 identity-recovery principles recorded per Founder decision following the `RES-003A` review session; see the [Decision Package](evidence/DEC-SEC-001-decision-package-2026-07-30.md) and [Founder Decision Review Package](evidence/DEC-SEC-001-founder-decision-review-package-2026-07-30.md)). Previously: 2026-07-30 (`RES-002B` — `DEC-PROV-004` CONFIRMED: Approved with Conditions, Firebase-native OTP + Google Sign-In within a broader Founder-approved Identity and Authentication Strategy; `DEC-SEC-001` remains open and unresolved by this recording; see the [Decision Package](evidence/DEC-PROV-004-decision-package-2026-07-30.md)). Previously: 2026-07-26 (`DEC-PROV-005-DEC` — `DEC-PROV-005` CONFIRMED: Option C, native backend observability with dedicated frontend diagnostics, initial implementation target Sentry, architecture-only approval; see the [Evidence Pack](evidence/DEC-PROV-005-error-monitoring-evidence-2026-07-26.md)). Previously: 2026-07-16 (Phase 3B — Batch A decisions recorded: DEC-GOV-001, DEC-GOV-006, DEC-LOY-010, DEC-DATA-003 CONFIRMED)
 
 ---
 
@@ -557,18 +557,18 @@ Legend: fields with **—** are intentionally blank (OPEN records have no Final 
 - Implementation consequences: registration form default · Document corrections required: none · Notes: veto would reopen as OPEN_FOUNDER
 
 **DEC-SEC-001 — Customer authentication approach and fallback**
-- Category: Security · Status: **OPEN_ENGINEERING** · Priority: **D1**
+- Category: Security · Status: **CONFIRMED** · Priority: **D1**
 - Decision question: Confirm Firebase phone OTP as primary customer authentication for Burundi and define the fallback (email link, password+recovery, or assisted registration) if OTP delivery proves unreliable/costly.
 - Context: Phone-primary is approved (PRD10 §15); Burundi delivery feasibility, cost and abuse controls unproven (OTD-004); fallback undefined.
-- Options identified: (a) Firebase phone OTP + email fallback; (b) OTP via external SMS provider + custom auth; (c) password-based with phone verification.
-- Recommended direction: (a) pending proof · Recommendation basis: PRD10 §15; TRD12 §12.4.
-- Current confirmed position: Firebase Authentication with mobile number primary (confirmed); delivery route and fallback open.
-- Founder decision required: Countersign only · Decision owner: Engineering Lead · Required by phase: Phase 2 · Blocks: customer registration
-- Affected documents: TRD12 §12.4; TRD23 OTD-004 · Affected domains: Identity, Integration
-- Source references: OTD-004; DR-TECH-004 · Dependencies: EXT-TECH-001 (Burundi OTP proof); DEC-PROV-004
-- Risks if unresolved: registration failure at pilot
-- Final decision: — · Decision date: — · Approved by: —
-- Implementation consequences: auth module design · Document corrections required: TRD12 fallback section · Notes: —
+- Options identified: (a) Firebase phone OTP + email fallback; (b) OTP via external SMS provider + custom auth; (c) password-based with phone verification. Engineering recommendation, preserved unmodified by this recording: [`RES-003` Decision Package](evidence/DEC-SEC-001-decision-package-2026-07-30.md); Founder-facing framing and options: [`RES-003A` Founder Decision Review Package](evidence/DEC-SEC-001-founder-decision-review-package-2026-07-30.md).
+- Recommended direction: (a) pending proof · Recommendation basis: PRD10 §15; TRD12 §12.4 — engineering recommendation, unchanged by this recording.
+- Current confirmed position: **Approved.** Firebase phone OTP confirmed as primary customer authentication. Fallback order, progressive phone verification, merchant-assistance boundaries, and identity-recovery principles all approved per the Founder decision recorded below.
+- Founder decision required: Countersign only (received 2026-07-30) · Decision owner: Engineering Lead, approved by Founder · Required by phase: Phase 2 · Blocks: — (resolved; unblocks `ENG-P2-001`, alongside `DEC-PROV-004`)
+- Affected documents: TRD12 §12.4; §12.5 (Account Linking); §12.6/AIR-001 (Account Identity Rules); §12.30–12.31 (Account Recovery, Lost Phone Number); TRD23 OTD-004 · Affected domains: Identity, Integration, Support
+- Source references: OTD-004; DR-TECH-004; [`RES-003` Decision Package](evidence/DEC-SEC-001-decision-package-2026-07-30.md); [`RES-003A` Founder Decision Review Package](evidence/DEC-SEC-001-founder-decision-review-package-2026-07-30.md) · Dependencies: `DEC-PROV-004` (**CONFIRMED** — satisfied); `EXT-TECH-001` (Burundi OTP proof — remains **PENDING**, a launch-readiness/production-verification matter per the Founder's own newly-recorded Identity Recovery Principle 5 — "verification requirements increase progressively according to risk" — not a blocker to this decision, consistent with how `DEC-PROV-004` itself treated the same evidence gap)
+- Risks if unresolved: — (resolved; residual risks — the still-undesigned identity-resolution flow `RES-003` §9 flagged, and the `EXT-TECH-001` evidence gap — tracked as implementation/launch-readiness items, not decision risks)
+- Final decision: *"Authentication Recovery Order: SMS OTP → Retry/Resend → Google Sign-In → Email Verification → Assisted Support. Progressive Phone Verification: phone verification is part of establishing customer identity, but it is not a universal onboarding blocker. The platform may progressively request phone verification throughout the customer journey and require it before access to identity-protected capabilities such as reward redemption. Merchant Assistance: merchants may assist customers with onboarding and recovery as part of customer support, but they do not verify customer identity — identity authority remains with the platform. Identity Recovery: identity recovery restores an existing customer identity; it never creates a replacement identity. Recovered customers retain loyalty participation, purchase history, rewards, recognition, trust level, and customer history — recovery restores continuity. Identity Recovery Principles: (1) customer identity belongs to the customer, never to the authentication provider; (2) recovery restores the same customer identity; (3) recovery must never create a duplicate account; (4) loyalty participation continues across recovery; (5) verification requirements increase progressively according to risk; (6) recovery should be simple enough for ordinary users to complete independently; (7) every recovery action must be auditable; (8) protected capabilities may require verified identity even if earlier platform use did not."* · Decision date: 2026-07-30 · Approved by: Founder
+- Implementation consequences: unblocks `ENG-P2-001` (customer identity/authentication implementation), which must incorporate the recorded fallback order, progressive phone-verification gating, merchant-assistance boundary, and identity-recovery principles — none of these are designed by this recording; the identity-resolution flow `RES-003` §9 flagged as an undesigned prerequisite must be designed against these principles · Document corrections required: TRD12 §12.4.1 (fallback-order wording); TRD12 §12.30/§12.31 (align existing recovery language with the newly-recorded Identity Recovery Principles, where not already consistent) — not performed by this recording task, flagged as follow-on work · Notes: downstream tracking artefacts (Engineering Implementation Programme, Master Workflow, Requirements Traceability Matrix, `CDR-001`) still describe `DEC-SEC-001` as open — syncing these is outside this task's narrow "record Founder decisions only" scope and its "do not modify unrelated files" constraint, per the same precedent `ENG-P2-RES-ADMIN-002` established for `DEC-PROV-004`'s equivalent sync. `EXT-TECH-001` remains `PENDING` — unaffected by this recording.
 
 **DEC-SEC-002 — Administrator MFA**
 - Category: Security · Status: **CONFIRMED** · Priority: D2
@@ -1204,9 +1204,9 @@ Legend: fields with **—** are intentionally blank (OPEN records have no Final 
 
 | Status | Count |
 |---|---|
-| CONFIRMED | 39 |
+| CONFIRMED | 40 |
 | OPEN_FOUNDER | 24 |
-| OPEN_ENGINEERING | 15 |
+| OPEN_ENGINEERING | 14 |
 | OPEN_PROVIDER | 5 |
 | OPEN_LEGAL | 6 |
 | DEFERRED | 10 |
