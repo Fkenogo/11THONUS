@@ -1315,3 +1315,19 @@
 - **Risks:** none introduced — evidence-gathering only; no code, decision, or governance document changed.
 - **Rollback:** `git revert` of this task's own commit — a single new evidence-package document plus one changes-log append.
 - **Report link:** [`docs/00-governance/decisions/evidence/EXT-TECH-001-engineering-evidence-package-2026-07-29.md`](../00-governance/decisions/evidence/EXT-TECH-001-engineering-evidence-package-2026-07-29.md).
+
+---
+
+## 2026-07-29 — RES-001: Pre-Merge Correction (PR #30 Review Findings)
+
+- **Date:** 2026-07-29
+- **Task:** correction of three automated-review findings (one P1, two P2) on PR #30, raised against `docs/00-governance/decisions/evidence/EXT-TECH-001-engineering-evidence-package-2026-07-29.md` before Founder-authorized merge.
+- **Finding 1 (P1) — the document's `Status: Complete` line could be misread as declaring `RES-001`/`EXT-TECH-001` complete.** Confirmed: the Resolution Plan's own Ownership Matrix defines `RES-001`'s completion criterion as `EXT-TECH-001` status moving `PENDING` → `EVIDENCE_RECEIVED`; the live External Dependencies Register still reads `PENDING`, and this package's own §7/§10/§11 state the real-SMS carrier delivery test was not performed. Corrected the front-matter to explicitly distinguish "this document is complete" from "`RES-001`/`EXT-TECH-001` are not complete" — no register status was changed, since that requires the actual delivery test.
+- **Finding 2 (P2) — external claims were not individually citable.** Confirmed: the original draft named source domains only, with no URLs, access dates, or reliability notes — inconsistent with this repository's own established evidence-pack convention. Added a full Source Register (11 rows) with exact URLs (or explicit "search synthesis, no single URL" disclosure where applicable), access method, the specific claim each supports, and a reliability note per row — including disclosing that the `eSMS Africa` Burundi-page fetch failed (empty/JS-rendered content) and was not successfully read.
+- **Finding 3 (P2) — an unverified claim about configurable OTP expiry.** Confirmed via targeted follow-up research: classic Firebase Auth phone sign-in does not expose an application-level setting for SMS code validity/expiry; `FirebaseAuthSettings` and platform SDK timeout parameters govern auto-retrieval and testing behavior, not code validity. Corrected §5 to state this as a verified fact rather than presenting expiry as "configurable."
+- **Validation performed:** all three findings verified directly against the live Resolution Plan, External Dependencies Register, and targeted follow-up web research before any correction was applied; `npx prettier --check` on the modified file; `git status --short` confirmed only the one evidence-package file changed.
+- **Files modified:** `docs/00-governance/decisions/evidence/EXT-TECH-001-engineering-evidence-package-2026-07-29.md`; `docs/changes/IMPLEMENTATION_CHANGES.md` (this entry).
+- **Files created:** none. **Dependencies added:** none. **Configuration changes:** none.
+- **Risks:** none introduced — corrections narrow the package's own claims to match verified evidence and its true completion status; no governance document, decision, or code changed.
+- **Rollback:** `git revert` of this correction's own commit.
+- **Report link:** [`docs/00-governance/decisions/evidence/EXT-TECH-001-engineering-evidence-package-2026-07-29.md`](../00-governance/decisions/evidence/EXT-TECH-001-engineering-evidence-package-2026-07-29.md).
