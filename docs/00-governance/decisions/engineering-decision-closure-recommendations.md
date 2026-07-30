@@ -7,6 +7,8 @@
 # Engineering Decision Closure Recommendations
 
 > **Status update (Engineering Decision Sprint 2, 2026-07-17):** the three closures prepared below for DEC-TECH-004, DEC-TECH-006, and DEC-TECH-007 have since been **applied** to the live [Decision Register](decision-register.md) under explicit Founder-directed instruction (Engineering Decision Sprint 2 task brief), following the [Decision Update Procedure](../decision-update-procedure.md). DEC-TECH-003 has also since been confirmed (Engineering Decision Sprint 1's recommendation, applied in Sprint 2). This document's analysis below is preserved unchanged as the audit record of *why* each closure was recommended; it is no longer the live status of any of these four decisions — see the register or the [Phase 0 Authorization](../../05-implementation/phase-0-authorization.md) record for current status.
+>
+> **Further status update (`RES-002B`/`RES-003B`, 2026-07-30):** `DEC-PROV-004` and `DEC-SEC-001` — both listed below as "Stays open" at the time this document's analysis was originally performed — have since been `CONFIRMED` in the live [Decision Register](decision-register.md), via the `RES-002`/`RES-002A`/`RES-002B` and `RES-003`/`RES-003A`/`RES-003B` Resolution Sprint tasks respectively (PRs #31 and #33). This document's §3/§4 analysis below is preserved unchanged as the historical audit record of why each was originally assessed as genuinely open; it is no longer the live status of either decision — see the [Decision Register](decision-register.md) for current status.
 
 ## 1. Purpose
 
