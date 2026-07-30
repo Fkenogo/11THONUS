@@ -510,7 +510,7 @@ Legend: fields with **—** are intentionally blank (OPEN records have no Final 
 - Options identified: (a) inheritance defines the *default template*; explicit per-membership grants/revocations override; sensitive permissions never implicit (audit-recommended reconciliation); (b) strict inheritance; (c) no inheritance, explicit grants only. Engineering recommendation, preserved unmodified by this recording: [`RES-004` Decision Package](evidence/DEC-ID-003-decision-package-2026-07-30.md).
 - Recommended direction: (a) · Recommendation basis: reconciles both texts; aligns TRD12 §12.11 permission resolution — engineering recommendation, unchanged by this recording.
 - Current confirmed position: **Approved.** Option (a) confirmed as the permission-resolution model; a separate identity-and-accountability principle governing how permissions attach to identities is approved alongside it, per the Founder decision recorded below.
-- Founder decision required: Approve with Conditions (received 2026-07-30) · Decision owner: Engineering Lead, approved by Founder · Required by phase: Phase 2 · Blocks: — (resolved; unblocks `ENG-P2-004`)
+- Founder decision required: Approve with Conditions (received 2026-07-30) · Decision owner: Founder (with Engineering) · Required by phase: Phase 2 · Blocks: — (resolved; unblocks `ENG-P2-004`)
 - Affected documents: PRD1 §7/§12; PRD10 §13; TRD12 §12.11–12.12 · Affected domains: Identity
 - Source references: audit DOC-P1-007; DR-ARCH-005; [`RES-004` Decision Package](evidence/DEC-ID-003-decision-package-2026-07-30.md)
 - Dependencies: — · Risks if unresolved: — (resolved; residual undesigned items tracked as implementation prerequisites, not decision risks)

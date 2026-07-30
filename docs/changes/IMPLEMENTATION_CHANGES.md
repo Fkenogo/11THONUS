@@ -1512,3 +1512,16 @@
 - **Risks:** none introduced — governance recording only; no engineering analysis reopened, no `RES-004` recommendation altered, no `DEC-PROV-004`/`DEC-SEC-001` content changed, no code or architecture changed. The disclosed downstream-tracker staleness and the three unresolved implementation prerequisites are pre-existing/expected conditions made explicit by this recording, not created by it.
 - **Rollback:** `git revert` of this task's own commit.
 - **Report link:** [`docs/00-governance/decisions/decision-register.md`](../00-governance/decisions/decision-register.md#dec-id-003--permission-inheritance-semantics); [`docs/00-governance/decisions/evidence/DEC-ID-003-decision-package-2026-07-30.md`](../00-governance/decisions/evidence/DEC-ID-003-decision-package-2026-07-30.md).
+
+---
+
+## 2026-07-30 — RES-004A Pre-Merge Correction: Restore Founder Decision Ownership
+
+- **Date:** 2026-07-30
+- **Finding (P2, confirmed genuine):** the initial `RES-004A` commit copied the `Decision owner: Engineering Lead, approved by Founder` wording pattern from `DEC-PROV-004`/`DEC-SEC-001`'s recordings without checking `DEC-ID-003`'s own ownership designation. The Resolution Plan's own Ownership Matrix (`ENG-P2-RES-000-capability-2-resolution-plan.md` §4) explicitly assigns `RES-004`: Owner = Founder, Support = Engineering Lead — the reverse of `DEC-PROV-004`/`DEC-SEC-001`'s Engineering-Lead-owned, Founder-countersigned framing. `DEC-ID-003`'s own prior Register entry likewise read `Decision owner: Founder (with Engineering)` before this recording.
+- **Correction applied:** `decision-register.md`'s `DEC-ID-003` entry restored to `Decision owner: Founder (with Engineering)`. No other field changed by this correction.
+- **Related finding evaluated and not applied:** a companion review comment argued the `Blocks: — (resolved; unblocks ENG-P2-004)` wording overstates readiness while PRD1/PRD10 still contain literally conflicting text and the RTM's AP-008 row still says "do not implement." Verified against the Resolution Plan's own Capability Authorisation Gate (§7): the gate's own text defines "unblocked" as the Decision Register showing a Final Decision — it does not require PRD/RTM text corrections as a precondition, and the exact same wording pattern was already used, unchallenged, for `DEC-PROV-004`/`DEC-SEC-001`'s equivalent recordings. The RTM/PRD staleness this comment cites was already disclosed in the entry's own `Notes` field before this correction. No change applied for this finding.
+- **Validation performed:** `npx prettier --check` on the corrected file, clean; `git status --short`/`git diff --stat` confirmed only the single intended line changed.
+- **Files modified:** `docs/00-governance/decisions/decision-register.md`; `docs/changes/IMPLEMENTATION_CHANGES.md` (this entry).
+- **Rollback:** `git revert` of this correction's own commit.
+- **Report link:** [`docs/00-governance/decisions/decision-register.md`](../00-governance/decisions/decision-register.md#dec-id-003--permission-inheritance-semantics).
