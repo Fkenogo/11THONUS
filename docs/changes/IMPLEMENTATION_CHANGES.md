@@ -1512,3 +1512,16 @@
 - **Risks:** none introduced — read-only analysis; no governance document, decision, or code changed; `DEC-DATA-007` was not recorded or approved; `DEC-PROV-004`/`DEC-SEC-001`/`DEC-ID-003` untouched.
 - **Rollback:** `git revert` of this task's own commit — a single new analysis document plus one changes-log append.
 - **Report link:** [`docs/00-governance/decisions/evidence/DEC-DATA-007-dependency-scope-analysis-2026-07-30.md`](../00-governance/decisions/evidence/DEC-DATA-007-dependency-scope-analysis-2026-07-30.md).
+
+---
+
+## 2026-07-30 — RES-005 Pre-Merge Correction: Account for Existing Loyalty-Code Brief; Fix Scope Contradiction and Idempotency Wording
+
+- **Date:** 2026-07-30
+- **Finding 1 (P2, confirmed genuine):** the analysis's original research pass missed `docs/00-governance/decisions/loyalty-code-decision-brief.md` — a pre-existing (2026-07-17), fully drafted decision-preparation document already proposing a loyalty-code format (`ABC-234`/`ABC-234-X`), a character-set/ambiguity analysis, an exact-calculation collision-probability table, and ten planning-level generation requirements including transactional uniqueness and retry-on-collision. §6, §7, and §8 corrected to cite this document and reframe the "new prerequisites" as evaluate-and-refine an existing proposal rather than draft-from-nothing; §3 and §1 lightly corrected for consistency.
+- **Finding 2 (P2, confirmed genuine):** §5's "Remaining Scope" and "Out of Scope" lists directly contradicted each other on whether QR rotation/time-limiting is in scope — the former listed it as something `DEC-DATA-007` must resolve, the latter categorically excluded it because TRD12 §12.42 already defers it. Corrected by removing the item from "Remaining Scope"; TRD12's own deferral stands uncontested in "Out of Scope."
+- **Finding 3 (P2, confirmed genuine):** §7's inherited-idempotency wording ("must be invoked exactly once... and never re-invoked") mischaracterized idempotency, which requires repeat-safe behavior, not single-invocation behavior — as written, it risked being carried into a future decision package as a rule that would reject legitimate retries (e.g., after a registration timeout) and strand registration. Corrected to the accurate invariant: at most one immutable assignment per platform user, with repeat calls returning the existing result.
+- **Validation performed:** `npx prettier --check` on the corrected file, clean; `git status --short`/`git diff --stat` confirmed only the single intended analysis file changed.
+- **Files modified:** `docs/00-governance/decisions/evidence/DEC-DATA-007-dependency-scope-analysis-2026-07-30.md`; `docs/changes/IMPLEMENTATION_CHANGES.md` (this entry).
+- **Rollback:** `git revert` of this correction's own commit.
+- **Report link:** [`docs/00-governance/decisions/evidence/DEC-DATA-007-dependency-scope-analysis-2026-07-30.md`](../00-governance/decisions/evidence/DEC-DATA-007-dependency-scope-analysis-2026-07-30.md).
