@@ -98,7 +98,7 @@ Summarized from the [Engineering Implementation Programme](change-tracking/engin
 |---|---|---|---|---|---|---|---|---|
 | P0 | Repository and Delivery Foundation | Controlled engineering foundation before product features | Version 1.0 documentation baseline declared | `DEC-TECH-003`, `DEC-TECH-004` — both `CONFIRMED` | Project builds; tests run; emulator starts; CI passes; no product-domain implementation (§22.10) | **Complete** | — | — |
 | P1 | Firebase and Shared Platform Foundation | Reusable infrastructure every domain depends on | Phase 0 exit met | `DEC-TECH-005` `CONFIRMED`; `DEC-TECH-006`/`007` `CONFIRMED`; `DEC-PROV-005` `CONFIRMED` (2026-07-26, Option C — unblocks `ENG-P1-003`) | Shared command authenticates/validates/logs/responds; outbox idempotent; unauthorized writes denied; emulator tests pass (§22.11) | **`ENG-P1-001` Complete** (2026-07-23) — [PR #2](https://github.com/Fkenogo/11THONUS/pull/2) merged (merge commit `5714543`), pre/post-merge CI passed, Founder personally ran `git pull origin main` (verified fast-forward to the merge commit) and completed Preview Review (Firebase Emulator Suite `Passed`); all Definition of Done criteria satisfied. **`ENG-P1-002` is now `Ready`** *(note: per the Engineering Implementation Programme, `ENG-P1-002` has since reached `Complete`, 2026-07-25 — this table's own last full sync predates that; not corrected here, out of this task's scope)* | `ENG-P1-003` no longer needs `DEC-PROV-005` — now `CONFIRMED`, 2026-07-26; see the [Decision Register](../00-governance/decisions/decision-register.md) | `ENG-P1-002-PREP` — prepare the `ENG-P1-002` implementation prompt (a separate, not-yet-authorized task; `ENG-P1-002` implementation itself has not begun) |
-| P2 | Identity, Roles and Business Context | Customer/business/staff identity and RBAC | Phase 1 exit met | `DEC-SEC-001`, `DEC-ID-003`, `DEC-DATA-007`, `DEC-PROV-004` — all open | Customer registers with a safe loyalty identity; owner can create a business; owner can invite staff; role switching works; security-rule and authorization tests pass (§22.12) | Blocked | 4 open D1 decisions (§12) + Phase 1 not exited | Phase 1 exit + the 4 decisions |
+| P2 | Identity, Roles and Business Context | Customer/business/staff identity and RBAC | Phase 1 exit met | `DEC-ID-003`, `DEC-DATA-007` — open; `DEC-PROV-004`, `DEC-SEC-001` — **CONFIRMED** (2026-07-30) | Customer registers with a safe loyalty identity; owner can create a business; owner can invite staff; role switching works; security-rule and authorization tests pass (§22.12) | Blocked | 2 open D1 decisions (§12) + Phase 1 not exited | Phase 1 exit + the 2 remaining decisions |
 | P3 | Commerce Knowledge and Business Onboarding | Seed data, onboarding flow, Knowledge Studio MVP | Phase 2 exit met | None D1; `DEC-TECH-008` (D2, search) | Business completes onboarding without creating uncontrolled categories; Knowledge Studio manages launch taxonomy; EN/FR labels display correctly; missing-option suggestion works (§22.13) | Blocked | Depends on P2 | P2 completion |
 | P4 | Reward Program Management | Reward Program CRUD, versioning, plan limits | Phase 3 exit met | `DEC-LOY-009` — `CONFIRMED` 2026-07-18 | Business can activate one valid Reward Program; taxonomy references valid; versioning preserves historical terms; inactive businesses cannot activate; plan limits server-enforced (§22.14) | Blocked | Depends on P3 | P3 completion |
 | P5 | Purchase Recording | Purchase recording UI + server idempotency | Phase 4 exit met | None D1 | Staff creates a Purchase Record quickly; customer gains no progress yet; duplicate submission does not duplicate; unauthorized staff cannot record; offline items are clearly non-authoritative (§22.15) | Blocked | Depends on P4 | P4 completion |
@@ -146,7 +146,7 @@ Summarized from the [Engineering Implementation Programme](change-tracking/engin
 
 ### Phase 2 — Blocked
 
-Per the live [Decision Register](../00-governance/decisions/decision-register.md) (checked directly, not reconstructed from memory, on 2026-07-22): all four of Phase 2's D1 decision dependencies remain open — `DEC-SEC-001` (`OPEN_ENGINEERING`), `DEC-ID-003` (`OPEN_FOUNDER`), `DEC-DATA-007` (`OPEN_ENGINEERING`), `DEC-PROV-004` (`OPEN_PROVIDER`). Phase 2 additionally cannot begin until Phase 1 exits (TRD22 §22.11 exit criteria fully met, not merely `ENG-P1-001`).
+Per the live [Decision Register](../00-governance/decisions/decision-register.md) (checked directly, not reconstructed from memory, on 2026-07-22): all four of Phase 2's D1 decision dependencies remain open — `DEC-SEC-001` (`OPEN_ENGINEERING`), `DEC-ID-003` (`OPEN_FOUNDER`), `DEC-DATA-007` (`OPEN_ENGINEERING`), `DEC-PROV-004` (`OPEN_PROVIDER`). Phase 2 additionally cannot begin until Phase 1 exits (TRD22 §22.11 exit criteria fully met, not merely `ENG-P1-001`). **Update (`ENG-P2-RES-ADMIN-003`, 2026-07-30):** two of the four have since closed — `DEC-PROV-004` and `DEC-SEC-001` are both now `CONFIRMED` (per `RES-002`/`RES-002A`/`RES-002B` and `RES-003`/`RES-003A`/`RES-003B` respectively; see the [Decision Register](../00-governance/decisions/decision-register.md)). `DEC-ID-003` and `DEC-DATA-007` remain open; 2 of Phase 2's 4 D1 decision dependencies are now unresolved, not 4. Phase 1 exit remains separately unmet.
 
 ## 8. Immediate Authorized Sequence
 
@@ -253,8 +253,8 @@ Full detail for every other work package remains in the [Engineering Implementat
 - **Entry gate:** Phase 1 exit met; `DEC-SEC-001`, `DEC-ID-003`, `DEC-DATA-007`, `DEC-PROV-004` resolved.
 - **Exit gate (TRD22 §22.12):** customer registers with a safe identity; business/staff creation works; role switching works; authorization tests pass.
 - **Current gate result:** Not reached; entry gate itself unmet.
-- **Unresolved blockers:** four open D1 decisions (§12) plus Phase 1 not exited.
-- **Next gate owner:** Founder (`DEC-ID-003`), Engineering Lead (`DEC-SEC-001`, `DEC-DATA-007`), Founder + Engineering Lead (`DEC-PROV-004`).
+- **Unresolved blockers:** two open D1 decisions (§12) plus Phase 1 not exited. *(Corrected `ENG-P2-RES-ADMIN-003`, 2026-07-30: was four — `DEC-PROV-004` and `DEC-SEC-001` are both now `CONFIRMED`.)*
+- **Next gate owner:** Founder (`DEC-ID-003`), Engineering Lead (`DEC-DATA-007`). `DEC-PROV-004` and `DEC-SEC-001` both resolved (`CONFIRMED`, 2026-07-30) — no longer pending gate owner items.
 
 ### Phases 3–16
 
@@ -267,10 +267,10 @@ Sourced live from the [Decision Register](../00-governance/decisions/decision-re
 | Decision | Status | Blocks | Owner |
 |---|---|---|---|
 | `DEC-PROV-005` (error monitoring provider) | **`CONFIRMED`** (2026-07-26 — Option C; see [Decision Register](../00-governance/decisions/decision-register.md)) | — (resolved) | Engineering Lead, approved by Founder |
-| `DEC-SEC-001` (customer auth approach/fallback) | `OPEN_ENGINEERING` | Phase 2 entry | Engineering Lead |
+| `DEC-SEC-001` (customer auth approach/fallback) | **`CONFIRMED`** (2026-07-30 — authentication recovery order, progressive phone verification, identity-recovery principles; see [Decision Register](../00-governance/decisions/decision-register.md)) | — (resolved) | Engineering Lead, approved by Founder |
 | `DEC-ID-003` (permission inheritance semantics) | `OPEN_FOUNDER` | Phase 2 entry | Founder |
 | `DEC-DATA-007` (loyalty number/QR generation) | `OPEN_ENGINEERING` | Phase 2 entry | Engineering Lead |
-| `DEC-PROV-004` (phone OTP delivery route) | `OPEN_PROVIDER` | Phase 2 entry | Engineering Lead |
+| `DEC-PROV-004` (phone OTP delivery route) | **`CONFIRMED`** (2026-07-30 — Approved with Conditions; see [Decision Register](../00-governance/decisions/decision-register.md)) | — (resolved) | Engineering Lead, approved by Founder |
 
 Any other currently open Decision Register item that could change near-term sequencing should be added here as it becomes relevant — this table is not the full register (see the [Decision Register](../00-governance/decisions/decision-register.md) §5 for the complete count), only the items with a live bearing on the next two authorized sequence steps.
 
