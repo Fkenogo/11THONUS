@@ -1331,3 +1331,21 @@
 - **Risks:** none introduced — corrections narrow the package's own claims to match verified evidence and its true completion status; no governance document, decision, or code changed.
 - **Rollback:** `git revert` of this correction's own commit.
 - **Report link:** [`docs/00-governance/decisions/evidence/EXT-TECH-001-engineering-evidence-package-2026-07-29.md`](../00-governance/decisions/evidence/EXT-TECH-001-engineering-evidence-package-2026-07-29.md).
+
+---
+
+## 2026-07-30 — RES-002: DEC-PROV-004 Decision Package
+
+- **Date:** 2026-07-30
+- **Task:** prepare the engineering decision package for `DEC-PROV-004`, using `RES-001`'s Engineering Evidence Package as primary technical evidence, per the Founder-authorized Resolution Sprint task "TASK — RES-002: DEC-PROV-004 Decision Package." Prepares the decision only — does not record, approve, or close `DEC-PROV-004`; no Decision Register field was changed.
+- **Options evaluated:** Option A (Firebase-native OTP, already integrated into this repository's Auth client) and Option B (external SMS route via Africa's Talking, requiring a new custom OTP service). A third option (Twilio) was investigated but not presented as a full candidate since its Burundi support is unconfirmed by public documentation — presenting it as equally supported would have overstated `RES-001`'s evidence.
+- **Preferred recommendation:** Option A, conditional on a real-SMS delivery test against all three Burundi carriers before final Founder countersign is treated as unconditional. Rationale: both options share the same unresolved delivery-reliability uncertainty (neither is empirically confirmed for Burundi), but Option B adds a materially larger, avoidable implementation-risk layer (custom OTP lifecycle service, second vendor, custom abuse controls) without evidence that it resolves the shared uncertainty.
+- **Decision readiness:** Ready with Conditions — sufficient evidence exists for Founder review and provisional approval of the preferred direction; final, unconditional closure requires (1) the real-SMS delivery test `RES-001` identified, and (2) separate resolution of the governance-prerequisite edge between `DEC-PROV-004` and `DEC-SEC-001`'s `Dependencies` fields (disclosed here, not performed — that action belongs to a future, explicitly-scoped step per the Resolution Plan's own `RES-002` framing).
+- **Governance risk disclosed, not resolved:** the Resolution Plan's own `RES-002` scope requires a formal governance action addressing the literal `DEC-PROV-004`↔`DEC-SEC-001` dependency edge before the decision can actually close under the Decision Register's own rules. This task brief's scope (prepare the decision package only) did not ask this package to perform that action, and it remains an explicitly flagged open item.
+- **Validation performed:** every recommendation traced directly to `RES-001`'s Engineering Evidence Package and its own Source Register; live Decision Register entries for `DEC-PROV-004`/`DEC-SEC-001` re-confirmed unchanged since `RES-001`; no new external research performed (out of this task's own scope); `npx prettier --check` clean; `git status --short` confirmed only the intended two files changed.
+- **Files created:** `docs/00-governance/decisions/evidence/DEC-PROV-004-decision-package-2026-07-30.md`; `docs/changes/IMPLEMENTATION_CHANGES.md` (this entry).
+- **Files modified:** none.
+- **Dependencies added:** none. **Configuration changes:** none.
+- **Risks:** none introduced — decision-preparation only; no governance document, decision, or code changed; `DEC-PROV-004` was not recorded or approved.
+- **Rollback:** `git revert` of this task's own commit — a single new decision-package document plus one changes-log append.
+- **Report link:** [`docs/00-governance/decisions/evidence/DEC-PROV-004-decision-package-2026-07-30.md`](../00-governance/decisions/evidence/DEC-PROV-004-decision-package-2026-07-30.md).
