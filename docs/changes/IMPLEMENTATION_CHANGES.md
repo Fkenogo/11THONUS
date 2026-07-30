@@ -1498,3 +1498,18 @@
 - **Risks:** none introduced — administrative status synchronization only; no engineering decision, implementation artefact, constitutional document, code, or architecture changed. `ENG-P2-RES-ADMIN-002` (PR #32) remains open, unmerged, and superseded — flagged for the Founder to decide whether to close it.
 - **Rollback:** `git revert` of this task's own commit.
 - **Report link:** this entry; see the updated documents listed above.
+
+---
+
+## 2026-07-30 — ENG-P2-RES-ADMIN-003: Pre-Merge Correction (PR #34 Review Finding)
+
+- **Date:** 2026-07-30
+- **Task:** correction of one automated-review finding (P2 severity) on PR #34, raised against `docs/README.md` before Founder-authorized merge.
+- **Finding — item 21's edit created a self-contradiction.** The original edit appended a new sentence stating `DEC-SEC-001` is "no longer open" directly after the item's own opening clause, left unchanged, which still asserted "`DEC-SEC-001` and `DEC-DATA-007` remain genuinely `OPEN_ENGINEERING`." A reader encountering the first sentence receives the opposite of the synchronized status, and the surrounding list items use a strikethrough/✅ convention rather than retaining contradictory assertions side by side. Confirmed genuine on direct re-read.
+- **Correction applied:** the opening clause's `DEC-SEC-001` reference is now struck through, with the resolution note leading, consistent with how every other resolved item in this list (e.g., item 20) is formatted. `DEC-DATA-007` remains the only item still asserted open, and remains correctly unstruck.
+- **Validation performed:** the finding verified by direct re-read of the edited line against the list's own established strikethrough/✅ convention before correcting; `npx prettier --check` on the modified file; `git status --short` confirmed only the one file changed.
+- **Files modified:** `docs/README.md`; `docs/changes/IMPLEMENTATION_CHANGES.md` (this entry).
+- **Files created:** none. **Dependencies added:** none. **Configuration changes:** none.
+- **Risks:** none introduced — corrects a self-contradictory sentence to match the actual, already-correct decision status; no engineering decision, code, or architecture changed.
+- **Rollback:** `git revert` of this correction's own commit.
+- **Report link:** [`docs/README.md`](../README.md).
