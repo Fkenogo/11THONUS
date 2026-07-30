@@ -1,27 +1,43 @@
 > **Title:** DEC-PROV-004 — Decision Package
-> **Status:** Decision package prepared. **`DEC-PROV-004` itself has not been recorded, approved, or closed by this task** — no Decision Register field was changed, no Founder decision was made. Per `RES-002`'s own task brief: "This task prepares the decision. It does not record or approve the decision."
-> **Date:** 2026-07-30
-> **Classification:** Engineering decision package. Primary input: `RES-001`'s [Engineering Evidence Package](EXT-TECH-001-engineering-evidence-package-2026-07-29.md). Per [`ENG-P2-RES-000`](../../../05-implementation/roadmap/ENG-P2-RES-000-capability-2-resolution-plan.md) `RES-002`.
+> **Status:** **Founder Decision received: Approve with Conditions (2026-07-30).** The Decision Register itself has not yet been updated — recording that status change is a distinct, future action; this document prepares everything that action needs (§14). No application code, architecture, or unrelated document was modified.
+> **Date:** Prepared 2026-07-30 (`RES-002`); updated 2026-07-30 (`RES-002A`, incorporating the Founder's Identity and Authentication Strategy decision).
+> **Classification:** Engineering decision package + Founder decision record. Primary inputs: `RES-001`'s [Engineering Evidence Package](EXT-TECH-001-engineering-evidence-package-2026-07-29.md); the Founder's Identity and Authentication Strategy decision (§2). Per [`ENG-P2-RES-000`](../../../05-implementation/roadmap/ENG-P2-RES-000-capability-2-resolution-plan.md) `RES-002`/`RES-002A`.
 
 # DEC-PROV-004 — Decision Package
 
 ## 1. Executive Summary
 
-This package converts `RES-001`'s Engineering Evidence Package into a structured decision package for `DEC-PROV-004` — "Firebase-native OTP vs external SMS route for Burundi numbers." Two realistic, evidence-supported options exist: **Firebase-native** phone sign-in (the standard product already integrated into this repository's Auth client) and **external SMS route** via a third-party African SMS aggregator (Africa's Talking is the only one `RES-001` found with an explicit, publicly-advertised Burundi coverage claim). Both are technically viable in principle; neither has been empirically confirmed to deliver reliably to Burundi numbers, because `RES-001`'s own central conclusion was that this proof requires a real-SMS delivery test that has not yet been performed.
+`RES-002` converted `RES-001`'s Engineering Evidence Package into a structured decision package recommending Firebase-native OTP as the initial SMS delivery mechanism. The Founder has since decided a broader Identity and Authentication Strategy (§2) that **adopts** this engineering recommendation while **expanding** its scope: the canonical customer identity is the verified phone number, not any single authentication mechanism, and two mechanisms are approved initially — Firebase Phone Sign-In (SMS OTP) and Google Sign-In — with the architecture required to support further providers without changing the customer's identity. The Founder also reframes SMS delivery reliability as an **operational**, not constitutional, dependency: the decision is approved now, and production SMS validation gates production *activation*, not the decision itself — a materially different framing from this package's original "Ready with Conditions" language, corrected in §12 below.
 
-**Preferred recommendation: Firebase-native OTP, conditional on a real-SMS delivery test against all three Burundi carriers before final Founder countersign.** This is a conditional recommendation, not an unconditional one — see §6 and §9. **Decision readiness: Ready with Conditions** (§8) — the Founder can review and provisionally approve this package now, but final countersign should be contingent on the delivery-test result, consistent with `RES-001`'s own recommendation that this evidence gap "cannot be resolved by documentation research alone."
+**This document now separates three distinct categories, per the Founder's explicit instruction:** Constitutional Product Principles (§2, Founder-authoritative, verbatim), Engineering Recommendations (§3–§7, `RES-001`/`RES-002`'s own analysis, preserved unchanged), and Operational Launch Conditions (§9, the SMS-validation gate). All original engineering evidence and analysis from `RES-001`/`RES-002` is preserved below, unmodified in substance.
 
-## 2. Decision Context
+## 2. Founder Decision — Constitutional Product Principles (2026-07-30)
 
-**Why `DEC-PROV-004` exists:** the Decision Register records it as `OPEN_PROVIDER`, `Priority: D1`, asking: "Firebase-native OTP vs external SMS route for Burundi numbers." It blocks customer authentication and is one of the four D1 decisions gating `ENG-P2-001` (Customer Identity).
+**Decision authority:** Founder. **Status:** Approve with Conditions. The following principles are Founder-authoritative product/architecture decisions, not engineering-derived conclusions — they are recorded here verbatim as the constitutional basis `DEC-PROV-004` is now decided against, distinct from the engineering analysis in §3–§8, which remains the supporting evidence and reasoning, not the decision itself.
+
+1. **Canonical Customer Identity.** The customer's verified mobile phone number is the canonical identity within the 11thONUS platform. The phone number represents the customer's unique identity across the platform and is independent of the authentication method used to access the account.
+2. **Authentication Strategy.** Authentication mechanisms are interchangeable methods of accessing the same customer identity. The initial approved authentication mechanisms are: Firebase Authentication Phone Sign-In (SMS OTP); Google Sign-In. The architecture shall support additional authentication providers in future without changing the customer's canonical identity. Future providers may include: Apple Sign-In; Email authentication; Passkeys; other Founder-approved authentication mechanisms.
+3. **Identity Linking.** Where multiple authentication providers are used, they shall resolve to a single customer identity. The platform shall not create duplicate customer accounts because different authentication providers are used. Identity linking shall remain deterministic and auditable.
+4. **Progressive Authentication.** Authentication shall occur only when required. Customers may browse and explore the platform anonymously. Authentication is required only when performing identity-protected actions, including (but not limited to): joining the loyalty platform; earning rewards; receiving a loyalty number; generating a customer QR code; viewing personal loyalty information; redeeming rewards.
+5. **Progressive Trust Model.** Customer trust shall increase progressively. **Level 0 — Anonymous:** browse participating businesses; view public platform information; no rewards or personal account. **Level 1 — Authenticated:** verified identity; personal loyalty number; personal QR code; earn and redeem rewards; view account history. **Level 2 — Verified:** additional identity verification may be requested where required for higher-trust capabilities — this supports future platform features without increasing onboarding friction for ordinary loyalty participation.
+6. **SMS Strategy.** Firebase Authentication Phone Sign-In is approved as the initial SMS authentication mechanism. However: SMS delivery reliability is recognised as an operational dependency rather than a constitutional dependency. Production SMS validation across Burundi carriers remains a launch-readiness requirement. Failure to meet acceptable delivery thresholds shall trigger an engineering review of alternative SMS delivery mechanisms or providers before production activation.
+7. **Product Philosophy.** Identity belongs to the customer. Authentication is simply one of several mechanisms used to verify access to that identity. The platform shall therefore be designed around customer identity, not around any individual authentication technology.
+
+**How this changes the engineering recommendation §3–§8 originally produced (analysis stated before this document was edited, per the task's own instruction):** the Founder's Principle 6 adopts `RES-002`'s Option A (Firebase-native OTP) as the approved initial SMS mechanism — the engineering recommendation is endorsed, not overridden. Principle 2 adds Google Sign-In as a second initially-approved mechanism, which was never evaluated by `RES-001`/`RES-002` — flagged explicitly in §8 as new scope, not carrying the same Burundi-SMS evidence gap since it has no SMS dependency. Principles 3–5 (Identity Linking, Progressive Authentication, Progressive Trust Model) introduce new architectural requirements for `ENG-P2-001`/`ENG-P2-004` that this package records as constitutional context but does not design, per this task's "maintain the current repository architecture" constraint. Principle 6's own reframing of SMS reliability as operational-not-constitutional directly changes §12 (Decision Readiness) below — the original "Ready with Conditions" language treated the delivery test as a condition on the *decision*; the Founder treats it as a condition on *production activation*, a decision that has already been made.
+
+## 3. Decision Context
+
+**Why `DEC-PROV-004` exists:** the Decision Register records it as `OPEN_PROVIDER`, `Priority: D1`, asking: "Firebase-native OTP vs external SMS route for Burundi numbers." It blocks customer authentication and is one of the four D1 decisions gating `ENG-P2-001` (Customer Identity). **Now nested within the broader Authentication Strategy (§2):** `DEC-PROV-004` selects the SMS delivery mechanism for one of the two initially-approved authentication methods (Firebase Phone Sign-In); it does not itself decide *what the customer's identity is* — that is settled, constitutionally, by §2 Principle 1 (the phone number), independent of which authentication mechanism is used to access it.
 
 **The engineering problem it addresses:** `TRD12` §12.4.1 specifies mobile phone number with one-time password as the preferred customer authentication method. Delivering that OTP to a Burundi phone number requires choosing a concrete SMS delivery mechanism — either Firebase's own built-in phone-auth SMS sending, or routing OTP delivery through an external, third-party SMS provider integrated into a custom authentication flow. `DEC-PROV-004` is the decision that selects between these two mechanisms.
 
-**Relationship to `EXT-TECH-001`:** `DEC-PROV-004`'s own `Dependencies` field in the Decision Register names `EXT-TECH-001` directly — the decision cannot be made on a sound evidentiary basis until the technical evidence `EXT-TECH-001` describes (Firebase phone-OTP delivery to Burundi numbers: reliability, cost, abuse controls, test-number strategy) exists. `RES-001` produced that evidence. **Disclosed, not resolved, by this task:** `DEC-PROV-004`'s `Dependencies` field also names `DEC-SEC-001` — the Resolution Plan's own `RES-002` scope identifies this as a literal governance-prerequisite edge that must be formally addressed (waived, corrected, or the two decisions closed together) before `DEC-PROV-004` can actually close under the Decision Register's own rules. This task brief does not ask this package to perform that governance action, and it has not been performed — it remains an open item, carried into §8/§9 below.
+**Relationship to `EXT-TECH-001`:** `DEC-PROV-004`'s own `Dependencies` field in the Decision Register names `EXT-TECH-001` directly — the decision cannot be made on a sound evidentiary basis until the technical evidence `EXT-TECH-001` describes (Firebase phone-OTP delivery to Burundi numbers: reliability, cost, abuse controls, test-number strategy) exists. `RES-001` produced that evidence. **Disclosed, not resolved, by this package:** `DEC-PROV-004`'s `Dependencies` field also names `DEC-SEC-001` — the Resolution Plan's own `RES-002` scope identifies this as a literal governance-prerequisite edge that must be formally addressed (waived, corrected, or the two decisions closed together) before `DEC-PROV-004` can actually close under the Decision Register's own rules. Neither `RES-002` nor `RES-002A` was scoped to perform that governance action, and the Founder's product-level decision in §2 does not itself resolve this repository-mechanical item — it remains open, carried into §11/§14 below.
 
-## 3. Evidence Summary
+## 4. Evidence Summary
 
-All evidence below traces to `RES-001`'s [Engineering Evidence Package](EXT-TECH-001-engineering-evidence-package-2026-07-29.md); no new research was performed for this task, per its own scope (preparing the decision package, not re-gathering evidence).
+*(Preserved unchanged from `RES-001`/`RES-002` — this is the engineering evidence base the Founder's decision in §2 was made against.)*
+
+All evidence below traces to `RES-001`'s [Engineering Evidence Package](EXT-TECH-001-engineering-evidence-package-2026-07-29.md); no new research was performed for `RES-002`/`RES-002A`, per their own scope (preparing the decision package, not re-gathering evidence).
 
 **Repository evidence:**
 - `TRD12` §12.4.1 specifies phone-number OTP as the preferred customer authentication method.
@@ -34,18 +50,20 @@ All evidence below traces to `RES-001`'s [Engineering Evidence Package](EXT-TECH
 - Firebase phone auth requires a Blaze billing account (since September 2024), reCAPTCHA on web, and offers up to 10 test phone numbers for development (S2, S5).
 - Standard Firebase quotas: 900 SMS/min, 3,000 SMS/day, with a documented two-week lead time for quota increases (S5).
 - Burundi has near-universal 2G coverage (~97%) across three carriers (Lumitel, Econet Leo, Onatel) — the technically relevant coverage figure for SMS (S7).
-- Africa's Talking explicitly advertises Burundi coverage and OTP as a primary SMS use case (S8) — the only external-route candidate with an affirmative Burundi claim found in `RES-001`'s research. Twilio's Burundi support is unconfirmed by public documentation (S9) — not excluded, but not affirmatively claimed either, which is why it is not presented as a full candidate option in §4 below.
+- Africa's Talking explicitly advertises Burundi coverage and OTP as a primary SMS use case (S8) — the only external-route candidate with an affirmative Burundi claim found in `RES-001`'s research. Twilio's Burundi support is unconfirmed by public documentation (S9) — not excluded, but not affirmatively claimed either, which is why it is not presented as a full candidate option in §5 below.
 
 **Remaining assumptions (explicitly disclosed, not resolved by `RES-001` or this package):**
 - Which specific Burundi carrier(s) Firebase's own delivery infrastructure actually routes through, and whether quality differs by carrier.
 - Burundi's specific per-SMS pricing tier for classic Firebase Auth (no public tier table found; Firebase-published tiers range roughly $0.01–$0.46 depending on country, with no Burundi-specific figure published).
 - Firebase-to-Burundi delivery success rates generally — the central, still-open question.
 
-**Outstanding validation activities:** a real-SMS delivery test against all three Burundi carriers, using a Blaze-plan project with the SMS Region Policy allowlisting Burundi — `RES-001`'s own recommended next action, not yet performed. See §6 for how this relates to the decision itself.
+**Outstanding validation activities:** a real-SMS delivery test against all three Burundi carriers, using a Blaze-plan project with the SMS Region Policy allowlisting Burundi — `RES-001`'s own recommended next action, not yet performed. Per the Founder's Principle 6, this is now framed as a launch-readiness requirement (§9), not a decision prerequisite.
 
-## 4. Candidate Options
+## 5. Candidate Options
 
-Only options with direct support in `RES-001`'s evidence are presented, per this task's constraint not to invent unsupported options.
+*(Preserved unchanged from `RES-002` — this is the engineering analysis the Founder's decision in §2 endorsed.)*
+
+Only options with direct support in `RES-001`'s evidence were presented, per `RES-002`'s constraint not to invent unsupported options.
 
 ### Option A — Firebase-native OTP
 
@@ -65,7 +83,9 @@ Only options with direct support in `RES-001`'s evidence are presented, per this
 
 **Option not presented as a full candidate:** Twilio was investigated in `RES-001` but its Burundi support could not be confirmed from public documentation (unconfirmed, not excluded) — presenting it as an equally-supported third option would overstate the evidence found. It is noted here only as a possible future alternative if Africa's Talking or Firebase-native both prove unworkable.
 
-## 5. Comparative Evaluation
+## 6. Comparative Evaluation
+
+*(Preserved unchanged from `RES-002`.)*
 
 | Criterion | Option A — Firebase-native | Option B — External (Africa's Talking) |
 |---|---|---|
@@ -78,82 +98,114 @@ Only options with direct support in `RES-001`'s evidence are presented, per this
 
 **Reading the table:** both options carry the same central unresolved risk (Burundi delivery reliability, unconfirmed for either). Option A does not introduce any additional risk beyond that; Option B adds a materially larger, avoidable implementation-risk layer on top of the same unresolved delivery question, without evidence that this layer would resolve or reduce that question — Africa's Talking's own coverage claim is exactly as unverified by direct testing as Firebase's.
 
-## 6. Preferred Recommendation
+## 7. Engineering Recommendation
+
+*(Preserved from `RES-002` — this is the analysis the Founder's Principle 6 adopted.)*
 
 **Recommended option: A — Firebase-native OTP.**
 
 **Support from evidence:** Option A carries strictly less implementation risk than Option B for an identical, currently-unresolved delivery-reliability question — choosing Option B would not close that evidence gap, since Africa's Talking's Burundi coverage claim is itself unverified by direct testing, the same category of unverified claim `RES-001` found for Firebase. Option A also has zero additional engineering scope beyond configuration (Blaze billing, SMS Region Policy, reCAPTCHA, test numbers), all of which `RES-001` already documented as concrete, bounded action items.
 
-**Condition attached to this recommendation (explicit, not implicit):** this recommendation is conditional on the real-SMS delivery test `RES-001` identified as its own required next action. If that test shows Firebase-native delivery to Burundi is materially unreliable on one or more carriers, this recommendation should be revisited — at that point, Option B (or a hybrid/fallback arrangement) would warrant fresh evaluation with carrier-specific delivery data in hand, which does not exist today for either option.
+**Original condition (superseded in framing, not in substance, by §9):** this recommendation was originally conditioned on the real-SMS delivery test being complete *before* the decision could be treated as final. The Founder's Principle 6 (§2) reframes this: the decision is approved now; the delivery test gates production activation instead. The underlying engineering reasoning for why the test still matters is unchanged — see §9.
 
-**If the recommendation is treated as conditional (per §8):** the condition is — proceed with Option A, but do not treat `DEC-PROV-004` as fully and finally closed until the delivery test either confirms adequate reliability or surfaces a carrier-specific problem requiring reconsideration.
+## 8. Founder-Approved Scope Expansion (New in `RES-002A`)
 
-## 7. Remaining Validation
+Items introduced by the Founder's decision (§2) that were **not** evaluated by `RES-001`/`RES-002`'s own evidence-gathering, disclosed explicitly per this task's requirement to separate constitutional principles from engineering recommendations:
 
-Distinguishing decision prerequisites from post-decision validation, per the task's explicit requirement:
+- **Google Sign-In** (§2 Principle 2): a second initially-approved authentication mechanism. This carries **no** Burundi-SMS-delivery dependency (it is an OAuth flow, not SMS-based), so it does not inherit the evidence gap `RES-001` identified for phone OTP. However, its own technical integration specifics (Firebase `GoogleAuthProvider` configuration, OAuth client setup, consent-screen requirements) have not been engineering-evaluated by any task in this Resolution Sprint and would need their own bounded implementation-planning pass when `ENG-P2-001` is built — this is a scope note, not a blocker to the Founder's decision itself.
+- **Identity Linking** (§2 Principle 3): requires that multiple authentication providers resolve deterministically and auditably to one customer record, with no duplicate-account creation. This is a real, non-trivial architectural requirement for `ENG-P2-001`/`ENG-P2-004` (the role/permission-resolution work package) that does not exist in the repository today and is not designed by this package, per the "maintain the current repository architecture" constraint — recorded here as a downstream engineering requirement, not solved here.
+- **Progressive Authentication** (§2 Principle 4) and **Progressive Trust Model** (§2 Principle 5): require the platform to support anonymous browsing (Level 0) before any authentication occurs, with authentication triggered only by specific identity-protected actions, and a defined path to a higher-trust Level 2. These are UX/access-control architecture requirements for `ENG-P2-001` and beyond, not designed by this package.
 
-**Decision prerequisites (should occur before, or as an explicit condition of, final Founder countersign):**
-- The real-SMS delivery test against all three Burundi carriers (Lumitel, Econet Leo, Onatel) — `RES-001`'s own identified evidence gap. This is the one item genuinely load-bearing for the decision itself, not merely for later operational confidence.
-- The governance-prerequisite action the Resolution Plan's own `RES-002` scope identifies (formally addressing `DEC-PROV-004`'s literal `DEC-SEC-001` dependency edge) — disclosed in §2, not performed by this task, and still outstanding before the decision can be formally recorded under the Decision Register's own rules.
+None of these items block `DEC-PROV-004` itself, which concerns only the SMS delivery mechanism for one of the two approved authentication methods — they are recorded here so the Founder's full decision is traceable in one place, and so `ENG-P2-001`'s future implementation planning inherits them explicitly rather than rediscovering them.
 
-**Post-decision validation (should occur after `DEC-PROV-004` is recorded, does not block the decision itself):**
-- Production SMS validation at scale (beyond the initial carrier delivery test) once `ENG-P2-001` is actually built and deployed to staging.
+## 9. Operational Launch Conditions
+
+Per the Founder's Principle 6 (§2), reframing what `RES-001`/`RES-002` originally treated as a decision prerequisite:
+
+- **Production SMS validation across Burundi carriers is a launch-readiness requirement**, not a condition on `DEC-PROV-004`'s approval. The real-SMS delivery test against all three carriers (Lumitel, Econet Leo, Onatel) that `RES-001`/`RES-002` identified remains the concrete action required — its role has shifted from "must occur before the decision can be considered final" to "must occur before production activation."
+- **Failure to meet acceptable delivery thresholds triggers an engineering review** of alternative SMS delivery mechanisms or providers — the Founder's own words. This does not reopen `DEC-PROV-004` automatically; it authorizes a scoped, future engineering review if and only if the delivery test surfaces a problem. Option B (§5) — or a hybrid/fallback arrangement — would be the natural starting point for that review, since it is the only other option `RES-001`'s evidence directly supports.
+- **Not addressed by Principle 6, remaining open:** the specific acceptable-delivery-threshold figure is not defined by the Founder's decision — this is a future engineering-owned parameter (e.g., a target `verification_success_rate` per `RES-001` §8's own monitoring guidance), not something this package invents on the Founder's behalf.
+
+## 10. Remaining Validation
+
+Distinguishing decision prerequisites from post-decision (now: post-decision, pre-production) validation, updated to reflect §9's reframing:
+
+**Decision prerequisites (none remaining for `DEC-PROV-004`'s approval itself — the Founder has decided):**
+- The governance-prerequisite action addressing `DEC-PROV-004`'s literal `DEC-SEC-001` dependency edge (§3, §11) remains outstanding before the decision can be *formally recorded* in the Decision Register under its own rules — this is a repository-mechanical prerequisite to recording, not to the Founder's product decision itself, which has already been made.
+
+**Launch-readiness / post-decision validation (per §9, gates production activation, not the decision):**
+- The real-SMS delivery test against all three Burundi carriers.
 - Operational verification of the SMS Region Policy, Blaze billing, reCAPTCHA, and test-number configuration in the actual project (currently documented as prerequisites in `RES-001` §3/§7, not yet configured anywhere).
 - Monitoring readiness: confirming the Firebase Console SMS Usage tab and `verification_success_rate` metric are actually being watched once real traffic exists, per `RES-001` §8.
+- (New, per §8) Google Sign-In's own technical integration planning, and initial architectural planning for Identity Linking and the Progressive Trust Model, ahead of `ENG-P2-001`'s implementation.
 
-## 8. Risk Assessment
+## 11. Risk Assessment
 
-- **Residual engineering risk:** if Firebase-native delivery to Burundi later proves unreliable after `ENG-P2-001` is already built against it, rework would be required to add a fallback or switch providers — the same risk `DEC-SEC-001`'s own fallback-definition scope already anticipates, but concretely realized if the delivery test is skipped or deferred too long.
+- **Residual engineering risk:** if Firebase-native delivery to Burundi later proves unreliable after `ENG-P2-001` is already built against it, the Founder's own Principle 6 already anticipates this by authorizing an engineering review — the risk is contained by that provision, not eliminated by it; timely execution of the delivery test remains the best mitigation.
 - **Operational risk:** the SMS Region Policy's default-deny-all-regions behavior (disclosed in `RES-001` §10) remains a live misconfiguration risk regardless of which option is chosen — Burundi must be explicitly allowlisted, or all customer registration attempts would silently fail.
-- **Governance risk:** `DEC-PROV-004`'s literal `Dependencies` field still names `DEC-SEC-001`, and the Resolution Plan's own `RES-002` scope requires a formal governance action to address this edge before the decision can actually close — this package does not perform that action (out of its own scope) and flags it as an open item the Founder or Engineering Lead must still resolve before final recording, separate from the technical recommendation in §6.
-- **Mitigation strategies:** treat the real-SMS delivery test as a hard precursor to *final* countersign, not merely a nice-to-have follow-up (addresses the engineering/operational risk); explicitly track the governance-prerequisite action as a distinct, named step in whatever task formally records `DEC-PROV-004` (addresses the governance risk); make SMS Region Policy configuration an explicit, checked step rather than an assumption (addresses the operational risk, consistent with `RES-001` §10's own mitigation).
+- **Governance risk (unresolved by the Founder's decision):** `DEC-PROV-004`'s literal `Dependencies` field still names `DEC-SEC-001`, and the Resolution Plan's own `RES-002` scope requires a formal governance action to address this edge before the decision can actually close under the Decision Register's own rules. The Founder's product-level approval does not itself perform this repository-mechanical action — it remains an open item for whoever formally records the decision (§14).
+- **New scope-expansion risk (per §8):** Google Sign-In, Identity Linking, and the Progressive Trust Model are now constitutional requirements with no corresponding engineering evaluation yet — if `ENG-P2-001` implementation planning proceeds without a dedicated pass over these items, design gaps could surface late. Mitigation: treat §8 as a required input to `ENG-P2-001`'s own pre-implementation analysis, not as already resolved by this package.
+- **Mitigation strategies:** treat the real-SMS delivery test as a tracked launch-readiness item, not an afterthought (addresses the engineering/operational risk); explicitly track the governance-prerequisite action as a distinct, named step in whatever task formally records `DEC-PROV-004` (addresses the governance risk); ensure `ENG-P2-001`'s pre-implementation analysis explicitly reviews §8's new items (addresses the scope-expansion risk).
 
-## 9. Decision Readiness
+## 12. Decision Readiness
 
-**Ready with Conditions.**
+**Founder Decision: Approve with Conditions (received 2026-07-30).** This supersedes `RES-002`'s original "Ready with Conditions" framing, which described readiness *for Founder consideration* — that consideration has now occurred and produced an affirmative decision. The evidence in §4–§7 supported that decision: the comparative evaluation (§6) is evidence-grounded and did not depend on delivery-test data to identify Option A as preferable, which the Founder's own approval confirms. What remains open is **not** whether the decision was made, but **two distinct follow-on items**: (1) the launch-readiness validation §9 describes, gating production activation, not the decision; and (2) the governance-prerequisite action (§3, §11) gating formal *recording* of the decision in the Decision Register, a repository-mechanical step distinct from the Founder's own product-level approval.
 
-Sufficient evidence exists for the Founder to review this decision package, understand the two realistic options, and provisionally approve a preferred direction (Option A) — the comparative evaluation in §5 is evidence-grounded and does not depend on the missing delivery-test data to reach its conclusion (Option A dominates Option B on implementation risk regardless of the delivery-test outcome, since both share the same unresolved delivery-reliability uncertainty). What is **not** yet available is the empirical confirmation needed to treat `DEC-PROV-004` as unconditionally, finally closed — that requires the real-SMS delivery test (§6, §7) and, separately, resolution of the governance-prerequisite edge with `DEC-SEC-001` (§2, §8). Neither of those gaps changes which option is preferred; both affect whether the decision, once made, can be treated as final versus conditional.
+## 13. Founder Decision Briefing
 
-## 10. Founder Decision Briefing
+*(Retained as the original briefing artifact, now marked as answered.)*
 
-**Decision title:** `DEC-PROV-004` — Phone OTP Delivery Route (Firebase-native vs. External SMS).
+**Decision title:** `DEC-PROV-004` — Phone OTP Delivery Route (Firebase-native vs. External SMS), within the broader Identity and Authentication Strategy.
 
-**Background:** This decision selects how customer OTP codes reach Burundi phone numbers during registration/sign-in, per `TRD12` §12.4.1. It is one of four D1 decisions blocking Capability 2 (Customer Identity). `RES-001` (2026-07-29, PR #30, merged) produced the technical evidence base for this decision; this package (`RES-002`) converts that evidence into a structured recommendation.
+**Background:** This decision selects how customer OTP codes reach Burundi phone numbers during registration/sign-in, per `TRD12` §12.4.1, nested within the Founder's constitutional Authentication Strategy (§2). It is one of four D1 decisions blocking Capability 2 (Customer Identity). `RES-001` (2026-07-29, PR #30, merged) produced the technical evidence base; `RES-002` (PR #31) converted it into a recommendation; `RES-002A` incorporates the Founder's decision.
 
-**Options considered:** (A) Firebase-native OTP — the standard, already-integrated Firebase Auth phone sign-in product; (B) External SMS route via Africa's Talking, requiring a new custom OTP service. A third option (Twilio) was investigated but not presented as a full candidate because its Burundi support is unconfirmed by public documentation.
+**Options considered:** (A) Firebase-native OTP — the standard, already-integrated Firebase Auth phone sign-in product; (B) External SMS route via Africa's Talking, requiring a new custom OTP service. Twilio was investigated but not presented as a full candidate — Burundi support unconfirmed by public documentation.
 
-**Recommended option:** A — Firebase-native OTP.
+**Recommended option:** A — Firebase-native OTP. **Founder decision:** Approved, alongside Google Sign-In as a second initial authentication mechanism (§2).
 
-**Conditions:** this recommendation is conditional on (1) a real-SMS delivery test against all three Burundi carriers (Lumitel, Econet Leo, Onatel) before final countersign is treated as unconditional, and (2) separate resolution of the governance-prerequisite edge between `DEC-PROV-004` and `DEC-SEC-001`'s `Dependencies` fields, which this package discloses but does not perform.
+**Conditions:** (1) production SMS validation across Burundi carriers before production activation, per §9 — not before the decision itself; (2) separate resolution of the governance-prerequisite edge between `DEC-PROV-004` and `DEC-SEC-001`'s `Dependencies` fields before formal Register recording, per §3/§11 — disclosed, not performed, by this package.
 
-**Risks:** delivery-reliability risk shared by both options and not yet closed by either (§8); SMS Region Policy misconfiguration risk independent of which option is chosen (§8); a disclosed governance-recording risk tied to the still-open `DEC-SEC-001` dependency edge (§8).
+**Risks:** delivery-reliability risk, now explicitly contained by the Founder's own engineering-review provision (§9, §11); SMS Region Policy misconfiguration risk, option-independent (§11); the disclosed governance-recording risk tied to the `DEC-SEC-001` dependency edge (§11); the new scope-expansion risk from Google Sign-In/Identity Linking/Progressive Trust Model requiring future engineering evaluation (§8, §11).
 
-**Engineering recommendation:** approve Option A conditionally, with the delivery test and governance-prerequisite action tracked as named next steps rather than treated as already satisfied.
+**Engineering recommendation:** proceed to formally record `DEC-PROV-004` as Approved with Conditions once the governance-prerequisite action (§3/§11) is addressed; track the delivery test and §8's new items as named, scheduled follow-on work rather than treating them as already satisfied.
 
-## 11. Files Created or Modified
+## 14. Repository Recording Preparation
 
-**Created:** `docs/00-governance/decisions/evidence/DEC-PROV-004-decision-package-2026-07-30.md`; `docs/changes/IMPLEMENTATION_CHANGES.md` (append). **Modified:** none. No application code, governance document, or Decision Register field was changed; `DEC-PROV-004` was not recorded, approved, or closed.
+Prepared here, not executed, per this task's own scope ("prepare the repository so `DEC-PROV-004` can be formally recorded" — recording itself is a distinct future action):
 
-## 12. Commands Executed
+**Decision Register fields, drafted and ready for a future recording task to apply to `DEC-PROV-004`'s live entry:**
+- `Status`: `OPEN_PROVIDER` → `CONFIRMED` (Approved with Conditions)
+- `Final decision`: Firebase-native OTP (Firebase Authentication Phone Sign-In) approved as the initial SMS delivery mechanism, within a broader Authentication Strategy also approving Google Sign-In; production SMS validation across Burundi carriers is a launch-readiness condition, not a decision prerequisite; failure to meet acceptable delivery thresholds triggers a scoped engineering review of alternatives.
+- `Decision date`: 2026-07-30
+- `Approved by`: Founder
+- `Notes`: full Identity and Authentication Strategy recorded in this decision package (§2); `DEC-SEC-001` dependency edge (§3) remains outstanding before this entry can be marked closed under the Register's own rules — **that action is a precondition of recording, disclosed here, not performed by `RES-002A`.**
 
-Direct re-read of `RES-001`'s Engineering Evidence Package (`docs/00-governance/decisions/evidence/EXT-TECH-001-engineering-evidence-package-2026-07-29.md`, including its Source Register) and its own Constraints/Status framing; `grep -n` confirmation of the live `DEC-PROV-004`/`DEC-SEC-001` Decision Register entries (unchanged since `RES-001`); direct read of the Resolution Plan's own `RES-002` scope definition (`docs/05-implementation/roadmap/ENG-P2-RES-000-capability-2-resolution-plan.md`) to confirm this package's scope matches the Plan's own framing of what `RES-002` requires versus what this specific task brief asks for.
+**Not performed by this task, and why:** applying the above to the live Decision Register file would constitute recording the decision, which this task's own brief and `RES-002`'s brief both explicitly reserve for a separate, distinct action ("prepares the decision. It does not record or approve the decision" — `RES-002`; "prepare the repository so `DEC-PROV-004` can be formally recorded" — `RES-002A`). The governance-prerequisite edge with `DEC-SEC-001` should be addressed as part of, or immediately before, that future recording action.
 
-## 13. Dependencies Added
+## 15. Files Created or Modified
+
+**Modified:** `docs/00-governance/decisions/evidence/DEC-PROV-004-decision-package-2026-07-30.md` (this document — restructured and expanded to incorporate the Founder's decision, per `RES-002A`); `docs/changes/IMPLEMENTATION_CHANGES.md` (append). **Not modified:** `RES-001`'s evidence package (preserved unchanged, per this task's explicit instruction); the Decision Register; any application code; any other document.
+
+## 16. Commands Executed
+
+Direct re-read of the current `DEC-PROV-004-decision-package-2026-07-30.md` (`RES-002`'s output) before editing; direct re-read of `RES-001`'s Engineering Evidence Package and its Source Register to confirm no evidence was altered in the restructure; `grep -n` reconfirmation of the live `DEC-PROV-004`/`DEC-SEC-001` Decision Register entries (unchanged since `RES-002`); confirmation that PR #31 (`RES-002`) remained open and unmerged, supporting continuation on the same branch rather than a new PR.
+
+## 17. Dependencies Added
 
 None.
 
-## 14. Configuration Changes
+## 18. Configuration Changes
 
 None.
 
-## 15. Rollback Instructions
+## 19. Rollback Instructions
 
-`git revert` of this task's own commit — a single new decision-package document plus one changes-log append.
+`git revert` of this task's own commit — a single edit to the decision-package document plus one changes-log append; `RES-002`'s original content remains fully recoverable from the prior commit on this same branch/PR.
 
-## 16. Markdown Decision Package
+## 20. Markdown Decision Package
 
 This document: [`docs/00-governance/decisions/evidence/DEC-PROV-004-decision-package-2026-07-30.md`](DEC-PROV-004-decision-package-2026-07-30.md).
 
-## 17. Changes Log
+## 21. Changes Log
 
 Updated: [`docs/changes/IMPLEMENTATION_CHANGES.md`](../../../changes/IMPLEMENTATION_CHANGES.md).
