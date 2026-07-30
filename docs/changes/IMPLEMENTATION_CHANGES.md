@@ -1296,3 +1296,38 @@
 - **Risks:** none introduced — corrects the report's own reproducibility, no governance document, decision, or code changed.
 - **Rollback:** `git revert` of this correction's own commit.
 - **Report link:** [`docs/05-implementation/reports/ENG-P2-RES-ADMIN-001-phase-transition-synchronisation-2026-07-29.md`](../05-implementation/reports/ENG-P2-RES-ADMIN-001-phase-transition-synchronisation-2026-07-29.md).
+
+---
+
+## 2026-07-29 — RES-001: EXT-TECH-001 Engineering Evidence Package
+
+- **Date:** 2026-07-29
+- **Task:** gather and document engineering evidence to resolve `EXT-TECH-001` (Firebase phone-OTP delivery to Burundi numbers), per the Founder-authorized Resolution Sprint task "TASK — RES-001: EXT-TECH-001 Evidence Package." Evidence-gathering only — no governance decision made, no code implemented, no application code modified.
+- **Key finding — product identification correction.** Classic Firebase Authentication phone sign-in (SMS OTP, the product `TRD12` §12.4.1/`OTD-004` actually specify) is a different product from Firebase Phone Number Verification (PNV), a newer carrier-network silent-verification product whose own pricing documentation lists only 8 countries. An initial research pass surfaced PNV's narrow list first; conflating it with classic phone sign-in would have produced a false "Burundi is unsupported" conclusion. The distinction is documented explicitly in the evidence package to prevent this error recurring.
+- **Key finding — Burundi telecom infrastructure is technically capable of SMS delivery.** Three carriers (Lumitel, Econet Leo, Onatel) with near-universal 2G coverage (~97%), the relevant coverage figure for SMS since it rides on 2G/GSM signaling rather than data connectivity.
+- **Key finding — Firebase has no first-party country restriction list for classic phone sign-in.** Delivery is instead gated by a per-project SMS Region Policy (default: no regions allowed) that must be explicitly configured — an operational prerequisite for `RES-002`/`RES-003`, not a support gap.
+- **Key finding — the central evidence gap cannot be closed by documentation research.** No first-party Firebase/Google source confirms or excludes Burundi delivery specifically. A direct, real-SMS delivery test against all three carriers is identified as the single decisive remaining action, recommended as a bounded precursor step rather than a blocker to starting `RES-002`.
+- **Engineering recommendation:** evidence is sufficient to draft `DEC-PROV-004`'s options and criteria, not sufficient to close it without the delivery test above.
+- **Validation performed:** all repository citations verified against live file content; all external claims verified via live web research (`WebSearch`/`WebFetch`) against Firebase's own documentation and third-party telecom/SMS-aggregator sources, cited inline; repository-wide search confirmed no phone-auth-specific code exists in `functions/src` (no implementation has begun); `npx prettier --check` clean.
+- **Files created:** `docs/00-governance/decisions/evidence/EXT-TECH-001-engineering-evidence-package-2026-07-29.md`; `docs/changes/IMPLEMENTATION_CHANGES.md` (this entry).
+- **Files modified:** none.
+- **Dependencies added:** none. **Configuration changes:** none — the Blaze billing account, SMS Region Policy, reCAPTCHA, and test-phone-number setup identified are documented prerequisites for future tasks, not configured by this one.
+- **Risks:** none introduced — evidence-gathering only; no code, decision, or governance document changed.
+- **Rollback:** `git revert` of this task's own commit — a single new evidence-package document plus one changes-log append.
+- **Report link:** [`docs/00-governance/decisions/evidence/EXT-TECH-001-engineering-evidence-package-2026-07-29.md`](../00-governance/decisions/evidence/EXT-TECH-001-engineering-evidence-package-2026-07-29.md).
+
+---
+
+## 2026-07-29 — RES-001: Pre-Merge Correction (PR #30 Review Findings)
+
+- **Date:** 2026-07-29
+- **Task:** correction of three automated-review findings (one P1, two P2) on PR #30, raised against `docs/00-governance/decisions/evidence/EXT-TECH-001-engineering-evidence-package-2026-07-29.md` before Founder-authorized merge.
+- **Finding 1 (P1) — the document's `Status: Complete` line could be misread as declaring `RES-001`/`EXT-TECH-001` complete.** Confirmed: the Resolution Plan's own Ownership Matrix defines `RES-001`'s completion criterion as `EXT-TECH-001` status moving `PENDING` → `EVIDENCE_RECEIVED`; the live External Dependencies Register still reads `PENDING`, and this package's own §7/§10/§11 state the real-SMS carrier delivery test was not performed. Corrected the front-matter to explicitly distinguish "this document is complete" from "`RES-001`/`EXT-TECH-001` are not complete" — no register status was changed, since that requires the actual delivery test.
+- **Finding 2 (P2) — external claims were not individually citable.** Confirmed: the original draft named source domains only, with no URLs, access dates, or reliability notes — inconsistent with this repository's own established evidence-pack convention. Added a full Source Register (11 rows) with exact URLs (or explicit "search synthesis, no single URL" disclosure where applicable), access method, the specific claim each supports, and a reliability note per row — including disclosing that the `eSMS Africa` Burundi-page fetch failed (empty/JS-rendered content) and was not successfully read.
+- **Finding 3 (P2) — an unverified claim about configurable OTP expiry.** Confirmed via targeted follow-up research: classic Firebase Auth phone sign-in does not expose an application-level setting for SMS code validity/expiry; `FirebaseAuthSettings` and platform SDK timeout parameters govern auto-retrieval and testing behavior, not code validity. Corrected §5 to state this as a verified fact rather than presenting expiry as "configurable."
+- **Validation performed:** all three findings verified directly against the live Resolution Plan, External Dependencies Register, and targeted follow-up web research before any correction was applied; `npx prettier --check` on the modified file; `git status --short` confirmed only the one evidence-package file changed.
+- **Files modified:** `docs/00-governance/decisions/evidence/EXT-TECH-001-engineering-evidence-package-2026-07-29.md`; `docs/changes/IMPLEMENTATION_CHANGES.md` (this entry).
+- **Files created:** none. **Dependencies added:** none. **Configuration changes:** none.
+- **Risks:** none introduced — corrections narrow the package's own claims to match verified evidence and its true completion status; no governance document, decision, or code changed.
+- **Rollback:** `git revert` of this correction's own commit.
+- **Report link:** [`docs/00-governance/decisions/evidence/EXT-TECH-001-engineering-evidence-package-2026-07-29.md`](../00-governance/decisions/evidence/EXT-TECH-001-engineering-evidence-package-2026-07-29.md).
