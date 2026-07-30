@@ -115,8 +115,8 @@ Each capability below groups one or more Engineering Implementation Programme ph
 - **Customer outcome:** a new customer has an account and a loyalty number/QR code they can present at a business.
 - **Primary user journey(s):** [Moments That Matter](../../07-product-design/moments-that-matter.md) §1 Registration *(governing-document only — no Stitch concept yet validates this screen)*.
 - **Major engineering work package(s):** `ENG-P2-001` (customer identity — auth, profile, loyalty number, QR), `ENG-P2-004` (role context and permission resolution — shared with Capability 3).
-- **Dependencies:** Capability 1; Decision Dependencies `DEC-SEC-001`, `DEC-DATA-007`, `DEC-PROV-004`, `DEC-ID-003` (all currently open — see the [Decision Register](../../00-governance/decisions/decision-register.md)).
-- **Validation outcome:** not started — `ENG-P2-001`/`ENG-P2-004` are `Blocked` pending the Decision Dependencies above.
+- **Dependencies:** Capability 1; Decision Dependencies `DEC-SEC-001`, `DEC-DATA-007`, `DEC-ID-003` (open); `DEC-PROV-004` (**CONFIRMED**, 2026-07-30 — Approved with Conditions — see the [Decision Register](../../00-governance/decisions/decision-register.md)).
+- **Validation outcome:** not started — `ENG-P2-001`/`ENG-P2-004` are `Blocked` pending the 3 remaining open Decision Dependencies above.
 - **Milestone contribution:** Milestone A, step 1.
 
 ### Capability 3 — Business Identity
