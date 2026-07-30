@@ -1473,3 +1473,22 @@
 - **Risks:** none introduced — governance recording only; no engineering analysis reopened, no `RES-003` recommendation altered, no `DEC-PROV-004` content changed, no code or architecture changed. The disclosed downstream-tracker staleness and the still-undesigned identity-resolution flow are pre-existing conditions made explicit by this recording, not created by it.
 - **Rollback:** `git revert` of this task's own commit.
 - **Report link:** [`docs/00-governance/decisions/decision-register.md`](../00-governance/decisions/decision-register.md#dec-sec-001--customer-authentication-approach-and-fallback); [`docs/00-governance/decisions/evidence/DEC-SEC-001-founder-decision-review-package-2026-07-30.md`](../00-governance/decisions/evidence/DEC-SEC-001-founder-decision-review-package-2026-07-30.md).
+
+---
+
+## 2026-07-30 — RES-004: DEC-ID-003 Decision Package
+
+- **Date:** 2026-07-30
+- **Task:** prepare the engineering decision package for `DEC-ID-003` ("Permission inheritance semantics"), using the now-`CONFIRMED` `DEC-PROV-004` and `DEC-SEC-001` as mandatory, non-revisited inputs, per the Founder-authorized Resolution Sprint task "TASK — RES-004: DEC-ID-003 Resolution." Prepares the decision only — does not record or approve `DEC-ID-003`; no Decision Register field changed; no application code modified; `DEC-PROV-004`/`DEC-SEC-001` not revisited.
+- **Constraint analysis performed first (required by the brief):** identity uniqueness (AIR-001, `DEC-PROV-004`), identity-verification authority (`DEC-SEC-001`'s Merchant Assistance principle), and trust-level gating (`DEC-SEC-001`'s Progressive Trust Model) are all already settled and out of scope for this package. `DEC-ID-003`'s genuinely open question — reconciling PRD10 §13's role-inheritance statement with PRD1 AP-008's explicit-grant requirement — traces to the original documentation audit finding `DOC-P1-007`, re-verified directly against both PRD source texts before analysis.
+- **Options evaluated:** (a) inheritance as default template with explicit per-membership override and sensitive permissions never implicit — the Register's own recommended direction, matching `DOC-P1-007`'s original audit recommendation; (b) strict inheritance, no override; (c) no inheritance, explicit grants only.
+- **Repository-code check performed before writing the package:** a repository-wide search for permission-resolution or role-inheritance implementation code returned zero genuine matches (all incidental — HTTP header sanitization, generic error names, task-authorization comments). No code exists yet for this decision to conflict with.
+- **Preferred recommendation:** Option (a) — the only option requiring no change to already-approved TRD12 §12.11/§12.12 architecture (which already lists "assigned custom permission set" as a resolution input and a `permissionSource` field in the evaluation contract) and the only option that reconciles both source PRD texts rather than silently discarding one.
+- **Decision readiness:** Ready with Conditions — the reconciliation principle is ready for Founder decision; the sensitive-permissions enumeration and override-resolution rule (both genuinely undesigned) are disclosed as follow-on engineering prerequisites, not resolved here.
+- **Validation performed:** live re-read of `DEC-ID-003`/`DEC-PROV-004`/`DEC-SEC-001` Decision Register entries, the Resolution Plan's `RES-004` scope, TRD12 §12.11–12.12, PRD1 §2–3, PRD10 §13, AIR-001, and the original `DOC-P1-007` audit finding; repository-wide `grep -rln` search confirming no implementation code exists; `npx prettier --check` clean; `git status --short` confirmed only the intended two files changed.
+- **Files created:** `docs/00-governance/decisions/evidence/DEC-ID-003-decision-package-2026-07-30.md`; `docs/changes/IMPLEMENTATION_CHANGES.md` (this entry).
+- **Files modified:** none.
+- **Dependencies added:** none. **Configuration changes:** none.
+- **Risks:** none introduced — decision-preparation only; no governance document, decision, or code changed; `DEC-ID-003` was not recorded or approved; `DEC-PROV-004`/`DEC-SEC-001` untouched.
+- **Rollback:** `git revert` of this task's own commit — a single new decision-package document plus one changes-log append.
+- **Report link:** [`docs/00-governance/decisions/evidence/DEC-ID-003-decision-package-2026-07-30.md`](../00-governance/decisions/evidence/DEC-ID-003-decision-package-2026-07-30.md).
