@@ -4,7 +4,7 @@
 > **Version:** 1.0 · **Status:** Active governance record · **Classification:** Working (governance record)
 > **Governing document:** 11thONUS Platform Constitution
 > **Source-of-truth path:** `docs/00-governance/decisions/decision-register.md`
-> **Last controlled update:** 2026-07-26 (`DEC-PROV-005-DEC` — `DEC-PROV-005` CONFIRMED: Option C, native backend observability with dedicated frontend diagnostics, initial implementation target Sentry, architecture-only approval; see the [Evidence Pack](evidence/DEC-PROV-005-error-monitoring-evidence-2026-07-26.md)). Previously: 2026-07-16 (Phase 3B — Batch A decisions recorded: DEC-GOV-001, DEC-GOV-006, DEC-LOY-010, DEC-DATA-003 CONFIRMED)
+> **Last controlled update:** 2026-07-30 (`RES-002B` — `DEC-PROV-004` CONFIRMED: Approved with Conditions, Firebase-native OTP + Google Sign-In within a broader Founder-approved Identity and Authentication Strategy; `DEC-SEC-001` remains open and unresolved by this recording; see the [Decision Package](evidence/DEC-PROV-004-decision-package-2026-07-30.md)). Previously: 2026-07-26 (`DEC-PROV-005-DEC` — `DEC-PROV-005` CONFIRMED: Option C, native backend observability with dedicated frontend diagnostics, initial implementation target Sentry, architecture-only approval; see the [Evidence Pack](evidence/DEC-PROV-005-error-monitoring-evidence-2026-07-26.md)). Previously: 2026-07-16 (Phase 3B — Batch A decisions recorded: DEC-GOV-001, DEC-GOV-006, DEC-LOY-010, DEC-DATA-003 CONFIRMED)
 
 ---
 
@@ -1094,7 +1094,18 @@ Legend: fields with **—** are intentionally blank (OPEN records have no Final 
 
 **DEC-PROV-003 — Email provider** — Status: **OPEN_PROVIDER** · Priority: D2 · Question: transactional email delivery + status tracking. Owner: Engineering Lead · Required by: Phase 9 · Blocks: email notifications · Sources: OTD-008 · Dependencies: EXT-PROV-003; domain/DNS (DEC-PROV-007) · Final decision/date/approved: — · Notes: —
 
-**DEC-PROV-004 — Phone OTP delivery route** — Status: **OPEN_PROVIDER** · Priority: **D1** · Question: Firebase-native OTP vs external SMS route for Burundi numbers. Owner: Engineering Lead · Required by: Phase 2 · Blocks: customer authentication · Sources: OTD-004; TRD23 §23.23 · Dependencies: EXT-TECH-001; DEC-SEC-001 · Final decision/date/approved: — · Notes: —
+**DEC-PROV-004 — Phone OTP delivery route (Identity and Authentication Strategy)**
+- Category: Providers · Status: **CONFIRMED** · Priority: **D1**
+- Decision question: Firebase-native OTP vs external SMS route for Burundi numbers — resolved by the Founder within a broader Identity and Authentication Strategy decision.
+- Options identified: (A) Firebase-native OTP (Firebase Authentication Phone Sign-In); (B) external SMS route via a third-party aggregator (Africa's Talking), requiring a custom OTP service. Full technical comparison, unmodified by this recording: [`RES-001` Evidence Pack](evidence/EXT-TECH-001-engineering-evidence-package-2026-07-29.md); [`DEC-PROV-004` Decision Package](evidence/DEC-PROV-004-decision-package-2026-07-30.md).
+- Recommended direction: (A) — Engineering recommendation, preserved unmodified by this recording · Recommendation basis: Decision Package §7.
+- Current confirmed position: **Option A approved**, alongside Google Sign-In as a second initial authentication mechanism — new scope introduced by the Founder's decision, not evaluated by `RES-001`/`RES-002`. See Final decision below for the full Founder-approved Identity and Authentication Strategy.
+- Founder decision required: Approve with Conditions (received 2026-07-30) · Decision owner: Engineering Lead, approved by Founder · Required by phase: Phase 2 · Blocks: — (resolved; unblocks `ENG-P2-001`)
+- Affected documents: TRD12 §12.4.1; TRD23 §23.23; [Decision Package](evidence/DEC-PROV-004-decision-package-2026-07-30.md) · Affected domains: Identity, Integration
+- Source references: OTD-004; TRD23 §23.23; [`RES-001` Evidence Pack](evidence/EXT-TECH-001-engineering-evidence-package-2026-07-29.md); [Decision Package](evidence/DEC-PROV-004-decision-package-2026-07-30.md) · Dependencies: EXT-TECH-001 (launch-readiness condition per Principle 8 below, not a decision blocker); DEC-SEC-001 (**not resolved by this recording** — see Notes)
+- Risks if unresolved: — (the decision itself is resolved; residual risks tracked in Decision Package §11)
+- Final decision: *"Approved with Conditions. (1) The verified mobile phone number is the customer's canonical identity. (2) Authentication methods are independent mechanisms used to access the same customer identity. (3) The initial approved authentication mechanisms are: Firebase Authentication Phone Sign-In; Google Sign-In. (4) Future authentication providers may be added without changing the customer's canonical identity. (5) Browsing the platform shall not require authentication. (6) Authentication is required only for identity-protected actions. (7) Identity trust shall follow a progressive model: Anonymous; Authenticated; Verified. (8) SMS delivery validation across Burundi carriers remains a production-readiness condition rather than a governance blocker. (9) If SMS validation proves unacceptable, Engineering shall return with a comparative recommendation before changing authentication provider."* · Decision date: 2026-07-30 · Approved by: Founder
+- Implementation consequences: unblocks `ENG-P2-001` (customer identity/authentication implementation), which must incorporate Google Sign-In, Identity Linking, and the Progressive Trust Model per Decision Package §8 — none of these are designed by this recording · Document corrections required: TRD12 §12.4.1 (authentication-strategy wording); Engineering Implementation Programme (Capability 2 dependency clearance) — not performed by this recording task, flagged as follow-on work · Notes: **`DEC-SEC-001` is NOT resolved by this recording** — it remains **OPEN_ENGINEERING** in this register and requires its own, separately authorized countersign action; this task's brief explicitly excluded reopening or altering that entry. `EXT-TECH-001` remains **PENDING** in the External Dependencies Register; per Principle 8 above, production SMS validation across Burundi carriers (Lumitel, Econet Leo, Onatel) gates production activation, not this decision. Full evidence, options analysis, and engineering recommendation preserved unmodified in the [Decision Package](evidence/DEC-PROV-004-decision-package-2026-07-30.md).
 
 **DEC-PROV-005 — Error monitoring provider**
 - Category: Providers · Status: **CONFIRMED** · Priority: **D1**
@@ -1193,10 +1204,10 @@ Legend: fields with **—** are intentionally blank (OPEN records have no Final 
 
 | Status | Count |
 |---|---|
-| CONFIRMED | 38 |
+| CONFIRMED | 39 |
 | OPEN_FOUNDER | 24 |
 | OPEN_ENGINEERING | 15 |
-| OPEN_PROVIDER | 6 |
+| OPEN_PROVIDER | 5 |
 | OPEN_LEGAL | 6 |
 | DEFERRED | 10 |
 | SUPERSEDED | 4 |

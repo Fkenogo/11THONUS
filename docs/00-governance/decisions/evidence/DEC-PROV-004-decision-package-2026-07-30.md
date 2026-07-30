@@ -184,6 +184,8 @@ Prepared here, not executed, per this task's own scope ("prepare the repository 
 
 **Not performed by this task, and why:** applying the above to the live Decision Register file would constitute recording the decision, which this task's own brief and `RES-002`'s brief both explicitly reserve for a separate, distinct action ("prepares the decision. It does not record or approve the decision" — `RES-002`; "prepare the repository so `DEC-PROV-004` can be formally recorded" — `RES-002A`). The governance-prerequisite edge with `DEC-SEC-001` should be addressed as part of, or immediately before, that future recording action.
 
+**Recording status update (`RES-002B`, 2026-07-30):** the fields drafted above have now been applied to `DEC-PROV-004`'s live entry in the [Decision Register](../decision-register.md) — `Status: CONFIRMED`, Final decision recorded verbatim (the Founder's 9 constitutional principles), `Decision date: 2026-07-30`, `Approved by: Founder`. Per the Founder's own `RES-002B` task brief, this recording proceeded without first resolving the `DEC-SEC-001` dependency edge — the Register entry's Notes field explicitly discloses that `DEC-SEC-001` remains **OPEN_ENGINEERING**, untouched by this recording, and requires its own separate countersign action.
+
 ## 15. Files Created or Modified
 
 **Modified:** `docs/00-governance/decisions/evidence/DEC-PROV-004-decision-package-2026-07-30.md` (this document — restructured and expanded to incorporate the Founder's decision, per `RES-002A`); `docs/changes/IMPLEMENTATION_CHANGES.md` (append). **Not modified:** `RES-001`'s evidence package (preserved unchanged, per this task's explicit instruction); the Decision Register; any application code; any other document.
