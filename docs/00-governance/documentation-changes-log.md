@@ -2,11 +2,24 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-07-31 (Entry 043 added: `RES-005.2a-R1` — TRD8 BaseMetadata Documentation Reconciliation)
+> **Last controlled update:** 2026-07-31 (Entry 044 added: `RES-005.2b` — BaseMetadata Code Conformance Correction)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 044 — `RES-005.2b`: BaseMetadata Code Conformance Correction
+
+- **Date:** 31 July 2026
+- **Performed by:** Claude (AI agent), per Founder task "TASK — RES-005.2b: BaseMetadata Code Conformance Correction."
+- **Classification:** Bounded code-conformance correction. `PR #44` merged (content unaltered by this task); the first code-level change in this task chain — `functions/src/shared/metadata/baseMetadata.ts` only; no other application code, Firebase Rule, or schema modified; `EXT-TECH-001`/`DEC-PROD-012` not resolved; Phase 2 implementation not begun; the approved BaseMetadata contract itself not altered.
+- **Correction recorded:** `functions/src/shared/metadata/baseMetadata.ts` brought into full conformance with the now-aligned documentation baseline (TRD10 §10.5, corrected Blueprint §3.3, reconciled TRD8 §8.7, approved `RES-005.2a` Contract Analysis) — `version`→`schemaVersion`; non-nullable→nullable `createdBy`/`updatedBy`; `deletedAt`/`deletedBy`→`archivedAt`/`archivedBy`; `languageCode` removed; `currencyCode`/`timezone` added; `readonly` applied to the contract's immutable fields (`id`, `createdAt`, `createdBy`). A repository-wide impact analysis found zero consumers of the type anywhere in the codebase and zero persisted data in any environment, so **no migration was required**. Full local validation passed (94/94 `functions` unit tests, 191/191 `apps/web`, 23/23 real Firebase Emulator Suite), with a testing-methodology finding disclosed regarding this repository's `.test.ts` type-checking exclusion.
+- **All four documentation-vs-code discrepancies originally found by `ENG-P2-000A` (2026-07-29) are now resolved end-to-end** — documentation (`RES-005.2a`/`RES-005.2a-R1`) and code (`RES-005.2b`, this entry). **BaseMetadata Capability 2 blocker status: Resolved.** Capability 2 itself **remains `Blocked`** — `EXT-TECH-001` and `DEC-PROD-012` are unchanged, independent Capability Authorisation Gate items.
+- **Scope note:** this entry logs `RES-005.2b`'s own code correction and narrow tracker synchronization. It does not backfill entries for the several earlier Resolution Sprint decisions not logged here at the time, per Entry 039's own disclosed scope boundary.
+- **Files modified:** `functions/src/shared/metadata/baseMetadata.ts`; `functions/src/shared/metadata/baseMetadata.test.ts`; `docs/05-implementation/change-tracking/engineering-implementation-programme.md`; `docs/05-implementation/11thonus-master-workflow.md`; `docs/05-implementation/roadmap/CDR-001-capability-delivery-roadmap.md`; `docs/05-implementation/change-tracking/coding-agent-prompt-register.md`; `docs/00-governance/documentation-changes-log.md` (this entry); `docs/changes/IMPLEMENTATION_CHANGES.md`.
+- **Files created:** `docs/05-implementation/reports/RES-005.2b-basemetadata-code-conformance-report-2026-07-31.md`.
 
 ---
 
