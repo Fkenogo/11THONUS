@@ -2,7 +2,7 @@
 > **Version:** 1.0 · **Status:** Active — definitive technical architecture reference · **Classification:** Authoritative Technical (consolidation, not a new source of truth)
 > **Governing document:** Platform Constitution; TRD Chapters 8, 9, 10, 11, 12, 16, 20, 22
 > **Source-of-truth path:** `docs/02-technical/version-1-engineering-blueprint.md`
-> **Last controlled update:** 2026-07-17 (Engineering Decision Sprint 2 — §1.3 updated: DEC-TECH-003 now CONFIRMED; created Engineering Transition Phase 0B)
+> **Last controlled update:** 2026-07-31 (`RES-005.2a` — §3.3 Standard Document Metadata corrected to TRD10 §10.5's shape, resolving the Blueprint's own disagreement with the TRD chapter per its §0 rule) · Previously: 2026-07-17 (Engineering Decision Sprint 2 — §1.3 updated: DEC-TECH-003 now CONFIRMED; created Engineering Transition Phase 0B)
 
 # Version 1 Engineering Blueprint
 
@@ -102,9 +102,35 @@ Per the [Canonical Reference](../00-governance/canonical-reference.md) §5–§6
 
 Firestore is organized around domains, not screens. Every domain owns its collections; no collection has multiple owners; cross-domain access happens through services or events, never direct cross-domain reads/writes. This is the architectural rule [Repository and Folder Standards](../03-standards/engineering-standards/repository-and-folder-standards.md) §4 and [TypeScript Conventions](../03-standards/engineering-standards/typescript-conventions.md) §5 enforce at the code level.
 
-### 3.3 Standard Document Metadata (TRD8 §8.7)
+### 3.3 Standard Document Metadata (TRD10 §10.5)
 
-Every Firestore document carries: `id`, `createdAt`, `createdBy`, `updatedAt`, `updatedBy`, `status`, `version`, and, where applicable, `businessId`, `customerId`, `countryCode`, `languageCode`, `deletedAt`, `deletedBy`. Exact collection names and schemas beyond this shared metadata shape are Pass 2 Engineering Standards detail, gated on DEC-TECH-005 (region) and the outbox/idempotency schema decisions' deferred implementation layer.
+Every authoritative Firestore document carries the following base metadata (TRD10 §10.5's `BaseDocument` shape):
+
+- `id: string`
+- `schemaVersion: number` — the document's schema/structural version (TRD10 §10.2, DAP-009 "Version Every Evolving Contract"), not a generic revision counter.
+- `status: string`
+- `createdAt: Timestamp` — server-generated only; client-supplied timestamps are prohibited (TRD10 §10.2, DAP-008 "Server Time Is Authoritative").
+- `createdBy: string | null` — the identity or trusted system process responsible for creation. Always present as a field; `null` is permitted for system-initiated writes with no human actor.
+- `updatedAt: Timestamp` — server-generated only; same prohibition on client-supplied timestamps (DAP-008).
+- `updatedBy: string | null` — same actor-attribution rule as `createdBy`.
+
+Where applicable, scoped documents (TRD10 §10.5's `ScopedDocument` shape) additionally carry:
+
+- `businessId?: string`
+- `customerId?: string`
+- `countryCode?: string`
+- `currencyCode?: string`
+- `timezone?: string`
+- `archivedAt?: Timestamp | null` — archival, not deletion (TRD10 §10.2, DAP-010 "Archive, Do Not Erase": data required for trust, audit, dispute resolution or reporting is retained through archival states rather than silently deleted). This naming matches PRD2 §7's own "Archived" customer-account-status value. Present but `null` while active; set once the document is archived. Never used to represent hard/permanent deletion.
+- `archivedBy?: string | null`
+
+`languageCode` is **not** part of this shared base/scoped metadata shape — TRD10 §10.5 does not include it there. It remains a genuine, mandatory field (PRD2 §6, "Preferred language") on the specific collections that require it (e.g. `users`, `customerProfiles` — TRD10 §10.6.1–§10.6.2), not a universal document-metadata field.
+
+No permitted exceptions to this shape are established by any current governing document; a future exception would require its own governance record.
+
+**Correction note (`RES-005.2a`, 2026-07-31):** this section previously transcribed TRD8 §8.7's shape (`version`, non-nullable `createdBy`/`updatedBy`, `deletedAt`/`deletedBy`, `languageCode`, no `currencyCode`/`timezone`) rather than TRD10 §10.5's — a genuine conflict this Blueprint's own §0 rule resolves in TRD10's favor. `ENG-P2-000A` (2026-07-29) §5 first identified this four-part discrepancy; this correction applies it. See the [BaseMetadata Contract Analysis](../05-implementation/reports/RES-005.2a-basemetadata-contract-analysis-2026-07-31.md) for the full analysis. **Disclosed, not corrected here:** TRD8 §8.7 itself still states the old shape and has not been updated to match TRD10 §10.5 — a distinct TRD-chapter-consistency question outside this task's authorization, which is limited to correcting this Blueprint. **This documentation correction alone does not achieve BaseMetadata conformance** — `functions/src/shared/metadata/baseMetadata.ts` still implements the old (Blueprint/TRD8) shape; a separate, not-yet-performed code-conformance task (`RES-005.2b`) is required before any Phase 2 work package may rely on this contract being implemented.
+
+Exact collection names and schemas beyond this shared metadata shape are Pass 2 Engineering Standards detail, gated on DEC-TECH-005 (region) and the outbox/idempotency schema decisions' deferred implementation layer.
 
 ### 3.4 Cloud Functions per Domain (TRD8 §8.5)
 

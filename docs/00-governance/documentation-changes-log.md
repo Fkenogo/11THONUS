@@ -2,11 +2,25 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-07-31 (Entry 041 added: `ENG-P1-EXIT-001` — Phase 1 Exit-Criteria Determination and Capability 2 Entry Mobilisation)
+> **Last controlled update:** 2026-07-31 (Entry 042 added: `RES-005.2a` — BaseMetadata Governing Blueprint Correction)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 042 — `RES-005.2a`: BaseMetadata Governing Blueprint Correction
+
+- **Date:** 31 July 2026
+- **Performed by:** Claude (AI agent), per Founder task "TASK — RES-005.2a: BaseMetadata Governing Blueprint Correction."
+- **Classification:** Documentation/requirements-conformance correction only. `PR #42` merged (content unaltered by this task); no application code, test, Firebase Rule, or API modified; `EXT-TECH-001`/`DEC-PROD-012` not resolved; Phase 2 implementation not begun.
+- **Correction recorded:** Version 1 Engineering Blueprint §3.3 ("Standard Document Metadata") rewritten from TRD8 §8.7's shape to TRD10 §10.5's shape — the Blueprint's own §0 rule ("the TRD chapter governs") applied to a conflict `ENG-P2-000A` first identified (2026-07-29) and this task independently re-verified and corrected. Four distinct differences resolved in documentation: field naming (`schemaVersion` not `version`), nullability (`createdBy`/`updatedBy: string | null`), field naming/semantics (`archivedAt`/`archivedBy`, not `deletedAt`/`deletedBy`, per DAP-010 and matching PRD2 §7's "Archived" status), and field presence (`currencyCode`/`timezone` added, `languageCode` removed from the shared shape — confirmed as a genuine but domain-specific PRD2 §6 field, not universal metadata).
+- **New finding, disclosed not corrected:** TRD8 §8.7 independently states the same stale shape the Blueprint transcribed from it — a TRD-chapter-to-TRD-chapter inconsistency outside this task's authorization to correct.
+- **Code conformance explicitly not achieved by this entry:** `functions/src/shared/metadata/baseMetadata.ts` still implements the pre-correction shape; a separate task (`RES-005.2b`) is required, assessed here as **Ready**.
+- **Scope note:** this entry logs `RES-005.2a`'s own Blueprint correction and tracker synchronization. It does not backfill entries for the several earlier Resolution Sprint decisions not logged here at the time, per Entry 039's own disclosed scope boundary.
+- **Files modified:** `docs/02-technical/version-1-engineering-blueprint.md`; `docs/05-implementation/change-tracking/engineering-implementation-programme.md`; `docs/05-implementation/11thonus-master-workflow.md`; `docs/05-implementation/roadmap/CDR-001-capability-delivery-roadmap.md`; `docs/05-implementation/change-tracking/coding-agent-prompt-register.md`; `docs/00-governance/documentation-changes-log.md` (this entry); `docs/changes/IMPLEMENTATION_CHANGES.md`.
+- **Files created:** `docs/05-implementation/reports/RES-005.2a-basemetadata-contract-analysis-2026-07-31.md`.
 
 ---
 
