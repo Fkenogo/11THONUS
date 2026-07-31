@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { BrowserRouter } from "react-router-dom";
+import { BrowserRouter, MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import App from "./App";
 
@@ -13,6 +13,20 @@ describe("App shell", () => {
 
     expect(
       screen.getByRole("heading", { name: /11thONUS — Engineering Foundation/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("wires the EXT-TECH-001 phone-auth harness at a dev-only, lazily-loaded route (build-time exclusion verified separately against a real production build)", async () => {
+    render(
+      <MemoryRouter initialEntries={["/dev/phone-auth-harness"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(
+      await screen.findByRole("heading", {
+        name: /EXT-TECH-001 Phone Auth Delivery-Test Harness/i,
+      }),
     ).toBeInTheDocument();
   });
 });

@@ -2,11 +2,25 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-07-31 (Entry 048 added: `EXT-TECH-001-DELIVERY-TEST` — stopped before testing, no authorised numbers/device-observation capability)
+> **Last controlled update:** 2026-07-31 (Entry 049 added: `EXT-TECH-001-TEST-HARNESS` — Controlled Real-SMS Test Harness)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 049 — `EXT-TECH-001-TEST-HARNESS`: Controlled Real-SMS Test Harness
+
+- **Date:** 31 July 2026
+- **Performed by:** Claude (AI agent), per Founder task "FOUNDER AUTHORISATION AND TASK — EXT-TECH-001-TEST-HARNESS: Controlled Real-SMS Test Harness."
+- **Classification:** Bounded, test-driven harness-preparation task. `PR #49` merged (content unaltered by this task); no real SMS sent; no real phone number stored or committed; no additional authentication provider enabled; no Customer Identity implementation begun.
+- **Harness built:** a minimal, development-only tool (`apps/web/src/dev/phoneAuthHarness/`, route `/dev/phone-auth-harness`) capable of invoking the genuine Firebase Authentication Phone Sign-In SMS route via a dedicated, never-emulator-connected Auth instance — built for the Founder or an authorised tester holding a physical Burundi SIM to operate, not for this coding agent to execute. Every privacy invariant (no pre-populated/persisted number or OTP, masking, no storage/URL/console leakage, manual-only "SMS received" confirmation, `.code`-only error display, no diagnostics-pipeline integration) is enforced by 30 automated tests across 4 new unit-level modules plus additions to the existing route test.
+- **Genuine defect found and corrected before completion:** an initial route guard correctly prevented the harness from rendering at runtime, but a real `pnpm build` followed by inspecting `dist/` found the harness code was still present in the production bundle. Corrected via a `React.lazy()` dynamic import gated directly on the literal `import.meta.env.DEV`, re-verified absent from a fresh production build.
+- **`EXT-TECH-001` status: unchanged, Still Pending** — this task does not resolve it; the harness is preparation only. **Capability 2 remains `Blocked`** on `EXT-TECH-001`/`DEC-PROD-012`.
+- **Scope note:** this entry logs `EXT-TECH-001-TEST-HARNESS`'s own harness implementation and its two accompanying operator documents. It does not backfill entries for the several earlier Resolution Sprint decisions not logged here at the time, per Entry 039's own disclosed scope boundary.
+- **Files modified:** `apps/web/src/App.tsx`; `apps/web/src/App.test.tsx`; `docs/00-governance/documentation-changes-log.md` (this entry); `docs/changes/IMPLEMENTATION_CHANGES.md`.
+- **Files created:** `apps/web/src/dev/phoneAuthHarness/{mask,harnessGate,phoneAuthHarnessAuth,PhoneAuthHarnessPage}.{ts,tsx}` and their test files; `docs/05-implementation/reports/EXT-TECH-001-TEST-HARNESS-manual-runbook-2026-07-31.md`; `docs/05-implementation/reports/EXT-TECH-001-delivery-test-evidence-template-2026-07-31.md`; `docs/05-implementation/reports/EXT-TECH-001-TEST-HARNESS-implementation-report-2026-07-31.md`.
 
 ---
 
