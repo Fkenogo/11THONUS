@@ -2,11 +2,24 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-07-31 (Entry 046 added: `EXT-TECH-001-GOV-ALIGN` — Governance Alignment for EXT-TECH-001)
+> **Last controlled update:** 2026-07-31 (Entry 047 added: `EXT-TECH-001-ENV-READY` — Firebase Environment Readiness for Phone Authentication)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 047 — `EXT-TECH-001-ENV-READY`: Firebase Environment Readiness for Phone Authentication
+
+- **Date:** 31 July 2026
+- **Performed by:** Claude (AI agent), per Founder task "TASK — EXT-TECH-001-ENV-READY: Firebase Environment Readiness for Phone Authentication," implementing the Founder's confirmed decision that Phone Authentication is the only enabled authentication provider at this stage.
+- **Classification:** Environment-readiness assessment and bounded infrastructure configuration task. `PR #47` merged (content unaltered by this task); no delivery test performed; no `EXT-TECH-001` resolution; no additional authentication provider enabled; no application code modified.
+- **Live infrastructure change recorded (not a documentation change, logged here for completeness):** `eleventh-on-us-dev`'s Identity Toolkit `smsRegionConfig` was updated to allowlist Burundi (`BI`) — the sole missing prerequisite found in a full environment audit (Phone Authentication was already `enabled: true`; Blaze billing already active; no other provider present). Verified immediately after that only `smsRegionConfig` changed. No repository file, application code, or production configuration was touched.
+- **Delivery-test readiness: Ready with Conditions.** The Firebase-side technical environment is now fully capable of attempting real SMS delivery to Burundi numbers. Remaining conditions (real carrier phone numbers; Founder/Engineering-Lead authorization to execute the test) are non-technical and outside this task's scope.
+- **Scope note:** this entry logs `EXT-TECH-001-ENV-READY`'s own environment audit and one live infrastructure change. It does not backfill entries for the several earlier Resolution Sprint decisions not logged here at the time, per Entry 039's own disclosed scope boundary.
+- **Files modified:** `docs/00-governance/documentation-changes-log.md` (this entry, append-only); `docs/changes/IMPLEMENTATION_CHANGES.md`.
+- **Files created:** `docs/05-implementation/reports/EXT-TECH-001-ENV-READY-firebase-environment-readiness-report-2026-07-31.md`.
 
 ---
 
