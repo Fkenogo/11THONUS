@@ -9,6 +9,13 @@ describe("stampCreate", () => {
     expect(stamp.updatedBy).toBe("actor-1");
   });
 
+  it("accepts a null actor for system-initiated writes (TRD10 §10.5)", () => {
+    const stamp = stampCreate(null);
+
+    expect(stamp.createdBy).toBeNull();
+    expect(stamp.updatedBy).toBeNull();
+  });
+
   it("sets createdAt and updatedAt to the same server-timestamp sentinel", () => {
     const stamp = stampCreate("actor-1");
 
@@ -21,6 +28,12 @@ describe("stampUpdate", () => {
     const stamp = stampUpdate("actor-2");
 
     expect(stamp.updatedBy).toBe("actor-2");
+  });
+
+  it("accepts a null actor for system-initiated writes (TRD10 §10.5)", () => {
+    const stamp = stampUpdate(null);
+
+    expect(stamp.updatedBy).toBeNull();
   });
 
   it("does not include createdAt or createdBy", () => {
