@@ -2,11 +2,25 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-07-31 (Entry 047 added: `EXT-TECH-001-ENV-READY` — Firebase Environment Readiness for Phone Authentication)
+> **Last controlled update:** 2026-07-31 (Entry 048 added: `EXT-TECH-001-DELIVERY-TEST` — stopped before testing, no authorised numbers/device-observation capability)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 048 — `EXT-TECH-001-DELIVERY-TEST`: Real Burundi Carrier OTP Delivery Validation — Stopped Before Testing
+
+- **Date:** 31 July 2026
+- **Performed by:** Claude (AI agent), per Founder task "TASK — EXT-TECH-001-DELIVERY-TEST: Real Burundi Carrier OTP Delivery Validation."
+- **Classification:** Stage A (merge/verify) completed; Stages B–G **not performed**, stopped per this task's own explicit Stop Conditions before any test execution. No test SMS sent; no test number handled; no application code modified.
+- **Stop recorded, two independent reasons:** (1) no authorised real Burundi test numbers were supplied anywhere in this conversation, and the task's own instructions were explicitly conditional on possessing them; (2) this coding environment has no physical telephone or means to observe a real device's inbox — confirming actual SMS receipt (not merely that Firebase accepted the send request) is a human-observation step no coding agent can perform, independent of number availability.
+- **`EXT-TECH-001` gate determination: Still Pending — unchanged.** Consistent with every prior task in this chain. Capability 2 remains `Blocked` on `EXT-TECH-001`/`DEC-PROD-012` only.
+- **Next required action, identified not performed:** a human with physical possession of active SIM cards on Lumitel, Econet Leo, and Onatel must run the test directly (Firebase Console's Authentication testing UI is recommended, requiring no application code) and report the observed outcome back for future recording.
+- **Scope note:** this entry logs `EXT-TECH-001-DELIVERY-TEST`'s own stopped attempt. It does not backfill entries for the several earlier Resolution Sprint decisions not logged here at the time, per Entry 039's own disclosed scope boundary.
+- **Files modified:** `docs/00-governance/documentation-changes-log.md` (this entry, append-only); `docs/changes/IMPLEMENTATION_CHANGES.md`.
+- **Files created:** `docs/05-implementation/reports/EXT-TECH-001-DELIVERY-TEST-stop-report-2026-07-31.md`.
 
 ---
 
