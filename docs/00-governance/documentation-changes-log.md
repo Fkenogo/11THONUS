@@ -2,11 +2,25 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-07-31 (Entry 044 added: `RES-005.2b` — BaseMetadata Code Conformance Correction)
+> **Last controlled update:** 2026-07-31 (Entry 045 added: `EXT-TECH-001-EVIDENCE` — EXT-TECH-001 Evidence Resolution and Gate Determination)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 045 — `EXT-TECH-001-EVIDENCE`: EXT-TECH-001 Evidence Resolution and Gate Determination
+
+- **Date:** 31 July 2026
+- **Performed by:** Claude (AI agent), per Founder task "TASK — EXT-TECH-001-EVIDENCE: EXT-TECH-001 Evidence Resolution and Gate Determination."
+- **Classification:** Evidence-resolution and gate-assurance task. `PR #45` merged (content unaltered by this task); no `DEC-PROD-012` resolution; no Phase 2 implementation; no vendor selected; no external evidence fabricated.
+- **Determination recorded:** `EXT-TECH-001` (Firebase phone-OTP delivery to Burundi numbers) gate condition — **Still Pending**. The prior `RES-001` evidence package (2026-07-29) already discloses that the one decisive remaining item, a real SMS delivery test against Burundi's three carriers, has not been performed; this task independently re-confirmed that gap is still open via a direct, read-only live-infrastructure query (Firebase Identity Platform Admin config on `eleventh-on-us-dev` returned `404 CONFIGURATION_NOT_FOUND`) and two independent documentation re-fetches (both unchanged since 2026-07-29).
+- **Register correction:** the External Dependencies Register's `EXT-TECH-001` row `Blocks` field, which still named `DEC-SEC-001`/`DEC-PROV-004` as blocked by this item, was corrected — both decisions' own 2026-07-30 Decision Register entries explicitly state `EXT-TECH-001` is not a blocker to either (both `CONFIRMED` independently, treating Burundi SMS delivery as a launch-readiness matter). `Status` left `PENDING`.
+- **Capability 2 status:** confirmed `Blocked` on exactly `EXT-TECH-001` (**Still Pending**, this task) and `DEC-PROD-012` (`OPEN_FOUNDER`, unchanged). No other item required action.
+- **Scope note:** this entry logs `EXT-TECH-001-EVIDENCE`'s own gate-determination task and one narrow register correction. It does not backfill entries for the several earlier Resolution Sprint decisions not logged here at the time, per Entry 039's own disclosed scope boundary.
+- **Files modified:** `docs/00-governance/decisions/external-dependencies-register.md`; `docs/00-governance/documentation-changes-log.md` (this entry); `docs/changes/IMPLEMENTATION_CHANGES.md`.
+- **Files created:** `docs/05-implementation/reports/EXT-TECH-001-EVIDENCE-resolution-report-2026-07-31.md`.
 
 ---
 
