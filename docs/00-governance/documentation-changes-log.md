@@ -2,11 +2,24 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-07-31 (Entry 042 added: `RES-005.2a` — BaseMetadata Governing Blueprint Correction)
+> **Last controlled update:** 2026-07-31 (Entry 043 added: `RES-005.2a-R1` — TRD8 BaseMetadata Documentation Reconciliation)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 043 — `RES-005.2a-R1`: TRD8 BaseMetadata Documentation Reconciliation
+
+- **Date:** 31 July 2026
+- **Performed by:** Claude (AI agent), per Founder task "TASK — RES-005.2a-R1: TRD8 BaseMetadata Documentation Reconciliation."
+- **Classification:** Bounded documentation-reconciliation task. `PR #43` merged (content unaltered by this task); no application code modified; no new BaseMetadata semantics introduced; `EXT-TECH-001`/`DEC-PROD-012` not resolved; Phase 2 implementation not begun.
+- **Reconciliation recorded:** TRD8 §8.7 ("Firestore Document Standards") — previously an independent, stale restatement of the pre-`RES-005.2a` BaseMetadata shape (identical to what the Blueprint had transcribed from it: `version`, non-nullable `createdBy`/`updatedBy`, `deletedAt`/`deletedBy`, `languageCode`, no `currencyCode`/`timezone`) — rewritten as an explicit normative cross-reference to TRD10 §10.5 and the corrected Blueprint §3.3, removing the duplication that structurally caused this three-task correction chain. No genuinely independent TRD8 requirement was found; no stop-and-report was triggered.
+- **All three live normative documents now agree:** TRD10 §10.5 (authoritative), Blueprint §3.3 (corrected `RES-005.2a`), TRD8 §8.7 (reconciled, this entry). `functions/src/shared/metadata/baseMetadata.ts` remains unmodified and non-conformant — `RES-005.2b` assessed as **Ready**.
+- **Scope note:** this entry logs `RES-005.2a-R1`'s own TRD8 correction and narrow tracker synchronization. It does not backfill entries for the several earlier Resolution Sprint decisions not logged here at the time, per Entry 039's own disclosed scope boundary.
+- **Files modified:** `docs/02-technical/trd/08-firebase-platform-architecture.md`; `docs/05-implementation/change-tracking/engineering-implementation-programme.md`; `docs/00-governance/documentation-changes-log.md` (this entry); `docs/changes/IMPLEMENTATION_CHANGES.md`.
+- **Files created:** `docs/05-implementation/reports/RES-005.2a-R1-trd8-reconciliation-report-2026-07-31.md`.
 
 ---
 
