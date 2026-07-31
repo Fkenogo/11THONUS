@@ -2,11 +2,25 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-07-31 (Entry 040 added: `RES-007B` — Capability 2 Merge Consolidation and Closure Finalisation)
+> **Last controlled update:** 2026-07-31 (Entry 041 added: `ENG-P1-EXIT-001` — Phase 1 Exit-Criteria Determination and Capability 2 Entry Mobilisation)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 041 — `ENG-P1-EXIT-001`: Phase 1 Exit-Criteria Determination and Capability 2 Entry Mobilisation
+
+- **Date:** 31 July 2026
+- **Performed by:** Claude (AI agent), per Founder task "TASK — ENG-P1-EXIT-001: Phase 1 Exit-Criteria Determination and Capability 2 Entry Mobilisation."
+- **Classification:** Assurance and mobilisation determination. `PR #41` merged (content unaltered by this task); no application code modified; `EXT-TECH-001`/`DEC-PROD-012`/`BaseMetadata` not resolved; Phase 2 implementation not begun.
+- **Determination recorded:** Phase 1 (TRD22 §22.11) **Exit Approved** — all four governing Exit Criteria verified satisfied by direct, live evidence (shared-command authenticate/validate/log/respond; idempotent outbox processing; deny-by-default Rules; green emulator CI). Disclosed, non-blocking Deliverables-list gaps (no production Firebase project provisioned, no feature-flag abstraction, no Rules/Knowledge Service interface code) registered, not converted into exit blockers.
+- **Blockers classified, none resolved:** `EXT-TECH-001` (`PENDING`, Engineering Lead, independently actionable, blocks Phase 2 not Phase 1), `DEC-PROD-012` (`OPEN_FOUNDER`, no package yet, blocks Phase 2 not Phase 1), `BaseMetadata`/TRD10 §10.5 conformance (Blueprint §3.3 vs. TRD10 vs. code compared directly — correction sequence confirmed as documentation-then-code, `RES-005.2a` → `RES-005.2b`, neither performed here).
+- **Mobilisation plan produced:** an 8-task controlled sequence with dependencies, parallelisability, and Founder-review points identified; single next-task recommendation `RES-005.2a`, not authorized or begun by this task.
+- **Scope note:** this entry logs `ENG-P1-EXIT-001`'s own tracker corrections and new report. It does not backfill equivalent entries for the several earlier Resolution Sprint decisions not logged here at the time, per Entry 039's own disclosed scope boundary.
+- **Files modified:** `docs/05-implementation/change-tracking/engineering-implementation-programme.md`; `docs/05-implementation/11thonus-master-workflow.md`; `docs/00-governance/documentation-changes-log.md` (this entry); `docs/changes/IMPLEMENTATION_CHANGES.md`.
+- **Files created:** `docs/05-implementation/reports/ENG-P1-EXIT-001-phase-1-exit-determination-and-mobilisation-report-2026-07-31.md`.
 
 ---
 
