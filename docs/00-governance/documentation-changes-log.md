@@ -2,11 +2,22 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-07-29 (Entry 038 added: `ENG-P1-003` — Administrative Closure)
+> **Last controlled update:** 2026-07-30 (Entry 039 added: `DEC-DATA-007` — Engineering Decision Recording)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 039 — `DEC-DATA-007`: Engineering Decision Recording
+
+- **Date:** 30 July 2026
+- **Performed by:** Claude (AI agent), per Founder task "TASK — RES-006A: DEC-DATA-007 Engineering Decision Recording."
+- **Classification:** Governance decision recording only. No application code, no identifier or QR generation implemented.
+- **Decision recorded:** `DEC-DATA-007` ("Loyalty number and QR reference generation") moved `OPEN_ENGINEERING → CONFIRMED` in the [Decision Register](decisions/decision-register.md). Approved: server-side, randomly-allocated loyalty-code generation (baseline format `ABC-234`, no checksum — the `ABC-234-X` checksum-enhanced variant explicitly deferred, not adopted); a plain opaque QR reference (not a signed token); transactional-uniqueness collision handling with automatic retry; and the corrected idempotency invariant (at most one immutable assignment per platform user, repeat calls return the existing result). Recorded as an Engineering Lead decision — `Founder decision required: No`, per the Register's own field and the `RES-006` decision package's finding that no constitutional or commercial issue exists.
+- **Scope note:** this entry logs `DEC-DATA-007`'s own recording only. It does not backfill equivalent entries for the several other decisions confirmed earlier in this Resolution Sprint (`DEC-PROV-005`, `DEC-PROV-004`, `DEC-SEC-001`, `DEC-ID-003`) or for `CDR-001`, none of which were logged here at the time — those recordings are already fully documented in `docs/changes/IMPLEMENTATION_CHANGES.md`, which has functioned as this Sprint's operative running log. Backfilling this document for the earlier decisions is disclosed as a follow-on item, not performed by this entry.
+- **Files modified:** `docs/00-governance/decisions/decision-register.md`; `docs/00-governance/documentation-changes-log.md` (this entry); `docs/changes/IMPLEMENTATION_CHANGES.md`.
 
 ---
 
