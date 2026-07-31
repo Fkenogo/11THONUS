@@ -2,7 +2,7 @@
 > **Version:** 1.0 · **Status:** Draft for approval (pre-freeze) · **Classification:** Authoritative Technical  
 > **Governing document:** 11thONUS Platform Constitution; PRD  
 > **Source-of-truth path:** `docs/02-technical/trd/08-firebase-platform-architecture.md`  
-> **Last controlled update:** 2026-07-16 (Phase 2 — relocated and renamed; metadata block added)
+> **Last controlled update:** 2026-07-31 (`RES-005.2a-R1` — §8.7 reconciled: replaced its stale, duplicated BaseMetadata field list with an explicit normative cross-reference to TRD10 §10.5, eliminating a TRD-chapter-to-TRD-chapter conflict) · Previously: 2026-07-16 (Phase 2 — relocated and renamed; metadata block added)
 
 **11thONUS**
 
@@ -325,35 +325,7 @@ ruleHistory
 
 **8.7 Firestore Document Standards**
 
-Every document should contain standard metadata.
-
-id
-
-createdAt
-
-createdBy
-
-updatedAt
-
-updatedBy
-
-status
-
-version
-
-Where applicable:
-
-businessId
-
-customerId
-
-countryCode
-
-languageCode
-
-deletedAt
-
-deletedBy
+Every document carries standard metadata. The normative shape — exact field names, types, nullability, creation/update semantics, and scoped fields — is defined once, authoritatively, in TRD10 §10.5 ("Standard Document Metadata"), and is engineering-expressed in the Version 1 Engineering Blueprint §3.3. This chapter does not restate that shape; doing so previously caused this section to drift out of sync with TRD10 §10.5 (a discrepancy identified by `ENG-P2-000A`, 2026-07-29, and reconciled here — `RES-005.2a-R1`, 2026-07-31). This platform chapter's own concern is the shared-metadata *pattern* itself — that every authoritative document carries identifying, audit, and scope metadata as a matter of platform convention — not the field-level contract.
 
 These standards simplify auditing and debugging.
 
