@@ -2,11 +2,24 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-07-31 (Entry 045 added: `EXT-TECH-001-EVIDENCE` — EXT-TECH-001 Evidence Resolution and Gate Determination)
+> **Last controlled update:** 2026-07-31 (Entry 046 added: `EXT-TECH-001-GOV-ALIGN` — Governance Alignment for EXT-TECH-001)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 046 — `EXT-TECH-001-GOV-ALIGN`: Governance Alignment for EXT-TECH-001
+
+- **Date:** 31 July 2026
+- **Performed by:** Claude (AI agent), per Founder task "TASK — EXT-TECH-001-GOV-ALIGN: Governance Alignment for EXT-TECH-001."
+- **Classification:** Read-only governance-consistency review. `PR #46` merged (content unaltered by this task); no delivery test performed; no technical evidence requirement changed; no `EXT-TECH-001` resolution; no `DEC-SEC-001`/`DEC-PROV-004` reinterpretation; no `DEC-PROD-012` resolution; no Capability 2 entry authorised.
+- **Conclusion recorded: the governance documentation is already internally consistent.** Reviewed the Resolution Plan (`ENG-P2-RES-000` §7), the External Dependencies Register, the Decision Register's `DEC-SEC-001`/`DEC-PROV-004` entries, `ENG-P1-EXIT-001`, the Engineering Implementation Programme, the Master Workflow, `CDR-001`, and the Coding-Agent Prompt Register. Both Founder decisions scope their "not a blocker" language narrowly to themselves (`DEC-SEC-001`: "not a blocker to this decision"; `DEC-PROV-004`: "a production-readiness condition rather than a governance blocker"); neither amends the separate Resolution Plan Capability Authorisation Gate (§7 item 1), which remains textually unmodified and still governs `ENG-P2-001` implementation start. No document was found stating anything contradicted by the other. **No corrective edit was applied to any governance artefact.**
+- **Final classification:** `EXT-TECH-001` is no longer a decision blocker (`DEC-SEC-001`/`DEC-PROV-004` both `CONFIRMED` without it); it remains a Capability 2 entry blocker (Resolution Plan §7 item 1) and a launch-readiness/production-readiness dependency (`DEC-PROV-004` Principle 8/9) — three distinct, non-conflicting classifications for three distinct milestones.
+- **Scope note:** this entry logs `EXT-TECH-001-GOV-ALIGN`'s own governance-consistency review, which resulted in zero corrective edits beyond this log entry itself. It does not backfill entries for the several earlier Resolution Sprint decisions not logged here at the time, per Entry 039's own disclosed scope boundary.
+- **Files modified:** `docs/00-governance/documentation-changes-log.md` (this entry, append-only); `docs/changes/IMPLEMENTATION_CHANGES.md`.
+- **Files created:** `docs/05-implementation/reports/EXT-TECH-001-GOV-ALIGN-governance-alignment-report-2026-07-31.md`.
 
 ---
 
