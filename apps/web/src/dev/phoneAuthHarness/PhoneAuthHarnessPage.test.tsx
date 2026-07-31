@@ -187,7 +187,7 @@ describe("PhoneAuthHarnessPage", () => {
       fireEvent.change(getCarrierSelect(), { target: { value: "lumitel" } });
 
       fireEvent.click(screen.getByRole("button", { name: /send/i }));
-      await screen.findByText(/request accepted/i);
+      await screen.findByRole("button", { name: /mark.*received/i });
 
       expect(getPhoneAuthHarnessAuth).toHaveBeenCalledWith(REAL_FIREBASE_CONFIG);
       expect(signInWithPhoneNumber).toHaveBeenCalledWith(
@@ -218,7 +218,7 @@ describe("PhoneAuthHarnessPage", () => {
       fireEvent.change(getPhoneInput(), { target: { value: TEST_NUMBER } });
       fireEvent.change(getCarrierSelect(), { target: { value: "lumitel" } });
       fireEvent.click(screen.getByRole("button", { name: /send/i }));
-      await screen.findByText(/request accepted/i);
+      await screen.findByRole("button", { name: /mark.*received/i });
     }
 
     it("accepts an OTP typed at runtime and completes real Firebase confirmation", async () => {
@@ -269,7 +269,7 @@ describe("PhoneAuthHarnessPage", () => {
       fireEvent.change(getPhoneInput(), { target: { value: TEST_NUMBER } });
       fireEvent.change(getCarrierSelect(), { target: { value: "lumitel" } });
       fireEvent.click(screen.getByRole("button", { name: /send/i }));
-      await screen.findByText(/request accepted/i);
+      await screen.findByRole("button", { name: /mark.*received/i });
 
       expect(screen.getByText(/sms received.*no/i)).toBeInTheDocument();
 
@@ -304,7 +304,7 @@ describe("PhoneAuthHarnessPage", () => {
       fireEvent.change(getPhoneInput(), { target: { value: TEST_NUMBER } });
       fireEvent.change(getCarrierSelect(), { target: { value: "lumitel" } });
       fireEvent.click(screen.getByRole("button", { name: /send/i }));
-      await screen.findByText(/request accepted/i);
+      await screen.findByRole("button", { name: /mark.*received/i });
       fireEvent.change(getOtpInput()!, { target: { value: TEST_OTP } });
       fireEvent.click(screen.getByRole("button", { name: /verify/i }));
       await screen.findByText(/otp verified.*yes/i);
@@ -318,7 +318,7 @@ describe("PhoneAuthHarnessPage", () => {
       fireEvent.change(getPhoneInput(), { target: { value: TEST_NUMBER } });
       fireEvent.change(getCarrierSelect(), { target: { value: "lumitel" } });
       fireEvent.click(screen.getByRole("button", { name: /send/i }));
-      await screen.findByText(/request accepted/i);
+      await screen.findByRole("button", { name: /mark.*received/i });
 
       expect(window.location.search).toBe("");
       expect(window.location.hash).toBe("");
@@ -331,7 +331,7 @@ describe("PhoneAuthHarnessPage", () => {
       fireEvent.change(getPhoneInput(), { target: { value: TEST_NUMBER } });
       fireEvent.change(getCarrierSelect(), { target: { value: "lumitel" } });
       fireEvent.click(screen.getByRole("button", { name: /send/i }));
-      await screen.findByText(/request accepted/i);
+      await screen.findByRole("button", { name: /mark.*received/i });
 
       fireEvent.click(screen.getByRole("button", { name: /^reset/i }));
 
