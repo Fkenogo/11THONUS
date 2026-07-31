@@ -2,11 +2,25 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-07-30 (Entry 039 added: `DEC-DATA-007` — Engineering Decision Recording)
+> **Last controlled update:** 2026-07-31 (Entry 040 added: `RES-007B` — Capability 2 Merge Consolidation and Closure Finalisation)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 040 — `RES-007B`: Capability 2 Merge Consolidation and Closure Finalisation
+
+- **Date:** 31 July 2026
+- **Performed by:** Claude (AI agent), per Founder task "TASK — RES-007B: Capability 2 Merge Consolidation and Closure Finalisation."
+- **Classification:** Merge consolidation (Stage A) plus downstream tracker synchronization and closure record (Stage B). No decision reopened, no application code modified, no identity/permission/recovery/loyalty-number/QR functionality implemented.
+- **Merges performed:** PRs #36 (`RES-004A`), #37 (`RES-005`), #38 (`RES-006`), #39 (`RES-006A`), #40 (`RES-007`) merged to `main` in Founder-authorized dependency order; PR #32 closed without merging, superseded by PR #34. All four Sprint decisions (`DEC-PROV-004`, `DEC-SEC-001`, `DEC-ID-003`, `DEC-DATA-007`) are now `CONFIRMED` live on `main`.
+- **Trackers synchronized:** [Master Workflow](../05-implementation/11thonus-master-workflow.md), [Coding-Agent Prompt Register](../05-implementation/change-tracking/coding-agent-prompt-register.md), [`CDR-001`](../05-implementation/roadmap/CDR-001-capability-delivery-roadmap.md), [Engineering Implementation Programme](../05-implementation/change-tracking/engineering-implementation-programme.md), and the [Requirements Traceability Matrix](requirements-traceability-matrix.md) — each corrected only on the now-stale "the four decisions are open" claim; Phase 2's `Blocked` status and every outstanding engineering prerequisite preserved unchanged.
+- **Closure record created:** [Capability 2 Resolution Sprint — Closure Record](../05-implementation/reports/capability-2-resolution-sprint-closure-record-2026-07-31.md), a successor status update to `RES-007`'s own closure report (left unmodified). Final status determined: **Ready with Conditions** — not upgraded to Ready for Implementation, since the Resolution Plan's own eight-item Capability Authorisation Gate has three items still open independent of this Sprint (`EXT-TECH-001`, `DEC-PROD-012`, `BaseMetadata` conformance), and Phase 1's own exit-criteria determination has never been formally made.
+- **Scope note:** this entry logs `RES-007B`'s own tracker-sync and closure-record work. It does not backfill entries for the several earlier Resolution Sprint decisions not logged here at the time — those recordings are already fully documented in `docs/changes/IMPLEMENTATION_CHANGES.md`, per Entry 039's own disclosed scope boundary.
+- **Files modified:** `docs/05-implementation/11thonus-master-workflow.md`; `docs/05-implementation/change-tracking/coding-agent-prompt-register.md`; `docs/05-implementation/roadmap/CDR-001-capability-delivery-roadmap.md`; `docs/05-implementation/change-tracking/engineering-implementation-programme.md`; `docs/00-governance/requirements-traceability-matrix.md`; `docs/00-governance/documentation-changes-log.md` (this entry); `docs/changes/IMPLEMENTATION_CHANGES.md`.
+- **Files created:** `docs/05-implementation/reports/capability-2-resolution-sprint-closure-record-2026-07-31.md`.
 
 ---
 
