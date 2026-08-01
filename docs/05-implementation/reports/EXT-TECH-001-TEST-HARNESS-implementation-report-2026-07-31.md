@@ -396,7 +396,7 @@ No raw value was printed to chat, committed, or persisted beyond a transient, im
 
 ### 32.7 Stage G — build and preview deployment
 
-Build isolation re-verified against fresh output after the reCAPTCHA fix (not the earlier pre-fix build): ordinary `pnpm build` → `dist/index.html` + PWA assets (`sw.js`, `workbox-*.js`, `manifest.webmanifest`); zero harness markers anywhere. `vite build --mode test-harness` → `dist/harness.html` + one JS/CSS chunk only, **no** PWA files, 32 modules transformed (vs. 2,223 ordinary), zero occurrences of `react-router`/`QueryClient`/`Sentry`/`ObservabilityErrorBoundary`/`registerAuthLifecycle`/`initializeFirebasePlatform`, zero phone-number-shaped literals, exactly one (expected, client-embeddable, non-secret) `apiKey` occurrence. `harness.html` was then renamed to `index.html` as an explicit, reviewable `mv` step (documented, not hidden in bundler config) — this deploy's dist has no other HTML file, so the rename is safe and the existing `**` → `/index.html` rewrite serves it correctly.
+Build isolation re-verified against fresh output after the reCAPTCHA fix (not the earlier pre-fix build): ordinary `pnpm build` → `dist/index.html` + PWA assets (`sw.js`, `workbox-*.js`, `manifest.webmanifest`); zero harness markers anywhere. `vite build --mode test-harness` → `dist/harness.html` + one JS/CSS chunk only, **no** PWA files, 32 modules transformed (vs. 2,223 ordinary), zero occurrences of `react-router`/`QueryClient`/`Sentry`/`ObservabilityErrorBoundary`/`registerAuthLifecycle`/`initializeFirebasePlatform`, zero phone-number-shaped literals, exactly one (expected, client-embeddable, non-secret) `apiKey` occurrence. `harness.html` was renamed to `index.html` via `apps/web/package.json`'s `build:test-harness` script (`tsc -b && vite build --mode test-harness && mv dist/harness.html dist/index.html` — added in the review correction at §32.15, after an initial version of this task performed the rename as an untracked manual step) — this deploy's dist has no other HTML file, so the rename is safe and the existing `**` → `/index.html` rewrite serves it correctly.
 
 Deployed via:
 
@@ -406,7 +406,7 @@ firebase hosting:channel:deploy phone-auth-test --project eleventh-on-us-dev --e
 
 - **Preview channel:** `phone-auth-test`
 - **HTTPS URL:** `https://eleventh-on-us-dev--phone-auth-test-3yz68r9z.web.app`
-- **Expiry:** `2026-08-01 23:00:23` (refreshed on the header-fix redeploy in §32.9; originally `22:52:57`)
+- **Expiry:** `2026-08-01 23:46:31` (refreshed on the header-fix redeploy in §32.9; originally `22:52:57`)
 - **Hosting site / Firebase project:** `eleventh-on-us-dev` / `eleventh-on-us-dev`
 - **Live channel:** confirmed untouched both immediately after deploy and after the redeploy — `https://eleventh-on-us-dev.web.app` still returns Firebase's genuine "Site Not Found" 404, `firebase hosting:channel:list` still shows no real release on `live`.
 
@@ -428,7 +428,7 @@ CSP validated with real evidence, not assumption: a `<script src="https://www.go
 
 ### 32.11 Teardown procedure (not executed — the preview must remain live for the Founder's test)
 
-1. **Delete the preview channel:** `firebase hosting:channel:delete phone-auth-test --project eleventh-on-us-dev` (or allow the 2026-08-01 23:00:23 expiry to lapse).
+1. **Delete the preview channel:** `firebase hosting:channel:delete phone-auth-test --project eleventh-on-us-dev` (or allow the 2026-08-01 23:46:31 expiry to lapse).
 2. **Verify the authorized-domain cleanup:** re-read `identitytoolkit.googleapis.com/admin/v2/projects/eleventh-on-us-dev/config`'s `authorizedDomains` after deletion/expiry. If `eleventh-on-us-dev--phone-auth-test-3yz68r9z.web.app` is still present (Firebase's automatic cleanup on channel deletion was not independently confirmed by this task — see §32.8), remove it manually via a scoped `PATCH` to that same endpoint with `updateMask=authorizedDomains`, listing every domain **except** the preview hostname — never a blanket rewrite.
 3. **Remove the local test-build environment file:** `rm apps/web/.env.test-harness.local` (already gitignored, never committed; this step is about clearing the local working tree, not git history).
 4. **Confirm the ordinary production build still excludes the harness:** re-run `pnpm --filter web build` and grep `dist/` for harness markers — expect zero matches, exactly as verified in §32.7.
@@ -456,6 +456,16 @@ No unrelated file was modified. `apps/web/src/App.tsx` and the existing dev-serv
 
 **Rollback:** `git revert` of this task's commit(s) restores the pre-CR3 state (dev-server-only harness, no Hosting rewrites/headers, single-container reCAPTCHA lifecycle). The deployed preview channel is independent of the git history and is torn down per §32.11 regardless of any git action.
 
-### 32.14 Status
+### 32.14 Review correction (PR #52, before any merge decision)
+
+Two automated-review findings on PR #52 were independently verified against the actual committed source, both confirmed as genuine:
+
+**P1 — the harness-specific `noindex`/CSP headers were scoped to `"source": "**"` in `firebase.json`.** Correct as a criticism of the *committed config's future reuse risk*: if a future full-application production Hosting deploy reused this same `firebase.json` unmodified, every customer route would inherit the harness's restrictive `noindex` tag and CSP (whose `connect-src` omits `firebaseappcheck.googleapis.com`, needed by `main.tsx`'s real App Check initialization). §32.13 had already disclosed this as a residual risk requiring review before reuse, but disclosure is not the same as prevention. **Fixed:** the header rule was narrowed from `"source": "**"` to three explicit rules matching only the paths this harness deploy actually serves — `/`, `/index.html`, `/assets/**` — each carrying its own combination of cache-control plus (for `/` and `/index.html`) the `noindex`/CSP headers. Firebase Hosting's header matching is confirmed (empirically, in §32.9) to operate on the literal requested path, not the post-rewrite destination, so a future deep route like `/dashboard` — which only ever matches the `**` *rewrite*, never a `/`- or `/index.html`-scoped *header* rule — would no longer inherit these headers at all.
+
+**P2 — the `harness.html` → `index.html` rename was an untracked manual step**, not encoded in any build or deploy command. A clean `vite build --mode test-harness` followed by the documented Firebase deploy command alone would produce `dist/harness.html` while the committed rewrite serves `/index.html`, 404ing on redeploy after the channel's expiry. **Fixed:** added `apps/web/package.json`'s `build:test-harness` script (`tsc -b && vite build --mode test-harness && mv dist/harness.html dist/index.html`), so the full, correct sequence is a single checked-in, reproducible command — verified against a real fresh build producing exactly `dist/index.html`, no `dist/harness.html`.
+
+Both fixes were redeployed to the same `phone-auth-test` preview channel (same URL, refreshed expiry) and re-verified: `curl -I` against `/`, `/index.html`, and a representative deep path confirms the narrowed header scoping behaves as intended; the live channel remains untouched; full validation suite re-run clean.
+
+### 32.15 Status
 
 `EXT-TECH-001`: **Still Pending**. Capability 2: **Blocked**. Environment preparation: **complete**. Real carrier test: **not yet performed** — this remains the Founder's own next step, using the HTTPS preview URL above.

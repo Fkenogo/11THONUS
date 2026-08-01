@@ -12,7 +12,7 @@
 Steps 1–2 below describe running the harness on `localhost` via `pnpm dev`. As of CR3, a second option exists: a temporary, HTTPS-only Hosting preview containing **only** the harness (no other route, no PWA, no analytics, no observability pipeline — see the implementation report's §32.3 for why this is a structurally separate build, not the same app with a route added).
 
 - **Preview URL:** `https://eleventh-on-us-dev--phone-auth-test-3yz68r9z.web.app`
-- **Expiry:** `2026-08-01 23:00:23` (Burundi/UTC — check `firebase hosting:channel:list --project eleventh-on-us-dev` if this runbook is used after that time; the channel may have expired and would need to be redeployed per the implementation report's §32.7).
+- **Expiry:** `2026-08-01 23:46:31` (Burundi/UTC — check `firebase hosting:channel:list --project eleventh-on-us-dev` if this runbook is used after that time; the channel may have expired and would need to be redeployed per the implementation report's §32.7).
 - Skip straight to **step 3** below once this URL loads — the hosted preview already has the correct project's real config baked in (verified in §32.6 of the implementation report) and needs no local `.env.local` setup.
 - The hosted preview shows a prominent red **"TEST-ONLY PREVIEW"** banner at the top of the page. This is expected and confirms you are on the CR3 test-build guard's approved path, not a misconfigured deployment.
 - **Do not share this URL outside the Founder/authorised-tester context** — it is public-but-temporary (reachable by anyone with the link, `noindex`ed, and torn down after testing per the implementation report's §32.11 teardown procedure).

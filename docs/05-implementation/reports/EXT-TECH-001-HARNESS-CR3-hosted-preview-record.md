@@ -14,7 +14,7 @@
 | Hosting site | `eleventh-on-us-dev` |
 | Preview channel name | `phone-auth-test` |
 | HTTPS URL | `https://eleventh-on-us-dev--phone-auth-test-3yz68r9z.web.app` |
-| Expiry | `2026-08-01 23:00:23` |
+| Expiry | `2026-08-01 23:46:31` |
 | Live channel status | Untouched — no release, unchanged since before this task |
 
 ## What the preview contains
@@ -32,6 +32,17 @@ A single-page, harness-only build (`harness.html` / `harnessMain.tsx`) — no cu
 ## Before the Founder tests
 
 Nothing further is required — the preview is ready. See the [manual runbook](EXT-TECH-001-TEST-HARNESS-manual-runbook-2026-07-31.md)'s §0 for how to use the hosted preview, and the [evidence template](EXT-TECH-001-delivery-test-evidence-template-2026-07-31.md) for recording results.
+
+## Rebuilding / redeploying the preview
+
+If the channel above has expired, rebuild and redeploy with:
+
+```bash
+pnpm --filter web build:test-harness
+firebase hosting:channel:deploy phone-auth-test --project eleventh-on-us-dev --expires 6h
+```
+
+`build:test-harness` runs the full sequence (typecheck, `vite build --mode test-harness`, and the `harness.html` → `index.html` rename) as one checked-in command — no manual step required.
 
 ## Teardown (perform after testing — do not delete the preview before then)
 
