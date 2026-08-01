@@ -1,8 +1,8 @@
 > **Title:** Controlled Real-SMS Test Harness — EXT-TECH-001 Delivery-Test Preparation
-> **Status:** Bounded harness implementation, complete and validated, corrected under `EXT-TECH-001-TEST-HARNESS-CR1` (§30). **No real SMS was sent by this task.** `EXT-TECH-001` remains `Still Pending`; Capability 2 remains `Blocked`. PR opened, not merged.
-> **Task:** `EXT-TECH-001-TEST-HARNESS` (original), `EXT-TECH-001-TEST-HARNESS-CR1` (corrective review cycle)
+> **Status:** PR #50 merged to `main` (`3d4206a`). Post-merge live-test preparation (§30.13 onward — separately-tracked, undocumented section) surfaced a real pre-send failure, resolved under `EXT-TECH-001-HARNESS-CR2` (§31). **No real SMS has been sent at any point across this entire task chain.** `EXT-TECH-001` remains `Still Pending`; Capability 2 remains `Blocked`.
+> **Task:** `EXT-TECH-001-TEST-HARNESS` (original), `EXT-TECH-001-TEST-HARNESS-CR1` (pre-merge corrective review), `EXT-TECH-001-HARNESS-CR2` (post-merge pre-send failure resolution)
 > **Source-of-truth path:** `docs/05-implementation/reports/EXT-TECH-001-TEST-HARNESS-implementation-report-2026-07-31.md`
-> **Prepared:** 2026-07-31. **Updated:** 2026-08-01 (CR1 — see §30; also §14 for the earlier, separate CI race-condition correction).
+> **Prepared:** 2026-07-31. **Updated:** 2026-08-01 (CR1 — see §30; CR2 — see §31; also §14 for the earlier, separate CI race-condition correction).
 
 ---
 
@@ -254,3 +254,91 @@ Separately, replies citing the exact fix commit (`74aeba6`) and its test evidenc
 ### 30.14 PR #50 status at the end of this cycle
 
 Not merged. CI green (`30691479650`, re-run confirmed), PR `OPEN`/`MERGEABLE`/`CLEAN` at `74aeba6`, 0 unresolved review threads. Awaiting fresh, explicit Founder merge authorisation per this task's own standing instruction and this cycle's explicit "Do not merge PR #50" / "stop when all three defects are fixed, CI is green, and all review threads are resolved" instructions — all three of which are now true.
+
+**Post-CR1 events, for context leading into §31:** PR #50 was subsequently reviewed and Founder-authorised for merge; merged to `main` at commit `3d4206a57fc3af742bceaa8ac0de7cfd515bfd7b` (post-merge CI re-verified green). A separate Founder-authorised task then prepared a clean worktree at that commit for a live, Founder-operated carrier test — registering the project's first Firebase Web App (`"11thONUS Web"`, since none existed under `eleventh-on-us-dev`), populating a local-only `.env.local` with the real Web SDK config, and fixing two genuine `.env.local`-level runtime-error findings (an App-Check/`useEmulator` flag conflation, and a blank-vs-`undefined` boolean-parsing gap) before the harness could even render. The Founder then attempted the harness's first live Send. This is the point CR2 (§31) picks up from.
+
+## 31. CR2 — Post-Merge Pre-Send Failure Resolution (2026-08-01)
+
+### 31.1 Context and objective
+
+The Founder's live test produced two sequential, real Firebase errors: `auth/invalid-app-credential` on the first Send, then `reCAPTCHA has already been rendered in this element` on Retry. `EXT-TECH-001-HARNESS-CR2` required investigating and resolving these without guessing, without a further real SMS attempt, and without changing production authentication behaviour.
+
+### 31.2 Pre-change analysis (required before any code change)
+
+**Source review:** re-read `PhoneAuthHarnessPage.tsx`'s `performSend` in full. The relevant fragment, unchanged since CR1:
+
+```ts
+if (!recaptchaVerifierRef.current) {
+  recaptchaVerifierRef.current = new RecaptchaVerifier(auth, recaptchaContainerId, {
+    size: "invisible",
+  });
+}
+const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifierRef.current);
+```
+
+`recaptchaVerifierRef.current` is set once and never cleared except in `resetAll()` — meaning the *same* `RecaptchaVerifier` instance, and the *same* underlying DOM-rendered `grecaptcha` widget, is reused across every retry.
+
+**Execution-path trace, as required:**
+1. Tester clicks **Send OTP** → `handleSend()` → `performSend(false)`.
+2. `recaptchaVerifierRef.current` is `null` → a new `RecaptchaVerifier` is constructed against the harness's dedicated Auth instance and the `recaptchaContainerId` `<div>`.
+3. `signInWithPhoneNumber(auth, phoneNumber, verifier)` is called. Internally, this calls `verifier.verify()`, which renders the invisible reCAPTCHA widget into the container `<div>` and resolves a token from Google's reCAPTCHA service.
+4. Firebase's Identity Toolkit backend (`accounts:sendVerificationCode`) rejects the request with `auth/invalid-app-credential` ("the reCAPTCHA token response is invalid").
+5. The `catch` block runs `setErrorText(describeError(error))`. **`recaptchaVerifierRef.current` is left untouched** — still pointing at the same, already-rendered verifier/widget.
+6. Tester clicks **Retry / Resend** → `handleRetry()` → `performSend(true)`.
+7. `recaptchaVerifierRef.current` is **not** `null` (step 5) → the `if` block is skipped, the *same* verifier instance is reused.
+8. `signInWithPhoneNumber` is called again, which calls `verifier.verify()` a second time on a container `<div>` that already holds a rendered `grecaptcha` iframe from step 3. This throws `"reCAPTCHA has already been rendered in this element"` — a raw `grecaptcha.js` DOM-level error, not a Firebase `auth/*` error code.
+
+**Live-environment verification (before diagnosing #1) — a genuine new-evidence check, not a rewrite of old evidence:** the Founder reported that the project's Firebase Web App had since been manually registered. Re-fetched, live, explicitly scoped to `eleventh-on-us-dev` (never relying on any earlier App ID or the CLI's ambient "active project," which was confirmed to be a *different* project, `eleventh-on-us`):
+- `firebase apps:list web --project eleventh-on-us-dev` → **2 apps now exist**: `"11thONUS Web - Development"` (App ID `1:709450867178:web:1195c6a790be6ee7a99293`, the Founder's officially-registered app) and `"11thONUS Web"` (App ID `1:709450867178:web:191ba4b9b50be870a99293`, this harness's own earlier auto-created placeholder, from the prior live-test-prep task).
+- `firebase apps:sdkconfig web 1:709450867178:web:1195c6a790be6ee7a99293 --project eleventh-on-us-dev` → `apiKey`, `authDomain`, `projectId`, `storageBucket`, `messagingSenderId` are **identical** to the placeholder app's config (all four/five are project-level defaults in Firebase, not per-app) — **only `appId` differs**.
+- `apps/web/.env.local`'s `VITE_FIREBASE_APP_ID` was updated to the Founder's official App ID (never relying on the earlier placeholder one, per explicit instruction), and the Vite dev server was restarted to pick up the change (Vite does not hot-reload `.env.local`).
+
+### 31.3 Root cause — question 1: why `auth/invalid-app-credential`?
+
+**Ruled out with direct evidence, not assumption:**
+- **reCAPTCHA Enterprise mismatch** — ruled out. Queried the live, public `recaptchaConfig` endpoint (`identitytoolkit.googleapis.com/v2/recaptchaConfig`, the same endpoint the client SDK itself calls) with the project's real API key: `recaptchaEnforcementState` for `PHONE_PROVIDER` is `ENFORCEMENT_STATE_UNSPECIFIED` — Enterprise is not enforced.
+- **Billing/Spark-plan restriction** — ruled out. `cloudbilling.googleapis.com` confirms `billingEnabled: true` (Blaze) on `eleventh-on-us-dev`.
+- **Unauthorized domain, missing Phone Auth, wrong SMS region** — all ruled out; already confirmed correct in the prior live-test-prep task and re-confirmed here (`authorizedDomains` includes `localhost`; `signIn.phoneNumber.enabled: true`; `smsRegionConfig.allowlistOnly.allowedRegions: ["BI"]`).
+- **A broken or blocked reCAPTCHA widget** — ruled out directly. Constructed a `RecaptchaVerifier` against the harness's own dedicated Auth instance in isolation (via the browser console, importing the harness's real modules, never calling `signInWithPhoneNumber`) and called `.verify()` alone. It resolved in ~5.1s with a well-formed, ~1380-character token (`0cAFcWeA...` prefix, the standard grecaptcha v2 response format). This proves reCAPTCHA token generation itself is healthy against the current project and Web App configuration, and — because `.verify()` alone never reaches Identity Toolkit's phone endpoint — this test could not itself have sent an SMS.
+
+**Confirmed as a real, now-corrected gap present at the time of the original failure:** at the time of the Founder's original test, `eleventh-on-us-dev` had **no officially-registered Firebase Web App** — this harness's own placeholder app was the only one that existed, auto-created by this task chain itself rather than through the Founder's own Firebase Console action. Firebase's phone-auth reCAPTCHA verification is scoped per-project through a registered app's configuration; attempting phone auth against a project with no Founder-registered Web App is consistent with, and a plausible direct cause of, the backend rejecting the reCAPTCHA token as belonging to an "invalid application verifier."
+
+**Stated with honest confidence bounds, as required:** I could not find a single, unambiguous, current, authoritative Firebase source that definitively attributes `auth/invalid-app-credential` to a missing Web App registration specifically (searched current Firebase JS SDK GitHub issues and official docs; two independent documentation excerpts on the separate question of "does phone auth work on localhost at all" directly contradicted each other, and I have deliberately not cited either as authoritative). Reproducing the *original* failing call to confirm definitively is explicitly prohibited by this task ("do not perform another real SMS test"). What **is** directly, empirically confirmed: every project-level prerequisite now checks out correctly, the reCAPTCHA token layer is demonstrably healthy, and the Founder's own registration of the official Web App has closed the one configuration gap that existed at the time of the original failure and no longer exists. **Category: Firebase configuration** (a genuine, now-resolved project-setup gap), not a code defect in the harness, not a browser issue, and not an App Check interaction (App Check is never initialized on the harness's dedicated secondary Firebase app at all — see `phoneAuthHarnessAuth.ts`, unchanged since the original implementation).
+
+### 31.4 Root cause — question 2: why `"reCAPTCHA has already been rendered in this element"` on retry?
+
+**Confirmed directly, not by inference alone.** After the isolated `.verify()` call in §31.3, inspected the container `<div>`'s DOM: it now permanently held a live `grecaptcha-badge`/iframe. Constructing or re-verifying against the *same* container without first removing that node reproduces exactly this class of error — this is standard, documented `grecaptcha.js` behaviour (`grecaptcha.render()` throws when a widget is already associated with a given container), not a browser bug or configuration issue.
+
+**Validated against current Firebase documentation, as required:** Firebase's own official Phone Authentication for Web guidance (`firebase.google.com/docs/auth/web/phone-auth`) explicitly instructs: *if `signInWithPhoneNumber()` fails, reset the reCAPTCHA before allowing another attempt* — either `grecaptcha.reset(widgetId)` or re-render the verifier. CR1's retry design (introduced to satisfy the Founder's own CR1 requirement for a reachable, bounded retry control) did not implement this — it deliberately reused the same verifier instance across retries as a simplification, which is exactly the pattern Firebase's own documentation warns against for the *failure* case (as opposed to reuse across independently-successful sends, which is fine).
+
+**Category: RecaptchaVerifier lifecycle** — a genuine code defect in `PhoneAuthHarnessPage.tsx`, confirmed against both direct DOM evidence and current official Firebase guidance. Not a Firebase configuration issue, not an SDK-usage issue elsewhere, not App Check, not a browser bug.
+
+### 31.5 Fix applied
+
+Test-first (per this session's standing TDD discipline): added a test proving the CR1 code passes the *same* `RecaptchaVerifier` instance to `signInWithPhoneNumber` on both the first send and the retry (asserted via referential inequality on the mock's captured call arguments), confirmed it failed for exactly that reason against the unmodified code, then applied the minimal fix — `PhoneAuthHarnessPage.tsx`'s `performSend` now unconditionally clears any existing verifier and constructs a fresh one on every send attempt (first send and every retry alike), instead of only constructing one when none exists yet:
+
+```ts
+recaptchaVerifierRef.current?.clear();
+recaptchaVerifierRef.current = new RecaptchaVerifier(auth, recaptchaContainerId, {
+  size: "invisible",
+});
+```
+
+On a genuine first send, `recaptchaVerifierRef.current` is `null`, so `?.clear()` is a safe no-op and behaviour is identical to before — this change only alters retry behaviour, exactly where the defect lives. `resetAll()` is unaffected (already cleared+nulled the ref). No other file, and no production (non-harness) authentication code path, was touched.
+
+### 31.6 Validation performed
+
+- `pnpm --filter web test`: **238/238 pass** (237 pre-CR2 + 1 new regression test proving the fix).
+- `pnpm typecheck`: one genuine TS2493 tuple-indexing error surfaced by the new test's `.mock.calls[n][2]` access (the mock's inferred call-argument tuple type has no declared parameters) — fixed via an explicit `as unknown[]` cast on the mock-call-arguments array, not by weakening any production type. Clean after.
+- `pnpm lint` / `pnpm format:check`: clean.
+- `pnpm build` + `grep -rl` against `dist/` for harness markers: zero matches — production-build exclusion re-verified unaffected by this change.
+- Secret/PII scan on the diff: clean.
+- `git diff --stat 3d4206a`: confirmed only `PhoneAuthHarnessPage.tsx` and `PhoneAuthHarnessPage.test.tsx` changed — the two files directly responsible, per this task's explicit scope instruction.
+- **No further real SMS test was performed at any point in CR2** — every diagnostic (reCAPTCHA-config query, billing check, isolated `.verify()` call, DOM inspection) either queried public/read-only Firebase metadata or exercised `RecaptchaVerifier.verify()` alone, which never reaches Identity Toolkit's phone-auth endpoint and cannot itself trigger an SMS.
+
+### 31.7 Environment reconciliation summary (as explicitly requested)
+
+- **Original root cause, before the Web App was registered:** no Firebase Web App existed under `eleventh-on-us-dev` at all; this harness's own auto-created placeholder app was the only one present. Strongly consistent with, though not 100%-provable as the sole cause of, `auth/invalid-app-credential`.
+- **The Founder's manual environment correction:** registration of the official `"11thONUS Web - Development"` Web App. `apiKey`/`authDomain`/`projectId`/`storageBucket`/`messagingSenderId` were already correct and identical either way (project-level defaults); only `appId` changed. `.env.local` updated to the Founder's official App ID; dev server restarted.
+- **Remaining code defect, independent of the above:** the RecaptchaVerifier retry-reuse bug (§31.4), confirmed and fixed in this cycle.
+- **Final state after reconciliation:** reCAPTCHA token generation confirmed healthy end-to-end against the current, Founder-registered configuration; the retry-lifecycle defect is fixed and test-covered; all other project-level prerequisites (Phone Auth enabled, SMS region = `BI`, `localhost` authorized, billing enabled, reCAPTCHA Enterprise not enforced) remain confirmed correct. The harness has not been re-tested end-to-end with a real send since these fixes, per this task's explicit prohibition on a further real SMS test — that remains the Founder's own next live-test step.
