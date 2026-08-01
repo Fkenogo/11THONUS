@@ -1,3 +1,4 @@
+import { StrictMode } from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -13,6 +14,7 @@ const REAL_FIREBASE_CONFIG = {
 const {
   MockRecaptchaVerifier,
   recaptchaClear,
+  recaptchaVerifierConstructorCalls,
   mockConfirm,
   mockConfirmationResult,
   signInWithPhoneNumber,
@@ -21,8 +23,16 @@ const {
   getAppEnv,
 } = vi.hoisted(() => {
   const recaptchaClear = vi.fn();
+  // CR3: captures the exact (auth, container, options) arguments each
+  // `new RecaptchaVerifier(...)` call received, so tests can assert the
+  // fix's actual mechanism — a distinct, fresh DOM container per
+  // construction — not merely its symptom.
+  const recaptchaVerifierConstructorCalls: unknown[][] = [];
   class MockRecaptchaVerifier {
     clear = recaptchaClear;
+    constructor(...args: unknown[]) {
+      recaptchaVerifierConstructorCalls.push(args);
+    }
   }
 
   const mockConfirm = vi.fn();
@@ -62,6 +72,7 @@ const {
   return {
     MockRecaptchaVerifier,
     recaptchaClear,
+    recaptchaVerifierConstructorCalls,
     mockConfirm,
     mockConfirmationResult,
     signInWithPhoneNumber,
@@ -85,8 +96,8 @@ import { PhoneAuthHarnessPage } from "./PhoneAuthHarnessPage";
 const TEST_NUMBER = "+25779123456";
 const TEST_OTP = "654321";
 
-function renderHarness(dev = true) {
-  return render(<PhoneAuthHarnessPage dev={dev} />);
+function renderHarness(dev = true, testHarnessBuild = false) {
+  return render(<PhoneAuthHarnessPage dev={dev} testHarnessBuild={testHarnessBuild} />);
 }
 
 function getPhoneInput() {
@@ -108,6 +119,7 @@ describe("PhoneAuthHarnessPage", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    recaptchaVerifierConstructorCalls.length = 0;
     signInWithPhoneNumber.mockResolvedValue(mockConfirmationResult);
     mockConfirm.mockResolvedValue({ user: { uid: "test-uid" } });
     localStorage.clear();
@@ -135,6 +147,27 @@ describe("PhoneAuthHarnessPage", () => {
       renderHarness(true);
 
       expect(getPhoneInput()).toBeInTheDocument();
+    });
+  });
+
+  describe("CR3 hosted test-harness build access", () => {
+    it("renders nothing when both dev and testHarnessBuild are false — runtime navigation cannot bypass the guard", () => {
+      const { container } = renderHarness(false, false);
+
+      expect(container).toBeEmptyDOMElement();
+      expect(getPhoneAuthHarnessAuth).not.toHaveBeenCalled();
+    });
+
+    it("renders the harness form when testHarnessBuild is true, even though dev is false", () => {
+      renderHarness(false, true);
+
+      expect(getPhoneInput()).toBeInTheDocument();
+    });
+
+    it("defaults testHarnessBuild to false when the prop is omitted, so ordinary dev-server callers are unaffected", () => {
+      const { container } = render(<PhoneAuthHarnessPage dev={false} />);
+
+      expect(container).toBeEmptyDOMElement();
     });
   });
 
@@ -513,6 +546,161 @@ describe("PhoneAuthHarnessPage", () => {
 
       expect(secondVerifierArg).not.toBe(firstVerifierArg);
       expect(recaptchaClear).toHaveBeenCalled();
+    });
+  });
+
+  describe("CR3 reCAPTCHA lifecycle correction", () => {
+    // Root cause, confirmed by direct reproduction against the real
+    // grecaptcha.js widget (see the CR3 implementation report): calling
+    // `.clear()` on a RecaptchaVerifier resets its internal widget state
+    // but does NOT remove the DOM nodes grecaptcha.render() injected into
+    // the container element — so a brand-new RecaptchaVerifier targeting
+    // that SAME container element still throws "reCAPTCHA has already
+    // been rendered in this element" the next time .verify() runs
+    // internally. CR2's clear()-and-reconstruct fix (still reusing the
+    // one static container id) was therefore insufficient. The only
+    // reliable fix is a genuinely fresh, never-before-used DOM node per
+    // verifier.
+    async function sendInitial() {
+      fireEvent.change(getPhoneInput(), { target: { value: TEST_NUMBER } });
+      fireEvent.change(getCarrierSelect(), { target: { value: "lumitel" } });
+      fireEvent.click(screen.getByRole("button", { name: /send/i }));
+      await screen.findByRole("button", { name: /mark.*received/i });
+    }
+
+    function getRetryButton() {
+      return screen.getByRole("button", { name: /retry|resend/i });
+    }
+
+    function containerArg(callIndex: number): HTMLElement {
+      return recaptchaVerifierConstructorCalls[callIndex]![1] as HTMLElement;
+    }
+
+    it("constructs each verifier against a distinct, fresh DOM element — never a reused container", async () => {
+      renderHarness();
+      await sendInitial();
+      fireEvent.click(getRetryButton());
+      await screen.findByText(/retry count.*1/i);
+
+      expect(recaptchaVerifierConstructorCalls).toHaveLength(2);
+      const first = containerArg(0);
+      const second = containerArg(1);
+
+      expect(first).toBeInstanceOf(HTMLElement);
+      expect(second).toBeInstanceOf(HTMLElement);
+      expect(second).not.toBe(first);
+    });
+
+    it("removes the prior attempt's container node from the document after clearing it", async () => {
+      renderHarness();
+      await sendInitial();
+      const first = containerArg(0);
+      expect(document.body.contains(first)).toBe(true);
+
+      fireEvent.click(getRetryButton());
+      await screen.findByText(/retry count.*1/i);
+
+      expect(document.body.contains(first)).toBe(false);
+      expect(document.body.contains(containerArg(1))).toBe(true);
+    });
+
+    it("recovers from a failed first request: the retry succeeds against a fresh container", async () => {
+      signInWithPhoneNumber.mockRejectedValueOnce(
+        Object.assign(new Error("invalid app credential"), {
+          code: "auth/invalid-app-credential",
+        }),
+      );
+      renderHarness();
+      fireEvent.change(getPhoneInput(), { target: { value: TEST_NUMBER } });
+      fireEvent.change(getCarrierSelect(), { target: { value: "lumitel" } });
+      fireEvent.click(screen.getByRole("button", { name: /send/i }));
+      await screen.findByText(/auth\/invalid-app-credential/);
+
+      fireEvent.click(getRetryButton());
+      await screen.findByRole("button", { name: /mark.*received/i });
+
+      expect(recaptchaVerifierConstructorCalls).toHaveLength(2);
+      expect(containerArg(1)).not.toBe(containerArg(0));
+      expect(recaptchaClear).toHaveBeenCalledTimes(1);
+    });
+
+    it("restores a pristine container (zero leftover recaptcha DOM nodes) on reset after a failure", async () => {
+      signInWithPhoneNumber.mockRejectedValueOnce(
+        Object.assign(new Error("invalid app credential"), {
+          code: "auth/invalid-app-credential",
+        }),
+      );
+      renderHarness();
+      fireEvent.change(getPhoneInput(), { target: { value: TEST_NUMBER } });
+      fireEvent.change(getCarrierSelect(), { target: { value: "lumitel" } });
+      fireEvent.click(screen.getByRole("button", { name: /send/i }));
+      await screen.findByText(/auth\/invalid-app-credential/);
+      const failedContainer = containerArg(0);
+
+      fireEvent.click(screen.getByRole("button", { name: /^reset/i }));
+
+      expect(recaptchaClear).toHaveBeenCalledTimes(1);
+      expect(document.body.contains(failedContainer)).toBe(false);
+    });
+
+    it("does not throw and does not accumulate residual nodes across repeated resets", async () => {
+      renderHarness();
+
+      expect(() => {
+        fireEvent.click(screen.getByRole("button", { name: /^reset/i }));
+        fireEvent.click(screen.getByRole("button", { name: /^reset/i }));
+      }).not.toThrow();
+
+      await sendInitial();
+      fireEvent.click(screen.getByRole("button", { name: /^reset/i }));
+      fireEvent.click(screen.getByRole("button", { name: /^reset/i }));
+
+      // Exactly the one real container from the single send attempt above
+      // should have ever been created; neither reset (including the
+      // redundant second one) constructs a new verifier or leaves a node
+      // behind.
+      expect(recaptchaVerifierConstructorCalls).toHaveLength(1);
+      expect(document.body.contains(containerArg(0))).toBe(false);
+    });
+
+    it("clears the verifier and removes its container on unmount", async () => {
+      const { unmount } = renderHarness();
+      await sendInitial();
+      const container = containerArg(0);
+
+      unmount();
+
+      expect(recaptchaClear).toHaveBeenCalledTimes(1);
+      expect(document.body.contains(container)).toBe(false);
+    });
+
+    it("constructs exactly one verifier per Send click under React StrictMode", async () => {
+      render(
+        <StrictMode>
+          <PhoneAuthHarnessPage dev={true} testHarnessBuild={false} />
+        </StrictMode>,
+      );
+      await sendInitial();
+
+      expect(recaptchaVerifierConstructorCalls).toHaveLength(1);
+      expect(signInWithPhoneNumber).toHaveBeenCalledTimes(1);
+    });
+
+    it("blocks a second overlapping retry while one is already in flight", async () => {
+      renderHarness();
+      await sendInitial();
+
+      // Two rapid clicks with no await between them, simulating a
+      // double-click landing before the first attempt's async work (and
+      // the `isSending` state update it triggers) has settled.
+      fireEvent.click(getRetryButton());
+      fireEvent.click(getRetryButton());
+      await screen.findByText(/retry count.*1/i);
+
+      // Exactly one additional attempt (the first send + this one retry)
+      // was ever dispatched to Firebase — the overlapping second click
+      // was blocked, not queued as a second real attempt.
+      expect(signInWithPhoneNumber).toHaveBeenCalledTimes(2);
     });
   });
 

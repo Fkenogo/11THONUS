@@ -342,3 +342,130 @@ On a genuine first send, `recaptchaVerifierRef.current` is `null`, so `?.clear()
 - **The Founder's manual environment correction:** registration of the official `"11thONUS Web - Development"` Web App. `apiKey`/`authDomain`/`projectId`/`storageBucket`/`messagingSenderId` were already correct and identical either way (project-level defaults); only `appId` changed. `.env.local` updated to the Founder's official App ID; dev server restarted.
 - **Remaining code defect, independent of the above:** the RecaptchaVerifier retry-reuse bug (§31.4), confirmed and fixed in this cycle.
 - **Final state after reconciliation:** reCAPTCHA token generation confirmed healthy end-to-end against the current, Founder-registered configuration; the retry-lifecycle defect is fixed and test-covered; all other project-level prerequisites (Phone Auth enabled, SMS region = `BI`, `localhost` authorized, billing enabled, reCAPTCHA Enterprise not enforced) remain confirmed correct. The harness has not been re-tested end-to-end with a real send since these fixes, per this task's explicit prohibition on a further real SMS test — that remains the Founder's own next live-test step.
+
+## 32. CR3 — Firebase Hosting Preview and Hosted-Domain Phone Authentication Correction (2026-08-01)
+
+### 32.1 Context and objective
+
+The Founder observed, on a live localhost test, that `RecaptchaVerifier`'s "already been rendered" error **still occurred after CR2's `clear()`-and-reconstruct fix**. Separately, the Founder enabled standard Firebase Hosting on `eleventh-on-us-dev` (site created, no release deployed) and authorised: completing repository-side Hosting setup where required; building a tightly-scoped, harness-only artifact; deploying it to a temporary Hosting preview channel; authorising only that exact preview hostname for Firebase Auth; finding and fixing the deeper reCAPTCHA lifecycle defect; and preparing the resulting HTTPS preview for a Founder-operated real-SMS test. No real SMS was sent at any point in CR3.
+
+### 32.2 Stage A — repository and live-state verification
+
+Repository: `firebase.json` and `.firebaserc` already existed and were already correctly scoped (`"dev": "eleventh-on-us-dev"`, no `"default"` alias — every command in this task carried an explicit `--project eleventh-on-us-dev`, never the CLI's ambient project). `firebase.json`'s `hosting` block existed but had no `rewrites`/`headers`. No deploy script or Hosting-deploy CI step existed anywhere.
+
+Live project, explicitly scoped: project ID/number confirmed; registered Web App `11thONUS Web - Development` confirmed; Hosting site `eleventh-on-us-dev` exists. **A genuine discrepancy was found and resolved, not assumed away:** `firebase hosting:channel:list` showed a "Last Release Time" for the `live` channel, which looked like a prior release existed. Direct evidence contradicted the CLI's display: the Hosting Releases API returned empty for that channel, and the live URL itself returned Firebase's genuine "Site Not Found" 404 — confirming the CLI's column is a display artifact (the site's creation time), not a real release, and that no Hosting release existed, consistent with the Founder's brief. Phone Auth enabled, SMS allowlist exactly `["BI"]`, authorized domains as before, Blaze billing confirmed via `gcloud billing projects describe` (a working auth path after the OAuth-token quota-project issue documented in §32.5 below), and `defaultSupportedIdpConfigs`/`oauthIdpConfigs` both empty — no unexpected auth provider.
+
+### 32.3 Stage B — harness isolation approach (Founder-reviewed, approved with two conditions)
+
+**Chosen approach: a dedicated harness-only build entry, not the existing app bundle.** `main.tsx` (the app's composition root) wires `initializeFirebasePlatform()` — the shared Firebase app, which routes through Firebase App Check and fails closed outside dev mode without a site key this task is not authorised to provision — plus the full observability pipeline (error boundary, route tracker, auth-lifecycle/global-error/connectivity breadcrumbs) and `react-query`. Reusing it for a hosted build would either crash on boot or put the harness's phone number/OTP handling within reach of the diagnostics pipeline, violating the harness's own existing privacy design.
+
+Instead: **`apps/web/harness.html`** (a second, independent Vite HTML entry, static `<meta name="robots" content="noindex, nofollow, noarchive">` baked into the markup) and **`apps/web/src/dev/phoneAuthHarness/harnessMain.tsx`** (renders only `<PhoneAuthHarnessPage>` — no router, no shared Firebase app, no observability, no `react-query`). `vite.config.ts` switches `build.rollupOptions.input` to `harness.html` and omits the `VitePWA` plugin entirely, but only when `mode === "test-harness"` — the ordinary `vite build` (no mode flag) is completely untouched. This gives a **structural**, not merely runtime, isolation guarantee: those modules are absent from the test-harness bundle's module graph, not gated out of it. Empirically confirmed against real build output (§32.7): 32 modules transformed for the test-harness build vs. 2,223 for the ordinary build; `react-router`, `QueryClient`, `Sentry`, `ObservabilityErrorBoundary`, `registerAuthLifecycle`, and `initializeFirebasePlatform` are all absent from the compiled harness bundle.
+
+**CSP derived from real, observed network traffic, not assumption.** Constructing a `RecaptchaVerifier` and calling `.verify()` alone against the already-running local dev harness (safe — never reaches Identity Toolkit, cannot send an SMS) revealed the exact domains contacted: `https://www.google.com/recaptcha/api.js` and `https://www.gstatic.com/recaptcha/releases/.../recaptcha__en.js` (scripts), `https://www.google.com/recaptcha/api2/anchor` and `.../api2/bframe` (iframes) — no `recaptcha.net` or `recaptcha.google.com` fallback was used. Combined with Firebase Auth's documented REST endpoints (`identitytoolkit.googleapis.com`, `securetoken.googleapis.com`, both already corroborated by this task chain's own earlier live REST calls), the resulting CSP is narrowly scoped to exactly these domains across `script-src`/`frame-src`/`connect-src`/`style-src`/`img-src`/`object-src`/`base-uri`/`form-action` (full directive values in `firebase.json`). Per explicit Founder instruction, `frame-ancestors` was **not** touched — the report-only `frame-ancestors` warning that appears on Google's own `recaptcha.google.com`/`www.google.com` responses is a policy on *their* response describing who may frame *their* content, unrelated to and unfixable from this page's own CSP.
+
+### 32.4 Stage C/D — Hosting configuration and the explicit test-build boundary
+
+`firebase.json`'s `hosting` block was hand-edited (no `firebase init hosting` — the existing config was already valid, and a scaffolding tool risked overwriting it): added a `**` → `/index.html` SPA-fallback rewrite (needed by `App.tsx`'s `react-router-dom` routes and harmless for the harness's own single-page deploy), the CSP + `X-Robots-Tag: noindex, nofollow, noarchive` header, `no-cache, no-store, must-revalidate` on `/index.html` **and** `/` (see the header-matching gap found and fixed in §32.9), and long-lived immutable caching on `/assets/**`. Firestore, Storage, Functions, and Emulator configuration were not touched; `.firebaserc` needed no change.
+
+`VITE_ENABLE_PHONE_AUTH_TEST_HARNESS` (new, documented in `.env.example`) is combined with the Vite mode and the resolved Firebase project ID in a new pure function, `testHarnessGate.ts`'s `isTestHarnessBuildEnabled({ testHarnessFlag, mode, projectId })` — all three must match exactly (`"true"`, `"test-harness"`, `"eleventh-on-us-dev"`); every comparison is a strict string match, so a missing, empty, malformed, or `"false"` flag, or any other project ID, fails closed. `harnessMain.tsx` evaluates this once at boot and passes the result as a new `testHarnessBuild` prop into `PhoneAuthHarnessPage`, which now renders when `isHarnessEnabled(dev) || testHarnessBuild` — a second, independent runtime check (not merely relying on the build-entry swap) so a direct navigation to a hosted build can't bypass the guard. A prominent, dismissable-free warning banner renders whenever `testHarnessBuild` is true; a `useEffect` also sets the `<meta name="robots">` tag at runtime as a second layer alongside `harness.html`'s static tag.
+
+TDD throughout: `testHarnessGate.test.ts` (10 tests covering the approved combination, ordinary-build/dev-mode exclusion, missing/empty/`"false"`/malformed flag values, wrong project ID, wrong mode); three new `PhoneAuthHarnessPage.test.tsx` cases proving the component itself renders nothing when both `dev` and `testHarnessBuild` are false (including when the prop is omitted entirely — the default), and renders when `testHarnessBuild` is true even with `dev` false.
+
+### 32.5 Stage E — the second reCAPTCHA lifecycle defect: root cause and fix
+
+**Reproduced directly, not inferred.** Constructing a `RecaptchaVerifier`, calling `.verify()`, then calling `.clear()` on it, then constructing a **second** `RecaptchaVerifier` against the **same container id** (exactly CR2's fix) and calling `.verify()` again reproduced the Founder's exact reported error: `"reCAPTCHA has already been rendered in this element"`. Direct DOM inspection immediately after `.clear()` showed the container still held 2 child nodes and 1,166 characters of `innerHTML` — proving `.clear()` resets the widget's internal state but does **not** remove the DOM nodes `grecaptcha.render()` injected into the container. A brand-new `RecaptchaVerifier` targeting that same, still-populated container element throws on its next internal `.verify()` call regardless of being newly constructed. CR2's fix (clear + reconstruct, but against one static container id reused across every attempt) was therefore a real but insufficient correction.
+
+**Fix, verified against the real widget before writing any test:** rendering into a genuinely fresh, never-before-used DOM node per verifier — two sequential `.verify()` calls against two separate, freshly-created `<div>` elements both succeeded. Applied to `PhoneAuthHarnessPage.tsx`: a stable `recaptchaWrapperRef` (React-owned) now holds a dynamically-created child container per attempt (`createFreshRecaptchaContainer()`), and `teardownRecaptchaVerifier()` clears the prior verifier, nulls its ref, and removes its container node from the DOM before every new attempt — called from `performSend` (first send and retry alike), `resetAll()`, and a `useEffect` unmount cleanup. A synchronous `isSendingRef` guard (checked and set before any state update or `await`) blocks a second overlapping `performSend` call, independent of React's state-update batching timing.
+
+Investigated per the task's explicit list: `.clear()` leaves the container's DOM children in place (confirmed above) — the fix therefore replaces the DOM node, not just the JS reference; the verifier ref is now explicitly nulled inside `teardownRecaptchaVerifier()`; concurrent sends are blocked by the ref guard; React StrictMode does not double-construct a verifier from one click (verifier construction happens inside the async click handler, not a render body or effect setup — confirmed by a dedicated test rendering under `<StrictMode>`); a stale dev server was ruled out as a factor (the fix was validated against a fresh, restarted build). TDD: 8 new regression tests in a new `describe("CR3 reCAPTCHA lifecycle correction")` block — distinct fresh container per construction, prior container removed from the document after clearing, recovery after a failed first request, pristine container on reset-after-failure, no accumulation across repeated resets, `.clear()`-and-container-removal on unmount, exactly one verifier per Send click under StrictMode, and a blocked overlapping retry. All 39 tests in the file pass (31 pre-existing + 8 new); full `apps/web` suite: 259/259.
+
+### 32.6 Stage F — official Firebase Web configuration re-verification
+
+Re-fetched fresh (not reused from earlier in this session) via `firebase apps:sdkconfig web 1:709450867178:web:1195c6a790be6ee7a99293 --project eleventh-on-us-dev` and compared programmatically against `.env.test-harness.local` (gitignored — covered by the repo's blanket `.env.*` rule, confirmed via `git check-ignore -v`):
+
+| Field | Official source | Local test-build source | Match |
+|---|---|---|---|
+| API key | Firebase | `.env.test-harness.local` | Yes |
+| Auth domain | Firebase | `.env.test-harness.local` | Yes |
+| Project ID | Firebase | `.env.test-harness.local` | Yes |
+| Storage bucket | Firebase | `.env.test-harness.local` | Yes |
+| Messaging sender ID | Firebase | `.env.test-harness.local` | Yes |
+| App ID | Firebase | `.env.test-harness.local` | Yes |
+
+No raw value was printed to chat, committed, or persisted beyond a transient, immediately-deleted comparison file. This is the same, official, Founder-registered `"11thONUS Web - Development"` app already reconciled in CR2 — CR3 did not alter it.
+
+### 32.7 Stage G — build and preview deployment
+
+Build isolation re-verified against fresh output after the reCAPTCHA fix (not the earlier pre-fix build): ordinary `pnpm build` → `dist/index.html` + PWA assets (`sw.js`, `workbox-*.js`, `manifest.webmanifest`); zero harness markers anywhere. `vite build --mode test-harness` → `dist/harness.html` + one JS/CSS chunk only, **no** PWA files, 32 modules transformed (vs. 2,223 ordinary), zero occurrences of `react-router`/`QueryClient`/`Sentry`/`ObservabilityErrorBoundary`/`registerAuthLifecycle`/`initializeFirebasePlatform`, zero phone-number-shaped literals, exactly one (expected, client-embeddable, non-secret) `apiKey` occurrence. `harness.html` was renamed to `index.html` via `apps/web/package.json`'s `build:test-harness` script (`tsc -b && vite build --mode test-harness && mv dist/harness.html dist/index.html` — added in the review correction at §32.15, after an initial version of this task performed the rename as an untracked manual step) — this deploy's dist has no other HTML file, so the rename is safe and the existing `**` → `/index.html` rewrite serves it correctly.
+
+Deployed via:
+
+```bash
+firebase hosting:channel:deploy phone-auth-test --project eleventh-on-us-dev --expires 6h
+```
+
+- **Preview channel:** `phone-auth-test`
+- **HTTPS URL:** `https://eleventh-on-us-dev--phone-auth-test-3yz68r9z.web.app`
+- **Expiry:** `2026-08-01 23:46:31` (refreshed on the header-fix redeploy in §32.9; originally `22:52:57`)
+- **Hosting site / Firebase project:** `eleventh-on-us-dev` / `eleventh-on-us-dev`
+- **Live channel:** confirmed untouched both immediately after deploy and after the redeploy — `https://eleventh-on-us-dev.web.app` still returns Firebase's genuine "Site Not Found" 404, `firebase hosting:channel:list` still shows no real release on `live`.
+
+### 32.8 Stage H — Authentication authorized-domain finding
+
+The exact preview hostname, `eleventh-on-us-dev--phone-auth-test-3yz68r9z.web.app`, was found **already present** in Firebase Auth's `authorizedDomains` on a fresh read immediately after deployment — confirmed genuinely new (absent from the Stage A pre-deploy read, which listed only `localhost`, `eleventh-on-us-dev.firebaseapp.com`, `eleventh-on-us-dev.web.app`). This is Firebase's own Hosting-Auth integration automatically authorizing a Hosting preview channel's generated hostname on channel creation — no manual `identitytoolkit` write was performed by this task. No wildcard was used, and the three pre-existing domains were untouched. Teardown (§32.11) includes an explicit verification step rather than assuming Firebase's automatic cleanup on channel deletion, since that specific cleanup behaviour was not independently confirmed.
+
+### 32.9 Stage I — hosted preflight validation (no phone number entered, no SMS, `signInWithPhoneNumber` never called)
+
+Navigated to the preview URL and confirmed: HTTPS; page loads; the prominent red test-only warning banner renders; the harness form renders with an empty phone field (guard passes); no other route exists (single HTML file in the deploy); browser console **completely empty** — zero errors, zero CSP violations; the reCAPTCHA container div is present and structurally empty at rest (by the component's own invisible-badge design, matching pre-CR3 behaviour); no phone number or OTP anywhere; `document.body.innerHTML` and DOM inspection confirm no complete Firebase configuration is ever displayed (only `projectId`, and only after a Send, which was not triggered).
+
+**A real gap was found and fixed during this stage, not glossed over:** the `/index.html`-scoped `Cache-Control` header rule in `firebase.json` did not apply to requests for `/` (the root path browsers actually request) — Firebase Hosting's header-source matching treats them as distinct paths even though the SPA rewrite serves identical content for both. Confirmed via `curl -I` against both paths (`/` returned the default `max-age=3600`; `/index.html` returned the intended `no-cache` value). Fixed by adding an explicit `"source": "/"` header rule with the same value, redeployed to the same channel (same URL, refreshed expiry), and re-verified via `curl -I` that `/` now returns the correct header, the CSP header is present and correct, and the live channel remains untouched.
+
+CSP validated with real evidence, not assumption: a `<script src="https://www.google.com/recaptcha/api.js">` tag injected directly into the deployed page loaded successfully with zero CSP violations reported in the console — direct proof that `script-src`'s Google-domain allowance works under this page's actual, deployed CSP header. **Disclosed limitation:** the full reCAPTCHA challenge-iframe round trip (`frame-src`, `api2/anchor`/`api2/bframe`) was validated on `localhost` against the identical Google domains (§32.5's reproduction), not literally re-executed against this specific hosted URL — doing so would require internal bundle symbols not exposed for external dynamic `import()` from a production, non-library build. The `script-src` proof plus the identical-domain local validation together give strong, but not 100%-direct-on-this-URL, evidence for the full flow.
+
+### 32.10 Firebase initialization / Auth instance confirmation
+
+`getPhoneAuthHarnessAuth`'s existing `getHarnessApp` (unchanged since the original implementation) checks `getApps().find(...)` before calling `initializeApp`, so the harness's dedicated `"phone-auth-harness"` secondary app is initialized at most once regardless of how many times the function is called. Confirmed structurally: the test-harness bundle contains no call to `initializeFirebasePlatform` (the shared app's initializer) at all — only the harness's own dedicated instance can ever exist in this build.
+
+### 32.11 Teardown procedure (not executed — the preview must remain live for the Founder's test)
+
+1. **Delete the preview channel:** `firebase hosting:channel:delete phone-auth-test --project eleventh-on-us-dev` (or allow the 2026-08-01 23:46:31 expiry to lapse).
+2. **Verify the authorized-domain cleanup:** re-read `identitytoolkit.googleapis.com/admin/v2/projects/eleventh-on-us-dev/config`'s `authorizedDomains` after deletion/expiry. If `eleventh-on-us-dev--phone-auth-test-3yz68r9z.web.app` is still present (Firebase's automatic cleanup on channel deletion was not independently confirmed by this task — see §32.8), remove it manually via a scoped `PATCH` to that same endpoint with `updateMask=authorizedDomains`, listing every domain **except** the preview hostname — never a blanket rewrite.
+3. **Remove the local test-build environment file:** `rm apps/web/.env.test-harness.local` (already gitignored, never committed; this step is about clearing the local working tree, not git history).
+4. **Confirm the ordinary production build still excludes the harness:** re-run `pnpm --filter web build` and grep `dist/` for harness markers — expect zero matches, exactly as verified in §32.7.
+5. **Verify no Hosting live-channel deployment occurred:** `firebase hosting:channel:list --project eleventh-on-us-dev` — the `live` channel's release state must be unchanged from Stage A.
+6. **Verify no personal evidence remains locally:** confirm no phone number, OTP, or unmasked evidence was ever written to any file in this task (none was — see §32.9).
+7. **Retain only privacy-safe test evidence** — the evidence template (masked values only) if the Founder's real-SMS test populates it.
+
+### 32.12 Files changed and why
+
+- `firebase.json` — added `hosting.rewrites`/`hosting.headers` only; Firestore/Storage/Functions/Emulator untouched.
+- `apps/web/vite.config.ts` — mode-conditional `build.rollupOptions.input` swap and `VitePWA` omission for `mode === "test-harness"` only.
+- `apps/web/harness.html` (new) — the dedicated hosted-preview HTML entry.
+- `apps/web/src/dev/phoneAuthHarness/harnessMain.tsx` (new) — the dedicated bootstrap, deliberately excluding the shared composition root.
+- `apps/web/src/dev/phoneAuthHarness/testHarnessGate.ts` + `.test.ts` (new) — the pure, fail-closed test-build gate and its 10-case regression suite.
+- `apps/web/src/dev/phoneAuthHarness/PhoneAuthHarnessPage.tsx` — added the `testHarnessBuild` prop/guard/banner/robots-meta effect (Stage D); replaced the static-id reCAPTCHA container with the fresh-container-per-attempt mechanism, the `isSendingRef` concurrency guard, and unmount cleanup (Stage E).
+- `apps/web/src/dev/phoneAuthHarness/PhoneAuthHarnessPage.test.tsx` — 3 new Stage D tests + 8 new Stage E tests + constructor-argument capture in the existing `RecaptchaVerifier` mock (needed to assert the fresh-container mechanism, not just its symptom).
+- `apps/web/.env.example` — documented `VITE_ENABLE_PHONE_AUTH_TEST_HARNESS`.
+- `apps/web/.env.test-harness.local` (new, gitignored, never committed) — the real config driving the actual preview deploy.
+
+No unrelated file was modified. `apps/web/src/App.tsx` and the existing dev-server harness route/tests are unchanged.
+
+### 32.13 Risks and rollback
+
+**Risks:** none to production — the harness route (`App.tsx`) and shared composition root are untouched; the CSP/headers only take effect on a deploy using this `firebase.json`, and no live-channel deploy occurred. The one residual note: this CSP is written narrowly for the harness's own needs and would need review before any future full-application production Hosting deploy reuses the same `firebase.json` (a narrower-than-needed CSP fails loudly with visible violations if reused as-is, not silently).
+
+**Rollback:** `git revert` of this task's commit(s) restores the pre-CR3 state (dev-server-only harness, no Hosting rewrites/headers, single-container reCAPTCHA lifecycle). The deployed preview channel is independent of the git history and is torn down per §32.11 regardless of any git action.
+
+### 32.14 Review correction (PR #52, before any merge decision)
+
+Two automated-review findings on PR #52 were independently verified against the actual committed source, both confirmed as genuine:
+
+**P1 — the harness-specific `noindex`/CSP headers were scoped to `"source": "**"` in `firebase.json`.** Correct as a criticism of the *committed config's future reuse risk*: if a future full-application production Hosting deploy reused this same `firebase.json` unmodified, every customer route would inherit the harness's restrictive `noindex` tag and CSP (whose `connect-src` omits `firebaseappcheck.googleapis.com`, needed by `main.tsx`'s real App Check initialization). §32.13 had already disclosed this as a residual risk requiring review before reuse, but disclosure is not the same as prevention. **Fixed:** the header rule was narrowed from `"source": "**"` to three explicit rules matching only the paths this harness deploy actually serves — `/`, `/index.html`, `/assets/**` — each carrying its own combination of cache-control plus (for `/` and `/index.html`) the `noindex`/CSP headers. Firebase Hosting's header matching is confirmed (empirically, in §32.9) to operate on the literal requested path, not the post-rewrite destination, so a future deep route like `/dashboard` — which only ever matches the `**` *rewrite*, never a `/`- or `/index.html`-scoped *header* rule — would no longer inherit these headers at all.
+
+**P2 — the `harness.html` → `index.html` rename was an untracked manual step**, not encoded in any build or deploy command. A clean `vite build --mode test-harness` followed by the documented Firebase deploy command alone would produce `dist/harness.html` while the committed rewrite serves `/index.html`, 404ing on redeploy after the channel's expiry. **Fixed:** added `apps/web/package.json`'s `build:test-harness` script (`tsc -b && vite build --mode test-harness && mv dist/harness.html dist/index.html`), so the full, correct sequence is a single checked-in, reproducible command — verified against a real fresh build producing exactly `dist/index.html`, no `dist/harness.html`.
+
+Both fixes were redeployed to the same `phone-auth-test` preview channel (same URL, refreshed expiry) and re-verified: `curl -I` against `/`, `/index.html`, and a representative deep path confirms the narrowed header scoping behaves as intended; the live channel remains untouched; full validation suite re-run clean.
+
+### 32.15 Status
+
+`EXT-TECH-001`: **Still Pending**. Capability 2: **Blocked**. Environment preparation: **complete**. Real carrier test: **not yet performed** — this remains the Founder's own next step, using the HTTPS preview URL above.

@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!--
+      CR3: static robots meta baked directly into the markup (not injected
+      by JS) so it is present even for crawlers that never execute
+      JavaScript at all. PhoneAuthHarnessPage.tsx also sets this at
+      runtime as a second, independent layer for the same effect.
+    -->
+    <meta name="robots" content="noindex, nofollow, noarchive" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EXT-TECH-001 Phone Auth Test Harness — Temporary</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/dev/phoneAuthHarness/harnessMain.tsx"></script>
+  </body>
+</html>

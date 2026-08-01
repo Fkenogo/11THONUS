@@ -1,11 +1,22 @@
 > **Title:** EXT-TECH-001 Delivery-Test Harness — Manual Runbook
 > **Audience:** Founder or an authorised tester holding a physical Burundi SIM. Operational, not narrative — follow the numbered steps.
 > **Source-of-truth path:** `docs/05-implementation/reports/EXT-TECH-001-TEST-HARNESS-manual-runbook-2026-07-31.md`
-> **Prepared:** 2026-07-31. **Updated:** 2026-08-01 (CR1 — approved-project allowlist, full end-to-end latency definition, bounded retry procedure; see the implementation report's CR1 addendum for the corrective-review context).
+> **Prepared:** 2026-07-31. **Updated:** 2026-08-01 (CR1 — approved-project allowlist, full end-to-end latency definition, bounded retry procedure; CR3 — a hosted HTTPS preview alternative to the localhost flow below; see the implementation report's CR1/CR3 addenda for the corrective-review context).
 
 ---
 
 > **Never paste a real phone number or OTP into a coding-agent conversation, repository file, issue, pull request, or committed screenshot.**
+
+## 0. CR3 alternative: the hosted HTTPS preview
+
+Steps 1–2 below describe running the harness on `localhost` via `pnpm dev`. As of CR3, a second option exists: a temporary, HTTPS-only Hosting preview containing **only** the harness (no other route, no PWA, no analytics, no observability pipeline — see the implementation report's §32.3 for why this is a structurally separate build, not the same app with a route added).
+
+- **Preview URL:** `https://eleventh-on-us-dev--phone-auth-test-3yz68r9z.web.app`
+- **Expiry:** `2026-08-01 23:46:31` (Burundi/UTC — check `firebase hosting:channel:list --project eleventh-on-us-dev` if this runbook is used after that time; the channel may have expired and would need to be redeployed per the implementation report's §32.7).
+- Skip straight to **step 3** below once this URL loads — the hosted preview already has the correct project's real config baked in (verified in §32.6 of the implementation report) and needs no local `.env.local` setup.
+- The hosted preview shows a prominent red **"TEST-ONLY PREVIEW"** banner at the top of the page. This is expected and confirms you are on the CR3 test-build guard's approved path, not a misconfigured deployment.
+- **Do not share this URL outside the Founder/authorised-tester context** — it is public-but-temporary (reachable by anyone with the link, `noindex`ed, and torn down after testing per the implementation report's §32.11 teardown procedure).
+- If this URL has expired or 404s, use the `localhost` flow (steps 1–2) instead, or ask for a fresh preview to be deployed.
 
 ## 1. Run the harness locally
 
@@ -103,3 +114,5 @@ Firebase's standard quotas (900 SMS/minute, 3,000/day project-wide; 50/minute, 5
 ## 14. Remove or disable the harness after testing
 
 No action is required to "turn off" the harness for production — it is already excluded from every production build (`import.meta.env.DEV`-gated `React.lazy` route, verified absent from `dist/` after a real `pnpm build`, per the accompanying implementation report). It remains available in local development only. If a future task wants it fully removed from the repository, delete `apps/web/src/dev/phoneAuthHarness/` and the corresponding route registration in `apps/web/src/App.tsx`.
+
+**If you used the CR3 hosted preview (§0):** follow the implementation report's §32.11 teardown procedure once testing is finished — delete the `phone-auth-test` Hosting channel (or let it expire), verify the preview hostname is removed from Firebase Auth's authorized domains, and remove the local `apps/web/.env.test-harness.local` file. Do not leave the preview channel live longer than needed for the test.
