@@ -2,11 +2,24 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-08-01 (Entry 050 added: `EXT-TECH-001-TEST-HARNESS-CR1` — Corrective Review Cycle for PR #50)
+> **Last controlled update:** 2026-08-01 (Entry 051 added: `EXT-TECH-001-HARNESS-CR3` — Firebase Hosting Preview and Hosted-Domain Phone Authentication Correction)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 051 — `EXT-TECH-001-HARNESS-CR3`: Firebase Hosting Preview and Hosted-Domain Phone Authentication Correction
+
+- **Date:** 1 August 2026
+- **Performed by:** Claude (AI agent), per Founder task "TASK — EXT-TECH-001-HARNESS-CR3: Firebase Hosting Preview and Hosted-Domain Phone Authentication Correction."
+- **Classification:** Bounded infrastructure-preparation and defect-correction cycle. The Founder enabled Firebase Hosting on `eleventh-on-us-dev` and authorised completing repository-side Hosting setup, building a harness-only artifact, deploying it to a temporary preview channel, authorising only that hostname for Firebase Auth, fixing a second, deeper `RecaptchaVerifier` lifecycle defect the Founder found still present after CR2, and preparing the HTTPS preview for a Founder-operated real-SMS test. No real SMS was sent.
+- **Harness isolation:** a dedicated `harness.html`/`harnessMain.tsx` build entry structurally excludes the shared composition root (Firebase App Check, observability pipeline, `react-query`, `react-router`) rather than merely gating a route — empirically confirmed against real build output (32 modules transformed vs. 2,223 for the full app).
+- **Second reCAPTCHA defect, root-caused and fixed:** `RecaptchaVerifier.clear()` does not remove the DOM nodes it rendered into its container, so CR2's fix (clear + reconstruct against one reused container) was insufficient — a new verifier against the same container still throws "already rendered." Fixed by constructing a genuinely fresh, never-reused DOM node per attempt, on every send/retry/reset/unmount, plus a concurrency guard.
+- **Deployed** to Firebase Hosting preview channel `phone-auth-test` (`eleventh-on-us-dev`), a temporary, `noindex`ed, narrowly-CSP'd HTTPS URL, ready for the Founder's real carrier test.
+- **`EXT-TECH-001` status: unchanged, Still Pending.** **Capability 2 remains `Blocked`.**
+- **Files modified:** `firebase.json`; `apps/web/vite.config.ts`; `apps/web/harness.html` (new); `apps/web/src/dev/phoneAuthHarness/{harnessMain.tsx,testHarnessGate.ts,testHarnessGate.test.ts}` (new); `apps/web/src/dev/phoneAuthHarness/{PhoneAuthHarnessPage.tsx,PhoneAuthHarnessPage.test.tsx}`; `apps/web/.env.example`; `docs/05-implementation/reports/EXT-TECH-001-TEST-HARNESS-implementation-report-2026-07-31.md` (§32 addendum); `docs/05-implementation/reports/EXT-TECH-001-HARNESS-CR3-hosted-preview-record.md` (new); `docs/05-implementation/reports/EXT-TECH-001-TEST-HARNESS-manual-runbook-2026-07-31.md`; `docs/05-implementation/reports/EXT-TECH-001-delivery-test-evidence-template-2026-07-31.md`; `docs/changes/IMPLEMENTATION_CHANGES.md`; `docs/00-governance/documentation-changes-log.md` (this entry).
 
 ---
 

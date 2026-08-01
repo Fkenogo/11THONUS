@@ -1,7 +1,7 @@
 > **Title:** EXT-TECH-001 Delivery-Test Evidence Template
 > **Purpose:** Privacy-safe results record for the Burundi carrier OTP delivery test, populated by the tester per the accompanying [Manual Runbook](EXT-TECH-001-TEST-HARNESS-manual-runbook-2026-07-31.md). **Never enter a full phone number, OTP, or any secret into this file.**
 > **Source-of-truth path:** `docs/05-implementation/reports/EXT-TECH-001-delivery-test-evidence-template-2026-07-31.md`
-> **Prepared:** 2026-07-31 (template only — not yet populated with any test result). **Updated:** 2026-08-01 (CR1 — the harness now enforces an approved-project allowlist, so `Environment / project` should always read exactly `eleventh-on-us-dev`; `Delivery latency` is now the full Send-click-to-receipt interval; `Retry count` is bounded to 3 per session — see notes below each column).
+> **Prepared:** 2026-07-31 (template only — not yet populated with any test result). **Updated:** 2026-08-01 (CR1 — the harness now enforces an approved-project allowlist, so `Environment / project` should always read exactly `eleventh-on-us-dev`; `Delivery latency` is now the full Send-click-to-receipt interval; `Retry count` is bounded to 3 per session — see notes below each column. CR3 — this template applies unchanged whether the test was run on `localhost` or the CR3 hosted HTTPS preview; note which one was used in the Notes column of the relevant row).
 
 ---
 

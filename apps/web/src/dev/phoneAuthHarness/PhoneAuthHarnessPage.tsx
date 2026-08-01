@@ -29,7 +29,7 @@
  * only the stale per-attempt OTP/result/timing state.
  */
 
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult } from "firebase/auth";
 import { getAppEnv } from "../../config/env";
 import { getPhoneAuthHarnessAuth } from "./phoneAuthHarnessAuth";
@@ -65,11 +65,26 @@ const INITIAL_TIMING: TimingState = {};
 // a manually-operated test-harness control, not a production retry policy.
 const MAX_RETRY_COUNT = 3;
 
-export function PhoneAuthHarnessPage({ dev }: { dev: boolean }) {
+export function PhoneAuthHarnessPage({
+  dev,
+  testHarnessBuild = false,
+}: {
+  dev: boolean;
+  /**
+   * CR3: set only by `harnessMain.tsx`, and only from the same literal,
+   * build-time-foldable `isTestHarnessBuildEnabled(...)` check that gates
+   * whether `harness.html` is even built. Re-checked here too — not just
+   * at the build-entry level — so a direct navigation to a hosted preview
+   * whose build somehow didn't satisfy every condition still can't reach
+   * the interactive form. Defaults to `false` so every existing caller
+   * (the dev-server route in `App.tsx`, and every test that doesn't pass
+   * it) is unaffected and still fails closed.
+   */
+  testHarnessBuild?: boolean;
+}) {
   const phoneInputId = useId();
   const carrierSelectId = useId();
   const otpInputId = useId();
-  const recaptchaContainerId = useId();
 
   const [phoneNumber, setPhoneNumber] = useState("");
   const [carrier, setCarrier] = useState<Carrier>("");
@@ -85,14 +100,88 @@ export function PhoneAuthHarnessPage({ dev }: { dev: boolean }) {
 
   const confirmationResultRef = useRef<ConfirmationResult | null>(null);
   const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
+  // CR3 root-cause fix: `RecaptchaVerifier.clear()` resets the widget's
+  // internal state but does NOT remove the DOM nodes `grecaptcha.render()`
+  // injected into its container element — confirmed by direct
+  // reproduction against the real widget (see the CR3 implementation
+  // report). A second `RecaptchaVerifier` built against that SAME
+  // container element still throws "reCAPTCHA has already been rendered
+  // in this element" the next time `.verify()` runs internally, which is
+  // exactly what CR2's clear()-and-reconstruct fix hit — it reused one
+  // static container id for every attempt. The only reliable fix is a
+  // genuinely fresh, never-before-used DOM node per verifier:
+  // `recaptchaWrapperRef` is the one stable, React-owned element in the
+  // tree; `recaptchaContainerNodeRef` tracks whichever plain DOM `<div>`
+  // is the CURRENT attempt's container, created fresh and appended to the
+  // wrapper on every attempt, then detached and discarded once that
+  // attempt's verifier is torn down.
+  const recaptchaWrapperRef = useRef<HTMLDivElement | null>(null);
+  const recaptchaContainerNodeRef = useRef<HTMLElement | null>(null);
+  // Synchronous, ref-based (not state-based) reentrancy guard: state
+  // updates are batched and not necessarily reflected in the DOM (or even
+  // in this closure) before a second call could start, so a plain boolean
+  // ref is what actually prevents two overlapping `performSend` calls
+  // from constructing two verifiers against the wrapper at once.
+  const isSendingRef = useRef(false);
 
-  if (!isHarnessEnabled(dev)) {
+  function teardownRecaptchaVerifier() {
+    recaptchaVerifierRef.current?.clear();
+    recaptchaVerifierRef.current = null;
+    const node = recaptchaContainerNodeRef.current;
+    if (node?.parentNode) {
+      node.parentNode.removeChild(node);
+    }
+    recaptchaContainerNodeRef.current = null;
+  }
+
+  function createFreshRecaptchaContainer(): HTMLElement {
+    const node = document.createElement("div");
+    recaptchaWrapperRef.current?.appendChild(node);
+    recaptchaContainerNodeRef.current = node;
+    return node;
+  }
+
+  // Unmount cleanup: reads the refs directly (not via the function above,
+  // to avoid an exhaustive-deps lint dependency on a function recreated
+  // every render) at the moment of actual unmount — refs are mutable and
+  // shared, not captured by value, so this correctly tears down whichever
+  // verifier/container is current, not whichever existed when this effect
+  // was first set up.
+  useEffect(() => {
+    return () => {
+      recaptchaVerifierRef.current?.clear();
+      recaptchaVerifierRef.current = null;
+      const node = recaptchaContainerNodeRef.current;
+      if (node?.parentNode) {
+        node.parentNode.removeChild(node);
+      }
+      recaptchaContainerNodeRef.current = null;
+    };
+  }, []);
+
+  // CR3: a hosted preview is reachable over the public internet, so it
+  // needs its own explicit no-index signal beyond `harness.html`'s static
+  // <meta> tag (which this effect does not replace — belt and suspenders:
+  // the static tag covers crawlers that never execute JS at all). Never
+  // added for the ordinary dev-server route, since localhost is already
+  // unreachable from the outside.
+  useEffect(() => {
+    if (!testHarnessBuild) return;
+    let meta = document.querySelector('meta[name="robots"]');
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.setAttribute("name", "robots");
+      document.head.appendChild(meta);
+    }
+    meta.setAttribute("content", "noindex, nofollow, noarchive");
+  }, [testHarnessBuild]);
+
+  if (!isHarnessEnabled(dev) && !testHarnessBuild) {
     return null;
   }
 
   function resetAll() {
-    recaptchaVerifierRef.current?.clear();
-    recaptchaVerifierRef.current = null;
+    teardownRecaptchaVerifier();
     confirmationResultRef.current = null;
     setPhoneNumber("");
     setCarrier("");
@@ -114,6 +203,9 @@ export function PhoneAuthHarnessPage({ dev }: { dev: boolean }) {
   // shown alongside a new one. `phoneNumber`/`carrier`/`retryCount` are
   // deliberately left untouched by this function.
   async function performSend(isRetry: boolean) {
+    // Synchronous concurrency guard — see the isSendingRef comment above.
+    if (isSendingRef.current) return;
+    isSendingRef.current = true;
     setIsSending(true);
     setErrorText(null);
     setOtp("");
@@ -135,21 +227,15 @@ export function PhoneAuthHarnessPage({ dev }: { dev: boolean }) {
       const env = getAppEnv();
       const auth = getPhoneAuthHarnessAuth(env.firebase);
 
-      // CR2: always construct a fresh verifier, never reuse one across
-      // send attempts. Firebase's JS SDK does not reliably support
-      // re-verifying with a RecaptchaVerifier left over from a prior
-      // attempt — signInWithPhoneNumber calls appVerifier.verify() again
-      // internally, and if the previous attempt's widget was already
-      // rendered into this container (even if that attempt then failed
-      // at the Firebase-backend step), the SDK's internal render-tracking
-      // is left desynced from the DOM, and the next .verify() call throws
-      // "reCAPTCHA has already been rendered in this element" — a raw
-      // grecaptcha.js error, not a Firebase auth/* error code. Clearing
-      // and reconstructing here matches Firebase's own documented
-      // guidance for handling a failed signInWithPhoneNumber call before
-      // retrying (https://firebase.google.com/docs/auth/web/phone-auth).
-      recaptchaVerifierRef.current?.clear();
-      recaptchaVerifierRef.current = new RecaptchaVerifier(auth, recaptchaContainerId, {
+      // CR3: tear down the prior attempt's verifier AND its container DOM
+      // node, then construct the new verifier against a brand-new
+      // container. CR2's fix (clear() + reconstruct against the same
+      // static container id) was necessary but not sufficient — see the
+      // teardownRecaptchaVerifier/createFreshRecaptchaContainer comments
+      // above for the confirmed root cause.
+      teardownRecaptchaVerifier();
+      const container = createFreshRecaptchaContainer();
+      recaptchaVerifierRef.current = new RecaptchaVerifier(auth, container, {
         size: "invisible",
       });
 
@@ -165,6 +251,7 @@ export function PhoneAuthHarnessPage({ dev }: { dev: boolean }) {
     } catch (error) {
       setErrorText(describeError(error));
     } finally {
+      isSendingRef.current = false;
       setIsSending(false);
     }
   }
@@ -201,6 +288,15 @@ export function PhoneAuthHarnessPage({ dev }: { dev: boolean }) {
 
   return (
     <main className="mx-auto flex max-w-xl flex-col gap-4 p-8">
+      {testHarnessBuild && (
+        <div
+          role="alert"
+          className="rounded border-2 border-red-600 bg-red-50 px-4 py-3 text-sm font-semibold text-red-900"
+        >
+          TEST-ONLY PREVIEW — temporary environment for EXT-TECH-001 verification. Do not index,
+          bookmark, or share this URL. This deployment is torn down after testing.
+        </div>
+      )}
       <h1 className="text-xl font-semibold">EXT-TECH-001 Phone Auth Delivery-Test Harness</h1>
       <p className="text-sm text-[var(--color-muted-foreground)]">
         Development-only tool. Not a customer-facing screen. Never paste a real phone number or OTP
@@ -208,7 +304,7 @@ export function PhoneAuthHarnessPage({ dev }: { dev: boolean }) {
         screenshot.
       </p>
 
-      <div id={recaptchaContainerId} />
+      <div ref={recaptchaWrapperRef} />
 
       {submittedPhoneNumber === null ? (
         <div className="flex flex-col gap-3">
