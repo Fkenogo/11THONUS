@@ -1,7 +1,7 @@
 > **Title:** EXT-TECH-001 Delivery-Test Evidence Template
 > **Purpose:** Privacy-safe results record for the Burundi carrier OTP delivery test, populated by the tester per the accompanying [Manual Runbook](EXT-TECH-001-TEST-HARNESS-manual-runbook-2026-07-31.md). **Never enter a full phone number, OTP, or any secret into this file.**
 > **Source-of-truth path:** `docs/05-implementation/reports/EXT-TECH-001-delivery-test-evidence-template-2026-07-31.md`
-> **Prepared:** 2026-07-31 (template only — not yet populated with any test result)
+> **Prepared:** 2026-07-31 (template only — not yet populated with any test result). **Updated:** 2026-08-01 (CR1 — the harness now enforces an approved-project allowlist, so `Environment / project` should always read exactly `eleventh-on-us-dev`; `Delivery latency` is now the full Send-click-to-receipt interval; `Retry count` is bounded to 3 per session — see notes below each column).
 
 ---
 
@@ -24,6 +24,11 @@ Production-launch reliability requires a materially larger, statistically meanin
 | | | | | eleventh-on-us-dev | | | | | | | |
 
 *(Add rows as needed — one row per test attempt, not one row per carrier; a retried carrier gets a new row with an incremented Retry count context noted in Notes.)*
+
+**Column notes (CR1):**
+- **Environment / project:** the harness now refuses to send against anything other than `eleventh-on-us-dev` — this column should never legitimately read anything else. A different value here would indicate the harness's allowlist was bypassed and the row's evidence should not be trusted.
+- **Delivery latency:** the harness's "Delivery latency (Send click → tester-confirmed receipt)" figure — the complete end-to-end interval including reCAPTCHA, Firebase, and carrier delivery time. Do not use the harness's separate "Firebase acceptance latency (internal diagnostic)" figure here; that one measures only the pre-acceptance portion and undercounts the true delivery time.
+- **Retry count:** the harness's own on-screen, automatically-incremented count for that test session — bounded to 3 (4 total attempts). If the bound was reached without success, note "retry limit reached" in Notes and record the row as `Still Pending`/`Failed`.
 
 ## Per-carrier summary (fill in after all attempts for a carrier are recorded above)
 

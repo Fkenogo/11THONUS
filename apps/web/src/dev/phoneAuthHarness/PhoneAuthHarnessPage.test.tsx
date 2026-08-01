@@ -30,16 +30,18 @@ const {
   const signInWithPhoneNumber = vi.fn(async () => mockConfirmationResult);
 
   const mockAuth = { name: "mock-harness-auth" };
+  const APPROVED_DEV_PROJECT_ID = "eleventh-on-us-dev";
   // Replicates `phoneAuthHarnessAuth.ts`'s own real, independently-tested
-  // demo-project refusal (see `phoneAuthHarnessAuth.test.ts`) — mocked
-  // here only to avoid a real `firebase/app` secondary-app initialization
-  // inside a component test, not to bypass the guard's observable
-  // behaviour.
+  // positive allowlist (see `phoneAuthHarnessAuth.test.ts`, CR1 Correction
+  // 1) — mocked here only to avoid a real `firebase/app` secondary-app
+  // initialization inside a component test, not to bypass the guard's
+  // observable behaviour.
   const getPhoneAuthHarnessAuth = vi.fn((config: { projectId: string }) => {
-    if (config.projectId === "demo-11thonus") {
+    if (config.projectId !== APPROVED_DEV_PROJECT_ID) {
+      const resolved = config.projectId ? `"${config.projectId}"` : "(missing)";
       throw new Error(
-        "Phone Auth harness refused to activate: the resolved Firebase config is the " +
-          "Emulator Suite's demo fallback project, not a real Firebase project.",
+        `Phone Auth harness refused to activate: the resolved Firebase project is ` +
+          `${resolved}, which is not the approved development project.`,
       );
     }
     return mockAuth;
@@ -208,7 +210,22 @@ describe("PhoneAuthHarnessPage", () => {
 
       fireEvent.click(screen.getByRole("button", { name: /send/i }));
 
-      await screen.findByText(/real firebase project/i);
+      await screen.findByText(/not the approved development project/i);
+      expect(signInWithPhoneNumber).not.toHaveBeenCalled();
+    });
+
+    it("refuses to send when the resolved config is a different real project (e.g. staging) — CR1 Correction 1", async () => {
+      getAppEnv.mockReturnValueOnce({
+        firebase: { ...REAL_FIREBASE_CONFIG, projectId: "eleventh-on-us-staging" },
+        useEmulator: false,
+      });
+      renderHarness();
+      fireEvent.change(getPhoneInput(), { target: { value: TEST_NUMBER } });
+      fireEvent.change(getCarrierSelect(), { target: { value: "lumitel" } });
+
+      fireEvent.click(screen.getByRole("button", { name: /send/i }));
+
+      await screen.findByText(/not the approved development project/i);
       expect(signInWithPhoneNumber).not.toHaveBeenCalled();
     });
   });
@@ -277,6 +294,42 @@ describe("PhoneAuthHarnessPage", () => {
 
       expect(screen.getByText(/sms received.*yes/i)).toBeInTheDocument();
     });
+
+    it("measures delivery latency from the Send click, not from Firebase acceptance (CR1 Correction 2)", async () => {
+      // A real, artificial delay inside the mocked signInWithPhoneNumber
+      // stands in for reCAPTCHA/network time. The pre-CR1 defect measured
+      // latency from Firebase acceptance (after this delay), which would
+      // report well under this delay's length here (just the click's own
+      // reaction time). Measuring from the Send click captures the full
+      // delay too.
+      signInWithPhoneNumber.mockImplementationOnce(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 60));
+        return mockConfirmationResult;
+      });
+
+      renderHarness();
+      fireEvent.change(getPhoneInput(), { target: { value: TEST_NUMBER } });
+      fireEvent.change(getCarrierSelect(), { target: { value: "lumitel" } });
+      fireEvent.click(screen.getByRole("button", { name: /send/i }));
+      await screen.findByRole("button", { name: /mark.*received/i });
+
+      fireEvent.click(screen.getByRole("button", { name: /mark.*received/i }));
+
+      const latencyMs = Number(
+        screen.getByText(/delivery latency/i).textContent?.match(/(\d+) ms/)?.[1],
+      );
+      expect(latencyMs).toBeGreaterThanOrEqual(50);
+    });
+
+    it("does not claim automatic SMS receipt detection anywhere in the delivery-latency label", async () => {
+      renderHarness();
+      fireEvent.change(getPhoneInput(), { target: { value: TEST_NUMBER } });
+      fireEvent.change(getCarrierSelect(), { target: { value: "lumitel" } });
+      fireEvent.click(screen.getByRole("button", { name: /send/i }));
+      await screen.findByRole("button", { name: /mark.*received/i });
+
+      expect(screen.getByText(/delivery latency/i).textContent).toMatch(/tester-confirmed/i);
+    });
   });
 
   describe("error sanitisation", () => {
@@ -322,6 +375,121 @@ describe("PhoneAuthHarnessPage", () => {
 
       expect(window.location.search).toBe("");
       expect(window.location.hash).toBe("");
+    });
+  });
+
+  describe("retry / resend flow (CR1 Correction 3)", () => {
+    async function sendInitial() {
+      fireEvent.change(getPhoneInput(), { target: { value: TEST_NUMBER } });
+      fireEvent.change(getCarrierSelect(), { target: { value: "lumitel" } });
+      fireEvent.click(screen.getByRole("button", { name: /send/i }));
+      await screen.findByRole("button", { name: /mark.*received/i });
+    }
+
+    function getRetryButton() {
+      return screen.getByRole("button", { name: /retry|resend/i });
+    }
+
+    it("is reachable after the first request without calling reset", async () => {
+      renderHarness();
+      await sendInitial();
+
+      expect(getRetryButton()).toBeInTheDocument();
+      expect(screen.getByText(/retry count.*0/i)).toBeInTheDocument();
+    });
+
+    it("increments retry count to 1 on first retry and preserves the masked identity and carrier", async () => {
+      renderHarness();
+      await sendInitial();
+
+      fireEvent.click(getRetryButton());
+      await screen.findByText(/retry count.*1/i);
+
+      expect(signInWithPhoneNumber).toHaveBeenCalledTimes(2);
+      expect(screen.getByText(/\*{5,}56/)).toBeInTheDocument();
+      expect(screen.getByText(/carrier: lumitel/i)).toBeInTheDocument();
+    });
+
+    it("increments correctly across multiple retries", async () => {
+      renderHarness();
+      await sendInitial();
+
+      fireEvent.click(getRetryButton());
+      await screen.findByText(/retry count.*1/i);
+      fireEvent.click(getRetryButton());
+      await screen.findByText(/retry count.*2/i);
+
+      expect(signInWithPhoneNumber).toHaveBeenCalledTimes(3);
+    });
+
+    it("disables the retry control once the bound is reached", async () => {
+      renderHarness();
+      await sendInitial();
+
+      fireEvent.click(getRetryButton());
+      await screen.findByText(/retry count.*1/i);
+      fireEvent.click(getRetryButton());
+      await screen.findByText(/retry count.*2/i);
+      fireEvent.click(getRetryButton());
+      await screen.findByText(/retry count.*3/i);
+
+      expect(getRetryButton()).toBeDisabled();
+    });
+
+    it("clears stale OTP input on retry", async () => {
+      renderHarness();
+      await sendInitial();
+      fireEvent.change(getOtpInput()!, { target: { value: TEST_OTP } });
+      expect(getOtpInput()!.value).toBe(TEST_OTP);
+
+      fireEvent.click(getRetryButton());
+      await screen.findByText(/retry count.*1/i);
+
+      expect(getOtpInput()?.value ?? "").toBe("");
+    });
+
+    it("records fresh request timing on retry rather than reusing the prior attempt's timestamp", async () => {
+      renderHarness();
+      await sendInitial();
+
+      // A real elapsed gap between the first attempt and the retry click,
+      // so a regression that reused the first attempt's requestStartedAt
+      // would produce a clearly larger, easily-distinguished latency value
+      // below (well over 100ms) instead of the small one asserted here.
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      fireEvent.click(getRetryButton());
+      await screen.findByText(/retry count.*1/i);
+      fireEvent.click(screen.getByRole("button", { name: /mark.*received/i }));
+
+      const latencyMs = Number(
+        screen.getByText(/delivery latency/i).textContent?.match(/(\d+) ms/)?.[1],
+      );
+      expect(latencyMs).toBeLessThan(80);
+    });
+
+    it("returns retry count to 0 on a full reset", async () => {
+      renderHarness();
+      await sendInitial();
+      fireEvent.click(getRetryButton());
+      await screen.findByText(/retry count.*1/i);
+
+      fireEvent.click(screen.getByRole("button", { name: /^reset/i }));
+
+      expect(screen.queryByText(/request accepted/i)).not.toBeInTheDocument();
+    });
+
+    it("does not persist the phone number or OTP across a retry", async () => {
+      renderHarness();
+      await sendInitial();
+      fireEvent.change(getOtpInput()!, { target: { value: TEST_OTP } });
+
+      fireEvent.click(getRetryButton());
+      await screen.findByText(/retry count.*1/i);
+
+      expect(localStorage.length).toBe(0);
+      expect(sessionStorage.length).toBe(0);
+      expect(document.body.textContent).not.toContain(TEST_NUMBER);
     });
   });
 

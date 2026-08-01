@@ -19,6 +19,14 @@
  * provider. "SMS received" is set only by the tester's own manual click
  * after physically observing their phone — this component cannot and
  * does not claim to detect delivery automatically.
+ *
+ * CR1 corrections: the displayed delivery latency measures the complete
+ * user-observed flow (Send click → tester-confirmed receipt), not merely
+ * the interval after Firebase accepts the request — see `performSend`'s
+ * `requestStartedAt` capture and the "Delivery latency" line below. A
+ * bounded Retry/Resend control (`MAX_RETRY_COUNT`) lets a tester resend to
+ * the same masked identity/carrier without a full `resetAll()`, clearing
+ * only the stale per-attempt OTP/result/timing state.
  */
 
 import { useId, useRef, useState } from "react";
@@ -51,6 +59,12 @@ function elapsedMs(from?: number, to?: number): string {
 
 const INITIAL_TIMING: TimingState = {};
 
+// Bounded per the runbook's own guidance (do not retry a failing carrier
+// more than once or twice) and Firebase's abuse-prevention throttles — a
+// small, explicit maximum rather than a time-based cooldown, since this is
+// a manually-operated test-harness control, not a production retry policy.
+const MAX_RETRY_COUNT = 3;
+
 export function PhoneAuthHarnessPage({ dev }: { dev: boolean }) {
   const phoneInputId = useId();
   const carrierSelectId = useId();
@@ -67,6 +81,7 @@ export function PhoneAuthHarnessPage({ dev }: { dev: boolean }) {
   const [retryCount, setRetryCount] = useState(0);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [timing, setTiming] = useState<TimingState>(INITIAL_TIMING);
+  const [isSending, setIsSending] = useState(false);
 
   const confirmationResultRef = useRef<ConfirmationResult | null>(null);
   const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
@@ -89,11 +104,24 @@ export function PhoneAuthHarnessPage({ dev }: { dev: boolean }) {
     setRetryCount(0);
     setErrorText(null);
     setTiming(INITIAL_TIMING);
+    setIsSending(false);
   }
 
-  async function handleSend() {
+  // Shared by the first Send and every subsequent Retry/Resend — a retry
+  // is exactly a fresh send attempt against the same masked identity and
+  // carrier, with per-attempt state (accepted/received/verified/OTP/
+  // error/timing) reset so stale results from a prior attempt are never
+  // shown alongside a new one. `phoneNumber`/`carrier`/`retryCount` are
+  // deliberately left untouched by this function.
+  async function performSend(isRetry: boolean) {
+    setIsSending(true);
     setErrorText(null);
-    if (submittedPhoneNumber !== null) {
+    setOtp("");
+    confirmationResultRef.current = null;
+    setRequestAccepted(false);
+    setSmsReceivedConfirmed(false);
+    setOtpVerified(false);
+    if (isRetry) {
       setRetryCount((n) => n + 1);
     }
     // Transition to the results/status view immediately — it must show
@@ -101,7 +129,7 @@ export function PhoneAuthHarnessPage({ dev }: { dev: boolean }) {
     // happens before the async call, not after it resolves.
     setSubmittedPhoneNumber(phoneNumber);
     const requestStartedAt = Date.now();
-    setTiming((t) => ({ ...t, requestStartedAt }));
+    setTiming({ requestStartedAt });
 
     try {
       const env = getAppEnv();
@@ -124,7 +152,17 @@ export function PhoneAuthHarnessPage({ dev }: { dev: boolean }) {
       setTiming((t) => ({ ...t, requestAcceptedAt: Date.now() }));
     } catch (error) {
       setErrorText(describeError(error));
+    } finally {
+      setIsSending(false);
     }
+  }
+
+  async function handleSend() {
+    await performSend(false);
+  }
+
+  async function handleRetry() {
+    await performSend(true);
   }
 
   async function handleVerify() {
@@ -207,14 +245,29 @@ export function PhoneAuthHarnessPage({ dev }: { dev: boolean }) {
           <p>Request accepted: {requestAccepted ? "Yes" : "No"}</p>
           <p>SMS received: {smsReceivedConfirmed ? "Yes" : "No"}</p>
           <p>
-            Delivery latency (request → tester-confirmed receipt):{" "}
-            {elapsedMs(timing.requestAcceptedAt, timing.smsReceivedMarkedAt)}
+            Delivery latency (Send click → tester-confirmed receipt):{" "}
+            {elapsedMs(timing.requestStartedAt, timing.smsReceivedMarkedAt)}
+          </p>
+          <p>
+            Firebase acceptance latency (internal diagnostic; Send click → Firebase accepted):{" "}
+            {elapsedMs(timing.requestStartedAt, timing.requestAcceptedAt)}
           </p>
           <p>OTP verified: {otpVerified ? "Yes" : "No"}</p>
           <p>Retry count: {retryCount}</p>
           <p>Environment / project: {getAppEnv().firebase.projectId}</p>
 
           {errorText && <p role="alert">Error: {errorText}</p>}
+
+          <button
+            type="button"
+            onClick={handleRetry}
+            disabled={isSending || retryCount >= MAX_RETRY_COUNT}
+            className="self-start rounded border px-4 py-2"
+          >
+            {retryCount >= MAX_RETRY_COUNT
+              ? `Retry limit reached (${MAX_RETRY_COUNT}/${MAX_RETRY_COUNT})`
+              : "Retry / Resend"}
+          </button>
 
           {requestAccepted && !smsReceivedConfirmed && (
             <button

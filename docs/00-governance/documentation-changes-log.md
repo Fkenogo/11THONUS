@@ -2,11 +2,25 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-07-31 (Entry 049 added: `EXT-TECH-001-TEST-HARNESS` — Controlled Real-SMS Test Harness)
+> **Last controlled update:** 2026-08-01 (Entry 050 added: `EXT-TECH-001-TEST-HARNESS-CR1` — Corrective Review Cycle for PR #50)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 050 — `EXT-TECH-001-TEST-HARNESS-CR1`: Corrective Review Cycle for PR #50
+
+- **Date:** 1 August 2026
+- **Performed by:** Claude (AI agent), per Founder task "TASK — EXT-TECH-001-TEST-HARNESS-CR1: Corrective Review Cycle for PR #50."
+- **Classification:** Bounded, test-driven correction cycle. The Founder reviewed PR #50, accepted 3 automated-review findings on the harness's own source as genuine defects, and declined to merge — requiring all three fixed before the PR could return for merge authorisation. No merge occurred.
+- **Three defects corrected, each independently test-verified:** (1) `phoneAuthHarnessAuth.ts` now enforces a positive allowlist (`APPROVED_DEV_PROJECT_ID = "eleventh-on-us-dev"`) rather than only rejecting the Emulator Suite's demo project — a misconfigured `.env.local` pointing at staging or another real project can no longer silently send a real SMS through the wrong environment. (2) The harness's "Delivery latency" figure now measures the complete Send-click-to-receipt interval (including reCAPTCHA and Firebase network time), not merely the post-acceptance portion; the original figure is preserved as a second, explicitly-labelled internal-diagnostic line. (3) A bounded (max 3) Retry/Resend control now exists so a tester can genuinely resend to the same masked identity/carrier without a full reset — the previous "Retry count" could never exceed 0.
+- **Runbook and evidence template updated** to reflect the allowlist enforcement, the corrected latency definition, and the new bounded retry procedure.
+- **Local worktree anomaly disclosed and resolved** (see `IMPLEMENTATION_CHANGES.md`'s 2026-08-01 entry and the implementation report's §30.5) — a local `.git` link file went missing before this cycle began; the branch, commits, and PR #50's CI evidence on GitHub were confirmed unaffected throughout, and no source content was reconstructed from memory.
+- **`EXT-TECH-001` status: unchanged, Still Pending.** **Capability 2 remains `Blocked`** on `EXT-TECH-001`/`DEC-PROD-012`.
+- **Scope note:** this entry logs `EXT-TECH-001-TEST-HARNESS-CR1`'s own correction cycle only.
+- **Files modified:** `apps/web/src/dev/phoneAuthHarness/{phoneAuthHarnessAuth.ts,phoneAuthHarnessAuth.test.ts,PhoneAuthHarnessPage.tsx,PhoneAuthHarnessPage.test.tsx}`; `docs/05-implementation/reports/EXT-TECH-001-TEST-HARNESS-manual-runbook-2026-07-31.md`; `docs/05-implementation/reports/EXT-TECH-001-delivery-test-evidence-template-2026-07-31.md`; `docs/05-implementation/reports/EXT-TECH-001-TEST-HARNESS-implementation-report-2026-07-31.md` (§30 addendum); `docs/00-governance/documentation-changes-log.md` (this entry); `docs/changes/IMPLEMENTATION_CHANGES.md`.
 
 ---
 

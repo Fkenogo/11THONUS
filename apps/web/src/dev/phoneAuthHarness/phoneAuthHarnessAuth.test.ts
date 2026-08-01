@@ -69,12 +69,43 @@ describe("getPhoneAuthHarnessAuth", () => {
     expect(connectAuthEmulator).not.toHaveBeenCalled();
   });
 
-  it("refuses to activate when given the emulator demo-project fallback config", async () => {
+  it("activates for the exact approved development project", async () => {
     const { getPhoneAuthHarnessAuth } = await import("./phoneAuthHarnessAuth");
-    const demoConfig: FirebaseClientConfig = { ...REAL_CONFIG, projectId: "demo-11thonus" };
 
-    expect(() => getPhoneAuthHarnessAuth(demoConfig)).toThrow(/real Firebase project/i);
-    expect(initializeApp).not.toHaveBeenCalled();
-    expect(getAuth).not.toHaveBeenCalled();
+    expect(() => getPhoneAuthHarnessAuth(REAL_CONFIG)).not.toThrow();
+    expect(getAuth).toHaveBeenCalled();
+  });
+
+  describe("approved-project allowlist (CR1 Correction 1)", () => {
+    it.each([
+      ["the emulator demo-project fallback", "demo-11thonus"],
+      ["the staging project", "eleventh-on-us-staging"],
+      ["a hypothetical production project", "eleventh-on-us-prod"],
+      ["an unrelated/unknown project", "some-other-project"],
+      ["a missing project ID", ""],
+    ])("fails closed for %s (%j)", async (_label, projectId) => {
+      const { getPhoneAuthHarnessAuth } = await import("./phoneAuthHarnessAuth");
+      const config: FirebaseClientConfig = { ...REAL_CONFIG, projectId };
+
+      expect(() => getPhoneAuthHarnessAuth(config)).toThrow(/approved development project/i);
+      expect(initializeApp).not.toHaveBeenCalled();
+      expect(getAuth).not.toHaveBeenCalled();
+    });
+
+    it("does not expose the API key or app ID in the refusal error message", async () => {
+      const { getPhoneAuthHarnessAuth } = await import("./phoneAuthHarnessAuth");
+      const config: FirebaseClientConfig = { ...REAL_CONFIG, projectId: "eleventh-on-us-staging" };
+
+      let thrown: Error | undefined;
+      try {
+        getPhoneAuthHarnessAuth(config);
+      } catch (error) {
+        thrown = error as Error;
+      }
+
+      expect(thrown).toBeDefined();
+      expect(thrown!.message).not.toContain(REAL_CONFIG.apiKey);
+      expect(thrown!.message).not.toContain(REAL_CONFIG.appId);
+    });
   });
 });

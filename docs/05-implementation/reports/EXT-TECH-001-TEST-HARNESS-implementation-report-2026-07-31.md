@@ -1,8 +1,8 @@
 > **Title:** Controlled Real-SMS Test Harness — EXT-TECH-001 Delivery-Test Preparation
-> **Status:** Bounded harness implementation, complete and validated. **No real SMS was sent by this task.** `EXT-TECH-001` remains `Still Pending`; Capability 2 remains `Blocked`. PR opened, not merged.
-> **Task:** `EXT-TECH-001-TEST-HARNESS`
+> **Status:** Bounded harness implementation, complete and validated, corrected under `EXT-TECH-001-TEST-HARNESS-CR1` (§30). **No real SMS was sent by this task.** `EXT-TECH-001` remains `Still Pending`; Capability 2 remains `Blocked`. PR opened, not merged.
+> **Task:** `EXT-TECH-001-TEST-HARNESS` (original), `EXT-TECH-001-TEST-HARNESS-CR1` (corrective review cycle)
 > **Source-of-truth path:** `docs/05-implementation/reports/EXT-TECH-001-TEST-HARNESS-implementation-report-2026-07-31.md`
-> **Prepared:** 2026-07-31
+> **Prepared:** 2026-07-31. **Updated:** 2026-08-01 (CR1 — see §30; also §14 for the earlier, separate CI race-condition correction).
 
 ---
 
@@ -186,3 +186,65 @@ See the accompanying commit — an entry for `EXT-TECH-001-TEST-HARNESS` followi
 ## 29. Persistent `.md` Changes Record
 
 This report, at its stated source-of-truth path, is the persistent `.md` changes record for `EXT-TECH-001-TEST-HARNESS`.
+
+## 30. CR1 — Corrective Review Cycle (2026-08-01)
+
+### 30.1 Context
+
+After CI turned green on the race-condition fix (§14), the Founder reviewed PR #50, accepted a live merge-readiness check that surfaced 3 unresolved automated-review threads on the harness's own source (posted by `chatgpt-codex-connector[bot]`), and — after independent verification of each finding against the actual committed source — declined to merge. The Founder's `EXT-TECH-001-TEST-HARNESS-CR1` task accepted all three findings as genuine defects and required them fixed before the PR could return for merge authorisation. No merge occurred at any point in this cycle.
+
+### 30.2 Findings, root causes, and corrections
+
+**Finding 1 (P1) — environment safety.** `phoneAuthHarnessAuth.ts` rejected only the Emulator Suite's demo project (`config.projectId === "demo-11thonus"`). Any other real Firebase project — staging, a hypothetical production project, or any typo/unknown value — passed the guard silently, so a misconfigured `apps/web/.env.local` could send a real, billable SMS through the wrong environment. **Correction:** replaced the negative-only check with a positive allowlist against a new, unexported `APPROVED_DEV_PROJECT_ID = "eleventh-on-us-dev"` constant (mirroring the existing `PLATFORM_REGION` single-source-of-truth pattern in `functions/src/config/region.ts`) — not read from any environment variable, so it cannot be overridden at runtime. `getPhoneAuthHarnessAuth` now fails closed for the demo project, staging, production, any unknown project, and a missing project ID alike, with an error message that names only the (non-secret) resolved project ID, never the full config.
+
+**Finding 2 (P1) — evidence accuracy.** The displayed "Delivery latency" line computed `elapsedMs(timing.requestAcceptedAt, timing.smsReceivedMarkedAt)` — from the moment Firebase accepted the request, not from the Send click. `requestStartedAt` was captured but never read. This systematically excluded reCAPTCHA and Firebase network time from the reported metric, corrupting the harness's core deliverable. **Correction:** the primary "Delivery latency (Send click → tester-confirmed receipt)" line now uses `elapsedMs(timing.requestStartedAt, timing.smsReceivedMarkedAt)`. `requestAcceptedAt` is preserved and displayed on a second, explicitly-labelled "Firebase acceptance latency (internal diagnostic; Send click → Firebase accepted)" line for internal diagnostic value, per the Founder's own instruction to preserve it "if useful."
+
+**Finding 3 (P2) — retry validation.** The Send button existed only in the pre-submission view; once a request was sent, the UI switched to a results view with no way back to a sendable state short of `resetAll()`, which zeroes `retryCount`. The dead `if (submittedPhoneNumber !== null) setRetryCount((n) => n + 1)` branch was therefore unreachable — "Retry count" could never display anything but 0. **Correction:** extracted the send logic into a shared `performSend(isRetry)` used by both the original Send and a new, always-visible-after-a-request **Retry / Resend** button. A retry resends to the same masked identity/carrier (neither is touched), clears the OTP field and any prior error/result state, records fresh `timing` (dropping the prior attempt's `requestAcceptedAt`/`smsReceivedMarkedAt`/`otpVerifiedAt` so a stale result is never shown alongside a new one), and increments `retryCount`. Bounded to `MAX_RETRY_COUNT = 3` (4 total attempts per session) — the button disables and reads "Retry limit reached (3/3)" once reached. A new `isSending` flag disables the control mid-flight to prevent overlapping sends.
+
+### 30.3 Tests added or changed
+
+- `phoneAuthHarnessAuth.test.ts`: 5 → 11 tests. Replaced the single demo-project refusal test with a parametrised `it.each` covering the demo project, staging, a hypothetical production project, an unrelated/unknown project, and a missing project ID — all asserting `toThrow(/approved development project/i)` and that `initializeApp`/`getAuth` are never called. Added one explicit "activates for the exact approved development project" positive case and one test asserting the refusal message never contains the API key or app ID.
+- `PhoneAuthHarnessPage.test.tsx`: 16 → 27 tests. Updated the mocked `getPhoneAuthHarnessAuth` (which intentionally mirrors the real module's guard, documented inline) to the new allowlist logic; added a component-level refusal test for a non-demo, non-approved project (staging). Added two timing-evidence tests using a real, artificial delay inside the mocked `signInWithPhoneNumber` and a numeric-threshold assertion on the parsed millisecond value — proving the displayed latency reflects the Send-click start, not Firebase's acceptance, without relying on `Date.now()` mocking (see §30.4). Added an 8-test "retry / resend flow" block covering: reachability without `resetAll()`, first-retry increment to 1, correct multi-retry increments, disablement at the bound, OTP clearing on retry, fresh per-retry timing (via a real elapsed-time gap and a threshold assertion), reset returning the count to 0, and no phone number/OTP persistence across a retry.
+
+### 30.4 A test-design correction found and fixed during this cycle (disclosed transparently)
+
+The first draft of the two new timing tests used `vi.spyOn(Date, "now").mockReturnValueOnce(...)` chains to control the exact millisecond values read by the component. Both failed on the first run — not because the corrected component logic was wrong, but because Testing Library's own `findByRole`/`waitFor` polling internally calls `Date.now()` for its own timeout bookkeeping, silently consuming values from the same mocked sequence and desynchronising it from the component's own calls. **Fix:** rewrote both tests to use real timers with a real, deliberate delay (`setTimeout`) inside the mocked async call or between actions, and a numeric-threshold assertion on the parsed displayed value, rather than mocking the global clock — a more robust pattern that cannot collide with a testing library's own internal timing use. This was caught by watching the tests fail for an unexpected reason (per TDD's "verify RED for the expected reason" discipline) before accepting them as valid RED evidence, and corrected before implementation began.
+
+### 30.5 Local worktree anomaly disclosure
+
+Before this cycle's edits began, the worktree's `.git` link file (the pointer a `git worktree` uses back to the main checkout's `.git/worktrees/<name>` metadata) was found missing, and `git status`/`git log` failed with "not a git repository." Investigation via `git worktree list` (run from the primary checkout, read-only) and direct inspection of `/Users/theo/11THONUS/.git/worktrees/eng-p1-003-imp-05/` confirmed the worktree's registration and admin metadata (`gitdir`, `HEAD`, `index`, `logs/`, `refs/`) were fully intact — only the worktree-side pointer file itself was gone. This was restored by writing the standard, single-line `gitdir: /Users/theo/11THONUS/.git/worktrees/eng-p1-003-imp-05` content back to the worktree's `.git` file — the exact content `git worktree add` itself would have written, not a reconstruction of any kind. `git status` then showed several hundred tracked files as locally deleted (matching HEAD exactly — `git diff --stat HEAD` showed pure deletions, zero insertions, confirming no content divergence), which `git checkout -- .` restored verbatim from the object database. **No source file content was ever reconstructed from memory, guesswork, or re-typing at any point** — every restored byte came from git's own object database, the authoritative store, which was never affected by whatever removed the working-tree copies. Separately, `apps/web/node_modules`'s pnpm symlinks were also broken by the same event; `pnpm install` relinked them from the still-intact `.pnpm` store (`reused 1377, downloaded 0`), again reconstructing nothing. Throughout, `git log --oneline` continuously showed the same two commits (`597763e` merge, `e8b7da5` original harness, `20621c9` CI-fix) at `HEAD`, and the corrected commit's CI run (`30649125849`, `SUCCESS`) and PR #50's `OPEN`/`MERGEABLE`/`CLEAN` state on GitHub were independently re-verified via `gh` both before and after this anomaly — **the PR's history, commits, and CI evidence were never at any point affected by this local anomaly.** The root cause of the `.git` file's disappearance was not identified (this worktree sits in a session-scoped scratchpad directory subject to external lifecycle/cleanup processes outside this task's control) and is not overstated here as anything more than a local, fully-recovered, non-data-loss environment anomaly.
+
+### 30.6 Validation performed
+
+- `pnpm --filter web test`: **237/237 pass** (191 pre-existing + 46 harness tests, up from 29 pre-CR1). `functions` suite unaffected (untouched by this cycle).
+- `pnpm typecheck` (both workspaces): clean.
+- `pnpm lint`: clean.
+- `pnpm format:check`: clean (one Prettier reformatting pass applied to the test file via `npx prettier --write`, then re-verified).
+- `pnpm build`: clean. Re-verified production-exclusion via `grep -rl "phone-auth-harness|EXT-TECH-001 Phone Auth|Mark SMS Received|phoneAuthHarnessAuth|Retry / Resend" apps/web/dist/` — zero matches (exit code 1) against a fresh build, confirming the new Retry/Resend control and all CR1 source changes remain fully excluded from the production bundle.
+- Secret/PII scan: `git diff` for the 4 changed source files, checked against phone-number and API-key patterns — clean.
+- `git diff --stat`: confirmed only the 4 intended files changed (`phoneAuthHarnessAuth.ts`, `phoneAuthHarnessAuth.test.ts`, `PhoneAuthHarnessPage.tsx`, `PhoneAuthHarnessPage.test.tsx`) plus the runbook, evidence template, this report, and `IMPLEMENTATION_CHANGES.md`.
+- Confirmed live: (1) only `eleventh-on-us-dev` can activate the harness — proven by the 5-case `it.each` allowlist test; (2) latency is measured from Send click — proven by the real-delay timing test; (3) retry count can exceed zero and increments correctly — proven by the retry-flow tests; (4) the retry flow is bounded and disables at 3 — proven directly; (5) no real phone number or OTP appears anywhere in the diff — confirmed by the secret scan and the existing storage/URL/logging tests, unaffected by this cycle; (6) no real SMS was sent — every test uses `vi.mock("firebase/auth", ...)`, no real Firebase call was made; (7) Google Sign-In and every other auth provider remain unchanged — not referenced anywhere in this diff; (8) `EXT-TECH-001` remains `Still Pending` — unchanged by this cycle, not touched; (9) Capability 2 remains `Blocked` — unchanged, dependent on `EXT-TECH-001`/`DEC-PROD-012`, neither touched.
+
+### 30.7 Commands executed (CR1-specific, in addition to §21)
+
+`git worktree list` (from `/Users/theo/11THONUS`, read-only); direct `ls`/`cat` inspection of `.git/worktrees/eng-p1-003-imp-05/`; a `Write` of the worktree's `.git` pointer file; `git status --short`, `git diff --stat HEAD`, `git checkout -- .`; `pnpm install` (relinking `node_modules`); repeated `pnpm --filter web test -- <pattern>` scoped runs during TDD; full `pnpm --filter web test`, `pnpm typecheck`, `pnpm lint`, `pnpm format:check`, `npx prettier --write`, `pnpm build`; `grep -rl` against `dist/`; `git diff --stat`/`git diff` secret scan.
+
+### 30.8 Dependencies added
+
+None.
+
+### 30.9 Configuration changes
+
+None. No `.env.example`, `firebase.json`, `.firebaserc`, or live Firebase project configuration was changed.
+
+### 30.10 Risks
+
+None introduced beyond the harness's already-disclosed, intentional capability. The `MAX_RETRY_COUNT = 3` bound is a deliberate, conservative choice for a manually-operated test tool, not a production retry policy, and is explicitly documented as such in both the code comment and the runbook (§8) to prevent future confusion.
+
+### 30.11 Rollback instructions
+
+`git revert` of this cycle's commit restores the pre-CR1 harness (with its three now-disclosed defects) without affecting the original harness commit or the CI-fix commit. Full harness removal remains as stated in §25 (delete `apps/web/src/dev/phoneAuthHarness/` and its `App.tsx` route registration) — unaffected by this cycle.
+
+### 30.12 PR #50 status at the end of this cycle
+
+Not merged. Awaiting fresh, explicit Founder merge authorisation per this task's own standing instruction and this cycle's explicit "Do not merge PR #50" / "stop when all three defects are fixed, CI is green, and all review threads are resolved" instructions.

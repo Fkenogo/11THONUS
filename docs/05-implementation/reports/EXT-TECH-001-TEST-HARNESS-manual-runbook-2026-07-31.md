@@ -1,7 +1,7 @@
 > **Title:** EXT-TECH-001 Delivery-Test Harness — Manual Runbook
 > **Audience:** Founder or an authorised tester holding a physical Burundi SIM. Operational, not narrative — follow the numbered steps.
 > **Source-of-truth path:** `docs/05-implementation/reports/EXT-TECH-001-TEST-HARNESS-manual-runbook-2026-07-31.md`
-> **Prepared:** 2026-07-31
+> **Prepared:** 2026-07-31. **Updated:** 2026-08-01 (CR1 — approved-project allowlist, full end-to-end latency definition, bounded retry procedure; see the implementation report's CR1 addendum for the corrective-review context).
 
 ---
 
@@ -31,7 +31,7 @@ cp apps/web/.env.example apps/web/.env.local   # if not already done
 # (Project settings → General → Your apps → Web app, project eleventh-on-us-dev)
 ```
 
-If `apps/web/.env.local` is missing or still blank, the harness will refuse to send with an on-screen error stating a real Firebase project is required — this is intentional (see `phoneAuthHarnessAuth.ts`'s demo-project guard).
+As of CR1, the harness enforces a **positive allowlist**, not merely a rejection of the Emulator Suite's demo project: it refuses to send unless the resolved `projectId` is exactly `eleventh-on-us-dev`. A missing `.env.local`, the demo project, the staging project, or any other real Firebase project are all refused with the same on-screen error — none of them can silently send a real SMS through the wrong environment.
 
 ## 3. Verify the SMS allowlist contains only `BI`
 
@@ -62,28 +62,44 @@ Click **Send OTP**. This invokes the genuine Firebase Authentication Phone Sign-
 
 Watch the physical phone. The harness cannot detect delivery automatically — it deliberately does not attempt to. The moment the SMS actually arrives on the device, click **Mark SMS Received** on the harness page. This captures the tester-confirmed receipt timestamp used for the delivery-latency measurement.
 
-If no SMS arrives within a reasonable window (a few minutes), do not keep resending — see step 12.
+If no SMS arrives within a reasonable window (a few minutes), do not keep waiting indefinitely — see step 8 for the bounded retry procedure, and step 13 for when to stop altogether.
 
-## 8. Enter the OTP
+## 8. If no SMS arrives, use the bounded Retry / Resend control
+
+The harness now has a **Retry / Resend** button, visible as soon as a request has been sent — you do not need to click **Reset harness** to try again. Clicking it:
+
+- Resends to the **same** masked number and carrier you already entered (nothing needs to be re-typed).
+- Clears any OTP you had started entering and any prior result/error for that attempt.
+- Starts a **new** delivery-latency timer for this attempt only (the old attempt's timing is discarded, not blended in).
+- Increments the on-screen **Retry count**.
+
+**The retry control is bounded to 3 retries per test session** (4 total send attempts including the first). Once the limit is reached, the button is disabled and reads "Retry limit reached (3/3)". This is a deliberate, small bound — consistent with "do not immediately retry more than once or twice" below — not a production retry policy; it exists to keep manual testing disciplined and to avoid tripping Firebase's own abuse-prevention throttles (see step 13). If the limit is reached without a successful receipt, stop for that carrier, record it as `Still Pending`/`Failed` in the evidence template, and click **Reset harness** before trying a different carrier or number.
+
+## 9. Enter the OTP
 
 Read the code from the received SMS and type it into the Verification Code field, then click **Verify OTP**. This calls the real `ConfirmationResult.confirm()` against Firebase. "OTP verified: Yes" confirms a full, genuine round trip.
 
-## 9. Record delivery latency
+## 10. Record delivery latency
 
-The harness displays "Delivery latency (request → tester-confirmed receipt)" automatically once both timestamps exist — this is the number to transcribe into the evidence template (§ below), alongside the masked number, carrier, and pass/fail flags. Do not transcribe the real number.
+The harness displays two timing figures once available:
 
-## 10. Capture privacy-safe evidence
+- **"Delivery latency (Send click → tester-confirmed receipt)"** — the number to transcribe into the evidence template. This is the complete, end-to-end, user-observed interval: it includes reCAPTCHA time, the Firebase network round trip, and carrier delivery time, measured from the moment you clicked Send (or Retry) to the moment you clicked Mark SMS Received.
+- **"Firebase acceptance latency (internal diagnostic; Send click → Firebase accepted)"** — a secondary, internal-only figure showing how much of the total interval was spent before Firebase accepted the request (reCAPTCHA + Firebase's own round trip), useful for distinguishing a slow carrier from a slow request — not itself the figure to transcribe.
 
-Take a screenshot of the results panel only if it shows the **masked** number (never re-enter or re-display the raw number for a screenshot). Copy the visible fields (masked number, carrier, request accepted, SMS received, latency, OTP verified, retry count, error code if any) into the evidence template.
+Do not transcribe the real number.
 
-## 11. Reset the harness
+## 11. Capture privacy-safe evidence
 
-Click **Reset harness** before testing a second carrier or ending the session. This clears the phone number, carrier, OTP, all results, and the reCAPTCHA widget state from memory — nothing persists across a reset or a page reload (the harness never writes to `localStorage`/`sessionStorage`).
+Take a screenshot of the results panel only if it shows the **masked** number (never re-enter or re-display the raw number for a screenshot). Copy the visible fields (masked number, carrier, request accepted, SMS received, delivery latency, OTP verified, retry count, error code if any) into the evidence template.
 
-## 12. Stop if repeated sends risk rate limiting
+## 12. Reset the harness
 
-Firebase's standard quotas (900 SMS/minute, 3,000/day project-wide; 50/minute, 500/hour per-IP; an undocumented per-number throttle) apply. If a carrier fails once, do not immediately retry more than once or twice — record it as `Still Pending`/`Failed` for that carrier in the evidence template and stop, rather than risk tripping Firebase's abuse-prevention throttles, which could then interfere with testing the remaining carriers.
+Click **Reset harness** before testing a second carrier or ending the session. This clears the phone number, carrier, OTP, all results, the retry count, and the reCAPTCHA widget state from memory — nothing persists across a reset or a page reload (the harness never writes to `localStorage`/`sessionStorage`).
 
-## 13. Remove or disable the harness after testing
+## 13. Stop if repeated sends risk rate limiting
+
+Firebase's standard quotas (900 SMS/minute, 3,000/day project-wide; 50/minute, 500/hour per-IP; an undocumented per-number throttle) apply. The harness's own Retry/Resend bound (step 8) already prevents more than 4 total attempts per session without a full reset, but use judgement below that bound too: if a carrier fails once, do not treat every remaining retry as automatic — record it as `Still Pending`/`Failed` for that carrier in the evidence template and stop, rather than risk tripping Firebase's abuse-prevention throttles, which could then interfere with testing the remaining carriers.
+
+## 14. Remove or disable the harness after testing
 
 No action is required to "turn off" the harness for production — it is already excluded from every production build (`import.meta.env.DEV`-gated `React.lazy` route, verified absent from `dist/` after a real `pnpm build`, per the accompanying implementation report). It remains available in local development only. If a future task wants it fully removed from the repository, delete `apps/web/src/dev/phoneAuthHarness/` and the corresponding route registration in `apps/web/src/App.tsx`.
