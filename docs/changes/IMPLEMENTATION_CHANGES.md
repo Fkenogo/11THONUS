@@ -1852,5 +1852,7 @@
 - **Dependencies added:** none. **Configuration changes:** none.
 - **Risks:** none introduced beyond the harness's already-disclosed capability. `MAX_RETRY_COUNT = 3` is a deliberate, conservative bound for a manually-operated test tool, documented as such in code and the runbook.
 - **Rollback:** `git revert` of this cycle's commit restores the pre-CR1 harness (with its three now-disclosed defects), independent of the original harness commit and the earlier CI-fix commit.
-- **PR #50 status: not merged.** Awaiting fresh, explicit Founder merge authorisation.
+- **Post-push CI flake (unrelated), disclosed transparently:** CI run `30691479650` on `74aeba6` initially failed on two `functions/` emulator-concurrency tests — a directory this cycle never touched. A no-code-change rerun (`gh run rerun --failed`) turned it fully green, confirming the same pre-existing flakiness category disclosed earlier in this task chain (ENG-P1-002's TR record), not a regression.
+- **Review threads:** replies citing the fix commit were posted to all three findings, which were then explicitly resolved via GitHub's `resolveReviewThread` mutation. **0 unresolved review threads remain.**
+- **PR #50 status: not merged.** CI green, `OPEN`/`MERGEABLE`/`CLEAN` at `74aeba6`, 0 unresolved threads. Awaiting fresh, explicit Founder merge authorisation.
 - **Report link:** [`docs/05-implementation/reports/EXT-TECH-001-TEST-HARNESS-implementation-report-2026-07-31.md`](../05-implementation/reports/EXT-TECH-001-TEST-HARNESS-implementation-report-2026-07-31.md) (§30).

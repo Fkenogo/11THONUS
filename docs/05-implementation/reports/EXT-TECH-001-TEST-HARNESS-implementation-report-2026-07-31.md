@@ -245,6 +245,12 @@ None introduced beyond the harness's already-disclosed, intentional capability. 
 
 `git revert` of this cycle's commit restores the pre-CR1 harness (with its three now-disclosed defects) without affecting the original harness commit or the CI-fix commit. Full harness removal remains as stated in §25 (delete `apps/web/src/dev/phoneAuthHarness/` and its `App.tsx` route registration) — unaffected by this cycle.
 
-### 30.12 PR #50 status at the end of this cycle
+### 30.13 Post-push CI flake (unrelated to this diff), and review-thread resolution
 
-Not merged. Awaiting fresh, explicit Founder merge authorisation per this task's own standing instruction and this cycle's explicit "Do not merge PR #50" / "stop when all three defects are fixed, CI is green, and all review threads are resolved" instructions.
+CI run `30691479650` on the pushed commit (`74aeba6`) initially failed on two `functions/` emulator-concurrency tests (`idempotencyService.emulator.test.ts:158`, `commandDispatcher.emulator.test.ts:99`) — a directory this cycle's diff never touched (`git diff --stat 20621c9 74aeba6 -- functions/` returned empty). This matches the same category of pre-existing, previously-disclosed emulator-concurrency flakiness from earlier in this task chain (ENG-P1-002's TR record). Re-run via `gh run rerun 30691479650 --failed` (no code change) turned the identical run fully green, confirming the flake rather than a regression from this cycle's changes.
+
+Separately, replies citing the exact fix commit (`74aeba6`) and its test evidence were posted to all three of `chatgpt-codex-connector[bot]`'s review threads, which were then explicitly resolved via the GitHub GraphQL `resolveReviewThread` mutation. Re-verified live: 0 unresolved review threads remain on PR #50.
+
+### 30.14 PR #50 status at the end of this cycle
+
+Not merged. CI green (`30691479650`, re-run confirmed), PR `OPEN`/`MERGEABLE`/`CLEAN` at `74aeba6`, 0 unresolved review threads. Awaiting fresh, explicit Founder merge authorisation per this task's own standing instruction and this cycle's explicit "Do not merge PR #50" / "stop when all three defects are fixed, CI is green, and all review threads are resolved" instructions — all three of which are now true.
