@@ -135,11 +135,23 @@ export function PhoneAuthHarnessPage({ dev }: { dev: boolean }) {
       const env = getAppEnv();
       const auth = getPhoneAuthHarnessAuth(env.firebase);
 
-      if (!recaptchaVerifierRef.current) {
-        recaptchaVerifierRef.current = new RecaptchaVerifier(auth, recaptchaContainerId, {
-          size: "invisible",
-        });
-      }
+      // CR2: always construct a fresh verifier, never reuse one across
+      // send attempts. Firebase's JS SDK does not reliably support
+      // re-verifying with a RecaptchaVerifier left over from a prior
+      // attempt — signInWithPhoneNumber calls appVerifier.verify() again
+      // internally, and if the previous attempt's widget was already
+      // rendered into this container (even if that attempt then failed
+      // at the Firebase-backend step), the SDK's internal render-tracking
+      // is left desynced from the DOM, and the next .verify() call throws
+      // "reCAPTCHA has already been rendered in this element" — a raw
+      // grecaptcha.js error, not a Firebase auth/* error code. Clearing
+      // and reconstructing here matches Firebase's own documented
+      // guidance for handling a failed signInWithPhoneNumber call before
+      // retrying (https://firebase.google.com/docs/auth/web/phone-auth).
+      recaptchaVerifierRef.current?.clear();
+      recaptchaVerifierRef.current = new RecaptchaVerifier(auth, recaptchaContainerId, {
+        size: "invisible",
+      });
 
       const confirmationResult = await signInWithPhoneNumber(
         auth,

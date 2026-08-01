@@ -491,6 +491,29 @@ describe("PhoneAuthHarnessPage", () => {
       expect(sessionStorage.length).toBe(0);
       expect(document.body.textContent).not.toContain(TEST_NUMBER);
     });
+
+    it("constructs a fresh RecaptchaVerifier for each retry, clearing the prior one first (CR2)", async () => {
+      // Firebase's JS SDK does not reliably support reusing a
+      // RecaptchaVerifier after a failed signInWithPhoneNumber call — the
+      // widget's already-rendered DOM node desyncs from the SDK's internal
+      // render-tracking, producing "reCAPTCHA has already been rendered in
+      // this element" on the next .verify() call. Every send attempt
+      // (first send and every retry alike) must clear any existing
+      // verifier and construct a brand new one, per Firebase's own
+      // documented guidance for handling signInWithPhoneNumber failures.
+      renderHarness();
+      await sendInitial();
+
+      const firstVerifierArg = (signInWithPhoneNumber.mock.calls[0] as unknown[])[2];
+
+      fireEvent.click(getRetryButton());
+      await screen.findByText(/retry count.*1/i);
+
+      const secondVerifierArg = (signInWithPhoneNumber.mock.calls[1] as unknown[])[2];
+
+      expect(secondVerifierArg).not.toBe(firstVerifierArg);
+      expect(recaptchaClear).toHaveBeenCalled();
+    });
   });
 
   describe("reset", () => {
