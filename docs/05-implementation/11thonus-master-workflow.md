@@ -146,6 +146,11 @@ Summarized from the [Engineering Implementation Programme](change-tracking/engin
 
 ### Phase 2 — Blocked
 
+**Updated 2026-08-02 (`ENG-P2-001-PLAN-001` — Customer Identity engineering decomposition):** `ENG-P2-001`'s Customer Identity concern is now proposed to decompose into 10 bounded child work packages (`ENG-P2-001-01`..`-10`) — see the [Decomposition Plan](roadmap/ENG-P2-001-PLAN-001-customer-identity-decomposition-plan.md). Planning only; no child package is authorized to begin. The plan finds most child packages have no `DEC-PROD-012` dependency of their own (only the Customer Profile package's `gender` field does), but flags that the Capability Authorisation Gate's own item 6 text is worded as a blanket precondition for `ENG-P2-001` as a whole — an unresolved literal-text tension, not decided by this update. Phase 2 remains **Blocked**, unaffected in status by this planning-only update.
+
+<details>
+<summary>Historical status (as of 2026-08-01, superseded above)</summary>
+
 **Updated 2026-08-01 (`IDENTITY-ALIGN-001` — constitutional realignment per `DEC-IDENTITY-001`):** the Founder decision `DEC-IDENTITY-001` (2026-08-01) separates Customer Identity, Authentication, and Identity Trust Management (ITM, internal-only) into independent architectural concerns within Capability 2 — see the [Decision Register](../00-governance/decisions/decision-register.md) `DEC-IDENTITY-001` entry and the restructured [`CDR-001` Capability 2](roadmap/CDR-001-capability-delivery-roadmap.md#capability-2--customer-identity). `DEC-PROV-004` and `DEC-SEC-001` remain `CONFIRMED` (amended in place, not superseded — see their own Decision Register Notes fields). `EXT-TECH-001` has been reclassified: it is no longer an unconditional Capability Authorisation Gate blocker for `ENG-P2-001`'s baseline Customer Identity work, since standard participation no longer requires phone verification (`DEC-IDENTITY-001` Standard Participation Principle); it remains required before the phone-OTP authentication provider is activated in production and before ITM's phone-verification trust signal is relied upon — see the [amended Capability Authorisation Gate item 1](roadmap/ENG-P2-RES-000-capability-2-resolution-plan.md#7-capability-authorisation-gate) and the [External Dependencies Register](../00-governance/decisions/external-dependencies-register.md) `EXT-TECH-001` row. Phase 2 remains **Blocked**: `DEC-PROD-012` (`OPEN_FOUNDER`) is still open, and `ENG-P2-001`'s decomposition along the three architectural concerns above is engineering-design work not yet performed (`IDENTITY-ALIGN-001` is a governance/documentation alignment task only — it does not begin implementation). `BaseMetadata`/TRD10 §10.5 conformance (Gate item 7) remains fully resolved, unaffected by this update.
 
 <details>
@@ -157,6 +162,8 @@ Summarized from the [Engineering Implementation Programme](change-tracking/engin
 <summary>Historical status (as of 2026-07-22, superseded above)</summary>
 
 Per the live [Decision Register](../00-governance/decisions/decision-register.md) (checked directly, not reconstructed from memory, on 2026-07-22): all four of Phase 2's D1 decision dependencies remain open — `DEC-SEC-001` (`OPEN_ENGINEERING`), `DEC-ID-003` (`OPEN_FOUNDER`), `DEC-DATA-007` (`OPEN_ENGINEERING`), `DEC-PROV-004` (`OPEN_PROVIDER`). Phase 2 additionally cannot begin until Phase 1 exits (TRD22 §22.11 exit criteria fully met, not merely `ENG-P1-001`).
+
+</details>
 
 </details>
 
