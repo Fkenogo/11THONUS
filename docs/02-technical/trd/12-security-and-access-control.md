@@ -2,7 +2,7 @@
 > **Version:** 1.0 · **Status:** Draft for approval (pre-freeze) · **Classification:** Authoritative Technical  
 > **Governing document:** 11thONUS Platform Constitution; PRD  
 > **Source-of-truth path:** `docs/02-technical/trd/12-security-and-access-control.md`  
-> **Last controlled update:** 2026-07-16 (Phase 2 — relocated and renamed; metadata block added)
+> **Last controlled update:** 2026-08-01 (`IDENTITY-ALIGN-001` — §12.4.1 reframed: authentication providers are equal, per `DEC-IDENTITY-001`'s Authentication Principle, not a "preferred"-then-"future" hierarchy; the identity/authentication/verification separation §12.3 already established is unaffected and remains correct. See the [Decision Register](../../00-governance/decisions/decision-register.md) `DEC-IDENTITY-001` entry.) Previously: 2026-07-16 (Phase 2 — relocated and renamed; metadata block added)
 
 # 11thONUS
 
@@ -97,13 +97,13 @@ A successful Firebase sign-in does not automatically grant access to business da
 
 ## 12.4.1 Customer Authentication
 
-The preferred customer authentication methods are:
+Per `DEC-IDENTITY-001`'s Authentication Principle, supported customer authentication providers are equal — none is the customer's identity, and none is designated primary or secondary:
 
 - mobile phone number with one-time password;
-- email and password or passwordless email as a secondary method;
-- future Google and Apple sign-in.
+- email and password, or passwordless email;
+- Google and Apple sign-in.
 
-Phone-based authentication should support customers who do not regularly use email.
+Phone-based authentication remains important for customers who do not regularly use email, but its role is as one supported provider among several, not a default customers are routed through. Whether a given provider's credential has been verified is tracked separately as a progressive-trust signal (Identity Trust Management, internal-only — see `DEC-IDENTITY-001`), used for risk-based feature gating, not for gating registration, identity issuance, or standard platform access.
 
 ## 12.4.2 Business Owner and Manager Authentication
 

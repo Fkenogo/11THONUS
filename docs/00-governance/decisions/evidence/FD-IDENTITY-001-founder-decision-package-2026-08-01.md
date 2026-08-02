@@ -1,7 +1,7 @@
 > **Title:** FD-IDENTITY-001 — Founder Decision Package
-> **Status:** **Prepared for Founder review. Not yet recorded in the Decision Register — that is a distinct, future action this package prepares everything for.** No application code, architecture, or unrelated document was modified.
-> **Date:** Prepared 2026-08-01, per task `IDENTITY-STRATEGY-001`.
-> **Classification:** Founder decision record, drafted for countersignature. Full supporting analysis: [Impact Assessment and Migration Plan](FD-IDENTITY-001-impact-assessment-and-migration-plan-2026-08-01.md).
+> **Status:** **Recorded.** The Founder countersigned this package's §2 principles and directed its application in task `IDENTITY-ALIGN-001`. The Decision Register entry drafted in §9 has been applied as `DEC-IDENTITY-001`; the §4/§5 amendment text has been applied to `DEC-PROV-004`/`DEC-SEC-001`. No application code was modified.
+> **Date:** Prepared 2026-08-01 (`IDENTITY-STRATEGY-001`); recorded 2026-08-01 (`IDENTITY-ALIGN-001`).
+> **Classification:** Founder decision record. Full supporting analysis: [Impact Assessment and Migration Plan](FD-IDENTITY-001-impact-assessment-and-migration-plan-2026-08-01.md). Application record: [`IDENTITY-ALIGN-001` Implementation Report](../../../05-implementation/reports/IDENTITY-ALIGN-001-implementation-report-2026-08-01.md).
 
 ---
 
@@ -25,7 +25,7 @@ This package prepares `FD-IDENTITY-001` ("Progressive Trust Identity Strategy") 
 6. **Risk-Based Verification.** Verification requirements shall be proportional to the risk of the action. Higher-risk activities may require additional verification — examples include changing account ownership, account recovery, transferring identity, future gift transfers, future wallet functionality, future financial features, and higher-value promotional rewards. Ordinary loyalty participation shall not require elevated trust.
 7. **Progressive Value Unlock.** Verification should create customer value rather than customer friction. Customers should experience verification as "unlock additional capabilities" rather than "complete mandatory onboarding."
 
-**Internal capability naming (Founder recommendation, adopted):** the engineering capability implementing Principles 3/4/6 above is internally named **Trust Lifecycle Management (TLM)** — a product-oriented, customer-invisible name reflecting that the platform manages how trust evolves throughout the customer relationship, rather than treating trust as a one-time registration event. "Progressive Trust" remains the correct name for the Founder's own constitutional principle (Principle 4, above) and should be used verbatim whenever quoting this decision; **TLM is the internal engineering/capability name only** and must never appear in customer-facing product copy.
+**Internal capability naming (Founder recommendation, adopted):** the engineering capability implementing Principles 3/4/6 above is internally named **Identity Trust Management (ITM)** — a product-oriented, customer-invisible name reflecting that the platform manages how trust evolves throughout the customer relationship, rather than treating trust as a one-time registration event. "Progressive Trust" remains the correct name for the Founder's own constitutional principle (Principle 4, above) and should be used verbatim whenever quoting this decision; **ITM is the internal engineering/capability name only** and must never appear in customer-facing product copy.
 
 ## 3. Relationship to Existing Decisions (summary — full detail in the Impact Assessment §4)
 
@@ -74,14 +74,14 @@ Full reasoning for each: [Impact Assessment §4](FD-IDENTITY-001-impact-assessme
 
 ## 7. Terminology Discipline (flagged for Founder awareness, not requiring a decision)
 
-Three unrelated meanings of "verified"/"verification" already coexist in this repository: purchase verification (`DEC-PROD-002`, Capability 4 "First Verified Purchase"), product branding ("Customer-Verified Loyalty Platform"), and identity verification (this decision). None require renaming — they are each independently well-established — but any Founder-facing or future customer-facing communication about `DEC-IDENTITY-001`/TLM should disambiguate explicitly, since this repository's own documents currently use "verified" for both concepts within the same capability list (Capability 4 sits directly between Capability 2 Identity and Capability 5 Progress in the roadmap). Full detail: [Impact Assessment §3.12](FD-IDENTITY-001-impact-assessment-and-migration-plan-2026-08-01.md#312-terminology-collision-risk-not-a-contradiction-a-communication-risk).
+Three unrelated meanings of "verified"/"verification" already coexist in this repository: purchase verification (`DEC-PROD-002`, Capability 4 "First Verified Purchase"), product branding ("Customer-Verified Loyalty Platform"), and identity verification (this decision). None require renaming — they are each independently well-established — but any Founder-facing or future customer-facing communication about `DEC-IDENTITY-001`/ITM should disambiguate explicitly, since this repository's own documents currently use "verified" for both concepts within the same capability list (Capability 4 sits directly between Capability 2 Identity and Capability 5 Progress in the roadmap). Full detail: [Impact Assessment §3.12](FD-IDENTITY-001-impact-assessment-and-migration-plan-2026-08-01.md#312-terminology-collision-risk-not-a-contradiction-a-communication-risk).
 
 ## 8. What Recording This Decision Would Authorize (and What It Would Not)
 
 **Authorizes**, once countersigned:
 - The Decision Register amendment text in §4/§5 above being applied to `DEC-PROV-004`/`DEC-SEC-001`.
 - A future, separately-scoped task to correct PRD2 §5/§7, TRD12 §12.3/§12.4.1, and Canonical Reference §10 (Impact Assessment §9, Step 3).
-- A future, separately-scoped Engineering-Lead task to restructure `CDR-001`'s Capability 2 into Identity/Authentication/TLM (Impact Assessment §9, Step 4).
+- A future, separately-scoped Engineering-Lead task to restructure `CDR-001`'s Capability 2 into Identity/Authentication/ITM (Impact Assessment §9, Step 4).
 
 **Does not authorize**, and requires its own separate task/decision:
 - Any application code, schema, or Firestore Rules change.
@@ -101,11 +101,11 @@ The following is drafted in the exact field format this Decision Register alread
 - Context: The Capability 2 Resolution Sprint (2026-07-30) confirmed `DEC-PROV-004`/`DEC-SEC-001` with the phone number framed as canonical identity and a coarse three-tier trust model. The Founder subsequently determined this conflates concepts that should remain independently governable and unnecessarily front-loads verification into registration, contrary to the already-established CP-007 (Progressive KYC).
 - Options identified: not applicable — Founder-originated constitutional decision, not an engineering-evaluated option set.
 - Current confirmed position: **Approved**, per the Final decision below.
-- Founder decision required: Countersign · Decision owner: Founder · Required by phase: Phase 2 (precedes `ENG-P2-001`) · Blocks: — (once countersigned, unblocks a corrected `ENG-P2-001`/Authentication/TLM capability design)
+- Founder decision required: Countersign · Decision owner: Founder · Required by phase: Phase 2 (precedes `ENG-P2-001`) · Blocks: — (once countersigned, unblocks a corrected `ENG-P2-001`/Authentication/ITM capability design)
 - Affected documents: `DEC-PROV-004` (amend, §4); `DEC-SEC-001` (amend, §5); PRD2 §5/§7; TRD12 §12.3/§12.4.1; Canonical Reference §10; `CDR-001` Capability 2 · Affected domains: Identity, Security, Integration
 - Source references: Platform Constitution CP-007 (Progressive KYC, pre-existing); `DEC-ID-001` (pre-existing permanent-identity model) · Dependencies: none (this decision is upstream of, not gated by, `EXT-TECH-001`/`DEC-PROD-012`) · Risks if unresolved: `ENG-P2-001` would be designed against a conflated, since-corrected model, requiring rework once corrected later instead of now, while zero implementation exists.
 - Final decision: *(the full text in §2 above, recorded verbatim)*. Decision date: 2026-08-01 · Approved by: Founder
-- Implementation consequences: amends `DEC-PROV-004`/`DEC-SEC-001` per §4/§5; requires a future, separately-authorized `CDR-001` restructuring (Capability 2 split into Identity/Authentication/TLM) before `ENG-P2-001` or any successor work package may begin; requires a future, separately-authorized governing-document correction pass (PRD2/TRD12/Canonical Reference) · Document corrections required: see Affected documents above — not performed by this recording; each is its own follow-on task per the Migration Sequence in the Impact Assessment §9 · Notes: internal capability name for the Progressive Trust engineering implementation is **Trust Lifecycle Management (TLM)** — never customer-facing (§2 above).
+- Implementation consequences: amends `DEC-PROV-004`/`DEC-SEC-001` per §4/§5; requires a future, separately-authorized `CDR-001` restructuring (Capability 2 split into Identity/Authentication/ITM) before `ENG-P2-001` or any successor work package may begin; requires a future, separately-authorized governing-document correction pass (PRD2/TRD12/Canonical Reference) · Document corrections required: see Affected documents above — not performed by this recording; each is its own follow-on task per the Migration Sequence in the Impact Assessment §9 · Notes: internal capability name for the Progressive Trust engineering implementation is **Identity Trust Management (ITM)** — never customer-facing (§2 above).
 
 ---
 

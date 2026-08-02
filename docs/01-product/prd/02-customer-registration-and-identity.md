@@ -2,7 +2,7 @@
 > **Version:** 1.0 · **Status:** Draft for review (pre-freeze) · **Classification:** Authoritative Product  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/01-product/prd/02-customer-registration-and-identity.md`  
-> **Last controlled update:** 2026-07-16 (Phase 2 — relocated and renamed; metadata block added)
+> **Last controlled update:** 2026-08-01 (`IDENTITY-ALIGN-001` — §5 Steps 2–4 and §7 Customer Account Status corrected to remove the "phone verification gates account creation/Active status" wording contradicted by `DEC-IDENTITY-001` (2026-08-01): standard participation no longer requires phone verification; a customer's identity and `Active` status are established at registration, independent of whether any authentication provider's verification step is later completed. See the [Decision Register](../../00-governance/decisions/decision-register.md) `DEC-IDENTITY-001` entry. Previously: 2026-07-16 (Phase 2 — relocated and renamed; metadata block added)
 
 # 11thONUS
 
@@ -136,15 +136,15 @@ Unlimited participating businesses.
 
 ## Step 2
 
-Enter mobile number.
+Choose a sign-in method — mobile number (OTP) or another supported authentication provider — and authenticate.
 
 ## Step 3
 
-Verify number.
+Confirm authentication (enter the code sent, or complete the chosen provider's flow).
 
 ## Step 4
 
-Create account.
+Account and permanent loyalty identity created immediately. Authentication proves a returning credential; per `DEC-IDENTITY-001`, it does not gate or define identity — the customer does not wait on a separate verification step to have an account.
 
 ## Step 5
 
@@ -192,15 +192,15 @@ The MVP should minimise registration friction.
 
 Each account shall always exist in one status.
 
-## Pending Verification
+> **Note (`DEC-IDENTITY-001`, 2026-08-01):** account status is no longer gated by phone or other verification. A `Pending Verification` status previously existed here, blocking `Active` until identity was "verified" — that model is superseded; standard participation does not require verification (Standard Participation Principle). Progressive trust level (whether an authentication provider has been verified) is tracked as a separate, internal signal used only for risk-based feature gating (large redemptions, account recovery) — it is not an account status and is never customer-facing as such.
 
-Registration started.
+## Registering
 
-Identity not yet verified.
+Registration in progress — the customer has started but not yet completed the steps in §5.
 
 ## Active
 
-Customer may fully use the platform.
+Customer has completed registration and may fully use standard platform participation, from the moment their identity is created (§5 Step 4) — not contingent on completing phone or any other verification.
 
 ## Suspended
 
