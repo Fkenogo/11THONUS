@@ -2,7 +2,7 @@
 > **Version:** 1.0 (Phase 1 consolidation) · **Status:** Controlled navigation/reference document · **Classification:** Working (controlled reference — does not override Constitution, PRD or TRD)  
 > **Governing document:** 11thONUS Platform Constitution; PRD; TRD  
 > **Source-of-truth path:** `docs/00-governance/canonical-reference.md`  
-> **Last controlled update:** 2026-07-16 (Phase 4 — §11 updated: requirement-ID renumbering executed per DEC-GOV-006)
+> **Last controlled update:** 2026-08-01 (`IDENTITY-ALIGN-001` — §10 MVP Boundaries corrected: "customer identity (phone auth, loyalty number, QR)" baked phone authentication into the scope statement, contradicted by `DEC-IDENTITY-001`'s Authentication Principle (equal providers) and Standard Participation Principle (no mandatory phone verification); corrected to describe identity as provider-independent. See the [Decision Register](decisions/decision-register.md) `DEC-IDENTITY-001` entry.) Previously: 2026-07-16 (Phase 4 — §11 updated: requirement-ID renumbering executed per DEC-GOV-006)
 
 # 11thONUS Canonical Reference
 
@@ -147,7 +147,7 @@ Lower-level documents may not contradict higher-level documents; where they conf
 
 ## 10. MVP Boundaries (summary of TRD22)
 
-**In scope (Strict MVP, TRD22 §22.5):** customer identity (phone auth, loyalty number, QR); business identity with one branch; individual staff accounts and roles; governed launch taxonomy; Reward Programs with fixed 10-unit threshold; purchase recording (QR/loyalty-number lookup, quantity, idempotent, limited offline queue); customer verification (verify one/selected/visible set, reject, dispute); Verified Units and Loyalty Cycles; reward redemption with duplicate prevention and On Us Moments; Trust Events and review queue; in-app/push notifications in English and French; basic business reporting; versioned subscription plans with trial, grace, suspension; platform administration without console editing; full Firebase technical foundation.
+**In scope (Strict MVP, TRD22 §22.5):** customer identity (permanent identity triad — Internal Customer ID, loyalty number, QR — established at registration independent of authentication provider, per `DEC-IDENTITY-001`); authentication via any supported provider (phone OTP, Google Sign-In, email); business identity with one branch; individual staff accounts and roles; governed launch taxonomy; Reward Programs with fixed 10-unit threshold; purchase recording (QR/loyalty-number lookup, quantity, idempotent, limited offline queue); customer verification (verify one/selected/visible set, reject, dispute); Verified Units and Loyalty Cycles; reward redemption with duplicate prevention and On Us Moments; Trust Events and review queue; in-app/push notifications in English and French; basic business reporting; versioned subscription plans with trial, grace, suspension; platform administration without console editing; full Firebase technical foundation.
 
 **Explicitly deferred (TRD22 §22.6):** wallet, gift cards, reward gifting/transfer, marketplace, nearby search and map discovery, AI recommendations, configurable thresholds, points/tiers, stacked rewards, auto-expiry, promotions/referrals/birthday rewards, benchmarking, predictive analytics, franchises, multi-branch operation, public API, POS/CRM/accounting integrations, complete Kirundi/Swahili/Kinyarwanda translation (architecture-ready only), Experience Studio, Intelligence Studio.
 

@@ -2,11 +2,41 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-08-01 (Entry 051 added: `EXT-TECH-001-HARNESS-CR3` — Firebase Hosting Preview and Hosted-Domain Phone Authentication Correction)
+> **Last controlled update:** 2026-08-01 (Entry 053 added: `IDENTITY-ALIGN-001` — Repository Constitutional Alignment Following FD-IDENTITY-001, `DEC-IDENTITY-001` recorded and applied)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 053 — `IDENTITY-ALIGN-001`: Repository Constitutional Alignment Following FD-IDENTITY-001
+
+- **Date:** 1 August 2026
+- **Performed by:** Claude (AI agent), applying the Founder-authorized constitutional realignment following `FD-IDENTITY-001`, using the analysis prepared under `IDENTITY-STRATEGY-001` (Entry 052).
+- **Classification:** Governance and repository alignment task. **No application code was modified; engineering implementation not begun.**
+- **`DEC-IDENTITY-001` recorded** in the Decision Register (`CONFIRMED`, Founder decision, 2026-08-01) — the Identity, Authentication, Progressive Trust, Standard Participation, Risk-Based Verification, Merchant, and Recovery Principles, verbatim per the Founder's task brief.
+- **`DEC-PROV-004` and `DEC-SEC-001` amended in place** (not superseded) — the "verified mobile phone number is the customer's canonical identity" clause and the "reward redemption" verification-gate clause identified in Entry 052 were replaced using a bracket-marker amendment pattern; all other clauses in both decisions preserved verbatim; pre-amendment text remains intact in each decision's own evidence package and in git history. Decision Register §5 Register Summary updated: `CONFIRMED` 42 → 43, Total records 103 → 104.
+- **Capability architecture restructured:** `CDR-001` §5 Capability 2 now names three architectural concerns — Customer Identity, Authentication, and **Identity Trust Management (ITM)**, an internal-only engineering name never exposed customer-facing. Capability numbering and sequence are unchanged; no capability was renumbered (see the implementation report §4 for the full reasoning).
+- **`EXT-TECH-001` reclassified:** no longer an unconditional Capability Authorisation Gate blocker for `ENG-P2-001`'s baseline Customer Identity work; now scoped to the phone-OTP authentication provider's production activation and ITM's phone-verification trust signal. External Dependencies Register, `ENG-P2-RES-000` §7 Gate item 1, Engineering Implementation Programme, and Coding-Agent Prompt Register all updated to match; `DEC-PROD-012` is now the sole remaining Gate item. `ENG-P2-001` remains `Blocked`.
+- **Governing-document wording corrected:** PRD2 §5 Steps 2–4 and §7 Account Status (the passage Entry 052 identified as the single most directly contradicted in the repository); TRD12 §12.4.1 (provider hierarchy → equal providers); Canonical Reference §10 MVP Boundaries. RTM reviewed — no row required correction.
+- **`IDENTITY-STRATEGY-001`/PR #53 naming superseded:** "Trust Lifecycle Management (TLM)," used throughout the not-yet-merged PR #53, renamed to "Identity Trust Management (ITM)" across all 5 affected files, per this task's own authoritative naming; both evidence documents' status headers updated from "prepared for review" to "Recorded"/"applied."
+- **Files created:** `docs/05-implementation/reports/IDENTITY-ALIGN-001-implementation-report-2026-08-01.md`. **Files modified:** Decision Register, External Dependencies Register, `CDR-001`, `ENG-P2-RES-000`, Engineering Implementation Programme, Master Workflow, Coding-Agent Prompt Register, Canonical Reference, PRD2, TRD12, the two `FD-IDENTITY-001` evidence documents, the `IDENTITY-STRATEGY-001` implementation report, this log, and `IMPLEMENTATION_CHANGES.md`. No application code, no other PRD/TRD, and no historical report under `/reports/`, `/records/`, or a frozen `/evidence/` package was modified.
+- **Full detail:** [`IDENTITY-ALIGN-001` Implementation Report](../05-implementation/reports/IDENTITY-ALIGN-001-implementation-report-2026-08-01.md).
+
+---
+
+## Entry 052 — `IDENTITY-STRATEGY-001`: Progressive Trust Constitutional Realignment (governance analysis only)
+
+- **Date:** 1 August 2026
+- **Performed by:** Claude (AI agent), per Founder decision `FD-IDENTITY-001` ("Progressive Trust Identity Strategy") and task "TASK — IDENTITY-STRATEGY-001: Progressive Trust Constitutional Realignment."
+- **Classification:** Repository-wide impact assessment and Founder-approval-document preparation. **No application code was modified — the task brief explicitly prohibited it.** No PRD, TRD, Decision Register entry, Canonical Reference, Platform Constitution, `CDR-001`, Engineering Implementation Programme, or RTM was edited; all were analyzed and quoted verbatim for Founder review.
+- **Founder decision analyzed:** `FD-IDENTITY-001` separates Authentication, Identity, and Verification into independent capabilities and removes mandatory phone verification from initial loyalty-programme participation, replacing it with progressive, risk-based verification. The Founder additionally recommended **Identity Trust Management (ITM)** as the internal engineering name for the capability implementing this — adopted throughout this task's output; "Progressive Trust" remains the correct name for the Founder's own constitutional principle.
+- **Critical finding:** zero engineering implementation exists against the pre-`FD-IDENTITY-001` model (`ENG-P2-001` remains `Blocked`, no code) — this decision costs nothing in rework, only in documentation/decision-register correction.
+- **Two `CONFIRMED` decisions require amendment, not supersession:** `DEC-PROV-004` (its "verified mobile phone number is the customer's canonical identity" clause is the exact conflation `FD-IDENTITY-001` corrects) and `DEC-SEC-001` (its Progressive Phone Verification clause names "reward redemption" as gateable by verification, contradicted by `FD-IDENTITY-001`'s explicit exemption of standard-reward redemption). Exact current text, exact proposed replacement text, and reasoning drafted and ready for Founder review — not applied to the live Decision Register by this task.
+- **Recommended new capability boundary:** the current, conflated "Capability 2 — Customer Identity" splits into a narrowed Identity capability, a new Authentication capability, and the new ITM capability — full detail, an 8-step migration sequence, a capability impact matrix (confirming Capabilities 5/6/Reward Engine unaffected, per the Founder's own statement), and a rollback strategy are recorded in the linked evidence documents.
+- **`EXT-TECH-001` status: unchanged, Still Pending. Capability 2: unchanged, `Blocked`.** `FD-IDENTITY-001`/proposed `DEC-IDENTITY-001`: awaiting Founder countersign — not recorded in the Decision Register by this task.
+- **Files created:** `docs/00-governance/decisions/evidence/FD-IDENTITY-001-impact-assessment-and-migration-plan-2026-08-01.md`; `docs/00-governance/decisions/evidence/FD-IDENTITY-001-founder-decision-package-2026-08-01.md`; `docs/05-implementation/reports/IDENTITY-STRATEGY-001-implementation-report-2026-08-01.md`; `docs/changes/IMPLEMENTATION_CHANGES.md` (this cycle's entry); `docs/00-governance/documentation-changes-log.md` (this entry). No other file was created, modified, or deleted.
 
 ---
 

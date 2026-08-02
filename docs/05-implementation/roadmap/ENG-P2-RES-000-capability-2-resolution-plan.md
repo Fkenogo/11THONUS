@@ -148,7 +148,7 @@ All conclusions here are drawn directly from the Decision Register's own `Depend
 
 `ENG-P2-001` — Customer Identity Implementation may begin **only when all of the following are objectively verifiable against live repository/register state:**
 
-1. `EXT-TECH-001` status in the External Dependencies Register is `EVIDENCE_RECEIVED` or `CLOSED` (not `PENDING`).
+1. [AMENDED by `DEC-IDENTITY-001`, 2026-08-01 — see below] `EXT-TECH-001`'s reclassified scope (Authentication-provider / Identity Trust Management readiness, not a Capability 2 entry blocker) is satisfied — see the [External Dependencies Register](../../00-governance/decisions/external-dependencies-register.md) `EXT-TECH-001` row for the current, narrower "Blocks" definition. `ENG-P2-001`'s baseline Customer Identity work (registration, permanent identity triad, loyalty number, QR) no longer requires this item; it remains required before the phone-OTP authentication provider is activated in production and before ITM's phone-verification trust signal is relied upon.
 2. `DEC-PROV-004` status in the Decision Register is a Final Decision with `Approved by` recorded, including the Founder countersign this plan's `RES-002` correction requires.
 3. `DEC-SEC-001` status in the Decision Register is a Final Decision with the Founder countersign its own fields already require.
 4. `DEC-DATA-007` status in the Decision Register is a Final Decision (from `RES-007`). **Included per `ENG-P2-000B`'s corrected §7 finding:** although `DEC-DATA-007` has no dependency of its own and is independently actionable, the Programme's own table lists it as a current Decision Dependency and Precondition for `ENG-P2-001` — it must close before the gate is satisfied, not merely before it is convenient to close.
@@ -158,6 +158,8 @@ All conclusions here are drawn directly from the Decision Register's own `Depend
 8. The Engineering Implementation Programme's Phase 2 Work-Packages table (from `RES-005.3`) reflects the state confirmed in items 1–7 above — a verification step, not itself a substantive blocker.
 
 **Explicitly not required by this gate:** `DEC-LEGAL-005`'s underlying Founder+legal-adviser decision. Per the Decision Register's own fields (confirmed by `ENG-P2-000`/`ENG-P2-000A`), it blocks "registration policy text," not `ENG-P2-001`'s technical build — only the Programme's documentation text needs correcting (`RES-005.1`), not the decision itself, for this gate to open.
+
+**On item 1's amendment:** the pre-amendment item 1 text (`EXT-TECH-001` `EVIDENCE_RECEIVED`/`CLOSED` required unconditionally before any `ENG-P2-001` work) is preserved unmodified in git history and in this document's own prior committed revisions — it is not deleted, only superseded in place per `DEC-IDENTITY-001`'s separation of Customer Identity from Authentication/ITM (see the [Decision Register](../../00-governance/decisions/decision-register.md) `DEC-IDENTITY-001` entry and the [`CDR-001` Capability 2](CDR-001-capability-delivery-roadmap.md) restructuring for the full rationale).
 
 ## 8. Risks
 
