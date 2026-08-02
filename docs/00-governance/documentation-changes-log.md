@@ -2,11 +2,25 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-08-01 (Entry 051 added: `EXT-TECH-001-HARNESS-CR3` — Firebase Hosting Preview and Hosted-Domain Phone Authentication Correction)
+> **Last controlled update:** 2026-08-01 (Entry 052 added: `IDENTITY-STRATEGY-001` — Progressive Trust Constitutional Realignment, governance analysis only)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 052 — `IDENTITY-STRATEGY-001`: Progressive Trust Constitutional Realignment (governance analysis only)
+
+- **Date:** 1 August 2026
+- **Performed by:** Claude (AI agent), per Founder decision `FD-IDENTITY-001` ("Progressive Trust Identity Strategy") and task "TASK — IDENTITY-STRATEGY-001: Progressive Trust Constitutional Realignment."
+- **Classification:** Repository-wide impact assessment and Founder-approval-document preparation. **No application code was modified — the task brief explicitly prohibited it.** No PRD, TRD, Decision Register entry, Canonical Reference, Platform Constitution, `CDR-001`, Engineering Implementation Programme, or RTM was edited; all were analyzed and quoted verbatim for Founder review.
+- **Founder decision analyzed:** `FD-IDENTITY-001` separates Authentication, Identity, and Verification into independent capabilities and removes mandatory phone verification from initial loyalty-programme participation, replacing it with progressive, risk-based verification. The Founder additionally recommended **Trust Lifecycle Management (TLM)** as the internal engineering name for the capability implementing this — adopted throughout this task's output; "Progressive Trust" remains the correct name for the Founder's own constitutional principle.
+- **Critical finding:** zero engineering implementation exists against the pre-`FD-IDENTITY-001` model (`ENG-P2-001` remains `Blocked`, no code) — this decision costs nothing in rework, only in documentation/decision-register correction.
+- **Two `CONFIRMED` decisions require amendment, not supersession:** `DEC-PROV-004` (its "verified mobile phone number is the customer's canonical identity" clause is the exact conflation `FD-IDENTITY-001` corrects) and `DEC-SEC-001` (its Progressive Phone Verification clause names "reward redemption" as gateable by verification, contradicted by `FD-IDENTITY-001`'s explicit exemption of standard-reward redemption). Exact current text, exact proposed replacement text, and reasoning drafted and ready for Founder review — not applied to the live Decision Register by this task.
+- **Recommended new capability boundary:** the current, conflated "Capability 2 — Customer Identity" splits into a narrowed Identity capability, a new Authentication capability, and the new TLM capability — full detail, an 8-step migration sequence, a capability impact matrix (confirming Capabilities 5/6/Reward Engine unaffected, per the Founder's own statement), and a rollback strategy are recorded in the linked evidence documents.
+- **`EXT-TECH-001` status: unchanged, Still Pending. Capability 2: unchanged, `Blocked`.** `FD-IDENTITY-001`/proposed `DEC-IDENTITY-001`: awaiting Founder countersign — not recorded in the Decision Register by this task.
+- **Files created:** `docs/00-governance/decisions/evidence/FD-IDENTITY-001-impact-assessment-and-migration-plan-2026-08-01.md`; `docs/00-governance/decisions/evidence/FD-IDENTITY-001-founder-decision-package-2026-08-01.md`; `docs/05-implementation/reports/IDENTITY-STRATEGY-001-implementation-report-2026-08-01.md`; `docs/changes/IMPLEMENTATION_CHANGES.md` (this cycle's entry); `docs/00-governance/documentation-changes-log.md` (this entry). No other file was created, modified, or deleted.
 
 ---
 
