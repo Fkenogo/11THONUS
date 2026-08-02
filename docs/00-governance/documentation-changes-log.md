@@ -2,11 +2,23 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-08-02 (Entry 054 added: `ENG-P2-ARCH-001` — Customer Identity Architecture Definition, architecture only, no implementation)
+> **Last controlled update:** 2026-08-02 (Entry 055 added: `ENG-P2-001-PLAN-001` — Customer Identity Engineering Decomposition, planning only, no implementation)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 055 — `ENG-P2-001-PLAN-001`: Customer Identity Engineering Decomposition
+
+- **Date:** 2 August 2026
+- **Performed by:** Claude (AI agent), per Founder task "ENG-P2-001-PLAN-001: Customer Identity Engineering Decomposition," following the Founder-authorized merge of `ENG-P2-ARCH-001` (PR #54).
+- **Classification:** Engineering planning task. **No production code, database schema, Firebase Rule, API, UI, authentication-provider, ITM, or reward implementation performed.**
+- **Deliverable:** [`ENG-P2-001-PLAN-001-customer-identity-decomposition-plan.md`](../05-implementation/roadmap/ENG-P2-001-PLAN-001-customer-identity-decomposition-plan.md) — 10 proposed child work packages under `ENG-P2-001`, a dependency graph, recommended sequence, Authentication/ITM interface boundaries, and a Decision and Ambiguity Register.
+- **Key finding not resolved by this task:** a literal-text tension between `DEC-PROD-012`'s own narrow "profile schema freeze" scope and the Capability Authorisation Gate's blanket item-6 wording for `ENG-P2-001` overall — flagged for Founder input, `DEC-PROD-012` itself not closed or recorded, Capability 2 not marked implementation-ready.
+- **Files modified:** Engineering Implementation Programme, Coding-Agent Prompt Register, `CDR-001`, and Master Workflow each received a decomposition cross-reference/status note — no roadmap work-package count or capability numbering changed (child packages, not new roadmap rows).
+- **Files created:** `docs/05-implementation/roadmap/ENG-P2-001-PLAN-001-customer-identity-decomposition-plan.md`; this entry; `docs/changes/IMPLEMENTATION_CHANGES.md` (this cycle's entry).
 
 ---
 
