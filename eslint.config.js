@@ -88,6 +88,38 @@ export default tseslint.config(
     },
   },
   {
+    // ENG-P2-001-01: makes the Identity domain-foundation's own documented
+    // rule ("the domain layer is framework-independent — no Firebase SDK
+    // import") machine-enforced, not just a doc comment. Mirrors the
+    // existing apps/web Sentry-isolation `no-restricted-imports` precedent
+    // above.
+    files: ["functions/src/domains/identity/**/*.ts"],
+    languageOptions: {
+      ecmaVersion: 2023,
+      globals: globals.node,
+    },
+    rules: {
+      "@typescript-eslint/no-unused-vars": "error",
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: [
+                "firebase-admin",
+                "firebase-admin/*",
+                "firebase-functions",
+                "firebase-functions/*",
+              ],
+              message:
+                "The Identity domain-foundation layer (ENG-P2-001-01) is framework-independent — no Firebase SDK import is permitted here. Persistence-layer mapping belongs in a future ENG-P2-001-05 module instead.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ["*.{js,ts}", "**/*.config.{js,ts}"],
     languageOptions: {
       ecmaVersion: 2023,
