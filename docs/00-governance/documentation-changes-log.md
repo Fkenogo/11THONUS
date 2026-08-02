@@ -2,11 +2,23 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-08-01 (Entry 053 added: `IDENTITY-ALIGN-001` — Repository Constitutional Alignment Following FD-IDENTITY-001, `DEC-IDENTITY-001` recorded and applied)
+> **Last controlled update:** 2026-08-02 (Entry 054 added: `ENG-P2-ARCH-001` — Customer Identity Architecture Definition, architecture only, no implementation)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 054 — `ENG-P2-ARCH-001`: Customer Identity Architecture Definition
+
+- **Date:** 2 August 2026
+- **Performed by:** Claude (AI agent), per Founder task "ENG-P2-ARCH-001: Customer Identity Architecture Definition," following the Founder-authorized merge of `IDENTITY-ALIGN-001` (PR #53).
+- **Classification:** Engineering architecture definition. **No production code, database implementation, API, UI, authentication, or trust implementation performed.**
+- **Deliverable:** [`ENG-P2-ARCH-001-customer-identity-architecture.md`](../05-implementation/roadmap/ENG-P2-ARCH-001-customer-identity-architecture.md) — the Identity Aggregate, Identity/Loyalty-Number/QR lifecycles, Identity Recovery model, and the Authentication/ITM boundary contracts for the Customer Identity concern separated under `DEC-IDENTITY-001`.
+- **Key architectural decisions:** Identity Aggregate holds *references* to Authentication and Trust (ITM), never owns either; Identity Lifecycle (Guest→Registered→Active→Dormant→Recovered→Closed→Archived) reconciled against, not replacing, the existing PRD2/TRD10 operational status model; `Dormant`/`Recovered` identified as new states requiring future schema work, not designed here.
+- **Files modified:** `CDR-001` §5 Capability 2 and the Engineering Implementation Programme's `ENG-P2-001` Current Status each received a single-line cross-reference to the new architecture document — no other content changed, matching the precedent already established for cross-referencing Engineering Blueprints.
+- **Files created:** `docs/05-implementation/roadmap/ENG-P2-ARCH-001-customer-identity-architecture.md`; this entry; `docs/changes/IMPLEMENTATION_CHANGES.md` (this cycle's entry).
 
 ---
 
