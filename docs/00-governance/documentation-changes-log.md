@@ -2,11 +2,24 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-08-02 (Entry 055 added: `ENG-P2-001-PLAN-001` — Customer Identity Engineering Decomposition, planning only, no implementation)
+> **Last controlled update:** 2026-08-02 (Entry 056 added: `ENG-P2-GATE-001` — `DEC-PROD-012` Capability Authorisation Gate Scope Determination, governance interpretation only)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 056 — `ENG-P2-GATE-001`: `DEC-PROD-012` Capability Authorisation Gate Scope Determination
+
+- **Date:** 2 August 2026
+- **Performed by:** Claude (AI agent), per Founder task "ENG-P2-GATE-001: DEC-PROD-012 Capability Authorisation Gate Scope Determination," following the Founder-authorized merge of `ENG-P2-001-PLAN-001` (PR #55).
+- **Classification:** Governance interpretation and repository-synchronisation task. **No application code, database schema, API, UI, authentication, or ITM implementation performed. `DEC-PROD-012` not closed or recorded. No gender policy invented. `ENG-P2-001-01` not begun.**
+- **Determination:** Scoped gate correction required. `ENG-P2-RES-000` §7 Gate item 6 blocked all of `ENG-P2-001` by its blanket chapeau, despite its own rationale text already naming a narrow scope ("profile schema freeze specifically") — classified as stale wording (the Gate predates `ENG-P2-001-PLAN-001`'s decomposition by 3 days), not intentional Founder governance. Corrected in place to block only `ENG-P2-001-02` (Customer Profile)'s `gender` field and `ENG-P2-001-05`'s corresponding schema-freeze.
+- **`Recovered` lifecycle-state:** confirmed irrelevant to `ENG-P2-001-01`'s mobilisation (fully contained within `-06`/`-07`/`-10` under the plan's own recommended resolution).
+- **Deliverable:** [`ENG-P2-GATE-001-dec-prod-012-scope-determination.md`](../05-implementation/roadmap/ENG-P2-GATE-001-dec-prod-012-scope-determination.md) — full gate-authority analysis, `DEC-PROD-012` scope analysis, ten-package impact matrix, and determination rationale.
+- **Files modified:** `ENG-P2-RES-000` (Gate item 6, amended in place, prior text preserved in git history); `ENG-P2-001-PLAN-001` (Ambiguity 2 marked resolved); Engineering Implementation Programme; Coding-Agent Prompt Register; `CDR-001`; Master Workflow (own established history pattern). No historical report or Decision Register entry modified.
+- **Files created:** `docs/05-implementation/roadmap/ENG-P2-GATE-001-dec-prod-012-scope-determination.md`; this entry; `docs/changes/IMPLEMENTATION_CHANGES.md` (this cycle's entry).
 
 ---
 

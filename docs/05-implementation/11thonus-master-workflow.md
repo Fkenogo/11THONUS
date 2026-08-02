@@ -146,6 +146,11 @@ Summarized from the [Engineering Implementation Programme](change-tracking/engin
 
 ### Phase 2 — Blocked
 
+**Updated 2026-08-02 (`ENG-P2-GATE-001` — `DEC-PROD-012` Capability Authorisation Gate scope determined):** the literal-text tension the prior update flagged between `DEC-PROD-012`'s own narrow scope and Gate item 6's blanket wording has been determined and corrected in place — see the [`ENG-P2-GATE-001` Determination](roadmap/ENG-P2-GATE-001-dec-prod-012-scope-determination.md). Gate item 6 now blocks only `ENG-P2-001-02` (Customer Profile)'s `gender` field and `ENG-P2-001-05`'s corresponding schema-freeze; `ENG-P2-001-01`, `-03`, `-04`, `-06`–`-10` are confirmed not blocked by `DEC-PROD-012`. `DEC-PROD-012` itself remains `OPEN_FOUNDER`, not closed or recorded by this determination. Phase 2 remains **Blocked** — this is a governance-interpretation update only; no child package was authorized or begun.
+
+<details>
+<summary>Historical status (as of 2026-08-02, superseded above)</summary>
+
 **Updated 2026-08-02 (`ENG-P2-001-PLAN-001` — Customer Identity engineering decomposition):** `ENG-P2-001`'s Customer Identity concern is now proposed to decompose into 10 bounded child work packages (`ENG-P2-001-01`..`-10`) — see the [Decomposition Plan](roadmap/ENG-P2-001-PLAN-001-customer-identity-decomposition-plan.md). Planning only; no child package is authorized to begin. The plan finds most child packages have no `DEC-PROD-012` dependency of their own (only the Customer Profile package's `gender` field does), but flags that the Capability Authorisation Gate's own item 6 text is worded as a blanket precondition for `ENG-P2-001` as a whole — an unresolved literal-text tension, not decided by this update. Phase 2 remains **Blocked**, unaffected in status by this planning-only update.
 
 <details>
@@ -162,6 +167,8 @@ Summarized from the [Engineering Implementation Programme](change-tracking/engin
 <summary>Historical status (as of 2026-07-22, superseded above)</summary>
 
 Per the live [Decision Register](../00-governance/decisions/decision-register.md) (checked directly, not reconstructed from memory, on 2026-07-22): all four of Phase 2's D1 decision dependencies remain open — `DEC-SEC-001` (`OPEN_ENGINEERING`), `DEC-ID-003` (`OPEN_FOUNDER`), `DEC-DATA-007` (`OPEN_ENGINEERING`), `DEC-PROV-004` (`OPEN_PROVIDER`). Phase 2 additionally cannot begin until Phase 1 exits (TRD22 §22.11 exit criteria fully met, not merely `ENG-P1-001`).
+
+</details>
 
 </details>
 
