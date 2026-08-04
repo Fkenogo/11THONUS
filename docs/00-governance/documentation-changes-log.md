@@ -2,11 +2,23 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-08-04 (Entry 059 added: `ENG-P2-001-04` — QR Identity Service Foundation implemented, TDD, third application code package in the Identity work stream)
+> **Last controlled update:** 2026-08-04 (Entry 060 added: `ENG-P2-001-04` correction — QR regeneration wording clarified in `ENG-P2-ARCH-001` §5 and `ENG-P2-001-PLAN-001` `-04`, per Founder review of PR #59; no code change)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 060 — `ENG-P2-001-04` Correction: QR Regeneration Wording Clarification (Founder Review)
+
+- **Date:** 4 August 2026
+- **Performed by:** Claude (AI agent), per Founder review of PR #59 withholding merge authorisation pending clarification of a documented tension between `ENG-P2-ARCH-001` §5 and `ENG-P2-001-PLAN-001`'s `-04` section.
+- **Classification:** Documentation correction, no application code change. PR #59 remains unmerged.
+- **Finding:** the tension is internal to `ENG-P2-ARCH-001` §5 itself (its Regeneration row's "relationship unchanged" vs. its own Invalidation row's "old codes must fail closed"), faithfully inherited by `ENG-P2-001-PLAN-001`'s `-04` section, which explicitly lists `ENG-P2-ARCH-001` §5 as its own governing requirement — not an independent, competing claim. The Invalidation requirement is unimplementable if the reference literally never changes, making "relationship unchanged" = the customer↔identity↔loyalty-number association persisting (not the literal reference value) the only internally-consistent reading.
+- **Determination:** documentation correction only. The already-implemented behaviour (`regenerateQrIdentity` issues a new reference, invalidates the prior one; `restoreQrIdentityForRecovery` returns the current association unchanged) matched the only consistent reading — no code or test change required.
+- **Files corrected (amendment-in-place, original wording preserved in git history):** `ENG-P2-ARCH-001-customer-identity-architecture.md` §5 Regeneration row; `ENG-P2-001-PLAN-001-customer-identity-decomposition-plan.md` `-04` Scope bullet + "Updated" callout; `ENG-P2-001-04-implementation-report-2026-08-04.md` §6 (expanded with the full analysis); `IMPLEMENTATION_CHANGES.md` (new dated entry); this entry.
+- **Full detail:** [`ENG-P2-001-04` Implementation Report](../05-implementation/reports/ENG-P2-001-04-implementation-report-2026-08-04.md) §6.
 
 ---
 
