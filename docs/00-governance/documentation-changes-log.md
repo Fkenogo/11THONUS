@@ -2,11 +2,25 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-08-04 (Entry 060 added: `ENG-P2-001-04` correction — QR regeneration wording clarified in `ENG-P2-ARCH-001` §5 and `ENG-P2-001-PLAN-001` `-04`, per Founder review of PR #59; no code change)
+> **Last controlled update:** 2026-08-04 (Entry 061 added: `ENG-P2-001-05` — Identity Persistence Foundation implemented, application code, TDD; pending Founder-authorized review/merge)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 061 — `ENG-P2-001-05`: Identity Persistence Foundation Implemented (application code, TDD)
+
+- **Date:** 4 August 2026
+- **Performed by:** Claude (AI agent), per Founder task "ENG-P2-001-05: Customer Identity Persistence Foundation," following the Founder-authorized merge of `ENG-P2-001-04` (PR #59).
+- **Classification:** Application code, fourth package in the Identity work stream — the integration point persisting `-01`/`-03`/`-04`'s three already-merged domain foundations. **Test-driven throughout**, including real Firebase Emulator Suite integration tests (not mocked).
+- **Implemented:** Firestore converters and transactional repositories for `users`, `customerProfiles`, `loyaltyNumbers`, `qrIdentityRecords` — doc-ID-as-value global uniqueness for Loyalty Numbers and QR references, the full atomic QR regeneration transaction (old record invalidated with `replacedByReference`, new record active, identity/loyalty-number unchanged, no partial state on failure), idempotent issuance reusing the existing shared idempotency/outbox infrastructure (no competing framework), and deny-by-default Firestore Rules for all four collections with no direct-client access opened yet (no UI consumer exists). First Rules tests in this repository (23 tests, mutation-tested to confirm they detect a real regression). A cross-cutting outbox-key collision affecting both the Loyalty Number and QR domains' existing (already-merged) event-batch behaviour was found and fixed at the repository layer only — see the Implementation Report §5.
+- **Validation:** 86 new tests — 35 new `functions` unit tests (275 total, up from 240) and 51 new real Firebase Emulator Suite tests (74 total, up from 23) — full monorepo `build`/`typecheck`/`lint`/`format`/`test` clean.
+- **Files modified (narrow, `ENG-P2-001-05`-only status notes):** `ENG-P2-001-PLAN-001`, Engineering Implementation Programme, Coding-Agent Prompt Register, `eslint.config.js` (3 `repositories/`-scope corrections), `functions/vitest.emulator.config.ts` (`fileParallelism: false`, required for correct multi-file emulator test isolation), `firestore.rules`. `ENG-P2-001-01`, `-03`, `-04` remain implemented-pending-merge as previously recorded; `-02`, `-06` through `-10`, `ENG-P2-001` as a whole, and Capability 2 overall are unaffected.
+- **Files created:** `functions/src/domains/{identity,loyaltyNumber,qrIdentity}/repositories/` (converters + repositories + tests); two new concrete generator implementations; `functions/src/security/firestoreRules.emulator.test.ts`; `docs/05-implementation/reports/ENG-P2-001-05-implementation-report-2026-08-04.md`; this entry; `docs/changes/IMPLEMENTATION_CHANGES.md` (this cycle's entry).
+- **Dependencies added:** `@firebase/rules-unit-testing` and its `firebase` peer dependency (devDependencies only, version-matched to `apps/web`'s existing `firebase` pin).
+- **Full detail:** [`ENG-P2-001-05` Implementation Report](../05-implementation/reports/ENG-P2-001-05-implementation-report-2026-08-04.md).
 
 ---
 

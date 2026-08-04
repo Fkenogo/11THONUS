@@ -93,7 +93,13 @@ export default tseslint.config(
     // import") machine-enforced, not just a doc comment. Mirrors the
     // existing apps/web Sentry-isolation `no-restricted-imports` precedent
     // above.
+    //
+    // `repositories/` is excluded (ENG-P2-001-05): per Repository and
+    // Folder Standards §4, it is the one subfolder in each domain whose
+    // whole purpose is bridging to Firestore — the error message below
+    // already named it as where persistence-layer mapping belongs.
     files: ["functions/src/domains/identity/**/*.ts"],
+    ignores: ["functions/src/domains/identity/repositories/**"],
     languageOptions: {
       ecmaVersion: 2023,
       globals: globals.node,
@@ -122,8 +128,10 @@ export default tseslint.config(
   {
     // ENG-P2-001-03: same machine-enforced boundary as the Identity
     // domain-foundation block above, scoped to the new Loyalty Number
-    // domain-foundation module.
+    // domain-foundation module. `repositories/` excluded for the same
+    // reason as the Identity block above (ENG-P2-001-05).
     files: ["functions/src/domains/loyaltyNumber/**/*.ts"],
+    ignores: ["functions/src/domains/loyaltyNumber/repositories/**"],
     languageOptions: {
       ecmaVersion: 2023,
       globals: globals.node,
@@ -152,8 +160,10 @@ export default tseslint.config(
   {
     // ENG-P2-001-04: same machine-enforced boundary as the Identity and
     // Loyalty Number domain-foundation blocks above, scoped to the new
-    // QR Identity domain-foundation module.
+    // QR Identity domain-foundation module. `repositories/` excluded for
+    // the same reason as the Identity block above (ENG-P2-001-05).
     files: ["functions/src/domains/qrIdentity/**/*.ts"],
+    ignores: ["functions/src/domains/qrIdentity/repositories/**"],
     languageOptions: {
       ecmaVersion: 2023,
       globals: globals.node,

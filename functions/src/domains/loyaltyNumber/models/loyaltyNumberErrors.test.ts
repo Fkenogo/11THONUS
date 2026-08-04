@@ -7,6 +7,9 @@ import {
   conflictingLoyaltyNumberAssignmentError,
   identityNotEligibleForIssuanceError,
   loyaltyNumberUniquenessCheckFailedError,
+  duplicateLoyaltyNumberRecordError,
+  malformedLoyaltyNumberRecordError,
+  loyaltyNumberRepositoryUnavailableError,
 } from "./loyaltyNumberErrors";
 
 describe("LoyaltyNumberDomainError", () => {
@@ -63,5 +66,23 @@ describe("loyaltyNumberUniquenessCheckFailedError", () => {
   it("returns an INTEGRATION_FAILED error", () => {
     const error = loyaltyNumberUniquenessCheckFailedError("cust_1");
     expect(error.category).toBe("INTEGRATION_FAILED");
+  });
+});
+
+describe("duplicateLoyaltyNumberRecordError", () => {
+  it("returns a VALIDATION_FAILED error", () => {
+    expect(duplicateLoyaltyNumberRecordError("ABC234").category).toBe("VALIDATION_FAILED");
+  });
+});
+
+describe("malformedLoyaltyNumberRecordError", () => {
+  it("returns a VALIDATION_FAILED error", () => {
+    expect(malformedLoyaltyNumberRecordError("ABC234").category).toBe("VALIDATION_FAILED");
+  });
+});
+
+describe("loyaltyNumberRepositoryUnavailableError", () => {
+  it("returns an INTEGRATION_FAILED error", () => {
+    expect(loyaltyNumberRepositoryUnavailableError("cust_1").category).toBe("INTEGRATION_FAILED");
   });
 });

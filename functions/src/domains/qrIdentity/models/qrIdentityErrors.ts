@@ -72,3 +72,57 @@ export function qrRegenerationNotPermittedError(customerIdentityId: string): QrI
     `QR identity regeneration is not permitted for customer identity "${customerIdentityId}": the current association is not active.`,
   );
 }
+
+/**
+ * Persistence-boundary errors (ENG-P2-001-05).
+ *
+ * Reuses this same `QrIdentityDomainError` class for repository-layer
+ * failures — one bounded error type per domain, not a competing
+ * persistence-specific error hierarchy.
+ */
+
+export function duplicateActiveQrRecordError(qrReference: string): QrIdentityDomainError {
+  return new QrIdentityDomainError(
+    "VALIDATION_FAILED",
+    `An active QR identity record already exists for reference "${qrReference}".`,
+  );
+}
+
+export function invalidatedQrReferenceError(qrReference: string): QrIdentityDomainError {
+  return new QrIdentityDomainError(
+    "RESOURCE_NOT_FOUND",
+    `QR reference "${qrReference}" has been invalidated and cannot be used for active lookup.`,
+  );
+}
+
+export function unknownQrReferenceError(qrReference: string): QrIdentityDomainError {
+  return new QrIdentityDomainError(
+    "RESOURCE_NOT_FOUND",
+    `No QR identity record exists for reference "${qrReference}".`,
+  );
+}
+
+export function malformedQrIdentityRecordError(qrReference: string): QrIdentityDomainError {
+  return new QrIdentityDomainError(
+    "VALIDATION_FAILED",
+    `The stored QR identity record for reference "${qrReference}" does not match the expected shape.`,
+  );
+}
+
+export function qrIdentityRepositoryUnavailableError(
+  customerIdentityId: string,
+): QrIdentityDomainError {
+  return new QrIdentityDomainError(
+    "INTEGRATION_FAILED",
+    `The QR identity repository is unavailable while processing customer identity "${customerIdentityId}".`,
+  );
+}
+
+export function qrRegenerationTransactionConflictError(
+  customerIdentityId: string,
+): QrIdentityDomainError {
+  return new QrIdentityDomainError(
+    "TEMPORARY_UNAVAILABLE",
+    `The QR regeneration transaction for customer identity "${customerIdentityId}" could not be committed due to a concurrent conflict.`,
+  );
+}
