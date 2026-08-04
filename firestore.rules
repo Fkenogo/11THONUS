@@ -1,10 +1,48 @@
 rules_version = '2';
 
 // Deny-by-default foundation (TRD12 §12.17-12.18; Version 1 Engineering Blueprint §4.3).
-// Domain-specific rules are Phase 1+ work (ENG-P1-xxx) — this placeholder intentionally
-// grants no access so the emulator has a defined, safe starting posture.
+// Domain-specific rules are Phase 1+ work (ENG-P1-xxx).
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Customer Identity persistence (ENG-P2-001-05).
+    //
+    // All four collections below are written exclusively through trusted
+    // server-side paths (Cloud Functions using the Admin SDK, which is not
+    // subject to Security Rules at all). These `match` blocks therefore
+    // exist to make the deny-all posture explicit and collection-scoped
+    // for DIRECT CLIENT access — not to grant any access.
+    //
+    // No direct customer read is granted here. Every currently-implemented
+    // consumer of this data is a trusted server path; no customer-facing
+    // profile UI, merchant lookup UI, or QR scanner exists yet in this
+    // codebase (all deferred, ENG-P2-001-05 implementation report §"Deferred
+    // Items"). Granting broad read access now — merely because a future UI
+    // will eventually need *some* narrow, still-undetermined read shape —
+    // would be inventing that shape ahead of the task that actually defines
+    // it. When that task lands, it adds its own narrowly-scoped `allow read`
+    // condition here; it does not loosen this default.
+    match /users/{customerIdentityId} {
+      allow read, write: if false;
+    }
+
+    match /customerProfiles/{customerIdentityId} {
+      allow read, write: if false;
+    }
+
+    // Document ID is the Loyalty Number value itself — global uniqueness is
+    // enforced by this doc-ID-as-value pattern, not by a rule.
+    match /loyaltyNumbers/{loyaltyNumberValue} {
+      allow read, write: if false;
+    }
+
+    // Document ID is the QR reference value itself. Client code must never
+    // be able to enumerate, create, or flip a record's status (active vs
+    // invalidated) directly — QR issuance/regeneration is a trusted
+    // server-side transaction, never a direct client write.
+    match /qrIdentityRecords/{qrReference} {
+      allow read, write: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

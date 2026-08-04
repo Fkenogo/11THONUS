@@ -11,6 +11,10 @@ import {
   authenticationReferenceNotFoundError,
   duplicateTrustReferenceError,
   lastAuthenticationReferenceCannotBeUnlinkedError,
+  duplicateCustomerIdentityError,
+  unknownCustomerIdentityError,
+  malformedCustomerIdentityRecordError,
+  identityRepositoryUnavailableError,
 } from "./identityErrors";
 
 describe("IdentityDomainError", () => {
@@ -90,5 +94,29 @@ describe("lastAuthenticationReferenceCannotBeUnlinkedError", () => {
     expect(lastAuthenticationReferenceCannotBeUnlinkedError("cust_1").category).toBe(
       "INVALID_STATE_TRANSITION",
     );
+  });
+});
+
+describe("duplicateCustomerIdentityError", () => {
+  it("returns a VALIDATION_FAILED error", () => {
+    expect(duplicateCustomerIdentityError("cust_1").category).toBe("VALIDATION_FAILED");
+  });
+});
+
+describe("unknownCustomerIdentityError", () => {
+  it("returns a RESOURCE_NOT_FOUND error", () => {
+    expect(unknownCustomerIdentityError("cust_1").category).toBe("RESOURCE_NOT_FOUND");
+  });
+});
+
+describe("malformedCustomerIdentityRecordError", () => {
+  it("returns a VALIDATION_FAILED error", () => {
+    expect(malformedCustomerIdentityRecordError("cust_1").category).toBe("VALIDATION_FAILED");
+  });
+});
+
+describe("identityRepositoryUnavailableError", () => {
+  it("returns an INTEGRATION_FAILED error", () => {
+    expect(identityRepositoryUnavailableError("cust_1").category).toBe("INTEGRATION_FAILED");
   });
 });

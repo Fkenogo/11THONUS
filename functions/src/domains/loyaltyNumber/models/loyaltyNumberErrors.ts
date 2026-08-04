@@ -79,3 +79,34 @@ export function loyaltyNumberUniquenessCheckFailedError(
     `The uniqueness check for a loyalty number candidate failed for customer identity "${customerIdentityId}".`,
   );
 }
+
+/**
+ * Persistence-boundary errors (ENG-P2-001-05).
+ *
+ * Reuses this same `LoyaltyNumberDomainError` class for repository-layer
+ * failures — one bounded error type per domain, not a competing
+ * persistence-specific error hierarchy.
+ */
+
+export function duplicateLoyaltyNumberRecordError(loyaltyNumber: string): LoyaltyNumberDomainError {
+  return new LoyaltyNumberDomainError(
+    "VALIDATION_FAILED",
+    `A loyalty number record already exists for "${loyaltyNumber}".`,
+  );
+}
+
+export function malformedLoyaltyNumberRecordError(loyaltyNumber: string): LoyaltyNumberDomainError {
+  return new LoyaltyNumberDomainError(
+    "VALIDATION_FAILED",
+    `The stored loyalty number record for "${loyaltyNumber}" does not match the expected shape.`,
+  );
+}
+
+export function loyaltyNumberRepositoryUnavailableError(
+  customerIdentityId: string,
+): LoyaltyNumberDomainError {
+  return new LoyaltyNumberDomainError(
+    "INTEGRATION_FAILED",
+    `The loyalty number repository is unavailable while processing customer identity "${customerIdentityId}".`,
+  );
+}

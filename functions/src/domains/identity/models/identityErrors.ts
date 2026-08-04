@@ -104,3 +104,43 @@ export function lastAuthenticationReferenceCannotBeUnlinkedError(
     `Customer identity "${customerIdentityId}" must retain at least one linked authentication reference.`,
   );
 }
+
+/**
+ * Persistence-boundary errors (ENG-P2-001-05).
+ *
+ * Reuses this same `IdentityDomainError` class for repository-layer
+ * failures too — one bounded error type per domain, not a competing
+ * persistence-specific error hierarchy.
+ */
+
+export function duplicateCustomerIdentityError(customerIdentityId: string): IdentityDomainError {
+  return new IdentityDomainError(
+    "VALIDATION_FAILED",
+    `A customer identity record already exists for "${customerIdentityId}".`,
+  );
+}
+
+export function unknownCustomerIdentityError(customerIdentityId: string): IdentityDomainError {
+  return new IdentityDomainError(
+    "RESOURCE_NOT_FOUND",
+    `No customer identity record exists for "${customerIdentityId}".`,
+  );
+}
+
+export function malformedCustomerIdentityRecordError(
+  customerIdentityId: string,
+): IdentityDomainError {
+  return new IdentityDomainError(
+    "VALIDATION_FAILED",
+    `The stored customer identity record for "${customerIdentityId}" does not match the expected shape.`,
+  );
+}
+
+export function identityRepositoryUnavailableError(
+  customerIdentityId: string,
+): IdentityDomainError {
+  return new IdentityDomainError(
+    "INTEGRATION_FAILED",
+    `The identity repository is unavailable while processing customer identity "${customerIdentityId}".`,
+  );
+}
