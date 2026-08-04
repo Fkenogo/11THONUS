@@ -24,6 +24,8 @@ import type { CreateTrustReferenceParams, TrustReference } from "./trustReferenc
 import { createTrustReference } from "./trustReference";
 import type { IdentityStatus } from "./identityStatus";
 import { isValidIdentityStatusTransition } from "./identityStatus";
+import type { TransitionAuthority } from "./transitionAuthority";
+import type { TransitionReason } from "./transitionReason";
 import {
   authenticationReferenceNotFoundError,
   duplicateAuthenticationReferenceError,
@@ -43,6 +45,7 @@ import {
   buildCustomerIdentityLockedEvent,
   buildCustomerIdentityRegisteredEvent,
   buildCustomerIdentitySuspendedEvent,
+  buildIdentityBecameDormantEvent,
   buildTrustReferenceUpdatedEvent,
   type AuthenticationReferenceLinkedPayload,
   type AuthenticationReferenceUnlinkedPayload,
@@ -52,6 +55,7 @@ import {
   type CustomerIdentityLockedPayload,
   type CustomerIdentityRegisteredPayload,
   type CustomerIdentitySuspendedPayload,
+  type IdentityBecameDormantPayload,
   type TrustReferenceUpdatedPayload,
 } from "../events/identityEvents";
 
@@ -113,11 +117,14 @@ type StatusEvent =
   | DomainEvent<CustomerIdentitySuspendedPayload>
   | DomainEvent<CustomerIdentityLockedPayload>
   | DomainEvent<CustomerIdentityClosedPayload>
-  | DomainEvent<CustomerIdentityArchivedPayload>;
+  | DomainEvent<CustomerIdentityArchivedPayload>
+  | DomainEvent<IdentityBecameDormantPayload>;
 
 export type TransitionIdentityStatusParams = EventEnvelope & {
   updatedAt: Date;
   updatedBy: string | null;
+  authority: TransitionAuthority;
+  reason: TransitionReason;
 };
 
 function assertTransitionPermitted(identity: CustomerIdentity, to: IdentityStatus): void {
@@ -137,8 +144,10 @@ function buildStatusEvent(
   toStatus: IdentityStatus,
   identity: CustomerIdentity,
   envelope: EventEnvelope,
+  authority: TransitionAuthority,
+  reason: TransitionReason,
 ): StatusEvent | undefined {
-  const base = { ...envelope, customerIdentityId: identity.id };
+  const base = { ...envelope, customerIdentityId: identity.id, authority, reason };
 
   if (toStatus === "active" && fromStatus !== "registered") {
     return buildCustomerIdentityActivatedEvent({ ...base, previousStatus: fromStatus });
@@ -155,10 +164,10 @@ function buildStatusEvent(
   if (toStatus === "archived") {
     return buildCustomerIdentityArchivedEvent(base);
   }
+  if (toStatus === "dormant") {
+    return buildIdentityBecameDormantEvent({ ...base, previousStatus: fromStatus });
+  }
 
-  // Transitions this scope does not define an event for (e.g. active/suspended/
-  // locked -> dormant): per this task's own "only include events current
-  // scope supports" instruction, no event is emitted.
   return undefined;
 }
 
@@ -170,7 +179,14 @@ export function transitionIdentityStatus(
   assertTransitionPermitted(identity, toStatus);
 
   const fromStatus = identity.status;
-  const event = buildStatusEvent(fromStatus, toStatus, identity, params);
+  const event = buildStatusEvent(
+    fromStatus,
+    toStatus,
+    identity,
+    params,
+    params.authority,
+    params.reason,
+  );
 
   const updated: CustomerIdentity = {
     ...identity,

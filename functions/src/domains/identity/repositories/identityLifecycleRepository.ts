@@ -1,0 +1,228 @@
+/**
+ * `users` collection lifecycle repository (ENG-P2-001-06).
+ *
+ * Two transactional, idempotent operations against the `-05` persistence
+ * foundation: `transitionCustomerIdentityStatus` (the general status
+ * state-machine, reusing `-01`'s existing `transitionIdentityStatus`,
+ * now extended to accept `authority`/`reason`) and
+ * `recoverCustomerIdentityStatus` (the recovery boundary, reusing this
+ * task's own `recoverCustomerIdentity`). Both follow the exact
+ * idempotency/transaction pattern `-05`'s `customerIdentityRepository.ts`
+ * established — no competing framework.
+ *
+ * `authority`/`reason` are NOT persisted as fields on `users/{id}`
+ * (correction, Founder review of PR #61): a prior version of this file
+ * wrote them as untyped raw fields directly on the mutable current-state
+ * document, which (a) is not part of `UserDocument`'s typed contract,
+ * (b) is invisible to `fromUserDocument`, and (c) would silently retain
+ * only the most recent transition's value, discarding every earlier
+ * transition's evidence. They are instead carried on the outbox/domain
+ * event payload (`transitionIdentityStatus`/`buildIdentityRecoveredEvent`
+ * in `customerIdentity.ts`/`identityLifecycleService.ts`) — the
+ * append-only, replayable evidence trail TRD11 §11.8/§11.17 already
+ * establishes for "what happened and why", with one entry per
+ * transition, never overwritten.
+ */
+
+import type { Firestore } from "firebase-admin/firestore";
+import {
+  checkAndReserveIdempotencyKey,
+  completeIdempotencyKey,
+  failIdempotencyKey,
+} from "../../../shared/idempotency/idempotencyService";
+import { writeOutboxEntry } from "../../../shared/outbox/outboxWriter";
+import { stampUpdate } from "../../../shared/metadata/baseMetadata";
+import type { EventActor } from "../../../shared/events/domainEvent";
+import { transitionIdentityStatus, type CustomerIdentity } from "../models/customerIdentity";
+import type { IdentityStatus } from "../models/identityStatus";
+import type { TransitionAuthority } from "../models/transitionAuthority";
+import type { TransitionReason } from "../models/transitionReason";
+import {
+  IdentityDomainError,
+  unknownCustomerIdentityError,
+  staleIdentityStatusError,
+} from "../models/identityErrors";
+import { recoverCustomerIdentity } from "../services/identityLifecycleService";
+import { fromUserDocument } from "./userDocument";
+import { getCustomerIdentityById } from "./customerIdentityRepository";
+
+const COLLECTION = "users";
+
+export type TransitionCustomerIdentityStatusParams = {
+  eventId: string;
+  correlationId: string;
+  actor: EventActor;
+  occurredAt: string;
+  customerIdentityId: string;
+  toStatus: IdentityStatus;
+  expectedCurrentStatus?: IdentityStatus;
+  authority: TransitionAuthority;
+  reason: TransitionReason;
+  updatedAt: Date;
+  updatedBy: string | null;
+  idempotencyKey: string;
+  requestHash: string;
+};
+
+export async function transitionCustomerIdentityStatus(
+  db: Firestore,
+  params: TransitionCustomerIdentityStatusParams,
+): Promise<CustomerIdentity> {
+  const reservation = await checkAndReserveIdempotencyKey(db, {
+    idempotencyKey: params.idempotencyKey,
+    operationType: "identity.transitionStatus",
+    actorId: params.updatedBy ?? "system",
+    requestHash: params.requestHash,
+    correlationId: params.correlationId,
+  });
+
+  if (reservation.outcome === "duplicate") {
+    return getCustomerIdentityById(db, params.customerIdentityId);
+  }
+  if (reservation.outcome === "in_progress") {
+    throw new IdentityDomainError(
+      "IDEMPOTENCY_CONFLICT",
+      `Status transition for customer identity "${params.customerIdentityId}" is already in progress.`,
+    );
+  }
+  if (reservation.outcome === "conflict") {
+    throw new IdentityDomainError(
+      reservation.error.code,
+      reservation.error.messageKey,
+      reservation.error.fieldErrors,
+    );
+  }
+
+  const ref = db.collection(COLLECTION).doc(params.customerIdentityId);
+
+  try {
+    const identity = await db.runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(ref);
+      if (!snapshot.exists) {
+        throw unknownCustomerIdentityError(params.customerIdentityId);
+      }
+
+      const current = fromUserDocument(snapshot.data());
+
+      if (
+        params.expectedCurrentStatus !== undefined &&
+        current.status !== params.expectedCurrentStatus
+      ) {
+        throw staleIdentityStatusError(
+          params.customerIdentityId,
+          params.expectedCurrentStatus,
+          current.status,
+        );
+      }
+
+      const { identity: updated, event } = transitionIdentityStatus(current, params.toStatus, {
+        eventId: params.eventId,
+        correlationId: params.correlationId,
+        actor: params.actor,
+        occurredAt: params.occurredAt,
+        updatedAt: params.updatedAt,
+        updatedBy: params.updatedBy,
+        authority: params.authority,
+        reason: params.reason,
+      });
+
+      transaction.update(ref, {
+        status: updated.status,
+        ...stampUpdate(params.updatedBy),
+      });
+
+      if (event) {
+        writeOutboxEntry(transaction, db, event);
+      }
+
+      return updated;
+    });
+
+    await completeIdempotencyKey(db, params.idempotencyKey, `${COLLECTION}/${identity.id}`);
+    return identity;
+  } catch (error) {
+    await failIdempotencyKey(db, params.idempotencyKey);
+    throw error;
+  }
+}
+
+export type RecoverCustomerIdentityStatusParams = {
+  eventId: string;
+  correlationId: string;
+  actor: EventActor;
+  occurredAt: string;
+  customerIdentityId: string;
+  authority: TransitionAuthority;
+  recoveredAt: Date;
+  recoveredBy: string | null;
+  idempotencyKey: string;
+  requestHash: string;
+};
+
+export async function recoverCustomerIdentityStatus(
+  db: Firestore,
+  params: RecoverCustomerIdentityStatusParams,
+): Promise<CustomerIdentity> {
+  const reservation = await checkAndReserveIdempotencyKey(db, {
+    idempotencyKey: params.idempotencyKey,
+    operationType: "identity.recover",
+    actorId: params.recoveredBy ?? "system",
+    requestHash: params.requestHash,
+    correlationId: params.correlationId,
+  });
+
+  if (reservation.outcome === "duplicate") {
+    return getCustomerIdentityById(db, params.customerIdentityId);
+  }
+  if (reservation.outcome === "in_progress") {
+    throw new IdentityDomainError(
+      "IDEMPOTENCY_CONFLICT",
+      `Recovery for customer identity "${params.customerIdentityId}" is already in progress.`,
+    );
+  }
+  if (reservation.outcome === "conflict") {
+    throw new IdentityDomainError(
+      reservation.error.code,
+      reservation.error.messageKey,
+      reservation.error.fieldErrors,
+    );
+  }
+
+  const ref = db.collection(COLLECTION).doc(params.customerIdentityId);
+
+  try {
+    const identity = await db.runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(ref);
+      if (!snapshot.exists) {
+        throw unknownCustomerIdentityError(params.customerIdentityId);
+      }
+
+      const current = fromUserDocument(snapshot.data());
+
+      const { identity: recovered, event } = recoverCustomerIdentity(current, {
+        eventId: params.eventId,
+        correlationId: params.correlationId,
+        actor: params.actor,
+        occurredAt: params.occurredAt,
+        recoveredAt: params.recoveredAt,
+        recoveredBy: params.recoveredBy,
+        authority: params.authority,
+      });
+
+      transaction.update(ref, {
+        status: recovered.status,
+        ...stampUpdate(params.recoveredBy),
+      });
+
+      writeOutboxEntry(transaction, db, event);
+
+      return recovered;
+    });
+
+    await completeIdempotencyKey(db, params.idempotencyKey, `${COLLECTION}/${identity.id}`);
+    return identity;
+  } catch (error) {
+    await failIdempotencyKey(db, params.idempotencyKey);
+    throw error;
+  }
+}

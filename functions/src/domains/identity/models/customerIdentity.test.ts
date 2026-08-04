@@ -16,6 +16,10 @@ const envelope = {
   occurredAt: "2026-08-02T00:00:00.000Z",
 };
 const now = new Date("2026-08-02T00:00:00.000Z");
+const transitionMeta = {
+  authority: "administrator_initiated" as const,
+  reason: "administrative_suspension" as const,
+};
 
 function register() {
   return registerCustomerIdentity({
@@ -90,18 +94,34 @@ describe("transitionIdentityStatus", () => {
       ...envelope,
       updatedAt: now,
       updatedBy: "system",
+      ...transitionMeta,
     });
     expect(result.identity.status).toBe("dormant");
   });
 
-  it("returns no event for a transition this scope does not define one for (active to dormant)", () => {
+  it("emits IdentityBecameDormant when transitioning to dormant (ENG-P2-001-06)", () => {
     const { identity } = register();
     const result = transitionIdentityStatus(identity, "dormant", {
       ...envelope,
       updatedAt: now,
       updatedBy: "system",
+      ...transitionMeta,
     });
-    expect(result.event).toBeUndefined();
+    expect(result.event?.eventType).toBe("identity.identity_became_dormant.v1");
+  });
+
+  it("carries transition authority and reason on the emitted event (ENG-P2-001-06 correction, PR #61)", () => {
+    const { identity } = register();
+    const result = transitionIdentityStatus(identity, "dormant", {
+      ...envelope,
+      updatedAt: now,
+      updatedBy: "system",
+      ...transitionMeta,
+    });
+    expect(result.event?.payload).toMatchObject({
+      authority: "administrator_initiated",
+      reason: "administrative_suspension",
+    });
   });
 
   it("emits CustomerIdentityActivated when reactivating from dormant", () => {
@@ -110,11 +130,13 @@ describe("transitionIdentityStatus", () => {
       ...envelope,
       updatedAt: now,
       updatedBy: "system",
+      ...transitionMeta,
     }).identity;
     const result = transitionIdentityStatus(dormant, "active", {
       ...envelope,
       updatedAt: now,
       updatedBy: "system",
+      ...transitionMeta,
     });
     expect(result.event?.eventType).toBe("identity.customer_identity_activated.v1");
   });
@@ -125,6 +147,7 @@ describe("transitionIdentityStatus", () => {
       ...envelope,
       updatedAt: now,
       updatedBy: "system",
+      ...transitionMeta,
     });
     expect(result.event?.eventType).toBe("identity.customer_identity_closed.v1");
   });
@@ -135,11 +158,13 @@ describe("transitionIdentityStatus", () => {
       ...envelope,
       updatedAt: now,
       updatedBy: "system",
+      ...transitionMeta,
     }).identity;
     const result = transitionIdentityStatus(closed, "archived", {
       ...envelope,
       updatedAt: now,
       updatedBy: "system",
+      ...transitionMeta,
     });
     expect(result.identity.status).toBe("archived");
     expect(result.event?.eventType).toBe("identity.customer_identity_archived.v1");
@@ -152,6 +177,7 @@ describe("transitionIdentityStatus", () => {
         ...envelope,
         updatedAt: now,
         updatedBy: "system",
+        ...transitionMeta,
       }),
     ).toThrow(IdentityDomainError);
   });
@@ -162,6 +188,7 @@ describe("transitionIdentityStatus", () => {
       ...envelope,
       updatedAt: now,
       updatedBy: "system",
+      ...transitionMeta,
     }).identity;
 
     expect(() =>
@@ -169,6 +196,7 @@ describe("transitionIdentityStatus", () => {
         ...envelope,
         updatedAt: now,
         updatedBy: "system",
+        ...transitionMeta,
       }),
     ).toThrow(IdentityDomainError);
   });
@@ -179,11 +207,13 @@ describe("transitionIdentityStatus", () => {
       ...envelope,
       updatedAt: now,
       updatedBy: "system",
+      ...transitionMeta,
     }).identity;
     const archived = transitionIdentityStatus(closed, "archived", {
       ...envelope,
       updatedAt: now,
       updatedBy: "system",
+      ...transitionMeta,
     }).identity;
 
     expect(() =>
@@ -191,6 +221,7 @@ describe("transitionIdentityStatus", () => {
         ...envelope,
         updatedAt: now,
         updatedBy: "system",
+        ...transitionMeta,
       }),
     ).toThrow(IdentityDomainError);
   });
