@@ -43,6 +43,7 @@ import {
   buildCustomerIdentityLockedEvent,
   buildCustomerIdentityRegisteredEvent,
   buildCustomerIdentitySuspendedEvent,
+  buildIdentityBecameDormantEvent,
   buildTrustReferenceUpdatedEvent,
   type AuthenticationReferenceLinkedPayload,
   type AuthenticationReferenceUnlinkedPayload,
@@ -52,6 +53,7 @@ import {
   type CustomerIdentityLockedPayload,
   type CustomerIdentityRegisteredPayload,
   type CustomerIdentitySuspendedPayload,
+  type IdentityBecameDormantPayload,
   type TrustReferenceUpdatedPayload,
 } from "../events/identityEvents";
 
@@ -113,7 +115,8 @@ type StatusEvent =
   | DomainEvent<CustomerIdentitySuspendedPayload>
   | DomainEvent<CustomerIdentityLockedPayload>
   | DomainEvent<CustomerIdentityClosedPayload>
-  | DomainEvent<CustomerIdentityArchivedPayload>;
+  | DomainEvent<CustomerIdentityArchivedPayload>
+  | DomainEvent<IdentityBecameDormantPayload>;
 
 export type TransitionIdentityStatusParams = EventEnvelope & {
   updatedAt: Date;
@@ -155,10 +158,10 @@ function buildStatusEvent(
   if (toStatus === "archived") {
     return buildCustomerIdentityArchivedEvent(base);
   }
+  if (toStatus === "dormant") {
+    return buildIdentityBecameDormantEvent({ ...base, previousStatus: fromStatus });
+  }
 
-  // Transitions this scope does not define an event for (e.g. active/suspended/
-  // locked -> dormant): per this task's own "only include events current
-  // scope supports" instruction, no event is emitted.
   return undefined;
 }
 

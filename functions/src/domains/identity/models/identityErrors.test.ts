@@ -15,6 +15,10 @@ import {
   unknownCustomerIdentityError,
   malformedCustomerIdentityRecordError,
   identityRepositoryUnavailableError,
+  invalidTransitionAuthorityError,
+  invalidTransitionReasonError,
+  staleIdentityStatusError,
+  recoveryNotPermittedError,
 } from "./identityErrors";
 
 describe("IdentityDomainError", () => {
@@ -118,5 +122,31 @@ describe("malformedCustomerIdentityRecordError", () => {
 describe("identityRepositoryUnavailableError", () => {
   it("returns an INTEGRATION_FAILED error", () => {
     expect(identityRepositoryUnavailableError("cust_1").category).toBe("INTEGRATION_FAILED");
+  });
+});
+
+describe("invalidTransitionAuthorityError", () => {
+  it("returns a VALIDATION_FAILED error", () => {
+    expect(invalidTransitionAuthorityError("caller_claim").category).toBe("VALIDATION_FAILED");
+  });
+});
+
+describe("invalidTransitionReasonError", () => {
+  it("returns a VALIDATION_FAILED error", () => {
+    expect(invalidTransitionReasonError("free text").category).toBe("VALIDATION_FAILED");
+  });
+});
+
+describe("staleIdentityStatusError", () => {
+  it("returns an IDEMPOTENCY_CONFLICT error", () => {
+    expect(staleIdentityStatusError("cust_1", "active", "suspended").category).toBe(
+      "IDEMPOTENCY_CONFLICT",
+    );
+  });
+});
+
+describe("recoveryNotPermittedError", () => {
+  it("returns an INVALID_STATE_TRANSITION error", () => {
+    expect(recoveryNotPermittedError("cust_1").category).toBe("INVALID_STATE_TRANSITION");
   });
 });

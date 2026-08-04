@@ -12,6 +12,7 @@ import type { DomainEvent, EventActor } from "../../../shared/events/domainEvent
 import { buildEventType } from "../../../shared/events/eventNaming";
 import type { AuthenticationReferenceType } from "../models/authenticationReference";
 import type { IdentityStatus } from "../models/identityStatus";
+import type { TransitionAuthority } from "../models/transitionAuthority";
 
 const SOURCE_DOMAIN = "identity";
 const AGGREGATE_TYPE = "customer_identity";
@@ -162,5 +163,48 @@ export function buildTrustReferenceUpdatedEvent(
   return buildIdentityEvent(params, "trust_reference_updated", params.customerIdentityId, {
     customerIdentityId: params.customerIdentityId,
     trustRecordId: params.trustRecordId,
+  });
+}
+
+/**
+ * Lifecycle events (ENG-P2-001-06).
+ *
+ * `IdentityBecameDormant` fills the one gap `-01` explicitly deferred
+ * ("no event is emitted" for `→ dormant`, per that module's own comment)
+ * — this task's own scope is exactly where that deferral said the event
+ * belongs. `IdentityRecovered` is genuinely new: the audit-trail marker
+ * for the `Recovered` transition (`ENG-P2-001-PLAN-001` §14 Ambiguity 1
+ * — a transient marker, never a persisted status). Both payloads carry
+ * only status/authority-category references — no phone, email, token,
+ * or trust evidence, matching the existing 9 events' own discipline.
+ */
+
+export type IdentityBecameDormantPayload = {
+  customerIdentityId: string;
+  previousStatus: IdentityStatus;
+};
+
+export function buildIdentityBecameDormantEvent(
+  params: EventEnvelopeParams & IdentityBecameDormantPayload,
+): DomainEvent<IdentityBecameDormantPayload> {
+  return buildIdentityEvent(params, "identity_became_dormant", params.customerIdentityId, {
+    customerIdentityId: params.customerIdentityId,
+    previousStatus: params.previousStatus,
+  });
+}
+
+export type IdentityRecoveredPayload = {
+  customerIdentityId: string;
+  previousStatus: IdentityStatus;
+  authority: TransitionAuthority;
+};
+
+export function buildIdentityRecoveredEvent(
+  params: EventEnvelopeParams & IdentityRecoveredPayload,
+): DomainEvent<IdentityRecoveredPayload> {
+  return buildIdentityEvent(params, "identity_recovered", params.customerIdentityId, {
+    customerIdentityId: params.customerIdentityId,
+    previousStatus: params.previousStatus,
+    authority: params.authority,
   });
 }

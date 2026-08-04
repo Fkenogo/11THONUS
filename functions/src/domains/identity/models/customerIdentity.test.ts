@@ -94,14 +94,14 @@ describe("transitionIdentityStatus", () => {
     expect(result.identity.status).toBe("dormant");
   });
 
-  it("returns no event for a transition this scope does not define one for (active to dormant)", () => {
+  it("emits IdentityBecameDormant when transitioning to dormant (ENG-P2-001-06)", () => {
     const { identity } = register();
     const result = transitionIdentityStatus(identity, "dormant", {
       ...envelope,
       updatedAt: now,
       updatedBy: "system",
     });
-    expect(result.event).toBeUndefined();
+    expect(result.event?.eventType).toBe("identity.identity_became_dormant.v1");
   });
 
   it("emits CustomerIdentityActivated when reactivating from dormant", () => {

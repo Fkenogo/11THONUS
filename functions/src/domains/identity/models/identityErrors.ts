@@ -144,3 +144,43 @@ export function identityRepositoryUnavailableError(
     `The identity repository is unavailable while processing customer identity "${customerIdentityId}".`,
   );
 }
+
+/**
+ * Lifecycle-boundary errors (ENG-P2-001-06).
+ *
+ * Reuses this same `IdentityDomainError` class for lifecycle-service and
+ * lifecycle-persistence failures — one bounded error type per domain,
+ * not a competing lifecycle-specific error hierarchy.
+ */
+
+export function invalidTransitionAuthorityError(value: string): IdentityDomainError {
+  return new IdentityDomainError(
+    "VALIDATION_FAILED",
+    `Invalid transition authority: "${value}" is not a recognised authority category.`,
+  );
+}
+
+export function invalidTransitionReasonError(value: string): IdentityDomainError {
+  return new IdentityDomainError(
+    "VALIDATION_FAILED",
+    `Invalid transition reason: "${value}" is not a recognised reason category.`,
+  );
+}
+
+export function staleIdentityStatusError(
+  customerIdentityId: string,
+  expectedStatus: string,
+  actualStatus: string,
+): IdentityDomainError {
+  return new IdentityDomainError(
+    "IDEMPOTENCY_CONFLICT",
+    `Customer identity "${customerIdentityId}" is not in the expected status "${expectedStatus}" (currently "${actualStatus}").`,
+  );
+}
+
+export function recoveryNotPermittedError(customerIdentityId: string): IdentityDomainError {
+  return new IdentityDomainError(
+    "INVALID_STATE_TRANSITION",
+    `Customer identity "${customerIdentityId}" is not in a status that permits recovery.`,
+  );
+}

@@ -2,11 +2,24 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-08-04 (Entry 061 added: `ENG-P2-001-05` — Identity Persistence Foundation implemented, application code, TDD; pending Founder-authorized review/merge)
+> **Last controlled update:** 2026-08-04 (Entry 062 added: `ENG-P2-001-06` — Identity Lifecycle and Status Management implemented, application code, TDD; `ENG-P2-001-PLAN-001` §14 Ambiguity 1 resolved; pending Founder-authorized review/merge)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 062 — `ENG-P2-001-06`: Identity Lifecycle and Status Management Implemented (application code, TDD)
+
+- **Date:** 4 August 2026
+- **Performed by:** Claude (AI agent), per Founder task "ENG-P2-001-06: Identity Lifecycle and Status Management," following the Founder-authorized merge of `ENG-P2-001-05` (PR #60).
+- **Classification:** Application code, fifth package in the Identity work stream — the controlled lifecycle/status-management layer, built directly on `-01`'s merged domain model and `-05`'s merged persistence foundation. **Test-driven throughout**, including real Firebase Emulator Suite integration tests.
+- **`ENG-P2-001-PLAN-001` §14 Ambiguity 1 resolved:** the ambiguity's own table states "Founder input required? No" and recommends `Recovered` be a transient transition marker, not a persistent status — implemented exactly as recommended (`IdentityRecovered` domain event only), matching `-01`'s already-adopted `IdentityStatus` enum (no `recovered` member). Marked resolved in the roadmap doc; original wording preserved in git history.
+- **Implemented:** bounded `TransitionAuthority`/`TransitionReason` value objects; the recovery boundary (`recoverCustomerIdentity`, restricted to `suspended`/`locked` sources, preserving Customer Identity ID/authentication references/Loyalty Number/QR reference by construction, never creating a second identity); the `IdentityBecameDormant` event `-01` explicitly deferred to this task, plus a new `IdentityRecovered` event — both added narrowly to the existing, already-merged `identityEvents.ts`/`customerIdentity.ts`; a transactional, idempotent `identityLifecycleRepository.ts` reusing `-05`'s established idempotency/transaction pattern, including genuine stale-expected-status rejection (a real gap found and fixed by TDD, not merely declared). Firestore Rules required no change — `-05`'s existing deny-all `users/{id}` block already covers every client-mutation path this package names.
+- **Validation:** 44 new tests — 34 new `functions` unit tests (309 total, up from 275) and 10 new real Firebase Emulator Suite tests (84 total, up from 74) — full monorepo `build`/`typecheck`/`lint`/`format`/`test` clean.
+- **Files modified (narrow, `ENG-P2-001-06`-only status notes):** `ENG-P2-001-PLAN-001` (including §14 Ambiguity 1 resolution), Engineering Implementation Programme, Coding-Agent Prompt Register; `docs/02-technical/trd/10-firestore-data-architecture.md` §10.6.1 (`users.status` enum corrected — `pending`→`registered`, `dormant` added). `ENG-P2-001-01`, `-03`, `-04`, `-05` remain merged as previously recorded; `-02`, `-07` through `-10`, `ENG-P2-001` as a whole, and Capability 2 overall are unaffected.
+- **Full detail:** [`ENG-P2-001-06` Implementation Report](../05-implementation/reports/ENG-P2-001-06-implementation-report-2026-08-04.md).
 
 ---
 

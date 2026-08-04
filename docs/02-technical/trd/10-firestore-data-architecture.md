@@ -256,7 +256,7 @@ primaryEmail?: string;
 preferredLanguage: string;  
 countryCode: string;  
 timezone: string;  
-status: "pending" | "active" | "locked" | "suspended" | "closed" | "archived";  
+status: "registered" | "active" | "dormant" | "locked" | "suspended" | "closed" | "archived";  <!-- [Corrected ENG-P2-001-06, 2026-08-04: was "pending"|"active"|"locked"|"suspended"|"closed"|"archived" — "pending" renamed "registered" and "dormant" added to match the merged `-01`/`-06` `IdentityStatus` enum (`functions/src/domains/identity/models/identityStatus.ts`); `ENG-P2-ARCH-001` §3 itself flagged `dormant` as a "downstream schema/product task must add it" item. Original wording preserved in git history. -->
 createdAt: Timestamp;  
 createdBy: string | null;  
 updatedAt: Timestamp;  

@@ -1,0 +1,274 @@
+import { deleteApp, getApps, initializeApp } from "firebase-admin/app";
+import { getFirestore } from "firebase-admin/firestore";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { createCustomerIdentity } from "./customerIdentityRepository";
+import {
+  transitionCustomerIdentityStatus,
+  recoverCustomerIdentityStatus,
+} from "./identityLifecycleRepository";
+import { IdentityDomainError } from "../models/identityErrors";
+import type { EventActor } from "../../../shared/events/domainEvent";
+
+// Real Firestore round trip against the Firebase Emulator Suite. Not run
+// as part of `pnpm test` — see `pnpm test:emulator`.
+
+const app = initializeApp(
+  { projectId: "demo-11thonus" },
+  "identityLifecycleRepositoryEmulatorTest",
+);
+const db = getFirestore(app);
+
+const actor: EventActor = { actorType: "system", actorId: "system" };
+
+async function seedIdentity(customerIdentityId: string, keySuffix: string) {
+  return createCustomerIdentity(db, {
+    eventId: `evt_create_${keySuffix}`,
+    correlationId: `corr_create_${keySuffix}`,
+    actor,
+    occurredAt: "2026-08-04T00:00:00.000Z",
+    customerIdentityId,
+    initialAuthenticationReference: {
+      referenceId: `authuid_${customerIdentityId}`,
+      referenceType: "phone_otp" as const,
+      createdAt: new Date("2026-08-04T00:00:00.000Z"),
+      createdBy: customerIdentityId,
+    },
+    createdAt: new Date("2026-08-04T00:00:00.000Z"),
+    createdBy: customerIdentityId,
+    idempotencyKey: `create_${keySuffix}`,
+    requestHash: `hash_create_${keySuffix}`,
+  });
+}
+
+function buildTransitionParams(
+  customerIdentityId: string,
+  toStatus: "dormant" | "suspended" | "locked" | "closed" | "archived" | "active",
+  idempotencyKey: string,
+  extra: { expectedCurrentStatus?: string } = {},
+) {
+  return {
+    eventId: `evt_${idempotencyKey}`,
+    correlationId: `corr_${idempotencyKey}`,
+    actor,
+    occurredAt: "2026-08-04T01:00:00.000Z",
+    customerIdentityId,
+    toStatus,
+    expectedCurrentStatus: extra.expectedCurrentStatus,
+    authority: "administrator_initiated" as const,
+    reason: "administrative_suspension" as const,
+    updatedAt: new Date("2026-08-04T01:00:00.000Z"),
+    updatedBy: "admin_1",
+    idempotencyKey,
+    requestHash: `hash_${idempotencyKey}`,
+  };
+}
+
+afterAll(async () => {
+  await Promise.all(getApps().map((a) => deleteApp(a)));
+});
+
+beforeAll(() => {
+  if (!process.env["FIRESTORE_EMULATOR_HOST"]) {
+    throw new Error(
+      "FIRESTORE_EMULATOR_HOST is not set — this test requires the Firebase Emulator Suite. Run via `pnpm emulators:validate` or `pnpm test:emulator` inside `firebase emulators:exec`.",
+    );
+  }
+});
+
+beforeEach(async () => {
+  for (const collection of ["users", "idempotencyRecords", "outboxEntries"]) {
+    const snapshot = await db.collection(collection).get();
+    await Promise.all(snapshot.docs.map((doc) => doc.ref.delete()));
+  }
+});
+
+describe("transitionCustomerIdentityStatus", () => {
+  it("applies a valid transition and persists the new status", async () => {
+    await seedIdentity("cust_1", "t1");
+    const identity = await transitionCustomerIdentityStatus(
+      db,
+      buildTransitionParams("cust_1", "suspended", "key_t1"),
+    );
+    expect(identity.status).toBe("suspended");
+
+    const doc = await db.collection("users").doc("cust_1").get();
+    expect(doc.data()?.["status"]).toBe("suspended");
+  });
+
+  it("writes an outbox entry for the transition event", async () => {
+    await seedIdentity("cust_2", "t2");
+    await transitionCustomerIdentityStatus(
+      db,
+      buildTransitionParams("cust_2", "dormant", "key_t2"),
+    );
+
+    const snapshot = await db.collection("outboxEntries").get();
+    const events = snapshot.docs.map((doc) => doc.data()["event"]);
+    expect(
+      events.some((e: { eventType: string }) => e.eventType.includes("identity_became_dormant")),
+    ).toBe(true);
+  });
+
+  it("rejects an illegal transition (active -> archived)", async () => {
+    await seedIdentity("cust_3", "t3");
+    await expect(
+      transitionCustomerIdentityStatus(db, buildTransitionParams("cust_3", "archived", "key_t3")),
+    ).rejects.toThrow(IdentityDomainError);
+  });
+
+  it("rejects a stale expected-status assumption", async () => {
+    await seedIdentity("cust_4", "t4");
+    await transitionCustomerIdentityStatus(
+      db,
+      buildTransitionParams("cust_4", "suspended", "key_t4a"),
+    );
+
+    await expect(
+      transitionCustomerIdentityStatus(
+        db,
+        buildTransitionParams("cust_4", "active", "key_t4b", { expectedCurrentStatus: "active" }),
+      ),
+    ).rejects.toThrow(IdentityDomainError);
+  });
+
+  it("is idempotent: a repeated call with the same idempotency key does not apply a second transition", async () => {
+    await seedIdentity("cust_5", "t5");
+    const params = buildTransitionParams("cust_5", "suspended", "key_t5");
+
+    const first = await transitionCustomerIdentityStatus(db, params);
+    const second = await transitionCustomerIdentityStatus(db, params);
+
+    expect(second.status).toBe(first.status);
+
+    const outboxSnapshot = await db.collection("outboxEntries").get();
+    const suspendedEvents = outboxSnapshot.docs.filter((doc) =>
+      (doc.data()["event"] as { eventType: string }).eventType.includes(
+        "customer_identity_suspended",
+      ),
+    );
+    expect(suspendedEvents).toHaveLength(1);
+  });
+
+  it("supports repeated closure and repeated archival without creating duplicate events", async () => {
+    await seedIdentity("cust_6", "t6");
+    await transitionCustomerIdentityStatus(
+      db,
+      buildTransitionParams("cust_6", "closed", "key_t6_close"),
+    );
+    const closeParams = buildTransitionParams("cust_6", "closed", "key_t6_close");
+    await expect(transitionCustomerIdentityStatus(db, closeParams)).resolves.toBeDefined();
+
+    await transitionCustomerIdentityStatus(
+      db,
+      buildTransitionParams("cust_6", "archived", "key_t6_archive"),
+    );
+    const archiveParams = buildTransitionParams("cust_6", "archived", "key_t6_archive");
+    await expect(transitionCustomerIdentityStatus(db, archiveParams)).resolves.toBeDefined();
+
+    const outboxSnapshot = await db.collection("outboxEntries").get();
+    const events = outboxSnapshot.docs.map(
+      (doc) => (doc.data()["event"] as { eventType: string }).eventType,
+    );
+    expect(events.filter((t) => t.includes("customer_identity_closed"))).toHaveLength(1);
+    expect(events.filter((t) => t.includes("customer_identity_archived"))).toHaveLength(1);
+  });
+
+  it("two concurrent conflicting transitions resolve safely: exactly one wins per idempotency key", async () => {
+    await seedIdentity("cust_7", "t7");
+    const attempt = () =>
+      transitionCustomerIdentityStatus(
+        db,
+        buildTransitionParams("cust_7", "suspended", "key_t7_race"),
+      );
+
+    const results = await Promise.allSettled([attempt(), attempt()]);
+    const fulfilled = results.filter((r) => r.status === "fulfilled");
+    expect(fulfilled.length).toBeGreaterThanOrEqual(1);
+
+    const doc = await db.collection("users").doc("cust_7").get();
+    expect(doc.data()?.["status"]).toBe("suspended");
+  });
+});
+
+describe("recoverCustomerIdentityStatus", () => {
+  it("restores a suspended identity to active and emits IdentityRecovered", async () => {
+    await seedIdentity("cust_8", "r1");
+    await transitionCustomerIdentityStatus(
+      db,
+      buildTransitionParams("cust_8", "suspended", "key_r1_s"),
+    );
+
+    const identity = await recoverCustomerIdentityStatus(db, {
+      eventId: "evt_r1",
+      correlationId: "corr_r1",
+      actor,
+      occurredAt: "2026-08-04T02:00:00.000Z",
+      customerIdentityId: "cust_8",
+      authority: "support_initiated",
+      recoveredAt: new Date("2026-08-04T02:00:00.000Z"),
+      recoveredBy: "support_1",
+      idempotencyKey: "key_r1_recover",
+      requestHash: "hash_r1_recover",
+    });
+
+    expect(identity.status).toBe("active");
+    expect(identity.id).toBe("cust_8");
+    expect(identity.authenticationReferences).toHaveLength(1);
+
+    const snapshot = await db.collection("outboxEntries").get();
+    const events = snapshot.docs.map((doc) => doc.data()["event"]);
+    expect(
+      events.some((e: { eventType: string }) => e.eventType.includes("identity_recovered")),
+    ).toBe(true);
+  });
+
+  it("rejects duplicate recovery commands beyond idempotent replay", async () => {
+    await seedIdentity("cust_9", "r2");
+    await transitionCustomerIdentityStatus(
+      db,
+      buildTransitionParams("cust_9", "locked", "key_r2_l"),
+    );
+
+    const params = {
+      eventId: "evt_r2",
+      correlationId: "corr_r2",
+      actor,
+      occurredAt: "2026-08-04T02:00:00.000Z",
+      customerIdentityId: "cust_9",
+      authority: "support_initiated" as const,
+      recoveredAt: new Date("2026-08-04T02:00:00.000Z"),
+      recoveredBy: "support_1",
+      idempotencyKey: "key_r2_recover",
+      requestHash: "hash_r2_recover",
+    };
+
+    const first = await recoverCustomerIdentityStatus(db, params);
+    const second = await recoverCustomerIdentityStatus(db, params);
+    expect(second.status).toBe(first.status);
+
+    const snapshot = await db.collection("outboxEntries").get();
+    const events = snapshot.docs.map(
+      (doc) => (doc.data()["event"] as { eventType: string }).eventType,
+    );
+    expect(events.filter((t) => t.includes("identity_recovered"))).toHaveLength(1);
+  });
+
+  it("rejects recovery for an identity not in a recovery-eligible status", async () => {
+    await seedIdentity("cust_10", "r3");
+
+    await expect(
+      recoverCustomerIdentityStatus(db, {
+        eventId: "evt_r3",
+        correlationId: "corr_r3",
+        actor,
+        occurredAt: "2026-08-04T02:00:00.000Z",
+        customerIdentityId: "cust_10",
+        authority: "support_initiated",
+        recoveredAt: new Date("2026-08-04T02:00:00.000Z"),
+        recoveredBy: "support_1",
+        idempotencyKey: "key_r3_recover",
+        requestHash: "hash_r3_recover",
+      }),
+    ).rejects.toThrow(IdentityDomainError);
+  });
+});

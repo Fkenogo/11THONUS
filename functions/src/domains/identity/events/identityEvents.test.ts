@@ -9,6 +9,8 @@ import {
   buildAuthenticationReferenceLinkedEvent,
   buildAuthenticationReferenceUnlinkedEvent,
   buildTrustReferenceUpdatedEvent,
+  buildIdentityBecameDormantEvent,
+  buildIdentityRecoveredEvent,
 } from "./identityEvents";
 
 const base = {
@@ -124,5 +126,47 @@ describe("buildTrustReferenceUpdatedEvent", () => {
     });
     expect(event.eventType).toBe("identity.trust_reference_updated.v1");
     expect(event.payload).toEqual({ customerIdentityId: "cust_1", trustRecordId: "trust_1" });
+  });
+});
+
+describe("buildIdentityBecameDormantEvent", () => {
+  it("builds the became-dormant event", () => {
+    const event = buildIdentityBecameDormantEvent({
+      ...base,
+      customerIdentityId: "cust_1",
+      previousStatus: "active",
+    });
+    expect(event.eventType).toBe("identity.identity_became_dormant.v1");
+    expect(event.payload).toEqual({ customerIdentityId: "cust_1", previousStatus: "active" });
+  });
+});
+
+describe("buildIdentityRecoveredEvent", () => {
+  it("builds the recovered event, carrying the previous status and recovery authority", () => {
+    const event = buildIdentityRecoveredEvent({
+      ...base,
+      customerIdentityId: "cust_1",
+      previousStatus: "locked",
+      authority: "support_initiated",
+    });
+    expect(event.eventType).toBe("identity.identity_recovered.v1");
+    expect(event.payload).toEqual({
+      customerIdentityId: "cust_1",
+      previousStatus: "locked",
+      authority: "support_initiated",
+    });
+  });
+
+  it("never carries phone numbers, emails, tokens, or trust evidence", () => {
+    const event = buildIdentityRecoveredEvent({
+      ...base,
+      customerIdentityId: "cust_1",
+      previousStatus: "suspended",
+      authority: "administrator_initiated",
+    });
+    const keys = Object.keys(event.payload).map((k) => k.toLowerCase());
+    for (const forbidden of ["phone", "email", "token", "trust"]) {
+      expect(keys).not.toContain(forbidden);
+    }
   });
 });
