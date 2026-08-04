@@ -120,6 +120,36 @@ export default tseslint.config(
     },
   },
   {
+    // ENG-P2-001-03: same machine-enforced boundary as the Identity
+    // domain-foundation block above, scoped to the new Loyalty Number
+    // domain-foundation module.
+    files: ["functions/src/domains/loyaltyNumber/**/*.ts"],
+    languageOptions: {
+      ecmaVersion: 2023,
+      globals: globals.node,
+    },
+    rules: {
+      "@typescript-eslint/no-unused-vars": "error",
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: [
+                "firebase-admin",
+                "firebase-admin/*",
+                "firebase-functions",
+                "firebase-functions/*",
+              ],
+              message:
+                "The Loyalty Number domain-foundation layer (ENG-P2-001-03) is framework-independent — no Firebase SDK import is permitted here. Persistence/uniqueness-index implementation belongs in a future ENG-P2-001-05 (or equivalent) module instead.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ["*.{js,ts}", "**/*.config.{js,ts}"],
     languageOptions: {
       ecmaVersion: 2023,

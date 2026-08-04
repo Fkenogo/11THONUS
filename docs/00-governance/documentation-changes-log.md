@@ -2,11 +2,24 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-08-02 (Entry 057 added: `ENG-P2-001-01` — Identity Domain Foundation implemented, TDD, first application code in the Identity work stream)
+> **Last controlled update:** 2026-08-04 (Entry 058 added: `ENG-P2-001-03` — Loyalty Number Service Foundation implemented, TDD, second application code package in the Identity work stream)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 058 — `ENG-P2-001-03`: Loyalty Number Service Foundation Implemented (application code, TDD)
+
+- **Date:** 4 August 2026
+- **Performed by:** Claude (AI agent), per Founder task "ENG-P2-001-03: Loyalty Number Service Foundation," following the Founder-authorized merge of `ENG-P2-001-01` (PR #57).
+- **Classification:** Application code, second package in the Identity work stream. **Test-driven throughout** — every module's test file written and confirmed failing before its implementation.
+- **Implemented:** the `LoyaltyNumber` value object (confirmed baseline format `ABC-234` only), `LoyaltyNumberDomainError` (6 factories, all mapped onto the existing closed error-category enum), provider-neutral generator/uniqueness ports, the bounded `issueLoyaltyNumber` issuance service, and 3 domain events — at a new sibling domain module `functions/src/domains/loyaltyNumber/`. No Firestore persistence, QR, Customer Profile, Authentication, ITM, UI/API, or reward logic. Zero Firebase dependency, machine-enforced by a new scoped `eslint.config.js` rule.
+- **Validation:** 39 new tests (201 total in `functions`, up from 162), full monorepo `build`/`typecheck`/`lint`/`format`/`test` clean.
+- **Files modified (narrow, `ENG-P2-001-03`-only status notes):** `ENG-P2-001-PLAN-001`, Engineering Implementation Programme, Coding-Agent Prompt Register, `eslint.config.js`. `ENG-P2-001-01`, `-02`, `-04` through `-10`, `ENG-P2-001` as a whole, and Capability 2 overall are unaffected.
+- **Files created:** `functions/src/domains/loyaltyNumber/` (7 source + 4 test files + `README.md`); `docs/05-implementation/reports/ENG-P2-001-03-implementation-report-2026-08-04.md`; this entry; `docs/changes/IMPLEMENTATION_CHANGES.md` (this cycle's entry).
+- **Full detail:** [`ENG-P2-001-03` Implementation Report](../05-implementation/reports/ENG-P2-001-03-implementation-report-2026-08-04.md).
 
 ---
 
