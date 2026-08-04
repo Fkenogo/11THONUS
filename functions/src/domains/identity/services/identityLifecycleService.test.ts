@@ -36,6 +36,8 @@ function buildIdentity(status: CustomerIdentity["status"]): CustomerIdentity {
     ...envelope,
     updatedAt: now,
     updatedBy: "cust_1",
+    authority: "system_initiated",
+    reason: "system_lifecycle_rule",
   }).identity;
 }
 
@@ -96,7 +98,7 @@ describe("recoverCustomerIdentity", () => {
     expect(result.identity).not.toBe(identity);
   });
 
-  it("emits IdentityRecovered carrying the previous status and authority", () => {
+  it("emits IdentityRecovered carrying the previous status, authority, and reason (ENG-P2-001-06 correction, PR #61)", () => {
     const identity = buildIdentity("suspended");
     const result = recoverCustomerIdentity(identity, {
       ...envelope,
@@ -109,6 +111,7 @@ describe("recoverCustomerIdentity", () => {
       customerIdentityId: identity.id,
       previousStatus: "suspended",
       authority: "support_initiated",
+      reason: "support_recovery",
     });
   });
 

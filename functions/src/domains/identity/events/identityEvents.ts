@@ -13,6 +13,7 @@ import { buildEventType } from "../../../shared/events/eventNaming";
 import type { AuthenticationReferenceType } from "../models/authenticationReference";
 import type { IdentityStatus } from "../models/identityStatus";
 import type { TransitionAuthority } from "../models/transitionAuthority";
+import type { TransitionReason } from "../models/transitionReason";
 
 const SOURCE_DOMAIN = "identity";
 const AGGREGATE_TYPE = "customer_identity";
@@ -57,6 +58,8 @@ export function buildCustomerIdentityRegisteredEvent(
 export type CustomerIdentityActivatedPayload = {
   customerIdentityId: string;
   previousStatus: IdentityStatus;
+  authority: TransitionAuthority;
+  reason: TransitionReason;
 };
 
 export function buildCustomerIdentityActivatedEvent(
@@ -65,12 +68,16 @@ export function buildCustomerIdentityActivatedEvent(
   return buildIdentityEvent(params, "customer_identity_activated", params.customerIdentityId, {
     customerIdentityId: params.customerIdentityId,
     previousStatus: params.previousStatus,
+    authority: params.authority,
+    reason: params.reason,
   });
 }
 
 export type CustomerIdentitySuspendedPayload = {
   customerIdentityId: string;
   previousStatus: IdentityStatus;
+  authority: TransitionAuthority;
+  reason: TransitionReason;
 };
 
 export function buildCustomerIdentitySuspendedEvent(
@@ -79,12 +86,16 @@ export function buildCustomerIdentitySuspendedEvent(
   return buildIdentityEvent(params, "customer_identity_suspended", params.customerIdentityId, {
     customerIdentityId: params.customerIdentityId,
     previousStatus: params.previousStatus,
+    authority: params.authority,
+    reason: params.reason,
   });
 }
 
 export type CustomerIdentityLockedPayload = {
   customerIdentityId: string;
   previousStatus: IdentityStatus;
+  authority: TransitionAuthority;
+  reason: TransitionReason;
 };
 
 export function buildCustomerIdentityLockedEvent(
@@ -93,12 +104,16 @@ export function buildCustomerIdentityLockedEvent(
   return buildIdentityEvent(params, "customer_identity_locked", params.customerIdentityId, {
     customerIdentityId: params.customerIdentityId,
     previousStatus: params.previousStatus,
+    authority: params.authority,
+    reason: params.reason,
   });
 }
 
 export type CustomerIdentityClosedPayload = {
   customerIdentityId: string;
   previousStatus: IdentityStatus;
+  authority: TransitionAuthority;
+  reason: TransitionReason;
 };
 
 export function buildCustomerIdentityClosedEvent(
@@ -107,16 +122,24 @@ export function buildCustomerIdentityClosedEvent(
   return buildIdentityEvent(params, "customer_identity_closed", params.customerIdentityId, {
     customerIdentityId: params.customerIdentityId,
     previousStatus: params.previousStatus,
+    authority: params.authority,
+    reason: params.reason,
   });
 }
 
-export type CustomerIdentityArchivedPayload = { customerIdentityId: string };
+export type CustomerIdentityArchivedPayload = {
+  customerIdentityId: string;
+  authority: TransitionAuthority;
+  reason: TransitionReason;
+};
 
 export function buildCustomerIdentityArchivedEvent(
-  params: EventEnvelopeParams & { customerIdentityId: string },
+  params: EventEnvelopeParams & CustomerIdentityArchivedPayload,
 ): DomainEvent<CustomerIdentityArchivedPayload> {
   return buildIdentityEvent(params, "customer_identity_archived", params.customerIdentityId, {
     customerIdentityId: params.customerIdentityId,
+    authority: params.authority,
+    reason: params.reason,
   });
 }
 
@@ -177,11 +200,21 @@ export function buildTrustReferenceUpdatedEvent(
  * — a transient marker, never a persisted status). Both payloads carry
  * only status/authority-category references — no phone, email, token,
  * or trust evidence, matching the existing 9 events' own discipline.
+ *
+ * `authority`/`reason` on all six general-transition events (Activated,
+ * Suspended, Locked, Closed, Archived, BecameDormant) and on
+ * `IdentityRecovered` (correction, Founder review of PR #61): these are
+ * the single, append-only source of truth for "who/why" a transition
+ * happened — not an untyped field on the mutable `users/{id}` current-
+ * state document, which would silently retain only the most recent
+ * transition's value and be invisible to the typed domain layer.
  */
 
 export type IdentityBecameDormantPayload = {
   customerIdentityId: string;
   previousStatus: IdentityStatus;
+  authority: TransitionAuthority;
+  reason: TransitionReason;
 };
 
 export function buildIdentityBecameDormantEvent(
@@ -190,6 +223,8 @@ export function buildIdentityBecameDormantEvent(
   return buildIdentityEvent(params, "identity_became_dormant", params.customerIdentityId, {
     customerIdentityId: params.customerIdentityId,
     previousStatus: params.previousStatus,
+    authority: params.authority,
+    reason: params.reason,
   });
 }
 
@@ -197,6 +232,7 @@ export type IdentityRecoveredPayload = {
   customerIdentityId: string;
   previousStatus: IdentityStatus;
   authority: TransitionAuthority;
+  reason: TransitionReason;
 };
 
 export function buildIdentityRecoveredEvent(
@@ -206,5 +242,6 @@ export function buildIdentityRecoveredEvent(
     customerIdentityId: params.customerIdentityId,
     previousStatus: params.previousStatus,
     authority: params.authority,
+    reason: params.reason,
   });
 }

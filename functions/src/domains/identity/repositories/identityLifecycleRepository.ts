@@ -3,21 +3,25 @@
  *
  * Two transactional, idempotent operations against the `-05` persistence
  * foundation: `transitionCustomerIdentityStatus` (the general status
- * state-machine, reusing `-01`'s existing `transitionIdentityStatus`
- * unmodified) and `recoverCustomerIdentityStatus` (the recovery boundary,
- * reusing this task's own `recoverCustomerIdentity`). Both follow the
- * exact idempotency/transaction pattern `-05`'s `customerIdentityRepository.ts`
+ * state-machine, reusing `-01`'s existing `transitionIdentityStatus`,
+ * now extended to accept `authority`/`reason`) and
+ * `recoverCustomerIdentityStatus` (the recovery boundary, reusing this
+ * task's own `recoverCustomerIdentity`). Both follow the exact
+ * idempotency/transaction pattern `-05`'s `customerIdentityRepository.ts`
  * established — no competing framework.
  *
- * `lastTransitionAuthority`/`lastTransitionReason` are written directly
- * onto the `users/{id}` document as plain audit fields — a deliberate
- * choice over trying to retrofit these onto `-01`'s already-merged
- * domain-event payloads (which would be a breaking change to reviewed
- * code). They are not part of `UserDocument`/`CustomerIdentity`'s typed
- * shape; Firestore documents may carry fields beyond a given domain
- * projection, and these two exist purely so "why is this identity
- * currently in this status" is answerable from the document itself
- * without event-stream replay.
+ * `authority`/`reason` are NOT persisted as fields on `users/{id}`
+ * (correction, Founder review of PR #61): a prior version of this file
+ * wrote them as untyped raw fields directly on the mutable current-state
+ * document, which (a) is not part of `UserDocument`'s typed contract,
+ * (b) is invisible to `fromUserDocument`, and (c) would silently retain
+ * only the most recent transition's value, discarding every earlier
+ * transition's evidence. They are instead carried on the outbox/domain
+ * event payload (`transitionIdentityStatus`/`buildIdentityRecoveredEvent`
+ * in `customerIdentity.ts`/`identityLifecycleService.ts`) — the
+ * append-only, replayable evidence trail TRD11 §11.8/§11.17 already
+ * establishes for "what happened and why", with one entry per
+ * transition, never overwritten.
  */
 
 import type { Firestore } from "firebase-admin/firestore";
@@ -118,12 +122,12 @@ export async function transitionCustomerIdentityStatus(
         occurredAt: params.occurredAt,
         updatedAt: params.updatedAt,
         updatedBy: params.updatedBy,
+        authority: params.authority,
+        reason: params.reason,
       });
 
       transaction.update(ref, {
         status: updated.status,
-        lastTransitionAuthority: params.authority,
-        lastTransitionReason: params.reason,
         ...stampUpdate(params.updatedBy),
       });
 
@@ -207,8 +211,6 @@ export async function recoverCustomerIdentityStatus(
 
       transaction.update(ref, {
         status: recovered.status,
-        lastTransitionAuthority: params.authority,
-        lastTransitionReason: "support_recovery",
         ...stampUpdate(params.recoveredBy),
       });
 

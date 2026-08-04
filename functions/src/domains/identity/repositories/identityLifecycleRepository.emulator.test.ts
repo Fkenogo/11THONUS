@@ -109,6 +109,27 @@ describe("transitionCustomerIdentityStatus", () => {
     ).toBe(true);
   });
 
+  it("carries authority and reason on the outbox event payload, not as raw fields on users/{id} (ENG-P2-001-06 correction, PR #61)", async () => {
+    await seedIdentity("cust_11", "t11");
+    await transitionCustomerIdentityStatus(
+      db,
+      buildTransitionParams("cust_11", "suspended", "key_t11"),
+    );
+
+    const snapshot = await db.collection("outboxEntries").get();
+    const dormantEntry = snapshot.docs
+      .map((doc) => doc.data()["event"] as { eventType: string; payload: unknown })
+      .find((e) => e.eventType.includes("customer_identity_suspended"));
+    expect(dormantEntry?.payload).toMatchObject({
+      authority: "administrator_initiated",
+      reason: "administrative_suspension",
+    });
+
+    const doc = await db.collection("users").doc("cust_11").get();
+    expect(doc.data()).not.toHaveProperty("lastTransitionAuthority");
+    expect(doc.data()).not.toHaveProperty("lastTransitionReason");
+  });
+
   it("rejects an illegal transition (active -> archived)", async () => {
     await seedIdentity("cust_3", "t3");
     await expect(
@@ -220,6 +241,18 @@ describe("recoverCustomerIdentityStatus", () => {
     expect(
       events.some((e: { eventType: string }) => e.eventType.includes("identity_recovered")),
     ).toBe(true);
+
+    const recoveredEntry = snapshot.docs
+      .map((doc) => doc.data()["event"] as { eventType: string; payload: unknown })
+      .find((e) => e.eventType.includes("identity_recovered"));
+    expect(recoveredEntry?.payload).toMatchObject({
+      authority: "support_initiated",
+      reason: "support_recovery",
+    });
+
+    const userDoc = await db.collection("users").doc("cust_8").get();
+    expect(userDoc.data()).not.toHaveProperty("lastTransitionAuthority");
+    expect(userDoc.data()).not.toHaveProperty("lastTransitionReason");
   });
 
   it("rejects duplicate recovery commands beyond idempotent replay", async () => {

@@ -31,6 +31,8 @@ import {
 
 const RECOVERY_ELIGIBLE_STATUSES: readonly CustomerIdentity["status"][] = ["suspended", "locked"];
 
+const RECOVERY_REASON = "support_recovery" as const;
+
 type EventEnvelope = {
   eventId: string;
   correlationId: string;
@@ -61,6 +63,8 @@ export function recoverCustomerIdentity(
     occurredAt: params.occurredAt,
     updatedAt: params.recoveredAt,
     updatedBy: params.recoveredBy,
+    authority: params.authority,
+    reason: RECOVERY_REASON,
   });
 
   const event = buildIdentityRecoveredEvent({
@@ -71,6 +75,7 @@ export function recoverCustomerIdentity(
     customerIdentityId: identity.id,
     previousStatus,
     authority: params.authority,
+    reason: RECOVERY_REASON,
   });
 
   return { identity: transitioned.identity, event };

@@ -36,55 +36,96 @@ describe("buildCustomerIdentityRegisteredEvent", () => {
 });
 
 describe("buildCustomerIdentityActivatedEvent", () => {
-  it("records the previous status the reactivation transitioned from", () => {
+  it("records the previous status the reactivation transitioned from, plus authority and reason", () => {
     const event = buildCustomerIdentityActivatedEvent({
       ...base,
       customerIdentityId: "cust_1",
       previousStatus: "dormant",
+      authority: "customer_initiated",
+      reason: "customer_request",
     });
 
     expect(event.eventType).toBe("identity.customer_identity_activated.v1");
-    expect(event.payload).toEqual({ customerIdentityId: "cust_1", previousStatus: "dormant" });
+    expect(event.payload).toEqual({
+      customerIdentityId: "cust_1",
+      previousStatus: "dormant",
+      authority: "customer_initiated",
+      reason: "customer_request",
+    });
   });
 });
 
 describe("buildCustomerIdentitySuspendedEvent", () => {
-  it("builds the suspended event", () => {
+  it("builds the suspended event carrying authority and reason", () => {
     const event = buildCustomerIdentitySuspendedEvent({
       ...base,
       customerIdentityId: "cust_1",
       previousStatus: "active",
+      authority: "administrator_initiated",
+      reason: "administrative_suspension",
     });
     expect(event.eventType).toBe("identity.customer_identity_suspended.v1");
+    expect(event.payload).toEqual({
+      customerIdentityId: "cust_1",
+      previousStatus: "active",
+      authority: "administrator_initiated",
+      reason: "administrative_suspension",
+    });
   });
 });
 
 describe("buildCustomerIdentityLockedEvent", () => {
-  it("builds the locked event", () => {
+  it("builds the locked event carrying authority and reason", () => {
     const event = buildCustomerIdentityLockedEvent({
       ...base,
       customerIdentityId: "cust_1",
       previousStatus: "active",
+      authority: "security_policy_initiated",
+      reason: "suspected_compromise",
     });
     expect(event.eventType).toBe("identity.customer_identity_locked.v1");
+    expect(event.payload).toEqual({
+      customerIdentityId: "cust_1",
+      previousStatus: "active",
+      authority: "security_policy_initiated",
+      reason: "suspected_compromise",
+    });
   });
 });
 
 describe("buildCustomerIdentityClosedEvent", () => {
-  it("builds the closed event", () => {
+  it("builds the closed event carrying authority and reason", () => {
     const event = buildCustomerIdentityClosedEvent({
       ...base,
       customerIdentityId: "cust_1",
       previousStatus: "active",
+      authority: "customer_initiated",
+      reason: "account_closure",
     });
     expect(event.eventType).toBe("identity.customer_identity_closed.v1");
+    expect(event.payload).toEqual({
+      customerIdentityId: "cust_1",
+      previousStatus: "active",
+      authority: "customer_initiated",
+      reason: "account_closure",
+    });
   });
 });
 
 describe("buildCustomerIdentityArchivedEvent", () => {
-  it("builds the archived event", () => {
-    const event = buildCustomerIdentityArchivedEvent({ ...base, customerIdentityId: "cust_1" });
+  it("builds the archived event carrying authority and reason", () => {
+    const event = buildCustomerIdentityArchivedEvent({
+      ...base,
+      customerIdentityId: "cust_1",
+      authority: "system_initiated",
+      reason: "archival_retention_completion",
+    });
     expect(event.eventType).toBe("identity.customer_identity_archived.v1");
+    expect(event.payload).toEqual({
+      customerIdentityId: "cust_1",
+      authority: "system_initiated",
+      reason: "archival_retention_completion",
+    });
   });
 });
 
@@ -130,30 +171,39 @@ describe("buildTrustReferenceUpdatedEvent", () => {
 });
 
 describe("buildIdentityBecameDormantEvent", () => {
-  it("builds the became-dormant event", () => {
+  it("builds the became-dormant event carrying authority and reason", () => {
     const event = buildIdentityBecameDormantEvent({
       ...base,
       customerIdentityId: "cust_1",
       previousStatus: "active",
+      authority: "system_initiated",
+      reason: "customer_inactivity",
     });
     expect(event.eventType).toBe("identity.identity_became_dormant.v1");
-    expect(event.payload).toEqual({ customerIdentityId: "cust_1", previousStatus: "active" });
+    expect(event.payload).toEqual({
+      customerIdentityId: "cust_1",
+      previousStatus: "active",
+      authority: "system_initiated",
+      reason: "customer_inactivity",
+    });
   });
 });
 
 describe("buildIdentityRecoveredEvent", () => {
-  it("builds the recovered event, carrying the previous status and recovery authority", () => {
+  it("builds the recovered event, carrying the previous status, authority, and reason", () => {
     const event = buildIdentityRecoveredEvent({
       ...base,
       customerIdentityId: "cust_1",
       previousStatus: "locked",
       authority: "support_initiated",
+      reason: "support_recovery",
     });
     expect(event.eventType).toBe("identity.identity_recovered.v1");
     expect(event.payload).toEqual({
       customerIdentityId: "cust_1",
       previousStatus: "locked",
       authority: "support_initiated",
+      reason: "support_recovery",
     });
   });
 
@@ -163,6 +213,7 @@ describe("buildIdentityRecoveredEvent", () => {
       customerIdentityId: "cust_1",
       previousStatus: "suspended",
       authority: "administrator_initiated",
+      reason: "support_recovery",
     });
     const keys = Object.keys(event.payload).map((k) => k.toLowerCase());
     for (const forbidden of ["phone", "email", "token", "trust"]) {

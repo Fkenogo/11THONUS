@@ -24,6 +24,8 @@ import type { CreateTrustReferenceParams, TrustReference } from "./trustReferenc
 import { createTrustReference } from "./trustReference";
 import type { IdentityStatus } from "./identityStatus";
 import { isValidIdentityStatusTransition } from "./identityStatus";
+import type { TransitionAuthority } from "./transitionAuthority";
+import type { TransitionReason } from "./transitionReason";
 import {
   authenticationReferenceNotFoundError,
   duplicateAuthenticationReferenceError,
@@ -121,6 +123,8 @@ type StatusEvent =
 export type TransitionIdentityStatusParams = EventEnvelope & {
   updatedAt: Date;
   updatedBy: string | null;
+  authority: TransitionAuthority;
+  reason: TransitionReason;
 };
 
 function assertTransitionPermitted(identity: CustomerIdentity, to: IdentityStatus): void {
@@ -140,8 +144,10 @@ function buildStatusEvent(
   toStatus: IdentityStatus,
   identity: CustomerIdentity,
   envelope: EventEnvelope,
+  authority: TransitionAuthority,
+  reason: TransitionReason,
 ): StatusEvent | undefined {
-  const base = { ...envelope, customerIdentityId: identity.id };
+  const base = { ...envelope, customerIdentityId: identity.id, authority, reason };
 
   if (toStatus === "active" && fromStatus !== "registered") {
     return buildCustomerIdentityActivatedEvent({ ...base, previousStatus: fromStatus });
@@ -173,7 +179,14 @@ export function transitionIdentityStatus(
   assertTransitionPermitted(identity, toStatus);
 
   const fromStatus = identity.status;
-  const event = buildStatusEvent(fromStatus, toStatus, identity, params);
+  const event = buildStatusEvent(
+    fromStatus,
+    toStatus,
+    identity,
+    params,
+    params.authority,
+    params.reason,
+  );
 
   const updated: CustomerIdentity = {
     ...identity,
