@@ -2,11 +2,25 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-08-04 (Entry 058 added: `ENG-P2-001-03` — Loyalty Number Service Foundation implemented, TDD, second application code package in the Identity work stream)
+> **Last controlled update:** 2026-08-04 (Entry 059 added: `ENG-P2-001-04` — QR Identity Service Foundation implemented, TDD, third application code package in the Identity work stream)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 059 — `ENG-P2-001-04`: QR Identity Service Foundation Implemented (application code, TDD)
+
+- **Date:** 4 August 2026
+- **Performed by:** Claude (AI agent), per Founder task "ENG-P2-001-04: QR Identity Service Foundation," following the Founder-authorized merge of `ENG-P2-001-03` (PR #58).
+- **Classification:** Application code, third package in the Identity work stream. **Test-driven throughout** — every module's test file written and confirmed failing before its implementation.
+- **Implemented:** the `QrReference`/`QrPayload` value objects (approved plain-opaque-reference contract per `DEC-DATA-007`), `QrIdentityDomainError` (6 factories, all mapped onto the existing closed error-category enum), a provider-neutral generator port, three lifecycle functions (`issueQrIdentity`, `regenerateQrIdentity`, `restoreQrIdentityForRecovery`), and 3 domain events — at a new sibling domain module `functions/src/domains/qrIdentity/`. No image rendering, scanning, UI/API, Firestore persistence, merchant lookup, Authentication, ITM, or reward logic. Zero Firebase dependency, machine-enforced by a new scoped `eslint.config.js` rule.
+- **Governance note:** a textual tension between `ENG-P2-ARCH-001` §5 and `ENG-P2-001-PLAN-001`'s own `-04` section (whether regeneration changes the QR reference value) was identified and reconciled — not silently resolved — with the full analysis recorded in the implementation report §6.
+- **Validation:** 39 new tests (240 total in `functions`, up from 201), full monorepo `build`/`typecheck`/`lint`/`format`/`test` clean.
+- **Files modified (narrow, `ENG-P2-001-04`-only status notes):** `ENG-P2-001-PLAN-001`, Engineering Implementation Programme, Coding-Agent Prompt Register, `eslint.config.js`. `ENG-P2-001-01`–`-03`, `-05` through `-10`, `ENG-P2-001` as a whole, and Capability 2 overall are unaffected.
+- **Files created:** `functions/src/domains/qrIdentity/` (7 source + 4 test files + `README.md`); `docs/05-implementation/reports/ENG-P2-001-04-implementation-report-2026-08-04.md`; this entry; `docs/changes/IMPLEMENTATION_CHANGES.md` (this cycle's entry).
+- **Full detail:** [`ENG-P2-001-04` Implementation Report](../05-implementation/reports/ENG-P2-001-04-implementation-report-2026-08-04.md).
 
 ---
 

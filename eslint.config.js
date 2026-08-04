@@ -150,6 +150,36 @@ export default tseslint.config(
     },
   },
   {
+    // ENG-P2-001-04: same machine-enforced boundary as the Identity and
+    // Loyalty Number domain-foundation blocks above, scoped to the new
+    // QR Identity domain-foundation module.
+    files: ["functions/src/domains/qrIdentity/**/*.ts"],
+    languageOptions: {
+      ecmaVersion: 2023,
+      globals: globals.node,
+    },
+    rules: {
+      "@typescript-eslint/no-unused-vars": "error",
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: [
+                "firebase-admin",
+                "firebase-admin/*",
+                "firebase-functions",
+                "firebase-functions/*",
+              ],
+              message:
+                "The QR Identity domain-foundation layer (ENG-P2-001-04) is framework-independent — no Firebase SDK import is permitted here. Persistence implementation belongs in a future ENG-P2-001-05 (or equivalent) module instead.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ["*.{js,ts}", "**/*.config.{js,ts}"],
     languageOptions: {
       ecmaVersion: 2023,
