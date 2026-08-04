@@ -2,11 +2,24 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-08-02 (Entry 056 added: `ENG-P2-GATE-001` — `DEC-PROD-012` Capability Authorisation Gate Scope Determination, governance interpretation only)
+> **Last controlled update:** 2026-08-02 (Entry 057 added: `ENG-P2-001-01` — Identity Domain Foundation implemented, TDD, first application code in the Identity work stream)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 057 — `ENG-P2-001-01`: Identity Domain Foundation Implemented (application code, TDD)
+
+- **Date:** 2 August 2026
+- **Performed by:** Claude (AI agent), per Founder task "ENG-P2-001-01: Identity Domain Foundation," following the Founder-authorized merge of `ENG-P2-GATE-001` (PR #56).
+- **Classification:** Application code, first in the Identity work stream. **Test-driven throughout** — every module's test file written and confirmed failing before its implementation.
+- **Implemented:** the `CustomerIdentity` aggregate root, `CustomerIdentityId`/`IdentityStatus`/`AuthenticationReference`/`TrustReference` value objects, `IdentityDomainError` (10 factories, all mapped onto the existing closed error-category enum), and 9 domain events — at `functions/src/domains/identity/`. No persistence, API, UI, authentication-provider, or ITM logic. Zero Firebase dependency, machine-enforced by a new scoped `eslint.config.js` rule.
+- **Validation:** 68 new tests (162 total in `functions`, up from 94), full monorepo `build`/`typecheck`/`lint`/`format`/`test` clean.
+- **Files modified (narrow, `ENG-P2-001-01`-only status notes):** `ENG-P2-001-PLAN-001`, Engineering Implementation Programme, Coding-Agent Prompt Register, `eslint.config.js`. `ENG-P2-001-02` through `-10`, `ENG-P2-001` as a whole, and Capability 2 overall are unaffected.
+- **Files created:** `functions/src/domains/identity/` (7 source + 7 test files + `README.md`); `docs/05-implementation/reports/ENG-P2-001-01-implementation-report-2026-08-02.md`; this entry; `docs/changes/IMPLEMENTATION_CHANGES.md` (this cycle's entry).
+- **Full detail:** [`ENG-P2-001-01` Implementation Report](../05-implementation/reports/ENG-P2-001-01-implementation-report-2026-08-02.md).
 
 ---
 

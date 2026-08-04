@@ -22,6 +22,8 @@ Ten proposed child work packages, `ENG-P2-001-01` through `ENG-P2-001-10`. Each 
 
 ### `ENG-P2-001-01` — Identity Domain Foundation
 
+> **Updated 2026-08-02:** implemented at `functions/src/domains/identity/` — see the [Implementation Report](../reports/ENG-P2-001-01-implementation-report-2026-08-02.md). Test-first (68/68 tests passing), zero Firebase dependency (machine-enforced by a scoped `eslint.config.js` rule). Pending Founder-authorized review and merge. `ENG-P2-001-02` through `-10` and Capability 2 overall are unaffected — none advanced by this update.
+
 - **Objective:** define the Identity Aggregate's domain shape, invariants, and error/event contracts in code, with no persistence yet.
 - **Scope:** aggregate boundary (per `ENG-P2-ARCH-001` §2); Internal Customer ID generation strategy (opaque, server-side); ownership invariant (exactly one aggregate per natural person); status-model type (Identity Lifecycle, §6 below); domain-level errors (using the existing shared error-category contract, `ENG-P1-002`); domain events (using the existing shared event contract/outbox, `ENG-P1-002`); audit-event shape (no implementation of the audit *sink*, that is `-10`).
 - **Exclusions:** persistence (`-05`), loyalty number/QR generation (`-03`/`-04`), profile fields (`-02`), any API/UI.
@@ -214,7 +216,7 @@ Ten proposed child work packages, `ENG-P2-001-01` through `ENG-P2-001-10`. Each 
 
 | Proposed ID | Work package | Objective | Dependencies | Blocks / blocked by | Entry status |
 |---|---|---|---|---|---|
-| `ENG-P2-001-01` | Identity Domain Foundation | Aggregate, invariants, error/event contracts | none | Blocks all others | Awaiting Founder Authorisation |
+| `ENG-P2-001-01` | Identity Domain Foundation | Aggregate, invariants, error/event contracts | none | Blocks all others | **Implemented (2026-08-02), TDD, 68/68 tests passing — see [Implementation Report](../reports/ENG-P2-001-01-implementation-report-2026-08-02.md) — pending Founder-authorized review/merge** |
 | `ENG-P2-001-02` | Customer Profile | Mutable profile data model | `-01` | `gender` field blocked by `DEC-PROD-012` (§14) | Awaiting Founder Authorisation (partial — non-`gender` scope) |
 | `ENG-P2-001-03` | Loyalty Number Service | Generation per `DEC-DATA-007` | `-01` | Blocks `-04` | Awaiting Founder Authorisation |
 | `ENG-P2-001-04` | QR Identity Service | QR lifecycle per `DEC-DATA-007` | `-03` | — | Awaiting Founder Authorisation |
