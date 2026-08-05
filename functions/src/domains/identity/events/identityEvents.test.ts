@@ -190,20 +190,26 @@ describe("buildIdentityBecameDormantEvent", () => {
 });
 
 describe("buildIdentityRecoveredEvent", () => {
-  it("builds the recovered event, carrying the previous status, authority, and reason", () => {
+  it("builds the recovered event, carrying previous/resulting status, authority, reason, and proof evidence (ENG-P2-001-07)", () => {
     const event = buildIdentityRecoveredEvent({
       ...base,
       customerIdentityId: "cust_1",
       previousStatus: "locked",
+      resultingStatus: "active",
       authority: "support_initiated",
       reason: "support_recovery",
+      recoveryProofReference: "proof_1",
+      proofMethodCategory: "support_assisted",
     });
     expect(event.eventType).toBe("identity.identity_recovered.v1");
     expect(event.payload).toEqual({
       customerIdentityId: "cust_1",
       previousStatus: "locked",
+      resultingStatus: "active",
       authority: "support_initiated",
       reason: "support_recovery",
+      recoveryProofReference: "proof_1",
+      proofMethodCategory: "support_assisted",
     });
   });
 
@@ -212,8 +218,11 @@ describe("buildIdentityRecoveredEvent", () => {
       ...base,
       customerIdentityId: "cust_1",
       previousStatus: "suspended",
+      resultingStatus: "active",
       authority: "administrator_initiated",
       reason: "support_recovery",
+      recoveryProofReference: "proof_2",
+      proofMethodCategory: "administrator_assisted",
     });
     const keys = Object.keys(event.payload).map((k) => k.toLowerCase());
     for (const forbidden of ["phone", "email", "token", "trust"]) {

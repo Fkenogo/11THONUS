@@ -23,6 +23,7 @@
 import { transitionIdentityStatus, type CustomerIdentity } from "../models/customerIdentity";
 import { recoveryNotPermittedError } from "../models/identityErrors";
 import type { TransitionAuthority } from "../models/transitionAuthority";
+import type { RecoveryProofMethodCategory } from "../models/recoveryProof";
 import type { EventActor, DomainEvent } from "../../../shared/events/domainEvent";
 import {
   buildIdentityRecoveredEvent,
@@ -44,6 +45,8 @@ export type RecoverCustomerIdentityParams = EventEnvelope & {
   recoveredAt: Date;
   recoveredBy: string | null;
   authority: TransitionAuthority;
+  recoveryProofReference: string;
+  proofMethodCategory: RecoveryProofMethodCategory;
 };
 
 export function recoverCustomerIdentity(
@@ -74,8 +77,11 @@ export function recoverCustomerIdentity(
     occurredAt: params.occurredAt,
     customerIdentityId: identity.id,
     previousStatus,
+    resultingStatus: "active",
     authority: params.authority,
     reason: RECOVERY_REASON,
+    recoveryProofReference: params.recoveryProofReference,
+    proofMethodCategory: params.proofMethodCategory,
   });
 
   return { identity: transitioned.identity, event };

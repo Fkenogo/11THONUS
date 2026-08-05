@@ -37,10 +37,12 @@ import { transitionIdentityStatus, type CustomerIdentity } from "../models/custo
 import type { IdentityStatus } from "../models/identityStatus";
 import type { TransitionAuthority } from "../models/transitionAuthority";
 import type { TransitionReason } from "../models/transitionReason";
+import { validateRecoveryProof, type RecoveryProof } from "../models/recoveryProof";
 import {
   IdentityDomainError,
   unknownCustomerIdentityError,
   staleIdentityStatusError,
+  recoveryProofAlreadyUsedError,
 } from "../models/identityErrors";
 import { recoverCustomerIdentity } from "../services/identityLifecycleService";
 import { fromUserDocument } from "./userDocument";
@@ -146,23 +148,35 @@ export async function transitionCustomerIdentityStatus(
   }
 }
 
+const RECOVERY_PROOF_REFERENCES_COLLECTION = "recoveryProofReferences";
+
 export type RecoverCustomerIdentityStatusParams = {
   eventId: string;
   correlationId: string;
   actor: EventActor;
   occurredAt: string;
   customerIdentityId: string;
-  authority: TransitionAuthority;
+  recoveryProof: RecoveryProof;
   recoveredAt: Date;
   recoveredBy: string | null;
   idempotencyKey: string;
   requestHash: string;
 };
 
+/**
+ * Reuses this file's own `stampUpdate`/idempotency conventions to reject
+ * *proof reuse* — a distinct concern from *command retry*. An identical
+ * idempotency key short-circuits above via `checkAndReserveIdempotencyKey`
+ * before this collection is ever consulted, so a legitimate retry of the
+ * same command never hits this check; only a genuinely different command
+ * presenting an already-consumed proof reference does (ENG-P2-001-07).
+ */
 export async function recoverCustomerIdentityStatus(
   db: Firestore,
   params: RecoverCustomerIdentityStatusParams,
 ): Promise<CustomerIdentity> {
+  validateRecoveryProof(params.recoveryProof, params.customerIdentityId, params.recoveredAt);
+
   const reservation = await checkAndReserveIdempotencyKey(db, {
     idempotencyKey: params.idempotencyKey,
     operationType: "identity.recover",
@@ -189,12 +203,22 @@ export async function recoverCustomerIdentityStatus(
   }
 
   const ref = db.collection(COLLECTION).doc(params.customerIdentityId);
+  const proofRef = db
+    .collection(RECOVERY_PROOF_REFERENCES_COLLECTION)
+    .doc(params.recoveryProof.proofReference);
 
   try {
     const identity = await db.runTransaction(async (transaction) => {
-      const snapshot = await transaction.get(ref);
+      const [snapshot, proofSnapshot] = await Promise.all([
+        transaction.get(ref),
+        transaction.get(proofRef),
+      ]);
+
       if (!snapshot.exists) {
         throw unknownCustomerIdentityError(params.customerIdentityId);
+      }
+      if (proofSnapshot.exists) {
+        throw recoveryProofAlreadyUsedError(params.recoveryProof.proofReference);
       }
 
       const current = fromUserDocument(snapshot.data());
@@ -206,11 +230,19 @@ export async function recoverCustomerIdentityStatus(
         occurredAt: params.occurredAt,
         recoveredAt: params.recoveredAt,
         recoveredBy: params.recoveredBy,
-        authority: params.authority,
+        authority: params.recoveryProof.authority,
+        recoveryProofReference: params.recoveryProof.proofReference,
+        proofMethodCategory: params.recoveryProof.methodCategory,
       });
 
       transaction.update(ref, {
         status: recovered.status,
+        ...stampUpdate(params.recoveredBy),
+      });
+
+      transaction.set(proofRef, {
+        proofReference: params.recoveryProof.proofReference,
+        customerIdentityId: params.customerIdentityId,
         ...stampUpdate(params.recoveredBy),
       });
 

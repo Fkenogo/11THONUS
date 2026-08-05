@@ -184,3 +184,64 @@ export function recoveryNotPermittedError(customerIdentityId: string): IdentityD
     `Customer identity "${customerIdentityId}" is not in a status that permits recovery.`,
   );
 }
+
+/**
+ * Recovery-proof boundary errors (ENG-P2-001-07).
+ *
+ * Reuses this same `IdentityDomainError` class for the recovery-proof
+ * validation boundary — one bounded error type per domain, not a
+ * competing recovery-specific error hierarchy.
+ */
+
+export function recoveryProofMissingError(): IdentityDomainError {
+  return new IdentityDomainError(
+    "VALIDATION_FAILED",
+    "Recovery proof is missing or malformed: a valid, non-empty proof reference is required.",
+  );
+}
+
+export function recoveryProofRejectedError(proofReference: string): IdentityDomainError {
+  return new IdentityDomainError(
+    "VALIDATION_FAILED",
+    `Recovery proof "${proofReference}" was not accepted by the upstream proof process.`,
+  );
+}
+
+export function recoveryProofExpiredError(proofReference: string): IdentityDomainError {
+  return new IdentityDomainError(
+    "VALIDATION_FAILED",
+    `Recovery proof "${proofReference}" has expired.`,
+  );
+}
+
+export function recoveryProofIdentityMismatchError(
+  proofReference: string,
+  expectedCustomerIdentityId: string,
+  actualCustomerIdentityId: string,
+): IdentityDomainError {
+  return new IdentityDomainError(
+    "VALIDATION_FAILED",
+    `Recovery proof "${proofReference}" targets customer identity "${actualCustomerIdentityId}", not the expected "${expectedCustomerIdentityId}".`,
+  );
+}
+
+export function recoveryProofAlreadyUsedError(proofReference: string): IdentityDomainError {
+  return new IdentityDomainError(
+    "VALIDATION_FAILED",
+    `Recovery proof "${proofReference}" has already been used and cannot be reused.`,
+  );
+}
+
+export function recoveryCommandConflictError(customerIdentityId: string): IdentityDomainError {
+  return new IdentityDomainError(
+    "IDEMPOTENCY_CONFLICT",
+    `A recovery command for customer identity "${customerIdentityId}" is already in progress.`,
+  );
+}
+
+export function invalidRecoveryProofMethodCategoryError(value: string): IdentityDomainError {
+  return new IdentityDomainError(
+    "VALIDATION_FAILED",
+    `Invalid recovery proof method category: "${value}" is not a recognised category.`,
+  );
+}

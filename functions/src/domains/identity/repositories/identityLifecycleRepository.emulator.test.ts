@@ -76,7 +76,12 @@ beforeAll(() => {
 });
 
 beforeEach(async () => {
-  for (const collection of ["users", "idempotencyRecords", "outboxEntries"]) {
+  for (const collection of [
+    "users",
+    "idempotencyRecords",
+    "outboxEntries",
+    "recoveryProofReferences",
+  ]) {
     const snapshot = await db.collection(collection).get();
     await Promise.all(snapshot.docs.map((doc) => doc.ref.delete()));
   }
@@ -211,6 +216,21 @@ describe("transitionCustomerIdentityStatus", () => {
   });
 });
 
+function buildRecoveryProof(
+  targetCustomerIdentityId: string,
+  overrides: Partial<Parameters<typeof recoverCustomerIdentityStatus>[1]["recoveryProof"]> = {},
+) {
+  return {
+    result: "accepted" as const,
+    methodCategory: "support_assisted" as const,
+    proofReference: `proof_${targetCustomerIdentityId}`,
+    authority: "support_initiated" as const,
+    completedAt: new Date("2026-08-04T02:00:00.000Z"),
+    targetCustomerIdentityId,
+    ...overrides,
+  };
+}
+
 describe("recoverCustomerIdentityStatus", () => {
   it("restores a suspended identity to active and emits IdentityRecovered", async () => {
     await seedIdentity("cust_8", "r1");
@@ -225,7 +245,7 @@ describe("recoverCustomerIdentityStatus", () => {
       actor,
       occurredAt: "2026-08-04T02:00:00.000Z",
       customerIdentityId: "cust_8",
-      authority: "support_initiated",
+      recoveryProof: buildRecoveryProof("cust_8"),
       recoveredAt: new Date("2026-08-04T02:00:00.000Z"),
       recoveredBy: "support_1",
       idempotencyKey: "key_r1_recover",
@@ -248,11 +268,17 @@ describe("recoverCustomerIdentityStatus", () => {
     expect(recoveredEntry?.payload).toMatchObject({
       authority: "support_initiated",
       reason: "support_recovery",
+      resultingStatus: "active",
+      recoveryProofReference: "proof_cust_8",
+      proofMethodCategory: "support_assisted",
     });
 
     const userDoc = await db.collection("users").doc("cust_8").get();
     expect(userDoc.data()).not.toHaveProperty("lastTransitionAuthority");
     expect(userDoc.data()).not.toHaveProperty("lastTransitionReason");
+
+    const proofDoc = await db.collection("recoveryProofReferences").doc("proof_cust_8").get();
+    expect(proofDoc.exists).toBe(true);
   });
 
   it("rejects duplicate recovery commands beyond idempotent replay", async () => {
@@ -268,7 +294,7 @@ describe("recoverCustomerIdentityStatus", () => {
       actor,
       occurredAt: "2026-08-04T02:00:00.000Z",
       customerIdentityId: "cust_9",
-      authority: "support_initiated" as const,
+      recoveryProof: buildRecoveryProof("cust_9"),
       recoveredAt: new Date("2026-08-04T02:00:00.000Z"),
       recoveredBy: "support_1",
       idempotencyKey: "key_r2_recover",
@@ -296,11 +322,104 @@ describe("recoverCustomerIdentityStatus", () => {
         actor,
         occurredAt: "2026-08-04T02:00:00.000Z",
         customerIdentityId: "cust_10",
-        authority: "support_initiated",
+        recoveryProof: buildRecoveryProof("cust_10"),
         recoveredAt: new Date("2026-08-04T02:00:00.000Z"),
         recoveredBy: "support_1",
         idempotencyKey: "key_r3_recover",
         requestHash: "hash_r3_recover",
+      }),
+    ).rejects.toThrow(IdentityDomainError);
+  });
+
+  it("rejects a recovery proof issued for a different target identity", async () => {
+    await seedIdentity("cust_11", "r4");
+    await transitionCustomerIdentityStatus(
+      db,
+      buildTransitionParams("cust_11", "suspended", "key_r4_s"),
+    );
+
+    await expect(
+      recoverCustomerIdentityStatus(db, {
+        eventId: "evt_r4",
+        correlationId: "corr_r4",
+        actor,
+        occurredAt: "2026-08-04T02:00:00.000Z",
+        customerIdentityId: "cust_11",
+        recoveryProof: buildRecoveryProof("cust_other"),
+        recoveredAt: new Date("2026-08-04T02:00:00.000Z"),
+        recoveredBy: "support_1",
+        idempotencyKey: "key_r4_recover",
+        requestHash: "hash_r4_recover",
+      }),
+    ).rejects.toThrow(IdentityDomainError);
+  });
+
+  it("rejects an expired recovery proof", async () => {
+    await seedIdentity("cust_12", "r5");
+    await transitionCustomerIdentityStatus(
+      db,
+      buildTransitionParams("cust_12", "suspended", "key_r5_s"),
+    );
+
+    await expect(
+      recoverCustomerIdentityStatus(db, {
+        eventId: "evt_r5",
+        correlationId: "corr_r5",
+        actor,
+        occurredAt: "2026-08-04T02:00:00.000Z",
+        customerIdentityId: "cust_12",
+        recoveryProof: buildRecoveryProof("cust_12", {
+          expiresAt: new Date("2026-08-04T01:00:00.000Z"),
+        }),
+        recoveredAt: new Date("2026-08-04T02:00:00.000Z"),
+        recoveredBy: "support_1",
+        idempotencyKey: "key_r5_recover",
+        requestHash: "hash_r5_recover",
+      }),
+    ).rejects.toThrow(IdentityDomainError);
+  });
+
+  it("rejects a reused recovery proof under a different idempotency key", async () => {
+    await seedIdentity("cust_13", "r6");
+    await transitionCustomerIdentityStatus(
+      db,
+      buildTransitionParams("cust_13", "suspended", "key_r6_s"),
+    );
+
+    const proof = buildRecoveryProof("cust_13");
+
+    await recoverCustomerIdentityStatus(db, {
+      eventId: "evt_r6a",
+      correlationId: "corr_r6a",
+      actor,
+      occurredAt: "2026-08-04T02:00:00.000Z",
+      customerIdentityId: "cust_13",
+      recoveryProof: proof,
+      recoveredAt: new Date("2026-08-04T02:00:00.000Z"),
+      recoveredBy: "support_1",
+      idempotencyKey: "key_r6a_recover",
+      requestHash: "hash_r6a_recover",
+    });
+
+    await transitionCustomerIdentityStatus(
+      db,
+      buildTransitionParams("cust_13", "suspended", "key_r6_s3", {
+        expectedCurrentStatus: "active",
+      }),
+    );
+
+    await expect(
+      recoverCustomerIdentityStatus(db, {
+        eventId: "evt_r6b",
+        correlationId: "corr_r6b",
+        actor,
+        occurredAt: "2026-08-04T03:00:00.000Z",
+        customerIdentityId: "cust_13",
+        recoveryProof: proof,
+        recoveredAt: new Date("2026-08-04T03:00:00.000Z"),
+        recoveredBy: "support_1",
+        idempotencyKey: "key_r6b_recover",
+        requestHash: "hash_r6b_recover",
       }),
     ).rejects.toThrow(IdentityDomainError);
   });
