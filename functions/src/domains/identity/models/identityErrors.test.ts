@@ -25,6 +25,9 @@ import {
   recoveryProofIdentityMismatchError,
   recoveryProofAlreadyUsedError,
   recoveryCommandConflictError,
+  authenticationReferenceLinkedToDifferentIdentityError,
+  staleAuthenticationReferenceStatusError,
+  authenticationReferenceCommandConflictError,
 } from "./identityErrors";
 
 describe("IdentityDomainError", () => {
@@ -192,5 +195,35 @@ describe("recoveryProofAlreadyUsedError", () => {
 describe("recoveryCommandConflictError", () => {
   it("returns an IDEMPOTENCY_CONFLICT error", () => {
     expect(recoveryCommandConflictError("cust_1").category).toBe("IDEMPOTENCY_CONFLICT");
+  });
+});
+
+describe("authenticationReferenceLinkedToDifferentIdentityError", () => {
+  it("returns a VALIDATION_FAILED error", () => {
+    expect(
+      authenticationReferenceLinkedToDifferentIdentityError(
+        "google_sign_in",
+        "authuid_1",
+        "cust_1",
+        "cust_2",
+      ).category,
+    ).toBe("VALIDATION_FAILED");
+  });
+});
+
+describe("staleAuthenticationReferenceStatusError", () => {
+  it("returns an IDEMPOTENCY_CONFLICT error", () => {
+    expect(
+      staleAuthenticationReferenceStatusError("google_sign_in", "authuid_1", "linked", "unlinked")
+        .category,
+    ).toBe("IDEMPOTENCY_CONFLICT");
+  });
+});
+
+describe("authenticationReferenceCommandConflictError", () => {
+  it("returns an IDEMPOTENCY_CONFLICT error", () => {
+    expect(
+      authenticationReferenceCommandConflictError("google_sign_in", "authuid_1").category,
+    ).toBe("IDEMPOTENCY_CONFLICT");
   });
 });

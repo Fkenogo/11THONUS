@@ -20,6 +20,10 @@ const transitionMeta = {
   authority: "administrator_initiated" as const,
   reason: "administrative_suspension" as const,
 };
+const linkMeta = {
+  authority: "customer_initiated" as const,
+  reason: "customer_request" as const,
+};
 
 function register() {
   return registerCustomerIdentity({
@@ -239,10 +243,31 @@ describe("linkAuthenticationReference", () => {
         createdBy: "cust_1",
       },
       envelope,
+      linkMeta,
     );
 
     expect(result.identity.authenticationReferences).toHaveLength(2);
     expect(result.event.eventType).toBe("identity.authentication_reference_linked.v1");
+  });
+
+  it("carries authority and reason on the emitted event (ENG-P2-001-08)", () => {
+    const { identity } = register();
+    const result = linkAuthenticationReference(
+      identity,
+      {
+        referenceId: "authuid_2",
+        referenceType: "google_sign_in",
+        createdAt: now,
+        createdBy: "cust_1",
+      },
+      envelope,
+      linkMeta,
+    );
+
+    expect(result.event.payload).toMatchObject({
+      authority: "customer_initiated",
+      reason: "customer_request",
+    });
   });
 
   it("rejects linking a referenceId that is already linked", () => {
@@ -257,6 +282,7 @@ describe("linkAuthenticationReference", () => {
           createdBy: "cust_1",
         },
         envelope,
+        linkMeta,
       ),
     ).toThrow(IdentityDomainError);
   });
@@ -274,17 +300,22 @@ describe("unlinkAuthenticationReference", () => {
         createdBy: "cust_1",
       },
       envelope,
+      linkMeta,
     ).identity;
 
-    const result = unlinkAuthenticationReference(withTwo, "authuid_2", envelope);
+    const result = unlinkAuthenticationReference(withTwo, "authuid_2", envelope, linkMeta);
 
     expect(result.identity.authenticationReferences).toHaveLength(1);
     expect(result.event.eventType).toBe("identity.authentication_reference_unlinked.v1");
+    expect(result.event.payload).toMatchObject({
+      authority: "customer_initiated",
+      reason: "customer_request",
+    });
   });
 
   it("rejects unlinking the last remaining authentication reference", () => {
     const { identity } = register();
-    expect(() => unlinkAuthenticationReference(identity, "authuid_1", envelope)).toThrow(
+    expect(() => unlinkAuthenticationReference(identity, "authuid_1", envelope, linkMeta)).toThrow(
       IdentityDomainError,
     );
   });
@@ -300,11 +331,12 @@ describe("unlinkAuthenticationReference", () => {
         createdBy: "cust_1",
       },
       envelope,
+      linkMeta,
     ).identity;
 
-    expect(() => unlinkAuthenticationReference(withTwo, "authuid_missing", envelope)).toThrow(
-      IdentityDomainError,
-    );
+    expect(() =>
+      unlinkAuthenticationReference(withTwo, "authuid_missing", envelope, linkMeta),
+    ).toThrow(IdentityDomainError);
   });
 });
 

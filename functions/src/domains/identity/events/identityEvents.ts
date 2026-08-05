@@ -148,6 +148,8 @@ export type AuthenticationReferenceLinkedPayload = {
   customerIdentityId: string;
   referenceId: string;
   referenceType: AuthenticationReferenceType;
+  authority: TransitionAuthority;
+  reason: TransitionReason;
 };
 
 export function buildAuthenticationReferenceLinkedEvent(
@@ -157,12 +159,16 @@ export function buildAuthenticationReferenceLinkedEvent(
     customerIdentityId: params.customerIdentityId,
     referenceId: params.referenceId,
     referenceType: params.referenceType,
+    authority: params.authority,
+    reason: params.reason,
   });
 }
 
 export type AuthenticationReferenceUnlinkedPayload = {
   customerIdentityId: string;
   referenceId: string;
+  authority: TransitionAuthority;
+  reason: TransitionReason;
 };
 
 export function buildAuthenticationReferenceUnlinkedEvent(
@@ -172,7 +178,12 @@ export function buildAuthenticationReferenceUnlinkedEvent(
     params,
     "authentication_reference_unlinked",
     params.customerIdentityId,
-    { customerIdentityId: params.customerIdentityId, referenceId: params.referenceId },
+    {
+      customerIdentityId: params.customerIdentityId,
+      referenceId: params.referenceId,
+      authority: params.authority,
+      reason: params.reason,
+    },
   );
 }
 
@@ -251,4 +262,38 @@ export function buildIdentityRecoveredEvent(
     recoveryProofReference: params.recoveryProofReference,
     proofMethodCategory: params.proofMethodCategory,
   });
+}
+
+/**
+ * Identity linking / duplicate-prevention event (ENG-P2-001-08).
+ *
+ * Emitted when a link attempt is rejected because the reference is
+ * already owned by a different Customer Identity (fail-closed, no
+ * automatic merge). Deliberately omits the owning identity's ID and the
+ * raw `referenceId` — only the attempting identity, the provider
+ * category, and audit metadata are carried, to avoid leaking
+ * cross-identity linkage information into this event's consumers.
+ */
+
+export type AuthenticationReferenceConflictDetectedPayload = {
+  customerIdentityId: string;
+  referenceType: AuthenticationReferenceType;
+  authority: TransitionAuthority;
+  reason: TransitionReason;
+};
+
+export function buildAuthenticationReferenceConflictDetectedEvent(
+  params: EventEnvelopeParams & AuthenticationReferenceConflictDetectedPayload,
+): DomainEvent<AuthenticationReferenceConflictDetectedPayload> {
+  return buildIdentityEvent(
+    params,
+    "authentication_reference_conflict_detected",
+    params.customerIdentityId,
+    {
+      customerIdentityId: params.customerIdentityId,
+      referenceType: params.referenceType,
+      authority: params.authority,
+      reason: params.reason,
+    },
+  );
 }

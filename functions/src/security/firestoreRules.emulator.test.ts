@@ -152,6 +152,54 @@ describe("firestore.rules — recoveryProofReferences (ENG-P2-001-07)", () => {
   });
 });
 
+describe("firestore.rules — authenticationReferences (ENG-P2-001-08)", () => {
+  it("denies a direct client write attempting to forge a cross-identity uniqueness record", async () => {
+    const authed = testEnv.authenticatedContext("cust_1");
+    await assertFails(
+      setDoc(doc(authed.firestore(), "authenticationReferences/google_sign_in:sub_1"), {
+        referenceType: "google_sign_in",
+        referenceId: "sub_1",
+        customerIdentityId: "cust_1",
+        status: "linked",
+      }),
+    );
+  });
+
+  it("denies an unauthenticated client from reading a cross-identity uniqueness record", async () => {
+    await testEnv.withSecurityRulesDisabled(async (adminContext) => {
+      await setDoc(doc(adminContext.firestore(), "authenticationReferences/google_sign_in:sub_1"), {
+        referenceType: "google_sign_in",
+        referenceId: "sub_1",
+        customerIdentityId: "cust_1",
+        status: "linked",
+      });
+    });
+
+    const unauthed = testEnv.unauthenticatedContext();
+    await assertFails(
+      getDoc(doc(unauthed.firestore(), "authenticationReferences/google_sign_in:sub_1")),
+    );
+  });
+
+  it("denies a client attempting to flip an unlinked record back to linked", async () => {
+    await testEnv.withSecurityRulesDisabled(async (adminContext) => {
+      await setDoc(doc(adminContext.firestore(), "authenticationReferences/google_sign_in:sub_2"), {
+        referenceType: "google_sign_in",
+        referenceId: "sub_2",
+        customerIdentityId: "cust_1",
+        status: "unlinked",
+      });
+    });
+
+    const authed = testEnv.authenticatedContext("cust_1");
+    await assertFails(
+      updateDoc(doc(authed.firestore(), "authenticationReferences/google_sign_in:sub_2"), {
+        status: "linked",
+      }),
+    );
+  });
+});
+
 describe("firestore.rules — sanity: the fallback deny-all still holds for an unrelated collection", () => {
   it("denies read/write to a collection with no dedicated match block", async () => {
     const authed = testEnv.authenticatedContext("cust_1");
