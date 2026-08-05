@@ -15,6 +15,7 @@ import type { IdentityStatus } from "../models/identityStatus";
 import type { TransitionAuthority } from "../models/transitionAuthority";
 import type { TransitionReason } from "../models/transitionReason";
 import type { RecoveryProofMethodCategory } from "../models/recoveryProof";
+import type { IdentityLookupPurpose } from "../models/identityLookupPurpose";
 
 const SOURCE_DOMAIN = "identity";
 const AGGREGATE_TYPE = "customer_identity";
@@ -294,6 +295,48 @@ export function buildAuthenticationReferenceConflictDetectedEvent(
       referenceType: params.referenceType,
       authority: params.authority,
       reason: params.reason,
+    },
+  );
+}
+
+/**
+ * Identity lookup audit event (ENG-P2-001-09).
+ *
+ * Emitted only for the audit-worthy purposes/outcomes the task's own
+ * brief names as "likely candidates" (support, recovery, authentication
+ * lookups; any failed QR lookup) — never for ordinary internal-service or
+ * merchant-transaction successes, to avoid emitting on every routine scan.
+ * Deliberately carries only the resolved identity reference (never on a
+ * failed lookup — `customerIdentityId` is `null` for `not_found`/
+ * `purpose_not_permitted`), which lookup type and purpose were involved,
+ * and the outcome — never the raw looked-up value (Loyalty Number, QR
+ * reference, or Authentication Reference), phone, email, or token.
+ */
+
+export type IdentityLookupType =
+  "customer_identity_id" | "loyalty_number" | "qr_reference" | "authentication_reference";
+
+export type IdentityLookupOutcome = "resolved" | "not_found" | "purpose_not_permitted";
+
+export type IdentityLookupAttemptedPayload = {
+  customerIdentityId: string | null;
+  lookupType: IdentityLookupType;
+  purpose: IdentityLookupPurpose;
+  outcome: IdentityLookupOutcome;
+};
+
+export function buildIdentityLookupAttemptedEvent(
+  params: EventEnvelopeParams & IdentityLookupAttemptedPayload,
+): DomainEvent<IdentityLookupAttemptedPayload> {
+  return buildIdentityEvent(
+    params,
+    "identity_lookup_attempted",
+    params.customerIdentityId ?? "unresolved",
+    {
+      customerIdentityId: params.customerIdentityId,
+      lookupType: params.lookupType,
+      purpose: params.purpose,
+      outcome: params.outcome,
     },
   );
 }

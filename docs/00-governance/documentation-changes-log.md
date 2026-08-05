@@ -2,11 +2,40 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-08-05 (Entry 065 added: `ENG-P2-001-08` correction — Authentication Reference Permanence Principle recorded per Founder Review, `PR #63`; pending Founder-authorized merge)
+> **Last controlled update:** 2026-08-05 (Entry 067 added: `ENG-P2-001-09` Correction — Lookup-Purpose and Result-Minimisation Clarification, Founder Review, PR #64 held)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 067 — `ENG-P2-001-09` Correction: Lookup-Purpose and Result-Minimisation Clarification (Founder Review, PR #64 held)
+
+- **Date:** 5 August 2026
+- **Performed by:** Claude (AI agent), per Founder Review of `PR #64` — positively reviewed, merge withheld pending clarification that the purpose allow-list was an undisclosed engineering judgment and that the shared result exposed unnecessary linked-provider metadata.
+- **Classification:** Application code correction plus test-coverage strengthening and policy recording.
+- **Policy recorded:** the **Lookup-Purpose and Result-Minimisation Policy** (Founder-directed): a final per-lookup-type purpose allow-list (Customer Identity ID — internal/support/recovery; Loyalty Number — internal/support/recovery/merchant-transaction; QR reference — internal/recovery/merchant-transaction, `support` removed; Authentication Reference — authentication/internal/support/recovery newly granted) and a rule that `IdentityLookupResult.authenticationReferences` is populated only for the `authentication` purpose. Recorded at `ENG-P2-001-PLAN-001` §14 Decision and Ambiguity Register (new, resolved Ambiguity 6) and in a new §38 of the [`ENG-P2-001-09` Implementation Report](../05-implementation/reports/ENG-P2-001-09-implementation-report-2026-08-05.md), which supersedes §6/§11's original tables/type in place.
+- **Code changed:** `identityLookupRepository.ts` — `authenticationReferences` made optional and purpose-gated; `LOOKUP_PURPOSE_ALLOW_LISTS` updated per the final policy; `toLookupResult` now branches on `purpose`.
+- **Tests:** 4 existing tests strengthened, 3 new tests added in `identityLookupRepository.emulator.test.ts` (caller-identity irrelevance to purpose authority; QR `support`-purpose rejection; Authentication Reference `recovery`-purpose permission) — 25/25 passing.
+- **Validation:** full monorepo `typecheck`/`lint`/`format:check`/`build` clean; `functions` unit tests unchanged (347/347); real Firebase Emulator Suite re-run in full, 146/146, clean first run, no flakes; `apps/web` unchanged (259/259).
+- **Files modified:** `identityLookupRepository.ts`; `identityLookupRepository.emulator.test.ts`; `ENG-P2-001-09-implementation-report-2026-08-05.md` (§38 added, §6/§11 marked superseded); `ENG-P2-001-PLAN-001` (§14 Ambiguity 6 added, `-09` blockquote updated); this entry; `docs/changes/IMPLEMENTATION_CHANGES.md` (correction entry).
+- **Full detail:** [`ENG-P2-001-09` Implementation Report §38](../05-implementation/reports/ENG-P2-001-09-implementation-report-2026-08-05.md).
+
+---
+
+## Entry 066 — `ENG-P2-001-09`: Identity Query and Lookup Interfaces Implemented (application code, TDD)
+
+- **Date:** 5 August 2026
+- **Performed by:** Claude (AI agent), per Founder task "ENG-P2-001-09: Identity Query and Lookup Interfaces," following the Founder-authorized merge of `ENG-P2-001-08` (PR #63).
+- **Classification:** Application code, eighth package in the Identity work stream — the bounded, exact-match-only Identity Query and Lookup layer, built on `-01`/`-03`–`-08`'s merged foundation. **Test-driven throughout**, including real Firebase Emulator Suite integration tests.
+- **Fundamental principle:** "Customer Identity is permanent. Lookup is temporary." A lookup never creates, updates, merges, or recovers an identity — it only resolves an already-existing identity through Customer Identity ID, Loyalty Number, QR reference, or Authentication Reference to a bounded result, or fails closed.
+- **Implemented:** four exact-match-only lookup functions (new `identityLookupRepository.ts`), each gated by a caller-declared `IdentityLookupPurpose` against a hardcoded per-lookup-type allow-list (not a role/permission system); a bounded `IdentityLookupResult` never exposing phone/email/trust/purchase/reward data; "unknown" and "exists but inactive" collapsed into one error for stronger enumeration resistance; a new privacy-safe `IdentityLookupAttempted` audit event for support/recovery/authentication-purpose lookups and any failed QR lookup. Reused `-04`'s `getActiveQrIdentityByReference` unmodified; added two small new exported functions to existing repositories rather than new files. No Firestore index or Rules change required — every lookup is a doc-ID `.get()` against an already deny-by-default collection.
+- **Validation:** 14 new `functions` unit tests (347 total, up from 333); 27 new real Firebase Emulator Suite tests (143 total across 11 files, up from 116) — all passing; full monorepo `typecheck`/`lint`/`format`/`build` clean. Pre-existing, unrelated concurrency-timeout and frontend timing flakes observed under elevated host load, both confirmed transient on isolated re-run.
+- **Files modified (narrow, `ENG-P2-001-09`-only status notes):** `identityErrors.ts`/`.test.ts`, `identityEvents.ts`/`.test.ts`, `authenticationReferenceRepository.ts`/`.emulator.test.ts`, `loyaltyNumberRepository.ts`/`.emulator.test.ts` (no `firestore.rules` change). `ENG-P2-001-01`, `-03`–`-08` remain merged as previously recorded; `-02`, `-10`, `ENG-P2-001` as a whole, Authentication, ITM, and Capability 2 overall are unaffected.
+- **Files created:** `functions/src/domains/identity/models/identityLookupPurpose.ts` (+tests); `functions/src/domains/identity/repositories/identityLookupRepository.ts` (+emulator tests); `docs/05-implementation/reports/ENG-P2-001-09-implementation-report-2026-08-05.md`; this entry; `docs/changes/IMPLEMENTATION_CHANGES.md` (this cycle's entry).
+- **Dependencies added:** none.
+- **Full detail:** [`ENG-P2-001-09` Implementation Report](../05-implementation/reports/ENG-P2-001-09-implementation-report-2026-08-05.md).
 
 ---
 

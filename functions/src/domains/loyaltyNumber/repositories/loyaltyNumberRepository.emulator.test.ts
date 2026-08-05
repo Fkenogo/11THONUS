@@ -4,6 +4,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
   issueLoyaltyNumberForIdentity,
   getLoyaltyNumberAssignmentForIdentity,
+  getLoyaltyNumberAssignmentByValue,
 } from "./loyaltyNumberRepository";
 import type { LoyaltyNumberCandidateGenerator } from "../services/loyaltyNumberGenerator";
 import type { EventActor } from "../../../shared/events/domainEvent";
@@ -190,6 +191,23 @@ describe("getLoyaltyNumberAssignmentForIdentity", () => {
 
   it("returns undefined for an identity with no issued loyalty number", async () => {
     const assignment = await getLoyaltyNumberAssignmentForIdentity(db, "does-not-exist");
+    expect(assignment).toBeUndefined();
+  });
+});
+
+describe("getLoyaltyNumberAssignmentByValue", () => {
+  it("retrieves the assignment for an issued Loyalty Number value", async () => {
+    await issueLoyaltyNumberForIdentity(
+      db,
+      buildParams("cust_11", "key_11", new SequenceGenerator(["ABM234"])),
+    );
+
+    const assignment = await getLoyaltyNumberAssignmentByValue(db, "ABM234");
+    expect(assignment?.customerIdentityId).toBe("cust_11");
+  });
+
+  it("returns undefined for an unknown Loyalty Number value", async () => {
+    const assignment = await getLoyaltyNumberAssignmentByValue(db, "ZZZ999");
     expect(assignment).toBeUndefined();
   });
 });
