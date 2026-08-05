@@ -12,6 +12,7 @@ import {
   buildTrustReferenceUpdatedEvent,
   buildIdentityBecameDormantEvent,
   buildIdentityRecoveredEvent,
+  buildIdentityLookupAttemptedEvent,
 } from "./identityEvents";
 
 const base = {
@@ -199,6 +200,57 @@ describe("buildAuthenticationReferenceConflictDetectedEvent", () => {
     });
     const keys = Object.keys(event.payload).map((k) => k.toLowerCase());
     for (const forbidden of ["owner", "referenceid", "phone", "email", "token"]) {
+      expect(keys).not.toContain(forbidden);
+    }
+  });
+});
+
+describe("buildIdentityLookupAttemptedEvent", () => {
+  it("builds a resolved lookup event carrying the resolved identity id", () => {
+    const event = buildIdentityLookupAttemptedEvent({
+      ...base,
+      customerIdentityId: "cust_1",
+      lookupType: "loyalty_number",
+      purpose: "support",
+      outcome: "resolved",
+    });
+    expect(event.eventType).toBe("identity.identity_lookup_attempted.v1");
+    expect(event.aggregateId).toBe("cust_1");
+    expect(event.payload).toEqual({
+      customerIdentityId: "cust_1",
+      lookupType: "loyalty_number",
+      purpose: "support",
+      outcome: "resolved",
+    });
+  });
+
+  it("builds a not-found lookup event with no resolved identity id", () => {
+    const event = buildIdentityLookupAttemptedEvent({
+      ...base,
+      customerIdentityId: null,
+      lookupType: "qr_reference",
+      purpose: "recovery",
+      outcome: "not_found",
+    });
+    expect(event.aggregateId).toBe("unresolved");
+    expect(event.payload).toEqual({
+      customerIdentityId: null,
+      lookupType: "qr_reference",
+      purpose: "recovery",
+      outcome: "not_found",
+    });
+  });
+
+  it("never carries the raw looked-up value, phone numbers, emails, or tokens", () => {
+    const event = buildIdentityLookupAttemptedEvent({
+      ...base,
+      customerIdentityId: null,
+      lookupType: "authentication_reference",
+      purpose: "authentication",
+      outcome: "purpose_not_permitted",
+    });
+    const keys = Object.keys(event.payload).map((k) => k.toLowerCase());
+    for (const forbidden of ["value", "referenceid", "phone", "email", "token"]) {
       expect(keys).not.toContain(forbidden);
     }
   });

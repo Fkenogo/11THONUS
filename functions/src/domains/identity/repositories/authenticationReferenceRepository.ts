@@ -371,3 +371,35 @@ async function getCustomerIdentityByIdInternal(
   }
   return fromUserDocument(snapshot.data());
 }
+
+export type AuthenticationReferenceOwner = {
+  customerIdentityId: string;
+};
+
+/**
+ * Active-only lookup: mirrors `-04`'s `getActiveQrIdentityByReference` —
+ * a never-linked reference and a previously-unlinked reference both
+ * resolve identically (`undefined`), never distinguished, since the
+ * doc-ID-keyed authoritative record's cross-identity ownership is
+ * structurally guaranteed unique by `-08`'s own uniqueness invariant.
+ */
+export async function getActiveAuthenticationReferenceOwner(
+  db: Firestore,
+  referenceType: AuthenticationReferenceType,
+  referenceId: string,
+): Promise<AuthenticationReferenceOwner | undefined> {
+  const snapshot = await db
+    .collection(AUTHENTICATION_REFERENCES_COLLECTION)
+    .doc(authenticationReferenceDocId(referenceType, referenceId))
+    .get();
+  if (!snapshot.exists) {
+    return undefined;
+  }
+
+  const record = snapshot.data() as AuthenticationReferenceRecordDocument;
+  if (record.status !== "linked") {
+    return undefined;
+  }
+
+  return { customerIdentityId: record.customerIdentityId };
+}

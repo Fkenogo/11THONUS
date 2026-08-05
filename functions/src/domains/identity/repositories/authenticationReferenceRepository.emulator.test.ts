@@ -5,6 +5,7 @@ import { createCustomerIdentity } from "./customerIdentityRepository";
 import {
   linkAuthenticationReferenceForIdentity,
   unlinkAuthenticationReferenceForIdentity,
+  getActiveAuthenticationReferenceOwner,
 } from "./authenticationReferenceRepository";
 import { IdentityDomainError } from "../models/identityErrors";
 import type { EventActor } from "../../../shared/events/domainEvent";
@@ -711,5 +712,83 @@ describe("unlinkAuthenticationReferenceForIdentity", () => {
       .doc("phone_otp:authuid_cust_15")
       .get();
     expect(authRefSnap.exists).toBe(false);
+  });
+});
+
+describe("getActiveAuthenticationReferenceOwner", () => {
+  it("resolves the owning identity for an active reference", async () => {
+    await seedIdentity("cust_18", "b18");
+    await linkAuthenticationReferenceForIdentity(db, {
+      eventId: "evt_b18_link",
+      correlationId: "corr_b18_link",
+      actor,
+      occurredAt: "2026-08-05T01:00:00.000Z",
+      customerIdentityId: "cust_18",
+      referenceId: "google_sub_18",
+      referenceType: "google_sign_in",
+      authority: "customer_initiated",
+      reason: "customer_request",
+      linkedAt: new Date("2026-08-05T01:00:00.000Z"),
+      linkedBy: "cust_18",
+      idempotencyKey: "key_b18_link",
+      requestHash: "hash_b18_link",
+    });
+
+    const owner = await getActiveAuthenticationReferenceOwner(
+      db,
+      "google_sign_in",
+      "google_sub_18",
+    );
+    expect(owner?.customerIdentityId).toBe("cust_18");
+  });
+
+  it("returns undefined for an unlinked (previously active) reference", async () => {
+    await seedIdentity("cust_19", "b19");
+    await linkAuthenticationReferenceForIdentity(db, {
+      eventId: "evt_b19_link",
+      correlationId: "corr_b19_link",
+      actor,
+      occurredAt: "2026-08-05T01:00:00.000Z",
+      customerIdentityId: "cust_19",
+      referenceId: "google_sub_19",
+      referenceType: "google_sign_in",
+      authority: "customer_initiated",
+      reason: "customer_request",
+      linkedAt: new Date("2026-08-05T01:00:00.000Z"),
+      linkedBy: "cust_19",
+      idempotencyKey: "key_b19_link",
+      requestHash: "hash_b19_link",
+    });
+    await unlinkAuthenticationReferenceForIdentity(db, {
+      eventId: "evt_b19_unlink",
+      correlationId: "corr_b19_unlink",
+      actor,
+      occurredAt: "2026-08-05T01:10:00.000Z",
+      customerIdentityId: "cust_19",
+      referenceId: "google_sub_19",
+      referenceType: "google_sign_in",
+      authority: "customer_initiated",
+      reason: "customer_request",
+      unlinkedAt: new Date("2026-08-05T01:10:00.000Z"),
+      unlinkedBy: "cust_19",
+      idempotencyKey: "key_b19_unlink",
+      requestHash: "hash_b19_unlink",
+    });
+
+    const owner = await getActiveAuthenticationReferenceOwner(
+      db,
+      "google_sign_in",
+      "google_sub_19",
+    );
+    expect(owner).toBeUndefined();
+  });
+
+  it("returns undefined for a reference that was never linked", async () => {
+    const owner = await getActiveAuthenticationReferenceOwner(
+      db,
+      "google_sign_in",
+      "google_sub_never_linked",
+    );
+    expect(owner).toBeUndefined();
   });
 });

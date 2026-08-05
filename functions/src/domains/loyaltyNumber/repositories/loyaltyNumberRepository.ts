@@ -206,3 +206,23 @@ export async function getLoyaltyNumberAssignmentForIdentity(
 
   return fromLoyaltyNumberDocument(snapshot.data());
 }
+
+/**
+ * Reverse direction from `getLoyaltyNumberAssignmentForIdentity` (value →
+ * identity, not identity → value) — the read `-09`'s Loyalty Number
+ * lookup type needs. A plain doc-ID `.get()`, exactly like `-07`'s own
+ * inline Loyalty Number resolution in `identityRecoveryRepository.ts`,
+ * now exported here so `-09` reuses it rather than duplicating the same
+ * one-line pattern a third time.
+ */
+export async function getLoyaltyNumberAssignmentByValue(
+  db: Firestore,
+  loyaltyNumber: string,
+): Promise<LoyaltyNumberAssignment | undefined> {
+  const snapshot = await db.collection(LOYALTY_NUMBERS_COLLECTION).doc(loyaltyNumber).get();
+  if (!snapshot.exists) {
+    return undefined;
+  }
+
+  return fromLoyaltyNumberDocument(snapshot.data());
+}

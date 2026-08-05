@@ -28,6 +28,10 @@ import {
   authenticationReferenceLinkedToDifferentIdentityError,
   staleAuthenticationReferenceStatusError,
   authenticationReferenceCommandConflictError,
+  invalidIdentityLookupPurposeError,
+  malformedIdentityLookupError,
+  identityLookupNotFoundError,
+  identityLookupPurposeNotPermittedError,
 } from "./identityErrors";
 
 describe("IdentityDomainError", () => {
@@ -225,5 +229,34 @@ describe("authenticationReferenceCommandConflictError", () => {
     expect(
       authenticationReferenceCommandConflictError("google_sign_in", "authuid_1").category,
     ).toBe("IDEMPOTENCY_CONFLICT");
+  });
+});
+
+describe("invalidIdentityLookupPurposeError", () => {
+  it("returns a VALIDATION_FAILED error", () => {
+    expect(invalidIdentityLookupPurposeError("caller_claim").category).toBe("VALIDATION_FAILED");
+  });
+});
+
+describe("malformedIdentityLookupError", () => {
+  it("returns a VALIDATION_FAILED error", () => {
+    expect(malformedIdentityLookupError("loyalty_number", "not-valid").category).toBe(
+      "VALIDATION_FAILED",
+    );
+  });
+});
+
+describe("identityLookupNotFoundError", () => {
+  it("returns a RESOURCE_NOT_FOUND error", () => {
+    expect(identityLookupNotFoundError("qr_reference").category).toBe("RESOURCE_NOT_FOUND");
+  });
+});
+
+describe("identityLookupPurposeNotPermittedError", () => {
+  it("returns an AUTH_FORBIDDEN error", () => {
+    expect(
+      identityLookupPurposeNotPermittedError("merchant_transaction", "customer_identity_id")
+        .category,
+    ).toBe("AUTH_FORBIDDEN");
   });
 });

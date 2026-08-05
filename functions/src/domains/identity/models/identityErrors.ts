@@ -286,3 +286,55 @@ export function authenticationReferenceCommandConflictError(
     `A link/unlink command for authentication reference "${referenceType}:${referenceId}" is already in progress.`,
   );
 }
+
+/**
+ * Identity query/lookup boundary errors (ENG-P2-001-09).
+ *
+ * Reuses this same `IdentityDomainError` class — one bounded error type
+ * per domain, not a competing lookup-specific error hierarchy.
+ */
+
+export function invalidIdentityLookupPurposeError(value: string): IdentityDomainError {
+  return new IdentityDomainError(
+    "VALIDATION_FAILED",
+    `Invalid identity lookup purpose: "${value}" is not a recognised purpose category.`,
+  );
+}
+
+export function malformedIdentityLookupError(
+  lookupType: string,
+  value: string,
+): IdentityDomainError {
+  return new IdentityDomainError(
+    "VALIDATION_FAILED",
+    `Malformed ${lookupType} lookup value: "${value}" is not a valid identifier.`,
+  );
+}
+
+/**
+ * Deliberately generic and identical for every "this identifier does not
+ * currently resolve to an active identity" case — unknown, invalidated
+ * (QR), or unlinked (Authentication Reference) all collapse to this one
+ * error, at this lookup boundary only. The underlying `-04`/`-08`
+ * repositories keep their own more specific errors unchanged; this
+ * normalization exists so a caller of the `-09` lookup surface cannot
+ * distinguish "never existed" from "existed but is no longer active" —
+ * the same enumeration-resistance property already established for
+ * Authentication Reference unlink in `-08`.
+ */
+export function identityLookupNotFoundError(lookupType: string): IdentityDomainError {
+  return new IdentityDomainError(
+    "RESOURCE_NOT_FOUND",
+    `No active identity resolves for the given ${lookupType}.`,
+  );
+}
+
+export function identityLookupPurposeNotPermittedError(
+  purpose: string,
+  lookupType: string,
+): IdentityDomainError {
+  return new IdentityDomainError(
+    "AUTH_FORBIDDEN",
+    `Lookup purpose "${purpose}" is not permitted for ${lookupType} lookup.`,
+  );
+}
