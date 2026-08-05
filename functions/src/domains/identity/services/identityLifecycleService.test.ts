@@ -49,6 +49,8 @@ describe("recoverCustomerIdentity", () => {
       recoveredAt: now,
       recoveredBy: "support_1",
       authority: "support_initiated",
+      recoveryProofReference: "proof_1",
+      proofMethodCategory: "support_assisted",
     });
     expect(result.identity.status).toBe("active");
   });
@@ -60,6 +62,8 @@ describe("recoverCustomerIdentity", () => {
       recoveredAt: now,
       recoveredBy: "support_1",
       authority: "support_initiated",
+      recoveryProofReference: "proof_1",
+      proofMethodCategory: "support_assisted",
     });
     expect(result.identity.status).toBe("active");
   });
@@ -71,6 +75,8 @@ describe("recoverCustomerIdentity", () => {
       recoveredAt: now,
       recoveredBy: "support_1",
       authority: "support_initiated",
+      recoveryProofReference: "proof_1",
+      proofMethodCategory: "support_assisted",
     });
     expect(result.identity.id).toBe(identity.id);
   });
@@ -82,6 +88,8 @@ describe("recoverCustomerIdentity", () => {
       recoveredAt: now,
       recoveredBy: "support_1",
       authority: "support_initiated",
+      recoveryProofReference: "proof_1",
+      proofMethodCategory: "support_assisted",
     });
     expect(result.identity.authenticationReferences).toEqual(identity.authenticationReferences);
   });
@@ -93,25 +101,32 @@ describe("recoverCustomerIdentity", () => {
       recoveredAt: now,
       recoveredBy: "support_1",
       authority: "support_initiated",
+      recoveryProofReference: "proof_1",
+      proofMethodCategory: "support_assisted",
     });
     expect(result.identity.id).toBe(identity.id);
     expect(result.identity).not.toBe(identity);
   });
 
-  it("emits IdentityRecovered carrying the previous status, authority, and reason (ENG-P2-001-06 correction, PR #61)", () => {
+  it("emits IdentityRecovered carrying the previous/resulting status, authority, reason, and proof evidence (ENG-P2-001-07)", () => {
     const identity = buildIdentity("suspended");
     const result = recoverCustomerIdentity(identity, {
       ...envelope,
       recoveredAt: now,
       recoveredBy: "support_1",
       authority: "support_initiated",
+      recoveryProofReference: "proof_1",
+      proofMethodCategory: "support_assisted",
     });
     expect(result.event.eventType).toBe("identity.identity_recovered.v1");
     expect(result.event.payload).toEqual({
       customerIdentityId: identity.id,
       previousStatus: "suspended",
+      resultingStatus: "active",
       authority: "support_initiated",
       reason: "support_recovery",
+      recoveryProofReference: "proof_1",
+      proofMethodCategory: "support_assisted",
     });
   });
 
@@ -123,6 +138,8 @@ describe("recoverCustomerIdentity", () => {
         recoveredAt: now,
         recoveredBy: "support_1",
         authority: "support_initiated",
+        recoveryProofReference: "proof_1",
+        proofMethodCategory: "support_assisted",
       }),
     ).toThrow(IdentityDomainError);
   });
@@ -135,6 +152,8 @@ describe("recoverCustomerIdentity", () => {
         recoveredAt: now,
         recoveredBy: "support_1",
         authority: "support_initiated",
+        recoveryProofReference: "proof_1",
+        proofMethodCategory: "support_assisted",
       }),
     ).toThrow(IdentityDomainError);
   });
@@ -147,6 +166,8 @@ describe("recoverCustomerIdentity", () => {
         recoveredAt: now,
         recoveredBy: "support_1",
         authority: "support_initiated",
+        recoveryProofReference: "proof_1",
+        proofMethodCategory: "support_assisted",
       }),
     ).toThrow(IdentityDomainError);
   });

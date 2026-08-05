@@ -2,11 +2,27 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-08-04 (Entry 062 added: `ENG-P2-001-06` — Identity Lifecycle and Status Management implemented, application code, TDD; `ENG-P2-001-PLAN-001` §14 Ambiguity 1 resolved; pending Founder-authorized review/merge)
+> **Last controlled update:** 2026-08-05 (Entry 063 added: `ENG-P2-001-07` — Identity Recovery Foundation implemented, application code, TDD; pending Founder-authorized review/merge)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 063 — `ENG-P2-001-07`: Identity Recovery Foundation Implemented (application code, TDD)
+
+- **Date:** 5 August 2026
+- **Performed by:** Claude (AI agent), per Founder task "ENG-P2-001-07: Identity Recovery Foundation," following the Founder-authorized merge of `ENG-P2-001-06` (PR #61).
+- **Classification:** Application code, sixth package in the Identity work stream — the identity-owned portion of Identity Recovery, built on `-01`/`-05`/`-06`'s merged foundation plus `-03`/`-04`'s merged Loyalty Number/QR domains. **Test-driven throughout**, including real Firebase Emulator Suite integration tests.
+- **Scope narrowing disclosed:** this task's own current brief excludes authentication-provider relinking (narrower than `ENG-P2-001-PLAN-001` §2's original `-07` scope text) — followed as the authoritative, current instruction.
+- **Implemented:** a provider-neutral `RecoveryProof` contract with pure validation (missing/malformed/rejected/mismatched-target/expired); a bounded, exact-match identity-lookup boundary (Customer Identity ID / Loyalty Number / current QR reference, all doc-ID-keyed, non-enumerable); `-06`'s recovery repository extended (additive) with proof validation and a new doc-ID-keyed `recoveryProofReferences` collection (proof-reuse prevention, mirroring the existing idempotency-key pattern); the existing `IdentityRecovered` event additively extended with `resultingStatus`/`recoveryProofReference`/`proofMethodCategory`. Firestore Rules required no change — the existing deny-by-default catch-all already covers the one new collection, confirmed by 2 new targeted Rules tests.
+- **Duplicate-prevention assessment:** true "ambiguous identity match" is structurally unreachable in this Foundation's exact-match-only lookup design (heuristic detection is `-08`'s scope) — assessed and disclosed rather than given a fabricated trigger; the one real, reachable condition (proof-target vs. resolved-identity mismatch) is implemented and tested.
+- **Validation:** 17 new `functions` unit tests (327 total, up from 310); 20 new/modified real Firebase Emulator Suite tests across the recovery repositories plus 2 new Rules tests (25 total) — all passing in isolation; full monorepo `typecheck`/`lint`/`format`/`build` clean.
+- **Files modified (narrow, `ENG-P2-001-07`-only status notes):** `identityEvents.ts`/`.test.ts`, `identityLifecycleService.ts`/`.test.ts`, `identityLifecycleRepository.ts`/`.emulator.test.ts`, `identityErrors.ts`/`.test.ts`, `firestoreRules.emulator.test.ts` (no `firestore.rules` change). `ENG-P2-001-01`, `-03`, `-04`, `-05`, `-06` remain merged as previously recorded; `-02`, `-08` through `-10`, `ENG-P2-001` as a whole, and Capability 2 overall are unaffected.
+- **Files created:** `functions/src/domains/identity/models/recoveryProof.ts` (+tests); `functions/src/domains/identity/repositories/identityRecoveryRepository.ts` (+emulator tests); `docs/05-implementation/reports/ENG-P2-001-07-implementation-report-2026-08-05.md`; this entry; `docs/changes/IMPLEMENTATION_CHANGES.md` (this cycle's entry).
+- **Dependencies added:** none.
+- **Full detail:** [`ENG-P2-001-07` Implementation Report](../05-implementation/reports/ENG-P2-001-07-implementation-report-2026-08-05.md).
 
 ---
 

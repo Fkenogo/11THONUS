@@ -128,6 +128,30 @@ describe("firestore.rules — qrIdentityRecords: no client-side status forging",
   });
 });
 
+describe("firestore.rules — recoveryProofReferences (ENG-P2-001-07)", () => {
+  it("denies a direct client write attempting to forge a recovery-proof reservation", async () => {
+    const authed = testEnv.authenticatedContext("cust_1");
+    await assertFails(
+      setDoc(doc(authed.firestore(), "recoveryProofReferences/proof_1"), {
+        proofReference: "proof_1",
+        customerIdentityId: "cust_1",
+      }),
+    );
+  });
+
+  it("denies an unauthenticated client from reading a recovery-proof reservation", async () => {
+    await testEnv.withSecurityRulesDisabled(async (adminContext) => {
+      await setDoc(doc(adminContext.firestore(), "recoveryProofReferences/proof_1"), {
+        proofReference: "proof_1",
+        customerIdentityId: "cust_1",
+      });
+    });
+
+    const unauthed = testEnv.unauthenticatedContext();
+    await assertFails(getDoc(doc(unauthed.firestore(), "recoveryProofReferences/proof_1")));
+  });
+});
+
 describe("firestore.rules — sanity: the fallback deny-all still holds for an unrelated collection", () => {
   it("denies read/write to a collection with no dedicated match block", async () => {
     const authed = testEnv.authenticatedContext("cust_1");

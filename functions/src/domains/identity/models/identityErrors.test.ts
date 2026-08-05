@@ -19,6 +19,12 @@ import {
   invalidTransitionReasonError,
   staleIdentityStatusError,
   recoveryNotPermittedError,
+  recoveryProofMissingError,
+  recoveryProofRejectedError,
+  recoveryProofExpiredError,
+  recoveryProofIdentityMismatchError,
+  recoveryProofAlreadyUsedError,
+  recoveryCommandConflictError,
 } from "./identityErrors";
 
 describe("IdentityDomainError", () => {
@@ -148,5 +154,43 @@ describe("staleIdentityStatusError", () => {
 describe("recoveryNotPermittedError", () => {
   it("returns an INVALID_STATE_TRANSITION error", () => {
     expect(recoveryNotPermittedError("cust_1").category).toBe("INVALID_STATE_TRANSITION");
+  });
+});
+
+describe("recoveryProofMissingError", () => {
+  it("returns a VALIDATION_FAILED error", () => {
+    expect(recoveryProofMissingError().category).toBe("VALIDATION_FAILED");
+  });
+});
+
+describe("recoveryProofRejectedError", () => {
+  it("returns a VALIDATION_FAILED error", () => {
+    expect(recoveryProofRejectedError("proof_1").category).toBe("VALIDATION_FAILED");
+  });
+});
+
+describe("recoveryProofExpiredError", () => {
+  it("returns a VALIDATION_FAILED error", () => {
+    expect(recoveryProofExpiredError("proof_1").category).toBe("VALIDATION_FAILED");
+  });
+});
+
+describe("recoveryProofIdentityMismatchError", () => {
+  it("returns a VALIDATION_FAILED error", () => {
+    expect(recoveryProofIdentityMismatchError("proof_1", "cust_1", "cust_2").category).toBe(
+      "VALIDATION_FAILED",
+    );
+  });
+});
+
+describe("recoveryProofAlreadyUsedError", () => {
+  it("returns a VALIDATION_FAILED error", () => {
+    expect(recoveryProofAlreadyUsedError("proof_1").category).toBe("VALIDATION_FAILED");
+  });
+});
+
+describe("recoveryCommandConflictError", () => {
+  it("returns an IDEMPOTENCY_CONFLICT error", () => {
+    expect(recoveryCommandConflictError("cust_1").category).toBe("IDEMPOTENCY_CONFLICT");
   });
 });

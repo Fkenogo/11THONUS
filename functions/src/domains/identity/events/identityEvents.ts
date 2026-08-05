@@ -14,6 +14,7 @@ import type { AuthenticationReferenceType } from "../models/authenticationRefere
 import type { IdentityStatus } from "../models/identityStatus";
 import type { TransitionAuthority } from "../models/transitionAuthority";
 import type { TransitionReason } from "../models/transitionReason";
+import type { RecoveryProofMethodCategory } from "../models/recoveryProof";
 
 const SOURCE_DOMAIN = "identity";
 const AGGREGATE_TYPE = "customer_identity";
@@ -231,8 +232,11 @@ export function buildIdentityBecameDormantEvent(
 export type IdentityRecoveredPayload = {
   customerIdentityId: string;
   previousStatus: IdentityStatus;
+  resultingStatus: IdentityStatus;
   authority: TransitionAuthority;
   reason: TransitionReason;
+  recoveryProofReference: string;
+  proofMethodCategory: RecoveryProofMethodCategory;
 };
 
 export function buildIdentityRecoveredEvent(
@@ -241,7 +245,10 @@ export function buildIdentityRecoveredEvent(
   return buildIdentityEvent(params, "identity_recovered", params.customerIdentityId, {
     customerIdentityId: params.customerIdentityId,
     previousStatus: params.previousStatus,
+    resultingStatus: params.resultingStatus,
     authority: params.authority,
     reason: params.reason,
+    recoveryProofReference: params.recoveryProofReference,
+    proofMethodCategory: params.proofMethodCategory,
   });
 }
