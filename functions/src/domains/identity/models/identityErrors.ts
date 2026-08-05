@@ -245,3 +245,44 @@ export function invalidRecoveryProofMethodCategoryError(value: string): Identity
     `Invalid recovery proof method category: "${value}" is not a recognised category.`,
   );
 }
+
+/**
+ * Identity linking/duplicate-prevention boundary errors (ENG-P2-001-08).
+ *
+ * Reuses this same `IdentityDomainError` class — one bounded error type
+ * per domain, not a competing identity-linking-specific error hierarchy.
+ */
+
+export function authenticationReferenceLinkedToDifferentIdentityError(
+  referenceType: string,
+  referenceId: string,
+  attemptedCustomerIdentityId: string,
+  owningCustomerIdentityId: string,
+): IdentityDomainError {
+  return new IdentityDomainError(
+    "VALIDATION_FAILED",
+    `Authentication reference "${referenceType}:${referenceId}" is already linked to a different customer identity; refusing to link it to "${attemptedCustomerIdentityId}" (owned by "${owningCustomerIdentityId}").`,
+  );
+}
+
+export function staleAuthenticationReferenceStatusError(
+  referenceType: string,
+  referenceId: string,
+  expectedStatus: string,
+  actualStatus: string,
+): IdentityDomainError {
+  return new IdentityDomainError(
+    "IDEMPOTENCY_CONFLICT",
+    `Authentication reference "${referenceType}:${referenceId}" is not in the expected status "${expectedStatus}" (currently "${actualStatus}").`,
+  );
+}
+
+export function authenticationReferenceCommandConflictError(
+  referenceType: string,
+  referenceId: string,
+): IdentityDomainError {
+  return new IdentityDomainError(
+    "IDEMPOTENCY_CONFLICT",
+    `A link/unlink command for authentication reference "${referenceType}:${referenceId}" is already in progress.`,
+  );
+}

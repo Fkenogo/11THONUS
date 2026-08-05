@@ -2,11 +2,27 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-08-05 (Entry 063 added: `ENG-P2-001-07` — Identity Recovery Foundation implemented, application code, TDD; pending Founder-authorized review/merge)
+> **Last controlled update:** 2026-08-05 (Entry 064 added: `ENG-P2-001-08` — Identity Linking and Duplicate Prevention implemented, application code, TDD; pending Founder-authorized review/merge)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 064 — `ENG-P2-001-08`: Identity Linking and Duplicate Prevention Implemented (application code, TDD)
+
+- **Date:** 5 August 2026
+- **Performed by:** Claude (AI agent), per Founder task "ENG-P2-001-08: Identity Linking and Duplicate Prevention," following the Founder-authorized merge of `ENG-P2-001-07` (PR #62).
+- **Classification:** Application code, seventh package in the Identity work stream — the identity-owned Identity Linking and Duplicate Prevention layer, built on `-01`/`-05`/`-06`/`-07`'s merged foundation. **Test-driven throughout**, including real Firebase Emulator Suite integration tests.
+- **Architectural gap closed:** the existing `users/{id}.authenticationReferences` field is only a per-identity projection with no cross-identity uniqueness enforcement. A new doc-ID-keyed `authenticationReferences/{referenceType}:{referenceId}` collection is added as the authoritative uniqueness source, updated atomically alongside the projection in one Firestore transaction.
+- **Scope narrowing disclosed:** this task's current brief defines duplicate prevention structurally (same provider-subject reference already owned by a different identity) rather than the PLAN's original heuristic contact-attribute-matching framing; heuristic detection and a review-queue UI remain unimplemented, deferred, and disclosed — followed as the authoritative, current instruction. `ENG-P2-001-PLAN-001` §14 Ambiguity 4 (automatic merge authority) remains untouched.
+- **Implemented:** `linkAuthenticationReferenceForIdentity`/`unlinkAuthenticationReferenceForIdentity` (new `authenticationReferenceRepository.ts`) — transactional, idempotent, fail-closed on cross-identity conflict (which still commits a privacy-safe `AuthenticationReferenceConflictDetected` audit event before the command itself fails); unlink preserves history on the authoritative record rather than deleting it; `-01`'s link/unlink domain functions additively extended with `authority`/`reason`. Firestore Rules required no change — the existing deny-by-default catch-all already covers the one new collection, confirmed by 3 new targeted Rules tests.
+- **Validation:** 6 new `functions` unit tests (333 total, up from 327); 18 new real Firebase Emulator Suite tests (15 repository + 3 Rules; 114 total across 10 files) — all passing; full monorepo `typecheck`/`lint`/`format`/`build` clean. One pre-existing, unrelated concurrency-timeout flake observed once under elevated host load, confirmed transient on isolated re-run.
+- **Files modified (narrow, `ENG-P2-001-08`-only status notes):** `identityErrors.ts`/`.test.ts`, `identityEvents.ts`/`.test.ts`, `customerIdentity.ts`/`.test.ts`, `firestoreRules.emulator.test.ts` (no `firestore.rules` change). `ENG-P2-001-01`, `-03`, `-04`, `-05`, `-06`, `-07` remain merged as previously recorded; `-02`, `-09`, `-10`, `ENG-P2-001` as a whole, and Capability 2 overall are unaffected.
+- **Files created:** `functions/src/domains/identity/repositories/authenticationReferenceRepository.ts` (+emulator tests); `docs/05-implementation/reports/ENG-P2-001-08-implementation-report-2026-08-05.md`; this entry; `docs/changes/IMPLEMENTATION_CHANGES.md` (this cycle's entry).
+- **Dependencies added:** none.
+- **Full detail:** [`ENG-P2-001-08` Implementation Report](../05-implementation/reports/ENG-P2-001-08-implementation-report-2026-08-05.md).
 
 ---
 

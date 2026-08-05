@@ -198,10 +198,16 @@ export function transitionIdentityStatus(
   return { identity: updated, event };
 }
 
+export type LinkAuthenticationReferenceMeta = {
+  authority: TransitionAuthority;
+  reason: TransitionReason;
+};
+
 export function linkAuthenticationReference(
   identity: CustomerIdentity,
   params: CreateAuthenticationReferenceParams,
   envelope: EventEnvelope,
+  meta: LinkAuthenticationReferenceMeta,
 ): { identity: CustomerIdentity; event: DomainEvent<AuthenticationReferenceLinkedPayload> } {
   if (identity.status === "closed") {
     throw identityAlreadyClosedError(identity.id);
@@ -225,6 +231,8 @@ export function linkAuthenticationReference(
     customerIdentityId: identity.id,
     referenceId: reference.referenceId,
     referenceType: reference.referenceType,
+    authority: meta.authority,
+    reason: meta.reason,
   });
 
   return { identity: updated, event };
@@ -234,6 +242,7 @@ export function unlinkAuthenticationReference(
   identity: CustomerIdentity,
   referenceId: string,
   envelope: EventEnvelope,
+  meta: LinkAuthenticationReferenceMeta,
 ): { identity: CustomerIdentity; event: DomainEvent<AuthenticationReferenceUnlinkedPayload> } {
   const existing = identity.authenticationReferences.find((ref) => ref.referenceId === referenceId);
   if (!existing) {
@@ -254,6 +263,8 @@ export function unlinkAuthenticationReference(
     ...envelope,
     customerIdentityId: identity.id,
     referenceId,
+    authority: meta.authority,
+    reason: meta.reason,
   });
 
   return { identity: updated, event };

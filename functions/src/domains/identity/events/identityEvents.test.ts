@@ -8,6 +8,7 @@ import {
   buildCustomerIdentityArchivedEvent,
   buildAuthenticationReferenceLinkedEvent,
   buildAuthenticationReferenceUnlinkedEvent,
+  buildAuthenticationReferenceConflictDetectedEvent,
   buildTrustReferenceUpdatedEvent,
   buildIdentityBecameDormantEvent,
   buildIdentityRecoveredEvent,
@@ -130,12 +131,14 @@ describe("buildCustomerIdentityArchivedEvent", () => {
 });
 
 describe("buildAuthenticationReferenceLinkedEvent", () => {
-  it("builds the linked event with the reference id and type", () => {
+  it("builds the linked event with the reference id, type, authority, and reason (ENG-P2-001-08)", () => {
     const event = buildAuthenticationReferenceLinkedEvent({
       ...base,
       customerIdentityId: "cust_1",
       referenceId: "authuid_1",
       referenceType: "google_sign_in",
+      authority: "customer_initiated",
+      reason: "customer_request",
     });
 
     expect(event.eventType).toBe("identity.authentication_reference_linked.v1");
@@ -143,18 +146,61 @@ describe("buildAuthenticationReferenceLinkedEvent", () => {
       customerIdentityId: "cust_1",
       referenceId: "authuid_1",
       referenceType: "google_sign_in",
+      authority: "customer_initiated",
+      reason: "customer_request",
     });
   });
 });
 
 describe("buildAuthenticationReferenceUnlinkedEvent", () => {
-  it("builds the unlinked event", () => {
+  it("builds the unlinked event with authority and reason (ENG-P2-001-08)", () => {
     const event = buildAuthenticationReferenceUnlinkedEvent({
       ...base,
       customerIdentityId: "cust_1",
       referenceId: "authuid_1",
+      authority: "customer_initiated",
+      reason: "customer_request",
     });
     expect(event.eventType).toBe("identity.authentication_reference_unlinked.v1");
+    expect(event.payload).toEqual({
+      customerIdentityId: "cust_1",
+      referenceId: "authuid_1",
+      authority: "customer_initiated",
+      reason: "customer_request",
+    });
+  });
+});
+
+describe("buildAuthenticationReferenceConflictDetectedEvent", () => {
+  it("builds the conflict-detected event without exposing which other identity owns the reference", () => {
+    const event = buildAuthenticationReferenceConflictDetectedEvent({
+      ...base,
+      customerIdentityId: "cust_1",
+      referenceType: "google_sign_in",
+      authority: "customer_initiated",
+      reason: "customer_request",
+    });
+    expect(event.eventType).toBe("identity.authentication_reference_conflict_detected.v1");
+    expect(event.payload).toEqual({
+      customerIdentityId: "cust_1",
+      referenceType: "google_sign_in",
+      authority: "customer_initiated",
+      reason: "customer_request",
+    });
+  });
+
+  it("never carries the owning identity, raw subject id, phone numbers, emails, or tokens", () => {
+    const event = buildAuthenticationReferenceConflictDetectedEvent({
+      ...base,
+      customerIdentityId: "cust_1",
+      referenceType: "google_sign_in",
+      authority: "customer_initiated",
+      reason: "customer_request",
+    });
+    const keys = Object.keys(event.payload).map((k) => k.toLowerCase());
+    for (const forbidden of ["owner", "referenceid", "phone", "email", "token"]) {
+      expect(keys).not.toContain(forbidden);
+    }
   });
 });
 
