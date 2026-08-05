@@ -282,3 +282,171 @@ describe("queryAuditRecordsByEventId", () => {
     );
   });
 });
+
+describe("Audit Read-Model Minimisation Principle (Founder correction)", () => {
+  it("a loyalty_number_issued audit result contains no raw Loyalty Number, though the stored outbox record still does", async () => {
+    await seedEntry(
+      "evt-ln-issued",
+      makeEvent({
+        eventId: "evt-ln-issued",
+        eventType: "loyaltyNumber.loyalty_number_issued.v1",
+        payload: { customerIdentityId: "cust_ln", loyaltyNumber: { value: "ABC-234" } },
+      }),
+      new Date("2026-08-05T10:00:00.000Z"),
+    );
+
+    const result = await queryAuditRecordsByEventType(
+      db,
+      "loyaltyNumber.loyalty_number_issued.v1",
+      "internal_service",
+    );
+
+    expect(result.records).toHaveLength(1);
+    expect(JSON.stringify(result.records[0]?.payload)).not.toContain("ABC-234");
+
+    const rawDoc = await db.collection("outboxEntries").doc("evt-ln-issued").get();
+    expect(JSON.stringify(rawDoc.data())).toContain("ABC-234");
+  });
+
+  it("qr_identity_issued/invalidated/regenerated audit results contain no raw current, old, or new QR reference", async () => {
+    await seedEntry(
+      "evt-qr-issued",
+      makeEvent({
+        eventId: "evt-qr-issued",
+        eventType: "qrIdentity.qr_identity_issued.v1",
+        aggregateId: "cust_qr",
+        payload: { customerIdentityId: "cust_qr", qrReference: "qr-issued-111" },
+      }),
+      new Date("2026-08-05T10:00:00.000Z"),
+    );
+    await seedEntry(
+      "evt-qr-invalidated",
+      makeEvent({
+        eventId: "evt-qr-invalidated",
+        eventType: "qrIdentity.qr_identity_invalidated.v1",
+        aggregateId: "cust_qr",
+        payload: { customerIdentityId: "cust_qr", qrReference: "qr-invalidated-222" },
+      }),
+      new Date("2026-08-05T10:01:00.000Z"),
+    );
+    await seedEntry(
+      "evt-qr-regenerated",
+      makeEvent({
+        eventId: "evt-qr-regenerated",
+        eventType: "qrIdentity.qr_identity_regenerated.v1",
+        aggregateId: "cust_qr",
+        payload: {
+          customerIdentityId: "cust_qr",
+          qrReference: "qr-new-333",
+          previousQrReference: "qr-old-444",
+        },
+      }),
+      new Date("2026-08-05T10:02:00.000Z"),
+    );
+
+    const result = await queryAuditRecordsByCustomerIdentityId(db, "cust_qr", "internal_service");
+
+    expect(result.records).toHaveLength(3);
+    const serialized = JSON.stringify(result.records.map((r) => r.payload));
+    expect(serialized).not.toContain("qr-issued-111");
+    expect(serialized).not.toContain("qr-invalidated-222");
+    expect(serialized).not.toContain("qr-new-333");
+    expect(serialized).not.toContain("qr-old-444");
+  });
+
+  it("authentication_reference_linked/unlinked audit results contain no raw provider subject reference", async () => {
+    await seedEntry(
+      "evt-auth-linked",
+      makeEvent({
+        eventId: "evt-auth-linked",
+        eventType: "identity.authentication_reference_linked.v1",
+        aggregateId: "cust_auth",
+        payload: {
+          customerIdentityId: "cust_auth",
+          referenceId: "raw-provider-subject-555",
+          referenceType: "google_sign_in",
+          authority: "customer_initiated",
+          reason: "customer_requested",
+        },
+      }),
+      new Date("2026-08-05T10:00:00.000Z"),
+    );
+    await seedEntry(
+      "evt-auth-unlinked",
+      makeEvent({
+        eventId: "evt-auth-unlinked",
+        eventType: "identity.authentication_reference_unlinked.v1",
+        aggregateId: "cust_auth",
+        payload: {
+          customerIdentityId: "cust_auth",
+          referenceId: "raw-provider-subject-666",
+          authority: "customer_initiated",
+          reason: "customer_requested",
+        },
+      }),
+      new Date("2026-08-05T10:01:00.000Z"),
+    );
+
+    const result = await queryAuditRecordsByCustomerIdentityId(db, "cust_auth", "internal_service");
+
+    expect(result.records).toHaveLength(2);
+    const serialized = JSON.stringify(result.records.map((r) => r.payload));
+    expect(serialized).not.toContain("raw-provider-subject-555");
+    expect(serialized).not.toContain("raw-provider-subject-666");
+    // Authorised metadata remains available.
+    expect(result.records.some((r) => r.payload["referenceType"] === "google_sign_in")).toBe(true);
+  });
+
+  it("a recovery audit result contains no raw recovery proof reference", async () => {
+    await seedEntry(
+      "evt-recovered",
+      makeEvent({
+        eventId: "evt-recovered",
+        eventType: "identity.identity_recovered.v1",
+        aggregateId: "cust_recovery",
+        payload: {
+          customerIdentityId: "cust_recovery",
+          previousStatus: "suspended",
+          resultingStatus: "active",
+          authority: "support_initiated",
+          reason: "support_assisted_recovery",
+          recoveryProofReference: "raw-proof-reference-777",
+          proofMethodCategory: "phone_otp",
+        },
+      }),
+      new Date("2026-08-05T10:00:00.000Z"),
+    );
+
+    const result = await queryAuditRecordsByCustomerIdentityId(
+      db,
+      "cust_recovery",
+      "internal_service",
+    );
+
+    expect(result.records).toHaveLength(1);
+    expect(JSON.stringify(result.records[0]?.payload)).not.toContain("raw-proof-reference-777");
+    expect(result.records[0]?.payload).toMatchObject({ proofMethodCategory: "phone_otp" });
+  });
+
+  it("fails closed for an unrecognised event type — never passes through an arbitrary payload", async () => {
+    await seedEntry(
+      "evt-unknown",
+      makeEvent({
+        eventId: "evt-unknown",
+        eventType: "identity.some_future_event.v1",
+        payload: { customerIdentityId: "cust_unknown", somethingSensitive: "should-never-leak" },
+      }),
+      new Date("2026-08-05T10:00:00.000Z"),
+    );
+
+    const result = await queryAuditRecordsByEventType(
+      db,
+      "identity.some_future_event.v1",
+      "internal_service",
+    );
+
+    expect(result.records).toHaveLength(1);
+    expect(JSON.stringify(result.records[0]?.payload)).not.toContain("should-never-leak");
+    expect(result.records[0]?.payload).toEqual({ payloadOmitted: true });
+  });
+});

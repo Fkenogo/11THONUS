@@ -43,8 +43,30 @@ describe("toIdentityAuditRecord", () => {
       persistedAt: entry.createdAt,
       status: "completed",
       privacyClassification: "class_2_internal_operational",
-      payload: { customerIdentityId: "cust_1", previousStatus: "dormant" },
+      payload: { previousStatus: "dormant" },
     });
+  });
+
+  it("projects the payload through the privacy-minimised audit projection — never the raw event payload", () => {
+    const entry = buildOutboxEntry({
+      event: {
+        eventId: "evt_loyalty",
+        eventType: "loyaltyNumber.loyalty_number_issued.v1",
+        eventVersion: 1,
+        sourceDomain: "loyaltyNumber",
+        aggregateType: "loyalty_number_assignment",
+        aggregateId: "cust_1",
+        correlationId: "corr_1",
+        actor: { actorType: "service", actorId: "svc_1" },
+        occurredAt: "2026-08-05T10:00:00.000Z",
+        payload: { customerIdentityId: "cust_1", loyaltyNumber: { value: "ABC-234" } },
+      },
+    });
+
+    const record = toIdentityAuditRecord(entry);
+
+    expect(JSON.stringify(record.payload)).not.toContain("ABC-234");
+    expect(record.payload).toEqual({});
   });
 
   it("carries causationId through when the underlying event has one", () => {

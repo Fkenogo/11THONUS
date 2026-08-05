@@ -16,10 +16,21 @@
  * them here would blur "what happened" (the event) with "how reliably it
  * was processed" (the outbox's own concern, already covered by
  * `outboxProcessor.ts` and its own tests).
+ *
+ * `payload` (Founder Review correction — "Audit Read-Model Minimisation
+ * Principle"): never the raw `event.payload`. Routed through
+ * `projectAuditPayload` (`./auditPayloadProjection.ts`), an explicit
+ * per-event-type allow-list, so raw Loyalty Numbers, QR references,
+ * Authentication subject references, and recovery proof references
+ * never reach an audit-query caller even though they remain, unchanged,
+ * on the underlying stored event — that stored event is the immutable
+ * audit evidence of record; this envelope is only ever a privacy-
+ * minimised read projection over it.
  */
 
 import type { EventActor } from "../../../shared/events/domainEvent";
 import type { OutboxEntry, OutboxStatus } from "../../../shared/outbox/outboxEntry";
+import { projectAuditPayload, type AuditSafePayload } from "./auditPayloadProjection";
 import {
   classifyIdentityEventPrivacy,
   type AuditPrivacyClassification,
@@ -39,7 +50,7 @@ export type IdentityAuditRecord = {
   persistedAt: OutboxEntry["createdAt"];
   status: OutboxStatus;
   privacyClassification: AuditPrivacyClassification;
-  payload: unknown;
+  payload: AuditSafePayload;
 };
 
 export function toIdentityAuditRecord(entry: OutboxEntry): IdentityAuditRecord {
@@ -59,6 +70,6 @@ export function toIdentityAuditRecord(entry: OutboxEntry): IdentityAuditRecord {
     persistedAt: entry.createdAt,
     status: entry.status,
     privacyClassification: classifyIdentityEventPrivacy(event.eventType),
-    payload: event.payload,
+    payload: projectAuditPayload(event.eventType, event.payload),
   };
 }

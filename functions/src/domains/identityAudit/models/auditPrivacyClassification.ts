@@ -32,7 +32,7 @@
  * instead, which is sufficient for this function's own narrow purpose.
  */
 
-function extractEventName(eventType: string): string | undefined {
+export function extractEventName(eventType: string): string | undefined {
   const segments = eventType.split(".");
   return segments.length === 3 ? segments[1] : undefined;
 }

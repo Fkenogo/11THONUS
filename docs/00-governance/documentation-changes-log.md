@@ -2,11 +2,25 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-08-05 (Entry 068 added: `ENG-P2-001-10` — Identity Audit and Observability Foundation implemented, application code, TDD; pending Founder-authorized review/merge)
+> **Last controlled update:** 2026-08-05 (Entry 069 added: `ENG-P2-001-10` Correction — Audit Read-Model Minimisation, Founder Review, PR #65 held)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 069 — `ENG-P2-001-10` Correction: Audit Read-Model Minimisation (Founder Review, PR #65 held)
+
+- **Date:** 5 August 2026
+- **Performed by:** Claude (AI agent), per Founder Review of `PR #65` — positively reviewed, merge withheld on one confirmed defect: audit-query results passed the raw event payload through, exposing raw Loyalty Numbers, QR references, Authentication subject references, and recovery proof references.
+- **Classification:** Application code correction plus test-coverage strengthening and policy recording.
+- **Policy recorded:** the **Audit Read-Model Minimisation Principle** (Founder-directed): the underlying domain events and outbox records retain governed operational identifiers required for processing and immutable audit evidence, unchanged; audit-QUERY results must not expose raw Loyalty Numbers, QR references, Authentication subject references, phone numbers, emails, credentials, tokens, OTPs, or other sensitive/customer-linked identifiers unless a future explicitly governed audit purpose requires them — no masking, truncation, or unsalted hashing substitutes for omission. Recorded in the [`ENG-P2-001-10` Implementation Report](../05-implementation/reports/ENG-P2-001-10-implementation-report-2026-08-05.md) §38, which supersedes §9's original conclusion and includes the full event-by-event audit payload catalogue.
+- **Code changed:** new `auditPayloadProjection.ts` — `projectAuditPayload(eventType, rawPayload)`, an explicit per-event-name allow-list replacing the raw `payload: event.payload` pass-through in `auditEnvelope.ts`; unrecognised event types fail closed to `{ payloadOmitted: true }`.
+- **Tests:** 10 new unit tests (`auditPayloadProjection.test.ts`) plus 1 updated/1 new in `auditEnvelope.test.ts`; 5 new real Firebase Emulator Suite tests proving no raw Loyalty Number/QR reference/Authentication subject reference/recovery proof reference reaches a query result while the underlying stored outbox document still carries it, plus a fail-closed unknown-event-type test — 395/395 unit and 164/164 emulator tests passing.
+- **Validation:** full monorepo `typecheck`/`lint`/`format:check`/`build` clean; `functions` unit tests 395/395 (385 pre-existing + 10 new); real Firebase Emulator Suite re-run in full, 164/164, clean first run; `apps/web` unchanged (259/259).
+- **Files modified:** `auditEnvelope.ts`; `auditEnvelope.test.ts`; `auditPrivacyClassification.ts` (`extractEventName` exported for reuse); `identityAuditQueryRepository.emulator.test.ts`; `ENG-P2-001-10-implementation-report-2026-08-05.md` (§38 added, §9 marked superseded); this entry; `docs/changes/IMPLEMENTATION_CHANGES.md` (correction entry). **Files created:** `auditPayloadProjection.ts` (+ `.test.ts`).
+- **Full detail:** [`ENG-P2-001-10` Implementation Report §38](../05-implementation/reports/ENG-P2-001-10-implementation-report-2026-08-05.md).
 
 ---
 
