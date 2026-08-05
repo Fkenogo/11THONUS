@@ -19,9 +19,35 @@
  * and checks it against a small, hardcoded per-function allow-list — not
  * a generic role/permission system (explicitly out of this package's
  * scope). An unlisted purpose fails closed with
- * `identityLookupPurposeNotPermittedError`. Real authorization — verifying
- * the caller genuinely holds the declared purpose — belongs to a future
- * authority layer outside this package.
+ * `identityLookupPurposeNotPermittedError`. **The declared purpose is
+ * never itself verified authority** — this package has no notion of caller
+ * identity, credential, role, or session; any caller may declare any
+ * listed purpose. A future trusted application boundary (a callable
+ * Cloud Function or internal service-auth layer, not built here) must
+ * authenticate the actual caller, map that caller to the set of purposes
+ * their verified role permits, and reject any request whose declared
+ * purpose the caller isn't actually authorised to use — entirely
+ * separate from, and prior to, this package's own allow-list check.
+ *
+ * Per Founder-reviewed policy (2026-08-05, `PR #64` correction):
+ *   - Customer Identity ID:      trusted internal, support, governed recovery.
+ *   - Loyalty Number:            trusted internal, governed recovery, support,
+ *                                 authenticated participating-business transaction.
+ *   - QR reference:              trusted internal, authenticated participating-
+ *                                 business transaction, governed recovery
+ *                                 (explicitly governed by `-07`'s own already-
+ *                                 merged `RecoveryLookupReference` route) —
+ *                                 `support` is deliberately NOT listed; no
+ *                                 governing evidence names it for this identifier.
+ *   - Authentication Reference:  authentication, governed recovery (a Founder-
+ *                                 approved capability grant — `-07`'s own
+ *                                 recovery orchestration remains unmodified and
+ *                                 is not wired to this route; a future
+ *                                 integration task connects them), support,
+ *                                 trusted internal.
+ * "Authenticated participating-business" and "governed recovery/support" are
+ * requirements on the FUTURE authority layer above — this package cannot and
+ * does not enforce them; it only accepts the declared purpose value.
  *
  * "Unknown identifier" and "identifier exists but is not currently
  * active" (invalidated QR, unlinked Authentication Reference) are
@@ -72,7 +98,16 @@ const USERS_COLLECTION = "users";
 export type IdentityLookupResult = {
   customerIdentityId: string;
   status: IdentityStatus;
-  authenticationReferences: AuthenticationReference[];
+  /**
+   * Populated only when `purpose === "authentication"` — the one case
+   * structurally requiring visibility into linked references (checking
+   * for an existing reference before Authentication completes a
+   * sign-in). Every other purpose gets the base result only; a merchant
+   * or generic internal-service caller has no need to see which
+   * providers a customer has linked, and that visibility is itself
+   * sensitive linked-provider metadata worth withholding by default.
+   */
+  authenticationReferences?: AuthenticationReference[];
 };
 
 type IdentityLookupEnvelopeParams = {
@@ -85,8 +120,8 @@ type IdentityLookupEnvelopeParams = {
 const LOOKUP_PURPOSE_ALLOW_LISTS: Record<IdentityLookupType, readonly IdentityLookupPurpose[]> = {
   customer_identity_id: ["recovery", "internal_service", "support"],
   loyalty_number: ["recovery", "internal_service", "merchant_transaction", "support"],
-  qr_reference: ["recovery", "internal_service", "merchant_transaction", "support"],
-  authentication_reference: ["authentication", "internal_service", "support"],
+  qr_reference: ["recovery", "internal_service", "merchant_transaction"],
+  authentication_reference: ["authentication", "recovery", "internal_service", "support"],
 };
 
 const AUDIT_ALWAYS_PURPOSES: readonly IdentityLookupPurpose[] = [
@@ -121,13 +156,16 @@ function shouldAudit(
   return false;
 }
 
-function toLookupResult(raw: unknown): IdentityLookupResult {
+function toLookupResult(raw: unknown, purpose: IdentityLookupPurpose): IdentityLookupResult {
   const identity = fromUserDocument(raw);
-  return {
+  const base: IdentityLookupResult = {
     customerIdentityId: identity.id,
     status: identity.status,
-    authenticationReferences: identity.authenticationReferences,
   };
+  if (purpose !== "authentication") {
+    return base;
+  }
+  return { ...base, authenticationReferences: identity.authenticationReferences };
 }
 
 async function runLookup(
@@ -217,7 +255,7 @@ export async function lookupCustomerIdentityById(
     if (!snapshot.exists) {
       throw identityLookupNotFoundError("customer_identity_id");
     }
-    return toLookupResult(snapshot.data());
+    return toLookupResult(snapshot.data(), params.purpose);
   });
 }
 
@@ -249,7 +287,7 @@ export async function lookupCustomerIdentityByLoyaltyNumber(
     if (!snapshot.exists) {
       throw identityLookupNotFoundError("loyalty_number");
     }
-    return toLookupResult(snapshot.data());
+    return toLookupResult(snapshot.data(), params.purpose);
   });
 }
 
@@ -289,7 +327,7 @@ export async function lookupCustomerIdentityByQrReference(
     if (!snapshot.exists) {
       throw identityLookupNotFoundError("qr_reference");
     }
-    return toLookupResult(snapshot.data());
+    return toLookupResult(snapshot.data(), params.purpose);
   });
 }
 
@@ -320,6 +358,6 @@ export async function lookupCustomerIdentityByAuthenticationReference(
     if (!snapshot.exists) {
       throw identityLookupNotFoundError("authentication_reference");
     }
-    return toLookupResult(snapshot.data());
+    return toLookupResult(snapshot.data(), params.purpose);
   });
 }

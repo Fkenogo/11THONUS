@@ -2,11 +2,25 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-08-05 (Entry 066 added: `ENG-P2-001-09` — Identity Query and Lookup Interfaces implemented, application code, TDD; pending Founder-authorized review/merge)
+> **Last controlled update:** 2026-08-05 (Entry 067 added: `ENG-P2-001-09` Correction — Lookup-Purpose and Result-Minimisation Clarification, Founder Review, PR #64 held)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 067 — `ENG-P2-001-09` Correction: Lookup-Purpose and Result-Minimisation Clarification (Founder Review, PR #64 held)
+
+- **Date:** 5 August 2026
+- **Performed by:** Claude (AI agent), per Founder Review of `PR #64` — positively reviewed, merge withheld pending clarification that the purpose allow-list was an undisclosed engineering judgment and that the shared result exposed unnecessary linked-provider metadata.
+- **Classification:** Application code correction plus test-coverage strengthening and policy recording.
+- **Policy recorded:** the **Lookup-Purpose and Result-Minimisation Policy** (Founder-directed): a final per-lookup-type purpose allow-list (Customer Identity ID — internal/support/recovery; Loyalty Number — internal/support/recovery/merchant-transaction; QR reference — internal/recovery/merchant-transaction, `support` removed; Authentication Reference — authentication/internal/support/recovery newly granted) and a rule that `IdentityLookupResult.authenticationReferences` is populated only for the `authentication` purpose. Recorded at `ENG-P2-001-PLAN-001` §14 Decision and Ambiguity Register (new, resolved Ambiguity 6) and in a new §38 of the [`ENG-P2-001-09` Implementation Report](../05-implementation/reports/ENG-P2-001-09-implementation-report-2026-08-05.md), which supersedes §6/§11's original tables/type in place.
+- **Code changed:** `identityLookupRepository.ts` — `authenticationReferences` made optional and purpose-gated; `LOOKUP_PURPOSE_ALLOW_LISTS` updated per the final policy; `toLookupResult` now branches on `purpose`.
+- **Tests:** 4 existing tests strengthened, 3 new tests added in `identityLookupRepository.emulator.test.ts` (caller-identity irrelevance to purpose authority; QR `support`-purpose rejection; Authentication Reference `recovery`-purpose permission) — 25/25 passing.
+- **Validation:** full monorepo `typecheck`/`lint`/`format:check`/`build` clean; `functions` unit tests unchanged (347/347); real Firebase Emulator Suite re-run in full, 146/146, clean first run, no flakes; `apps/web` unchanged (259/259).
+- **Files modified:** `identityLookupRepository.ts`; `identityLookupRepository.emulator.test.ts`; `ENG-P2-001-09-implementation-report-2026-08-05.md` (§38 added, §6/§11 marked superseded); `ENG-P2-001-PLAN-001` (§14 Ambiguity 6 added, `-09` blockquote updated); this entry; `docs/changes/IMPLEMENTATION_CHANGES.md` (correction entry).
+- **Full detail:** [`ENG-P2-001-09` Implementation Report §38](../05-implementation/reports/ENG-P2-001-09-implementation-report-2026-08-05.md).
 
 ---
 

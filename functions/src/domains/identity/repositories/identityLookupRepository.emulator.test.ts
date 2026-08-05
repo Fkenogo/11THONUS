@@ -94,7 +94,7 @@ beforeEach(async () => {
 });
 
 describe("lookupCustomerIdentityById", () => {
-  it("resolves an existing identity with a bounded result", async () => {
+  it("resolves an existing identity with a bounded result, omitting authenticationReferences for a non-authentication purpose", async () => {
     await seedIdentity("cust_1", "l1");
 
     const result = await lookupCustomerIdentityById(db, {
@@ -105,7 +105,7 @@ describe("lookupCustomerIdentityById", () => {
 
     expect(result.customerIdentityId).toBe("cust_1");
     expect(result.status).toBe("active");
-    expect(result.authenticationReferences).toHaveLength(1);
+    expect(result.authenticationReferences).toBeUndefined();
   });
 
   it("fails closed for an unknown Customer Identity ID", async () => {
@@ -154,10 +154,38 @@ describe("lookupCustomerIdentityById", () => {
       expect(keys).not.toContain(forbidden);
     }
   });
+
+  it("does not distinguish caller identity when checking purpose authority — purpose alone is never verified authority", async () => {
+    await seedIdentity("cust_23", "l23");
+
+    const supportAgentA = await lookupCustomerIdentityById(db, {
+      eventId: "evt_l23a",
+      correlationId: "corr_l23a",
+      actor: { actorType: "user", actorId: "support_agent_alice" },
+      occurredAt: "2026-08-05T02:00:00.000Z",
+      customerIdentityId: "cust_23",
+      purpose: "support",
+    });
+    const supportAgentB = await lookupCustomerIdentityById(db, {
+      eventId: "evt_l23b",
+      correlationId: "corr_l23b",
+      actor: { actorType: "user", actorId: "anyone_at_all" },
+      occurredAt: "2026-08-05T02:00:00.000Z",
+      customerIdentityId: "cust_23",
+      purpose: "support",
+    });
+
+    // Both succeed identically — the declared `purpose` string, not the
+    // caller's actor identity, is the only thing this package checks. No
+    // credential, role, or session is verified here; that belongs to a
+    // future trusted application boundary.
+    expect(supportAgentA.customerIdentityId).toBe("cust_23");
+    expect(supportAgentB.customerIdentityId).toBe("cust_23");
+  });
 });
 
 describe("lookupCustomerIdentityByLoyaltyNumber", () => {
-  it("resolves an existing identity by exact Loyalty Number match", async () => {
+  it("resolves an existing identity by exact Loyalty Number match, excluding Authentication References for a merchant-transaction lookup", async () => {
     await seedIdentity("cust_6", "l6");
     await issueLoyaltyNumberForIdentity(db, {
       eventId: "evt_ln_l6",
@@ -179,6 +207,9 @@ describe("lookupCustomerIdentityByLoyaltyNumber", () => {
     });
 
     expect(result.customerIdentityId).toBe("cust_6");
+    expect(result.authenticationReferences).toBeUndefined();
+    const keys = Object.keys(result).map((k) => k.toLowerCase());
+    expect(keys).not.toContain("authenticationreferences");
   });
 
   it("fails closed for a malformed Loyalty Number, before any Firestore read", async () => {
@@ -237,7 +268,7 @@ describe("lookupCustomerIdentityByLoyaltyNumber", () => {
 });
 
 describe("lookupCustomerIdentityByQrReference", () => {
-  it("resolves an existing identity for an active QR reference", async () => {
+  it("resolves an existing identity for an active QR reference, excluding Authentication References for a merchant-transaction lookup", async () => {
     await seedIdentity("cust_11", "l11");
     await issueQrIdentityForIdentity(db, {
       eventId: "evt_qr_l11",
@@ -260,6 +291,9 @@ describe("lookupCustomerIdentityByQrReference", () => {
     });
 
     expect(result.customerIdentityId).toBe("cust_11");
+    expect(result.authenticationReferences).toBeUndefined();
+    const keys = Object.keys(result).map((k) => k.toLowerCase());
+    expect(keys).not.toContain("authenticationreferences");
   });
 
   it("fails closed for an invalidated QR reference", async () => {
@@ -318,10 +352,20 @@ describe("lookupCustomerIdentityByQrReference", () => {
       }),
     ).rejects.toThrow(IdentityDomainError);
   });
+
+  it("rejects the support purpose (removed per Founder policy — QR is trusted-internal and authenticated-transaction use only, plus explicitly-governed recovery)", async () => {
+    await expect(
+      lookupCustomerIdentityByQrReference(db, {
+        ...envelope("l14b"),
+        qrReference: "qr_ref_any",
+        purpose: "support",
+      }),
+    ).rejects.toThrow(IdentityDomainError);
+  });
 });
 
 describe("lookupCustomerIdentityByAuthenticationReference", () => {
-  it("resolves the owning identity for an active reference", async () => {
+  it("resolves the owning identity for an active reference, including authenticationReferences for the authentication purpose", async () => {
     await seedIdentity("cust_15", "l15");
     await linkAuthenticationReferenceForIdentity(db, {
       eventId: "evt_auth_l15",
@@ -347,6 +391,37 @@ describe("lookupCustomerIdentityByAuthenticationReference", () => {
     });
 
     expect(result.customerIdentityId).toBe("cust_15");
+    expect(result.authenticationReferences).toHaveLength(2);
+  });
+
+  it("permits the recovery purpose (Founder-approved policy expansion — the lookup capability only; -07's own recovery orchestration remains unmodified/not wired to this route)", async () => {
+    await seedIdentity("cust_15b", "l15b");
+    await linkAuthenticationReferenceForIdentity(db, {
+      eventId: "evt_auth_l15b",
+      correlationId: "corr_auth_l15b",
+      actor,
+      occurredAt: "2026-08-05T01:00:00.000Z",
+      customerIdentityId: "cust_15b",
+      referenceId: "google_sub_l15b",
+      referenceType: "google_sign_in",
+      authority: "customer_initiated",
+      reason: "customer_request",
+      linkedAt: new Date("2026-08-05T01:00:00.000Z"),
+      linkedBy: "cust_15b",
+      idempotencyKey: "key_auth_l15b",
+      requestHash: "hash_auth_l15b",
+    });
+
+    const result = await lookupCustomerIdentityByAuthenticationReference(db, {
+      ...envelope("l15b"),
+      referenceType: "google_sign_in",
+      referenceId: "google_sub_l15b",
+      purpose: "recovery",
+    });
+
+    expect(result.customerIdentityId).toBe("cust_15b");
+    // recovery is not the `authentication` purpose — no reference list needed.
+    expect(result.authenticationReferences).toBeUndefined();
   });
 
   it("fails closed for an inactive (never-linked) reference", async () => {

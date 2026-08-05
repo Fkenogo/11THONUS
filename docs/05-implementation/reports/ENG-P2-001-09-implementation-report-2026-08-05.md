@@ -49,6 +49,8 @@ Delivered in full in chat before any edit began. Summary of the load-bearing fin
 
 ## 6. Lookup Model
 
+> **Superseded 2026-08-05 — see [§38 Correction](#38-correction-2026-08-05--founder-review-lookup-purpose-and-result-minimisation-clarification).** The purpose allow-list table below and the `authenticationReferences` field shown as always-present were both revised following Founder review, before PR #64 merge. This section is retained as the as-built record of the original submission; §38 is authoritative.
+
 Every lookup function shares one shape: (a) format-validate the raw input, failing closed before any Firestore read on malformed input; (b) check the caller-declared `IdentityLookupPurpose` against a hardcoded per-lookup-type allow-list, failing closed with `identityLookupPurposeNotPermittedError` on an unlisted purpose; (c) resolve via the owning domain's existing (or newly added) repository function; (d) convert any "not found"/"invalidated"/"unlinked" outcome into the single `identityLookupNotFoundError`; (e) return a bounded `IdentityLookupResult`, never a full aggregate. No fuzzy, partial, wildcard, or prefix matching exists anywhere — every path is an exact doc-ID `.get()`.
 
 ```ts
@@ -88,6 +90,8 @@ Purpose allow-lists (hardcoded, not a role/permission system):
 `lookupCustomerIdentityByAuthenticationReference` — rejects an empty reference ID before any read; resolves via a new `getActiveAuthenticationReferenceOwner` (added to the existing `authenticationReferenceRepository.ts`, since it already owns the `authenticationReferences` collection) — active-only, mirroring `-04`'s own active-only QR pattern: a never-linked and a previously-unlinked reference both resolve identically (`undefined`), never distinguished, since cross-identity ownership is structurally guaranteed unique by `-08`'s own invariant. Permitted purposes: `authentication`, `internal_service`, `support`.
 
 ## 11. Result Model
+
+> **Superseded 2026-08-05 — see [§38 Correction](#38-correction-2026-08-05--founder-review-lookup-purpose-and-result-minimisation-clarification).** `authenticationReferences` is now optional and purpose-gated, not always present.
 
 `IdentityLookupResult` carries only `customerIdentityId`, `status`, and `authenticationReferences` (the existing, already-governed `-01` reference-only value objects — no token, OTP detail, or credential). Never phone, email, trust score, verification evidence, purchase history, rewards, or `customerProfiles` fields — confirmed by a dedicated negative test asserting none of those keys are ever present.
 
@@ -175,3 +179,44 @@ This report (28); `IMPLEMENTATION_CHANGES.md` entry (29); `documentation-changes
 ## 32–37. PR and CI Evidence
 
 Recorded in the final chat completion report after commit/push/PR creation (this report is written before that step, per the sequencing every prior task in this stream has used).
+
+## 38. Correction (2026-08-05) — Founder Review: Lookup-Purpose and Result-Minimisation Clarification
+
+PR #64 was positively reviewed but held from merge pending clarification that the original per-lookup-type purpose allow-list (§6) was an undisclosed engineering judgment rather than an approved policy, and that the shared `IdentityLookupResult` (§11) exposed `authenticationReferences` — linked-provider metadata — to purposes with no legitimate need for it, most critically `merchant_transaction`. This section records the Founder's resulting policy direction and the smallest correction applying it, per the Founder's own instruction to amend rather than rewrite the original submission.
+
+**38.1 Governing-evidence review of the original allow-list.** Re-examined against source: `recovery` on all four lookup types was directly grounded in `-07`'s merged `RecoveryLookupReference` type. `internal_service` on Customer Identity ID and `merchant_transaction` on Loyalty Number/QR were directly grounded in `ENG-P2-001-PLAN-001` §2's own `-09` text. `support` on Customer Identity ID/Loyalty Number/Authentication Reference had governance basis in the task brief's own named "likely candidates" for audited support lookups. Two entries had no citation and were engineering judgment only: `support` on QR reference, and the categorical exclusion of `recovery` from Authentication Reference lookup (the latter was previously correct only because `-07` had explicitly deferred it as a capability, not because the lookup function itself could not support it safely).
+
+**38.2 Final purpose policy (Founder-directed, implemented verbatim):**
+
+| Lookup type | authentication | recovery | internal_service | merchant_transaction | support |
+|---|---|---|---|---|---|
+| Customer Identity ID | ✗ | ✓ | ✓ | ✗ | ✓ |
+| Loyalty Number | ✗ | ✓ | ✓ | ✓ | ✓ |
+| QR reference | ✗ | ✓ | ✓ | ✓ | ✗ *(removed — no governing citation)* |
+| Authentication Reference | ✓ | ✓ *(added — new Founder-approved capability grant at the lookup level only)* | ✓ | ✗ | ✓ |
+
+The `recovery` grant on Authentication Reference lookup is a capability of this lookup function only; it does not wire into, modify, or expand `-07`'s own recovery orchestration, which remains unmodified. This distinction is preserved in the repository doc comment and in the new test covering it (§38.5).
+
+Caller-supplied `purpose` values remain, explicitly, never authority by themselves — the lookup boundary has no caller-identity verification and cannot distinguish `support_agent_alice` from any other caller declaring the same purpose string. Validating that a caller is actually entitled to declare a given purpose is out of scope for this package and belongs to a future trusted application boundary, which must fail closed if it cannot verify the caller.
+
+**38.3 Policy-record location.** This section (§38) is the authoritative policy record for the lookup-purpose allow-list, referenced from a new resolved-ambiguity entry in `ENG-P2-001-PLAN-001` §14 (Ambiguity 6) and from the repository's own doc comment in `functions/src/domains/identity/repositories/identityLookupRepository.ts`.
+
+**38.4 Result-model correction.** `IdentityLookupResult.authenticationReferences` changed from always-present to optional, populated only when `purpose === "authentication"` — applied uniformly across all four lookup types rather than as a per-type exception, which is the smallest correction that satisfies both "every lookup returns only the minimum fields required for its purpose" and "merchant transaction lookups must not return Authentication References." `authentication` is the one purpose structurally requiring this visibility (checking for an existing linked reference before completing a sign-in); every other purpose — including `merchant_transaction` and `internal_service` — now receives only `customerIdentityId` and `status`.
+
+```ts
+export type IdentityLookupResult = {
+  customerIdentityId: string;
+  status: IdentityStatus;
+  authenticationReferences?: AuthenticationReference[];
+};
+```
+
+**38.5 Tests added/strengthened** (all in `identityLookupRepository.emulator.test.ts`): merchant-purpose Loyalty Number lookup asserts `authenticationReferences` is `undefined` and the key is absent from the result object; merchant-purpose QR lookup asserts the same; authentication-purpose Authentication Reference lookup asserts `authenticationReferences` is present and populated; a new test on Customer Identity ID lookup asserts two calls with the same purpose but different `actor.actorId` values succeed identically, demonstrating purpose alone — not caller identity — determines the outcome; a new test asserts QR lookup now rejects the `support` purpose; a new test asserts Authentication Reference lookup now permits the `recovery` purpose while still returning `authenticationReferences: undefined` (since `recovery` ≠ `authentication`).
+
+**38.6 Confirmations.** Failed exact-match lookups still collapse "unknown" and "exists but inactive" into one `identityLookupNotFoundError` — unchanged, still enumeration-resistant. Audit events (`IdentityLookupAttemptedPayload`) still carry no raw lookup values — unchanged. No broad/fuzzy/prefix lookup capability was introduced. Rate limiting remains explicitly deferred, unchanged from the original submission.
+
+**38.7 Validation after correction.** `npx tsc --noEmit` (functions): clean. Targeted emulator suite (`identityLookupRepository.emulator.test.ts`): 25/25 passed. `pnpm lint`: clean. `pnpm format:check`: clean. Full functions unit suite (`vitest run`): 347/347, unchanged. Full real Firebase Emulator Suite (11 files): 146/146, all clean on first run, no flakes. `pnpm --filter web test`: 259/259, unchanged (this correction does not touch `apps/web`). `pnpm build`: both workspaces build cleanly.
+
+**38.8 Documentation updated alongside this section.** `ENG-P2-001-PLAN-001-customer-identity-decomposition-plan.md` §14 (new Ambiguity 6 entry); `docs/changes/IMPLEMENTATION_CHANGES.md` (new dated correction entry); `docs/00-governance/documentation-changes-log.md` (Entry 067).
+
+**38.9 Merge status.** PR #64 remains unmerged. This correction was committed to the existing `feat/eng-p2-001-09-identity-query-lookup` branch, not a new branch. Merge remains withheld pending fresh, separate Founder authorisation.
