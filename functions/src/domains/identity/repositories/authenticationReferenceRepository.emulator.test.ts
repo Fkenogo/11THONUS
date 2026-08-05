@@ -315,6 +315,141 @@ describe("linkAuthenticationReferenceForIdentity", () => {
     expect(["cust_7a", "cust_7b"]).toContain(authRefSnap.data()?.["customerIdentityId"]);
   });
 
+  it("rejects a different identity from linking a reference the original identity previously unlinked (Authentication Reference Permanence Principle)", async () => {
+    await seedIdentity("cust_16a", "b16a");
+    await seedIdentity("cust_16b", "b16b");
+
+    await linkAuthenticationReferenceForIdentity(db, {
+      eventId: "evt_b16_link",
+      correlationId: "corr_b16_link",
+      actor,
+      occurredAt: "2026-08-05T01:00:00.000Z",
+      customerIdentityId: "cust_16a",
+      referenceId: "google_sub_16",
+      referenceType: "google_sign_in",
+      authority: "customer_initiated",
+      reason: "customer_request",
+      linkedAt: new Date("2026-08-05T01:00:00.000Z"),
+      linkedBy: "cust_16a",
+      idempotencyKey: "key_b16_link",
+      requestHash: "hash_b16_link",
+    });
+    await unlinkAuthenticationReferenceForIdentity(db, {
+      eventId: "evt_b16_unlink",
+      correlationId: "corr_b16_unlink",
+      actor,
+      occurredAt: "2026-08-05T01:10:00.000Z",
+      customerIdentityId: "cust_16a",
+      referenceId: "google_sub_16",
+      referenceType: "google_sign_in",
+      authority: "customer_initiated",
+      reason: "customer_request",
+      unlinkedAt: new Date("2026-08-05T01:10:00.000Z"),
+      unlinkedBy: "cust_16a",
+      idempotencyKey: "key_b16_unlink",
+      requestHash: "hash_b16_unlink",
+    });
+
+    await expect(
+      linkAuthenticationReferenceForIdentity(db, {
+        eventId: "evt_b16_relink_other",
+        correlationId: "corr_b16_relink_other",
+        actor,
+        occurredAt: "2026-08-05T01:20:00.000Z",
+        customerIdentityId: "cust_16b",
+        referenceId: "google_sub_16",
+        referenceType: "google_sign_in",
+        authority: "customer_initiated",
+        reason: "customer_request",
+        linkedAt: new Date("2026-08-05T01:20:00.000Z"),
+        linkedBy: "cust_16b",
+        idempotencyKey: "key_b16_relink_other",
+        requestHash: "hash_b16_relink_other",
+      }),
+    ).rejects.toThrow(IdentityDomainError);
+
+    const authRefSnap = await db
+      .collection("authenticationReferences")
+      .doc("google_sign_in:google_sub_16")
+      .get();
+    expect(authRefSnap.data()?.["customerIdentityId"]).toBe("cust_16a");
+    expect(authRefSnap.data()?.["status"]).toBe("unlinked");
+
+    const outboxSnap = await db.collection("outboxEntries").doc("evt_b16_relink_other").get();
+    expect(outboxSnap.exists).toBe(true);
+    const conflictEvent = (outboxSnap.data() as { event: { eventType: string } }).event;
+    expect(conflictEvent.eventType).toBe("identity.authentication_reference_conflict_detected.v1");
+  });
+
+  it("resolves the original owner as the sole winner when a same-identity relink races a different identity's link after unlink", async () => {
+    await seedIdentity("cust_17a", "b17a");
+    await seedIdentity("cust_17b", "b17b");
+
+    await linkAuthenticationReferenceForIdentity(db, {
+      eventId: "evt_b17_link",
+      correlationId: "corr_b17_link",
+      actor,
+      occurredAt: "2026-08-05T01:00:00.000Z",
+      customerIdentityId: "cust_17a",
+      referenceId: "google_sub_17",
+      referenceType: "google_sign_in",
+      authority: "customer_initiated",
+      reason: "customer_request",
+      linkedAt: new Date("2026-08-05T01:00:00.000Z"),
+      linkedBy: "cust_17a",
+      idempotencyKey: "key_b17_link",
+      requestHash: "hash_b17_link",
+    });
+    await unlinkAuthenticationReferenceForIdentity(db, {
+      eventId: "evt_b17_unlink",
+      correlationId: "corr_b17_unlink",
+      actor,
+      occurredAt: "2026-08-05T01:10:00.000Z",
+      customerIdentityId: "cust_17a",
+      referenceId: "google_sub_17",
+      referenceType: "google_sign_in",
+      authority: "customer_initiated",
+      reason: "customer_request",
+      unlinkedAt: new Date("2026-08-05T01:10:00.000Z"),
+      unlinkedBy: "cust_17a",
+      idempotencyKey: "key_b17_unlink",
+      requestHash: "hash_b17_unlink",
+    });
+
+    const attemptRelink = (customerIdentityId: string, suffix: string) =>
+      linkAuthenticationReferenceForIdentity(db, {
+        eventId: `evt_b17_${suffix}`,
+        correlationId: `corr_b17_${suffix}`,
+        actor,
+        occurredAt: "2026-08-05T01:20:00.000Z",
+        customerIdentityId,
+        referenceId: "google_sub_17",
+        referenceType: "google_sign_in",
+        authority: "customer_initiated",
+        reason: "customer_request",
+        linkedAt: new Date("2026-08-05T01:20:00.000Z"),
+        linkedBy: customerIdentityId,
+        idempotencyKey: `key_b17_${suffix}`,
+        requestHash: `hash_b17_${suffix}`,
+      });
+
+    const results = await Promise.allSettled([
+      attemptRelink("cust_17a", "relink_owner"),
+      attemptRelink("cust_17b", "relink_other"),
+    ]);
+
+    const [ownerResult, otherResult] = results;
+    expect(ownerResult?.status).toBe("fulfilled");
+    expect(otherResult?.status).toBe("rejected");
+
+    const authRefSnap = await db
+      .collection("authenticationReferences")
+      .doc("google_sign_in:google_sub_17")
+      .get();
+    expect(authRefSnap.data()?.["customerIdentityId"]).toBe("cust_17a");
+    expect(authRefSnap.data()?.["status"]).toBe("linked");
+  });
+
   it("links two different providers to the same identity concurrently without losing either", async () => {
     await seedIdentity("cust_8", "b8");
 
@@ -386,6 +521,7 @@ describe("unlinkAuthenticationReferenceForIdentity", () => {
       .get();
     expect(authRefSnap.data()?.["status"]).toBe("unlinked");
     expect(authRefSnap.data()?.["unlinkedAt"]).toBeTruthy();
+    expect(authRefSnap.data()?.["customerIdentityId"]).toBe("cust_9");
   });
 
   it("is idempotent on retry with the same idempotency key", async () => {

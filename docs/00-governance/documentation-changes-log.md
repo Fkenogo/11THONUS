@@ -2,11 +2,24 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-08-05 (Entry 064 added: `ENG-P2-001-08` — Identity Linking and Duplicate Prevention implemented, application code, TDD; pending Founder-authorized review/merge)
+> **Last controlled update:** 2026-08-05 (Entry 065 added: `ENG-P2-001-08` correction — Authentication Reference Permanence Principle recorded per Founder Review, `PR #63`; pending Founder-authorized merge)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 065 — `ENG-P2-001-08` Correction: Authentication Reference Permanence Principle Recorded (Founder Review)
+
+- **Date:** 5 August 2026
+- **Performed by:** Claude (AI agent), per Founder Review of `PR #63` — positively reviewed, merge withheld only until the disclosed relink-after-unlink policy was formally recorded.
+- **Classification:** Documentation/governance correction plus test-coverage strengthening — **no application/production code changed.**
+- **Policy recorded:** the **Authentication Reference Permanence Principle** (Founder-approved verbatim): "Once an authentication reference has been linked to a Customer Identity, its historical ownership remains permanently associated with that identity. If unlinked, it may be restored only to the same Customer Identity. Linking it to a different identity is prohibited unless a future governed manual-review and transfer process explicitly authorises the change." Recorded at `ENG-P2-001-PLAN-001` §14 Decision and Ambiguity Register (new, resolved Ambiguity 5) and in a new §4A of the [`ENG-P2-001-08` Implementation Report](../05-implementation/reports/ENG-P2-001-08-implementation-report-2026-08-05.md), which distinguishes the current approved MVP policy from the deferred future manual-transfer capability.
+- **Enforcement confirmed, not changed:** the existing `authenticationReferenceRepository.ts` (Entry 064) already enforced same-identity relink permitted / cross-identity relink rejected / historical ownership retained / no automatic transfer — 2 new emulator tests plus 1 strengthened assertion (17/17 passing) confirm this with zero production-code change.
+- **Validation:** full monorepo `lint`/`format:check`/`typecheck`/`build` clean; `functions` unit tests unchanged (333/333, no unit-test file touched); `apps/web` unchanged (259/259); real Firebase Emulator Suite re-run in full.
+- **Files modified:** `authenticationReferenceRepository.emulator.test.ts` (+2 tests, 1 strengthened assertion); `ENG-P2-001-08-implementation-report-2026-08-05.md` (§4A added, §3/§6/§15 updated); `ENG-P2-001-PLAN-001` (§14 Ambiguity 5 added, §2 `-08` blockquote updated); this entry; `docs/changes/IMPLEMENTATION_CHANGES.md` (correction entry).
+- **Full detail:** [`ENG-P2-001-08` Implementation Report §4A](../05-implementation/reports/ENG-P2-001-08-implementation-report-2026-08-05.md).
 
 ---
 
