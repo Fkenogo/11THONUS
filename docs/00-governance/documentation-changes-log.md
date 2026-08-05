@@ -2,11 +2,27 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-08-05 (Entry 067 added: `ENG-P2-001-09` Correction — Lookup-Purpose and Result-Minimisation Clarification, Founder Review, PR #64 held)
+> **Last controlled update:** 2026-08-05 (Entry 068 added: `ENG-P2-001-10` — Identity Audit and Observability Foundation implemented, application code, TDD; pending Founder-authorized review/merge)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 068 — `ENG-P2-001-10`: Identity Audit and Observability Foundation Implemented (application code, TDD)
+
+- **Date:** 5 August 2026
+- **Performed by:** Claude (AI agent), per Founder task "ENG-P2-001-10: Identity Audit and Observability Foundation," following the Founder-authorized merge of `ENG-P2-001-09` (PR #64).
+- **Classification:** Application code, tenth and final planned child package in the Identity work stream — a bounded read-side audit-record projection, privacy classification, query, and observability layer over the already-governed outbox. **Test-driven throughout**, including real Firebase Emulator Suite integration tests.
+- **Zero new domain events:** every material event named in this task's own brief already exists in `-01`/`-03`–`-09`'s merged code — confirmed by direct inspection, not new-event creation. This package is additive/read-only over the identity/loyaltyNumber/qrIdentity domain layer.
+- **Implemented:** `functions/src/domains/identityAudit/` (new domain) — canonical `IdentityAuditRecord` projection; privacy classification reusing TRD21 §21.6's governed 5-class taxonomy verbatim; a closed, fail-closed `AuditQueryAuthority` context (5 categories, mirrors `-09`'s `IdentityLookupPurpose` pattern); four bounded, paginated query functions over the existing `outboxEntries` collection (by Customer Identity ID, correlation ID, event type, event ID); an 11-signal operational-observability helper reusing the existing backend structured logger (`shared/logging/logger.ts`, not the frontend-only Sentry adapter, not a new framework); one new outbox-integrity test (added to the existing `outboxProcessor.emulator.test.ts`) confirming event content is never mutated by processing-state transitions. 4 new Firestore composite indexes added (genuinely required for the new query paths); no Rules change (deny-by-default already covers `outboxEntries`).
+- **Disclosed, not fixed (each out of this bounded task's scope):** `causationId` on the shared `DomainEvent` type is never populated anywhere; `shared/events/eventNaming.ts`'s event-type parser only matches camelCase names but every real identity event name is snake_case; no numeric retention period is governed anywhere for identity audit events (no deletion job implemented).
+- **Validation:** 37 new `functions` unit tests (384 total, up from 347); 13 new real Firebase Emulator Suite tests (159 total across 12 files, up from 146) — all passing; full monorepo `typecheck`/`lint`/`format`/`build` clean. One pre-existing, unrelated concurrency-timeout flake observed under elevated host load on a first emulator run, confirmed transient on immediate clean retry.
+- **Files created:** `functions/src/domains/identityAudit/{models,repositories,observability}/*` (6 implementation + 6 test files); `docs/05-implementation/reports/ENG-P2-001-10-implementation-report-2026-08-05.md`; this entry; `docs/changes/IMPLEMENTATION_CHANGES.md` (this cycle's entry).
+- **Files modified (narrow):** `firestore.indexes.json` (populated from empty); `functions/src/shared/outbox/outboxProcessor.emulator.test.ts` (+1 test only). `ENG-P2-001-01`, `-03`–`-09` remain merged/implemented-pending-merge as previously recorded; `-02`, `ENG-P2-001` as a whole, Authentication, ITM, and Capability 2 overall are unaffected.
+- **Dependencies added:** none.
+- **Full detail:** [`ENG-P2-001-10` Implementation Report](../05-implementation/reports/ENG-P2-001-10-implementation-report-2026-08-05.md).
 
 ---
 

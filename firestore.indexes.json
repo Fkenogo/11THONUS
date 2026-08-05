@@ -1,4 +1,37 @@
 {
-  "indexes": [],
+  "indexes": [
+    {
+      "collectionGroup": "outboxEntries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "event.aggregateId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "outboxEntries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "event.correlationId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "outboxEntries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "event.eventType", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "outboxEntries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "event.eventId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    }
+  ],
   "fieldOverrides": []
 }
