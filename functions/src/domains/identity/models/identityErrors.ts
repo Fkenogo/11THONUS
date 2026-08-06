@@ -13,6 +13,21 @@
  * Every category used here is one of the existing, closed 14 categories
  * `functions/src/shared/errors/errorCategories.ts` defines (TRD11 §11.35)
  * — no new category is introduced.
+ *
+ * Governance gap note (`ENG-P2-ARCH-CORR-004`, Finding F9): several
+ * factories below (`duplicateCustomerIdentityError`,
+ * `duplicateAuthenticationReferenceError`, `duplicateTrustReferenceError`,
+ * `authenticationReferenceLinkedToDifferentIdentityError`) use
+ * `VALIDATION_FAILED` for what is, substantively, a state/resource
+ * conflict rather than a malformed-input validation failure. This is
+ * not a miscategorisation this task corrects: the governed TRD11 §11.35
+ * closed category set has no dedicated "already exists"/"state
+ * conflict" category distinct from `IDEMPOTENCY_CONFLICT` (which is
+ * specifically idempotency-key-scoped, not a general resource-conflict
+ * category) — and this file's own rule above forbids introducing a
+ * 15th category without a TRD change. Reviewed and deferred to a
+ * Founder decision on whether to extend the governed category set; see
+ * the `ENG-P2-ARCH-CORR-004` correction report.
  */
 
 import type { ErrorCategory } from "../../../shared/errors/errorCategories";

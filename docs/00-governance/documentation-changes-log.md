@@ -2,11 +2,30 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-08-06 (Entry 073 added: `ENG-P2-ARCH-CORR-003` — Audit Projection and Lookup Atomicity Documentation Corrections)
+> **Last controlled update:** 2026-08-06 (Entry 074 added: `ENG-P2-ARCH-CORR-004` — Remaining Architecture Review Findings Reconciliation)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 074 — `ENG-P2-ARCH-CORR-004`: Remaining Architecture Review Findings Reconciliation
+
+- **Date:** 6 August 2026
+- **Performed by:** Claude (AI agent), per Founder instruction: "Proceed with: ENG-P2-ARCH-CORR-004 — Remaining Architecture Review Findings Reconciliation... Resolve or formally disposition Architecture Review Findings F5–F11... the final correction task before architecture revalidation."
+- **Classification:** Documentation-only reconciliation. Zero production-code behaviour changes. No Customer Profile, Authentication, ITM, UI, API, Rewards, or unrelated identity behaviour modified.
+- **F5 (naming drift):** confirmed real (`linkStatus` vs. `status`; `customerIdentityId` vs. `userId`). Both are live, persisted field names — documented in place, rename deferred to a future `ENG-P2-001-NAMING-001` task.
+- **F6 (outbox loop guard):** confirmed genuinely unreachable — `registerCustomerIdentity`'s return type is a compile-time-enforced 1-tuple. No genuine failing test possible without forbidden artificial orchestration. Formally dispositioned "accepted as-is, harmless and unreachable," per this task's own explicit fallback — not code-corrected.
+- **F7 (`fromCustomerProfileDocument` unused converter):** confirmed both current read paths need only a narrow single field each; wiring the converter in would add a new, currently-absent throw path — an uninvestigated behaviour change out of this task's boundary. Documented why it remains unused.
+- **F8 (`authority`/`reason` asymmetry):** confirmed real and intentional. Doc-comment note added to both affected event files.
+- **F9 (error asymmetries):** split — "unknown factory" asymmetry is an accepted architectural variance (documented, no code added); the `VALIDATION_FAILED`-for-conflict pattern surfaced a genuine governance gap in the closed TRD11 §11.35 category set, **deferred to a Founder decision**, documented and framed, not resolved unilaterally.
+- **F10 (Rules defense-in-depth):** confirmed no genuine defect — all four collections already fully denied. `firestore.rules` not touched, per the governed Rules boundary. Accepted as non-urgent deferred risk.
+- **F11 (RTM sync):** reverified still zero `ENG-P2-001` rows. Disposition unchanged from the original review — a full sync remains genuinely separate, larger governance work.
+- **Master Workflow tracker-currency correction** (required by this task's reconciliation section, not itself a numbered finding): Phase 2 section updated in place to reflect nine of ten `ENG-P2-001` packages complete and F1–F4 corrected, matching the Programme/Prompt Register (already accurate).
+- **Validation:** full monorepo `install`/`typecheck`/`lint`/`format:check` clean. No test added or modified — no production behaviour changed to regress-test.
+- **Files modified:** `authenticationReference.ts`; `authenticationReferenceRepository.ts`; `customerProfileDocument.ts`; `loyaltyNumberEvents.ts`; `qrIdentityEvents.ts`; `loyaltyNumberErrors.ts`; `identityErrors.ts`; `11thonus-master-workflow.md`; `ENG-P2-ARCH-REVIEW-001-...md` (Findings F5–F11 status only, plus a Correction Plan status addendum); this entry; `docs/changes/IMPLEMENTATION_CHANGES.md` (correction entry). **Files created:** `ENG-P2-ARCH-CORR-004-remaining-architecture-review-findings-reconciliation-2026-08-06.md`.
+- **Full detail:** [`ENG-P2-ARCH-CORR-004` Correction Report](../05-implementation/reports/ENG-P2-ARCH-CORR-004-remaining-architecture-review-findings-reconciliation-2026-08-06.md).
 
 ---
 

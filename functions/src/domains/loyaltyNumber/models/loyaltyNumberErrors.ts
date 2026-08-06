@@ -10,6 +10,15 @@
  * Every category used here is one of the existing, closed 14 categories
  * `functions/src/shared/errors/errorCategories.ts` defines (TRD11 §11.35)
  * — no new category is introduced.
+ *
+ * Asymmetry note (`ENG-P2-ARCH-CORR-004`, Finding F9): unlike
+ * `qrIdentityErrors.ts`'s `unknownQrReferenceError`, this file has no
+ * "unknown/not-found" factory. This is an accepted architectural
+ * variance, not a gap: `loyaltyNumberRepository.ts`'s lookup functions
+ * (`getLoyaltyNumberAssignmentForIdentity`, `getLoyaltyNumberAssignmentByValue`)
+ * return `undefined` on not-found by design, rather than throwing —
+ * there is no current code path in this domain that needs a "loyalty
+ * number not found" error to throw.
  */
 
 import type { ErrorCategory } from "../../../shared/errors/errorCategories";
