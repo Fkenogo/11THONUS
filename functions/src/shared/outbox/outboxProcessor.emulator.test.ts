@@ -131,6 +131,45 @@ describe("processOutboxEntries", () => {
 
     expect(handlerCalls).toBe(0);
   });
+
+  it("never mutates the immutable event content — success, retry, and dead-letter transitions all leave `event` byte-identical to what was written (ENG-P2-001-10 audit-integrity requirement)", async () => {
+    await seedPendingEntry("evt-audit-success");
+    await seedPendingEntry("evt-audit-retry");
+    await seedPendingEntry("evt-audit-dead-letter");
+
+    const before = {
+      success: (await db.collection("outboxEntries").doc("evt-audit-success").get()).data()?.[
+        "event"
+      ],
+      retry: (await db.collection("outboxEntries").doc("evt-audit-retry").get()).data()?.["event"],
+      deadLetter: (
+        await db.collection("outboxEntries").doc("evt-audit-dead-letter").get()
+      ).data()?.["event"],
+    };
+
+    await processOutboxEntries(db, async (event) => {
+      if (event.eventId === "evt-audit-retry") {
+        throw new RetryableProcessingError("temporary downstream failure");
+      }
+      if (event.eventId === "evt-audit-dead-letter") {
+        throw new NonRetryableProcessingError("unsupported event version");
+      }
+    });
+
+    const after = {
+      success: (await db.collection("outboxEntries").doc("evt-audit-success").get()).data()?.[
+        "event"
+      ],
+      retry: (await db.collection("outboxEntries").doc("evt-audit-retry").get()).data()?.["event"],
+      deadLetter: (
+        await db.collection("outboxEntries").doc("evt-audit-dead-letter").get()
+      ).data()?.["event"],
+    };
+
+    expect(after.success).toEqual(before.success);
+    expect(after.retry).toEqual(before.retry);
+    expect(after.deadLetter).toEqual(before.deadLetter);
+  });
 });
 
 describe("claimOutboxEntry — concurrent-worker safety (ENG-P1-002-CR1)", () => {
