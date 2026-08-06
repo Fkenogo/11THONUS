@@ -279,6 +279,29 @@ describe("recoverCustomerIdentityStatus", () => {
 
     const proofDoc = await db.collection("recoveryProofReferences").doc("proof_cust_8").get();
     expect(proofDoc.exists).toBe(true);
+    const proofData = proofDoc.data() ?? {};
+    expect(Object.keys(proofData).sort()).toEqual(
+      [
+        "id",
+        "schemaVersion",
+        "status",
+        "proofReference",
+        "customerIdentityId",
+        "createdAt",
+        "createdBy",
+        "updatedAt",
+        "updatedBy",
+      ].sort(),
+    );
+    expect(proofData["id"]).toBe("proof_cust_8");
+    expect(proofData["schemaVersion"]).toBe(1);
+    expect(proofData["status"]).toBe("active");
+    expect(proofData["proofReference"]).toBe("proof_cust_8");
+    expect(proofData["customerIdentityId"]).toBe("cust_8");
+    expect(proofData["createdAt"]).toBeDefined();
+    expect(proofData["createdBy"]).toBe("support_1");
+    expect(proofData["updatedAt"]).toBeDefined();
+    expect(proofData["updatedBy"]).toBe("support_1");
   });
 
   it("rejects duplicate recovery commands beyond idempotent replay", async () => {
@@ -302,6 +325,11 @@ describe("recoverCustomerIdentityStatus", () => {
     };
 
     const first = await recoverCustomerIdentityStatus(db, params);
+
+    const firstProofSnapshot = await db.collection("recoveryProofReferences").get();
+    expect(firstProofSnapshot.docs).toHaveLength(1);
+    const firstCreatedAt = firstProofSnapshot.docs[0]?.data()["createdAt"];
+
     const second = await recoverCustomerIdentityStatus(db, params);
     expect(second.status).toBe(first.status);
 
@@ -310,6 +338,10 @@ describe("recoverCustomerIdentityStatus", () => {
       (doc) => (doc.data()["event"] as { eventType: string }).eventType,
     );
     expect(events.filter((t) => t.includes("identity_recovered"))).toHaveLength(1);
+
+    const secondProofSnapshot = await db.collection("recoveryProofReferences").get();
+    expect(secondProofSnapshot.docs).toHaveLength(1);
+    expect(secondProofSnapshot.docs[0]?.data()["createdAt"]).toEqual(firstCreatedAt);
   });
 
   it("rejects recovery for an identity not in a recovery-eligible status", async () => {
@@ -329,6 +361,9 @@ describe("recoverCustomerIdentityStatus", () => {
         requestHash: "hash_r3_recover",
       }),
     ).rejects.toThrow(IdentityDomainError);
+
+    const proofSnapshot = await db.collection("recoveryProofReferences").get();
+    expect(proofSnapshot.docs).toHaveLength(0);
   });
 
   it("rejects a recovery proof issued for a different target identity", async () => {
