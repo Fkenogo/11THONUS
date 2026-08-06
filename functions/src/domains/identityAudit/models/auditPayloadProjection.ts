@@ -100,6 +100,18 @@ export function projectAuditPayload(eventType: string, rawPayload: unknown): Aud
       // The settled identifier value is deliberately never picked.
       return {};
 
+    case "trust_reference_updated":
+      // trustRecordId is an opaque, enumerable pointer to an external ITM
+      // record — deliberately never picked, matching the same treatment
+      // as recoveryProofReference/referenceId/settled Loyalty Number and
+      // QR reference elsewhere in this catalogue (ENG-P2-ARCH-CORR-003,
+      // Finding F3). `-01` defines this event's domain model, but no
+      // repository currently emits it (no persistence call site exists
+      // yet); this explicit case ensures it is not silently caught by
+      // the unrecognised-event fallback once a future ITM integration
+      // wires it into an actual write path.
+      return {};
+
     case "loyalty_number_issuance_collision_detected":
       return pick(rawPayload, ISSUANCE_COLLISION_FIELDS);
 
