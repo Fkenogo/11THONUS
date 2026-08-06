@@ -126,6 +126,16 @@ describe("projectAuditPayload", () => {
     });
   });
 
+  it("omits the raw trust record reference from a trust_reference_updated payload, returning no fields (ENG-P2-ARCH-CORR-003, Finding F3)", () => {
+    const projected = projectAuditPayload("identity.trust_reference_updated.v1", {
+      customerIdentityId: "cust_1",
+      trustRecordId: "raw-trust-record-id-xyz",
+    });
+
+    expect(JSON.stringify(projected)).not.toContain("raw-trust-record-id-xyz");
+    expect(projected).toEqual({});
+  });
+
   it("fails closed for an unrecognised event type — never passes through an arbitrary payload", () => {
     const projected = projectAuditPayload("identity.some_future_event.v1", {
       customerIdentityId: "cust_1",

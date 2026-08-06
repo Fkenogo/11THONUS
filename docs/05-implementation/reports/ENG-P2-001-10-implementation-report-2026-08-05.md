@@ -170,6 +170,7 @@ Founder review of PR #65 positively reviewed the implementation but withheld mer
 | `qr_identity_regenerated` | `customerIdentityId`, `qrReference`, `previousQrReference` | *(none)* | `qrReference`, `previousQrReference` |
 | `loyalty_number_issuance_collision_detected` | `customerIdentityId`, `attemptNumber` | `attemptNumber` | — |
 | `loyalty_number_issuance_failed` | `customerIdentityId`, `attemptsMade` | `attemptsMade` | — |
+| `trust_reference_updated` [added `ENG-P2-ARCH-CORR-003`, 2026-08-06 — Finding F3; `-01`-defined, not yet emitted by any repository] | `customerIdentityId`, `trustRecordId` | *(none)* | `trustRecordId` |
 | *any unrecognised event type* | *(unknown)* | `{ payloadOmitted: true }` | everything |
 
 Preserved on every record regardless of payload mapping (already top-level `IdentityAuditRecord` fields, not payload): `eventType`, `customerIdentityId`, `correlationId`, `causationId`, `occurredAt`, `persistedAt`, `privacyClassification`, `status`. "Opaque internal audit reference where already governed" (the Founder's principle's own phrase) has no existing concept to reuse in this codebase today — none was fabricated.

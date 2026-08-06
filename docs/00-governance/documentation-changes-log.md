@@ -2,11 +2,25 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-08-06 (Entry 072 added: `ENG-P2-ARCH-CORR-002` — Cross-Package Identity Integration Validation)
+> **Last controlled update:** 2026-08-06 (Entry 073 added: `ENG-P2-ARCH-CORR-003` — Audit Projection and Lookup Atomicity Documentation Corrections)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 073 — `ENG-P2-ARCH-CORR-003`: Audit Projection and Lookup Atomicity Documentation Corrections
+
+- **Date:** 6 August 2026
+- **Performed by:** Claude (AI agent), per Founder instruction: "TASK — ENG-P2-ARCH-CORR-003 — Audit Projection and Lookup Atomicity Documentation Corrections... Resolve Architecture Review Findings F3 and F4."
+- **Classification:** Bounded application-code and documentation correction, TDD for F3. No Customer Profile, Authentication, ITM, UI, API, Rewards, or unrelated identity behaviour modified. Outbox/lookup architecture not redesigned.
+- **F3 evidence and determination:** `trust_reference_updated` (`identityEvents.ts:199`) had no case in `auditPayloadProjection.ts`, falling to the generic unrecognised-event fallback. Root-cause investigation confirmed the event is a real, unit-tested `-01`-defined domain function (`setTrustReference`, `customerIdentity.ts:273-290`) that no repository currently calls — a forward-defined aggregate capability for a future ITM integration, not dead code. Determination: explicit privacy-safe projection required. Applied: `case "trust_reference_updated": return {};` — its only field, `trustRecordId`, is an opaque enumerable ITM-record reference, treated identically to `recoveryProofReference`/`referenceId` elsewhere in the catalogue.
+- **F4 evidence and determination:** `identityLookupRepository.ts`'s header comment claimed single-transaction atomicity between the identity read and the audit write. Direct code trace confirmed the read is a plain, non-transactional `.get()`, fully completed before the audit write's own separate transaction begins — no data-integrity defect (a `.get()` cannot produce torn writes), only the comment's specific atomicity claim was inaccurate. Determination: comment-only correction, zero behaviour change — confirmed via `git diff` (every changed line is a JSDoc comment line).
+- **Tests:** one new unit test in `auditPayloadProjection.test.ts` (RED confirmed before the fix, GREEN after). `identityLookupRepository.emulator.test.ts` deliberately not modified — its unmodified, continued pass is the required regression proof for F4.
+- **Validation:** full monorepo `typecheck`/`lint`/`format:check`/`build` clean; `functions` unit tests 400/400 (399 pre-existing + 1 new); real Firebase Emulator Suite 172/172 across 13 files, confirmed on two full-suite runs; `apps/web` 259/259.
+- **Files modified:** `auditPayloadProjection.ts`; `auditPayloadProjection.test.ts`; `identityLookupRepository.ts` (comment only); `ENG-P2-001-10-implementation-report-2026-08-05.md` §38.3 (audit payload catalogue, new row); `ENG-P2-ARCH-REVIEW-001-...md` (Findings F3/F4 status only); this entry; `docs/changes/IMPLEMENTATION_CHANGES.md` (correction entry). **Files created:** `ENG-P2-ARCH-CORR-003-audit-projection-and-lookup-atomicity-corrections-2026-08-06.md`.
+- **Full detail:** [`ENG-P2-ARCH-CORR-003` Correction Report](../05-implementation/reports/ENG-P2-ARCH-CORR-003-audit-projection-and-lookup-atomicity-corrections-2026-08-06.md).
 
 ---
 

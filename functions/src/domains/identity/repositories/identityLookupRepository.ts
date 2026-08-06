@@ -57,13 +57,24 @@
  * enumeration/probing beyond what the underlying `-04`/`-08` repositories
  * (whose own, more specific errors remain unchanged) provide on their own.
  *
- * Every lookup runs inside a Firestore transaction so audit-worthy
- * attempts (support/recovery/authentication purposes, and any failed QR
- * lookup regardless of purpose — the "likely candidates" this task's own
- * brief names) can emit a privacy-safe `IdentityLookupAttempted` event
- * atomically with the read that produced it. Ordinary internal-service and
- * merchant-transaction successes are not audited, to avoid emitting on
- * every routine scan.
+ * Consistency model (corrected, ENG-P2-ARCH-CORR-003, Finding F4 — a
+ * prior version of this comment overstated the guarantee as single-
+ * transaction atomicity, which the code never implemented): the identity
+ * read is a plain, non-transactional `.get()`; a privacy-safe
+ * `IdentityLookupAttempted` audit event is then written inside its own,
+ * separate Firestore transaction — never the same transaction as the
+ * read. For outcomes requiring audit (support/recovery/authentication
+ * purposes, and any failed QR lookup regardless of purpose — the "likely
+ * candidates" this task's own brief names), the audit write is awaited
+ * before the caller receives a result: if it fails, that failure
+ * propagates and the caller never sees a "resolved" result whose audit
+ * entry doesn't exist. This is a required, sequentially-coupled write —
+ * not a best-effort side effect, and not single-transaction atomicity.
+ * Ordinary internal-service and merchant-transaction successes are not
+ * audited at all, to avoid emitting on every routine scan. Retries are
+ * idempotent: the audit event's outbox document is keyed by the caller-
+ * supplied `eventId`, so a replay with the same envelope naturally
+ * deduplicates.
  */
 
 import type { Firestore } from "firebase-admin/firestore";
