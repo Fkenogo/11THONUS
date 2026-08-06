@@ -2,11 +2,26 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-08-06 (Entry 071 added: `ENG-P2-ARCH-CORR-001` — Recovery Proof Reference Metadata Contract Correction)
+> **Last controlled update:** 2026-08-06 (Entry 072 added: `ENG-P2-ARCH-CORR-002` — Cross-Package Identity Integration Validation)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 072 — `ENG-P2-ARCH-CORR-002`: Cross-Package Identity Integration Validation
+
+- **Date:** 6 August 2026
+- **Performed by:** Claude (AI agent), per Founder instruction: "Proceed with: ENG-P2-ARCH-CORR-002 — Cross-Package Identity Integration Validation... Resolve Architecture Review Finding F2 by adding bounded cross-package integration tests..."
+- **Classification:** Test-only correction, TDD. No production code, Customer Profile, Authentication provider, ITM, UI, public API, or Reward logic added.
+- **Defect/gap corrected:** `ENG-P2-ARCH-REVIEW-001` Finding F2 (P2) — three cross-package integration-test gaps (QR regeneration old/new-reference join, cross-package idempotent replay, audit write/read path join).
+- **Integration strategy:** one new dedicated emulator test file sequences real, already-merged public repository functions across all 7 architecture-review-mandated cross-package scenarios — no test-only business logic introduced; no production orchestration/composite service exists anywhere in the domain layer (confirmed by repo-wide search), so the longest real chain of governed package commands is exercised where no single composite command exists, per the task's own guidance.
+- **Result:** all 7 scenarios (8 tests) pass; zero production defects found. Two test-authoring bugs (not production issues) were caught and fixed during development: Loyalty Number fixture values violating the canonical format's letter/digit exclusions, and outbox event-type assertions using the bare name instead of the real namespaced format.
+- **Coverage matrix:** full per-scenario matrix (packages crossed, existing vs. new coverage, result, remaining limitation) recorded in the correction report — all new coverage is emulator-integration at the repository-contract level; UI/API coverage remains explicitly deferred (none exists yet).
+- **Validation:** full monorepo `typecheck`/`lint`/`format:check`/`build` clean; `functions` unit tests 399/399 (unchanged); real Firebase Emulator Suite 172/172 across 13 files (164 pre-existing + 8 new), confirmed on the targeted run and twice on the full suite; `apps/web` 259/259.
+- **Files modified:** `ENG-P2-ARCH-REVIEW-001-...md` (Finding F2 status only); this entry; `docs/changes/IMPLEMENTATION_CHANGES.md` (correction entry). **Files created:** `crossPackageIdentityIntegration.emulator.test.ts`; `ENG-P2-ARCH-CORR-002-cross-package-identity-integration-validation-2026-08-06.md`.
+- **Full detail:** [`ENG-P2-ARCH-CORR-002` Correction Report](../05-implementation/reports/ENG-P2-ARCH-CORR-002-cross-package-identity-integration-validation-2026-08-06.md).
 
 ---
 
