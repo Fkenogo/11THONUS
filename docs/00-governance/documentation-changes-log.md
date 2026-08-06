@@ -2,11 +2,25 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-08-05 (Entry 069 added: `ENG-P2-001-10` Correction — Audit Read-Model Minimisation, Founder Review, PR #65 held)
+> **Last controlled update:** 2026-08-06 (Entry 070 added: `ENG-P2-ARCH-REVIEW-001` — Capability 2 Customer Identity Architecture Review)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 070 — `ENG-P2-ARCH-REVIEW-001`: Capability 2 Customer Identity Architecture Review
+
+- **Date:** 6 August 2026
+- **Performed by:** Claude (AI agent), per Founder instruction: "Proceed with: ENG-P2-ARCH-REVIEW-001 — Capability 2 Customer Identity Architecture Review... The review should determine whether the nine merged packages operate as one coherent capability and whether targeted corrections are required before -02 or Authentication work begins."
+- **Classification:** Review and determination only. No application code, test code, Firestore Rule, index, or configuration changed. `ENG-P2-001-02`, Authentication, ITM, UI, and API not begun.
+- **Scope:** bounded architecture review of the nine merged `ENG-P2-001` child packages (`-01`, `-03`–`-10`) across 12 review areas (capability boundary, aggregate/ownership, persistence, transactions, idempotency/concurrency, events/audit, error model, security/privacy, Rules/indexes, integration test coverage, operational readiness, governance/documentation consistency). Evidence gathered via direct reading of governing documents/decisions and direct code review (own reading plus three parallel read-only research passes, all findings independently spot-verified against live code before inclusion).
+- **Determination:** Ready with targeted corrections. No P0 (critical integrity/security) defect found. 12 findings classified: 1 P1 (`recoveryProofReferences`'s first write uses `stampUpdate` instead of `stampCreate`, omitting `createdAt`/`createdBy`/`id`/`schemaVersion`), 5 P2 (an audit-catalogue gap for `trust_reference_updated`, a doc-comment/code atomicity mismatch in `identityLookupRepository.ts`, two error-model asymmetries, and the governance-tracker staleness corrected below), 3 P3 (a dead-code converter, a latent structural inconsistency, a naming-drift item), 1 informational (Rules defense-in-depth), and 1 informational (RTM never synchronized with this capability, flagged for a future task). Full findings register, cross-package consistency matrix, integration coverage matrix, outstanding governance register, and proposed (not executed) correction plan in the [Architecture Review Report](../05-implementation/reports/ENG-P2-ARCH-REVIEW-001-capability-2-customer-identity-architecture-review-2026-08-06.md).
+- **Confirmed:** nine of ten `ENG-P2-001` child packages complete; `ENG-P2-001-02` (Customer Profile) remains outstanding, correctly gated by `DEC-PROD-012` (still `OPEN_FOUNDER`) per `ENG-P2-GATE-001`'s own narrow scoping (only `-02`'s `gender` field and `-05`'s document-level schema "freeze"). No package's own scope or completion status was found to be misrepresented as "all ten complete" in any live tracker — a targeted grep for that literal phrase returned zero matches in the Master Workflow or the Coding-Agent Prompt Register.
+- **Minimal live-tracker correction applied:** the Coding-Agent Prompt Register's `ENG-P2-001` row stated (as of its 2026-08-04 synchronization) that "`-02`, `-07`–`-10` remain unimplemented" — stale since `-07` through `-10` were subsequently implemented and merged (2026-08-05/06). Corrected in place, original wording preserved via bracket marker per this repository's established amendment convention; no other tracker required correction (the Engineering Implementation Programme was found already accurate).
+- **Files modified:** `docs/05-implementation/change-tracking/coding-agent-prompt-register.md` (narrow `ENG-P2-001` row correction only). **Files created:** [`ENG-P2-ARCH-REVIEW-001-capability-2-customer-identity-architecture-review-2026-08-06.md`](../05-implementation/reports/ENG-P2-ARCH-REVIEW-001-capability-2-customer-identity-architecture-review-2026-08-06.md); this entry; `docs/changes/IMPLEMENTATION_CHANGES.md` (corresponding entry). No historical report, EIR record, or Decision Register entry modified.
+- **Full detail:** [`ENG-P2-ARCH-REVIEW-001` Architecture Review Report](../05-implementation/reports/ENG-P2-ARCH-REVIEW-001-capability-2-customer-identity-architecture-review-2026-08-06.md).
 
 ---
 

@@ -1,0 +1,230 @@
+> **Title:** ENG-P2-ARCH-REVIEW-001 — Capability 2 Customer Identity Architecture Review
+> **Version:** 1.0 · **Status:** Review and determination record — no implementation authorized · **Classification:** Working (execution-layer review record)
+> **Governing document:** `DEC-IDENTITY-001`; amended `DEC-PROV-004`; amended `DEC-SEC-001`; `DEC-DATA-007`; `DEC-ID-003`; `DEC-PROD-012`; [`ENG-P2-ARCH-001`](../../05-implementation/roadmap/ENG-P2-ARCH-001-customer-identity-architecture.md); [`ENG-P2-001-PLAN-001`](../../05-implementation/roadmap/ENG-P2-001-PLAN-001-customer-identity-decomposition-plan.md); [`ENG-P2-GATE-001`](../../05-implementation/roadmap/ENG-P2-GATE-001-dec-prod-012-scope-determination.md); [`CDR-001`](../roadmap/CDR-001-capability-delivery-roadmap.md)
+> **Source-of-truth path:** `docs/05-implementation/reports/ENG-P2-ARCH-REVIEW-001-capability-2-customer-identity-architecture-review-2026-08-06.md`
+> **Last controlled update:** 2026-08-06 (`ENG-P2-ARCH-REVIEW-001` — created)
+
+# ENG-P2-ARCH-REVIEW-001 — Capability 2 Customer Identity Architecture Review
+
+**This is a review and determination record. No application code, test code, Firestore Rule, index, or configuration was changed by this task. No finding was implemented. Customer Profile (`ENG-P2-001-02`), Authentication, ITM, UI, and API work were not begun.**
+
+## 1. Executive Summary
+
+Nine of the ten `ENG-P2-001` Customer Identity child packages (`-01`, `-03` through `-10`) are merged to `main`. `ENG-P2-001-02` (Customer Profile) remains outstanding, correctly gated by the still-open `DEC-PROD-012` (gender-field schema completion). The nine merged packages implement a coherent, single-owner Identity Aggregate with clean separation from Authentication and Identity Trust Management (ITM), consistent event/audit evidence, deny-by-default Firestore Rules, and deliberate, verified privacy-minimising query projections. No P0 (critical integrity/security) defect was found. Nine findings are classified P1–P3: one P1 (a persistence-metadata defect on `recoveryProofReferences`' first write), five P2 (an audit-catalogue gap, a doc-comment/code atomicity mismatch, two error-model asymmetries, and two governance-tracker staleness items), and three P3 (a converter dead-code gap, a latent structural inconsistency, and a missing cross-package integration test category). **Determination: Ready with targeted corrections** — the identified defects are real but bounded, none blocks `-02` or Authentication architecturally, and none requires unwinding merged work.
+
+## 2. Starting Repository State and Entry Gate
+
+- `origin/main` confirmed to include merge commit `bc87de7e25bbf678b1af752ebb666f84725e7a77` (`ENG-P2-001-10` correction, PR #65) before this review began.
+- Isolated worktree created at a fully-qualified absolute path (no `-C` nesting): `git worktree add -b review/eng-p2-arch-review-001-capability-2-review <path> origin/main`. Confirmed clean, 0/0 divergence from `origin/main` at creation, no merge/rebase in progress.
+- Primary dirty checkout (`/Users/theo/11THONUS`, `chore/eng-p1-001-closure`) not touched by this task.
+- Baseline validation on the fresh worktree passed cleanly on first attempt: `tsc --noEmit` clean, `pnpm lint` clean, `pnpm --filter functions exec vitest run` — 395/395 tests green.
+- Package presence confirmed directly against the file tree: `ENG-P2-001-01` (identity domain foundation), `-03` (Loyalty Number), `-04` (QR Identity), `-05` (Identity Persistence — `users`/`customerProfiles`), `-06` (Lifecycle/Status), `-07` (Recovery), `-08` (Authentication Reference Linking), `-09` (Lookup), `-10` (Audit) all present. `ENG-P2-001-02` (Customer Profile) confirmed **not** present — `customerProfileDocument.ts` exists but its own doc comment discloses it is `-05`'s minimal shell (`id`, `userId`, `loyaltyNumber?`, `qrReference?` + `BaseMetadata` only), not `-02`'s full profile type.
+- `DEC-PROD-012` confirmed still `OPEN_FOUNDER` in the Decision Register (§2 below).
+- This report corrects any prior framing that could be read as "all ten child packages complete": **nine of ten complete; `ENG-P2-001-02` remains outstanding and is gated by `DEC-PROD-012`.**
+
+## 3. Evidence Base
+
+**Read directly by the reviewer:** Decision Register (`DEC-PROD-012` full entry, `DEC-IDENTITY-001` full entry, `DEC-ID-001`); `ENG-P2-ARCH-001` (full, 153 lines); `ENG-P2-GATE-001` (full, 114 lines); `ENG-P2-001-PLAN-001` §14 Decision and Ambiguity Register; `CDR-001` Capability 2 section (lines 112–141); TRD10 §10.6 Identity Domain Collections (`users`, `customerProfiles`); TRD12 §12.6 Account Identity Rules (AIR-001–006); Master Workflow (`ENG-P2-001`/Capability 2 entries); Coding-Agent Prompt Register (`ENG-P2-001` row); Requirements Traceability Matrix (grep for `ENG-P2-001` and `identity`); Engineering Implementation Programme; `customerProfileDocument.ts` (full); `identityLifecycleRepository.ts`, `identityLookupRepository.ts`, `customerIdentityRepository.ts`, `auditPayloadProjection.ts`, `identityEvents.ts`, `loyaltyNumberErrors.ts`, `qrIdentityErrors.ts`, `identityErrors.ts`, `baseMetadata.ts`, `customerIdentity.ts` (targeted sections, exact citations in §9).
+
+**Read by three parallel read-only research agents (code-level evidence, no fixes proposed), findings independently spot-verified by the reviewer against live code before inclusion below:**
+- Agent 1 — persistence, transactions, idempotency/concurrency across all four domains and shared infrastructure (`baseMetadata.ts`, `idempotencyService.ts`, `outboxWriter.ts`/`outboxProcessor.ts`, `domainEvent.ts`), plus every `*.emulator.test.ts` file.
+- Agent 2 — events, error model, audit consistency (`identityEvents.ts`, `loyaltyNumberEvents.ts`, `qrIdentityEvents.ts`, `eventNaming.ts`, the full `identityAudit/` directory, all four domains' error factories, `platformError.ts`).
+- Agent 3 — security/privacy/enumeration resistance, Firestore Rules (`firestore.rules`, full 50 lines), indexes (`firestore.indexes.json`), and a full test-file inventory with cross-package-vs-isolated classification, including three named end-to-end scenario checks.
+
+Not re-read in full this task (content substantially established earlier in this same engineering session, which authored most of the 9 implementation reports directly): TRD11, PRD2 §3–§10, the 9 implementation reports. No finding below rests on an implementation-report summary alone — every finding cites live code or a live governing document directly.
+
+## 4. Review Area Assessments
+
+### 4.1 Capability Boundary
+
+Clean. `ENG-P2-ARCH-001` §2 explicitly excludes authentication credentials, provider tokens, OTP secrets, verification state, trust level, and role/permission context from the Identity Aggregate. Agent 3 confirms **no Authentication-provider SDK or credential-handling code exists anywhere in the four domains** — the only non-Firestore imports across `identity`/`identityAudit`/`loyaltyNumber`/`qrIdentity` are `firebase-admin/firestore` types and `node:crypto`. No `phone`/`email`/`otp`/`credential`/`password` data field exists anywhere; the only hits are the closed-set enum literal `"phone_otp"` (a reference-type tag, never a raw value) and doc comments/tests asserting the absence. `userDocument.test.ts:48-51` actively asserts forbidden keys (`authuid`, `password`, `token`, `verified`, `verificationstate`) are never persisted. No UI, API, Reward, or Recognition code entered any of the nine packages.
+
+### 4.2 Aggregate and Ownership
+
+One authoritative owner per concept, confirmed directly:
+- Customer Identity ID / status → `users/{id}` (`customerIdentityRepository.ts`, `identityLifecycleRepository.ts`).
+- Loyalty Number → `loyaltyNumbers/{value}` is authoritative; `customerProfiles.loyaltyNumber` and `users` are non-authoritative projections (documented in `customerProfileDocument.ts:15-18`).
+- QR Identity → `qrIdentityRecords/{value}` authoritative; `customerProfiles.qrReference` a projection.
+- Authentication References → `authenticationReferences/{type}:{id}` authoritative (`-08`).
+- Recovery references → `recoveryProofReferences/{proofReference}` (consumed-marker, not a data record — §4.3 below).
+- Audit evidence → `outboxEntries` is the immutable record; `identityAuditQueryRepository.ts` is a read-only, privacy-minimised projection over it, never a second writer.
+
+No duplicate/competing source of truth found. **Naming drift found, not ownership duplication:** `linkStatus` (domain type + `users` projection) vs. `status` (authoritative `authenticationReferences` doc) name the identical concept differently; `customerIdentityId` (used throughout) vs. `userId` (`customerProfileDocument.ts:30`) name the identical concept differently in one collection. Both are cosmetic — no code path reads the wrong field — but are real naming-consistency defects (Finding F5, §9).
+
+### 4.3 Persistence Coherence
+
+Collection boundaries, converters, and `BaseMetadata` conformance are correct across every collection **except one**: `recoveryProofReferences`' own first-ever write uses `stampUpdate()` (only `updatedAt`/`updatedBy`) instead of `stampCreate()` (all four `BaseMetadata` timestamp/actor fields) at `identityLifecycleRepository.ts:243-247`, and the write also omits `id`/`schemaVersion` entirely — unlike every other first-write document in the capability. This is Finding F1 (§9), the review's highest-severity finding.
+
+`authenticationReferences` and `recoveryProofReferences` are the only two collections in the capability with no dedicated typed `fromXDocument` converter performing narrowed validation on read — every other collection (`users`, `customerProfiles`, `loyaltyNumbers`, `qrIdentityRecords`) has one. `customerProfileDocument.ts`'s own `fromCustomerProfileDocument` converter exists, is fully unit-tested (`customerProfileDocument.test.ts`), and correctly implements malformed-record detection — but is **never called by any production code path** (confirmed by repo-wide grep: only its own test file imports it). This is dead code that also means nothing currently validates `customerProfiles` documents against malformation on read (Finding F7, §9).
+
+### 4.4 Transaction Boundaries
+
+Every identity-mutating write (`customerIdentityRepository.ts`, `identityLifecycleRepository.ts`, `authenticationReferenceRepository.ts`, `loyaltyNumberRepository.ts`, `qrIdentityRepository.ts`) is confirmed to compose the domain-state write and its outbox event write inside one `db.runTransaction(...)` call — no partial-state path found by either the reviewer's direct reads or Agent 1's independent pass. **One documented guarantee does not match its implementation:** `identityLookupRepository.ts`'s header comment (lines 60-65) states every lookup "runs inside a Firestore transaction so audit-worthy resolution succeeds/fails atomically with the read that produced it." The actual code (confirmed by direct trace: `runLookup` at line 190 fully awaits and returns the plain, non-transactional `.get()`-based `resolve()` call *before* `emitAuditEvent`'s separate `db.runTransaction` at line 228 ever begins) performs the identity read as an ordinary `.get()` outside any transaction; only the subsequent audit-event write is transactional, and it is a *different*, later transaction. This does not create a data-integrity defect (the caller's lookup result is not invalidated by an audit-write failure either way), but the comment overstates the actual guarantee (Finding F4, §9).
+
+### 4.5 Idempotency and Concurrency
+
+Confirmed idempotent-replay behavior at the repository level for every mutating command: `customerIdentityRepository.emulator.test.ts:89-97`, `authenticationReferenceRepository.emulator.test.ts:99-124`/`528-568`, `loyaltyNumberRepository.emulator.test.ts:141-154`, `qrIdentityRepository.emulator.test.ts:130-140`, `identityLifecycleRepository.emulator.test.ts:284-313`. Recovery-proof reuse is a distinct, correctly-separated concern from command-idempotency (§6 of `identityLifecycleRepository.ts`'s own header, verified against the code: an identical idempotency key short-circuits before the proof-reference check is ever reached; only a genuinely different command presenting an already-consumed proof hits `recoveryProofAlreadyUsedError`) — proven live in `identityLifecycleRepository.emulator.test.ts:382-425`. `qrIdentityRepository.ts`/`loyaltyNumberRepository.ts` both apply an `${eventId}-${index}` suffix guard when writing more than one outbox event per transaction; `customerIdentityRepository.ts`'s equivalent loop (lines 89-102) does not — currently inert only because `registerCustomerIdentity`'s return type (`customerIdentity.ts:88-90`) is a hard-typed one-element tuple, but the pattern inconsistency itself is real (Finding F6, §9). No missing-lock or double-issuance defect found in any of the emulator concurrency tests reviewed.
+
+### 4.6 Event and Audit Consistency
+
+Event envelopes are structurally consistent (`eventId`, `correlationId`, `actor`, `occurredAt`) across all four domains. `authority`/`reason` fields are present on the large majority of identity-domain events (42 `authority:` occurrences in `identityEvents.ts` alone) but on **zero** `loyaltyNumber`/`qrIdentity` events (confirmed: `grep authority|reason` on `loyaltyNumberEvents.ts` and `qrIdentityEvents.ts` returns no matches) — an asymmetry consistent with those two domains' narrower, non-authority-gated operations, but not explicitly documented as an intentional design choice anywhere (Finding F8, §9, low severity). The `-10` audit-minimisation correction is verified working as designed: `auditPayloadProjection.ts` is an explicit per-event-type allow-list (never a raw pass-through), unknown event types fail closed to `{ payloadOmitted: true }`, and this is proven by real emulator round-trips (`identityAuditQueryRepository.emulator.test.ts:286-451`) asserting the projected payload excludes raw identifiers while the underlying `outboxEntries` record still contains them unchanged. **One real catalogue gap:** `trust_reference_updated` (`identityEvents.ts:199`, a genuine `-01`-scope event) has no `case` in `auditPayloadProjection.ts`'s switch and silently falls to the safe-but-uninformative default (`payloadOmitted: true`) — not a privacy leak, but an audit-completeness gap, because the `-10` projection module was built without enumerating every event `-01` itself defines (Finding F3, §9).
+
+### 4.7 Error Model
+
+Category consistency is broadly sound; this review did not redesign the error model, per the task's own instruction. Two concrete asymmetries found: (1) `qrIdentityErrors.ts` has a dedicated "unknown reference" factory (`unknownQrReferenceError`); `loyaltyNumberErrors.ts` has no equivalent "record does not exist" factory in its 9-factory list — a structural asymmetry between two otherwise-parallel domains (Finding F9, §9, low severity). (2) `authenticationReferenceLinkedToDifferentIdentityError` (`identityErrors.ts:256-265`) is categorized `VALIDATION_FAILED`, though it represents a state conflict (an already-linked reference), not a field-validation failure — inconsistent with this codebase's own convention of using a state-transition category for state conflicts elsewhere (Finding F9, same entry). Raw-error-passthrough on transaction `catch` blocks is uniform across repositories (not domain-specific), consistent with the shared idempotency-service contract — not flagged as a defect.
+
+### 4.8 Security and Privacy
+
+No enumeration weakness found. All four lookup types (Customer Identity ID, Loyalty Number, QR reference, Authentication Reference) resolve via exact doc-ID `.get()` only — no `.where()`-based fuzzy/prefix matching exists anywhere in the resolution chain (confirmed: the only `.where()` calls in the entire `functions/src/domains` tree are inside `identityAuditQueryRepository.ts`'s four bounded audit queries, unrelated to identity resolution). "Never existed" and "exists but inactive/invalidated" collapse to an identical `identityLookupNotFoundError(lookupType)` outcome for all four lookup types — confirmed both by direct code trace and by the live emulator test `identityLookupRepository.emulator.test.ts:299-334`. Recovery-proof reuse prevention is a genuine, transactional, doc-ID-keyed consumed-marker (§4.5). No PII, phone number, email, or OTP value is stored, returned, or logged anywhere in the four domains (§4.1).
+
+### 4.9 Rules and Indexes
+
+`firestore.rules` (50 lines, read in full) is deny-by-default: `users`, `customerProfiles`, `loyaltyNumbers`, `qrIdentityRecords` each have an explicit `allow read, write: if false` block, and an unconditional trailing wildcard (`match /{document=**} { allow read, write: if false; }`) denies every other collection — including `authenticationReferences`, `recoveryProofReferences`, `outboxEntries`, and `idempotencyRecords`, none of which has its own explicit block. Coverage is complete (nothing is implicitly allowed), though the absence of explicit per-collection blocks for these four collections means the deny-by-default posture depends entirely on the trailing wildcard never being weakened or reordered — a maintainability observation, not a current gap (Finding F10, §9, informational). All 4 declared composite indexes in `firestore.indexes.json` map to real, implemented bounded queries in `identityAuditQueryRepository.ts` — no orphaned or speculative index found; no other composite query exists anywhere in the reviewed domains. No evidence of any live Firebase deployment: CI runs only against the Emulator Suite, every emulator test file fails closed if `FIRESTORE_EMULATOR_HOST` is unset, no `firebase deploy` step exists in CI, and no deploy-artifact files exist in the repository.
+
+### 4.10 Integration Test Coverage
+
+Two of the three package-level test suites genuinely exercise cross-package behavior end-to-end: `identityLookupRepository.emulator.test.ts` and `identityRecoveryRepository.emulator.test.ts` both call real write paths from all three other packages (`createCustomerIdentity`, `issueLoyaltyNumberForIdentity`, `issueQrIdentityForIdentity`/`regenerateQrIdentityForIdentity`) before exercising their own cross-cutting behavior. `identityAuditQueryRepository.emulator.test.ts`, by contrast, is fixture-seeded only — it hand-constructs `DomainEvent` objects and writes them directly to `outboxEntries` via a local `seedEntry()` helper, never calling a real domain write path.
+
+Of the three specifically-named end-to-end scenarios in the task brief:
+- **(a) QR regeneration → old QR fails, new QR resolves, both in one test:** confirmed present at the package level (`qrIdentityRepository.emulator.test.ts:220-236`); a second version through the full cross-package lookup facade exists (`identityLookupRepository.emulator.test.ts:299-334`) but only asserts the old reference fails, not that the new one also resolves in the same test — a partial gap.
+- **(b) Idempotent replay of one command spanning two packages:** **not found.** Every idempotent-replay test is confined to a single package's own repository; none replays a command whose execution crosses a package boundary within one test.
+- **(c) A real domain write's event retrieved back via `identityAuditQueryRepository.ts` in the same test:** **not found.** The audit write path (proven via direct `outboxEntries` assertions in `identityLifecycleRepository.emulator.test.ts:235-282` and `identityLookupRepository.emulator.test.ts:519-533`) and the audit read path (`identityAuditQueryRepository.emulator.test.ts`'s fixture-seeded tests) are exercised in disjoint files and never joined in one test.
+
+This is Finding F2 (§9) — a genuine, bounded integration-coverage gap, not a defect in already-implemented behavior.
+
+### 4.11 Operational Readiness
+
+**Architecture complete:** yes, for the nine merged packages (§4.2–§4.9). **Implementation complete:** yes, for the nine merged packages; no for Capability 2 overall (`-02` outstanding). **Operationally ready:** no — no retention/deletion policy exists for `outboxEntries`/audit history (a known, previously-disclosed `-10` gap, not re-designed here), no index-deployment or live-Firebase-configuration step exists anywhere in this repository yet, and emulator-under-host-load flakiness (already well-documented earlier in this session, unrelated to these nine packages' own correctness) remains a known CI-environment characteristic. **Production ready:** no — the same operational gaps apply, plus `-02`'s absence means no customer-facing profile capability exists yet. This differentiation is explicit and load-bearing for §7's determination.
+
+### 4.12 Governance and Documentation Consistency
+
+Two genuine staleness instances found, both confirmed by direct document reads:
+- **Master Workflow:** its `ENG-P2-001`/Capability 2 entries have not been updated since the `ENG-P2-001-PLAN-001` planning-only entry (2026-08-02) — none of the actual `-01`/`-03`–`-10` implementation or merge work is reflected there.
+- **Coding-Agent Prompt Register:** its `ENG-P2-001` row was synchronized through `-06` (2026-08-04), explicitly noting at that time "`-02`, `-07`–`-10` remain unimplemented" — but was never updated after `-07` through `-10` were subsequently implemented and merged (2026-08-05/06). This is now a factually incorrect claim in a live tracker (the opposite direction from "all ten complete," but equally a staleness defect) — corrected by this task, §6 below.
+
+Neither tracker was found to contain the literal phrase "all ten complete" (targeted grep confirmed zero matches for that phrase in either document), so no correction of that specific wording was required — but the underlying staleness this task's instruction anticipated is real and has been corrected narrowly. The Requirements Traceability Matrix contains zero `ENG-P2-001` rows and shows all identity-related requirements as "Not Started"/"Not yet defined" — it has never been synchronized with this capability's implementation at all (Finding F11, §9, lowest severity — pre-existing and out of this review's narrow correction scope, flagged for a future task). The Engineering Implementation Programme's `ENG-P2-001` entry, which the reviewer personally maintained narrowly after each of `-05` through `-10`, was found current and accurate — no correction required.
+
+## 5. Findings Register
+
+| ID | Severity | Summary | Evidence | Affected package(s) | Consequence | Required correction | Blocks `-02`? | Blocks Authentication? | Recommended task | Order |
+|---|---|---|---|---|---|---|---|---|---|---|
+| F1 | **P1** | `recoveryProofReferences`' first write uses `stampUpdate()` not `stampCreate()`, and omits `id`/`schemaVersion` | `identityLifecycleRepository.ts:243-247` vs. `baseMetadata.ts:63-71` | `-07` | Every `recoveryProofReferences` document is missing `createdAt`, `createdBy`, `id`, `schemaVersion` — inconsistent with every other first-write document in the capability; breaks any future audit/reporting query assuming `BaseMetadata` completeness | Change `stampUpdate(...)` → `stampCreate(...)` at line 246; add `id`/`schemaVersion` to the written object; add a regression test asserting the full `BaseMetadata` shape on first write | No | No | `ENG-P2-001-07-CORR-001` | 1st |
+| F2 | **P2** | Three cross-package integration-test gaps: no test proves QR-regeneration-new-reference-resolves in the same test as old-reference-fails through the full lookup facade; no idempotent-replay test spans two packages; audit write path and audit read path never exercised together | §4.10 | `-04`, `-07`, `-08`, `-09`, `-10` (test-only) | Real cross-package regressions in these three areas could pass CI undetected | Add 3 targeted emulator tests (no other code change) per §4.10's three scenarios | No | No | `ENG-P2-001-TEST-001` | 4th |
+| F3 | **P2** | `trust_reference_updated` event has no case in `auditPayloadProjection.ts`'s switch; falls to `payloadOmitted: true` | `identityEvents.ts:199`; `auditPayloadProjection.ts:62-110` (no matching case) | `-01`, `-10` | Audit queries for this event category return no information at all — not a leak, but an audit-completeness gap for a real, defined event | Add an explicit `case "trust_reference_updated":` with an appropriate allow-listed field set | No | No | `ENG-P2-001-10-CORR-002` | 2nd |
+| F4 | **P2** | `identityLookupRepository.ts`'s header comment claims read+audit-write atomicity; the actual lookup read is a plain `.get()` outside any transaction, only the audit write is transactional (and separately so) | `identityLookupRepository.ts:60-65` (comment) vs. lines 190/228 (code) | `-09` | Misleading guarantee in code documentation; no functional defect since the caller's result is unaffected by audit-write outcome either way | Correct the doc comment to state the actual (non-atomic-with-the-read) guarantee, or make the audit write genuinely part of the same transaction as the read if atomicity is actually desired | No | No | `ENG-P2-001-09-CORR-002` | 3rd |
+| F5 | **P2** | Naming drift: `linkStatus`/`status` for the same authentication-reference concept; `customerIdentityId`/`userId` for the same aggregate-reference concept | `authenticationReference.ts` domain type + `users` projection vs. `authenticationReferences` doc; `customerProfileDocument.ts:30` | `-05`, `-08` | Cosmetic only — no code reads the wrong field — but increases onboarding/maintenance risk and risks future accidental cross-wiring | Rename for consistency in a follow-on package, not urgent | No | No | `ENG-P2-001-NAMING-001` | 6th |
+| F6 | **P3** | `customerIdentityRepository.ts`'s outbox-write loop lacks the `${eventId}-${index}` suffix guard used by `qrIdentityRepository.ts`/`loyaltyNumberRepository.ts` | `customerIdentityRepository.ts:100-102` vs. `qrIdentityRepository.ts:71`, `loyaltyNumberRepository.ts:167` | `-01` | Currently inert (`registerCustomerIdentity`'s return type is a hard one-element tuple), but a latent risk if the function is ever extended to emit multiple events | Add the same guard for consistency, low priority | No | No | `ENG-P2-001-NAMING-001` | 6th |
+| F7 | **P3** | `fromCustomerProfileDocument` converter is fully implemented and tested but never called by any production code path | `customerProfileDocument.ts:35-55`; repo-wide grep shows only its own test imports it | `-05` | Nothing currently validates `customerProfiles` documents against malformation on read; dead code | Wire the converter into whichever read path currently uses a raw cast, or document why it is intentionally unused | No | No | `ENG-P2-001-05-CORR-002` | 5th |
+| F8 | **P3** | `authority`/`reason` fields present on the large majority of identity events, absent from all `loyaltyNumber`/`qrIdentity` events, with no documented rationale | `identityEvents.ts` (42 occurrences) vs. `loyaltyNumberEvents.ts`/`qrIdentityEvents.ts` (0 occurrences) | `-03`, `-04` | Understandable given those domains' narrower scope, but undocumented — a future reader may treat it as an oversight | Add a one-line doc-comment note in each file confirming the omission is intentional | No | No | `ENG-P2-001-NAMING-001` | 6th |
+| F9 | **P3** | `loyaltyNumberErrors.ts` lacks an "unknown/not-found" factory that `qrIdentityErrors.ts` has; `authenticationReferenceLinkedToDifferentIdentityError` uses `VALIDATION_FAILED` for what is a state conflict | `loyaltyNumberErrors.ts` (9 factories, none "unknown") vs. `qrIdentityErrors.ts:98` (`unknownQrReferenceError`); `identityErrors.ts:256-265` | `-03`, `-08` | Minor category-consistency defect; does not currently cause an incorrect HTTP/error-category mapping anywhere observed | Low-priority follow-on correction alongside F5/F6/F8 | No | No | `ENG-P2-001-NAMING-001` | 6th |
+| F10 | Informational | `authenticationReferences`/`recoveryProofReferences`/`outboxEntries`/`idempotencyRecords` have no explicit per-collection Rules block, relying entirely on the trailing wildcard deny-all | `firestore.rules` (full file) | `-05`, `-07`, `-08`, all | Currently fully covered; a future edit that reorders or narrows the wildcard could silently create an opening | Add explicit `if false` blocks for these four collections for defense-in-depth, non-urgent | No | No | `ENG-P2-001-NAMING-001` | 6th |
+| F11 | Informational | RTM has zero `ENG-P2-001` rows and shows identity requirements as "Not Started" | RTM (grep confirmed) | All | Governance-tracker accuracy only; no functional impact | Sync RTM in a dedicated future governance task, out of this review's narrow-correction scope | No | No | Future RTM sync task | Not sequenced |
+| F12 (governance, already corrected) | P2 | Coding-Agent Prompt Register's `ENG-P2-001` row states "`-02`, `-07`–`-10` remain unimplemented," stale since `-07`–`-10` are now merged | Prompt Register row (dated 2026-08-04, not updated since) | Tracking only | Live tracker inaccuracy | Corrected by this task, §6 | No | No | (applied) | (applied) |
+
+## 6. Minimal Live-Tracker Correction Applied
+
+Per the task's constraint ("make only minimal live tracker corrections required to record the review state" and "if a live tracker incorrectly says all ten child packages are complete, correct it"): no tracker used that literal phrasing, but the Coding-Agent Prompt Register's `ENG-P2-001` row (Finding F12) was stale in the *opposite* direction — understating actual progress. Corrected narrowly, in place, to state: nine of ten child packages (`-01`, `-03`–`-10`) implemented and merged; `ENG-P2-001-02` outstanding, gated by `DEC-PROD-012`. No other tracker required correction (Engineering Implementation Programme was already current; Master Workflow's staleness is noted as Finding-adjacent but a full Master Workflow sync is left to a future task, since the Programme itself — the document this session has been maintaining as the authoritative per-package tracker — is accurate).
+
+## 7. Readiness Determination
+
+**Determination 2 — Ready with targeted corrections.**
+
+- **Customer Identity Foundation readiness (the nine merged packages as a coherent sub-capability):** architecturally coherent, ready to proceed, subject to the bounded corrections in §5 (none blocking).
+- **Customer Profile (`ENG-P2-001-02`) readiness:** not ready to begin on `gender` specifically (blocked by `DEC-PROD-012`, still `OPEN_FOUNDER`); all non-`gender` fields are unblocked and may begin once a fresh Founder authorization is given, per `ENG-P2-GATE-001`'s own scoped determination.
+- **Authentication architecture readiness:** the reference-only boundary contract (`ENG-P2-ARCH-001` §7) is fully respected by the nine merged packages; no Authentication-specific implementation exists yet (correctly, per scope) — a future Authentication design task can begin without being blocked by any finding in this review.
+- **Capability 2 overall readiness:** not fully complete — `-02` outstanding — but the nine merged packages do not need to be reworked before `-02` or Authentication begin. None of the twelve findings is a P0 or a structural blocker.
+
+## 8. Cross-Package Consistency Matrix
+
+| Area | Governing source | Implemented owner | Persistence owner | Tests | Status | Finding |
+|---|---|---|---|---|---|---|
+| Customer Identity ID / status | `ENG-P2-ARCH-001` §2–3 | `-01`, `-06` | `users/{id}` | Unit + emulator | Consistent | — |
+| Loyalty Number | `DEC-DATA-007`, `ENG-P2-ARCH-001` §4 | `-03` | `loyaltyNumbers/{value}` (authoritative), `customerProfiles`/`users` (projection) | Unit + emulator | Consistent | — |
+| QR Identity | `ENG-P2-ARCH-001` §5 | `-04` | `qrIdentityRecords/{value}` (authoritative), `customerProfiles` (projection) | Unit + emulator | Consistent | — |
+| Recovery proof reference | `DEC-SEC-001`, `ENG-P2-ARCH-001` §6 | `-06`/`-07` | `recoveryProofReferences/{proofReference}` | Emulator | **Defect** | F1 |
+| Authentication reference | `DEC-PROV-004`, TRD12 §12.5, `ENG-P2-ARCH-001` §7 | `-08` | `authenticationReferences/{type}:{id}` | Unit + emulator | Consistent (naming drift only) | F5 |
+| Audit evidence | `-10` | `-10` | `outboxEntries` (raw), read-only projection | Unit + emulator | Consistent, one catalogue gap | F3 |
+| Identity lookup/resolution | `-09` | `-09` | Reads across `users`/`loyaltyNumbers`/`qrIdentityRecords`/`authenticationReferences` | Unit + emulator | Consistent, doc/code mismatch | F4 |
+| Customer Profile (full) | TRD10 §10.6.2 | **Not implemented (`-02` outstanding)** | `customerProfiles` shell only | N/A | **Outstanding, gated** | — |
+
+## 9. Integration Coverage Matrix
+
+| Required scenario | Exists? | Evidence | Gap |
+|---|---|---|---|
+| Identity creation → Loyalty Number issuance → QR issuance | Yes | `identityLookupRepository.emulator.test.ts`, `identityRecoveryRepository.emulator.test.ts` (seed sequences) | None |
+| Lifecycle transition → recovery | Yes | `identityLifecycleRepository.emulator.test.ts` | None |
+| Authentication Reference linking → lookup | Yes | `identityLookupRepository.emulator.test.ts` | None |
+| QR regeneration → active lookup succeeds → old reference fails, in one test | Partial | `qrIdentityRepository.emulator.test.ts:220-236` (package-level, full); `identityLookupRepository.emulator.test.ts:299-334` (cross-package, old-reference-only) | F2 |
+| Idempotent replay spanning two packages | No | — | F2 |
+| Audit event creation (real write) → privacy-minimised audit query, same test | No | Write path and read path proven separately, never joined | F2 |
+
+## 10. Outstanding Governance Register
+
+- `DEC-PROD-012` — `OPEN_FOUNDER`, blocks `-02`'s `gender` field and `-05`'s document-level schema "freeze" only (per `ENG-P2-GATE-001`); does not block any of the nine merged packages.
+- Retention/deletion policy for `outboxEntries`/audit history — not yet designed (previously disclosed by `-10`, not re-designed here).
+- Deferred Authentication-transfer/manual-review capability for cross-identity authentication-reference relinking — explicitly deferred per `ENG-P2-001-PLAN-001` §14 Ambiguity 5's Founder-approved resolution; requires a future governed decision task, not an oversight.
+- Identity-merge execution authority (`-08`'s automatic-vs-manual-review question) — explicitly flagged in `ENG-P2-001-PLAN-001` §14 Ambiguity 4 as requiring a future Founder-level decision before merge *execution* (not detection) can be designed.
+- Rate limiting on lookup/recovery endpoints — not yet designed; out of scope for the nine merged packages (an API-layer concern, not yet built).
+- Operational deployment requirements (index deployment, live Firebase configuration, monitoring) — none yet exist; correctly absent since nothing has been deployed.
+- RTM synchronization for `ENG-P2-001` — never performed (Finding F11); recommended as a future, separate governance task.
+
+## 11. Correction Plan (Proposed Only — Not Executed)
+
+| Task ID | Scope | Findings closed | Estimated size |
+|---|---|---|---|
+| `ENG-P2-001-07-CORR-001` | Fix `recoveryProofReferences` `stampCreate` bug + regression test | F1 | Small, TDD, single file |
+| `ENG-P2-001-10-CORR-002` | Add `trust_reference_updated` case to `auditPayloadProjection.ts` | F3 | Small, TDD, single file |
+| `ENG-P2-001-09-CORR-002` | Correct `identityLookupRepository.ts` header comment (or make the read genuinely transactional, if atomicity is actually desired — a design choice, not assumed here) | F4 | Small, doc or code + test |
+| `ENG-P2-001-TEST-001` | Add 3 targeted cross-package integration tests | F2 | Small–medium, test-only |
+| `ENG-P2-001-05-CORR-002` | Wire `fromCustomerProfileDocument` into its intended read path, or document its intentional non-use | F7 | Small |
+| `ENG-P2-001-NAMING-001` | Bundle low-priority naming/asymmetry/defense-in-depth items | F5, F6, F8, F9, F10 | Small, batched |
+
+None of these six tasks blocks another; all are independently reviewable; none requires unwinding a merged package.
+
+## 12. Recommended Programme Path
+
+1. Present this review to the Founder for the required readiness determination acknowledgment.
+2. Recommend the six correction tasks in §11 be authorized as a single small, bounded correction package (they are all small, independently reviewable, and none touches `-02`/Authentication scope) — or deferred to run in parallel with `-02`/Authentication work at Founder discretion, since none is blocking.
+3. `ENG-P2-001-02` (Customer Profile, non-`gender` fields) may be authorized to begin independently at any time — it is not blocked by any finding in this review.
+4. A future Authentication Architecture task may begin independently — the reference-only boundary is confirmed intact.
+5. `DEC-PROD-012` remains a distinct, separate Founder decision item, unaffected by this review.
+
+## 13. Files Created or Modified
+
+- **Created:** this report; a Cross-Package Consistency Matrix and Integration Coverage Matrix are embedded above rather than as separate files, consistent with this session's established single-document reporting pattern for bounded review tasks.
+- **Modified:** `docs/05-implementation/change-tracking/coding-agent-prompt-register.md` (§6 narrow correction only); `docs/changes/IMPLEMENTATION_CHANGES.md` (new entry); `docs/00-governance/documentation-changes-log.md` (new entry).
+- **Not modified:** any application code, test code, Firestore Rules, indexes, Firebase configuration, or historical implementation report/EIR record.
+
+## 14. Commands Executed
+
+`git worktree add`, `git status`, `git log`, `tsc --noEmit`, `pnpm lint`, `pnpm --filter functions exec vitest run`, targeted `grep`/`sed`/`find` for evidence-gathering (no write operations against the repository other than the three tracker/report files listed in §13).
+
+## 15. Dependencies Added
+
+None.
+
+## 16. Configuration Changes
+
+None.
+
+## 17. Risks
+
+- The six proposed correction tasks (§11), if never executed, leave F1 (P1) unfixed — `recoveryProofReferences` documents will continue to be written without `createdAt`/`createdBy`/`id`/`schemaVersion`. This does not block `-02`/Authentication but is genuine technical debt in the recovery domain.
+- The three integration-test gaps (F2) mean a real cross-package regression in QR-regeneration-into-lookup, cross-package idempotent replay, or audit-write-into-audit-read could pass CI undetected until it surfaces elsewhere.
+
+## 18. Rollback Instructions
+
+This task's only repository changes are the three files in §13. To roll back: `git checkout <pre-review-commit> -- docs/05-implementation/change-tracking/coding-agent-prompt-register.md docs/changes/IMPLEMENTATION_CHANGES.md docs/00-governance/documentation-changes-log.md` and delete this report file. No application state, schema, or deployed artifact is affected by this task in any way, so no infrastructure rollback is required.
+
+## 19. Validation Confirmations (10 required points)
+
+1. **No application code changed** — confirmed via `git status`/`git diff` scoped to `functions/src`, `apps/web/src` (empty diff).
+2. **No test code changed** — confirmed, same method.
+3. **No Firestore Rules or indexes changed** — confirmed, `firestore.rules`/`firestore.indexes.json` unmodified.
+4. **No Firebase configuration changed** — confirmed.
+5. **All nine completed packages reviewed directly** — confirmed, §3/§4.
+6. **`ENG-P2-001-02` remains correctly represented** — confirmed outstanding and `DEC-PROD-012`-gated throughout this report, never described as complete.
+7. **Findings are evidence-based** — every finding in §5 cites an exact file:line or a live document section, independently spot-verified by the reviewer (§9 of this report, not to be confused with the numbered §9 above — verification greps run directly against the worktree before each finding was finalized).
+8. **Historical documents remain preserved** — no `/reports/`, `/records/`, or historical `/roadmap/` file was modified; only the Prompt Register's live tracker row, `IMPLEMENTATION_CHANGES.md`, and `documentation-changes-log.md` were touched, per this repository's established amend-forward (never rewrite-history) convention.
+9. **Cross-references resolve** — all links in this report point to already-existing, verified document sections.
+10. **Tracking status is internally consistent** — Engineering Implementation Programme (already accurate), Prompt Register (corrected §6), and this report now agree: nine of ten complete, `-02` outstanding, `DEC-PROD-012` open.
