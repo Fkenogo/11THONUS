@@ -32,6 +32,7 @@ import {
 } from "../../../shared/idempotency/idempotencyService";
 import { writeOutboxEntry } from "../../../shared/outbox/outboxWriter";
 import { stampUpdate } from "../../../shared/metadata/baseMetadata";
+import { toRecoveryProofReferenceDocument } from "./recoveryProofReferenceDocument";
 import type { EventActor } from "../../../shared/events/domainEvent";
 import { transitionIdentityStatus, type CustomerIdentity } from "../models/customerIdentity";
 import type { IdentityStatus } from "../models/identityStatus";
@@ -164,12 +165,16 @@ export type RecoverCustomerIdentityStatusParams = {
 };
 
 /**
- * Reuses this file's own `stampUpdate`/idempotency conventions to reject
- * *proof reuse* — a distinct concern from *command retry*. An identical
- * idempotency key short-circuits above via `checkAndReserveIdempotencyKey`
- * before this collection is ever consulted, so a legitimate retry of the
- * same command never hits this check; only a genuinely different command
+ * Reuses this file's own idempotency conventions to reject *proof reuse*
+ * — a distinct concern from *command retry*. An identical idempotency
+ * key short-circuits above via `checkAndReserveIdempotencyKey` before
+ * this collection is ever consulted, so a legitimate retry of the same
+ * command never hits this check; only a genuinely different command
  * presenting an already-consumed proof reference does (ENG-P2-001-07).
+ * The reservation document itself is built via
+ * `toRecoveryProofReferenceDocument` (`stampCreate`-based, full
+ * `BaseMetadata` shape — ENG-P2-ARCH-CORR-001), since this `.set()` only
+ * ever executes on a document already confirmed not to exist.
  */
 export async function recoverCustomerIdentityStatus(
   db: Firestore,
@@ -240,11 +245,14 @@ export async function recoverCustomerIdentityStatus(
         ...stampUpdate(params.recoveredBy),
       });
 
-      transaction.set(proofRef, {
-        proofReference: params.recoveryProof.proofReference,
-        customerIdentityId: params.customerIdentityId,
-        ...stampUpdate(params.recoveredBy),
-      });
+      transaction.set(
+        proofRef,
+        toRecoveryProofReferenceDocument(
+          params.recoveryProof.proofReference,
+          params.customerIdentityId,
+          params.recoveredBy,
+        ),
+      );
 
       writeOutboxEntry(transaction, db, event);
 

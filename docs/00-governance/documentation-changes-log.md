@@ -2,11 +2,27 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-08-06 (Entry 070 added: `ENG-P2-ARCH-REVIEW-001` — Capability 2 Customer Identity Architecture Review)
+> **Last controlled update:** 2026-08-06 (Entry 071 added: `ENG-P2-ARCH-CORR-001` — Recovery Proof Reference Metadata Contract Correction)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 071 — `ENG-P2-ARCH-CORR-001`: Recovery Proof Reference Metadata Contract Correction
+
+- **Date:** 6 August 2026
+- **Performed by:** Claude (AI agent), per Founder instruction: "TASK — ENG-P2-ARCH-CORR-001 — Recovery Proof Reference Metadata Contract Correction... Resolve architecture-review finding F1..."
+- **Classification:** Application code correction plus test-coverage strengthening, TDD. No Customer Profile, Authentication, ITM, UI, or unrelated correction.
+- **Defect corrected:** `ENG-P2-ARCH-REVIEW-001` Finding F1 (P1) — `recoveryProofReferences`' first-ever write (`identityLifecycleRepository.ts:243-247`) used `stampUpdate()` instead of `stampCreate()`, omitting `createdAt`/`createdBy`/`id`/`schemaVersion`. Root cause: the write was authored by analogy to the adjacent genuine-update line above it, missing that this `.set()` is always a first write (already guarded by an existence check rejecting any second attempt).
+- **Metadata authority analysis:** `recoveryProofReferences` classified as an idempotency/reservation record (a consumed-proof marker), architecturally the same role as `idempotencyRecords`/`loyaltyNumbers`/`qrIdentityRecords`. No prior document type or converter existed; confirmed nothing in the codebase reads this document's fields back beyond `.exists()`.
+- **Correction applied:** new `recoveryProofReferenceDocument.ts` — `toRecoveryProofReferenceDocument()`, a `stampCreate`-based typed write-side builder mirroring the established `loyaltyNumberDocument.ts` pattern. Deliberately no read-side converter added, since one would be unused code (avoiding the same defect already flagged elsewhere as Finding F7).
+- **Data/migration assessment:** no migration required — no live Firebase deploy evidence exists for this capability, no repository fixtures, and the emulator test suite clears this collection before every run.
+- **Tests:** 4 new unit tests (`recoveryProofReferenceDocument.test.ts`); 3 existing emulator tests strengthened in `identityLifecycleRepository.emulator.test.ts` proving complete creation metadata, exactly-once reservation with immutable `createdAt` across idempotent replay, and zero reservation records left by a failed transaction — 399/399 unit and 164/164 real Firebase Emulator Suite tests passing (including this collection's pre-existing Rules tests, unaffected).
+- **Validation:** full monorepo `typecheck`/`lint`/`format:check`/`build` clean; `functions` unit tests 399/399; real Firebase Emulator Suite re-run in full, 164/164, clean; `apps/web` 259/259 (one pre-existing, already-disclosed timing flake confirmed transient, `apps/web` untouched).
+- **Files modified:** `identityLifecycleRepository.ts`; `identityLifecycleRepository.emulator.test.ts`; `ENG-P2-ARCH-REVIEW-001-...md` (Finding F1 status only); this entry; `docs/changes/IMPLEMENTATION_CHANGES.md` (correction entry). **Files created:** `recoveryProofReferenceDocument.ts` (+ `.test.ts`); `ENG-P2-ARCH-CORR-001-recovery-proof-reference-metadata-correction-2026-08-06.md`.
+- **Full detail:** [`ENG-P2-ARCH-CORR-001` Correction Report](../05-implementation/reports/ENG-P2-ARCH-CORR-001-recovery-proof-reference-metadata-correction-2026-08-06.md).
 
 ---
 
