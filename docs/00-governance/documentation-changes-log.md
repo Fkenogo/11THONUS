@@ -2,11 +2,23 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-08-07 (Entry 083 added: `CAP-P2-003` Capability 2 Boundary Review — Founder decision required; review-only, no restructuring)
+> **Last controlled update:** 2026-08-07 (Entry 084 added: `CAP-P2-004` — concern-level completion reporting adopted per `DEC-GOV-008` (Founder Option C); PR #77 & #78 merged)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 084 — `CAP-P2-004` Concern-Level Completion Reporting (Founder Option C) + PR #77/#78 merges
+
+- **Date:** 7 August 2026
+- **Performed by:** Claude (AI agent), per Founder instruction: "TASK — CAP-P2-004 — Adopt Concern-Level Completion Reporting."
+- **Stages 1–2 (merges):** PR #77 (CAP-P2-002) merged (`9d9f6a5`, post-merge CI green) and PR #78 (CAP-P2-003) merged (`fd28c62`, post-merge CI green). PR #78 required a changes-log sync — resolved by keeping the header at Entry 083 and preserving both entries in newest-first order (083 → 082 → 081); both review reports preserved; no substantive conclusion rewritten.
+- **Stage 3 — Founder Option C implemented (`DEC-GOV-008`, CONFIRMED):** concern-level completion reporting within the **unchanged** Capability 2 boundary. Capability numbering, boundaries, engineering identifiers, and product/technical architecture are unchanged. **Concern Completion ≠ Capability closure** — reporting granularity only. ITM remains an internal architectural concern.
+- **Concern statuses recorded (authoritative in [`CDR-001` §5](../05-implementation/roadmap/CDR-001-capability-delivery-roadmap.md#capability-2--customer-identity)):** Customer Identity `Implemented — Validation/Closure Pending` (all ten `ENG-P2-001` packages merged; concern-completion criteria undefined, so not `Complete`); Authentication `Not started — Unauthorised`; ITM `Not started — Unauthorised` (internal); overall Capability 2 `Open — partially implemented; not closed`.
+- **Files modified:** `decision-register.md` (DEC-GOV-008 + header); `CDR-001-capability-delivery-roadmap.md` (§5 Concern Status block + §2 row + header); `11thonus-master-workflow.md` (§17); `engineering-implementation-programme.md` (cross-reference); `CAP-P2-002`/`CAP-P2-003` reports (bounded disposition markers only); this entry. **Files created:** `CAP-P2-004-concern-level-completion-reporting-2026-08-07.md`. No code, capability identifier, roadmap structure, product/technical architecture, or FEF record changed; no review findings rewritten; no capability closed.
+- **Full detail:** [CAP-P2-004 Report](../05-implementation/reports/CAP-P2-004-concern-level-completion-reporting-2026-08-07.md).
 
 ---
 

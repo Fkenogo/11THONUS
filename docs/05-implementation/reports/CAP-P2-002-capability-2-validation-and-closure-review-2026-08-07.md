@@ -6,6 +6,8 @@
 
 # CAP-P2-002 — Capability 2 Validation & Closure Review
 
+> **[Disposition marker — `CAP-P2-004` / `DEC-GOV-008`, 2026-08-07]** The Founder reviewed this review with `CAP-P2-003` and adopted **Option C** (in-boundary concern-level completion reporting) — recorded as [`DEC-GOV-008`](../../00-governance/decisions/decision-register.md). This review's original findings and its **NOT READY** verdict are preserved unchanged as historical evidence; the outstanding matters it identified are now tracked via the concern statuses in [`CDR-001` §5](../roadmap/CDR-001-capability-delivery-roadmap.md#capability-2--customer-identity). Concern Completion does not constitute Capability closure.
+
 **A read-only closure-readiness review of Capability 2 (Customer Identity) against its governed completion criteria, using the merged repository as authoritative. No corrections, no code, no runtime change, no closure. Overall assessment: NOT READY. The Customer Identity *concern* (`ENG-P2-001`, all ten child packages) is implementation-complete, tested, and CI-green — a genuine milestone — but the *capability* as defined in `CDR-001` §5 is not closable: its constituent Authentication and ITM concerns and `ENG-P2-004` are unauthorised and unimplemented, deployment/manual-QA obligations are unmet, and the newest child (`-02`) has residual review/persistence/documentation-currency conditions.**
 
 ## 1. Repository Entry / Final State

@@ -6,6 +6,8 @@
 
 # CAP-P2-003 — Capability 2 Boundary Review
 
+> **[Disposition marker — `CAP-P2-004` / `DEC-GOV-008`, 2026-08-07]** The Founder adopted this review's evidence-supported **Option C** (in-boundary concern-level completion reporting) — recorded as [`DEC-GOV-008`](../../00-governance/decisions/decision-register.md) and implemented in [`CDR-001` §5](../roadmap/CDR-001-capability-delivery-roadmap.md#capability-2--customer-identity). Capability numbering and boundaries remain unchanged; Option B (renumbering split) was not adopted. This review's original analysis and conclusion are preserved unchanged as historical evidence.
+
 **A read-only programme-architecture review of whether the current Capability 2 boundary — Customer Identity + Authentication + ITM + `ENG-P2-004`, as one customer-facing capability — remains appropriate now that the Customer Identity concern has matured into a complete, ten-package implementation stream while Authentication and ITM remain unbuilt. No product-architecture redesign, no restructuring, no code, no renumbering. Final conclusion: FOUNDER DECISION REQUIRED. A full renumbering split (Option B) is *not* evidence-supported; the boundary as a customer-facing definition remains sound; the genuine open choice is whether to adopt an in-boundary concern-level closure/reporting refinement (Option C) to handle the maturity asymmetry — a Founder programme-structure judgment.**
 
 ## 1. Repository Entry / Final State
