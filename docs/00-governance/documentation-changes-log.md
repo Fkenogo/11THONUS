@@ -2,11 +2,23 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-08-07 (Entry 086 added: `CAP-P2-006` — G1/G2 recorded (`DEC-GOV-009`/`DEC-GOV-010`); concern-completion lifecycle classification; Customer Identity reassessed `Implemented — Validation/Closure Pending`; next governed action uniquely determined)
+> **Last controlled update:** 2026-08-07 (Entry 087 added: `CAP-P2-007` — Customer Identity concern-completion items executed: `-02` profile fields wired into `-05`'s `customerProfiles` converter (TDD, 427/427 functions tests) and `ENG-P2-001-02` Architecture/Technical Review recorded (PASS, DoD §2.6/G1); delivered in the `CAP-P2-007` PR (pending merge); status remains `Implemented — Validation/Closure Pending` until merge)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 087 — `CAP-P2-007` Customer Identity Concern Completion (persistence wiring + `-02` review)
+
+- **Date:** 7 August 2026
+- **Performed by:** Claude (AI agent), per Founder instruction: "TASK — CAP-P2-007 — Customer Identity Concern Completion."
+- **Engineering (application code, TDD):** wired `ENG-P2-001-02`'s Customer Profile fields into `ENG-P2-001-05`'s `customerProfiles` persistence converter — added `toCustomerProfileFields`/`fromCustomerProfileFields` (+ `CustomerProfileFieldsDocument` type) to `functions/src/domains/identity/repositories/customerProfileDocument.ts`. The converter does only the Firestore `Date↔Timestamp` mapping for `consentVersions.acceptedAt` (same `toTimestampLike`/`fromTimestampLike` cast convention as `userDocument.ts`) and delegates **all** field validation to `-02`'s `serializeCustomerProfileFields`/`deserializeCustomerProfileFields`. No new repository, no transaction change, no schema redesign; profile fields optional (shell-document behaviour preserved); no `gender` ever emitted (`DEC-PROD-012` Option D). 7 new converter tests (RED→GREEN); functions suite 420 → **427/427**.
+- **Review:** [`ENG-P2-001-02` Architecture/Technical Review](../05-implementation/reports/ENG-P2-001-02-architecture-technical-review-2026-08-07.md) recorded — **PASS, no open corrections**; provides DoD §2.6 coverage (`DEC-GOV-009`/G1). All six required determinations pass (architecture, persistence integration, privacy PR-005, TRD10 §10.6.2, `DEC-PROD-012`, error taxonomy = 14 unchanged).
+- **Validation:** `tsc --noEmit`, `eslint .`, `prettier --check .`, `vitest run` (427/427), `pnpm build` (web+functions) — all clean. Working-tree scope limited to intended files.
+- **Traceability:** [`CDR-001` §5](../05-implementation/roadmap/CDR-001-capability-delivery-roadmap.md#capability-2--customer-identity) concern-status/remaining-items notes updated (both items delivered in the `CAP-P2-007` PR, pending merge); [Engineering Implementation Programme](../05-implementation/change-tracking/engineering-implementation-programme.md) and [Master Delivery Workflow](../05-implementation/11thonus-master-workflow.md) §17 synced; [`IMPLEMENTATION_CHANGES.md`](../changes/IMPLEMENTATION_CHANGES.md) appended; implementation report [`CAP-P2-007`](../05-implementation/reports/CAP-P2-007-customer-identity-concern-completion-2026-08-07.md).
+- **Status:** **Customer Identity `Implemented — Validation/Closure Pending`** (unchanged) — every concern-completion criterion is satisfied by the delivered work; §2.6/§2.7 finalize, and the concern may be declared `Complete`, only upon Founder merge of the `CAP-P2-007` PR + post-merge CI. **Capability 2 remains `Open — not closed`.** No Authentication/ITM/`ENG-P2-004`/deployment/Manual QA/RTM F11/Capability 2 closure work occurred. PR not merged (awaits fresh Founder authorization).
 
 ---
 
