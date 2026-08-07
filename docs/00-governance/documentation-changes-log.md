@@ -2,11 +2,27 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-08-07 (Entry 081 added: `ENG-P2-001-02` Customer Profile implemented — final Customer Identity child package; all ten `ENG-P2-001` packages now implemented)
+> **Last controlled update:** 2026-08-07 (Entry 082 added: `CAP-P2-002` Capability 2 Validation & Closure Review — NOT READY; findings-only, no closure)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 082 — `CAP-P2-002` Capability 2 Validation & Closure Review
+
+- **Date:** 7 August 2026
+- **Performed by:** Claude (AI agent), per Founder instruction: "TASK — CAP-P2-002 — Capability 2 Validation & Closure Review."
+- **Context:** a read-only closure-readiness review of Capability 2 (Customer Identity) against its governed completion criteria, treating merged `main` as authoritative. Findings-only — no corrections, no code, no runtime change, **no closure performed**.
+- **Overall assessment:** **NOT READY.** The Customer Identity concern (`ENG-P2-001`, all ten child packages `-01`–`-10`) is implementation-complete, tested, and CI-green — but Capability 2 as defined in `CDR-001` §5 is not closable.
+- **Closure Blockers:** CB-1 Authentication concern (`CDR-001` §5.2) unauthorised/unimplemented; CB-2 ITM concern (§5.3) unauthorised/unimplemented; CB-3 `ENG-P2-004` (role context) not started; CB-4 deployment + Manual QA (ENG-P2-001 programme profile) not performed.
+- **Closure Conditions:** CC-1 `-02` not covered by any architecture/Technical Review (`ENG-P2-ARCH-REVIEW-002` baseline `@ 3f9f0e6` predates it); CC-2 `-02` persistence wiring deferred (domain-only); CC-3 Master Workflow §17 / `CDR-001` §5 documentation currency (still describe `-02` as "pending authorization").
+- **RTM Finding F11:** correctly deferred (Founder-approved); requires separate authorised work to fully discharge traceability; not the binding blocker.
+- **Observation:** OBS-1 R2-03 dev-harness timing test (low, non-blocking).
+- **Final gate:** Capability 2 does **not** satisfy its governed completion criteria; a separate Capability 2 Closure task should **not** yet be authorised; corrective/authorisation work (plus a Founder scope determination on whether closure means the Customer Identity concern only or the full three-concern capability) is required first.
+- **Files modified:** this entry. **Files created:** `CAP-P2-002-capability-2-validation-and-closure-review-2026-08-07.md`. No code, architecture, or programme record changed; no finding reopened; `DEC-PROD-012`/`F9b` untouched.
+- **Full detail:** [CAP-P2-002 Report](../05-implementation/reports/CAP-P2-002-capability-2-validation-and-closure-review-2026-08-07.md).
 
 ---
 
