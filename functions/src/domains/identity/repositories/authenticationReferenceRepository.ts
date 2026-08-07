@@ -79,6 +79,13 @@ function authenticationReferenceDocId(
   return `${referenceType}:${referenceId}`;
 }
 
+// Field named `status` here, not `linkStatus` as in the domain type
+// (`authenticationReference.ts`) and the `users` projection
+// (`userDocument.ts`) — cosmetic naming drift for the same concept,
+// dispositioned and retained as-is per `ENG-P2-ARCH-CORR-004`, Finding
+// F5 (see `authenticationReference.ts`'s own note for the full
+// rationale). Not renamed here: `status` is this collection's live,
+// persisted Firestore field name.
 type AuthenticationReferenceRecordDocument = {
   referenceType: AuthenticationReferenceType;
   referenceId: string;

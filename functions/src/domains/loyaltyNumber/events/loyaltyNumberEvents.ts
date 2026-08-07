@@ -9,6 +9,13 @@
  * carry a rejected/colliding candidate value — only the identity and an
  * attempt count — to avoid leaking any information about the generation
  * codespace or which candidates were tried.
+ *
+ * Intentionally absent (`ENG-P2-ARCH-CORR-004`, Finding F8): unlike the
+ * majority of `identityEvents.ts`'s events, none of these events carry
+ * `authority`/`reason` fields. This is intentional, not an oversight —
+ * Loyalty Number issuance has a single, unconditional trigger (identity
+ * registration) with no distinct authorized actors or reasons to
+ * attribute a transition to, unlike identity status transitions.
  */
 
 import type { DomainEvent, EventActor } from "../../../shared/events/domainEvent";

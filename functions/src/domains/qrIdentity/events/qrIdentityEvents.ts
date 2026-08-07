@@ -11,6 +11,15 @@
  * could expose codespace structure); a QR reference is only ever logged
  * here once it has actually been issued/invalidated, matching
  * `DEC-DATA-007`'s own "every generation event audit-logged" principle.
+ *
+ * Intentionally absent (`ENG-P2-ARCH-CORR-004`, Finding F8): unlike the
+ * majority of `identityEvents.ts`'s events, none of these events carry
+ * `authority`/`reason` fields. This is intentional, not an oversight —
+ * QR issuance/regeneration/invalidation has narrow, self-evident
+ * triggers (identity registration, an explicit regeneration request, a
+ * QR-specific invalidation) with no distinct authorized actors or
+ * reasons to attribute a transition to, unlike identity status
+ * transitions.
  */
 
 import type { DomainEvent, EventActor } from "../../../shared/events/domainEvent";
