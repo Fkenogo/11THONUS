@@ -14,20 +14,22 @@
  * `functions/src/shared/errors/errorCategories.ts` defines (TRD11 §11.35)
  * — no new category is introduced.
  *
- * Governance gap note (`ENG-P2-ARCH-CORR-004`, Finding F9): several
- * factories below (`duplicateCustomerIdentityError`,
- * `duplicateAuthenticationReferenceError`, `duplicateTrustReferenceError`,
- * `authenticationReferenceLinkedToDifferentIdentityError`) use
- * `VALIDATION_FAILED` for what is, substantively, a state/resource
- * conflict rather than a malformed-input validation failure. This is
- * not a miscategorisation this task corrects: the governed TRD11 §11.35
- * closed category set has no dedicated "already exists"/"state
- * conflict" category distinct from `IDEMPOTENCY_CONFLICT` (which is
- * specifically idempotency-key-scoped, not a general resource-conflict
- * category) — and this file's own rule above forbids introducing a
- * 15th category without a TRD change. Reviewed and deferred to a
- * Founder decision on whether to extend the governed category set; see
- * the `ENG-P2-ARCH-CORR-004` correction report.
+ * Error-category note (`ENG-P2-ARCH-CORR-004` Finding F9 → F9b; Founder
+ * decision recorded 2026-08-07, `F9B-DEC-001`): several factories below
+ * (`duplicateCustomerIdentityError`, `duplicateAuthenticationReferenceError`,
+ * `duplicateTrustReferenceError`, `authenticationReferenceLinkedToDifferentIdentityError`)
+ * map an identity conflict that is *not* an idempotency-key conflict to
+ * `VALIDATION_FAILED`. Per the Founder decision, this is the intended,
+ * governed mapping for the current MVP error contract: non-idempotency
+ * identity conflicts continue to map to `VALIDATION_FAILED` while
+ * retaining their specific bounded-domain error internally, and
+ * `IDEMPOTENCY_CONFLICT` remains reserved exclusively for genuine
+ * idempotency conflicts. No general `CONFLICT` category is introduced;
+ * the 14-category governed taxonomy (TRD11 §11.35) is unchanged. A
+ * broader conflict category may be reconsidered only through a future
+ * versioned review of the governed error contract if multiple
+ * capabilities demonstrate a recurring cross-domain requirement. F9b is
+ * closed.
  */
 
 import type { ErrorCategory } from "../../../shared/errors/errorCategories";

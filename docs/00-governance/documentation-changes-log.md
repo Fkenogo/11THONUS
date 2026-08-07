@@ -2,11 +2,23 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-08-07 (Entry 076 added: FEF Alignment Record adopted and registered — `FEF-ALIGN-IMPL-001`)
+> **Last controlled update:** 2026-08-07 (Entry 077 added: F9b Founder decision on error-category mapping recorded and closed — `F9B-DEC-001`)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 077 — F9b Error-Category Mapping: Founder Decision Recorded and Closed (`F9B-DEC-001`)
+
+- **Date:** 7 August 2026
+- **Performed by:** Claude (AI agent), per Founder instruction: "TASK — F9b Founder Decision Implementation — Error Category Mapping."
+- **Context:** Architecture Review Finding **F9b** (`ENG-P2-ARCH-CORR-004`) was left as an open Founder decision — whether the governed error taxonomy should gain a dedicated conflict category. The Founder has now decided the existing governed MVP error taxonomy shall **remain unchanged**. This is a governance/documentation task only; no error-contract redesign, no taxonomy expansion, no runtime/API change.
+- **Founder decision (authoritative):** for the current MVP error contract, identity conflicts that are not idempotency-key conflicts continue to map to the governed `VALIDATION_FAILED` category while retaining a specific bounded-domain error internally; `IDEMPOTENCY_CONFLICT` remains reserved exclusively for genuine idempotency conflicts; no new general `CONFLICT` category is introduced; a broader conflict category may be reconsidered only through a future versioned review of the governed error contract if multiple capabilities demonstrate a recurring cross-domain requirement. The existing **14-category** governed taxonomy is preserved unchanged.
+- **Records updated:** [TRD11 §11.35](../02-technical/trd/11-cloud-functions-and-domain-services.md#1135-error-categories) — governance note recording the decision and confirming the closed 14-category set (controlled amendment, header updated); `functions/src/domains/identity/models/identityErrors.ts` — header comment changed from "reviewed and deferred to a Founder decision" to the recorded decision (comment only, no code/behaviour change); [Architecture Review Report](../05-implementation/reports/ENG-P2-ARCH-REVIEW-001-capability-2-customer-identity-architecture-review-2026-08-06.md) Finding F9 row — F9b marked **closed** (bracket-marker convention, prior text struck through and preserved); this entry.
+- **Confirmed unchanged:** `functions/src/shared/errors/errorCategories.ts` (the governed 14-category set) — no change; `IDEMPOTENCY_CONFLICT` / `VALIDATION_FAILED` semantics — unchanged; no new category; no runtime, API, or test behaviour changed (no test described the previously-unresolved position, so none required synchronisation).
+- **Full detail:** the F9b implementation report is delivered in the task completion report.
 
 ---
 

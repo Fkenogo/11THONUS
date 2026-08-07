@@ -2,7 +2,7 @@
 > **Version:** 1.0 · **Status:** Draft for approval (pre-freeze) · **Classification:** Authoritative Technical  
 > **Governing document:** 11thONUS Platform Constitution; PRD  
 > **Source-of-truth path:** `docs/02-technical/trd/11-cloud-functions-and-domain-services.md`  
-> **Last controlled update:** 2026-07-16 (Phase 2 — relocated and renamed; metadata block added)
+> **Last controlled update:** 2026-08-07 (`F9B-DEC-001` — §11.35 error-category governance note added recording the Founder decision on Architecture Review Finding F9b: the governed error taxonomy remains the existing 14 categories, unchanged; non-idempotency identity conflicts continue to map to `VALIDATION_FAILED`, `IDEMPOTENCY_CONFLICT` stays reserved for genuine idempotency conflicts, no general `CONFLICT` category is introduced. Previously: 2026-07-16 (Phase 2 — relocated and renamed; metadata block added))
 
 # 11thONUS
 
@@ -962,6 +962,8 @@ Standard categories include:
 - RESOURCE_NOT_FOUND
 - TEMPORARY_UNAVAILABLE
 - INTEGRATION_FAILED
+
+**Governed taxonomy — Founder decision (`F9B-DEC-001`, 2026-08-07; resolves Architecture Review Finding F9b, `ENG-P2-ARCH-CORR-004`).** For the current MVP error contract, this is a **closed set of 14 categories**. Identity (and other domain) conflicts that are *not* idempotency-key conflicts — e.g. "record already exists", "reference already linked to a different identity" — shall map to the governed `VALIDATION_FAILED` category while retaining a specific bounded-domain error internally. `IDEMPOTENCY_CONFLICT` remains reserved **exclusively** for genuine idempotency-key conflicts. **No new general `CONFLICT` category is introduced.** A broader conflict category may be reconsidered only through a future *versioned* review of this governed error contract, and only if multiple capabilities demonstrate a recurring cross-domain requirement. This decision preserves the existing 14-category governed taxonomy unchanged and closes F9b.
 
 # 11.36 Logging
 
