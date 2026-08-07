@@ -2,11 +2,13 @@
 > **Version:** 1.0 · **Status:** Governance interpretation and synchronisation record · **Classification:** Working (execution-layer governance record)
 > **Governing document:** [Decision Register](../../00-governance/decisions/decision-register.md) `DEC-PROD-012`; [`ENG-P2-RES-000` §7](ENG-P2-RES-000-capability-2-resolution-plan.md#7-capability-authorisation-gate); [`ENG-P2-001-PLAN-001`](ENG-P2-001-PLAN-001-customer-identity-decomposition-plan.md)
 > **Source-of-truth path:** `docs/05-implementation/roadmap/ENG-P2-GATE-001-dec-prod-012-scope-determination.md`
-> **Last controlled update:** 2026-08-02 (`ENG-P2-GATE-001` — created)
+> **Last controlled update:** 2026-08-07 (`DEC-PROD-012` closure — Option D: closure banner added; the residual gender-field gate is discharged by omission). Previously: 2026-08-02 (`ENG-P2-GATE-001` — created)
 
 # ENG-P2-GATE-001 — `DEC-PROD-012` Capability Authorisation Gate Scope Determination
 
 **This document is a governance interpretation and repository-synchronisation record. It does not close, record, or restate the resolution of `DEC-PROD-012`. It does not invent a gender-value policy. It does not begin any `ENG-P2-001` child package.**
+
+> **[SUPERSEDED IN PART — `DEC-PROD-012` closure, 2026-08-07]** This determination scoped the `DEC-PROD-012` gate to `ENG-P2-001-02`'s `gender` field only; it was written while `DEC-PROD-012` was `OPEN_FOUNDER`. The Founder has since **CLOSED `DEC-PROD-012`** by selecting **Option D** — gender is not collected at MVP; the `gender` attribute is removed from the MVP Customer Profile schema (future-additive under a separate governed decision). The one remaining `gender`-field gate this document identified is therefore **discharged by omission**: `ENG-P2-001-02` is no longer blocked by `DEC-PROD-012` and is technically authorised to begin, pending a fresh Founder implementation authorization. This document's scope analysis is retained for audit continuity; see the [Decision Register `DEC-PROD-012`](../../00-governance/decisions/decision-register.md) and the [implementation report](../reports/DEC-PROD-012-implementation-and-eng-p2-001-02-unblock-2026-08-07.md) for the authoritative closure.
 
 ## 1. Gate Authority Analysis
 

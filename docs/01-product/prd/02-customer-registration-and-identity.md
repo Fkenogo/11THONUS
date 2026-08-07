@@ -2,7 +2,7 @@
 > **Version:** 1.0 · **Status:** Draft for review (pre-freeze) · **Classification:** Authoritative Product  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/01-product/prd/02-customer-registration-and-identity.md`  
-> **Last controlled update:** 2026-08-01 (`IDENTITY-ALIGN-001` — §5 Steps 2–4 and §7 Customer Account Status corrected to remove the "phone verification gates account creation/Active status" wording contradicted by `DEC-IDENTITY-001` (2026-08-01): standard participation no longer requires phone verification; a customer's identity and `Active` status are established at registration, independent of whether any authentication provider's verification step is later completed. See the [Decision Register](../../00-governance/decisions/decision-register.md) `DEC-IDENTITY-001` entry. Previously: 2026-07-16 (Phase 2 — relocated and renamed; metadata block added)
+> **Last controlled update:** 2026-08-07 (`DEC-PROD-012` Option D — §5 optional registration list: gender removed from MVP). Previously: 2026-08-01 (`IDENTITY-ALIGN-001` — §5 Steps 2–4 and §7 Customer Account Status corrected to remove the "phone verification gates account creation/Active status" wording contradicted by `DEC-IDENTITY-001` (2026-08-01): standard participation no longer requires phone verification; a customer's identity and `Active` status are established at registration, independent of whether any authentication provider's verification step is later completed. See the [Decision Register](../../00-governance/decisions/decision-register.md) `DEC-IDENTITY-001` entry. Previously: 2026-07-16 (Phase 2 — relocated and renamed; metadata block added)
 
 # 11thONUS
 
@@ -182,7 +182,7 @@ Optional
 - Email
 - Profile photo
 - Date of birth
-- Gender
+- ~~Gender~~ **[Removed from MVP — `DEC-PROD-012` Option D, 2026-08-07: gender is not collected at MVP. May be reintroduced additively in a future governed release under a separate decision. See the [Decision Register](../../00-governance/decisions/decision-register.md) and [TRD10 §10.6.2](../../02-technical/trd/10-firestore-data-architecture.md).]**
 
 > **Editorial note (Phase 1 consolidation):** Preferred language moved from Optional to Mandatory to align with the position already established in the Commerce Knowledge Standard Part XII, TRD Chapter 22 §22.35 and the TRD Consolidation Audit §17 (audit finding DOC-P2-003). A sensible default (device or country language) may satisfy this requirement without adding registration friction.
 

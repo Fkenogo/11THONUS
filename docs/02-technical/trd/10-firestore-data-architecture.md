@@ -2,7 +2,7 @@
 > **Version:** 1.0 · **Status:** Draft for approval (pre-freeze) · **Classification:** Authoritative Technical  
 > **Governing document:** 11thONUS Platform Constitution; PRD  
 > **Source-of-truth path:** `docs/02-technical/trd/10-firestore-data-architecture.md`  
-> **Last controlled update:** 2026-07-16 (Phase 3B — §10.10.1 schema gains optional monetary fields + non-influence rule per DEC-DATA-003)
+> **Last controlled update:** 2026-08-07 (`DEC-PROD-012` Option D — §10.6.2 `gender` removed from the MVP `customerProfiles` schema; future-additive governance note added). Previously: 2026-07-16 (Phase 3B — §10.10.1 schema gains optional monetary fields + non-influence rule per DEC-DATA-003)
 
 # 11thONUS
 
@@ -283,7 +283,7 @@ qrReference: string;
 firstName: string;  
 lastName: string;  
 dateOfBirth?: string;  
-gender?: "female" | "male" | "non_binary" | "prefer_not_to_say" | "other";  
+~~gender?: "female" | "male" | "non_binary" | "prefer_not_to_say" | "other";~~ // [REMOVED FROM MVP — `DEC-PROD-012` Option D, 2026-08-07]  
 city?: string;  
 profileCompletionPercent: number;  
 interests: string\[\];  
@@ -305,6 +305,8 @@ createdAt: Timestamp;
 updatedAt: Timestamp;  
 schemaVersion: number;  
 };
+
+> **Governance note (`DEC-PROD-012`, Option D — 2026-08-07):** The `gender` attribute is **removed from the MVP `customerProfiles` schema** — gender is **not collected at MVP**. This is additive-safe: a future governed release may reintroduce an optional `gender` attribute without breaking compatibility, but only under a **separate governed decision** (with the legal/cultural input `EXT-LEG-001` covers, if that release proposes collecting gender). No MVP schema freeze depends on `gender`. See the [Decision Register `DEC-PROD-012`](../../00-governance/decisions/decision-register.md) and the [implementation report](../../05-implementation/reports/DEC-PROD-012-implementation-and-eng-p2-001-02-unblock-2026-08-07.md).
 
 ### Progressive KYC Rule
 

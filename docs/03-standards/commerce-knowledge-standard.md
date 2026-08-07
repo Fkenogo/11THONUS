@@ -2,7 +2,7 @@
 > **Version:** 1.0 · **Status:** Platform Standard · **Classification:** Supporting Standard  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/03-standards/commerce-knowledge-standard.md`  
-> **Last controlled update:** 2026-07-16 (Phase 2 — relocated and renamed; metadata block added)
+> **Last controlled update:** 2026-08-07 (`DEC-PROD-012` Option D — Early Profile Completion list: gender deferred from MVP). Previously: 2026-07-16 (Phase 2 — relocated and renamed; metadata block added)
 
 # Commerce Knowledge Standard
 
@@ -502,7 +502,7 @@ Customer profiling follows the principle of **Progressive KYC**.
 
 ### Early Profile Completion
 
-- Gender
+- ~~Gender~~ **[deferred from MVP — `DEC-PROD-012` Option D, 2026-08-07: gender is not collected at MVP; may be reintroduced additively in a future governed release]**
 - Date of Birth
 - City
 - Communication Preferences

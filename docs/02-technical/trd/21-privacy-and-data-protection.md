@@ -2,7 +2,7 @@
 > **Version:** 1.0 · **Status:** Draft for approval (pre-freeze) · **Classification:** Authoritative Technical  
 > **Governing document:** 11thONUS Platform Constitution; PRD  
 > **Source-of-truth path:** `docs/02-technical/trd/21-privacy-and-data-protection.md`  
-> **Last controlled update:** 2026-07-16 (Phase 2 — relocated and renamed; metadata block added)
+> **Last controlled update:** 2026-08-07 (`DEC-PROD-012` Option D — §21.11 annotated: gender not collected at MVP; section governs only a future gender-collecting governed release). Previously: 2026-07-16 (Phase 2 — relocated and renamed; metadata block added)
 
 **11thONUS**
 
@@ -288,7 +288,7 @@ Information not required to establish and operate the customer account shall not
 Optional profile enrichment may include:
 
 - date of birth;
-- gender;
+- ~~gender;~~ gender **[not collected at MVP — `DEC-PROD-012` Option D, 2026-08-07; see §21.11 and TRD10 §10.6.2]**
 - city;
 - interests;
 - preferred categories;
@@ -336,6 +336,8 @@ It shall not automatically authorize:
 Businesses should normally receive campaign eligibility or governed targeting capability rather than the customer's full birth date.
 
 **21.11 Gender Information**
+
+> **Governance note (`DEC-PROD-012`, Option D — 2026-08-07):** Gender is **not collected at MVP** — the `gender` attribute is removed from the MVP Customer Profile schema (see [TRD10 §10.6.2](10-firestore-data-architecture.md) and the [Decision Register `DEC-PROD-012`](../../00-governance/decisions/decision-register.md)). The requirements in this section therefore govern **only a future governed release** that proposes collecting gender information; such a release requires a separate governed decision and the legal/cultural input covered by `EXT-LEG-001`. The requirements below are retained unchanged for that future scenario.
 
 Gender shall be optional unless a specific lawful and necessary use is approved.
 
