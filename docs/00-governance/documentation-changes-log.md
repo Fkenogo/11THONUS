@@ -2,11 +2,24 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-08-07 (Entry 087 added: `CAP-P2-007` — Customer Identity concern-completion items executed: `-02` profile fields wired into `-05`'s `customerProfiles` converter (TDD, 427/427 functions tests) and `ENG-P2-001-02` Architecture/Technical Review recorded (PASS, DoD §2.6/G1); delivered in the `CAP-P2-007` PR (pending merge); status remains `Implemented — Validation/Closure Pending` until merge)
+> **Last controlled update:** 2026-08-07 (Entry 088 added: `CAP-P2-008` — Customer Identity **concern recorded `Complete`** in `CDR-001` §5 (single source of truth); `CAP-P2-007` (PR #82) merged `436794f` with post-merge CI success, all concern-completion criteria satisfied; administrative programme-closure only — no code/capability-boundary/numbering change; **Capability 2 remains `Open — partially implemented; not closed`**; Authentication/ITM/`ENG-P2-004`/RTM F11 unchanged)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 088 — `CAP-P2-008` Customer Identity Concern Closure (administrative)
+
+- **Date:** 7 August 2026
+- **Performed by:** Claude (AI agent), per Founder instruction: "TASK — CAP-P2-008 — Customer Identity Concern Closure."
+- **Nature:** Administrative programme-closure only — **no code change, no engineering, no capability-boundary or numbering change.** Records the status transition the merged repository already substantiates.
+- **Evidence (merged authoritative records):** `CAP-P2-007` (PR #82) merged `436794faf2b96b768eeb318367d85765161da9aa`; post-merge CI success (run 31198769553); Customer Profile persistence present (`toCustomerProfileFields`/`fromCustomerProfileFields`); `ENG-P2-001-02` Architecture/Technical Review present and **PASS**; all concern-completion criteria (DoD §2.1–2.7, 2.11, 2.12 + §2.6/G1 + persistence delivery; §2.8–2.10 N/A at concern level per G2) satisfied.
+- **Status change (single source of truth = [`CDR-001` §5](../05-implementation/roadmap/CDR-001-capability-delivery-roadmap.md#capability-2--customer-identity)):** **Customer Identity concern → `Complete`.** Prior label (`Implemented — Validation/Closure Pending`) and the historical "Not Complete / criteria not yet defined" clause struck-through with supersession notes (audit trail preserved).
+- **Unchanged (explicitly):** **Capability 2 remains `Open — partially implemented; not closed`** (Concern Completion ≠ Capability closure); **Authentication `Not started — Unauthorised`**; **ITM `Not started — Unauthorised`**; **`ENG-P2-004`** unchanged; **RTM Finding F11** remains accepted deferred.
+- **Records updated:** `CDR-001` §5 concern-status + header; [Engineering Implementation Programme](../05-implementation/change-tracking/engineering-implementation-programme.md) `ENG-P2-001` Current Status note + header; [Master Delivery Workflow](../05-implementation/11thonus-master-workflow.md) §17 next-action; this log (Entry 088); [`IMPLEMENTATION_CHANGES.md`](../changes/IMPLEMENTATION_CHANGES.md); closure report [`CAP-P2-008`](../05-implementation/reports/CAP-P2-008-customer-identity-concern-closure-2026-08-07.md). No new governance artefact; no duplicate source of truth introduced.
+- **Next governed action:** outside Customer Identity — a Founder-authorised choice among the remaining Capability 2 streams (Authentication, ITM, or `ENG-P2-004`). No engineering task begins without fresh Founder authorization.
 
 ---
 
