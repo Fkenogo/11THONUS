@@ -2305,3 +2305,21 @@
 - **Risks:** none — documentation-only status transition faithfully reflecting the merged repository.
 - **Rollback:** `git revert` of this task's commit, or discard the branch — not yet merged. Documentation-only.
 - **Report link:** [`CAP-P2-008-customer-identity-concern-closure-2026-08-07.md`](../05-implementation/reports/CAP-P2-008-customer-identity-concern-closure-2026-08-07.md).
+
+---
+
+## 2026-08-07 — CAP-P2-009 — Authentication Architecture & Delivery Planning (planning only)
+
+- **Date:** 2026-08-07
+- **Task:** CAP-P2-009 (Authentication Architecture & Delivery Planning), Founder-authorized — architecture & planning only.
+- **Status:** Documentation-only planning record. **No implementation, no runtime-code change, no status change, no new governance artefact.** Conforms to the existing merged architecture (`ENG-P2-ARCH-001` §7); does not redesign it.
+- **Deliverable:** `docs/05-implementation/reports/CAP-P2-009-authentication-architecture-and-delivery-planning-2026-08-07.md` — 9 determinations (scope; functional responsibilities; architectural boundaries; recommended package decomposition; dependencies; engineering order; required Founder decisions; validation strategy; risks).
+- **Files changed (documentation only):** created the planning report above; `docs/00-governance/documentation-changes-log.md` (Entry 089 + header).
+- **Key findings:** Authentication builds the credential-verification/session layer resolving a proven credential to one Customer Identity Aggregate via the merged `-08`/`-09`/`-07`/`-01` interfaces (provides access, does not own identity). Providers equal (`DEC-IDENTITY-001`); Phone OTP + Google Sign-In `DEC-PROV-004` initial-approved; email/Apple/passkeys additive. Firebase Auth holds credentials; Firestore holds only references (TRD10 §10.6.1). **`ENG-P2-002/003/004` are reserved for Business/Staff/role** — Authentication has no reserved work-package number (Founder decision D-A1). `EXT-TECH-001` (Burundi SMS) is a production-activation condition, not a build blocker; ITM not required.
+- **Required Founder decisions flagged:** D-A1 work-package numbering; D-A2 MVP provider set (email inclusion; Apple/passkeys deferral); D-A3 duplicate-identity merge authority (PLAN-001 §14 Ambiguity 4); D-A4 `EXT-TECH-001` launch-readiness gate + SMS fallback; D-A5 (adjacent) `DEC-SEC-003` staff-device auth out of this stream.
+- **Status (unchanged):** Authentication `Not started — Unauthorised`; Capability 2 `Open — partially implemented; not closed`; Customer Identity `Complete`; ITM/`ENG-P2-004`/RTM F11 unchanged.
+- **Tests:** none run — no code changed. Markdown links resolve.
+- **Migrations:** none. **Dependencies added:** none. **Configuration changes:** none.
+- **Risks:** none from this task — planning-only. (Authentication-stream risks are enumerated in §9 of the report.)
+- **Rollback:** `git revert` of this task's commit, or discard the branch — not yet merged. Documentation-only.
+- **Report link:** [`CAP-P2-009-authentication-architecture-and-delivery-planning-2026-08-07.md`](../05-implementation/reports/CAP-P2-009-authentication-architecture-and-delivery-planning-2026-08-07.md).
