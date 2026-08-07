@@ -2272,3 +2272,20 @@
 - **Risks:** low — domain-layer, additive, fully unit-tested; profile fields not yet persisted (disclosed). No data/deployment/config affected.
 - **Rollback:** `git revert` of this package's commit, or discard the branch — not yet merged.
 - **Report link:** [`ENG-P2-001-02-implementation-report-2026-08-07.md`](../05-implementation/reports/ENG-P2-001-02-implementation-report-2026-08-07.md).
+
+---
+
+## 2026-08-07 — CAP-P2-007 — Customer Identity Concern Completion (persistence wiring + -02 review)
+
+- **Date:** 2026-08-07
+- **Task:** CAP-P2-007 (Customer Identity Concern Completion), Founder-authorized — the two bounded concern-completion items recorded in `CAP-P2-006` / `CDR-001` §5.
+- **Status:** Implemented + reviewed, test-first — delivered in the CAP-P2-007 PR; **not merged** (awaits fresh Founder authorization). Customer Identity remains `Implemented — Validation/Closure Pending` until merge.
+- **Engineering (application code, TDD):** wired `ENG-P2-001-02`'s Customer Profile fields into `ENG-P2-001-05`'s `customerProfiles` persistence converter. **Modified** `functions/src/domains/identity/repositories/customerProfileDocument.ts` — added `CustomerProfileFieldsDocument` type, extended `CustomerProfileDocument` with the optional `-02` profile fields, added `toCustomerProfileFields`/`fromCustomerProfileFields` (+ `toTimestampLike`/`fromTimestampLike` boundary helpers), and tidied the flagged stale `gender` example in the file's doc comment (per the DEC-PROD-012 change entry). **Modified** `functions/src/domains/identity/repositories/customerProfileDocument.test.ts` — 7 new converter tests. The converter does only the Firestore `Date↔Timestamp` mapping for `consentVersions.acceptedAt` (same cast convention as `userDocument.ts`) and **delegates all field validation** to `-02`'s `serializeCustomerProfileFields`/`deserializeCustomerProfileFields`; no new repository, no transaction change, no schema redesign; profile fields optional (shell behaviour preserved); no `gender` ever emitted.
+- **Review:** created `docs/05-implementation/reports/ENG-P2-001-02-architecture-technical-review-2026-08-07.md` — PASS, no open corrections (DoD §2.6 coverage per `DEC-GOV-009`/G1). All six required determinations pass (architecture, persistence integration, privacy PR-005, TRD10 §10.6.2, DEC-PROD-012, 14-category error taxonomy unchanged).
+- **Tests:** 7 new converter tests (RED→GREEN); full `functions` unit suite **427/427** (was 420; regression clean). `tsc`/root `eslint`/root `prettier --check`/`pnpm build` (web+functions) clean.
+- **Migrations:** none. **Dependencies added:** none. **Configuration changes:** none.
+- **Traceability:** `CDR-001` §5 (concern-status/remaining-items notes updated — delivered in the CAP-P2-007 PR, pending merge); Engineering Implementation Programme + Master Delivery Workflow §17 synced; changes-log Entry 087; implementation report `CAP-P2-007-customer-identity-concern-completion-2026-08-07.md`. **No new governance artefact introduced.**
+- **Boundary:** no Authentication/ITM/`ENG-P2-004`/deployment/Manual QA/RTM F11/Capability 2 closure work. No security-rules or index change; no client read surface opened.
+- **Risks:** low — additive converter functions + optional type fields; no live document schema change; no production write path yet calls the new functions.
+- **Rollback:** `git revert` of this task's commit(s), or discard the branch — not yet merged. Reverting restores the prior shell-only converter with no data migration.
+- **Report link:** [`CAP-P2-007-customer-identity-concern-completion-2026-08-07.md`](../05-implementation/reports/CAP-P2-007-customer-identity-concern-completion-2026-08-07.md).
