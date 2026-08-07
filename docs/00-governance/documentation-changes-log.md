@@ -2,11 +2,22 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-08-07 (Entry 081 added: `ENG-P2-001-02` Customer Profile implemented — final Customer Identity child package; all ten `ENG-P2-001` packages now implemented)
+> **Last controlled update:** 2026-08-07 (Entry 083 added: `CAP-P2-003` Capability 2 Boundary Review — Founder decision required; review-only, no restructuring)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 083 — `CAP-P2-003` Capability 2 Boundary Review
+
+- **Date:** 7 August 2026
+- **Performed by:** Claude (AI agent), per Founder instruction: "TASK — CAP-P2-003 — Capability Boundary Review."
+- **Context:** a read-only programme-architecture review of whether the current Capability 2 boundary (Customer Identity + Authentication + ITM + `ENG-P2-004`, as one customer-facing capability) remains appropriate now that the Customer Identity concern has matured into a complete ten-package stream while Authentication/ITM remain unbuilt. Evidence + recommendations only — no product-architecture redesign, no restructuring, no renumbering, no code, no closure. (Sequence note: `CAP-P2-002`'s changes-log Entry 082 is on the still-open PR #77; the two entries reconcile when both merge.)
+- **Conclusion:** **FOUNDER DECISION REQUIRED.** A full renumbering split (Option B: separate Customer Identity / Authentication / ITM capabilities) is **not evidence-supported** — ITM is internal-only (cannot be a customer capability), capabilities are defined by customer-observable sequencing, and `DEC-IDENTITY-001` already declined the split. The boundary as a customer-facing definition remains sound (Option A). The genuine open choice is whether to adopt an in-boundary concern-level closure/reporting refinement (Option C) to resolve the Customer-Identity-maturity asymmetry — a Founder programme-structure judgment. No Founder preference inferred.
+- **Files modified:** this entry. **Files created:** `CAP-P2-003-capability-boundary-review-2026-08-07.md`. No programme document, capability identifier, roadmap, or code changed; no finding reopened; capability boundary unchanged.
+- **Full detail:** [CAP-P2-003 Report](../05-implementation/reports/CAP-P2-003-capability-boundary-review-2026-08-07.md).
 
 ---
 
