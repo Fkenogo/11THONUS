@@ -355,3 +355,56 @@ export function identityLookupPurposeNotPermittedError(
     `Lookup purpose "${purpose}" is not permitted for ${lookupType} lookup.`,
   );
 }
+
+/**
+ * Customer Profile boundary errors (ENG-P2-001-02).
+ *
+ * Reuses this same `IdentityDomainError` class — one bounded error type
+ * per domain, not a competing profile-specific error hierarchy. Every
+ * category used is one of the closed 14 (TRD11 §11.35); no new category.
+ */
+
+export function invalidProfileFieldError(field: string, value: string): IdentityDomainError {
+  return new IdentityDomainError(
+    "VALIDATION_FAILED",
+    `Invalid customer profile field "${field}": "${value}" is not acceptable.`,
+    [{ field, code: "invalid", messageKey: "customerProfile.field.invalid" }],
+  );
+}
+
+export function missingProfileConsentError(): IdentityDomainError {
+  return new IdentityDomainError(
+    "VALIDATION_FAILED",
+    "Customer profile consent versions are required at write time (terms and privacy versions with an acceptance time).",
+  );
+}
+
+export function unsupportedProfileFieldError(field: string): IdentityDomainError {
+  return new IdentityDomainError(
+    "VALIDATION_FAILED",
+    `Customer profile field "${field}" is not part of the MVP Customer Profile contract and cannot be set.`,
+  );
+}
+
+export function immutableProfileBindingError(field: string): IdentityDomainError {
+  return new IdentityDomainError(
+    "VALIDATION_FAILED",
+    `Customer profile field "${field}" is an immutable identity binding and cannot be changed.`,
+  );
+}
+
+export function customerProfileNotFoundError(customerIdentityId: string): IdentityDomainError {
+  return new IdentityDomainError(
+    "RESOURCE_NOT_FOUND",
+    `No customer profile exists for customer identity "${customerIdentityId}".`,
+  );
+}
+
+export function malformedCustomerProfileRecordError(
+  customerIdentityId: string,
+): IdentityDomainError {
+  return new IdentityDomainError(
+    "VALIDATION_FAILED",
+    `The stored customer profile for "${customerIdentityId}" does not match the expected shape.`,
+  );
+}

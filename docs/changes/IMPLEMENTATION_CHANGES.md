@@ -2256,3 +2256,19 @@
 - **Risks:** none new — documentation only; no data, deployment, or live configuration affected.
 - **Rollback:** `git revert` of this task's commit, or discard the branch — not yet merged. Documentation-only.
 - **Report link:** [`DEC-PROD-012-implementation-and-eng-p2-001-02-unblock-2026-08-07.md`](../05-implementation/reports/DEC-PROD-012-implementation-and-eng-p2-001-02-unblock-2026-08-07.md).
+
+---
+
+## 2026-08-07 — ENG-P2-001-02 — Customer Profile Implementation (domain layer, TDD)
+
+- **Date:** 2026-08-07
+- **Task:** ENG-P2-001-02 (final Customer Identity child package), Founder-authorized.
+- **Status:** Implemented, test-first — pending Founder-authorized review/merge (not marked complete by the implementing agent).
+- **Files changed:** **created** `functions/src/domains/identity/models/customerProfile.ts` (Customer Profile domain model: field shape per TRD10 §10.6.2, `createCustomerProfile`/`updateCustomerProfile`, `toPublicCustomerProfile`, serialize/deserialize field mapping — **no gender**, gender rejected on write) and `functions/src/domains/identity/models/customerProfile.test.ts` (20 unit tests); **modified** `functions/src/domains/identity/models/identityErrors.ts` (six additive Customer Profile error factories, all reusing the closed 14-category taxonomy — no new category). Tracking/report docs updated separately (see changes-log Entry 081).
+- **Tests:** 20 new unit tests; full `functions` unit suite **420/420** (was 400; regression clean). `tsc`/`build`/root `eslint`/root `prettier --check` clean.
+- **Migrations:** none. **Dependencies added:** none. **Configuration changes:** none.
+- **Boundary:** live Firestore write/read wiring for profile mutation is `-05`/future persistence surface (`ENG-P2-001-PLAN-001` split) — disclosed, not invented here. No `-05` redesign, no Rules/index change. RTM Finding F11 remains deferred (no RTM rows added).
+- **Programme impact:** `ENG-P2-001-02` implemented; **all ten `ENG-P2-001` child packages now implemented**; Capability 2 not marked complete (its closure follows a separate governed process). Authentication/ITM remain unauthorised.
+- **Risks:** low — domain-layer, additive, fully unit-tested; profile fields not yet persisted (disclosed). No data/deployment/config affected.
+- **Rollback:** `git revert` of this package's commit, or discard the branch — not yet merged.
+- **Report link:** [`ENG-P2-001-02-implementation-report-2026-08-07.md`](../05-implementation/reports/ENG-P2-001-02-implementation-report-2026-08-07.md).

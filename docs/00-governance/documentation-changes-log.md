@@ -2,11 +2,26 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-08-07 (Entry 080 added: `DEC-PROD-012` Implementation & `ENG-P2-001-02` Unblock — Founder Option D, gender omitted from MVP)
+> **Last controlled update:** 2026-08-07 (Entry 081 added: `ENG-P2-001-02` Customer Profile implemented — final Customer Identity child package; all ten `ENG-P2-001` packages now implemented)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 081 — `ENG-P2-001-02` Customer Profile Implementation
+
+- **Date:** 7 August 2026
+- **Performed by:** Claude (AI agent), per Founder instruction: "TASK — ENG-P2-001-02 — Customer Profile Implementation."
+- **Context:** the final Customer Identity child package, implemented test-first. Application (functions) code only — three files under `functions/src/domains/identity/models/`. Documentation-governance updates recorded here.
+- **Implementation:** `customerProfile.ts` — the mutable `customerProfiles` profile domain model (TRD10 §10.6.2): `firstName`/`lastName` mandatory; `dateOfBirth?`/`city?` optional; `interests`/`preferredCategories`/`communicationPreferences`/`consentVersions`; derived `profileCompletionPercent`. `createCustomerProfile`/`updateCustomerProfile` (required-field + write-time consent validation, Progressive-KYC optional-absence, immutable identity binding), `toPublicCustomerProfile` (PR-005 privacy projection), and domain↔document field mapping. Six additive Customer Profile error factories in `identityErrors.ts` (all reuse the closed 14-category taxonomy, TRD11 §11.35 — **no new category**). 20 new unit tests in `customerProfile.test.ts`.
+- **Gender:** **not collected at MVP** per `DEC-PROD-012` (Option D). The contract has no `gender` field; create/update reject `gender`; serialization never emits it. Tests assert each.
+- **Boundary (disclosed):** live Firestore write/read wiring for profile mutation is `-05`/future persistence surface (`ENG-P2-001-PLAN-001`'s own split); `-02` delivers the domain model + validation + operations + document mapping that surface consumes. No `-05` redesign, no parallel repository. RTM Finding F11 remains deferred (no RTM rows added — the out-of-scope F11 catch-up; consistent with sibling packages).
+- **Validation:** 20/20 new tests; full `functions` unit suite **420/420** (was 400; regression clean); `tsc`/`build`/root `eslint`/root `prettier --check` clean; `git status` shows only the three code files. No gender; 14-category taxonomy unchanged; Authentication/ITM untouched; no Rules/index/config/dependency change.
+- **Programme impact:** `ENG-P2-001-02` implemented, pending Founder-authorized review/merge. **All ten `ENG-P2-001` child packages (`-01`–`-10`) now implemented.** Capability 2 **not** marked complete — capability-level closure follows its own governed validation/closure process.
+- **Files modified:** `engineering-implementation-programme.md`; `coding-agent-prompt-register.md`; `ENG-P2-001-PLAN-001-customer-identity-decomposition-plan.md`; `docs/changes/IMPLEMENTATION_CHANGES.md`; this entry. **Code created:** `functions/src/domains/identity/models/customerProfile.ts`, `customerProfile.test.ts`. **Code modified:** `functions/src/domains/identity/models/identityErrors.ts`. **Report created:** `ENG-P2-001-02-implementation-report-2026-08-07.md`.
+- **Full detail:** [ENG-P2-001-02 Implementation Report](../05-implementation/reports/ENG-P2-001-02-implementation-report-2026-08-07.md).
 
 ---
 
