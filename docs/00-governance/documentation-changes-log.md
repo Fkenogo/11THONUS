@@ -2,11 +2,27 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-08-07 (Entry 078 added: `ENG-P2-ARCH-REVIEW-002` corrected-baseline architecture review — PASS WITH CONDITIONS)
+> **Last controlled update:** 2026-08-07 (Entry 079 added: `ENG-P2-ARCH-CORR-005` — Programme-State Synchronisation, closing Review-002 Findings R2-01 & R2-02)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 079 — `ENG-P2-ARCH-CORR-005`: Programme-State Synchronisation (Review-002 R2-01 & R2-02)
+
+- **Date:** 7 August 2026
+- **Performed by:** Claude (AI agent), per Founder instruction: "TASK — ENG-P2-ARCH-CORR-005 — Programme-State Synchronisation."
+- **Context:** `ENG-P2-ARCH-REVIEW-002` (PASS WITH CONDITIONS) raised two bounded documentation-currency conditions. Documentation-only synchronisation; no architecture redesign, no runtime/API/taxonomy/decision change. R2-03 explicitly out of scope and untouched.
+- **R2-01 (Master Delivery Workflow) — corrected:** §7 Phase 1 `In Progress → Complete`; §8/§10 marked superseded historical snapshots; §17 rewritten to the true current position with the stale "next action = `ENG-P1-002-PREP`" removed and the next governed action recorded as not-uniquely-established (requires a Founder decision); §19 v1.1 entry. History preserved.
+- **R2-02 (`CDR-001`) — corrected:** §2 (both status tables) and §5 "Validation outcome" corrected from "not started"/"Planned" to "partially implemented; capability remains `Blocked`" — nine of ten `ENG-P2-001` packages merged, `-02` gated by open `DEC-PROD-012`, Auth/ITM unauthorised, RTM F11 deferred; not marked complete/production-ready. Header updated; history preserved.
+- **R2-03:** unchanged — the dev-harness timing test was not modified, suppressed, or loosened.
+- **Review closure:** `ENG-P2-ARCH-REVIEW-002` report R2-01 & R2-02 marked CLOSED/CORRECTED; R2-03 remains an observation.
+- **Validation:** `pnpm format:check` clean; markdown links resolve; documentation-only (no code changed); cross-document consistency (Master Workflow ↔ Programme ↔ CDR-001 ↔ Decision Register ↔ Review-002) confirmed; `DEC-PROD-012` remains `OPEN_FOUNDER`; F11 remains deferred.
+- **Files modified:** `11thonus-master-workflow.md`; `CDR-001-capability-delivery-roadmap.md`; `ENG-P2-ARCH-REVIEW-002-...md`; this entry. **Files created:** `ENG-P2-ARCH-CORR-005-programme-state-synchronisation-2026-08-07.md`.
+- **Current authoritative next action:** not uniquely established — requires a Founder decision (resolve `DEC-PROD-012` to unblock `ENG-P2-001-02`, or authorise a parallel governed track). Not chosen by this task.
+- **Full detail:** [`ENG-P2-ARCH-CORR-005` implementation report](../05-implementation/reports/ENG-P2-ARCH-CORR-005-programme-state-synchronisation-2026-08-07.md).
 
 ---
 
