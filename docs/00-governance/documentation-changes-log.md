@@ -2,11 +2,25 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-08-07 (Entry 084 added: `CAP-P2-004` — concern-level completion reporting adopted per `DEC-GOV-008` (Founder Option C); PR #77 & #78 merged)
+> **Last controlled update:** 2026-08-07 (Entry 085 added: `CAP-P2-005` — concern-completion criteria consolidation & Customer Identity assessment; Founder Decision Required Before Concern Completion; review-only)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 085 — `CAP-P2-005` Concern Completion Criteria Consolidation & Customer Identity Assessment
+
+- **Date:** 7 August 2026
+- **Performed by:** Claude (AI agent), per Founder instruction: "TASK — CAP-P2-005 — Concern Completion Criteria Consolidation & Customer Identity Assessment."
+- **Context:** a read-only consolidation of completion criteria already defined across authoritative records, and an evidence-based assessment of the Customer Identity concern against them. No new criteria invented; no policy created; no code; no closure.
+- **Consolidated criteria:** the authoritative rule is the work-package [Definition of Done](../06-engineering-governance/definition-of-done.md) §2 (twelve criteria); a concern is complete when every constituent work package satisfies it plus the concern-level architecture review. Criteria classified across Concern Completion / Capability Closure / Release-Production Readiness (TRD19 §19.49/§19.52; TRD22 §22.45) / Accepted Deferred Work.
+- **Customer Identity assessment:** DoD items 1–5, 7, 11, 12 **satisfied**; item 6 (Technical Review) **not satisfied** (no per-package Technical Review records; `-02` unreviewed); items 8–10 (deployment, Preview Review, Manual QA) **not satisfied** (not performed; depend on the unbuilt customer-facing surface). RTM F11 accepted deferred.
+- **Gaps (genuine):** G1 — whether the capability-level Architecture Reviews satisfy DoD §2.6 for the `ENG-P2-001` packages (or per-package Technical Reviews are required; `-02` unreviewed); G2 — whether DoD §2.8–2.10 (deploy/Preview/Manual QA) bind Concern Completion for a domain-layer concern or are deferred to Capability Closure / Release Readiness.
+- **Overall assessment:** **FOUNDER DECISION REQUIRED BEFORE CONCERN COMPLETION.** Customer Identity remains **`Implemented — Validation/Closure Pending`** (cannot be `Complete` on current evidence). Precise Founder decisions stated (§6 of the report).
+- **Files modified:** this entry. **Files created:** `CAP-P2-005-concern-completion-criteria-and-customer-identity-assessment-2026-08-07.md`. No programme, decision, criteria, or code file changed; no concern/capability closed.
+- **Full detail:** [CAP-P2-005 Report](../05-implementation/reports/CAP-P2-005-concern-completion-criteria-and-customer-identity-assessment-2026-08-07.md).
 
 ---
 
