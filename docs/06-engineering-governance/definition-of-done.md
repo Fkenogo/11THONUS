@@ -4,7 +4,7 @@
 > **Version:** 1.0 · **Status:** Active governance process · **Classification:** Working (governance process)
 > **Governing document:** [Engineering Governance Charter](engineering-governance-charter.md)
 > **Source-of-truth path:** `docs/06-engineering-governance/definition-of-done.md`
-> **Last controlled update:** 2026-07-16 (Phase 6 — created)
+> **Last controlled update:** 2026-08-07 (`CAP-P2-006` — added a §2 application note clarifying how the criteria apply to concern-level completion per `DEC-GOV-009`/`DEC-GOV-010`; **no §2 criterion changed**). Previously: 2026-07-16 (Phase 6 — created)
 
 ## 1. Purpose
 
@@ -28,6 +28,8 @@ A work package is done only when **all** of the following are true:
 12. any risk or rollback note from the Implementation Report remains accurate at the point of deployment.
 
 **Passing compilation, or the code existing in the repository, is never sufficient on its own** (TRD22 §22.41).
+
+> **Application note — concern-level completion (`DEC-GOV-009`/`DEC-GOV-010`, 2026-08-07):** these clarify how §2 **applies** when assessing whether an architectural *concern* (a set of work packages) is complete — they do **not** change any §2 criterion. Per `DEC-GOV-009` (G1): the capability-level Architecture Review may satisfy §2.6 (Technical Review) for packages within its baseline; a package implemented after that baseline needs its own review coverage. Per `DEC-GOV-010` (G2): §2.8–2.10 (deployment, Preview Review, Manual QA) are **not** concern-completion criteria for a domain-layer concern that delivers no deployable customer-facing surface — they are classified to later Capability Closure / Release / Production Readiness (see [`CDR-001` §5](../05-implementation/roadmap/CDR-001-capability-delivery-roadmap.md#capability-2--customer-identity)). Both decisions are recorded in the [Decision Register](../00-governance/decisions/decision-register.md).
 
 ## 3. What This Does Not Cover
 

@@ -2,11 +2,25 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-08-07 (Entry 085 added: `CAP-P2-005` — concern-completion criteria consolidation & Customer Identity assessment; Founder Decision Required Before Concern Completion; review-only)
+> **Last controlled update:** 2026-08-07 (Entry 086 added: `CAP-P2-006` — G1/G2 recorded (`DEC-GOV-009`/`DEC-GOV-010`); concern-completion lifecycle classification; Customer Identity reassessed `Implemented — Validation/Closure Pending`; next governed action uniquely determined)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 086 — `CAP-P2-006` Concern Completion Policy Decision & Customer Identity Reassessment
+
+- **Date:** 7 August 2026
+- **Performed by:** Claude (AI agent), per Founder instruction: "TASK — CAP-P2-006 — Concern Completion Policy Decision & Customer Identity Reassessment."
+- **Founder decisions recorded (existing Decision Register mechanism):** **`DEC-GOV-009` (G1)** — the capability-level Architecture Review may satisfy DoD §2.6 (Technical Review) for constituent packages within its baseline; a package implemented after that baseline needs its own review coverage (`ENG-P2-001-02` therefore requires coverage). **`DEC-GOV-010` (G2)** — DoD §2.8–2.10 (deployment/Preview/Manual QA) are not concern-completion criteria for a domain-layer concern with no deployable customer-facing surface; they are Capability-Closure / Release-Production Readiness. Both clarify only — the Definition of Done is not weakened/redesigned.
+- **Concern-completion lifecycle classification** added to [`CDR-001` §5](../05-implementation/roadmap/CDR-001-capability-delivery-roadmap.md#capability-2--customer-identity) and a bounded application note to the [Definition of Done](../06-engineering-governance/definition-of-done.md) §2 (no §2 criterion changed): Concern Completion / Capability Closure / Release-Production Readiness distinguished.
+- **Customer Identity reassessment:** DoD 1–5, 7, 11, 12 satisfied; 6 satisfied for `-01`,`-03`–`-10` (Architecture Reviews per G1), **`-02` needs review coverage**; 8–10 Not Applicable at Concern Level (G2). **Persistence determination: required before concern completion, owner `ENG-P2-001-05`** (Identity Persistence owns `customerProfiles`; profile fields deferred at `-05` only because `-02` did not yet exist) — a bounded engineering task, not a Founder ownership decision. RTM F11 accepted deferred.
+- **Customer Identity status:** **`Implemented — Validation/Closure Pending`** (unchanged). Two bounded remaining concern-completion items (`-02` review coverage; `-02`→`-05` profile-field persistence) — **no further Founder policy decision needed.**
+- **Next governed action (now uniquely determined):** a bounded Customer-Identity concern-completion task covering the two items above, awaiting fresh Founder authorization.
+- **Files modified:** `decision-register.md` (DEC-GOV-009/010 + header); `CDR-001-capability-delivery-roadmap.md` (§5 + header); `06-engineering-governance/definition-of-done.md` (§2 note + header); `11thonus-master-workflow.md` (§17); this entry. **Files created:** `CAP-P2-006-concern-completion-policy-and-customer-identity-reassessment-2026-08-07.md`. No code/persistence/review-execution/closure; no capability renumbered; no new register created.
+- **Full detail:** [CAP-P2-006 Report](../05-implementation/reports/CAP-P2-006-concern-completion-policy-and-customer-identity-reassessment-2026-08-07.md).
 
 ---
 
