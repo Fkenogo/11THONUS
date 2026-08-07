@@ -122,7 +122,9 @@ Summarized from the [Engineering Implementation Programme](change-tracking/engin
 
 `ENG-P0-001` (commit `3a50710`) and `ENG-P0-002` (merged `e316565`, [PR #1](https://github.com/Fkenogo/11THONUS/pull/1), post-merge CI [passed](https://github.com/Fkenogo/11THONUS/actions/runs/29638421819)) are both `Complete`, both Technical-Review-Approved. TRD22 §22.10 exit criteria satisfied with direct CI evidence.
 
-### Phase 1 — In Progress
+### Phase 1 — Complete
+
+**Corrected 2026-08-07 (`ENG-P2-ARCH-CORR-005`, resolving Review-002 Finding R2-01):** ~~Phase 1 — In Progress~~ **Phase 1 is Complete.** All three Phase 1 work packages are merged and `Complete` — `ENG-P1-001` (Firebase & shared platform foundation), `ENG-P1-002` (shared command/event/idempotency/outbox/error contract), and `ENG-P1-003` (deny-by-default Rules & observability foundation) — and **Phase 1 Exit is formally Approved** (`ENG-P1-EXIT-001`, 2026-07-31; all TRD22 §22.11 exit criteria verified). The subsection below is preserved as the historical `ENG-P1-001` mid-provisioning snapshot (July 2026) for audit continuity; its "not committed / not pushed / official status remains `Approved`, not `Complete`" wording described that work package's state at the time of writing and has since been superseded — see the [ENG-P1-001 Closure Report](reports/ENG-P1-001-closure-report-2026-07-22.md) and §17.
 
 **`ENG-P1-001` — Firebase & Shared Platform Foundation.** Verified facts, reconciled across the full evidence chain ([Implementation Report](reports/ENG-P1-001-implementation-report-2026-07-20.md), [Technical Review](reports/ENG-P1-001-technical-review-2026-07-20.md), [Closure Preflight](reports/ENG-P1-001-review-observations-and-infrastructure-preflight-2026-07-21.md), [Provisioning Attempt](reports/ENG-P1-001-firebase-environment-provisioning-2026-07-21.md), [Provisioning Retry](reports/ENG-P1-001-firebase-environment-provisioning-retry-2026-07-21.md), [Billing and Storage Completion](reports/ENG-P1-001-billing-and-storage-completion-2026-07-21.md), [Manual Storage Verification](reports/ENG-P1-001-manual-storage-verification-2026-07-21.md)):
 
@@ -179,6 +181,8 @@ Per the live [Decision Register](../00-governance/decisions/decision-register.md
 </details>
 
 ## 8. Immediate Authorized Sequence
+
+**Superseded — see §17 for the current position (corrected 2026-08-07, `ENG-P2-ARCH-CORR-005`, Review-002 Finding R2-01).** The engineering sequence recorded below (beginning `ENG-P1-001-CLOSE` → `ENG-P1-002` → `ENG-P1-003` → `PHASE-1-CLOSE` → `PHASE-2-GATE`) is a **historical activation snapshot from 2026-07-22 and is fully complete**: Phase 1 is complete and Phase 2's `ENG-P2-001` child packages `-01`,`-03`–`-10` are merged (`-02` gated by `DEC-PROD-012`). This section is preserved for audit continuity; the authoritative current next action is in §17.
 
 **Governance progression to date** (corrected 2026-07-22 — the prior version of this section showed tracker reconciliation as still-future work; it was already complete):
 
@@ -244,6 +248,8 @@ Every current or future work package shall be recorded (in the Programme and, wh
 - Risks and deferred items
 
 ## 10. Current Work-Package Control Table
+
+**Superseded — see §17 for the current position (corrected 2026-08-07, `ENG-P2-ARCH-CORR-005`, Review-002 Finding R2-01).** The table below is a **historical Phase-1 snapshot (July 2026)**: it predates the completion of `ENG-P1-002`/`ENG-P1-003` (now `Complete`) and the merge of `ENG-P2-001-01`,`-03`–`-10`. Its cells (`ENG-P1-002` = "Ready", `ENG-P1-003` = "Blocked", "next authorized action = `ENG-P1-002-PREP`") are no longer current; the [Engineering Implementation Programme](change-tracking/engineering-implementation-programme.md) holds the authoritative per-package state and §17 holds the authoritative current next action. Preserved for audit continuity.
 
 Full detail for every other work package remains in the [Engineering Implementation Programme](change-tracking/engineering-implementation-programme.md); this table covers the five work packages most relevant right now — `ENG-P0-001` and `ENG-P0-002` are shown for immediate context only (both `Complete`, not active or upcoming), and `ENG-P1-001`/`ENG-P1-002`/`ENG-P1-003` are the current and immediately-next work in Phase 1.
 
@@ -364,6 +370,15 @@ A task is not complete merely because code exists (TRD22 §22.41; [Definition of
 
 ## 17. Current Next Action
 
+**Current position and next action — corrected 2026-08-07 (`ENG-P2-ARCH-CORR-005`, resolving Review-002 Finding R2-01). This block supersedes the historical narrative below (preserved for audit continuity).**
+
+- **Phase 0:** Complete. **Phase 1:** Complete (`ENG-P1-001`/`-002`/`-003` merged; Phase 1 Exit Approved `ENG-P1-EXIT-001`, 2026-07-31).
+- **Phase 2 (Capability 2 — Customer Identity):** **Blocked** at the capability level pending `DEC-PROD-012` (`OPEN_FOUNDER`). However, **nine of ten `ENG-P2-001` child packages (`-01`, `-03`–`-10`) are implemented, TDD-tested, and merged to `main`**; only `ENG-P2-001-02` (Customer Profile) remains, gated by `DEC-PROD-012`'s `gender`-field scope (`ENG-P2-GATE-001`). The Capability 2 architecture review ([`ENG-P2-ARCH-REVIEW-001`](reports/ENG-P2-ARCH-REVIEW-001-capability-2-customer-identity-architecture-review-2026-08-06.md)) and its corrections `ENG-P2-ARCH-CORR-001`–`-004`, the F9b error-category Founder decision (`F9B-DEC-001`), the FEF alignment adoption, and the corrected-baseline review ([`ENG-P2-ARCH-REVIEW-002`](reports/ENG-P2-ARCH-REVIEW-002-corrected-baseline-architecture-review-2026-08-07.md), PASS WITH CONDITIONS) are all complete and merged.
+- **The stale pointer "Next authorized action: `ENG-P1-002-PREP`" is superseded** — that task completed weeks ago.
+- **Next governed action — not uniquely established from authoritative records; requires a Founder decision.** The primary remaining Capability 2 child, `ENG-P2-001-02`, is Founder-gated by the open `DEC-PROD-012`; parallel candidate tracks exist but none is uniquely mandated by current authoritative evidence — the Identity/Authentication/ITM engineering-design decomposition of `ENG-P2-001` (`IDENTITY-ALIGN-001`, "not yet performed"), the RTM Finding F11 synchronisation (Founder-approved deferred engineering work), or a registered successor package (`OBS-OPS-001` / `ENG-SEC-001` / `ENG-CI-001`). Per governance, this task does not choose one; the next engineering action awaits Founder direction (resolve `DEC-PROD-012` to unblock `-02`, or authorise one of the parallel governed tracks). Customer Profile, Authentication, and ITM remain separately governed and unauthorised.
+
+**Historical narrative (superseded, preserved):**
+
 `MW-001A`/`MW-002` (Master Workflow creation and tracker integration), `MW-001B` (correction-and-approval pass), `ENG-P1-001-CLOSE`, `ENG-P1-001-PR2-PRE-MERGE-CORRECTION`, `ENG-P1-001-PR2-FINAL-MERGE-READINESS-SYNC`, `ENG-P1-001-FOUNDER-MERGE` (merge commit `5714543336...`, merged 2026-07-23T06:10:37Z by Kenogo, post-merge CI [passed](https://github.com/Fkenogo/11THONUS/actions/runs/29984247236)), and the final closure recording (this task) are all complete as of 2026-07-23. The Founder personally completed the two remaining Definition-of-Done gates in a clean review workspace: possession via `git pull origin main` (verified fast-forward `ef1de34→5714543`, evidence file confirms HEAD matches the merge commit exactly, clean worktree, full local validation passing) and Preview Review (Firebase Emulator Suite started cleanly on `demo-11thonus`, all six emulators active, `europe-west1-ping` reachable, Emulator UI reachable — result `Passed`). **All 12 Definition of Done criteria are now satisfied — `ENG-P1-001` is `Complete`.** See the [ENG-P1-001 Closure Report](reports/ENG-P1-001-closure-report-2026-07-22.md) §17–18 for the full final reconciliation.
 
 `ENG-P1-002`'s only blocker — `ENG-P1-001` completion — is resolved; its own decision dependencies (`DEC-TECH-006`/`007`) were already `CONFIRMED`; it has no Provider or Legal dependency. **`ENG-P1-002` moves `Blocked` → `Ready`.** `ENG-P1-003` was, at the time this section was written (2026-07-22), still `Blocked` on the then-open `DEC-PROV-005` — **`DEC-PROV-005` is now `CONFIRMED` (2026-07-26, Option C)**, per the Decision Register; `ENG-P1-003` itself moved `Blocked` → `Ready` in the Engineering Implementation Programme and Coding-Agent Prompt Register.
@@ -391,6 +406,7 @@ A task is not complete merely because code exists (TRD22 §22.41; [Definition of
 |---|---|---|---|
 | 0.1 | 2026-07-22 | Initial proposed draft | Proposed — awaiting Founder and Technical Lead approval |
 | 1.0 | 2026-07-22 | Founder and Technical Lead approved; corrections applied (phase-map gate classification, §6; MW-001/MW-002 reconciliation, §8/§17; App Check deferral trigger, §13; non-blocking wording clarifications, §10/§14/§15); activated | **Active — governed delivery control record** |
+| 1.1 | 2026-08-07 | `ENG-P2-ARCH-CORR-005` — current-position/next-action synchronisation resolving Review-002 Finding R2-01: §7 Phase 1 corrected `In Progress → Complete`; §8/§10 marked superseded historical snapshots; §17 rewritten to state the true current position (Phase 1 complete; Capability 2 `ENG-P2-001` `-01`,`-03`–`-10` merged, `-02` gated by open `DEC-PROD-012`) and record that the next governed action is not uniquely established and requires a Founder decision. Historical text preserved. | **Active — governed delivery control record** |
 
 ## 20. Approval Record
 
