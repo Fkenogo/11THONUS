@@ -2,7 +2,7 @@
 > **Version:** 1.0 · **Status:** Planning record — proposed decomposition, awaiting mobilisation · **Classification:** Working (execution-layer planning record)
 > **Governing document:** [`ENG-P2-ARCH-001` Customer Identity Architecture](ENG-P2-ARCH-001-customer-identity-architecture.md); [Decision Register](../../00-governance/decisions/decision-register.md) `DEC-IDENTITY-001`; [`CDR-001` Capability 2](CDR-001-capability-delivery-roadmap.md#capability-2--customer-identity); [`ENG-P2-RES-000` §7](ENG-P2-RES-000-capability-2-resolution-plan.md#7-capability-authorisation-gate)
 > **Source-of-truth path:** `docs/05-implementation/roadmap/ENG-P2-001-PLAN-001-customer-identity-decomposition-plan.md`
-> **Last controlled update:** 2026-08-02 (`ENG-P2-001-PLAN-001` — created)
+> **Last controlled update:** 2026-08-07 (`DEC-PROD-012` closure — Option D: §10 Ambiguity 2 fully resolved; §12 `-02` row unblocked — gender omitted from MVP). Previously: 2026-08-02 (`ENG-P2-001-PLAN-001` — created)
 
 # ENG-P2-001-PLAN-001 — Customer Identity Engineering Decomposition Plan
 
@@ -237,7 +237,7 @@ Ten proposed child work packages, `ENG-P2-001-01` through `ENG-P2-001-10`. Each 
 | Proposed ID | Work package | Objective | Dependencies | Blocks / blocked by | Entry status |
 |---|---|---|---|---|---|
 | `ENG-P2-001-01` | Identity Domain Foundation | Aggregate, invariants, error/event contracts | none | Blocks all others | **Implemented (2026-08-02), TDD, 68/68 tests passing — see [Implementation Report](../reports/ENG-P2-001-01-implementation-report-2026-08-02.md) — pending Founder-authorized review/merge** |
-| `ENG-P2-001-02` | Customer Profile | Mutable profile data model | `-01` | `gender` field blocked by `DEC-PROD-012` (§14) | Awaiting Founder Authorisation (partial — non-`gender` scope) |
+| `ENG-P2-001-02` | Customer Profile | Mutable profile data model | `-01` | ~~`gender` field blocked by `DEC-PROD-012` (§14)~~ **`DEC-PROD-012` CLOSED 2026-08-07 (Option D — gender omitted from MVP); no longer blocked (§14)** | ~~Awaiting Founder Authorisation (partial — non-`gender` scope)~~ **Awaiting Founder Authorisation (full scope; gender omitted from MVP per `DEC-PROD-012` Option D) — technically authorised to begin, pending fresh Founder implementation authorization** |
 | `ENG-P2-001-03` | Loyalty Number Service | Generation per `DEC-DATA-007` | `-01` | Blocks `-04` | **Foundation implemented (2026-08-04), TDD, 39/39 new tests passing — see [Implementation Report](../reports/ENG-P2-001-03-implementation-report-2026-08-04.md) — pending Founder-authorized review/merge; persistence/uniqueness-index deferred to a future package** |
 | `ENG-P2-001-04` | QR Identity Service | QR lifecycle per `DEC-DATA-007` | `-03` | — | **Foundation implemented (2026-08-04), TDD, 39/39 new tests passing — see [Implementation Report](../reports/ENG-P2-001-04-implementation-report-2026-08-04.md) — pending Founder-authorized review/merge; rendering/scanning/persistence deferred to future packages** |
 | `ENG-P2-001-05` | Identity Persistence | Firestore collections, Rules, indexes | `-01`,`-02`,`-03`,`-04` | Blocks `-06`–`-10` | **Implemented (2026-08-04), TDD, all new tests passing (real Firebase Emulator Suite) — see [Implementation Report](../reports/ENG-P2-001-05-implementation-report-2026-08-04.md) — pending Founder-authorized review/merge** |
@@ -343,6 +343,8 @@ This decomposition creates **10 child work packages under the existing `ENG-P2-0
 ## 10. Capability Entry and Mobilisation Gate
 
 > **Resolved 2026-08-02 (`ENG-P2-GATE-001`):** the ambiguity this section originally flagged has been determined — see the [`ENG-P2-GATE-001` Determination](ENG-P2-GATE-001-dec-prod-012-scope-determination.md). `Gate item 6` has been scoped in place to `ENG-P2-001-02`'s `gender` field and the corresponding `-05` schema-freeze only; `-01`, `-03`, `-04`, `-06`–`-10`, and the non-`gender` portions of `-02`/`-05` are confirmed **not** blocked by `DEC-PROD-012`. `DEC-PROD-012` itself remains `OPEN_FOUNDER`, not closed or recorded. The original findings below are preserved as the record of the question this determination answered.
+>
+> **Fully resolved 2026-08-07 (`DEC-PROD-012` closure — Option D):** `DEC-PROD-012` is now **CLOSED**. The Founder selected **Option D** — gender is not collected at MVP; the `gender` attribute is removed from the MVP Customer Profile schema (future-additive under a separate governed decision). The one residual `gender`-field gate on `ENG-P2-001-02` is therefore **discharged by omission**: `-02` is **no longer blocked by `DEC-PROD-012`** and is technically authorised to begin, pending a fresh Founder implementation authorization (§11). See the [Decision Register `DEC-PROD-012`](../../00-governance/decisions/decision-register.md) and the [implementation report](../reports/DEC-PROD-012-implementation-and-eng-p2-001-02-unblock-2026-08-07.md).
 
 Per this task's explicit instruction, `DEC-PROD-012` is **not** closed or recorded by this task. Findings (as originally stated, 2026-08-02, before the `ENG-P2-GATE-001` determination above):
 

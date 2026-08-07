@@ -2,7 +2,7 @@
 > **Version:** 1.0 · **Status:** Draft for approval (pre-freeze) · **Classification:** Authoritative Technical  
 > **Governing document:** 11thONUS Platform Constitution; PRD  
 > **Source-of-truth path:** `docs/02-technical/trd/12-security-and-access-control.md`  
-> **Last controlled update:** 2026-08-01 (`IDENTITY-ALIGN-001` — §12.4.1 reframed: authentication providers are equal, per `DEC-IDENTITY-001`'s Authentication Principle, not a "preferred"-then-"future" hierarchy; the identity/authentication/verification separation §12.3 already established is unaffected and remains correct. See the [Decision Register](../../00-governance/decisions/decision-register.md) `DEC-IDENTITY-001` entry.) Previously: 2026-07-16 (Phase 2 — relocated and renamed; metadata block added)
+> **Last controlled update:** 2026-08-07 (`DEC-PROD-012` Option D — sensitivity-example list annotated: gender not collected at MVP). Previously: 2026-08-01 (`IDENTITY-ALIGN-001` — §12.4.1 reframed: authentication providers are equal, per `DEC-IDENTITY-001`'s Authentication Principle, not a "preferred"-then-"future" hierarchy; the identity/authentication/verification separation §12.3 already established is unaffected and remains correct. See the [Decision Register](../../00-governance/decisions/decision-register.md) `DEC-IDENTITY-001` entry.) Previously: 2026-07-16 (Phase 2 — relocated and renamed; metadata block added)
 
 # 11thONUS
 
@@ -848,7 +848,7 @@ Optional customer profile information shall be protected according to sensitivit
 Examples:
 
 - birthday;
-- gender;
+- ~~gender;~~ gender **[not collected at MVP — `DEC-PROD-012` Option D, 2026-08-07; retained as a sensitivity example for a future gender-collecting governed release]**
 - interests;
 - location;
 - family details.

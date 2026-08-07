@@ -2,7 +2,7 @@
 > **Version:** 1.0 · **Status:** Draft for approval (pre-freeze) · **Classification:** Authoritative Technical  
 > **Governing document:** 11thONUS Platform Constitution; PRD  
 > **Source-of-truth path:** `docs/02-technical/trd/22-mvp-implementation-and-delivery.md`  
-> **Last controlled update:** 2026-07-16 (Phase 2 — relocated and renamed; metadata block added)
+> **Last controlled update:** 2026-08-07 (`DEC-PROD-012` Option D — optional-early-profile-fields list: gender deferred from MVP). Previously: 2026-07-16 (Phase 2 — relocated and renamed; metadata block added)
 
 **11thONUS**
 
@@ -1453,7 +1453,7 @@ Required:
 Optional early profile fields:
 
 - date of birth;
-- gender;
+- ~~gender;~~ **[deferred from MVP — `DEC-PROD-012` Option D, 2026-08-07: gender is not collected at MVP; may be reintroduced additively in a future governed release]**
 - city;
 - interests;
 - notification preferences.
