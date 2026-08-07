@@ -2,11 +2,23 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-08-06 (Entry 074 added: `ENG-P2-ARCH-CORR-004` — Remaining Architecture Review Findings Reconciliation)
+> **Last controlled update:** 2026-08-07 (Entry 075 added: CI Infrastructure Exception Record — PR #70)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 075 — CI Infrastructure Exception Record — PR #70 (`ENG-P2-ARCH-CORR-004`)
+
+- **Date:** 7 August 2026
+- **Performed by:** Claude (AI agent), per Founder instruction: "Founder Authorisation — PR #70 CI Infrastructure Exception."
+- **Context:** GitHub-hosted CI repeatedly failed to acquire a runner for PR #70 (run `31124545388`, annotation "The job was not acquired by Runner of type hosted even after multiple attempts") — a pre-execution infrastructure failure with no repository step executed, providing no evidence of a code or test failure.
+- **Action:** created a persistent, PR-#70-only CI Infrastructure Exception Record documenting the failed run ID, infrastructure message, retry history, and a complete local CI-equivalent validation against the exact reviewed head `e75cfcd056cdf8cdbd8225d5b998a05444c52b36` — install, build, lint, format:check, typecheck, functions unit (400/400), web unit (259/259), Playwright e2e (1/1), Firebase Emulator Suite (172/172), all green.
+- **Scope:** applies to PR #70 only; does not change the repository's normal CI policy or any workflow/branch-protection configuration.
+- **Files created:** `ci-infrastructure-exception-record-pr-70-2026-08-07.md`. **Files modified:** this entry.
+- **Full detail:** [CI Infrastructure Exception Record — PR #70](../05-implementation/reports/ci-infrastructure-exception-record-pr-70-2026-08-07.md).
 
 ---
 
