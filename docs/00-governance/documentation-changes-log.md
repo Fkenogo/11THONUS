@@ -2,11 +2,23 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-08-07 (Entry 088 added: `CAP-P2-008` — Customer Identity **concern recorded `Complete`** in `CDR-001` §5 (single source of truth); `CAP-P2-007` (PR #82) merged `436794f` with post-merge CI success, all concern-completion criteria satisfied; administrative programme-closure only — no code/capability-boundary/numbering change; **Capability 2 remains `Open — partially implemented; not closed`**; Authentication/ITM/`ENG-P2-004`/RTM F11 unchanged)
+> **Last controlled update:** 2026-08-07 (Entry 089 added: `CAP-P2-009` — Authentication Architecture & Delivery Planning (planning only, no implementation): a planning record prepares the customer Authentication concern (scope, functional responsibilities, boundaries per `ENG-P2-ARCH-001` §7, recommended package decomposition, dependencies, engineering order, required Founder decisions, validation strategy, risks); conforms to existing merged architecture, does not redesign it. **No status change** — Authentication remains `Not started — Unauthorised`; Capability 2 remains `Open — partially implemented; not closed`. Stop for Founder review). Previously: 2026-08-07 (Entry 088 added: `CAP-P2-008` — Customer Identity **concern recorded `Complete`** in `CDR-001` §5 (single source of truth); `CAP-P2-007` (PR #82) merged `436794f` with post-merge CI success, all concern-completion criteria satisfied; administrative programme-closure only — no code/capability-boundary/numbering change; **Capability 2 remains `Open — partially implemented; not closed`**; Authentication/ITM/`ENG-P2-004`/RTM F11 unchanged)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 089 — `CAP-P2-009` Authentication Architecture & Delivery Planning (planning only)
+
+- **Date:** 7 August 2026
+- **Performed by:** Claude (AI agent), per Founder instruction: "TASK — CAP-P2-009 — Authentication Architecture & Delivery Planning."
+- **Nature:** Architecture & planning only — **no implementation, no runtime-code change, no new governance artefact, no status change.** Conforms to the existing merged architecture (`ENG-P2-ARCH-001` §7); does not redesign it.
+- **Deliverable:** planning record [`CAP-P2-009`](../05-implementation/reports/CAP-P2-009-authentication-architecture-and-delivery-planning-2026-08-07.md) determining: (1) Authentication scope; (2) functional responsibilities; (3) architectural boundaries; (4) recommended package decomposition; (5) dependencies; (6) required engineering order; (7) required Founder decisions; (8) validation strategy; (9) risks.
+- **Key findings:** the customer Authentication concern builds the credential-verification/session layer that resolves a proven credential to exactly one Customer Identity Aggregate via the already-merged `-08`/`-09`/`-07`/`-01` interfaces (Authentication provides access, does not own identity — `ENG-P2-ARCH-001` §7). Providers are equal (`DEC-IDENTITY-001`): Phone OTP + Google Sign-In are `DEC-PROV-004` initial-approved; email/Apple/passkeys additive. Firebase Auth holds credentials; Firestore holds only references (TRD10 §10.6.1). **Numbering gap flagged:** `ENG-P2-002/003/004` are reserved for Business/Staff/role — the Authentication stream has no reserved work-package number (Founder/programme decision D-A1). `EXT-TECH-001` (Burundi SMS) is a production-activation condition, not a build blocker; ITM not required.
+- **Status (unchanged):** Authentication `Not started — Unauthorised`; Capability 2 `Open — partially implemented; not closed`; Customer Identity `Complete`; ITM/`ENG-P2-004`/RTM F11 unchanged.
+- **Boundary:** no Authentication/ITM/`ENG-P2-004` implementation; no Customer Identity change; no capability numbering/boundary change; no runtime code modified. Stop for Founder review.
 
 ---
 
