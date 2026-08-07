@@ -2289,3 +2289,19 @@
 - **Risks:** low — additive converter functions + optional type fields; no live document schema change; no production write path yet calls the new functions.
 - **Rollback:** `git revert` of this task's commit(s), or discard the branch — not yet merged. Reverting restores the prior shell-only converter with no data migration.
 - **Report link:** [`CAP-P2-007-customer-identity-concern-completion-2026-08-07.md`](../05-implementation/reports/CAP-P2-007-customer-identity-concern-completion-2026-08-07.md).
+
+---
+
+## 2026-08-07 — CAP-P2-008 — Customer Identity Concern Closure (administrative)
+
+- **Date:** 2026-08-07
+- **Task:** CAP-P2-008 (Customer Identity Concern Closure), Founder-authorized — administrative programme-closure only.
+- **Status:** Documentation-only. **No code change, no engineering, no capability-boundary or numbering change.**
+- **What changed:** Recorded the Customer Identity **concern status → `Complete`** in the single source of truth (`CDR-001` §5), substantiated by the merged repository: `CAP-P2-007` (PR #82) merged `436794faf2b96b768eeb318367d85765161da9aa`, post-merge CI success (run 31198769553), Customer Profile persistence present, `ENG-P2-001-02` review present and PASS, all concern-completion criteria satisfied. Prior label and the historical "Not Complete" clause struck-through with supersession notes (audit trail preserved).
+- **Files changed (documentation only):** `docs/05-implementation/roadmap/CDR-001-capability-delivery-roadmap.md` (§5 concern status → `Complete`, header); `docs/05-implementation/change-tracking/engineering-implementation-programme.md` (`ENG-P2-001` Current Status note + header); `docs/05-implementation/11thonus-master-workflow.md` (§17 next-action); `docs/00-governance/documentation-changes-log.md` (Entry 088). **Created:** `docs/05-implementation/reports/CAP-P2-008-customer-identity-concern-closure-2026-08-07.md`.
+- **Unchanged (explicitly):** Capability 2 remains `Open — partially implemented; not closed`; Authentication `Not started — Unauthorised`; ITM `Not started — Unauthorised`; `ENG-P2-004` unchanged; RTM Finding F11 accepted deferred. No capability numbering or boundary change; concern-completion definition unchanged.
+- **Tests:** none run — no code changed. Markdown links resolve; no duplicate source of truth introduced (concern status owned solely by `CDR-001` §5).
+- **Migrations:** none. **Dependencies added:** none. **Configuration changes:** none.
+- **Risks:** none — documentation-only status transition faithfully reflecting the merged repository.
+- **Rollback:** `git revert` of this task's commit, or discard the branch — not yet merged. Documentation-only.
+- **Report link:** [`CAP-P2-008-customer-identity-concern-closure-2026-08-07.md`](../05-implementation/reports/CAP-P2-008-customer-identity-concern-closure-2026-08-07.md).
