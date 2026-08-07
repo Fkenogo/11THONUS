@@ -2,11 +2,24 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-08-07 (Entry 075 added: CI Infrastructure Exception Record — PR #70)
+> **Last controlled update:** 2026-08-07 (Entry 076 added: FEF Alignment Record adopted and registered — `FEF-ALIGN-IMPL-001`)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 076 — FEF Alignment Record Adopted and Registered (`FEF-ALIGN-IMPL-001`)
+
+- **Date:** 7 August 2026
+- **Performed by:** Claude (AI agent), per Founder instruction: "TASK — Implement Approved FEF Alignment Actions."
+- **Context:** following the completed read-only FEF Alignment Assessment (which created [`docs/00-governance/FEF-ALIGNMENT.md`](FEF-ALIGNMENT.md), PR #71), the Founder approved the alignment actions. This entry records their implementation — an alignment-record and registration task only; no engineering work, no project behaviour/architecture/programme-authority change.
+- **Actions implemented (Founder-approved):** (1) adopted `FEF-ALIGNMENT.md` as the project's single official FEF alignment record (status `Prepared → Adopted`, version `0.1 → 1.0`); (2) registered it via this Documentation Changes Log (this entry) — the existing registration process, no new mechanism, frozen v1.0 Documentation Manifest intentionally untouched (consistent with all post-baseline documents); (3) recorded the coordinated Master Delivery Workflow + Engineering Implementation Programme as an accepted project-specific SSoT implementation, no additional programme authority created; (4) recorded the governance footprint as an accepted intentional deviation above the FEF minimum, no reduction authorised; (5) recorded RTM Finding F11 as approved-but-deferred engineering work owned by the Engineering Implementation Programme (RTM synchronisation **not** performed); (6) recorded `F9b` as an existing external Founder decision, neither resolved nor modified; (7) recorded the identified Framework lessons as project-local observations only (FEF unchanged, no Framework Evolution proposal).
+- **Deferred / unchanged (confirmed not implemented):** RTM Finding F11 synchronisation; the `F9b` error-category decision; any governance-footprint reduction.
+- **Files modified:** [`FEF-ALIGNMENT.md`](FEF-ALIGNMENT.md); this entry.
+- **Validation:** all internal links resolve; `prettier --check` clean; worktree contains only the two expected files; the Master Delivery Workflow and Engineering Implementation Programme remain the only authoritative source of current project state (this record introduces no competing programme authority); no duplicate source of truth created; no engineering work performed.
+- **Full detail:** [FEF Alignment Profile](FEF-ALIGNMENT.md).
 
 ---
 
