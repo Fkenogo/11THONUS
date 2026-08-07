@@ -2,11 +2,23 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-08-07 (Entry 077 added: F9b Founder decision on error-category mapping recorded and closed — `F9B-DEC-001`)
+> **Last controlled update:** 2026-08-07 (Entry 078 added: `ENG-P2-ARCH-REVIEW-002` corrected-baseline architecture review — PASS WITH CONDITIONS)
 
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 078 — `ENG-P2-ARCH-REVIEW-002`: Corrected-Baseline Architecture Review
+
+- **Date:** 7 August 2026
+- **Performed by:** Claude (AI agent), per Founder instruction: "TASK — ENG-P2-ARCH-REVIEW-002 — Architecture Review."
+- **Context:** a new governed, findings-only architecture review against the corrected baseline (`origin/main` @ `3f9f0e6`, the F9b merge), not a continuation of Review 001. Read-only; no corrections implemented, no closed findings reopened.
+- **Outcome — PASS WITH CONDITIONS.** Three items: **R2-01** (Medium, documentation inconsistency) — the Master Delivery Workflow's §7/§8/§10/§17 current-position/next-action records are stale (still point to `ENG-P1-002-PREP`), contradicting the actual merged state and the document's own 2026-08-06 Phase 2 note; **R2-02** (Medium, documentation inconsistency) — `CDR-001` represents Customer Identity as "not started / Blocked" despite nine of ten `ENG-P2-001` packages merged; **R2-03** (Low, observation) — an environment-sensitive timing assertion in a non-production dev-harness frontend test fails locally under load but is green in CI on the same commit. Deferred/carried (not new findings): RTM F11, `ENG-P2-001-02` gated by `DEC-PROD-012`, the pending Identity/Auth/ITM engineering-design decomposition. Accepted design choices (not findings): the Identity/Auth/ITM split, the F9b error-taxonomy mapping, the FEF-accepted governance footprint, the forward-defined ITM boundary.
+- **Validation:** `tsc`/`lint`/`build` clean; `functions` unit 400/400; `apps/web` 258/259 (the one R2-03 dev-harness test, green in CI); baseline CI on `main` green.
+- **Files created:** `ENG-P2-ARCH-REVIEW-002-corrected-baseline-architecture-review-2026-08-07.md`. **Files modified:** this entry. No architecture document, code, tracker, or configuration changed (findings only).
+- **Full detail:** [ENG-P2-ARCH-REVIEW-002 Report](../05-implementation/reports/ENG-P2-ARCH-REVIEW-002-corrected-baseline-architecture-review-2026-08-07.md).
 
 ---
 
