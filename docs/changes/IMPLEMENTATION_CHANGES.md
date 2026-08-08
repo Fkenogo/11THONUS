@@ -2357,3 +2357,20 @@
 - **Risks:** none from this task — planning-only. Authentication-stream risks are in §16 of the blueprint.
 - **Rollback:** `git revert` of this task's commit, or discard the branch — not yet merged. Documentation-only.
 - **Report link:** [`AUTH-BP-authentication-blueprint-2026-08-08.md`](../05-implementation/roadmap/AUTH-BP-authentication-blueprint-2026-08-08.md).
+
+---
+
+## 2026-08-08 — AUTH-01 — Authentication Domain Contracts (application code, TDD)
+
+- **Date:** 2026-08-08
+- **Task:** AUTH-01 (Authentication Domain Contracts), Founder-authorized — first Authentication implementation package under `AUTH-BP`.
+- **Status:** Implemented, test-first — **pending Founder-authorized review/merge** (not marked complete by the implementing agent).
+- **Files changed:** **created** `functions/src/domains/authentication/models/{authenticatedCredential,authResult,sessionContext,authenticationEvents,authenticationErrors}.ts` + `ports/tokenVerifierPort.ts`, each with a colocated `*.test.ts` (20 unit tests); **modified** `eslint.config.js` (machine-enforced no-Firebase boundary for `functions/src/domains/authentication/**`).
+- **Scope (per AUTH-BP §12):** domain interfaces + behaviour only — `AuthenticatedCredential`, `AuthResult` (resolved/unregistered), `SessionContext`, auth event type contracts, `AuthenticationDomainError` factories (14-category taxonomy reused, **no new category**), `TokenVerifierPort` (interface only). **No** orchestration, provider logic, Firebase Auth, UI, session management, account linking, or recovery.
+- **Architecture:** Authentication provides access, never owns/duplicates identity; **reuses** the merged `AuthenticationReferenceType` (provider neutrality); dependency direction Authentication → Identity/shared (identity/shared import no authentication — verified); reference-only, no credential material (TRD10 §10.6.1).
+- **Tests:** 20 new unit tests; full `functions` unit suite **447/447** (was 427). `tsc`/`eslint`/`prettier --check`/`pnpm build` clean; `grep firebase` in the authentication domain → none.
+- **Migrations:** none. **Dependencies added:** none. **Configuration changes:** none.
+- **Programme impact:** `AUTH-01` implemented (pending merge); `AUTH-02`–`AUTH-09` unimplemented, each requires its own authorization. Capability 2 remains `Open — partially implemented; not closed`.
+- **Risks:** low — additive, pure-domain, fully unit-tested; no runtime wiring, no Firebase, no data path.
+- **Rollback:** `git revert` of this package's commit, or discard the branch — not yet merged. No data/migration impact.
+- **Report link:** [`AUTH-01-authentication-domain-contracts-2026-08-08.md`](../05-implementation/reports/AUTH-01-authentication-domain-contracts-2026-08-08.md).
