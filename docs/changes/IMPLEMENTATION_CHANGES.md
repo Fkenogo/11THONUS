@@ -2323,3 +2323,20 @@
 - **Risks:** none from this task — planning-only. (Authentication-stream risks are enumerated in §9 of the report.)
 - **Rollback:** `git revert` of this task's commit, or discard the branch — not yet merged. Documentation-only.
 - **Report link:** [`CAP-P2-009-authentication-architecture-and-delivery-planning-2026-08-07.md`](../05-implementation/reports/CAP-P2-009-authentication-architecture-and-delivery-planning-2026-08-07.md).
+
+---
+
+## 2026-08-07 — AUTH-P0-001 — Authentication Foundation Decisions (governance)
+
+- **Date:** 2026-08-07
+- **Task:** AUTH-P0-001 (Authentication Foundation Decisions), Founder-authorized — records decisions only.
+- **Status:** Documentation-only. **No engineering, no runtime-code change, no capability numbering change.**
+- **Decision recorded:** `DEC-AUTH-001` (CONFIRMED) — Founder Authentication Foundation Decisions D-A1–D-A5 (package series; MVP providers Phone OTP + Google; duplicate-merge separate governed capability; SMS a production-launch concern; staff auth separate).
+- **Files changed (documentation only):** `docs/00-governance/decisions/decision-register.md` (`DEC-AUTH-001` + §5 summary + header); `docs/05-implementation/roadmap/CDR-001-capability-delivery-roadmap.md` (§5 Authentication concern + §2 summary + header); `docs/05-implementation/change-tracking/engineering-implementation-programme.md` (`ENG-P2-001` Current Status note + header); `docs/05-implementation/11thonus-master-workflow.md` (§17 next-action); `docs/00-governance/documentation-changes-log.md` (Entry 090 + header). **Created:** `docs/05-implementation/reports/AUTH-P0-001-authentication-foundation-decisions-2026-08-07.md`.
+- **Numbering:** the `AUTH-*` series is Capability 2 Authentication-concern work packages, distinct from `ENG-P2-002/003/004` (Business/Staff/role) — those are unchanged / not renumbered. Capability numbering unchanged.
+- **Status:** Authentication concern `Not started — Foundations approved` (each `AUTH-*` package needs its own implementation authorization); Capability 2 `Open — partially implemented; not closed`; Customer Identity `Complete`; ITM/`ENG-P2-004`/RTM F11 unchanged.
+- **Tests:** none run — no code changed. Markdown links resolve; no duplicate source of truth introduced (concern status owned by `CDR-001` §5; decisions owned by the Decision Register).
+- **Migrations:** none. **Dependencies added:** none. **Configuration changes:** none.
+- **Risks:** none from this task — governance-only. Authentication implementation must not begin without fresh Founder authorization.
+- **Rollback:** `git revert` of this task's commit, or discard the branch — not yet merged. Documentation-only.
+- **Report link:** [`AUTH-P0-001-authentication-foundation-decisions-2026-08-07.md`](../05-implementation/reports/AUTH-P0-001-authentication-foundation-decisions-2026-08-07.md).
