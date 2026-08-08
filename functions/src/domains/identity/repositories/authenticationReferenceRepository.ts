@@ -58,7 +58,10 @@ import type {
 } from "../models/authenticationReference";
 import type { TransitionAuthority } from "../models/transitionAuthority";
 import type { TransitionReason } from "../models/transitionReason";
-import { buildAuthenticationReferenceConflictDetectedEvent } from "../events/identityEvents";
+import {
+  buildAuthenticationReferenceConflictDetectedEvent,
+  buildAuthenticationReferenceLinkedEvent,
+} from "../events/identityEvents";
 import {
   IdentityDomainError,
   authenticationReferenceCommandConflictError,
@@ -187,6 +190,56 @@ export async function linkAuthenticationReferenceForIdentity(
 
       const current = fromUserDocument(identitySnapshot.data());
 
+      const authRefRecord: AuthenticationReferenceRecordDocument = {
+        referenceType: params.referenceType,
+        referenceId: params.referenceId,
+        customerIdentityId: params.customerIdentityId,
+        status: "linked",
+        linkedAt: toTimestampLike(params.linkedAt),
+        unlinkedAt: null,
+      };
+
+      // AUTH-CORR-001: an identity's *initial* authentication reference is
+      // created embedded-only by `-01` (`registerCustomerIdentity`) — the
+      // authoritative `authenticationReferences/{type}:{id}` document that
+      // `-09` resolves against is not written at creation. Completing that
+      // reference is a legitimate `-08` operation, not a within-identity
+      // duplicate. It is identified purely by the authoritative uniqueness
+      // signal: the authoritative document is *absent* (`!existing`) yet the
+      // reference is already embedded in *this* identity. A present document
+      // owned by another identity already returned `conflict` above; a present
+      // document owned by this identity means the reference is already fully
+      // linked and correctly falls through to the domain duplicate check.
+      // We materialise the authoritative document and emit the linked event,
+      // leaving the embedded projection untouched. Global uniqueness is
+      // preserved: the `set` only lands when the doc is absent, and the
+      // transaction's read of `authRefRef` serialises concurrent
+      // materialisations (first commit wins; the loser retries and hits the
+      // cross-identity conflict above).
+      const alreadyEmbedded = current.authenticationReferences.some(
+        (ref) => ref.referenceId === params.referenceId,
+      );
+      if (!existing && alreadyEmbedded) {
+        const linkedEvent = buildAuthenticationReferenceLinkedEvent({
+          eventId: params.eventId,
+          correlationId: params.correlationId,
+          actor: params.actor,
+          occurredAt: params.occurredAt,
+          customerIdentityId: params.customerIdentityId,
+          referenceId: params.referenceId,
+          referenceType: params.referenceType,
+          authority: params.authority,
+          reason: params.reason,
+        });
+        transaction.set(authRefRef, {
+          ...authRefRecord,
+          schemaVersion: 1,
+          ...stampCreate(params.linkedBy),
+        });
+        writeOutboxEntry(transaction, db, linkedEvent);
+        return { kind: "linked", identity: current };
+      }
+
       const { identity: updated, event } = linkAuthenticationReference(
         current,
         {
@@ -209,14 +262,6 @@ export async function linkAuthenticationReferenceForIdentity(
         ...stampUpdate(params.linkedBy),
       });
 
-      const authRefRecord: AuthenticationReferenceRecordDocument = {
-        referenceType: params.referenceType,
-        referenceId: params.referenceId,
-        customerIdentityId: params.customerIdentityId,
-        status: "linked",
-        linkedAt: toTimestampLike(params.linkedAt),
-        unlinkedAt: null,
-      };
       transaction.set(authRefRef, {
         ...authRefRecord,
         schemaVersion: 1,
