@@ -2374,3 +2374,21 @@
 - **Risks:** low — additive, pure-domain, fully unit-tested; no runtime wiring, no Firebase, no data path.
 - **Rollback:** `git revert` of this package's commit, or discard the branch — not yet merged. No data/migration impact.
 - **Report link:** [`AUTH-01-authentication-domain-contracts-2026-08-08.md`](../05-implementation/reports/AUTH-01-authentication-domain-contracts-2026-08-08.md).
+
+---
+
+## 2026-08-08 — AUTH-02 — Token Verification & Identity Resolution (application code, TDD)
+
+- **Date:** 2026-08-08
+- **Task:** AUTH-02 (Token Verification & Identity Resolution), Founder-authorized — second Authentication implementation package under `AUTH-BP`.
+- **Status:** Implemented, test-first — **pending Founder-authorized review/merge** (not marked complete by the implementing agent).
+- **Files changed:** **created** `functions/src/domains/authentication/services/firebaseTokenVerifier.ts` (+`.test.ts`), `functions/src/domains/authentication/services/credentialResolutionService.ts` (+`.test.ts`, +`.emulator.test.ts`); **modified** `eslint.config.js` (`ignores: ["functions/src/domains/authentication/services/**"]` — the one Firebase-permitted sub-layer; pure `models/`+`ports/` stay machine-enforced Firebase-free).
+- **Scope (per AUTH-BP §3/§4/§12):** the Firebase-Admin ID-token verification adapter (`TokenVerifierPort` → `AuthenticatedCredential`, `referenceId` = Firebase authUid, closed 14-category error mapping) + credential→identity resolution service (consumes the merged `-09` `lookupCustomerIdentityByAuthenticationReference` with `purpose: "authentication"`; found → `resolvedAuthResult`, `RESOURCE_NOT_FOUND` → `unregisteredAuthResult`, else propagate). **No** registration/sign-in orchestration (AUTH-03), UI, account linking, recovery, session gating, ITM, staff auth, duplicate merging, or new providers.
+- **Architecture/Security:** Authentication → Customer Identity/shared/infrastructure (reverse never occurs — verified); no raw token persisted/logged/returned; credential carries only a non-sensitive `signInProvider` signal (TRD10 §10.6.1); reCAPTCHA/App Check unchanged; **no new error category**; Customer Identity **consumed, not modified**.
+- **Cross-package finding (reported, not fixed here):** the merged `-01` `createCustomerIdentity` writes an identity's initial reference only to the `users/{id}` embedded projection, not the authoritative `authenticationReferences/{type}:{id}` collection `-09` resolves against; `-08` refuses to retro-link it (duplicate). **AUTH-03 registration must link the initial reference via `-08` (or a separately-authorized `-01` change) — a Founder decision for AUTH-03.** AUTH-02's resolver is correct for the resolution contract (see report §12).
+- **Tests:** 20 new unit tests (11 verifier + 9 resolver); full `functions` unit suite **467/467** (was 447); a real-Firestore-emulator test (3 tests) passes 3/3 (a cold-start `beforeEach` hook-timeout was resolved with a channel warm-up in `beforeAll`; the file passes within the full `emulators:validate` suite, where earlier files warm the shared emulator). `tsc`/`eslint`/`prettier --check`/`pnpm build` clean; `grep firebase` in `authentication/{models,ports}` → none. The 4 failures in the full `emulators:validate` run are pre-existing identity concurrency/timing flakiness (none in `authentication/`).
+- **Migrations:** none. **Dependencies added:** none (`firebase-admin` already present). **Configuration changes:** none.
+- **Programme impact:** `AUTH-02` implemented (pending merge); `AUTH-03`–`AUTH-09` unimplemented, each requires its own authorization. Capability 2 remains `Open — partially implemented; not closed`.
+- **Risks:** low–moderate — additive; consumes merged, already-tested Customer Identity interfaces; verifier proven at its Firebase injection seam (test double; no live production Firebase in CI, `DEC-AUTH-001` D-A4). End-to-end real-token mint deferred to AUTH-03 where a live client flow exists.
+- **Rollback:** `git revert` of this package's commit, or discard the branch — not yet merged. No data/migration impact.
+- **Report link:** [`AUTH-02-token-verification-and-identity-resolution-2026-08-08.md`](../05-implementation/reports/AUTH-02-token-verification-and-identity-resolution-2026-08-08.md).

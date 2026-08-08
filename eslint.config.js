@@ -196,6 +196,10 @@ export default tseslint.config(
     // Admin ID-token verification adapter that implements `TokenVerifierPort`
     // is AUTH-02, a separate module outside this domain layer.
     files: ["functions/src/domains/authentication/**/*.ts"],
+    // The Firebase adapter/service sub-layer (AUTH-02+) is the one place a
+    // Firebase SDK import is permitted — mirroring identity's `repositories/**`
+    // exclusion. Pure `models/`+`ports/` stay framework-independent.
+    ignores: ["functions/src/domains/authentication/services/**"],
     languageOptions: {
       ecmaVersion: 2023,
       globals: globals.node,
