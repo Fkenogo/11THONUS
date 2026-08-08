@@ -2340,3 +2340,20 @@
 - **Risks:** none from this task — governance-only. Authentication implementation must not begin without fresh Founder authorization.
 - **Rollback:** `git revert` of this task's commit, or discard the branch — not yet merged. Documentation-only.
 - **Report link:** [`AUTH-P0-001-authentication-foundation-decisions-2026-08-07.md`](../05-implementation/reports/AUTH-P0-001-authentication-foundation-decisions-2026-08-07.md).
+
+---
+
+## 2026-08-08 — AUTH-BP — Authentication Blueprint (planning)
+
+- **Date:** 2026-08-08
+- **Task:** AUTH-BP (Authentication Blueprint), Founder-authorized — architecture & implementation-planning only.
+- **Status:** Documentation-only. **No implementation, no runtime-code change, no capability numbering change.** References the merged `ENG-P2-ARCH-001` §7 architecture; does not redesign it.
+- **Deliverable:** `docs/05-implementation/roadmap/AUTH-BP-authentication-blueprint-2026-08-08.md` — the authoritative engineering contract for `AUTH-01`–`AUTH-09` (16 sections).
+- **Files changed (documentation only):** created the blueprint; `docs/05-implementation/roadmap/CDR-001-capability-delivery-roadmap.md` (§5 AUTH-BP contract pointer); `docs/05-implementation/11thonus-master-workflow.md` (§17 next-action → `AUTH-01`); `docs/00-governance/documentation-changes-log.md` (Entry 091 + header).
+- **Key content:** Authentication is a thin access layer over Firebase Auth resolving a verified credential → one Customer Identity Aggregate via the merged `-08`/`-09`/`-07`/`-01` interfaces; provider-neutral (`TokenVerifierPort`); MVP Phone OTP + Google; no credential material in Firestore (TRD10 §10.6.1); 14-category error taxonomy reused; AUTH-01→09 decomposition, exit criteria, TDD + Firebase Auth Emulator (no live SMS in CI), sequencing and risks.
+- **Status (unchanged):** Authentication `Not started — Foundations approved`; each `AUTH-*` package needs its own implementation authorization; Capability 2 `Open — partially implemented; not closed`; Customer Identity `Complete`; ITM/`ENG-P2-004`/RTM F11 unchanged.
+- **Tests:** none run — no code changed. Markdown links resolve; no duplicate authority (blueprint is engineering-contract planning; concern status owned by `CDR-001` §5; decisions by the Decision Register).
+- **Migrations:** none. **Dependencies added:** none. **Configuration changes:** none.
+- **Risks:** none from this task — planning-only. Authentication-stream risks are in §16 of the blueprint.
+- **Rollback:** `git revert` of this task's commit, or discard the branch — not yet merged. Documentation-only.
+- **Report link:** [`AUTH-BP-authentication-blueprint-2026-08-08.md`](../05-implementation/roadmap/AUTH-BP-authentication-blueprint-2026-08-08.md).
