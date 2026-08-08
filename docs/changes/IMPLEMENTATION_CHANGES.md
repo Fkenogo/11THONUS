@@ -2393,3 +2393,21 @@
 - **Risks:** low–moderate — additive; consumes merged, already-tested Customer Identity interfaces; verifier proven at its Firebase injection seam (test double; no live production Firebase in CI, `DEC-AUTH-001` D-A4). End-to-end real-token mint deferred to AUTH-03 where a live client flow exists.
 - **Rollback:** `git revert` of this package's commit, or discard the branch — not yet merged. No data/migration impact.
 - **Report link:** [`AUTH-02-token-verification-and-identity-resolution-2026-08-08.md`](../05-implementation/reports/AUTH-02-token-verification-and-identity-resolution-2026-08-08.md).
+
+---
+
+## 2026-08-08 — AUTH-CORR-001 — Initial Authentication-Reference Linking Reconciliation (application code, TDD)
+
+- **Date:** 2026-08-08
+- **Task:** AUTH-CORR-001, Founder-authorized — a bounded interface/integration correction discovered through AUTH-02 (§12). **Not** AUTH-03.
+- **Status:** Implemented, test-first — **pending Founder-authorized review/merge**.
+- **Root cause:** `-01` `registerCustomerIdentity` embeds the initial reference but never writes the authoritative `authenticationReferences/{type}:{id}` document; the `-08` link path's domain duplicate guard then rejected completing that embedded-only reference as a within-identity duplicate (even though the authoritative uniqueness doc, `-09`'s guard, was absent). Implementation mismatch, not an intended invariant.
+- **Files changed:** **modified** `functions/src/domains/identity/repositories/authenticationReferenceRepository.ts` (materialisation branch in `linkAuthenticationReferenceForIdentity` + `buildAuthenticationReferenceLinkedEvent` import); **new** `functions/src/domains/identity/repositories/initialAuthenticationReferenceLinking.emulator.test.ts`; **modified** `functions/src/domains/identity/repositories/authenticationReferenceRepository.emulator.test.ts` (re-targeted the test that encoded the §12 defect to the genuine already-authoritatively-linked duplicate).
+- **Correction (minimum, through the existing `-08` responsibility):** when the authoritative document is absent *and* the reference is already embedded in this identity, materialise the authoritative document + emit `AuthenticationReferenceLinked`, leaving the embedded projection untouched. No `-01` responsibility change; no second linking implementation; no AUTH-02 change; no new error category; no capability renumbering.
+- **Uniqueness/idempotency/concurrency:** global uniqueness preserved (`set` only when absent; cross-identity conflict retained; transaction serialises concurrent materialisations); idempotency-key gate unchanged; emulator-verified.
+- **Tests:** AUTH-CORR-001 lifecycle emulator **7/7** (establish via `-08`; resolvable via `-09`; same-key idempotency; cross-identity rejection; global uniqueness; AUTH-02 consumption `-01→-08→-09→AUTH-02`; no raw credential persisted). Full functions unit **477/477**; web **259/259**; `tsc`/`eslint`/`prettier --check`/`pnpm build` clean; `pnpm emulators:validate` **181 pass / 1** pre-existing ENG-P1-002-CR1 outbox concurrency flake (unrelated).
+- **Migrations:** none. **Dependencies added:** none. **Configuration changes:** none.
+- **Programme impact:** AUTH-02 §12 resolved on merge; **AUTH-03 unblocked but unauthorised**. Capability 2 remains `Open — partially implemented; not closed`.
+- **Risks:** low — additive branch inside an already-transactional path; no `-01`/taxonomy/AUTH-02 change; invariants emulator-verified.
+- **Rollback:** `git revert` this commit, or discard the branch — not yet merged. No data/migration impact.
+- **Report link:** [`AUTH-CORR-001-initial-authentication-reference-linking-2026-08-08.md`](../05-implementation/reports/AUTH-CORR-001-initial-authentication-reference-linking-2026-08-08.md).

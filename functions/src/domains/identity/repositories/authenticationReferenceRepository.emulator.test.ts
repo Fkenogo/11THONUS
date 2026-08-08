@@ -122,24 +122,43 @@ describe("linkAuthenticationReferenceForIdentity", () => {
     expect(second.authenticationReferences).toHaveLength(2);
   });
 
-  it("rejects linking a reference already active on the same identity", async () => {
+  it("rejects re-linking a reference already authoritatively linked on the same identity", async () => {
+    // AUTH-CORR-001 re-targets this test: linking an identity's *initial*
+    // embedded reference (authoritative doc absent) is now the legitimate
+    // establishment path (see `initialAuthenticationReferenceLinking.emulator
+    // .test.ts`). The genuine duplicate that must still fail closed is
+    // re-linking a reference that is *already authoritatively linked* on the
+    // same identity — proven here by fully linking a new provider, then
+    // re-linking it with a fresh idempotency key.
     await seedIdentity("cust_3", "b3");
+
+    const base = {
+      actor,
+      occurredAt: "2026-08-05T01:00:00.000Z",
+      customerIdentityId: "cust_3",
+      referenceId: "google_sub_3",
+      referenceType: "google_sign_in" as const,
+      authority: "customer_initiated" as const,
+      reason: "customer_request" as const,
+      linkedAt: new Date("2026-08-05T01:00:00.000Z"),
+      linkedBy: "cust_3",
+    };
+
+    await linkAuthenticationReferenceForIdentity(db, {
+      ...base,
+      eventId: "evt_b3_link_1",
+      correlationId: "corr_b3_link_1",
+      idempotencyKey: "key_b3_link_1",
+      requestHash: "hash_b3_link_1",
+    });
 
     await expect(
       linkAuthenticationReferenceForIdentity(db, {
-        eventId: "evt_b3_link",
-        correlationId: "corr_b3_link",
-        actor,
-        occurredAt: "2026-08-05T01:00:00.000Z",
-        customerIdentityId: "cust_3",
-        referenceId: "authuid_cust_3",
-        referenceType: "phone_otp",
-        authority: "customer_initiated",
-        reason: "customer_request",
-        linkedAt: new Date("2026-08-05T01:00:00.000Z"),
-        linkedBy: "cust_3",
-        idempotencyKey: "key_b3_link",
-        requestHash: "hash_b3_link",
+        ...base,
+        eventId: "evt_b3_link_2",
+        correlationId: "corr_b3_link_2",
+        idempotencyKey: "key_b3_link_2",
+        requestHash: "hash_b3_link_2",
       }),
     ).rejects.toThrow(IdentityDomainError);
   });
