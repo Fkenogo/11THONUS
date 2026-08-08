@@ -190,6 +190,38 @@ export default tseslint.config(
     },
   },
   {
+    // AUTH-01: same machine-enforced boundary as the domain-foundation
+    // blocks above, scoped to the new Authentication domain-contracts module
+    // (AUTH-BP §15 — AUTH-01 is pure domain, no Firebase import). The Firebase
+    // Admin ID-token verification adapter that implements `TokenVerifierPort`
+    // is AUTH-02, a separate module outside this domain layer.
+    files: ["functions/src/domains/authentication/**/*.ts"],
+    languageOptions: {
+      ecmaVersion: 2023,
+      globals: globals.node,
+    },
+    rules: {
+      "@typescript-eslint/no-unused-vars": "error",
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: [
+                "firebase-admin",
+                "firebase-admin/*",
+                "firebase-functions",
+                "firebase-functions/*",
+              ],
+              message:
+                "The Authentication domain-contracts layer (AUTH-01) is framework-independent — no Firebase SDK import is permitted here. Firebase Admin ID-token verification belongs in the AUTH-02 adapter instead.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ["*.{js,ts}", "**/*.config.{js,ts}"],
     languageOptions: {
       ecmaVersion: 2023,
