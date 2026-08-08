@@ -26,6 +26,7 @@ import { getAuth } from "firebase-admin/auth";
 import type { DecodedIdToken } from "firebase-admin/auth";
 import { getAdminApp } from "../../../infrastructure/firebase/admin";
 import type { RawProviderCredential, TokenVerifierPort } from "../ports/tokenVerifierPort";
+import type { AuthenticationReferenceType } from "../../identity/models/authenticationReference";
 import {
   createAuthenticatedCredential,
   type AuthenticatedCredential,
@@ -39,6 +40,21 @@ import {
 } from "../models/authenticationErrors";
 
 const PROVIDER = "firebase";
+
+/**
+ * Closed mapping of a **verified** Firebase `sign_in_provider` to the governed
+ * Authentication reference type. The verified provider in the decoded token —
+ * never the client-declared `RawProviderCredential.referenceType` — is
+ * authoritative for provider provenance (P1 correction). Only the MVP providers
+ * are supported (`DEC-AUTH-001` D-A2: Phone OTP + Google); every other verified
+ * provider has no entry and fails closed. Email/Apple/passkeys are Deferred, so
+ * their Firebase providers are deliberately absent here — additions are a
+ * governed provider-registry change, not a silent default.
+ */
+const VERIFIED_PROVIDER_TO_REFERENCE_TYPE: Readonly<Record<string, AuthenticationReferenceType>> = {
+  phone: "phone_otp",
+  "google.com": "google_sign_in",
+};
 
 /**
  * The single Firebase dependency this adapter needs — the Admin SDK's
@@ -69,10 +85,17 @@ const AUTH_REQUIRED_CODES = new Set([
 /** The Firebase user exists but access is withdrawn. */
 const FORBIDDEN_CODES = new Set(["auth/user-disabled"]);
 
-/** Transient / retryable conditions — provider temporarily unavailable. */
+/**
+ * Transient / retryable conditions — provider temporarily unavailable. The
+ * Firebase Admin SDK surfaces network failures as App-level `app/network-*`
+ * codes (P2 correction); the raw socket codes are retained only as a fallback.
+ */
 const TEMPORARY_CODES = new Set([
+  "app/network-error",
+  "app/network-timeout",
   "auth/internal-error",
   "auth/network-error",
+  "auth/network-timeout",
   "ETIMEDOUT",
   "ECONNRESET",
   "ECONNREFUSED",
@@ -137,13 +160,27 @@ export function createFirebaseAdminTokenVerifier(
         throw mapVerificationFailure(error);
       }
 
+      // Provider provenance is bound to the *verified* token, not the client-
+      // declared type (P1). Derive the governed reference type from the
+      // verified `sign_in_provider`; an unsupported provider, or a declared
+      // type the verified token does not prove, fails closed (AUTH_FORBIDDEN) —
+      // never trusting the caller's label.
+      const verifiedProvider = decoded.firebase?.sign_in_provider;
+      const derivedReferenceType =
+        typeof verifiedProvider === "string"
+          ? VERIFIED_PROVIDER_TO_REFERENCE_TYPE[verifiedProvider]
+          : undefined;
+      if (derivedReferenceType === undefined || raw.referenceType !== derivedReferenceType) {
+        throw authenticationForbiddenError();
+      }
+
       try {
         return createAuthenticatedCredential({
-          referenceType: raw.referenceType,
+          referenceType: derivedReferenceType,
           referenceId: decoded.uid,
           verifiedAt: now(),
           providerSignals: {
-            signInProvider: decoded.firebase?.sign_in_provider ?? "unknown",
+            signInProvider: verifiedProvider,
           },
         });
       } catch (error) {

@@ -58,7 +58,7 @@ describe("createFirebaseAdminTokenVerifier", () => {
     const verifyIdToken = vi.fn().mockResolvedValue(decoded());
     const verifier = createFirebaseAdminTokenVerifier(verifyIdToken, { now: () => fixedNow });
 
-    await verifier.verify({ referenceType: "google_sign_in", rawToken: "raw" });
+    await verifier.verify({ referenceType: "phone_otp", rawToken: "raw" });
 
     expect(verifyIdToken).toHaveBeenCalledWith("raw", true);
   });
@@ -141,4 +141,82 @@ describe("createFirebaseAdminTokenVerifier", () => {
       verifier.verify({ referenceType: "phone_otp", rawToken: "raw" }),
     ).rejects.toBeInstanceOf(AuthenticationDomainError);
   });
+
+  // Provider-provenance binding (P1 pre-merge security correction). The
+  // verified `sign_in_provider` in the decoded token — never the client-
+  // declared `referenceType` — is authoritative. A declared type that the
+  // verified token does not prove, or an unsupported verified provider, fails
+  // closed through the governed taxonomy (AUTH_FORBIDDEN).
+  it("derives the governed reference type from a phone-verified token", async () => {
+    const verifyIdToken = vi
+      .fn()
+      .mockResolvedValue(decoded({ firebase: { identities: {}, sign_in_provider: "phone" } }));
+    const verifier = createFirebaseAdminTokenVerifier(verifyIdToken, { now: () => fixedNow });
+
+    const credential = await verifier.verify({ referenceType: "phone_otp", rawToken: "raw" });
+
+    expect(credential.referenceType).toBe("phone_otp");
+    expect(credential.providerSignals.signInProvider).toBe("phone");
+  });
+
+  it("derives the governed reference type from a google-verified token", async () => {
+    const verifyIdToken = vi
+      .fn()
+      .mockResolvedValue(decoded({ firebase: { identities: {}, sign_in_provider: "google.com" } }));
+    const verifier = createFirebaseAdminTokenVerifier(verifyIdToken, { now: () => fixedNow });
+
+    const credential = await verifier.verify({ referenceType: "google_sign_in", rawToken: "raw" });
+
+    expect(credential.referenceType).toBe("google_sign_in");
+    expect(credential.providerSignals.signInProvider).toBe("google.com");
+  });
+
+  it("fails closed when a google-verified token is presented as phone_otp", async () => {
+    const verifyIdToken = vi
+      .fn()
+      .mockResolvedValue(decoded({ firebase: { identities: {}, sign_in_provider: "google.com" } }));
+    const verifier = createFirebaseAdminTokenVerifier(verifyIdToken, { now: () => fixedNow });
+
+    await expect(
+      verifier.verify({ referenceType: "phone_otp", rawToken: "raw" }),
+    ).rejects.toMatchObject({ category: "AUTH_FORBIDDEN" });
+  });
+
+  it("fails closed when a phone-verified token is presented as google_sign_in", async () => {
+    const verifyIdToken = vi
+      .fn()
+      .mockResolvedValue(decoded({ firebase: { identities: {}, sign_in_provider: "phone" } }));
+    const verifier = createFirebaseAdminTokenVerifier(verifyIdToken, { now: () => fixedNow });
+
+    await expect(
+      verifier.verify({ referenceType: "google_sign_in", rawToken: "raw" }),
+    ).rejects.toMatchObject({ category: "AUTH_FORBIDDEN" });
+  });
+
+  it.each(["password", "apple.com", "custom", "anonymous"])(
+    "fails closed for an unsupported verified provider (%s), regardless of declared type",
+    async (provider) => {
+      const verifyIdToken = vi
+        .fn()
+        .mockResolvedValue(decoded({ firebase: { identities: {}, sign_in_provider: provider } }));
+      const verifier = createFirebaseAdminTokenVerifier(verifyIdToken, { now: () => fixedNow });
+
+      await expect(
+        verifier.verify({ referenceType: "phone_otp", rawToken: "raw" }),
+      ).rejects.toMatchObject({ category: "AUTH_FORBIDDEN" });
+    },
+  );
+
+  // P2: Firebase Admin transient transport failures map to TEMPORARY_UNAVAILABLE.
+  it.each(["app/network-error", "app/network-timeout"])(
+    "maps Firebase Admin transport failure %s to TEMPORARY_UNAVAILABLE",
+    async (code) => {
+      const verifyIdToken = vi.fn().mockRejectedValue(firebaseError(code));
+      const verifier = createFirebaseAdminTokenVerifier(verifyIdToken, { now: () => fixedNow });
+
+      await expect(
+        verifier.verify({ referenceType: "phone_otp", rawToken: "raw" }),
+      ).rejects.toMatchObject({ category: "TEMPORARY_UNAVAILABLE" });
+    },
+  );
 });
