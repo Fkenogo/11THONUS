@@ -96,7 +96,7 @@ Low — a localized keying alignment fully covered by unit + real-emulator tests
 
 ## 16. PR & review-findings disposition
 
-- **PR:** *(recorded on push).* Not self-merged.
+- **PR:** [#94 — AUTH-CORR-002](https://github.com/Fkenogo/11THONUS/pull/94), base `main`, head `feat/auth-corr-002-reference-keying` @ `e02f8fb215865687a787bff6b1d46f2cf143b958`. Not self-merged.
 - Every automated/human PR finding was inspected against the current head and dispositioned; AUTH-CORR-002 is not reported READY while any unresolved material P1/P2 finding remains.
 
 ## Final Gate
