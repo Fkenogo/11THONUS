@@ -1,10 +1,10 @@
 # Miledge Platform Architecture — 11THONUS Project Declaration
 
-**Declaration version:** 0.1
+**Declaration version:** 0.2
 
 **Template version:** 0.2
 
-**Status:** Draft mapping — Founder Review Required
+**Status:** Founder Approved — Aligned with observations
 
 **Architecture profile:** MPA Profile 0.1
 
@@ -21,7 +21,7 @@
 | Canonical repository         | `https://github.com/Fkenogo/miledge-ventures.git`                                |
 | Canonical source revision    | `120200769590e74cc83d8e48faa135f008da8243`                                       |
 | Canonical document path      | `docs/miledge-ventures-knowledge/00-governance/MILEDGE-PLATFORM-ARCHITECTURE.md` |
-| Project declaration version  | `0.1`                                                                            |
+| Project declaration version  | `0.2`                                                                            |
 | Last reviewed                | `2026-08-09`                                                                     |
 
 The canonical Miledge Platform Architecture and recorded Miledge decisions prevail over this declaration. This file is a project-specific mapping and reference profile; it does not copy or redefine the canonical architecture.
@@ -46,7 +46,14 @@ The canonical Miledge Platform Architecture and recorded Miledge decisions preva
 
 ### Miledge architectural position
 
-11THONUS is the first active Customer Recognition Industry Implementation under the Miledge Customer Domain and Customer Recognition Shared Platform. Approved MV-303 expects it to mature as the reference implementation. This Miledge position does not rename the product or make the complete 11THONUS Product Architecture identical to the reusable Shared Platform layer.
+11THONUS is both:
+
+1. the **first active Customer Recognition Industry Implementation** under the Miledge Customer Domain and Customer Recognition Shared Platform, with Approved MV-303's existing direction that it is expected to mature as the reference implementation; and
+2. the **current repository through which the reusable Customer Recognition Shared Platform core is primarily developed**.
+
+Source: Approved MV-303 §§3.1, 5.4, and 6.1; Founder disposition FD-MPA-004-01, 2026-08-09.
+
+The ownership/development relationship is **primary developer**, not unrestricted ownership of the complete Shared Platform. It does not rename the product or make the complete 11THONUS Product Architecture identical to the reusable Shared Platform layer.
 
 > A project's use of the word `Platform` does not establish that it constitutes a Miledge Shared Platform. Project/Product identity and Miledge architectural position remain separate.
 
@@ -100,10 +107,10 @@ None authorised for 11THONUS in the reviewed Miledge baseline. Identity, Trust, 
 
 - Shared Platform: **Customer Recognition Platform**.
 - Industry Implementation relationship: **First active Industry Implementation; expected by Approved MV-303 to mature as the reference implementation**.
-- Shared Platform ownership/development relationship: **Proposed — not authorised**. Current evidence suggests 11THONUS may be the repository through which reusable Customer Recognition core is developed, but no separate Founder/Miledge decision establishes owner, primary developer, or contributor status.
-- Source: MV-205 §7.1; MV-302 §3; Approved MV-303 §§3.1, 5.4, 6.1. Ownership/development remains unresolved under Template Version 0.2's separate-control rule.
+- Shared Platform ownership/development relationship: **Primary developer**. 11THONUS is the current repository through which the reusable Customer Recognition Shared Platform core is primarily developed.
+- Source: MV-205 §7.1; MV-302 §3; Approved MV-303 §§3.1, 5.4, 6.1; Founder disposition FD-MPA-004-01, 2026-08-09.
 
-The implementation relationship does not decide ownership. The entire 11THONUS product, its business rules, project domains, interfaces, configuration, and implementation concerns are not automatically part of the reusable Customer Recognition Shared Platform.
+The Industry Implementation and primary-development relationships remain distinct. The entire 11THONUS product, its business rules, project domains, interfaces, configuration, commercial mechanics, and implementation concerns are not automatically part of the reusable Customer Recognition Shared Platform.
 
 ### Industry Implementation
 
@@ -197,7 +204,7 @@ The architecture supports possible reuse across businesses and later Customer Re
 
 ### Out of scope / non-goals
 
-- authorising Shared Platform ownership or primary-development status;
+- treating the primary-development relationship as unrestricted ownership of the complete Shared Platform;
 - defining the detailed reusable Customer Recognition Shared Platform technical boundary;
 - reclassifying any 11THONUS project domain, service, or module as Miledge-shared infrastructure;
 - modifying the Customer-Verified Loyalty model, Reward Program rules, verification model, commercial model, product scope, or Verified Commerce ambition;
@@ -224,13 +231,12 @@ This declaration does not replace Product Architecture, Technical Architecture, 
 
 ### Unresolved decisions
 
-| Matter                                                 | Current position                                                                          | Required authority                                                   | Next review trigger                                                            |
-| ------------------------------------------------------ | ----------------------------------------------------------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| Shared Platform ownership/development relationship     | Proposed — not authorised; no owner, primary developer, or contributor status established | Founder / Miledge                                                    | Founder disposition on this pilot                                              |
-| Reusable Customer Recognition Shared Platform boundary | Unresolved and evidence-dependent                                                         | Miledge / Founder informed by project Product/Technical Architecture | Separately authorised boundary review after sufficient implementation evidence |
-| Miledge Capability Module mapping                      | Unresolved                                                                                | Miledge / Founder informed by project architecture                   | Authorised module/reuse review                                                 |
-| Confirmed Shared Service consumption                   | None evidenced                                                                            | Miledge and project evidence within their authorities                | Actual consumption of an authorised shared implementation                      |
-| Project programme status after AUTH-04 merge           | Git proves merge; controlled programme wording still says pending review/merge            | 11THONUS project authority                                           | Next authorised programme synchronisation                                      |
+| Matter                                                 | Current position                                                               | Required authority                                                   | Next review trigger                                                            |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------ | -------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Reusable Customer Recognition Shared Platform boundary | Unresolved and evidence-dependent                                              | Miledge / Founder informed by project Product/Technical Architecture | Separately authorised boundary review after sufficient implementation evidence |
+| Miledge Capability Module mapping                      | Unresolved                                                                     | Miledge / Founder informed by project architecture                   | Authorised module/reuse review                                                 |
+| Confirmed Shared Service consumption                   | None evidenced                                                                 | Miledge and project evidence within their authorities                | Actual consumption of an authorised shared implementation                      |
+| Project programme status after AUTH-04 merge           | Git proves merge; controlled programme wording still says pending review/merge | 11THONUS project authority                                           | Next authorised programme synchronisation                                      |
 
 No unresolved or proposed value may be treated as authorised architecture.
 
@@ -282,17 +288,17 @@ Project and FEF controls continue to apply within their own domains.
 
 | Record                                  | Value                                                                                                            |
 | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Miledge-controlled fields approved by   | Founder / delegated Miledge authority — pending review of this declaration                                       |
-| Approval/decision source                | MPA-004 Founder disposition — pending                                                                            |
+| Miledge-controlled fields approved by   | Founder / Miledge authority                                                                                      |
+| Approval/decision source                | MPA-004 Founder disposition and FD-MPA-004-01, 2026-08-09                                                        |
 | Project-controlled fields maintained by | 11THONUS project authority under its Platform Constitution, PRD/TRD hierarchy, and controlled governance records |
 | FEF evidence reference                  | `docs/00-governance/FEF-ALIGNMENT.md`, Adopted v1.0                                                              |
 | Declaration prepared by                 | MPA-004 alignment review coding agent                                                                            |
 | Declaration last synchronized by        | MPA-004 alignment review coding agent, 2026-08-09                                                                |
-| Next material review                    | Founder disposition on MPA-004; thereafter only a material trigger in §10                                        |
+| Next material review                    | A material trigger in §10, including authorised work on the detailed reusable Shared Platform boundary           |
 
 ### Declaration status
 
-**Draft mapping — proposed alignment disposition: Aligned with observations.**
+**Aligned with observations — Founder Approved.**
 
 The declaration status does not substitute for the admission treatment or portfolio classification sources above.
 
@@ -300,6 +306,7 @@ The declaration status does not substitute for the admission treatment or portfo
 
 ## Revision History
 
-| Version | Date       | Change                                                                              | Authority/source                                    |
-| ------- | ---------- | ----------------------------------------------------------------------------------- | --------------------------------------------------- |
-| 0.1     | 2026-08-09 | Initial 11THONUS project declaration under MPA Profile 0.1 and Template Version 0.2 | MPA-004 pilot authorisation; Founder review pending |
+| Version | Date       | Change                                                                                                                                                                                                                                       | Authority/source                                    |
+| ------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| 0.1     | 2026-08-09 | Initial 11THONUS project declaration under MPA Profile 0.1 and Template Version 0.2                                                                                                                                                          | MPA-004 pilot authorisation; Founder review pending |
+| 0.2     | 2026-08-09 | Recorded the approved alignment disposition and Customer Recognition Shared Platform primary-development relationship; preserved the unresolved reusable-core boundary, Capability Module mapping, and confirmed Shared Service consumption. | MPA-004 Founder disposition and FD-MPA-004-01       |
