@@ -216,8 +216,13 @@ export async function linkAuthenticationReferenceForIdentity(
       // transaction's read of `authRefRef` serialises concurrent
       // materialisations (first commit wins; the loser retries and hits the
       // cross-identity conflict above).
+      // AUTH-CORR-002 (Model T): the initial-reference materialisation branch is
+      // identified by the provider-qualified tuple, so it fires only for *this*
+      // provider's embedded-but-not-yet-authoritative reference — a second
+      // provider on the same Firebase UID takes the ordinary link path below.
       const alreadyEmbedded = current.authenticationReferences.some(
-        (ref) => ref.referenceId === params.referenceId,
+        (ref) =>
+          ref.referenceType === params.referenceType && ref.referenceId === params.referenceId,
       );
       if (!existing && alreadyEmbedded) {
         const linkedEvent = buildAuthenticationReferenceLinkedEvent({
@@ -379,7 +384,7 @@ export async function unlinkAuthenticationReferenceForIdentity(
 
       const { identity: updated, event } = unlinkAuthenticationReference(
         current,
-        params.referenceId,
+        { referenceType: params.referenceType, referenceId: params.referenceId },
         {
           eventId: params.eventId,
           correlationId: params.correlationId,

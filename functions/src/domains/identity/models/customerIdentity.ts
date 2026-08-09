@@ -17,6 +17,7 @@ import type { CustomerIdentityId } from "./customerIdentityId";
 import { createCustomerIdentityId } from "./customerIdentityId";
 import type {
   AuthenticationReference,
+  AuthenticationReferenceType,
   CreateAuthenticationReferenceParams,
 } from "./authenticationReference";
 import { createAuthenticationReference } from "./authenticationReference";
@@ -215,7 +216,17 @@ export function linkAuthenticationReference(
   if (identity.status === "archived") {
     throw identityArchivedError(identity.id);
   }
-  if (identity.authenticationReferences.some((ref) => ref.referenceId === params.referenceId)) {
+  // AUTH-CORR-002 (Founder decision, Model T): an authentication reference is
+  // canonically identified by the provider-qualified tuple
+  // `(referenceType, referenceId)` — not the bare Firebase UID. The same
+  // verified UID under two providers is two DISTINCT references, so dedupe on
+  // the full tuple. Global uniqueness/resolution already key on
+  // `authenticationReferences/{type}:{id}`; this aligns the embedded projection.
+  if (
+    identity.authenticationReferences.some(
+      (ref) => ref.referenceType === params.referenceType && ref.referenceId === params.referenceId,
+    )
+  ) {
     throw duplicateAuthenticationReferenceError(params.referenceId);
   }
 
@@ -238,15 +249,27 @@ export function linkAuthenticationReference(
   return { identity: updated, event };
 }
 
+/** The provider-qualified tuple that canonically identifies a reference (AUTH-CORR-002). */
+export type AuthenticationReferenceKey = {
+  referenceType: AuthenticationReferenceType;
+  referenceId: string;
+};
+
 export function unlinkAuthenticationReference(
   identity: CustomerIdentity,
-  referenceId: string,
+  reference: AuthenticationReferenceKey,
   envelope: EventEnvelope,
   meta: LinkAuthenticationReferenceMeta,
 ): { identity: CustomerIdentity; event: DomainEvent<AuthenticationReferenceUnlinkedPayload> } {
-  const existing = identity.authenticationReferences.find((ref) => ref.referenceId === referenceId);
+  // AUTH-CORR-002 (Model T): match on the full `(referenceType, referenceId)`
+  // tuple so one provider of a same-UID pair can be removed while the other is
+  // preserved, and the last-reference invariant counts distinct references.
+  const matches = (ref: AuthenticationReference): boolean =>
+    ref.referenceType === reference.referenceType && ref.referenceId === reference.referenceId;
+
+  const existing = identity.authenticationReferences.find(matches);
   if (!existing) {
-    throw authenticationReferenceNotFoundError(referenceId);
+    throw authenticationReferenceNotFoundError(reference.referenceId);
   }
   if (identity.authenticationReferences.length <= 1) {
     throw lastAuthenticationReferenceCannotBeUnlinkedError(identity.id);
@@ -254,15 +277,14 @@ export function unlinkAuthenticationReference(
 
   const updated: CustomerIdentity = {
     ...identity,
-    authenticationReferences: identity.authenticationReferences.filter(
-      (ref) => ref.referenceId !== referenceId,
-    ),
+    authenticationReferences: identity.authenticationReferences.filter((ref) => !matches(ref)),
   };
 
   const event = buildAuthenticationReferenceUnlinkedEvent({
     ...envelope,
     customerIdentityId: identity.id,
-    referenceId,
+    referenceId: reference.referenceId,
+    referenceType: reference.referenceType,
     authority: meta.authority,
     reason: meta.reason,
   });

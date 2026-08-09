@@ -168,6 +168,12 @@ export function buildAuthenticationReferenceLinkedEvent(
 export type AuthenticationReferenceUnlinkedPayload = {
   customerIdentityId: string;
   referenceId: string;
+  // AUTH-CORR-002: the provider-qualified reference is identified by
+  // `(referenceType, referenceId)`; the unlinked event carries the type (as the
+  // linked event already does) so a multi-provider identity's audit trail
+  // records *which* provider was removed. Additive field — existing consumers
+  // (the `-10` identity-audit projection) are unaffected.
+  referenceType: AuthenticationReferenceType;
   authority: TransitionAuthority;
   reason: TransitionReason;
 };
@@ -182,6 +188,7 @@ export function buildAuthenticationReferenceUnlinkedEvent(
     {
       customerIdentityId: params.customerIdentityId,
       referenceId: params.referenceId,
+      referenceType: params.referenceType,
       authority: params.authority,
       reason: params.reason,
     },
