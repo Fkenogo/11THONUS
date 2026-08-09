@@ -96,8 +96,14 @@ Low — a localized keying alignment fully covered by unit + real-emulator tests
 
 ## 16. PR & review-findings disposition
 
-- **PR:** [#94 — AUTH-CORR-002](https://github.com/Fkenogo/11THONUS/pull/94), base `main`, head `feat/auth-corr-002-reference-keying` @ `e02f8fb215865687a787bff6b1d46f2cf143b958`. Not self-merged.
-- Every automated/human PR finding was inspected against the current head and dispositioned; AUTH-CORR-002 is not reported READY while any unresolved material P1/P2 finding remains.
+- **PR:** [#94 — AUTH-CORR-002](https://github.com/Fkenogo/11THONUS/pull/94), base `main`. **Final reviewed head:** `a53ffb8069bb6087898bdca92a893b4e557c11d2`. Not self-merged.
+- **Reviewer:** the repository's automated reviewer (Codex) posted a `COMMENTED` review on the initial head `e02f8fb` with **one P1**. No human review; no unresolved threads on later commits.
+
+| # | Finding | Severity | Valid? | Disposition |
+|---|---|---|---|---|
+| F1 | **Update the existing unlinked-event test for the required type** — `identityEvents.test.ts`'s `buildAuthenticationReferenceUnlinkedEvent` test called the builder without `referenceType` and `toEqual`-asserted a payload lacking it, so the additive-required field left it silently building `referenceType: undefined` (passing only because Vitest `toEqual` elides `undefined`, and `tsconfig` excludes `*.test.ts` from `tsc`). | P1 | **Valid & CONFIRMED** — test correctness / coverage of the additive field. | **Fixed** on `a53ffb8`: the test now passes and asserts `referenceType: "phone_otp"`, guarding the field. In AUTH-CORR-002 scope (the field is introduced by this correction); no completed-responsibility behavior changed. Re-validated: functions **496/496**, events test 17/17, typecheck/lint/format clean. |
+
+- **Re-inspection after the fix push (`a53ffb8`):** no new or unresolved automated/human findings. No unresolved material P1/P2 finding concerning correctness, security, privacy, identity integrity, concurrency, atomicity, retry, idempotency, architecture, responsibility boundaries, or data integrity remains. Green CI is not treated as sufficient on its own — every finding above was evaluated against the current head.
 
 ## Final Gate
 
