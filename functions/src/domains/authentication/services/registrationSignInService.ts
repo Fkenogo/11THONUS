@@ -3,8 +3,8 @@
  *
  * The backend orchestration that turns a *verified* `AuthenticatedCredential`
  * into an authenticated outcome — registering a new customer or signing in a
- * returning one — by composing existing, already-merged responsibilities. It
- * **owns no identity state and duplicates none**:
+ * returning one — by composing already-merged responsibilities. It owns no
+ * identity state and duplicates none:
  *
  *   - resolution (new-vs-returning) is the AUTH-02 `resolveAuthenticatedCredential`
  *     consuming the Customer Identity `-09` lookup;
@@ -13,26 +13,39 @@
  *     `CustomerIdentityRegistered`);
  *   - the initial authentication reference is established through the existing
  *     `-08` `linkAuthenticationReferenceForIdentity` path delivered by
- *     AUTH-CORR-001 (materialises the authoritative
- *     `authenticationReferences/{type}:{id}` document, emits
+ *     AUTH-CORR-001 (materialises the authoritative reference, emits
  *     `AuthenticationReferenceLinked`); cross-identity conflict fails closed;
- *   - the session is issued through the existing AUTH-01 `createSessionContext`
- *     responsibility.
+ *   - the session is issued through the existing AUTH-01 `createSessionContext`.
  *
- * Event boundary (examined; AUTH-BP §12 governs). §5/§6 describe the flow as
- * "emit `CustomerAuthenticated`", but §12 assigns the fire-and-forget
- * trust/audit `CustomerAuthenticated` emission to **AUTH-08**, and the
- * completed AUTH-01 `authenticationEvents.ts` states emission is AUTH-08, not
- * the flow. Following the explicit §12 responsibility allocation, AUTH-03 does
- * **not** write `CustomerAuthenticated`: it lets the domain operations it calls
- * emit their own already-owned state-change events (`CustomerIdentityRegistered`
- * via `-01`, `AuthenticationReferenceLinked` via `-08`) and issues the session;
- * the `CustomerAuthenticated` trust signal remains AUTH-08's responsibility.
- * There is deliberately no outbox/emit seam on this service.
+ * Durability / idempotency (correction of the four post-implementation review
+ * findings, using only the shared idempotency facility — no new subsystem, no
+ * `-01`/`-08`/`-09`/idempotency change):
  *
- * Firebase-adapter (services) sub-layer — composes repositories that take a
- * Firestore handle. No credential material is read, written, logged, or
- * returned (TRD10 §10.6.1); only the provider-neutral reference flows through.
+ *   - **Request-level replay (client key).** The whole command is wrapped in a
+ *     `checkAndReserveIdempotencyKey` gate keyed by the client idempotency key,
+ *     `requestHash` bound to the credential. A `duplicate` replays the stored
+ *     `responseSnapshot` — a same-key retry reproduces the *original* outcome
+ *     (a completed registration replays as `registered`, never silently a new
+ *     `signed_in`); a same-key/different-credential reuse is a fail-closed
+ *     `conflict`; a concurrent same-key attempt is `in_progress`.
+ *   - **Per-credential registration (concurrency + resume).** The `-01`/`-08`
+ *     operations are keyed by the *credential*
+ *     (`authentication.register:{type}:{refId}:identity.{create|link}`), so two
+ *     concurrent registrations for the same reference serialise on one
+ *     reservation — the loser observes `in_progress` and fails closed *before*
+ *     creating anything (no orphan identity). The internal Customer ID is
+ *     recovered from the durable create record on retry (peek → `resultReference`),
+ *     so a partial-failure retry resumes on the *same* identity instead of
+ *     regenerating one.
+ *
+ * Event boundary (examined; AUTH-BP §12 governs). AUTH-03 does **not** write
+ * `CustomerAuthenticated`: `-01`/`-08` emit their own state-change events and
+ * AUTH-03 issues the session; the `CustomerAuthenticated` trust signal remains
+ * AUTH-08's responsibility. There is deliberately no outbox/emit seam here.
+ *
+ * Firebase-adapter (services) sub-layer. No credential material is read,
+ * written, logged, or returned (TRD10 §10.6.1); only the provider-neutral
+ * reference flows through.
  */
 
 import { randomUUID } from "node:crypto";
@@ -41,7 +54,10 @@ import type { AuthenticatedCredential } from "../models/authenticatedCredential"
 import { createSessionContext, type SessionContext } from "../models/sessionContext";
 import {
   accountSuspendedForAuthenticationError,
+  authenticationCommandConflictError,
   authenticationForbiddenError,
+  authenticationProviderUnavailableError,
+  invalidAuthenticatedCredentialError,
 } from "../models/authenticationErrors";
 import {
   resolveAuthenticatedCredential,
@@ -53,17 +69,32 @@ import {
 } from "../../identity/repositories/customerIdentityRepository";
 import { linkAuthenticationReferenceForIdentity } from "../../identity/repositories/authenticationReferenceRepository";
 import type { CustomerIdentity } from "../../identity/models/customerIdentity";
+import {
+  checkAndReserveIdempotencyKey,
+  checkIdempotency,
+  completeIdempotencyKey,
+  failIdempotencyKey,
+} from "../../../shared/idempotency/idempotencyService";
 
-/** The governed event envelope carried through resolution and creation. */
-export type RegistrationSignInEnvelope = CredentialResolutionEnvelope;
+const USERS_COLLECTION = "users";
+const AUTHENTICATE_OPERATION = "authentication.authenticate";
+const CREATE_OPERATION = "identity.create";
+const LINK_OPERATION = "identity.linkAuthenticationReference";
+
+/** Bounds the client key well under Firestore's document-id ceiling. */
+const MAX_IDEMPOTENCY_KEY_LENGTH = 200;
 
 /**
- * Request-scoped command inputs. `idempotencyKey` is the single client-supplied
- * key for the whole registration/sign-in request; the two idempotent identity
- * operations (`-01` create, `-08` link) derive distinct keys from it so they
- * never collide on the shared `idempotencyRecords/{key}` document.
+ * A safe single Firestore path segment: one or more of unreserved URL /
+ * document-id characters. Excludes `/` (path traversal), whitespace, and every
+ * ASCII control character without needing a control-character regex.
  */
+const SAFE_IDEMPOTENCY_KEY = /^[A-Za-z0-9._:-]+$/;
+
+export type RegistrationSignInEnvelope = CredentialResolutionEnvelope;
+
 export type RegistrationSignInCommand = {
+  /** Client-supplied idempotency key for the whole registration/sign-in request. */
   idempotencyKey: string;
   requestHash: string;
   /** Session issuance instant, and the `createdAt`/`linkedAt` of a registration. */
@@ -82,17 +113,47 @@ export type RegistrationSignInDeps = {
   createIdentity?: typeof createCustomerIdentity;
   linkReference?: typeof linkAuthenticationReferenceForIdentity;
   getIdentityById?: typeof getCustomerIdentityById;
-  /** Generates the new internal Customer ID for a registration (CSPRNG-backed). */
   generateCustomerIdentityId?: () => string;
+  reserveIdempotencyKey?: typeof checkAndReserveIdempotencyKey;
+  completeIdempotencyKey?: typeof completeIdempotencyKey;
+  failIdempotencyKey?: typeof failIdempotencyKey;
+  peekIdempotencyKey?: typeof checkIdempotency;
+};
+
+/** The cached command result replayed on a same-key retry. */
+type ReplaySnapshot = {
+  mode: "registered" | "signed_in";
+  issuedAt: string;
 };
 
 /**
+ * A client idempotency key becomes a Firestore document id (`idempotencyRecords/{key}`
+ * and the derived registration keys). Reject anything that is not a single safe
+ * path segment *before* it reaches Firestore, with the existing `VALIDATION_FAILED`
+ * taxonomy — never an internal Firestore/path error (finding P2-4).
+ */
+export function assertSafeIdempotencyKey(idempotencyKey: string): void {
+  const invalid =
+    typeof idempotencyKey !== "string" ||
+    idempotencyKey.length > MAX_IDEMPOTENCY_KEY_LENGTH ||
+    idempotencyKey === "." ||
+    idempotencyKey === ".." ||
+    !SAFE_IDEMPOTENCY_KEY.test(idempotencyKey);
+  if (invalid) {
+    throw invalidAuthenticatedCredentialError("idempotencyKey", String(idempotencyKey));
+  }
+}
+
+/** Stable, credential-bound request hash (equal across retries; differs per credential). */
+function credentialBinding(credential: AuthenticatedCredential, scope: string): string {
+  return `${scope}:${credential.referenceType}:${credential.referenceId}`;
+}
+
+/**
  * Gate a returning-user sign-in on the identity's access state (AUTH-BP §6
- * step 2). Only an `active` identity may receive a session; everything else
- * fails closed — `suspended` distinctly (`ACCOUNT_SUSPENDED`), any other
- * non-active state (`locked`, `closed`, `archived`, `dormant`, `registered`)
- * as `AUTH_FORBIDDEN`. Access-state *management* remains the Customer Identity
- * `-06` responsibility; this only reads and enforces it.
+ * step 2). Only `active` may receive a session; `suspended` → `ACCOUNT_SUSPENDED`,
+ * any other non-active state → `AUTH_FORBIDDEN` (fail closed). Access-state
+ * management remains the Customer Identity `-06` responsibility.
  */
 function assertMaySignIn(identity: CustomerIdentity): void {
   if (identity.status === "active") {
@@ -104,15 +165,27 @@ function assertMaySignIn(identity: CustomerIdentity): void {
   throw authenticationForbiddenError();
 }
 
+function issueSession(
+  customerIdentityId: string,
+  credential: AuthenticatedCredential,
+  issuedAt: Date,
+): SessionContext {
+  return createSessionContext({ customerIdentityId, credential, issuedAt });
+}
+
+function usersIdFromReference(resultReference: string | undefined): string | undefined {
+  if (typeof resultReference !== "string") {
+    return undefined;
+  }
+  const [collection, id] = resultReference.split("/");
+  return collection === USERS_COLLECTION && id ? id : undefined;
+}
+
 /**
- * Orchestrate registration or sign-in for a **verified** credential.
- *
- * Resolves the credential (AUTH-02): a `resolved` outcome is a returning-user
- * sign-in (access-state gated, no identity mutation); an `unregistered`
- * outcome is a new-customer registration (`-01` create + `-08` establish).
- * Either way a `SessionContext` is issued for the owning identity. Any failure
- * — malformed input, cross-identity conflict, infrastructure — propagates
- * unchanged (fail closed).
+ * Orchestrate registration or sign-in for a **verified** credential, wrapped in
+ * a request-level idempotency gate so a same-key retry reproduces the original
+ * outcome. Any failure propagates unchanged (fail closed) after releasing the
+ * key for retry.
  */
 export async function registerOrSignIn(
   db: Firestore,
@@ -121,11 +194,79 @@ export async function registerOrSignIn(
   command: RegistrationSignInCommand,
   deps: RegistrationSignInDeps = {},
 ): Promise<RegistrationSignInOutcome> {
+  assertSafeIdempotencyKey(command.idempotencyKey);
+
+  const reserve = deps.reserveIdempotencyKey ?? checkAndReserveIdempotencyKey;
+  const complete = deps.completeIdempotencyKey ?? completeIdempotencyKey;
+  const fail = deps.failIdempotencyKey ?? failIdempotencyKey;
+
+  const commandKey = `${AUTHENTICATE_OPERATION}:${command.idempotencyKey}`;
+  const reservation = await reserve(db, {
+    idempotencyKey: commandKey,
+    operationType: AUTHENTICATE_OPERATION,
+    actorId: credential.referenceId,
+    requestHash: credentialBinding(credential, "authenticate"),
+    correlationId: envelope.correlationId,
+  });
+
+  if (reservation.outcome === "duplicate") {
+    return replayOutcome(reservation.record, credential, command);
+  }
+  if (reservation.outcome === "in_progress" || reservation.outcome === "conflict") {
+    // Concurrent same-key attempt, or the key reused with a different
+    // credential — both fail closed (finding P2-3, and the credential binding).
+    throw authenticationCommandConflictError(AUTHENTICATE_OPERATION);
+  }
+
+  try {
+    const outcome = await resolveAndRegisterOrSignIn(db, credential, envelope, command, deps);
+    const snapshot: ReplaySnapshot = {
+      mode: outcome.mode,
+      issuedAt: command.issuedAt.toISOString(),
+    };
+    await complete(db, commandKey, `${USERS_COLLECTION}/${outcome.customerIdentityId}`, snapshot);
+    return outcome;
+  } catch (error) {
+    await fail(db, commandKey);
+    throw error;
+  }
+}
+
+/** Rebuild the original outcome from the cached idempotency record (same-key replay). */
+function replayOutcome(
+  record: { resultReference?: string; responseSnapshot?: unknown },
+  credential: AuthenticatedCredential,
+  command: RegistrationSignInCommand,
+): RegistrationSignInOutcome {
+  const id = usersIdFromReference(record.resultReference);
+  const snapshot = record.responseSnapshot as ReplaySnapshot | undefined;
+  if (id === undefined || snapshot === undefined || snapshot.mode === undefined) {
+    // Anomalous completed record with no usable body — never fabricate a
+    // result; surface a retryable error (mirrors the shared dispatcher).
+    throw authenticationProviderUnavailableError("authentication");
+  }
+  const issuedAt = new Date(snapshot.issuedAt);
+  return {
+    mode: snapshot.mode,
+    customerIdentityId: id,
+    session: issueSession(
+      id,
+      credential,
+      Number.isNaN(issuedAt.getTime()) ? command.issuedAt : issuedAt,
+    ),
+  };
+}
+
+/** The resolve → sign-in / register decision, run once per acquired request key. */
+async function resolveAndRegisterOrSignIn(
+  db: Firestore,
+  credential: AuthenticatedCredential,
+  envelope: RegistrationSignInEnvelope,
+  command: RegistrationSignInCommand,
+  deps: RegistrationSignInDeps,
+): Promise<RegistrationSignInOutcome> {
   const resolve = deps.resolve ?? resolveAuthenticatedCredential;
-  const createIdentity = deps.createIdentity ?? createCustomerIdentity;
-  const linkReference = deps.linkReference ?? linkAuthenticationReferenceForIdentity;
   const getIdentityById = deps.getIdentityById ?? getCustomerIdentityById;
-  const generateCustomerIdentityId = deps.generateCustomerIdentityId ?? randomUUID;
 
   const resolution = await resolve(db, credential, envelope);
 
@@ -139,18 +280,44 @@ export async function registerOrSignIn(
     };
   }
 
-  // Registration path (new credential): create the identity (embeds the initial
-  // reference) then establish the authoritative reference through -08.
-  //
-  // The two operations each emit their own domain event through the shared
-  // outbox, which is keyed by `eventId`. They must therefore carry *distinct*
-  // eventIds or the second would overwrite the first (clobbering
-  // `CustomerIdentityRegistered`). We derive them deterministically from the
-  // request's base eventId so a replay reuses the same outbox document ids
-  // (idempotent), while sharing the one `correlationId` that ties the request's
-  // events together. The base eventId is left to the resolution step's own
-  // `-09` audit event.
-  const customerIdentityId = generateCustomerIdentityId();
+  return register(db, credential, envelope, command, deps);
+}
+
+/**
+ * Registration path (new credential): create the identity (`-01`, embeds the
+ * initial reference) then establish the authoritative reference (`-08`). Both
+ * operations are keyed by the *credential* so concurrent registrations for the
+ * same reference serialise (loser fails closed, no orphan), and the identity id
+ * is recovered from the durable create record on retry (stable resume).
+ */
+async function register(
+  db: Firestore,
+  credential: AuthenticatedCredential,
+  envelope: RegistrationSignInEnvelope,
+  command: RegistrationSignInCommand,
+  deps: RegistrationSignInDeps,
+): Promise<RegistrationSignInOutcome> {
+  const createIdentity = deps.createIdentity ?? createCustomerIdentity;
+  const linkReference = deps.linkReference ?? linkAuthenticationReferenceForIdentity;
+  const peek = deps.peekIdempotencyKey ?? checkIdempotency;
+  const generateCustomerIdentityId = deps.generateCustomerIdentityId ?? randomUUID;
+
+  const regBase = `authentication.register:${credential.referenceType}:${credential.referenceId}`;
+  const createKey = `${regBase}:${CREATE_OPERATION}`;
+  const linkKey = `${regBase}:${LINK_OPERATION}`;
+  const createHash = credentialBinding(credential, "register.create");
+  const linkHash = credentialBinding(credential, "register.link");
+
+  // Recover the id from the durable create record on a resume; otherwise mint a
+  // fresh one. Concurrency is enforced by `createCustomerIdentity`'s own atomic
+  // reservation on `createKey` below — a benign peek race is harmless because
+  // only the reservation winner ever persists a `users` document.
+  const peeked = await peek(db, createKey, createHash, envelope.correlationId);
+  const recoveredId =
+    peeked.outcome === "duplicate"
+      ? usersIdFromReference(peeked.record.resultReference)
+      : undefined;
+  const customerIdentityId = recoveredId ?? generateCustomerIdentityId();
   const createdBy = customerIdentityId;
   const requestContext = {
     correlationId: envelope.correlationId,
@@ -160,7 +327,7 @@ export async function registerOrSignIn(
 
   await createIdentity(db, {
     ...requestContext,
-    eventId: `${envelope.eventId}:identity.create`,
+    eventId: `${envelope.eventId}:${CREATE_OPERATION}`,
     customerIdentityId,
     initialAuthenticationReference: {
       referenceId: credential.referenceId,
@@ -170,13 +337,13 @@ export async function registerOrSignIn(
     },
     createdAt: command.issuedAt,
     createdBy,
-    idempotencyKey: `${command.idempotencyKey}:identity.create`,
-    requestHash: command.requestHash,
+    idempotencyKey: createKey,
+    requestHash: createHash,
   });
 
   const identity = await linkReference(db, {
     ...requestContext,
-    eventId: `${envelope.eventId}:identity.link`,
+    eventId: `${envelope.eventId}:${LINK_OPERATION}`,
     customerIdentityId,
     referenceId: credential.referenceId,
     referenceType: credential.referenceType,
@@ -184,8 +351,8 @@ export async function registerOrSignIn(
     reason: "customer_request",
     linkedAt: command.issuedAt,
     linkedBy: createdBy,
-    idempotencyKey: `${command.idempotencyKey}:identity.link`,
-    requestHash: command.requestHash,
+    idempotencyKey: linkKey,
+    requestHash: linkHash,
   });
 
   return {
@@ -193,12 +360,4 @@ export async function registerOrSignIn(
     customerIdentityId: identity.id,
     session: issueSession(identity.id, credential, command.issuedAt),
   };
-}
-
-function issueSession(
-  customerIdentityId: string,
-  credential: AuthenticatedCredential,
-  issuedAt: Date,
-): SessionContext {
-  return createSessionContext({ customerIdentityId, credential, issuedAt });
 }

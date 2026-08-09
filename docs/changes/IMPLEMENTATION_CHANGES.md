@@ -2431,3 +2431,21 @@
 - **Risks:** low–moderate — additive service over already-tested merged interfaces; the new `authenticate` callable opens a function endpoint (not a client Firestore write path), fails closed on verification, enforces the closed MVP provider set. End-to-end real-token mint is AUTH-04.
 - **Rollback:** `git revert` of this package's commit, or discard the branch — not yet merged. Restores `index.ts` to `ping`-only; no data/migration impact.
 - **Report link:** [`AUTH-03-registration-signin-orchestration-2026-08-08.md`](../05-implementation/reports/AUTH-03-registration-signin-orchestration-2026-08-08.md).
+
+---
+
+## 2026-08-09 — AUTH-03 (v1.1) — Registration/Sign-in Idempotency & Atomicity Correction (post-review, TDD)
+
+- **Date:** 2026-08-09
+- **Task:** AUTH-03 v1.1 — **Founder-directed in-place correction** of the still-open AUTH-03 (PR #90), after the repository's automated PR reviewer (Codex) surfaced four valid defects on the reviewed head `9c18cea`. Not a separate `AUTH-CORR` task; kept on the AUTH-03 branch/PR. Not AUTH-04.
+- **Status:** Corrected, test-first — **pending fresh Founder-authorized review/merge** (PR #90 head moves off `9c18cea`; not self-merged).
+- **Four accepted findings (2 P1, 2 P2):** (P1-1) concurrent same-credential/different-key registration left an orphan `active` identity; (P1-2) registration was not resumable after create succeeded but link failed (regenerated id → `RESOURCE_NOT_FOUND`); (P2-3) same-key retry of a completed registration returned `signed_in` instead of the original `registered`; (P2-4) a path-bearing idempotency key reached Firestore `.doc(...)` as an internal error. These **materially contradicted** the v1.0 report's idempotency claim — recorded, not erased.
+- **Correction (shared idempotency facility only — no new subsystem; no `-01`/`-08`/`-09`/idempotency/AUTH-01/AUTH-02 change):** the `-01`/`-08` operations are keyed by the **credential** (`authentication.register:{type}:{refId}:identity.{create|link}`) so concurrent registrations serialise (loser fails closed via `IDEMPOTENCY_CONFLICT` before any write — no orphan) and a resume **recovers** the identity id from the durable create record (peek → `resultReference`); the whole command is wrapped in a **client-key** `checkAndReserveIdempotencyKey` gate whose `duplicate` replays the stored `responseSnapshot` (original `registered` outcome, credential-bound `requestHash`); and `assertSafeIdempotencyKey` rejects non-single-segment keys with the existing `VALIDATION_FAILED` taxonomy before Firestore.
+- **RED→GREEN:** the four new emulator finding-tests fail against the pre-fix service (`9c18cea`) and pass after the fix.
+- **Files changed (correction):** `functions/src/domains/authentication/services/registrationSignInService.ts` (+`.test.ts`, +`.emulator.test.ts`); `authenticationEndpointService.ts`/`index.ts` unchanged by the correction.
+- **Validation (v1.1):** `tsc`/`eslint .`/`prettier --check .`/`pnpm build` clean; functions unit **491/491**; `pnpm emulators:validate` **190/190** (16 files, incl. 8 AUTH-03 emulator tests); web **259/259** (the pre-existing `ENG-P1-002-CR1`/`EXT-TECH-001` phone-auth-harness latency flake did not trigger and was left untouched).
+- **Migrations / dependencies / configuration:** none.
+- **Programme impact:** AUTH-03 corrected, pending fresh review/merge; next governed action remains `AUTH-04` (own authorization). Capability 2 remains `Open — partially implemented; not closed`.
+- **Risks:** low — additive, uses existing facilities; concurrency/partial-failure/replay proven on the emulator.
+- **Rollback:** `git revert` the correction commit, or discard the branch — not merged.
+- **Report link:** [`AUTH-03-registration-signin-orchestration-2026-08-08.md`](../05-implementation/reports/AUTH-03-registration-signin-orchestration-2026-08-08.md) §20.
