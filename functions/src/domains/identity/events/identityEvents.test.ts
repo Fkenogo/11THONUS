@@ -159,6 +159,8 @@ describe("buildAuthenticationReferenceUnlinkedEvent", () => {
       ...base,
       customerIdentityId: "cust_1",
       referenceId: "authuid_1",
+      // AUTH-CORR-002: the unlinked event carries the provider-qualified type.
+      referenceType: "phone_otp",
       authority: "customer_initiated",
       reason: "customer_request",
     });
@@ -166,6 +168,7 @@ describe("buildAuthenticationReferenceUnlinkedEvent", () => {
     expect(event.payload).toEqual({
       customerIdentityId: "cust_1",
       referenceId: "authuid_1",
+      referenceType: "phone_otp",
       authority: "customer_initiated",
       reason: "customer_request",
     });

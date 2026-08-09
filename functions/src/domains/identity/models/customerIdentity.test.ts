@@ -303,7 +303,12 @@ describe("unlinkAuthenticationReference", () => {
       linkMeta,
     ).identity;
 
-    const result = unlinkAuthenticationReference(withTwo, "authuid_2", envelope, linkMeta);
+    const result = unlinkAuthenticationReference(
+      withTwo,
+      { referenceType: "google_sign_in", referenceId: "authuid_2" },
+      envelope,
+      linkMeta,
+    );
 
     expect(result.identity.authenticationReferences).toHaveLength(1);
     expect(result.event.eventType).toBe("identity.authentication_reference_unlinked.v1");
@@ -315,9 +320,14 @@ describe("unlinkAuthenticationReference", () => {
 
   it("rejects unlinking the last remaining authentication reference", () => {
     const { identity } = register();
-    expect(() => unlinkAuthenticationReference(identity, "authuid_1", envelope, linkMeta)).toThrow(
-      IdentityDomainError,
-    );
+    expect(() =>
+      unlinkAuthenticationReference(
+        identity,
+        { referenceType: "phone_otp", referenceId: "authuid_1" },
+        envelope,
+        linkMeta,
+      ),
+    ).toThrow(IdentityDomainError);
   });
 
   it("rejects unlinking a reference that does not exist", () => {
@@ -335,8 +345,120 @@ describe("unlinkAuthenticationReference", () => {
     ).identity;
 
     expect(() =>
-      unlinkAuthenticationReference(withTwo, "authuid_missing", envelope, linkMeta),
+      unlinkAuthenticationReference(
+        withTwo,
+        { referenceType: "phone_otp", referenceId: "authuid_missing" },
+        envelope,
+        linkMeta,
+      ),
     ).toThrow(IdentityDomainError);
+  });
+});
+
+describe("provider-qualified authentication references (AUTH-CORR-002, Model T)", () => {
+  it("treats the same Firebase UID under two providers as two DISTINCT references", () => {
+    const { identity } = register(); // phone_otp:authuid_1
+    const withGoogle = linkAuthenticationReference(
+      identity,
+      {
+        referenceId: "authuid_1", // SAME Firebase uid, DIFFERENT provider
+        referenceType: "google_sign_in",
+        createdAt: now,
+        createdBy: "cust_1",
+      },
+      envelope,
+      linkMeta,
+    ).identity;
+
+    expect(withGoogle.authenticationReferences).toHaveLength(2);
+    expect(
+      withGoogle.authenticationReferences.map((r) => `${r.referenceType}:${r.referenceId}`).sort(),
+    ).toEqual(["google_sign_in:authuid_1", "phone_otp:authuid_1"]);
+  });
+
+  it("still rejects an EXACT (type, id) duplicate", () => {
+    const { identity } = register(); // phone_otp:authuid_1
+    expect(() =>
+      linkAuthenticationReference(
+        identity,
+        {
+          referenceId: "authuid_1",
+          referenceType: "phone_otp",
+          createdAt: now,
+          createdBy: "cust_1",
+        },
+        envelope,
+        linkMeta,
+      ),
+    ).toThrow(IdentityDomainError);
+  });
+
+  it("unlinks one provider of a same-UID pair while preserving the other, and carries the type on the event", () => {
+    const { identity } = register(); // phone_otp:authuid_1
+    const withGoogle = linkAuthenticationReference(
+      identity,
+      {
+        referenceId: "authuid_1",
+        referenceType: "google_sign_in",
+        createdAt: now,
+        createdBy: "cust_1",
+      },
+      envelope,
+      linkMeta,
+    ).identity;
+
+    const result = unlinkAuthenticationReference(
+      withGoogle,
+      { referenceType: "google_sign_in", referenceId: "authuid_1" },
+      envelope,
+      linkMeta,
+    );
+
+    expect(
+      result.identity.authenticationReferences.map((r) => `${r.referenceType}:${r.referenceId}`),
+    ).toEqual(["phone_otp:authuid_1"]);
+    expect(result.event.payload).toMatchObject({
+      referenceType: "google_sign_in",
+      referenceId: "authuid_1",
+    });
+  });
+
+  it("refuses to unlink the last remaining reference of a same-UID identity", () => {
+    const { identity } = register(); // only phone_otp:authuid_1
+    expect(() =>
+      unlinkAuthenticationReference(
+        identity,
+        { referenceType: "phone_otp", referenceId: "authuid_1" },
+        envelope,
+        linkMeta,
+      ),
+    ).toThrow(IdentityDomainError);
+  });
+
+  it("does not unlink a same-UID reference of a different provider than the one named", () => {
+    const { identity } = register(); // phone_otp:authuid_1
+    const withGoogle = linkAuthenticationReference(
+      identity,
+      {
+        referenceId: "authuid_1",
+        referenceType: "google_sign_in",
+        createdAt: now,
+        createdBy: "cust_1",
+      },
+      envelope,
+      linkMeta,
+    ).identity;
+
+    // Unlinking phone leaves google; the two are addressed by the full tuple.
+    const result = unlinkAuthenticationReference(
+      withGoogle,
+      { referenceType: "phone_otp", referenceId: "authuid_1" },
+      envelope,
+      linkMeta,
+    );
+    expect(
+      result.identity.authenticationReferences.map((r) => `${r.referenceType}:${r.referenceId}`),
+    ).toEqual(["google_sign_in:authuid_1"]);
   });
 });
 
