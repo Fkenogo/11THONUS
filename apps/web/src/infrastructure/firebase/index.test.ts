@@ -15,12 +15,13 @@ const testEnv: AppEnv = {
 };
 
 describe("initializeFirebasePlatform", () => {
-  it("wires app, auth, firestore, and storage to the same underlying app", () => {
+  it("wires app, auth, firestore, storage, and functions to the same underlying app", () => {
     const platform = initializeFirebasePlatform(testEnv, `platform-${Math.random()}`);
 
     expect(platform.auth.app).toBe(platform.app);
     expect(platform.firestore.app).toBe(platform.app);
     expect(platform.storage.app).toBe(platform.app);
+    expect(platform.functions.app).toBe(platform.app);
   });
 
   it("leaves appCheck undefined when no site key is configured", () => {
