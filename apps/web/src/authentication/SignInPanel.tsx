@@ -37,6 +37,7 @@ const ERROR_MESSAGE: Record<AuthenticateErrorCode, string> = {
   validation_failed: "Something about that request was invalid. Please try again.",
   conflict: "That sign-in is already being processed. Please wait a moment and retry.",
   unavailable: "Sign-in is temporarily unavailable. Please try again shortly.",
+  timeout: "Sign-in is taking longer than expected. Please try again shortly.",
   failed: "Sign-in didn't work. Please try again.",
 };
 
@@ -64,6 +65,19 @@ export function SignInPanel({
 
   const phoneEnabled = actions.enabledProviders.has("phone_otp");
   const googleEnabled = actions.enabledProviders.has("google_sign_in");
+
+  // A confirmation is bound to the exact number it was sent for. If the number
+  // is edited after the code was sent, invalidate the pending confirmation (and
+  // any typed code) so the verify step can never authenticate the old number
+  // while the panel displays a new one (wrong-identity guard, esp. SMS autofill).
+  function handlePhoneNumberChange(next: string) {
+    setPhoneNumber(next);
+    if (confirmation) {
+      setConfirmation(null);
+      setCode("");
+      setErrorText(null);
+    }
+  }
 
   async function run(op: () => Promise<AuthenticateOutcome | PhoneConfirmation | void>) {
     if (busy) return;
@@ -131,7 +145,7 @@ export function SignInPanel({
             type="tel"
             autoComplete="off"
             value={phoneNumber}
-            onChange={(e) => setPhoneNumber(e.target.value)}
+            onChange={(e) => handlePhoneNumberChange(e.target.value)}
           />
           <button
             type="button"

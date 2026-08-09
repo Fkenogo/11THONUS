@@ -95,6 +95,26 @@ describe("SignInPanel — Phone OTP flow", () => {
     expect(actions.confirmPhoneCode).toHaveBeenCalledWith(confirmation, "123456");
   });
 
+  it("invalidates a pending confirmation when the phone number is edited (wrong-identity guard)", async () => {
+    const confirmation = { confirm: vi.fn() } as unknown as PhoneConfirmation;
+    const actions = makeActions({
+      enabledProviders: new Set(["phone_otp"]),
+      sendPhoneCode: vi.fn(async () => confirmation),
+    });
+    render(<SignInPanel actions={actions} />);
+
+    await userEvent.type(screen.getByLabelText(/phone number/i), "+25760000000");
+    await userEvent.click(screen.getByRole("button", { name: /send code/i }));
+    expect(await screen.findByLabelText(/verification code/i)).toBeInTheDocument();
+
+    // Editing the number for phone A must not leave a confirmation that would
+    // authenticate phone A while the panel now shows a different number.
+    await userEvent.type(screen.getByLabelText(/phone number/i), "1");
+
+    expect(screen.queryByLabelText(/verification code/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /verify code/i })).not.toBeInTheDocument();
+  });
+
   it("does not leave the OTP rendered in the DOM after verification", async () => {
     const actions = makeActions({
       enabledProviders: new Set(["phone_otp"]),

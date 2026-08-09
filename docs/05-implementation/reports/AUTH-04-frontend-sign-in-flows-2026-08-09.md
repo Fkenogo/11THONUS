@@ -1,10 +1,10 @@
 # AUTH-04 — Frontend Sign-in Flows (Phone OTP + Google) (Implementation Report)
 
 > **Title:** AUTH-04 — Frontend Sign-in Flows (Phone OTP + Google)
-> **Version:** 1.0 · **Status:** Implemented (TDD) — pending fresh Founder-authorized review/merge · **Classification:** Working (implementation report)
+> **Version:** 1.1 · **Status:** Implemented (TDD), **corrected after automated PR review** — pending fresh Founder-authorized review/merge · **Classification:** Working (implementation report)
 > **Governing documents:** [`AUTH-BP`](../roadmap/AUTH-BP-authentication-blueprint-2026-08-08.md) §1/§3/§5/§6/§9/§12/§13/§15; [`AUTH-03` report](AUTH-03-registration-signin-orchestration-2026-08-08.md); [`ENG-P2-ARCH-001`](../roadmap/ENG-P2-ARCH-001-customer-identity-architecture.md) §7; [`DEC-AUTH-001`](../../00-governance/decisions/decision-register.md); [`DEC-TECH-005`](../../00-governance/decisions/dec-tech-005-firebase-region-decision-brief.md) (region)
 > **Source-of-truth path:** `docs/05-implementation/reports/AUTH-04-frontend-sign-in-flows-2026-08-09.md`
-> **Last controlled update:** 2026-08-09 (`AUTH-04` v1.0 — created)
+> **Last controlled update:** 2026-08-09 (`AUTH-04` v1.1 — two automated-PR-review findings (1 P1, 1 P2) corrected; see §16). Previously: 2026-08-09 (`AUTH-04` v1.0 — created).
 
 **Authorization.** Founder-authorized — the **fourth** Authentication implementation package under `AUTH-BP`, authorized by the Founder in this task ("TASK — AUTH-04 Implementation"; the fresh, explicit implementation authorization the governing documents require before an `AUTH-*` package may begin; recorded per the AUTH-01/AUTH-02/AUTH-03 convention in the changes-log Entry 097, this report, `IMPLEMENTATION_CHANGES.md`, Master Workflow §17, and CDR-001 §5). AUTH-01, AUTH-02, AUTH-CORR-001, and AUTH-03 are prerequisites and are on `main` (AUTH-03 merged as `98896492…`; post-merge CI green); they are treated as established architecture, not redesigned.
 
@@ -46,7 +46,7 @@ The AUTH-03 closure noted that Master Workflow §17 and CDR-001 §5 might still 
 ## 6. Consuming the corrected AUTH-03 idempotency guarantee
 AUTH-04 **consumes, never weakens** the corrected AUTH-03 behavior:
 - The client key is generated **once per sign-in attempt** and is a single safe Firestore path segment (`crypto.randomUUID()`), provably accepted by the backend `assertSafeIdempotencyKey` — so P2-4 (path-bearing key) can never be triggered from the client.
-- On a **bounded transient retry** (`unavailable`), the **same** key is resent, so the AUTH-03 request-level replay gate returns the *original* outcome (the P2-3 guarantee) and a partially-applied registration resumes on the same identity (the P1-1/P1-2 guarantees) — never a divergent `signed_in`/orphan.
+- On a **bounded transient/ambiguous retry** (`unavailable` or `timeout` = `deadline-exceeded`), the **same** key is resent, so the AUTH-03 request-level replay gate returns the *original* outcome (the P2-3 guarantee) and a partially-applied registration resumes on the same identity (the P1-1/P1-2 guarantees) — never a divergent `signed_in`/orphan. `deadline-exceeded` is treated as retryable precisely because the backend may have committed before the response was lost (see §16, review finding R2).
 - A definitive answer (`permission-denied`/`not-found`/`aborted`/`invalid-argument`) is **not** retried; it surfaces immediately. `aborted` (`IDEMPOTENCY_CONFLICT`) is surfaced as `conflict`, never auto-retried (which would be wrong).
 
 ## 7. Security / privacy (TRD10 §10.6.1, AUTH-BP §11/§15)
@@ -56,20 +56,20 @@ AUTH-04 **consumes, never weakens** the corrected AUTH-03 behavior:
 - **Disabled-by-default & no keys:** every provider is off unless an exact-"true" flag enables it (fail-closed for absent/"false"/malformed); no real DSN/site key/token is committed (secret scan clean). Deny-by-default Firestore Rules are unaffected — the frontend calls the existing server callable, opening no client write path.
 
 ## 8. Tests added (TDD, RED→GREEN)
-39 new web tests, each written test-first and observed failing before implementation:
+41 new web tests (39 at v1.0 + 2 v1.1 review-correction regression tests, §16), each written test-first and observed failing before implementation:
 - `idempotencyKey.test.ts` (4) — generated key satisfies the backend safe contract; unique per call; predicate accepts/rejects the same cases the backend does.
 - `providerConfig.test.ts` (7) — closed registry; disabled-by-default; exact-"true" only; no cross-enable; empty by default.
 - `infrastructure/firebase/functions.test.ts` (4) — bound to app; region `europe-west1`; emulator-aware; idempotent.
 - `infrastructure/firebase/index.test.ts` (+1) — `functions` wired into `FirebasePlatform`.
-- `authenticateClient.test.ts` (7) — payload shape + safe key; **same key reused on transient retry**; non-transient surfaced immediately; bounded-retry limit; no credential material returned; error-code mapping.
+- `authenticateClient.test.ts` (8) — payload shape + safe key; **same key reused on transient retry**; **same key reused on `deadline-exceeded`/`timeout` retry** (v1.1); non-transient surfaced immediately; bounded-retry limit; no credential material returned; error-code mapping (incl. `deadline-exceeded`→`timeout`).
 - `authenticateCallable.test.ts` (3) — success passthrough; `FirebaseError`→mapped `AuthenticateError`; unknown→opaque `failed`.
 - `phoneSignInFlow.test.ts` (2) / `googleSignInFlow.test.ts` (2) — provider-neutral bridge to `authenticate` with the correct `referenceType`; popup failure never reaches the backend.
-- `SignInPanel.test.tsx` (6) — disabled-by-default fail-closed message; renders only enabled providers; Google + Phone happy paths; stable non-leaking error; OTP never left in the DOM.
+- `SignInPanel.test.tsx` (7) — disabled-by-default fail-closed message; renders only enabled providers; Google + Phone happy paths; stable non-leaking error; **editing the phone number invalidates a pending confirmation** (v1.1, wrong-identity guard); OTP never left in the DOM.
 - `createSignInActions.test.ts` (4) — enabled-provider resolution; Google/phone-send/phone-confirm wiring.
 
 ## 9. Complete validation results (2026-08-09)
 - `pnpm typecheck` clean (functions + web); `pnpm lint` (`eslint .`) clean; `pnpm format:check` clean; `pnpm build` clean (functions + web).
-- **Web unit suite: 298/298** (259 baseline + 39 AUTH-04; the previously-flaky `PhoneAuthHarnessPage` latency test passed this run).
+- **Web unit suite: 300/300** (259 baseline + 41 AUTH-04, v1.1; the environment-sensitive `PhoneAuthHarnessPage` latency flake is unrelated to AUTH-04 and passes on re-run — see §12).
 - **Functions unit suite: 491/491** — unchanged (AUTH-04 changed no `functions/` file).
 - **`pnpm emulators:validate`: 189/190** — the single failure is the inherited `ENG-P1-002-CR1` command-dispatcher / identity-lifecycle concurrency-timing flake (see §12).
 - **RED→GREEN evidence:** every module's test was created and run failing (module/feature missing) before its implementation, then passing after — captured across the TDD loop for all 39 tests.
@@ -94,8 +94,19 @@ Global authentication-reference uniqueness (server-owned; AUTH-04 opens no write
 ## 15. Rollback instructions
 `git revert` the AUTH-04 commit, or discard the branch pre-merge. Removes `apps/web/src/authentication/*` and `infrastructure/firebase/functions.ts`, and restores `FirebasePlatform` to its prior shape. No data/migration impact (providers ship disabled; no production caller until enabled + deployed).
 
+## 16. Post-implementation review corrections (v1.1, 2026-08-09)
+After v1.0 was pushed (PR #91, head `91548ef`) and CI ran, the repository's automated PR reviewer (Codex) posted **two valid findings** — both in AUTH-04's own code and clearly within AUTH-04 scope. Both were verified against the current code, fixed in place (TDD, RED→GREEN), and re-validated. This section preserves the review history rather than rewriting v1.0 as if it had been correct.
+
+| # | Sev | Finding | Fix |
+|---|-----|---------|-----|
+| R1 | **P1** | `SignInPanel.tsx` — after the OTP was sent for phone A, the editable number field could be changed to phone B without clearing `confirmation`; the verify step still ran `confirmation.confirm(code)` against **phone A** while the panel displayed phone B, risking registering/signing in the wrong identity (worsened by SMS autofill). | Editing the phone number now **invalidates the pending confirmation** (clears `confirmation`, `code`, and stale error) via `handlePhoneNumberChange`, so the verify form disappears and cannot authenticate a stale number. Regression test added. |
+| R2 | **P2** | `authenticateClient.ts` — `functions/deadline-exceeded` mapped to `failed` (non-retryable), so an ambiguous timeout *after* the backend may have committed surfaced as a failure; a manual retry would then mint a **new** key instead of replaying the original outcome — weakening the AUTH-03 replay guarantee AUTH-04 must consume. | Added a `timeout` code, mapped `deadline-exceeded`→`timeout`, and made `{unavailable, timeout}` the retryable set so the **same key** is reused on a deadline timeout and the AUTH-03 gate replays the original outcome. Regression tests added (mapping + same-key retry). |
+
+**RED→GREEN evidence:** each fix's regression test was added and observed failing against the pre-fix code (R1: confirmation persisted after edit; R2: `deadline-exceeded`→`failed` and no retry), then passing after the fix. **Files changed by the correction:** `authenticateClient.ts` (+`.test.ts`), `SignInPanel.tsx` (+`.test.tsx`) — no other module, no `functions/` change, no new provider, no scope expansion. **Re-validation:** `tsc`/`eslint .`/`prettier --check .`/`pnpm build` clean; web **300/300**; functions **491/491** unchanged. No finding required expanding AUTH-04 scope or modifying a completed responsibility.
+
 ## Final Gate
 - **Disabled-by-default provider registry; fail-closed; no real keys committed.** ✅
+- **Automated PR-review findings R1 (P1, wrong-identity) and R2 (P2, deadline replay) fixed with regression coverage; no unresolved material P1/P2 remains.** ✅
 - **Phone OTP + Google flows bridge a verified user to the AUTH-03 callable; provider-neutral.** ✅
 - **Consumes the corrected AUTH-03 idempotency (stable safe key, reused on transient retry).** ✅
 - **No credential material stored/logged/returned/rendered; enumeration-resistant errors.** ✅

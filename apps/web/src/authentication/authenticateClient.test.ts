@@ -72,6 +72,26 @@ describe("authenticate", () => {
     expect(callAuthenticate).toHaveBeenCalledTimes(1);
   });
 
+  it("retries a deadline-exceeded (timeout) failure reusing the same key (ambiguous result)", async () => {
+    const seenKeys: string[] = [];
+    let attempt = 0;
+    const callAuthenticate: CallAuthenticate = async (payload) => {
+      seenKeys.push(payload.idempotencyKey);
+      attempt += 1;
+      if (attempt === 1) throw new AuthenticateError("timeout");
+      return outcome;
+    };
+
+    const result = await authenticate(
+      { getIdToken: async () => "id-token-abc", referenceType: "phone_otp" },
+      { callAuthenticate },
+    );
+
+    expect(seenKeys).toHaveLength(2);
+    expect(seenKeys[0]).toBe(seenKeys[1]);
+    expect(result).toEqual(outcome);
+  });
+
   it("stops retrying after the bounded attempt limit and surfaces the transient error", async () => {
     const callAuthenticate = vi.fn<CallAuthenticate>(async () => {
       throw new AuthenticateError("unavailable");
@@ -105,6 +125,7 @@ describe("mapCallableErrorCode — enumeration-resistant transport mapping", () 
     expect(mapCallableErrorCode("functions/invalid-argument")).toBe("validation_failed");
     expect(mapCallableErrorCode("functions/aborted")).toBe("conflict");
     expect(mapCallableErrorCode("functions/unavailable")).toBe("unavailable");
+    expect(mapCallableErrorCode("functions/deadline-exceeded")).toBe("timeout");
   });
 
   it("maps internal/unknown codes to a single opaque failure (no leakage)", () => {

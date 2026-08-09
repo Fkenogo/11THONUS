@@ -43,7 +43,16 @@ export type AuthenticateErrorCode =
   | "validation_failed"
   | "conflict"
   | "unavailable"
+  | "timeout"
   | "failed";
+
+/**
+ * Transient/ambiguous outcomes safe to retry with the *same* idempotency key.
+ * `timeout` (deadline-exceeded) is retryable precisely because the backend may
+ * have already committed before the response was lost — replaying the same key
+ * reproduces that outcome instead of forking a new one (AUTH-03 replay gate).
+ */
+const RETRYABLE_CODES: ReadonlySet<AuthenticateErrorCode> = new Set(["unavailable", "timeout"]);
 
 export class AuthenticateError extends Error {
   readonly code: AuthenticateErrorCode;
@@ -92,6 +101,8 @@ export function mapCallableErrorCode(code: string | undefined): AuthenticateErro
       return "conflict";
     case "functions/unavailable":
       return "unavailable";
+    case "functions/deadline-exceeded":
+      return "timeout";
     default:
       return "failed";
   }
@@ -120,9 +131,10 @@ export async function authenticate(
       return await deps.callAuthenticate(payload);
     } catch (error) {
       lastError = error;
-      // Only transient transport failures are retried; a definitive answer
-      // (forbidden, not-found, conflict, validation) is surfaced immediately.
-      if (!(error instanceof AuthenticateError) || error.code !== "unavailable") {
+      // Only transient/ambiguous transport failures are retried (same key); a
+      // definitive answer (forbidden, not-found, conflict, validation) is
+      // surfaced immediately.
+      if (!(error instanceof AuthenticateError) || !RETRYABLE_CODES.has(error.code)) {
         throw error;
       }
     }
