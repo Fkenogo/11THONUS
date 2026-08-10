@@ -113,13 +113,25 @@ All new behaviour was authored test-first (module-absent RED → GREEN):
 
 ## 16. PR / CI / final review gate
 
-- **PR:** [#95](https://github.com/Fkenogo/11THONUS/pull/95); **head SHA:** `b34203edf6b375cb70ffb267f44fa5fc7fae6b55`.
-- **CI on head `b34203e`:** **success** (run 31370677780, workflow "CI" — "Build, Lint, Test, Emulator Validation"; the only annotations are pre-existing Node-20 / setup-java-v4 deprecation warnings, not AUTH-06-related and non-blocking). PR `mergeable`.
-- **Final PR-review gate:** see §16.1 (dispositioned against the current head).
+- **PR:** [#95](https://github.com/Fkenogo/11THONUS/pull/95).
+- **First reviewed head:** `b34203edf6b375cb70ffb267f44fa5fc7fae6b55` — CI **success** (run 31370677780). **Corrected head (P1 fix):** `e3a817a…` (see §16.1).
+- CI annotations were only pre-existing Node-20 / setup-java-v4 deprecation warnings (not AUTH-06-related, non-blocking).
 
 ### 16.1 Review-findings disposition
 
-_Completed after the automated (`chatgpt-codex-connector`) review posts against head `b34203e` and any human review — every substantive finding recorded with severity, validity, current applicability, and disposition; no AUTH-06-scope material P1/P2 finding may remain unresolved when READY is stated._
+The automated reviewer (`chatgpt-codex-connector`) posted **one** finding against head `b34203e`; no human review comments; no other unresolved threads.
+
+| # | Finding | Severity | Validity | Disposition |
+|---|---|---|---|---|
+| R1 | **Bind proof references to the verified provider proof.** A fresh random `proofReference` per request defeats `-07`'s proof-reuse protection — a captured still-valid token replayed with a new idempotency key after a later re-suspension mints an unused `recoveryProofReferences` doc each time, so one captured proof can repeatedly undo administrative suspensions. | **P1** | **Valid** (in AUTH-06 scope — AUTH-06 constructs the proof reference; security / identity-integrity / idempotency) | **Fixed** — the endpoint now derives the `proofReference` as a one-way SHA-256 digest of the **verified token** (`authrec:<hex>`) and the service uses it verbatim instead of a random UUID. The same captured proof yields the same reference and is rejected by `-07`'s reuse protection; a genuinely new authentication (a fresh token) yields a new reference so a later legitimate recovery still succeeds. The digest is one-way, non-reversible, and not a credential (TRD10 §10.6.1); the token is never persisted/logged/returned. **Regression coverage added:** endpoint unit test (stable-per-token, opaque, non-token) + emulator test (replay of the same proof after a re-suspension is refused; identity stays suspended). Fixed **entirely within AUTH-06** — no AUTH-02/`-07`/completed-capability change. Commit `e3a817a`. |
+
+**Re-validation after the fix (corrected head `e3a817a`):** functions **523/523** (+1), web **300/300**, `pnpm emulators:validate` **212/212** (+1 anti-replay regression); typecheck/lint/format/build clean; secret scan clean.
+
+- **No unresolved material P1/P2 finding remains.** (Confirmed again against the corrected head after CI — §16.2.)
+
+### 16.2 Second review pass (corrected head)
+
+_Completed after the corrected head is pushed and CI re-runs — all review comments (automated + human, incl. those anchored to the earlier commit) re-inspected against the corrected head; final reviewed head SHA and its CI recorded here._
 
 ## 17. Final gate
 
