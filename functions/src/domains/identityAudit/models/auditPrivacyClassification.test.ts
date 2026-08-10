@@ -35,6 +35,17 @@ describe("classifyIdentityEventPrivacy", () => {
     );
   });
 
+  it("classifies AUTH-08 authentication trust signals as class 2 (internal operational)", () => {
+    // Both carry only categorical context (reference type, proof-method
+    // category) — no personal data, no secret/credential material.
+    expect(classifyIdentityEventPrivacy("authentication.customer_authenticated.v1")).toBe(
+      "class_2_internal_operational",
+    );
+    expect(
+      classifyIdentityEventPrivacy("authentication.authentication_recovery_proof_provided.v1"),
+    ).toBe("class_2_internal_operational");
+  });
+
   it("exposes the full closed set of classifications", () => {
     expect(AUDIT_PRIVACY_CLASSIFICATIONS).toEqual([
       "class_1_public",

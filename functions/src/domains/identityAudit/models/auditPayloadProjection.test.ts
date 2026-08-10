@@ -136,6 +136,31 @@ describe("projectAuditPayload", () => {
     expect(projected).toEqual({});
   });
 
+  it("projects the categorical referenceType for an AUTH-08 customer_authenticated payload", () => {
+    const projected = projectAuditPayload("authentication.customer_authenticated.v1", {
+      customerIdentityId: "cust_1",
+      referenceType: "phone_otp",
+    });
+
+    expect(projected).toEqual({ referenceType: "phone_otp" });
+  });
+
+  it("projects referenceType + proofMethodCategory for an AUTH-08 recovery_proof_provided payload", () => {
+    const projected = projectAuditPayload(
+      "authentication.authentication_recovery_proof_provided.v1",
+      {
+        customerIdentityId: "cust_1",
+        referenceType: "google_sign_in",
+        proofMethodCategory: "linked_provider",
+      },
+    );
+
+    expect(projected).toEqual({
+      referenceType: "google_sign_in",
+      proofMethodCategory: "linked_provider",
+    });
+  });
+
   it("fails closed for an unrecognised event type — never passes through an arbitrary payload", () => {
     const projected = projectAuditPayload("identity.some_future_event.v1", {
       customerIdentityId: "cust_1",

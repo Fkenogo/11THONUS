@@ -52,6 +52,11 @@ const AUTH_REFERENCE_LINKED_FIELDS = ["referenceType", "authority", "reason"] as
 const AUTH_REFERENCE_UNLINKED_FIELDS = ["authority", "reason"] as const;
 const AUTH_REFERENCE_CONFLICT_FIELDS = ["referenceType", "authority", "reason"] as const;
 const LOOKUP_ATTEMPTED_FIELDS = ["lookupType", "purpose", "outcome"] as const;
+// AUTH-08 fire-and-forget authentication trust/audit signals (AUTH-BP §10). Only
+// categorical, non-sensitive context — never the customer's provider subject/
+// referenceId, token, OTP, or proof material (none is present on these payloads).
+const CUSTOMER_AUTHENTICATED_FIELDS = ["referenceType"] as const;
+const RECOVERY_PROOF_PROVIDED_FIELDS = ["referenceType", "proofMethodCategory"] as const;
 const ISSUANCE_COLLISION_FIELDS = ["attemptNumber"] as const;
 const ISSUANCE_FAILED_FIELDS = ["attemptsMade"] as const;
 
@@ -92,6 +97,17 @@ export function projectAuditPayload(eventType: string, rawPayload: unknown): Aud
     case "identity_lookup_attempted":
       // No raw lookup value has ever been present on this payload (-09).
       return pick(rawPayload, LOOKUP_ATTEMPTED_FIELDS);
+
+    case "customer_authenticated":
+      // AUTH-08 fire-and-forget sign-in/registration trust signal. Only the
+      // categorical provider reference type; the provider subject/referenceId is
+      // never on this payload (AUTH-01 contract) and never projected.
+      return pick(rawPayload, CUSTOMER_AUTHENTICATED_FIELDS);
+
+    case "authentication_recovery_proof_provided":
+      // AUTH-08 fire-and-forget recovery-proof trust signal. Categorical provider
+      // reference type + governed proof-method category only; no proof material.
+      return pick(rawPayload, RECOVERY_PROOF_PROVIDED_FIELDS);
 
     case "loyalty_number_issued":
     case "qr_identity_issued":
