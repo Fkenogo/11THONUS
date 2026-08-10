@@ -54,6 +54,44 @@ describe("createFirebaseAdminTokenVerifier", () => {
     expect(credential.providerSignals.signInProvider).toBe("phone");
   });
 
+  // AUTH-07 additive extension (authorized): surface the token's trusted
+  // `auth_time` (seconds since epoch) as `authenticatedAt`, server-derived from
+  // the verified claims — the freshness anchor for privileged re-authentication.
+  it("surfaces the verified token's auth_time as a server-derived authenticatedAt (distinct from verifiedAt)", async () => {
+    const verifyIdToken = vi.fn().mockResolvedValue(decoded({ auth_time: 1_700_000_000 }));
+    const verifier = createFirebaseAdminTokenVerifier(verifyIdToken, { now: () => fixedNow });
+
+    const credential = await verifier.verify({
+      referenceType: "phone_otp",
+      rawToken: "raw-firebase-id-token",
+    });
+
+    expect(credential.authenticatedAt).toEqual(new Date(1_700_000_000 * 1000));
+    // Freshness must not be conflated with verification time.
+    expect(credential.authenticatedAt).not.toEqual(credential.verifiedAt);
+    expect(credential.verifiedAt).toEqual(fixedNow);
+  });
+
+  it("fails closed (AUTH_REQUIRED) when the verified token carries no auth_time", async () => {
+    const verifyIdToken = vi.fn().mockResolvedValue(decoded({ auth_time: undefined }));
+    const verifier = createFirebaseAdminTokenVerifier(verifyIdToken, { now: () => fixedNow });
+
+    await expect(
+      verifier.verify({ referenceType: "phone_otp", rawToken: "raw" }),
+    ).rejects.toMatchObject({ category: "AUTH_REQUIRED" });
+  });
+
+  it("fails closed (AUTH_REQUIRED) when auth_time is malformed", async () => {
+    const verifyIdToken = vi
+      .fn()
+      .mockResolvedValue(decoded({ auth_time: Number.NaN as unknown as number }));
+    const verifier = createFirebaseAdminTokenVerifier(verifyIdToken, { now: () => fixedNow });
+
+    await expect(
+      verifier.verify({ referenceType: "phone_otp", rawToken: "raw" }),
+    ).rejects.toBeInstanceOf(AuthenticationDomainError);
+  });
+
   it("checks token revocation (verifyIdToken called with checkRevoked = true)", async () => {
     const verifyIdToken = vi.fn().mockResolvedValue(decoded());
     const verifier = createFirebaseAdminTokenVerifier(verifyIdToken, { now: () => fixedNow });

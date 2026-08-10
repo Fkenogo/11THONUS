@@ -103,6 +103,19 @@ const TEMPORARY_CODES = new Set([
   "EAI_AGAIN",
 ]);
 
+/**
+ * Convert the verified `auth_time` claim (seconds since epoch) to a `Date`.
+ * Returns `undefined` for any absent or non-finite value so the caller can fail
+ * closed — the trusted authentication instant is a hard requirement for the
+ * freshness contract, never defaulted.
+ */
+function authenticatedAtFromClaim(authTimeSeconds: unknown): Date | undefined {
+  if (typeof authTimeSeconds !== "number" || !Number.isFinite(authTimeSeconds)) {
+    return undefined;
+  }
+  return new Date(authTimeSeconds * 1000);
+}
+
 function errorCode(error: unknown): string | undefined {
   if (error && typeof error === "object" && "code" in error) {
     const code = (error as { code?: unknown }).code;
@@ -174,11 +187,24 @@ export function createFirebaseAdminTokenVerifier(
         throw authenticationForbiddenError();
       }
 
+      // AUTH-07 additive extension: surface the trusted server-side
+      // authentication instant from the verified `auth_time` claim (seconds
+      // since epoch). This is the freshness anchor for privileged
+      // re-authentication and is derived only from verified claims — never
+      // client input. A token whose verification succeeded but which carries no
+      // usable `auth_time` cannot support the freshness contract, so it fails
+      // closed as authentication-required (AUTH-BP §11 / §9).
+      const authenticatedAt = authenticatedAtFromClaim(decoded.auth_time);
+      if (authenticatedAt === undefined) {
+        throw authenticationRequiredError();
+      }
+
       try {
         return createAuthenticatedCredential({
           referenceType: derivedReferenceType,
           referenceId: decoded.uid,
           verifiedAt: now(),
+          authenticatedAt,
           providerSignals: {
             signInProvider: verifiedProvider,
           },
