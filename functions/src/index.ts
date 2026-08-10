@@ -24,6 +24,12 @@ import {
   handleAuthenticate,
   type AuthenticateRequest,
 } from "./domains/authentication/services/authenticationEndpointService";
+import {
+  handleLinkProvider,
+  handleUnlinkProvider,
+  type LinkProviderRequest,
+  type UnlinkProviderRequest,
+} from "./domains/authentication/services/accountLinkingEndpointService";
 import type { AuthenticationReferenceType } from "./domains/identity/models/authenticationReference";
 
 setGlobalOptions({ region: PLATFORM_REGION, maxInstances: 10 });
@@ -119,6 +125,80 @@ export const authenticate = onCall(async (request) => {
   const parsed = parseAuthenticateRequest(request.data);
   try {
     return await handleAuthenticate(getFirestore(getAdminApp()), parsed, {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+function parseReferenceType(value: unknown): AuthenticationReferenceType {
+  if (typeof value !== "string" || !MVP_REFERENCE_TYPES.has(value as AuthenticationReferenceType)) {
+    throw new HttpsError("invalid-argument", "authentication_failed");
+  }
+  return value as AuthenticationReferenceType;
+}
+
+function parseRawToken(value: unknown): string {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new HttpsError("unauthenticated", "authentication_failed");
+  }
+  return value;
+}
+
+function parseNonEmptyString(value: unknown): string {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new HttpsError("invalid-argument", "authentication_failed");
+  }
+  return value;
+}
+
+function parseLinkProviderRequest(data: unknown): LinkProviderRequest {
+  const value = (data ?? {}) as Record<string, unknown>;
+  return {
+    actingRawToken: parseRawToken(value.actingRawToken),
+    actingReferenceType: parseReferenceType(value.actingReferenceType),
+    newRawToken: parseRawToken(value.newRawToken),
+    newReferenceType: parseReferenceType(value.newReferenceType),
+    idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+  };
+}
+
+function parseUnlinkProviderRequest(data: unknown): UnlinkProviderRequest {
+  const value = (data ?? {}) as Record<string, unknown>;
+  return {
+    actingRawToken: parseRawToken(value.actingRawToken),
+    actingReferenceType: parseReferenceType(value.actingReferenceType),
+    targetReferenceType: parseReferenceType(value.targetReferenceType),
+    targetReferenceId: parseNonEmptyString(value.targetReferenceId),
+    idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+  };
+}
+
+/**
+ * `linkAuthenticationProvider` / `unlinkAuthenticationProvider` (AUTH-05) — the
+ * account-linking integrations (AUTH-BP §7/§12). Each verifies the acting
+ * provider credential (AUTH-02), resolves it to the caller's identity, and links
+ * or unlinks an additional provider on that identity through the merged `-08`
+ * (transactional, globally-unique, cross-identity-conflict-fail-closed,
+ * last-reference-protected). Admin-SDK callables — no client Firestore write
+ * path is opened. Never returns credential material.
+ */
+export const linkAuthenticationProvider = onCall(async (request) => {
+  const parsed = parseLinkProviderRequest(request.data);
+  try {
+    return await handleLinkProvider(getFirestore(getAdminApp()), parsed, {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+export const unlinkAuthenticationProvider = onCall(async (request) => {
+  const parsed = parseUnlinkProviderRequest(request.data);
+  try {
+    return await handleUnlinkProvider(getFirestore(getAdminApp()), parsed, {
       verifier: firebaseAdminTokenVerifier(),
     });
   } catch (error) {
