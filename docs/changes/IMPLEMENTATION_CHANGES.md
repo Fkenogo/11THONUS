@@ -2571,6 +2571,6 @@
 - **Localization (Phase C):** no customer-facing UI/strings added → none required.
 - **Files:** created the AUTH-09 report; modified CDR-001 §5, Master Workflow §17, this file, documentation-changes-log (Entry 103). No source/runtime/rules file touched.
 - **Migrations:** none. **Dependencies added:** none. **Configuration changes:** none.
-- **Programme impact:** `AUTH-09` implemented (pending merge); Authentication concern `Validation Complete — closure pending the Founder-executed hosted-preview check`. **Concern Completion ≠ Capability closure** — Capability 2 remains `Open — partially implemented; not closed`. AUTH is the last AUTH implementation package; AUTH-10+ not started.
+- **Programme impact:** `AUTH-09` implemented (pending merge); Authentication concern `Validation Complete — closure pending the Founder-executed hosted-preview check`. **Concern Completion ≠ Capability closure** — Capability 2 remains `Open — partially implemented; not closed`. AUTH-09 is the ninth and final AUTH package (closure); AUTH-10+ not started.
 - **Rollback:** documentation-only; `git revert` of the AUTH-09 commit(s) or discard the branch fully reverses it. No code/data/migration/runtime impact.
 - **Report link:** [`AUTH-09-validation-and-closure-review-2026-08-10.md`](../05-implementation/reports/AUTH-09-validation-and-closure-review-2026-08-10.md).
