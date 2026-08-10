@@ -125,4 +125,20 @@ describe("deriveAuthenticationEventId", () => {
     const id = deriveAuthenticationEventId("customer_authenticated", "cid/1", "k");
     expect(id).not.toContain("/");
   });
+
+  it("pins the canonical preimage encoding (golden id) so the delimiter/identity cannot silently change", () => {
+    // Locks the exact SHA-256 over the canonical preimage
+    // `eventName + \u0000 + customerIdentityId + \u0000 + idempotencyKey`. If
+    // the separator or preimage construction ever changes, already-emitted
+    // events would no longer dedupe by id across deploys -- this golden value
+    // forces that change to be conscious and reviewed.
+    expect(deriveAuthenticationEventId("customer_authenticated", "cid_1", "k")).toBe(
+      "authnevt_customer_authenticated_8f98fb70f016f209f5999251a08fbc6a2c6488bbd6b93a289c1f1c010cb0fbfc",
+    );
+    expect(
+      deriveAuthenticationEventId("authentication_recovery_proof_provided", "cid_1", "k"),
+    ).toBe(
+      "authnevt_authentication_recovery_proof_provided_237d19d91d863bfa421fc872a241ea44d0249c34261c559f98f6658d7fac3c84",
+    );
+  });
 });

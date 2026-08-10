@@ -116,4 +116,10 @@ AUTH-08 is **backend-only event emission** — it introduces **no** customer-vis
 
 ## 12. Final gate
 
-**AUTH-08 READY FOR FOUNDER REVIEW/MERGE.** Acceptance criteria met verbatim; TDD RED→GREEN; full validation green; boundaries preserved; not self-merged; AUTH-09 not started; dirty primary worktree untouched; no unrelated worktree cleanup. (PR review-gate findings, if any, are recorded on merge-readiness — see §13 once the PR is opened.)
+**AUTH-08 READY FOR FOUNDER REVIEW/MERGE.** Acceptance criteria met verbatim; TDD RED→GREEN; full validation green; boundaries preserved; not self-merged; AUTH-09 not started; dirty primary worktree untouched; no unrelated worktree cleanup.
+
+## 13. Independent review disposition (PR #97)
+
+An independent reviewer re-reviewed the exact PR head (`8378c72`) since no automated Codex review ran (reviewer usage limit). One finding was raised and corrected in place (history preserved):
+
+- **F-R1 (P2 — code integrity / reviewability):** `authenticationEventFactories.ts` contained a **raw NUL byte** as the value of `FIELD_SEPARATOR` (the hash-preimage delimiter). Functionally harmless — the delimiter is still a stable, deterministic, non-occurring separator and the derived id is hex (no Firestore-path risk), so all tests passed — but the raw NUL made **git store the file as binary**, so the file had no reviewable textual diff/blame, and it is fragile for text tooling. **Fix:** the delimiter is now written as the explicit escape `\u0000` (byte-identical runtime value → every derived id unchanged; the file is now UTF-8 text), with a clarifying comment; a **golden-value regression test** was added pinning the exact canonical preimage (`eventName + \u0000 + customerIdentityId + \u0000 + idempotencyKey`) so the event-identity contract cannot silently change across deploys. functions unit **564/564** (+1); emulators **221/221**; web **304/304**; typecheck/lint/format/build/e2e clean. No other changed file contained a raw NUL. No behavioral change; no scope/boundary change.
