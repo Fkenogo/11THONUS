@@ -75,7 +75,9 @@ Clean worktree off `origin/main`, `pnpm install --frozen-lockfile`, then the rep
 | Emulator validation | `pnpm emulators:validate` (`demo-11thonus`) | **221/221** (21 files) |
 | E2E | `pnpm test:e2e` | **1/1** (chromium, app-shell) |
 
-No inherited `ENG-P1-002-CR1` concurrency flake recurred in this run. This is the AUTH-09 concern-level "full-suite validation" deliverable, executed against merged `main` — not a per-package re-run.
+No inherited `ENG-P1-002-CR1` concurrency flake recurred in this **local** run. This is the AUTH-09 concern-level "full-suite validation" deliverable, executed against merged `main` — not a per-package re-run.
+
+**Verified inherited flake (CI):** the PR CI passed on first head `fd1df11`; on the correction head `395f046` the emulator job failed with two `Test timed out in 5000ms` errors in `commandDispatcher.emulator.test.ts` (`ENG-P1-002-CR1` concurrent-worker-safety) and `identityLifecycleRepository.emulator.test.ts` (concurrent conflicting transitions). **Proven inherited, not AUTH-09:** AUTH-09's entire diff is documentation-only (no code/test/config), so it cannot alter emulator timing; the failing files are byte-identical to `origin/main`; the same content passed on `fd1df11` and locally (221/221); the tests are the documented `ENG-P1-002-CR1` timing flake prior AUTH packages recorded (e.g. AUTH-04's "189/190; CI green on re-run"). Remedy per protocol: re-run (no unrelated-flake fix inside AUTH-09). CI re-run outcome recorded in §14.
 
 ## 7. Per-package Technical Review coverage (DoD §2.6 / G1)
 
@@ -128,4 +130,5 @@ AUTH-09 introduces **no customer-facing UI and no new customer-facing strings** 
   - **F-R2 (P3, wording):** `IMPLEMENTATION_CHANGES.md` programme-impact line read "AUTH is the last AUTH implementation package"; corrected to "AUTH-09 is the ninth and final AUTH package (closure)".
 - **Verification:** factual claims re-verified against source — all AUTH merge SHAs / PR numbers / merge timestamps confirmed via `gh`; test counts (functions 564, web 304, emulators 221, e2e 1) are this session's actual runs on `cd8269c`; the closed 14-category taxonomy and the no-`firestore.rules`-change assertion confirmed by direct inspection; all internal report links resolve to existing files.
 - **No unresolved material P1/P2 finding remains** in correctness, security, privacy, identity/session integrity, configuration/runtime safety, idempotency, concurrency, architecture, localization readiness, responsibility boundaries, or data integrity. The two findings above are P3 documentation-accuracy items, corrected.
-- **Final reviewed head:** recorded in the PR after the correction commit; the Authentication concern remains `Validation Complete — closure pending the Founder-executed bounded hosted-preview check` (§9).
+- **CI (inherited-flake handling):** first head `fd1df11` → CI pass. Correction head `395f046` → emulator job failed on two `ENG-P1-002-CR1` concurrency **timeouts** (proven inherited — see §6); **re-run of the same head → CI pass** (run 31400911003, 3m28s), confirming the transient flake. No AUTH-09 change was made to address it (unrelated inherited flake; out of scope).
+- **Final reviewed head:** `395f046` (+ this closing report note); the Authentication concern remains `Validation Complete — closure pending the Founder-executed bounded hosted-preview check` (§9).
