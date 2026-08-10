@@ -50,6 +50,13 @@ export function assertFreshAuthentication(
   if (!(now instanceof Date) || Number.isNaN(now.getTime())) {
     throw invalidAuthenticatedCredentialError("now", String(now));
   }
+  // A misconfigured window (NaN from a malformed setting, Infinity, or a
+  // negative value) must fail **closed** — never silently disable the gate.
+  // With a non-finite `maxAgeMs`, `ageMs > maxAgeMs` is always false, so an
+  // unguarded comparison would let a credential of any age pass.
+  if (!Number.isFinite(maxAgeMs) || maxAgeMs < 0) {
+    throw invalidAuthenticatedCredentialError("maxAgeMs", String(maxAgeMs));
+  }
 
   const authenticatedAt = credential.authenticatedAt;
   // Missing trusted authentication-time evidence → fail closed. `verifiedAt`

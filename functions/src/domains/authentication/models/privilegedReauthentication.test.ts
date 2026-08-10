@@ -106,4 +106,28 @@ describe("assertFreshAuthentication", () => {
       assertFreshAuthentication(credentialAuthenticatedAt(authenticatedAt), new Date("not-a-date")),
     ).toThrow(AuthenticationDomainError);
   });
+
+  // A misconfigured policy value must fail closed — never silently disable the
+  // gate. With NaN/Infinity, `ageMs > maxAgeMs` is always false, so without a
+  // guard a credential of *any* age would pass (fail-open).
+  it("fails closed for a non-finite maximum age (NaN — e.g. a malformed setting), even for old authentication", () => {
+    const oldAuth = new Date(now.getTime() - 60 * 60 * 1000); // 1h ago
+    expect(() =>
+      assertFreshAuthentication(credentialAuthenticatedAt(oldAuth), now, Number.NaN),
+    ).toThrow(AuthenticationDomainError);
+  });
+
+  it("fails closed for an infinite maximum age", () => {
+    const oldAuth = new Date(now.getTime() - 60 * 60 * 1000);
+    expect(() =>
+      assertFreshAuthentication(credentialAuthenticatedAt(oldAuth), now, Number.POSITIVE_INFINITY),
+    ).toThrow(AuthenticationDomainError);
+  });
+
+  it("fails closed for a negative maximum age", () => {
+    const recentAuth = new Date(now.getTime() - 1_000);
+    expect(() => assertFreshAuthentication(credentialAuthenticatedAt(recentAuth), now, -1)).toThrow(
+      AuthenticationDomainError,
+    );
+  });
 });

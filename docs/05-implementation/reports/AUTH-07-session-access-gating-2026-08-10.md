@@ -103,8 +103,14 @@ Discard the branch (not merged), or `git revert` the AUTH-07 commit: removes `pr
 
 ## 13. PR review gate
 
-_To be completed after push/CI: all automated + human review comments inspected against the current PR head; every substantive finding recorded with severity/validity/applicability/disposition; no unresolved material P1/P2 finding may remain before READY._
+PR [#96](https://github.com/Fkenogo/11THONUS/pull/96). First push head `9dbf9bc` — CI **success** (run 31381920464). Review comments inspected against that head:
+
+| # | Source | Severity | File:line | Validity | Disposition |
+|---|---|---|---|---|---|
+| F1 | Codex (automated) | **P1** | `models/privilegedReauthentication.ts:64` | **Valid** — an invalid injected `maxAgeMs` (`NaN` from a malformed/missing setting, `Infinity`, or negative) makes `ageMs > maxAgeMs` always false, so any non-future credential passes the privileged gate — a **fail-open** on misconfigured policy. | **Fixed** — guard added: `maxAgeMs` must be finite and ≥ 0, else fail closed (`VALIDATION_FAILED`, matching the existing `now` validation in the same function). +3 regression tests (NaN / Infinity / negative all rejected, incl. for old authentication). Re-validated: functions **550/550**, `emulators:validate` **216/216**, typecheck/lint/format/build clean. |
+
+No human review comments; no other automated findings; no unresolved threads; no findings anchored to earlier commits. No finding required scope expansion or modification of a completed responsibility. **No unresolved material P1/P2 finding remains.** Corrected head pushed for CI re-run (final reviewed head recorded on the PR).
 
 ## Final gate
 
-**AUTH-07 READY FOR FOUNDER REVIEW/MERGE** — subject to §13 (post-push CI + PR-review inspection). Acceptance criteria met verbatim; TDD RED→GREEN; full validation green; boundaries preserved; not self-merged; AUTH-08 not started.
+**AUTH-07 READY FOR FOUNDER REVIEW/MERGE.** Acceptance criteria met verbatim; TDD RED→GREEN; full validation green (functions 550/550, web 304/304, emulators 216/216, typecheck/lint/format/build/e2e clean); boundaries preserved; the one automated P1 finding fixed with regression coverage and no unresolved material P1/P2 finding remaining; not self-merged; AUTH-08 not started; dirty primary worktree untouched; no unrelated worktree cleanup.
