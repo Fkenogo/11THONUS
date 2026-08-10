@@ -11,19 +11,31 @@
  * caller's transaction contains.
  */
 
-import type { Firestore, Transaction } from "firebase-admin/firestore";
+import type { DocumentReference, Firestore, Transaction } from "firebase-admin/firestore";
 import type { DomainEvent } from "../events/domainEvent";
 import { serverTimestamp } from "../metadata/serverTimestamp";
 import type { OutboxEntry } from "./outboxEntry";
 
 const COLLECTION = "outboxEntries";
 
+/**
+ * The single source of truth for an outbox entry's document reference — one
+ * entry per event, at the event's own id (the idempotency/dedup key). Shared so
+ * a caller doing an idempotent, read-guarded standalone enqueue (e.g. a
+ * fire-and-forget signal that is not part of a domain-write transaction) targets
+ * the exact same document this writer writes, without re-hardcoding the
+ * collection name.
+ */
+export function outboxEntryRef(db: Firestore, eventId: string): DocumentReference {
+  return db.collection(COLLECTION).doc(eventId);
+}
+
 export function writeOutboxEntry<T>(
   transaction: Transaction,
   db: Firestore,
   event: DomainEvent<T>,
 ): void {
-  const ref = db.collection(COLLECTION).doc(event.eventId);
+  const ref = outboxEntryRef(db, event.eventId);
   const entry: Omit<OutboxEntry<T>, "id"> = {
     event,
     status: "pending",

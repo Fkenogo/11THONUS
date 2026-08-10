@@ -1,0 +1,161 @@
+/**
+ * AUTH-08 — authentication event factories (per AUTH-BP §10/§12).
+ *
+ * AUTH-08 owns *emission* of the two fire-and-forget authentication trust/audit
+ * signals whose **contracts** AUTH-01 declared (`../models/authenticationEvents`):
+ * `CustomerAuthenticated` (successful registration/sign-in) and
+ * `AuthenticationRecoveryProofProvided` (successful recovery proof). This module
+ * is the pure construction of those events on the shared `DomainEvent<T>` /
+ * `buildEventType` contract (`shared/events/*`, ENG-P1-002, TRD11 §11.8–11.9) —
+ * no Firebase import; the durable outbox write is `authenticationEventEmitter.ts`.
+ *
+ * **Not** the reference-linking / global-ownership package. That is the merged
+ * Customer Identity `-08` (`ENG-P2-001-08`) whose state-change events
+ * (`AuthenticationReferenceLinked` etc.) are owned and emitted there and are
+ * deliberately never re-emitted here (the shared "-08" numbering is coincidental).
+ *
+ * **Deterministic, retry-stable event identity.** `eventId` is a pure function of
+ * the logical operation's identity — `(eventName, customerIdentityId,
+ * idempotencyKey)` — so the same logical authentication/recovery retried under
+ * the same client idempotency key yields the *same* event identity (the outbox
+ * doc id), giving durable at-least-once delivery with idempotent, dedup-by-
+ * `eventId` consumption (never a claim of exactly-once). Distinct legitimate
+ * operations (different key or identity) yield distinct identities. `occurredAt`
+ * is *not* part of the identity, so a retry never mints a second event.
+ *
+ * Payloads carry only the AUTH-01 contract fields — customer identity, categorical
+ * provider reference type, and (recovery) the governed proof-method category —
+ * never any credential/token/OTP/proof material (TRD10 §10.6.1; TRD21).
+ */
+
+import { createHash } from "node:crypto";
+import type { DomainEvent, EventActor } from "../../../shared/events/domainEvent";
+import { buildEventType } from "../../../shared/events/eventNaming";
+import type { AuthenticationReferenceType } from "../../identity/models/authenticationReference";
+import type {
+  AuthenticationRecoveryProofProvidedPayload,
+  CustomerAuthenticatedPayload,
+} from "../models/authenticationEvents";
+
+const SOURCE_DOMAIN = "authentication";
+/**
+ * The authentication trust signals audit the customer identity that was
+ * authenticated/recovered, so they share the identity aggregate type — the
+ * merged `-10` audit projection keys `customerIdentityId` off `aggregateId`.
+ */
+const AGGREGATE_TYPE = "customer_identity";
+const EVENT_VERSION = 1;
+
+export const CUSTOMER_AUTHENTICATED_EVENT_NAME = "customer_authenticated";
+export const AUTHENTICATION_RECOVERY_PROOF_PROVIDED_EVENT_NAME =
+  "authentication_recovery_proof_provided";
+
+// An explicit NUL delimiter, written as the escape "\u0000" (never a raw
+// byte) so this source stays reviewable text -- a raw NUL makes git treat the
+// file as binary. NUL is chosen deliberately: it cannot occur in an event
+// name, a customer identity id, or a client idempotency key, so the hash
+// preimage is unambiguous (no separator collision between operands). Changing
+// this value changes every derived event/correlation id -- the golden-value
+// tests pin it.
+const FIELD_SEPARATOR = "\u0000";
+
+/**
+ * Deterministic, collision-resistant, Firestore-safe (hex, no `/`) event id for
+ * the logical operation. Bound to the event name so the two event types never
+ * collide even under a shared identity/key, and to the customer identity so a
+ * (defensively) reused key across identities cannot collapse two events.
+ */
+export function deriveAuthenticationEventId(
+  eventName: string,
+  customerIdentityId: string,
+  idempotencyKey: string,
+): string {
+  const digest = createHash("sha256")
+    .update([eventName, customerIdentityId, idempotencyKey].join(FIELD_SEPARATOR))
+    .digest("hex");
+  return `authnevt_${eventName}_${digest}`;
+}
+
+/**
+ * Deterministic correlation id for the logical operation — stable across retries
+ * of the same operation, independent of the event type, so both the request and
+ * its (single) emitted trust signal are queryable together in the audit
+ * projection.
+ */
+function deriveAuthenticationCorrelationId(
+  customerIdentityId: string,
+  idempotencyKey: string,
+): string {
+  const digest = createHash("sha256")
+    .update([customerIdentityId, idempotencyKey].join(FIELD_SEPARATOR))
+    .digest("hex");
+  return `authncorr_${digest}`;
+}
+
+function buildAuthenticationEvent<T>(
+  eventName: string,
+  customerIdentityId: string,
+  idempotencyKey: string,
+  occurredAt: string,
+  payload: T,
+): DomainEvent<T> {
+  const actor: EventActor = { actorType: "user", actorId: customerIdentityId };
+  return {
+    eventId: deriveAuthenticationEventId(eventName, customerIdentityId, idempotencyKey),
+    eventType: buildEventType(SOURCE_DOMAIN, eventName, EVENT_VERSION),
+    eventVersion: EVENT_VERSION,
+    sourceDomain: SOURCE_DOMAIN,
+    aggregateType: AGGREGATE_TYPE,
+    aggregateId: customerIdentityId,
+    correlationId: deriveAuthenticationCorrelationId(customerIdentityId, idempotencyKey),
+    actor,
+    occurredAt,
+    payload,
+  };
+}
+
+export type CustomerAuthenticatedEventParams = {
+  customerIdentityId: string;
+  referenceType: AuthenticationReferenceType;
+  /** The logical authentication request's client idempotency key. */
+  idempotencyKey: string;
+  occurredAt: string;
+};
+
+export function buildCustomerAuthenticatedEvent(
+  params: CustomerAuthenticatedEventParams,
+): DomainEvent<CustomerAuthenticatedPayload> {
+  return buildAuthenticationEvent(
+    CUSTOMER_AUTHENTICATED_EVENT_NAME,
+    params.customerIdentityId,
+    params.idempotencyKey,
+    params.occurredAt,
+    { customerIdentityId: params.customerIdentityId, referenceType: params.referenceType },
+  );
+}
+
+export type AuthenticationRecoveryProofProvidedEventParams = {
+  customerIdentityId: string;
+  referenceType: AuthenticationReferenceType;
+  /** The governed proof-method category (categorical; never proof material). */
+  proofMethodCategory: string;
+  /** The logical recovery request's client idempotency key. */
+  idempotencyKey: string;
+  occurredAt: string;
+};
+
+export function buildAuthenticationRecoveryProofProvidedEvent(
+  params: AuthenticationRecoveryProofProvidedEventParams,
+): DomainEvent<AuthenticationRecoveryProofProvidedPayload> {
+  return buildAuthenticationEvent(
+    AUTHENTICATION_RECOVERY_PROOF_PROVIDED_EVENT_NAME,
+    params.customerIdentityId,
+    params.idempotencyKey,
+    params.occurredAt,
+    {
+      customerIdentityId: params.customerIdentityId,
+      referenceType: params.referenceType,
+      proofMethodCategory: params.proofMethodCategory,
+    },
+  );
+}

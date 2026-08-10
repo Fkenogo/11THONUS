@@ -34,6 +34,10 @@ import {
   handleRecoverIdentity,
   type RecoverIdentityRequest,
 } from "./domains/authentication/services/identityRecoveryEndpointService";
+import {
+  emitAuthenticationRecoveryProofProvided,
+  emitCustomerAuthenticated,
+} from "./domains/authentication/services/authenticationEventEmitter";
 import type { AuthenticationReferenceType } from "./domains/identity/models/authenticationReference";
 
 setGlobalOptions({ region: PLATFORM_REGION, maxInstances: 10 });
@@ -127,10 +131,23 @@ function parseAuthenticateRequest(data: unknown): AuthenticateRequest {
  */
 export const authenticate = onCall(async (request) => {
   const parsed = parseAuthenticateRequest(request.data);
+  const db = getFirestore(getAdminApp());
   try {
-    return await handleAuthenticate(getFirestore(getAdminApp()), parsed, {
+    const result = await handleAuthenticate(db, parsed, {
       verifier: firebaseAdminTokenVerifier(),
     });
+    // AUTH-08 (composition boundary): a successful authentication emits the
+    // fire-and-forget `CustomerAuthenticated` trust/audit signal through the
+    // shared outbox — a durable, awaited write with a deterministic, retry-stable
+    // event identity keyed on the request idempotency key. AUTH-03's orchestration
+    // is left untouched (it emits no such signal); a rare emit failure propagates
+    // as retryable while the idempotent authentication result replays unchanged.
+    await emitCustomerAuthenticated(db, {
+      customerIdentityId: result.customerIdentityId,
+      referenceType: result.session.authReference.referenceType,
+      idempotencyKey: parsed.idempotencyKey,
+    });
+    return result;
   } catch (error) {
     throw toHttpsError(error);
   }
@@ -231,10 +248,23 @@ function parseRecoverIdentityRequest(data: unknown): RecoverIdentityRequest {
  */
 export const recoverAuthenticatedIdentity = onCall(async (request) => {
   const parsed = parseRecoverIdentityRequest(request.data);
+  const db = getFirestore(getAdminApp());
   try {
-    return await handleRecoverIdentity(getFirestore(getAdminApp()), parsed, {
+    const result = await handleRecoverIdentity(db, parsed, {
       verifier: firebaseAdminTokenVerifier(),
     });
+    // AUTH-08 (composition boundary): a successful recovery proof emits the
+    // fire-and-forget `AuthenticationRecoveryProofProvided` trust/audit signal
+    // through the shared outbox (durable, awaited, deterministic identity). The
+    // AUTH-06 orchestration and the `-06`/`-07` `IdentityRecovered` state-change
+    // event it already owns are left untouched.
+    await emitAuthenticationRecoveryProofProvided(db, {
+      customerIdentityId: result.customerIdentityId,
+      referenceType: parsed.referenceType,
+      proofMethodCategory: result.methodCategory,
+      idempotencyKey: parsed.idempotencyKey,
+    });
+    return result;
   } catch (error) {
     throw toHttpsError(error);
   }
