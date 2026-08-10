@@ -233,11 +233,18 @@ Unchanged from §7 and re-verified: no `rawToken`/OTP/secret persisted, logged, 
 
 **Founder disposition (recorded):** **add the defensive same-UID gate.** "AUTH-05 account linking is explicitly a same-Firebase-user operation under the approved Model-T architecture … before invoking `-08`, AUTH-05 must verify `verifiedNewProviderUid === actingAuthenticatedUid`; if they differ, fail closed using the existing taxonomy. Defense-in-depth — do not remove, relax, or repurpose `-08`'s cross-identity protection." Implemented as §17.3's F2 gate, with the regression coverage the Founder specified (§17.6).
 
-**Round 2 (F1 + F2).** Re-validated (functions 513/513, web 300/300, AUTH-05 emulator 11/11, typecheck/lint/format/build clean) and pushed to PR #92.
+**Round 2 (F1 + F2).** Re-validated (functions 513/513, web 300/300, AUTH-05 emulator 11/11, typecheck/lint/format/build clean) and pushed to PR #92 (code head **`b08b568`**).
 
-- **Final PR #92 head SHA:** _(recorded post-round-2-push below)_
-- **CI on final head:** _(recorded post-round-2-push below)_
-- **Review findings against the final head (Codex + human):** _(inspected post-push below)_
+- **CI on code head `b08b568`:** **success** (run 31365239878 — build/lint/format/typecheck/unit/**Playwright e2e**/**full emulator validation** all ✓ on CI's isolated runner; no flakes recurred).
+- **PR mergeability:** `MERGEABLE`, `mergeStateStatus = CLEAN`.
+- **Review-findings disposition against the current head (`b08b568`):**
+  | # | Finding | Severity | Validity | Disposition |
+  |---|---|---|---|---|
+  | F1 | Enforce the acting identity's access state | P1 | Valid | **Fixed** — `resolveActingIdentity` loads the identity and `assertActingIdentityMayMutate` gates it (`active`/`suspended`/other), before any `-08` mutation. Unit + emulator coverage. |
+  | F2 | Reject links between different Firebase UIDs | P1 | Valid (per Founder disposition) | **Fixed** — Founder-directed same-Firebase-principal gate in `linkAuthenticationProvider` (verified-uid equality before `-08`), plus `-08`'s untouched cross-identity control. Unit + emulator coverage. |
+  - No **new** automated (Codex) review was posted against `b08b568`; the two inline P1 threads are the original review's, both now resolved in code (GitHub re-anchors the F2 thread to the line immediately below the new gate). No human review comments; no other unresolved threads.
+- **No unresolved material P1/P2 findings remain.**
+- **Final PR #92 head SHA / final CI:** the last commit is documentation-only (this §17.9 evidence); its CI is recorded with the completion report. The substantive, code-validating CI is `b08b568` above.
 
 ## Final Gate (resumption — 2026-08-09)
 
