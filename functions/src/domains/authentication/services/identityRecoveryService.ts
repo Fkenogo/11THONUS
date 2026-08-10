@@ -25,9 +25,14 @@
  *   - **Proven-proof construction.** A verified MVP provider credential is mapped
  *     onto the merged `-07` `RecoveryProof` (`phone_otp` → `phone_otp`,
  *     `google_sign_in` → `linked_provider`), `result: "accepted"`,
- *     `authority: "customer_initiated"`, an opaque server-generated
- *     `proofReference` (never a credential/token), and `targetCustomerIdentityId`
- *     bound to the resolved identity.
+ *     `authority: "customer_initiated"`, an opaque `proofReference`
+ *     **deterministically bound to the verified proof** (supplied by the endpoint
+ *     as a one-way digest of the verified token — never the credential/token
+ *     itself), and `targetCustomerIdentityId` bound to the resolved identity. The
+ *     token-bound reference is what makes `-07`'s proof-reuse protection effective:
+ *     replaying the *same* captured proof yields the *same* reference and is
+ *     rejected, while a genuinely new authentication (a fresh token) yields a new
+ *     reference so a later legitimate recovery still succeeds.
  *
  * Boundary. AUTH-06 does **not** widen the recovery lookup surface (§8 step 1;
  * that stays `-07`/`-09`), does **not** compute risk strength (§8 step 4; ITM),
@@ -45,7 +50,6 @@
  * logged, or returned (TRD10 §10.6.1); only the provider-neutral reference flows.
  */
 
-import { randomUUID } from "node:crypto";
 import type { Firestore } from "firebase-admin/firestore";
 import type { AuthenticatedCredential } from "../models/authenticatedCredential";
 import {
@@ -100,6 +104,15 @@ export type IdentityRecoveryCommand = {
   idempotencyKey: string;
   /** The `recoveredAt` instant recorded on the recovery transition. */
   requestedAt: Date;
+  /**
+   * The opaque proof reference, **deterministically bound to the verified
+   * proof** (the endpoint supplies a one-way digest of the verified token —
+   * never the token itself). Binding it to the proof — rather than minting a
+   * fresh value per request — is what lets `-07` reject a replay of the same
+   * captured proof (the proof-reuse protection would otherwise be defeated by a
+   * per-request random value).
+   */
+  proofReference: string;
 };
 
 export type IdentityRecoveryOutcome = {
@@ -112,8 +125,6 @@ export type IdentityRecoveryOutcome = {
 export type IdentityRecoveryDeps = {
   resolve?: typeof resolveAuthenticatedCredential;
   recover?: typeof recoverCustomerIdentityByReference;
-  /** Opaque proof-reference generator seam (CSPRNG-backed by default). */
-  newProofReference?: () => string;
 };
 
 /** A deterministic, credential-bound request hash (equal across retries). */
@@ -139,7 +150,6 @@ export async function recoverAuthenticatedIdentity(
 
   const resolve = deps.resolve ?? resolveAuthenticatedCredential;
   const recover = deps.recover ?? recoverCustomerIdentityByReference;
-  const newProofReference = deps.newProofReference ?? randomUUID;
 
   // Provider proof → recovery method category (fails closed for a deferred provider).
   const methodCategory = recoveryMethodCategoryFor(recoveryCredential.referenceType);
@@ -156,7 +166,7 @@ export async function recoverAuthenticatedIdentity(
   const recoveryProof: RecoveryProof = {
     result: "accepted",
     methodCategory,
-    proofReference: newProofReference(),
+    proofReference: command.proofReference,
     authority: "customer_initiated",
     completedAt: recoveryCredential.verifiedAt,
     targetCustomerIdentityId: customerIdentityId,

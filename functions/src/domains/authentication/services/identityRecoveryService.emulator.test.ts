@@ -62,8 +62,11 @@ function envelope(suffix: string): IdentityRecoveryEnvelope {
   };
 }
 
-function recoverCommand(idempotencyKey: string): IdentityRecoveryCommand {
-  return { idempotencyKey, requestedAt: at };
+function recoverCommand(
+  idempotencyKey: string,
+  proofReference = `authrec:proof_${idempotencyKey}`,
+): IdentityRecoveryCommand {
+  return { idempotencyKey, requestedAt: at, proofReference };
 }
 
 function regCommand(idempotencyKey: string): RegistrationSignInCommand {
@@ -253,5 +256,40 @@ describe("AUTH-06 — identity recovery credential proof (emulator)", () => {
 
     expect(await statusOf("cust_act")).toBe("active");
     expect(await outboxEventTypes()).not.toContain(RECOVERED_EVENT);
+  });
+
+  it("rejects a replay of the same captured proof after a later re-suspension (proof-reuse protection)", async () => {
+    await register("phone_otp", "uid_x", "cust_x");
+    await suspend("cust_x", "x1");
+
+    // The same captured proof is modelled by a single stable, token-bound proof
+    // reference (what the endpoint derives from one verified token).
+    const capturedProofRef = "authrec:captured_token_x_digest";
+
+    // First recovery with the captured proof succeeds.
+    await recoverAuthenticatedIdentity(
+      db,
+      credential("phone_otp", "uid_x"),
+      envelope("x1"),
+      recoverCommand("recover_x1", capturedProofRef),
+    );
+    expect(await statusOf("cust_x")).toBe("active");
+
+    // Admin re-suspends the identity.
+    await suspend("cust_x", "x2");
+
+    // Replaying the SAME captured proof (same proof reference) with a NEW
+    // idempotency key is refused by `-07`'s proof-reuse protection — the attack
+    // (one captured proof repeatedly undoing later suspensions) is closed.
+    await expect(
+      recoverAuthenticatedIdentity(
+        db,
+        credential("phone_otp", "uid_x"),
+        envelope("x2"),
+        recoverCommand("recover_x2", capturedProofRef),
+      ),
+    ).rejects.toMatchObject({ category: "VALIDATION_FAILED" });
+
+    expect(await statusOf("cust_x")).toBe("suspended");
   });
 });

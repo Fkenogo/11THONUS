@@ -45,6 +45,7 @@ describe("handleRecoverIdentity", () => {
       recover,
       now: () => fixedNow,
       newId: () => "id-fixed",
+      deriveProofReference: (t) => `authrec:d(${t})`,
     };
 
     const result = await handleRecoverIdentity(
@@ -56,7 +57,8 @@ describe("handleRecoverIdentity", () => {
     expect(verify).toHaveBeenCalledTimes(1);
     expect(verify).toHaveBeenCalledWith({ rawToken: "recovery-token", referenceType: "phone_otp" });
 
-    // Delegated with the verified credential, a governed envelope, and the client key.
+    // Delegated with the verified credential, a governed envelope, the client key,
+    // and the verified-proof-bound proof reference.
     expect(recover).toHaveBeenCalledTimes(1);
     const [, credential, envelope, command] = recover.mock.calls[0];
     expect(credential.referenceId).toBe("uid_recovery-token");
@@ -67,7 +69,11 @@ describe("handleRecoverIdentity", () => {
       actor: { actorType: "user", actorId: "uid_recovery-token" },
       occurredAt: fixedNow.toISOString(),
     });
-    expect(command).toEqual({ idempotencyKey: "req-1", requestedAt: fixedNow });
+    expect(command).toEqual({
+      idempotencyKey: "req-1",
+      requestedAt: fixedNow,
+      proofReference: "authrec:d(recovery-token)",
+    });
 
     expect(result).toEqual({
       operation: "recovered",
@@ -76,6 +82,39 @@ describe("handleRecoverIdentity", () => {
     });
     // No credential material on the transport result.
     expect(JSON.stringify(result)).not.toContain("recovery-token");
+  });
+
+  it("binds the proof reference to the verified token by default (stable per token, opaque, non-token)", async () => {
+    const { verifier } = verifierFor();
+    const recover = vi.fn(async () => ({
+      operation: "recovered" as const,
+      customerIdentityId: "identity-1",
+      methodCategory: "phone_otp" as const,
+    }));
+    const deps: IdentityRecoveryEndpointDeps = { verifier, recover };
+
+    const run = (rawToken: string) =>
+      handleRecoverIdentity(
+        db,
+        { rawToken, referenceType: "phone_otp", idempotencyKey: "k" },
+        deps,
+      );
+
+    await run("token-A");
+    await run("token-A");
+    await run("token-B");
+
+    const refA1 = recover.mock.calls[0][3].proofReference;
+    const refA2 = recover.mock.calls[1][3].proofReference;
+    const refB = recover.mock.calls[2][3].proofReference;
+
+    // Same verified token → same reference (so -07 rejects a replay of that proof).
+    expect(refA1).toBe(refA2);
+    // A different token → a different reference (so a fresh authentication recovers).
+    expect(refB).not.toBe(refA1);
+    // Opaque one-way digest — never the raw token itself.
+    expect(refA1).toMatch(/^authrec:[0-9a-f]{64}$/);
+    expect(refA1).not.toContain("token-A");
   });
 
   it("propagates a verifier failure (fail closed) without calling the orchestration", async () => {

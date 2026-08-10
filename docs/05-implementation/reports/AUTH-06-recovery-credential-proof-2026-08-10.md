@@ -108,12 +108,18 @@ All new behaviour was authored test-first (module-absent RED → GREEN):
 ## 15. Version control / PR
 
 - Branch: `feat/auth-06-recovery-credential-proof` (off `origin/main` `6c18ca6`).
-- Commit(s): recorded on push (§16).
-- PR: recorded on open (§16). **Not** self-merged; AUTH-07+ not started.
+- Commit: `b34203edf6b375cb70ffb267f44fa5fc7fae6b55`.
+- PR: [#95](https://github.com/Fkenogo/11THONUS/pull/95) (base `main`). **Not** self-merged; AUTH-07+ not started.
 
 ## 16. PR / CI / final review gate
 
-_To be completed after push, CI, and the mandatory final PR-review gate — PR number/link, head SHA, all automated + human review findings with severity/disposition, confirmation no unresolved material P1/P2 finding remains, and the final reviewed head SHA._
+- **PR:** [#95](https://github.com/Fkenogo/11THONUS/pull/95); **head SHA:** `b34203edf6b375cb70ffb267f44fa5fc7fae6b55`.
+- **CI on head `b34203e`:** **success** (run 31370677780, workflow "CI" — "Build, Lint, Test, Emulator Validation"; the only annotations are pre-existing Node-20 / setup-java-v4 deprecation warnings, not AUTH-06-related and non-blocking). PR `mergeable`.
+- **Final PR-review gate:** see §16.1 (dispositioned against the current head).
+
+### 16.1 Review-findings disposition
+
+_Completed after the automated (`chatgpt-codex-connector`) review posts against head `b34203e` and any human review — every substantive finding recorded with severity, validity, current applicability, and disposition; no AUTH-06-scope material P1/P2 finding may remain unresolved when READY is stated._
 
 ## 17. Final gate
 

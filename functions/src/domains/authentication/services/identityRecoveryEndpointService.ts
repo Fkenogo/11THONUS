@@ -13,7 +13,7 @@
  * retained or returned (TRD10 §10.6.1).
  */
 
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import type { Firestore } from "firebase-admin/firestore";
 import type { EventActor } from "../../../shared/events/domainEvent";
 import type { AuthenticationReferenceType } from "../../identity/models/authenticationReference";
@@ -46,7 +46,23 @@ export type IdentityRecoveryEndpointDeps = {
   now?: () => Date;
   /** Event/correlation id generator seam (CSPRNG-backed by default). */
   newId?: () => string;
+  /** Proof-reference derivation seam (verified-token-bound digest by default). */
+  deriveProofReference?: (rawToken: string) => string;
 };
+
+/**
+ * Bind the recovery proof reference to the *verified proof itself* — a one-way
+ * SHA-256 digest of the verified token, never the token. The same captured proof
+ * therefore always yields the same reference, so `-07`'s proof-reuse protection
+ * rejects a replay of that proof after a later re-suspension; a genuinely new
+ * authentication (a fresh token) yields a new reference, so a later legitimate
+ * recovery still succeeds. The digest is not reversible to the token and is not
+ * itself a credential (TRD10 §10.6.1); only the digest — never the token — is
+ * ever persisted (by `-07`, as the proof-reference document id).
+ */
+function deriveProofReferenceFromToken(rawToken: string): string {
+  return `authrec:${createHash("sha256").update(rawToken).digest("hex")}`;
+}
 
 export async function handleRecoverIdentity(
   db: Firestore,
@@ -56,6 +72,7 @@ export async function handleRecoverIdentity(
   const now = deps.now ?? (() => new Date());
   const newId = deps.newId ?? randomUUID;
   const recover = deps.recover ?? recoverAuthenticatedIdentity;
+  const deriveProofReference = deps.deriveProofReference ?? deriveProofReferenceFromToken;
 
   // Verify the credential up front — an unverified/absent token fails closed
   // inside the verifier and never reaches orchestration.
@@ -63,6 +80,10 @@ export async function handleRecoverIdentity(
     rawToken: request.rawToken,
     referenceType: request.referenceType,
   });
+
+  // Bind the proof reference to the verified token (only after verification
+  // succeeds, so no reference is derived for an unverified credential).
+  const proofReference = deriveProofReference(request.rawToken);
 
   const requestedAt = now();
   const actor: EventActor = { actorType: "user", actorId: credential.referenceId };
@@ -75,6 +96,7 @@ export async function handleRecoverIdentity(
   const command: IdentityRecoveryCommand = {
     idempotencyKey: request.idempotencyKey,
     requestedAt,
+    proofReference,
   };
 
   return recover(db, credential, envelope, command);

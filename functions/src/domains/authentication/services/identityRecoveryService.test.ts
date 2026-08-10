@@ -40,8 +40,8 @@ function envelope(): IdentityRecoveryEnvelope {
   return { eventId: "evt_1", correlationId: "corr_1", actor, occurredAt: at.toISOString() };
 }
 
-function command(idempotencyKey = "idem_1") {
-  return { idempotencyKey, requestedAt: at };
+function command(idempotencyKey = "idem_1", proofReference = `pr_${idempotencyKey}`) {
+  return { idempotencyKey, requestedAt: at, proofReference };
 }
 
 function identity(id: string, status: CustomerIdentity["status"] = "active"): CustomerIdentity {
@@ -60,7 +60,7 @@ describe("recoverAuthenticatedIdentity", () => {
       credential("phone_otp", "authuid_1"),
       envelope(),
       command(),
-      { resolve, recover, newProofReference: () => "proofref_opaque_1" },
+      { resolve, recover },
     );
 
     expect(outcome).toEqual({
@@ -77,7 +77,8 @@ describe("recoverAuthenticatedIdentity", () => {
     expect(params.recoveryProof.methodCategory).toBe("phone_otp");
     expect(params.recoveryProof.targetCustomerIdentityId).toBe("cust_1");
     expect(params.recoveryProof.authority).toBe("customer_initiated");
-    expect(params.recoveryProof.proofReference).toBe("proofref_opaque_1");
+    // The proof reference is the endpoint-supplied, verified-proof-bound value.
+    expect(params.recoveryProof.proofReference).toBe("pr_idem_1");
     expect(params.recoveryProof.completedAt).toEqual(at);
   });
 
@@ -182,6 +183,9 @@ describe("recoverAuthenticatedIdentity", () => {
     expect(first.idempotencyKey).toBe("authentication.recover:idem_4");
     expect(first.requestHash).toBe(second.requestHash);
     expect(first.idempotencyKey).toBe(second.idempotencyKey);
+    // Replaying the same (verified-proof-bound) reference reuses it verbatim —
+    // this is what lets `-07` reject a replay of the same captured proof.
+    expect(first.recoveryProof.proofReference).toBe(second.recoveryProof.proofReference);
   });
 
   it("carries no credential material on the constructed proof (reference only)", async () => {
@@ -194,17 +198,13 @@ describe("recoverAuthenticatedIdentity", () => {
       db,
       credential("phone_otp", "authuid_5"),
       envelope(),
-      command("idem_5"),
-      {
-        resolve,
-        recover,
-        newProofReference: () => "opaque_ref",
-      },
+      command("idem_5", "authrec:opaque_digest"),
+      { resolve, recover },
     );
 
     const proof = recover.mock.calls[0][1].recoveryProof;
     const serialised = JSON.stringify(proof);
     expect(serialised).not.toContain("rawToken");
-    expect(proof.proofReference).toBe("opaque_ref");
+    expect(proof.proofReference).toBe("authrec:opaque_digest");
   });
 });
