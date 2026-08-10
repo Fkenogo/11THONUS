@@ -44,6 +44,7 @@ import {
   accountSuspendedForAuthenticationError,
   authenticationForbiddenError,
   authenticationRequiredError,
+  newProviderPrincipalMismatchError,
 } from "../models/authenticationErrors";
 import {
   resolveAuthenticatedCredential,
@@ -173,6 +174,19 @@ export async function linkAuthenticationProvider(
     envelope,
     deps,
   );
+
+  // F2 defense-in-depth (AUTH-BP §7 / AIR-001, Founder-directed): account
+  // linking is a same-Firebase-principal operation. The new provider's verified
+  // uid must equal the acting credential's verified uid — a provider verified
+  // for a *different* Firebase user is refused here, before any `-08` mutation,
+  // so no reference is written and no cross-account attach can occur. Both uids
+  // are the server-verified `referenceId` from the AUTH-02 verifier (never
+  // client-supplied). This is additional to, not a replacement for, `-08`'s
+  // cross-identity ownership check (which still guards a reference already owned
+  // by another customer identity).
+  if (newCredential.referenceId !== actingCredential.referenceId) {
+    throw newProviderPrincipalMismatchError();
+  }
 
   const target: AuthenticationReferenceTarget = {
     referenceType: newCredential.referenceType,

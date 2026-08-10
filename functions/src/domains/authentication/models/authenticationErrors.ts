@@ -41,6 +41,22 @@ export function authenticationForbiddenError(): AuthenticationDomainError {
   );
 }
 
+/**
+ * Account linking is a same-Firebase-principal operation (AUTH-BP §7, AIR-001:
+ * "multiple providers → one Firebase Auth user → one platform user"). The newly
+ * verified provider must belong to the same Firebase principal performing the
+ * link — a verified provider for a *different* Firebase user is refused
+ * (defense-in-depth against cross-account attach; independent of, and not a
+ * replacement for, `-08`'s cross-identity ownership check). Closed taxonomy:
+ * reuses `AUTH_FORBIDDEN` — no new category.
+ */
+export function newProviderPrincipalMismatchError(): AuthenticationDomainError {
+  return new AuthenticationDomainError(
+    "AUTH_FORBIDDEN",
+    "The new provider credential does not belong to the acting Firebase principal.",
+  );
+}
+
 export function accountSuspendedForAuthenticationError(
   customerIdentityId: string,
 ): AuthenticationDomainError {

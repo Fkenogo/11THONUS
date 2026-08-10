@@ -56,20 +56,33 @@ const command: AccountLinkingCommand = {
 };
 
 const ACTING_IDENTITY_ID = "identity-acting-001";
+/** The one verified Firebase authUid the acting + new providers share (same principal). */
+const SHARED_UID = "firebase-uid-shared-1";
 
 function actingCredential() {
   return createAuthenticatedCredential({
     referenceType: "phone_otp",
-    referenceId: "acting-ref",
+    referenceId: SHARED_UID,
     verifiedAt: new Date("2026-08-09T12:00:00.000Z"),
     providerSignals: { signInProvider: "phone" },
   });
 }
 
+/** A second provider on the SAME verified Firebase principal (same uid). */
 function newCredential() {
   return createAuthenticatedCredential({
     referenceType: "google_sign_in",
-    referenceId: "new-google-ref",
+    referenceId: SHARED_UID,
+    verifiedAt: new Date("2026-08-09T12:00:00.000Z"),
+    providerSignals: { signInProvider: "google.com" },
+  });
+}
+
+/** A provider verified for a DIFFERENT Firebase principal (different uid). */
+function mismatchedNewCredential() {
+  return createAuthenticatedCredential({
+    referenceType: "google_sign_in",
+    referenceId: "firebase-uid-other-2",
     verifiedAt: new Date("2026-08-09T12:00:00.000Z"),
     providerSignals: { signInProvider: "google.com" },
   });
@@ -113,7 +126,7 @@ describe("linkAuthenticationProvider", () => {
     expect(outcome).toEqual({
       operation: "linked",
       customerIdentityId: ACTING_IDENTITY_ID,
-      reference: { referenceType: "google_sign_in", referenceId: "new-google-ref" },
+      reference: { referenceType: "google_sign_in", referenceId: SHARED_UID },
     });
 
     // The single -08 mutation targets the resolved acting identity — never a
@@ -123,13 +136,13 @@ describe("linkAuthenticationProvider", () => {
     expect(params.customerIdentityId).toBe(ACTING_IDENTITY_ID);
     expect(params.linkedBy).toBe(ACTING_IDENTITY_ID);
     expect(params.referenceType).toBe("google_sign_in");
-    expect(params.referenceId).toBe("new-google-ref");
+    expect(params.referenceId).toBe(SHARED_UID);
     expect(params.authority).toBe("customer_initiated");
     expect(params.reason).toBe("customer_request");
     // Deterministic, credential-bound idempotency key + request hash.
     expect(params.idempotencyKey).toBe("authentication.link:link_req_key_1");
     expect(params.requestHash).toContain(ACTING_IDENTITY_ID);
-    expect(params.requestHash).toContain("google_sign_in:new-google-ref");
+    expect(params.requestHash).toContain(`google_sign_in:${SHARED_UID}`);
     // No token / provider-signal material forwarded to persistence.
     expect(JSON.stringify(params)).not.toContain("signInProvider");
   });
@@ -313,6 +326,45 @@ describe("acting-identity access-state gate (F1, AUTH-BP §7 step 1)", () => {
       unlinkAuthenticationProvider(db, actingCredential(), target, envelope, command, deps),
     ).rejects.toMatchObject({ category: "AUTH_FORBIDDEN" });
     expect(unlinkReference).not.toHaveBeenCalled();
+  });
+
+  it("F2 defense-in-depth: link fails closed when the new provider's verified uid differs from the acting uid, before any -08 mutation", async () => {
+    const resolve = resolvesActing();
+    const getIdentityById = loadsIdentity(ACTING_IDENTITY_ID, "active");
+    const linkReference = vi.fn();
+    const deps: AccountLinkingDeps = { resolve, getIdentityById, linkReference };
+
+    await expect(
+      linkAuthenticationProvider(
+        db,
+        actingCredential(),
+        mismatchedNewCredential(),
+        envelope,
+        command,
+        deps,
+      ),
+    ).rejects.toMatchObject({ category: "AUTH_FORBIDDEN" });
+    // The same-principal gate fires before -08 — no reference is ever written.
+    expect(linkReference).not.toHaveBeenCalled();
+  });
+
+  it("F2 defense-in-depth: link proceeds when the new provider shares the acting verified uid (same Firebase principal)", async () => {
+    const resolve = resolvesActing();
+    const getIdentityById = loadsIdentity(ACTING_IDENTITY_ID, "active");
+    const linkReference = vi.fn(async () => identity(ACTING_IDENTITY_ID));
+    const deps: AccountLinkingDeps = { resolve, getIdentityById, linkReference };
+
+    const outcome = await linkAuthenticationProvider(
+      db,
+      actingCredential(),
+      newCredential(),
+      envelope,
+      command,
+      deps,
+    );
+
+    expect(outcome.operation).toBe("linked");
+    expect(linkReference).toHaveBeenCalledTimes(1);
   });
 
   it("link on an active acting identity proceeds to the -08 mutation", async () => {

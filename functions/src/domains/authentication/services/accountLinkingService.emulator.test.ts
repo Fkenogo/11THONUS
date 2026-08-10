@@ -33,6 +33,7 @@ import { createAuthenticatedCredential } from "../models/authenticatedCredential
 import type { AuthenticationReferenceType } from "../../identity/models/authenticationReference";
 import type { EventActor } from "../../../shared/events/domainEvent";
 import { lookupCustomerIdentityByAuthenticationReference } from "../../identity/repositories/identityLookupRepository";
+import { linkAuthenticationReferenceForIdentity } from "../../identity/repositories/authenticationReferenceRepository";
 
 const app = initializeApp({ projectId: "demo-11thonus" }, "accountLinkingServiceEmulatorTest");
 const db = getFirestore(app);
@@ -122,12 +123,14 @@ beforeEach(async () => {
 
 describe("AUTH-05 — account linking (emulator)", () => {
   it("links a second provider onto the acting identity and makes it authoritative", async () => {
-    await register("phone_A", "cust_A");
+    // Same verified Firebase uid ("uid_A"), a second provider type — the
+    // same-principal shape AUTH-05 links (AUTH-BP §7 / AIR-001).
+    await register("uid_A", "cust_A");
 
     const outcome = await linkAuthenticationProvider(
       db,
-      credential("phone_otp", "phone_A"),
-      credential("google_sign_in", "google_A"),
+      credential("phone_otp", "uid_A"),
+      credential("google_sign_in", "uid_A"),
       envelope("link1"),
       linkCommand("link_key_1"),
     );
@@ -135,66 +138,100 @@ describe("AUTH-05 — account linking (emulator)", () => {
     expect(outcome).toEqual({
       operation: "linked",
       customerIdentityId: "cust_A",
-      reference: { referenceType: "google_sign_in", referenceId: "google_A" },
+      reference: { referenceType: "google_sign_in", referenceId: "uid_A" },
     });
-    const linked = await refDoc("google_sign_in", "google_A");
+    const linked = await refDoc("google_sign_in", "uid_A");
     expect(linked?.["customerIdentityId"]).toBe("cust_A");
     expect(linked?.["status"]).toBe("linked");
     expect(await outboxEventTypes()).toContain("identity.authentication_reference_linked.v1");
   });
 
   it("unlinks a non-final provider, leaving the identity's other reference intact", async () => {
-    await register("phone_B", "cust_B");
+    await register("uid_B", "cust_B");
     await linkAuthenticationProvider(
       db,
-      credential("phone_otp", "phone_B"),
-      credential("google_sign_in", "google_B"),
+      credential("phone_otp", "uid_B"),
+      credential("google_sign_in", "uid_B"),
       envelope("link2"),
       linkCommand("link_key_2"),
     );
 
     const outcome = await unlinkAuthenticationProvider(
       db,
-      credential("phone_otp", "phone_B"),
-      { referenceType: "google_sign_in", referenceId: "google_B" },
+      credential("phone_otp", "uid_B"),
+      { referenceType: "google_sign_in", referenceId: "uid_B" },
       envelope("unlink2"),
       linkCommand("unlink_key_2"),
     );
 
     expect(outcome.operation).toBe("unlinked");
-    expect((await refDoc("google_sign_in", "google_B"))?.["status"]).toBe("unlinked");
+    expect((await refDoc("google_sign_in", "uid_B"))?.["status"]).toBe("unlinked");
     // The original phone reference is still linked.
-    expect((await refDoc("phone_otp", "phone_B"))?.["status"]).toBe("linked");
+    expect((await refDoc("phone_otp", "uid_B"))?.["status"]).toBe("linked");
     expect(await outboxEventTypes()).toContain("identity.authentication_reference_unlinked.v1");
   });
 
-  it("fails closed on a cross-identity conflict and never merges (conflict event committed)", async () => {
-    await register("phone_C", "cust_C");
-    await register("phone_D", "cust_D");
-    // The shared google reference is first linked to D.
+  it("F2 gate: refuses to link a provider verified for a DIFFERENT Firebase uid, before -08 (nothing written, no conflict event)", async () => {
+    await register("uid_C", "cust_C");
+
+    // Acting is the Firebase principal uid_C; the new provider is verified for a
+    // *different* Firebase user (uid_other) — a cross-account attach. AUTH-05
+    // refuses it before ever calling -08.
+    await expect(
+      linkAuthenticationProvider(
+        db,
+        credential("phone_otp", "uid_C"),
+        credential("google_sign_in", "uid_other"),
+        envelope("linkC"),
+        linkCommand("link_key_C"),
+      ),
+    ).rejects.toMatchObject({ category: "AUTH_FORBIDDEN" });
+
+    // Nothing was written for the foreign provider, and -08 was never reached,
+    // so no conflict event was emitted by this gate rejection.
+    expect(await refDoc("google_sign_in", "uid_other")).toBeUndefined();
+    expect(await outboxEventTypes()).not.toContain(
+      "identity.authentication_reference_conflict_detected.v1",
+    );
+  });
+
+  it("defense-in-depth: -08 independently rejects a reference already owned by another identity (conflict event committed)", async () => {
+    // The AUTH-05 same-principal gate makes this state unreachable through the
+    // AUTH-05 link path, so -08's cross-identity control is proven directly here
+    // (it also has its own tests) — the two controls compose, neither replaces
+    // the other. cust_D owns google_sign_in:uid_D via the normal same-uid link.
+    await register("uid_D", "cust_D");
+    await register("uid_E2", "cust_E2");
     await linkAuthenticationProvider(
       db,
-      credential("phone_otp", "phone_D"),
-      credential("google_sign_in", "google_shared"),
+      credential("phone_otp", "uid_D"),
+      credential("google_sign_in", "uid_D"),
       envelope("linkD"),
       linkCommand("link_key_D"),
     );
 
-    // C attempts to link the same google reference → fail closed, no transfer.
+    // A different identity (cust_E2) tries — via -08 directly — to claim D's
+    // google reference. -08 fails closed and commits the conflict event.
     await expect(
-      linkAuthenticationProvider(
-        db,
-        credential("phone_otp", "phone_C"),
-        credential("google_sign_in", "google_shared"),
-        envelope("linkC"),
-        linkCommand("link_key_C"),
-      ),
+      linkAuthenticationReferenceForIdentity(db, {
+        eventId: "evt_direct_conflict",
+        correlationId: "corr_direct_conflict",
+        actor,
+        occurredAt: at.toISOString(),
+        customerIdentityId: "cust_E2",
+        referenceId: "uid_D",
+        referenceType: "google_sign_in",
+        authority: "customer_initiated",
+        reason: "customer_request",
+        linkedAt: at,
+        linkedBy: "cust_E2",
+        idempotencyKey: "direct_conflict_key",
+        requestHash: "direct_conflict_hash",
+      }),
     ).rejects.toMatchObject({ category: "VALIDATION_FAILED" });
 
-    // Ownership unchanged — still D's, never merged to C.
-    expect((await refDoc("google_sign_in", "google_shared"))?.["customerIdentityId"]).toBe(
-      "cust_D",
-    );
+    // Ownership unchanged — still D's, never merged to cust_E2.
+    expect((await refDoc("google_sign_in", "uid_D"))?.["customerIdentityId"]).toBe("cust_D");
     expect(await outboxEventTypes()).toContain(
       "identity.authentication_reference_conflict_detected.v1",
     );
@@ -324,28 +361,28 @@ describe("AUTH-05 — account linking (emulator)", () => {
   });
 
   it("F1: refuses to link when the acting identity is suspended (ACCOUNT_SUSPENDED), writing nothing", async () => {
-    await register("phone_susp", "cust_susp");
+    await register("uid_susp", "cust_susp");
     await db.collection("users").doc("cust_susp").update({ status: "suspended" });
 
     await expect(
       linkAuthenticationProvider(
         db,
-        credential("phone_otp", "phone_susp"),
-        credential("google_sign_in", "google_susp"),
+        credential("phone_otp", "uid_susp"),
+        credential("google_sign_in", "uid_susp"),
         envelope("linkSusp"),
         linkCommand("link_key_susp"),
       ),
     ).rejects.toMatchObject({ category: "ACCOUNT_SUSPENDED" });
-    // The gate fires before -08 — no authoritative reference materialised.
-    expect(await refDoc("google_sign_in", "google_susp")).toBeUndefined();
+    // The access-state gate fires before -08 — no authoritative reference materialised.
+    expect(await refDoc("google_sign_in", "uid_susp")).toBeUndefined();
   });
 
   it("F1: refuses to unlink when the acting identity is suspended (ACCOUNT_SUSPENDED), removing nothing", async () => {
-    await register("phone_susp2", "cust_susp2");
+    await register("uid_susp2", "cust_susp2");
     await linkAuthenticationProvider(
       db,
-      credential("phone_otp", "phone_susp2"),
-      credential("google_sign_in", "google_susp2"),
+      credential("phone_otp", "uid_susp2"),
+      credential("google_sign_in", "uid_susp2"),
       envelope("linkSusp2"),
       linkCommand("link_key_susp2"),
     );
@@ -354,13 +391,13 @@ describe("AUTH-05 — account linking (emulator)", () => {
     await expect(
       unlinkAuthenticationProvider(
         db,
-        credential("phone_otp", "phone_susp2"),
-        { referenceType: "google_sign_in", referenceId: "google_susp2" },
+        credential("phone_otp", "uid_susp2"),
+        { referenceType: "google_sign_in", referenceId: "uid_susp2" },
         envelope("unlinkSusp2"),
         linkCommand("unlink_key_susp2"),
       ),
     ).rejects.toMatchObject({ category: "ACCOUNT_SUSPENDED" });
     // Still linked — the gate blocked the mutation.
-    expect((await refDoc("google_sign_in", "google_susp2"))?.["status"]).toBe("linked");
+    expect((await refDoc("google_sign_in", "uid_susp2"))?.["status"]).toBe("linked");
   });
 });
