@@ -30,6 +30,10 @@ import {
   type LinkProviderRequest,
   type UnlinkProviderRequest,
 } from "./domains/authentication/services/accountLinkingEndpointService";
+import {
+  handleRecoverIdentity,
+  type RecoverIdentityRequest,
+} from "./domains/authentication/services/identityRecoveryEndpointService";
 import type { AuthenticationReferenceType } from "./domains/identity/models/authenticationReference";
 
 setGlobalOptions({ region: PLATFORM_REGION, maxInstances: 10 });
@@ -199,6 +203,36 @@ export const unlinkAuthenticationProvider = onCall(async (request) => {
   const parsed = parseUnlinkProviderRequest(request.data);
   try {
     return await handleUnlinkProvider(getFirestore(getAdminApp()), parsed, {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+function parseRecoverIdentityRequest(data: unknown): RecoverIdentityRequest {
+  const value = (data ?? {}) as Record<string, unknown>;
+  return {
+    rawToken: parseRawToken(value.rawToken),
+    referenceType: parseReferenceType(value.referenceType),
+    idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+  };
+}
+
+/**
+ * `recoverAuthenticatedIdentity` (AUTH-06) — the recovery credential-proof
+ * integration (AUTH-BP §8/§12). Verifies the presented provider credential
+ * (AUTH-02), resolves it to the OWNING identity, and — proving control of that
+ * provider — restores the identity's access through the merged `-07`/`-06`
+ * recovery boundary (transactional, proof-reuse-rejecting, recovery-eligible-state
+ * enforced). The recovery target is derived from the proof, never client-supplied.
+ * Admin-SDK callable — no client Firestore write path is opened. Never returns
+ * credential material.
+ */
+export const recoverAuthenticatedIdentity = onCall(async (request) => {
+  const parsed = parseRecoverIdentityRequest(request.data);
+  try {
+    return await handleRecoverIdentity(getFirestore(getAdminApp()), parsed, {
       verifier: firebaseAdminTokenVerifier(),
     });
   } catch (error) {
