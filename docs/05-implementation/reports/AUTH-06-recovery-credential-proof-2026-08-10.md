@@ -1,10 +1,10 @@
 # AUTH-06 — Recovery Credential Proof (Implementation Report)
 
 > **Title:** AUTH-06 — Recovery Credential Proof
-> **Version:** 1.0 · **Status:** Implemented, test-first (TDD) — pending Founder-authorized review/merge · **Classification:** Working (implementation report)
+> **Version:** 1.1 · **Status:** Implemented, test-first (TDD); one automated PR-review P1 corrected in place — pending Founder-authorized review/merge · **Classification:** Working (implementation report)
 > **Governing document:** [`AUTH-BP` Authentication Blueprint](../roadmap/AUTH-BP-authentication-blueprint-2026-08-08.md) §8/§12/§15; [`ENG-P2-ARCH-001`](../roadmap/ENG-P2-ARCH-001-customer-identity-architecture.md) §7; [`DEC-AUTH-001`](../../00-governance/decisions/decision-register.md)
 > **Source-of-truth path:** `docs/05-implementation/reports/AUTH-06-recovery-credential-proof-2026-08-10.md`
-> **Last controlled update:** 2026-08-10 (`AUTH-06` — created)
+> **Last controlled update:** 2026-08-10 (`AUTH-06` — created; §16.1 v1.1 automated-review P1 correction — proof-reference bound to the verified proof)
 
 **Authorization.** Founder-authorized — the **sixth** Authentication implementation package under `AUTH-BP`, authorized by the Founder in this task ("TASK — AUTH-06 Implementation"; the fresh, explicit implementation authorization the governing documents require before an `AUTH-*` package may begin; recorded per the AUTH-01/-02/-03/-04/-05 convention in the changes-log Entry 100, this report, `IMPLEMENTATION_CHANGES.md`, Master Workflow §17, and CDR-001 §5). AUTH-01–AUTH-05 and the merged Customer Identity concern (`ENG-P2-001-01…-10`) are prerequisites and are on `main`; they are treated as established architecture, not redesigned.
 
@@ -131,7 +131,14 @@ The automated reviewer (`chatgpt-codex-connector`) posted **one** finding agains
 
 ### 16.2 Second review pass (corrected head)
 
-_Completed after the corrected head is pushed and CI re-runs — all review comments (automated + human, incl. those anchored to the earlier commit) re-inspected against the corrected head; final reviewed head SHA and its CI recorded here._
+- **Corrected code head:** `c7741aa5dd5ca0ee796042a8192afdfbd5921bbc` — CI **success** (run 31372494254, "Build, Lint, Test, Emulator Validation").
+- **Re-inspection of all review comments against the corrected head:** the sole automated P1 inline comment (anchored to the superseded head `b34203e`, `original_line` 159) now maps to no line in the current diff (`line: null`) — GitHub marks it **outdated** because the random-UUID line it flagged was replaced by the verified-proof-bound reference. No human review comments (0); no other reviews; no unresolved threads.
+- **Result:** the only finding is R1 (P1), **fixed and regression-covered** on `c7741aa`. **No unresolved material P1/P2 finding remains** (correctness / security / privacy / identity integrity / concurrency / atomicity / retry / idempotency / architecture / responsibility boundaries / data integrity).
+- **Final reviewed code head:** `c7741aa5dd5ca0ee796042a8192afdfbd5921bbc`. Any subsequent commit on the branch is **documentation-only** (this disposition record); its CI is recorded with the completion report.
+
+## 17. Final gate
+
+**AUTH-06 READY FOR FOUNDER REVIEW/MERGE.** Acceptance criteria met verbatim; TDD RED→GREEN; functions 523/523, web 300/300, `emulators:validate` 212/212, typecheck/lint/format/build/secret-scan clean; CI green on the final reviewed code head `c7741aa`; the one automated P1 finding fixed with regression coverage and no unresolved material P1/P2 finding remaining. **Not** self-merged; AUTH-07+ not started; the dirty primary worktree untouched; no unrelated worktree cleanup performed.
 
 ## 17. Final gate
 
