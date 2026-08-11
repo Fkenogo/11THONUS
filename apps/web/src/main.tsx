@@ -3,6 +3,10 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import "./index.css";
+// Centralized localization foundation (I18N-001) — initialize the single i18n
+// instance once at boot, before anything renders, so `useTranslation` resolves
+// synchronously (English default, French supported; TRD13/TRD16 §16.40).
+import "./i18n/config";
 import App from "./App.tsx";
 import { getAppEnv } from "./config/env";
 import { initializeFirebasePlatform } from "./infrastructure/firebase";

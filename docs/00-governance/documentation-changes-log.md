@@ -10,6 +10,19 @@ Running log of all controlled changes to the documentation suite. Every consolid
 
 ---
 
+## Entry 104 — `I18N-001` Centralized Localization Foundation (frontend, TDD) + AUTH-04 copy retrofit
+
+- **Date:** 11 August 2026
+- **Performed by:** Claude (AI agent), per Founder task "I18N-001 Centralized Localization Foundation" — a bounded implementation of the existing TRD13 / TRD16 §16.40 requirement (English primary/default, French supported) so `AUTH-CORR-003` can add customer-facing auth UI compliantly. AUTH-10+ not authorized.
+- **Nature:** Frontend-only foundation + retrofit of AUTH-04's hard-coded customer copy. **No new product requirement, no backend/`functions/`/Firestore/Firebase/provider change.** `AUTH-CORR-003` remains blocked until this merges.
+- **Governed requirement implemented:** TRD13 (translation keys; en/fr) + TRD16 §16.40 (one centralized i18n framework: key lookup, namespaces, language switching, English fallback, persistence, pluralization/format-ready).
+- **Mechanism:** `i18next` + `react-i18next` + `i18next-browser-languagedetector` — one centralized instance, bundled en/fr resources, `fallbackLng: "en"`, localStorage persistence, `preferredLanguage` seam. Documents affected: none rewritten; this is an implementation of the existing spec (no governance supersession).
+- **AUTH-04 retrofit:** SignInPanel customer copy → `auth` translation keys (byte-identical English + French); no hard-coded customer copy remains; behaviour unchanged.
+- **Validation:** typecheck/lint/format/build clean; web 319/319 (+15 tests); e2e 1/1; functions 564/564 (untouched).
+- **Status:** implemented, pending Founder-authorized review/merge (not self-merged); AUTH-CORR-003 not resumed; AUTH-10 not started; dirty primary worktree untouched. See the [`I18N-001` report](../05-implementation/reports/I18N-001-centralized-localization-foundation-2026-08-11.md).
+
+---
+
 ## Entry 103 — `AUTH-09` Validation & Closure Review (reports + full-suite validation, no runtime code) + `AUTH-08` merge/closure programme-currency sync
 
 - **Date:** 10 August 2026

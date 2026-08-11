@@ -14,12 +14,9 @@
  */
 
 import { useId, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { AuthProviderId } from "./providerConfig";
-import {
-  AuthenticateError,
-  type AuthenticateErrorCode,
-  type AuthenticateOutcome,
-} from "./authenticateClient";
+import { AuthenticateError, type AuthenticateOutcome } from "./authenticateClient";
 import type { PhoneConfirmation } from "./phoneSignInFlow";
 
 export type SignInPanelActions = {
@@ -29,23 +26,6 @@ export type SignInPanelActions = {
   confirmPhoneCode: (confirmation: PhoneConfirmation, code: string) => Promise<AuthenticateOutcome>;
 };
 
-/** Stable, non-leaking client messages — one per code, never a server string. */
-const ERROR_MESSAGE: Record<AuthenticateErrorCode, string> = {
-  auth_required: "We couldn't verify your sign-in. Please try again.",
-  auth_forbidden: "This account can't sign in right now. Please contact support.",
-  not_found: "We couldn't complete sign-in. Please try again.",
-  validation_failed: "Something about that request was invalid. Please try again.",
-  conflict: "That sign-in is already being processed. Please wait a moment and retry.",
-  unavailable: "Sign-in is temporarily unavailable. Please try again shortly.",
-  timeout: "Sign-in is taking longer than expected. Please try again shortly.",
-  failed: "Sign-in didn't work. Please try again.",
-};
-
-function messageFor(error: unknown): string {
-  if (error instanceof AuthenticateError) return ERROR_MESSAGE[error.code];
-  return ERROR_MESSAGE.failed;
-}
-
 export function SignInPanel({
   actions,
   onSignedIn,
@@ -53,8 +33,15 @@ export function SignInPanel({
   actions: SignInPanelActions;
   onSignedIn?: (outcome: AuthenticateOutcome) => void;
 }) {
+  const { t } = useTranslation("auth");
   const phoneInputId = useId();
   const codeInputId = useId();
+
+  // Stable, non-leaking client messages — one per code, never a server string.
+  function messageFor(error: unknown): string {
+    const code = error instanceof AuthenticateError ? error.code : "failed";
+    return t(`errors.${code}`);
+  }
 
   const [phoneNumber, setPhoneNumber] = useState("");
   const [code, setCode] = useState("");
@@ -120,26 +107,26 @@ export function SignInPanel({
 
   if (!phoneEnabled && !googleEnabled) {
     return (
-      <section aria-label="Sign in">
-        <p role="status">Sign-in is currently unavailable.</p>
+      <section aria-label={t("signIn.ariaLabel")}>
+        <p role="status">{t("signIn.unavailable")}</p>
       </section>
     );
   }
 
   return (
-    <section aria-label="Sign in" className="flex flex-col gap-4">
-      {outcome && <p role="status">Signed in ({outcome.mode}).</p>}
+    <section aria-label={t("signIn.ariaLabel")} className="flex flex-col gap-4">
+      {outcome && <p role="status">{t("signIn.signedIn", { mode: outcome.mode })}</p>}
       {errorText && <p role="alert">{errorText}</p>}
 
       {googleEnabled && (
         <button type="button" onClick={handleGoogle} disabled={busy}>
-          Continue with Google
+          {t("signIn.continueWithGoogle")}
         </button>
       )}
 
       {phoneEnabled && (
         <div className="flex flex-col gap-2">
-          <label htmlFor={phoneInputId}>Phone number (E.164, e.g. +257…)</label>
+          <label htmlFor={phoneInputId}>{t("signIn.phoneLabel")}</label>
           <input
             id={phoneInputId}
             type="tel"
@@ -152,12 +139,12 @@ export function SignInPanel({
             onClick={handleSendCode}
             disabled={busy || phoneNumber.trim() === ""}
           >
-            Send code
+            {t("signIn.sendCode")}
           </button>
 
           {confirmation && (
             <div className="flex flex-col gap-2">
-              <label htmlFor={codeInputId}>Verification code</label>
+              <label htmlFor={codeInputId}>{t("signIn.verificationCode")}</label>
               <input
                 id={codeInputId}
                 type="password"
@@ -170,7 +157,7 @@ export function SignInPanel({
                 onClick={handleVerifyCode}
                 disabled={busy || code.trim() === ""}
               >
-                Verify code
+                {t("signIn.verifyCode")}
               </button>
             </div>
           )}
