@@ -10,6 +10,20 @@ Running log of all controlled changes to the documentation suite. Every consolid
 
 ---
 
+## Entry 106 — `AUTH-PREVIEW-READINESS-001` Multi-Provider Authentication Hosted-Preview Readiness (frontend build + Hosting CSP, TDD)
+
+- **Date:** 12 August 2026
+- **Performed by:** Claude (AI agent), per Founder task "AUTH-PREVIEW-READINESS-001" — resolves the `AUTH-PROVIDER-CONFIG-001` hosted-preview prerequisites (P-1/P-2/P-3). Readiness only: no Firebase Console change, no deploy, no preview-channel creation, no hosted-preview execution, no AUTH-10.
+- **Founder decision recorded:** preview-surface boundary = **isolated hosted build (CR3-style)** — structurally excluded from the normal production build, not a runtime-flagged production route.
+- **P-1 (preview surface):** new isolated `sign-in-preview` build (`apps/web/sign-in-preview.html` + `src/dev/signInPreview/*`, `viteBuildModes.ts`, `build:sign-in-preview`) mounting the **existing** `SignInPanel` via the **existing** `createSignInActions` over the shared Firebase modules (no auth logic duplicated); reuses `LanguageSwitcher` (I18N-001). Disabled-by-default provider flags; Email/Password + Google core, Phone OTP optional/non-default; fail-closed gate (flag+mode+project). Secondary DEV-only `/dev/sign-in-preview` route. Empirically grep-verified present in the preview bundle and absent from the production bundle (with PWA SW omitted from the preview).
+- **P-2 (Hosting CSP):** `connect-src` in both `firebase.json` blocks gains exactly `https://europe-west1-eleventh-on-us-dev.cloudfunctions.net` (the `authenticate` callable origin). No wildcard; reCAPTCHA/Google + Identity Toolkit origins and restrictive directives preserved; regression test added.
+- **P-3 (docs):** `VITE_AUTH_ENABLE_{EMAIL_PASSWORD,GOOGLE_SIGN_IN,PHONE_OTP}` + `VITE_ENABLE_SIGN_IN_PREVIEW` documented in `apps/web/.env.example` (blank, fail-closed; no secrets).
+- **Validation (TDD):** web 378/378 (+43); functions 567/567 (no backend change); `emulators:validate` 221/221; e2e 1/1; typecheck/lint/format/build clean.
+- **Security/identity:** identity model unchanged (provider ≠ identity); Firebase credential authority; no raw password/token/OTP persisted/logged/rendered; deny-by-default Rules unchanged; no client write path; preview `noindex` + no PWA SW; project-ID allowlist on the preview platform.
+- **Status:** implemented, pending Founder-authorized review/merge (not self-merged); no deploy/console/preview-channel; AUTH-10 not started; dirty primary worktree untouched. Authentication concern → `Validation Complete — hosted-preview ready`; final closure still depends on `AUTH-HOSTED-PREVIEW-002` PASS; Capability 2 `Open — partially implemented; not closed`. See the [`AUTH-PREVIEW-READINESS-001` report](../05-implementation/reports/AUTH-PREVIEW-READINESS-001-multi-provider-hosted-preview-readiness-2026-08-12.md).
+
+---
+
 ## Entry 105 — `AUTH-CORR-003` Multi-Provider Authentication Policy Alignment (Google + Email/Password + optional Phone OTP)
 
 - **Date:** 12 August 2026

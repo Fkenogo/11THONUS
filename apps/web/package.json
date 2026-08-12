@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "build:test-harness": "tsc -b && vite build --mode test-harness && mv dist/harness.html dist/index.html",
+    "build:sign-in-preview": "tsc -b && vite build --mode sign-in-preview && mv dist/sign-in-preview.html dist/index.html",
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run",
     "preview": "vite preview"

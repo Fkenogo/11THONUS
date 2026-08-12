@@ -4,20 +4,21 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
+import { htmlEntryForMode, includePwaForMode } from "./viteBuildModes.js";
 
-// CR3: the dedicated hosted test-harness build (`vite build --mode
-// test-harness`) uses `harness.html` as its sole entry instead of the
-// ordinary app's `index.html` — this is the mechanism that keeps every
+// Two dedicated hosted builds (`vite build --mode test-harness` and
+// `--mode sign-in-preview`) each use their own single HTML entry instead of
+// the ordinary app's `index.html` — the mechanism that keeps every
 // customer/business/admin route, and the PWA service worker, structurally
 // out of that build's module graph, not merely gated at runtime. Every
-// other build (`vite dev`, ordinary `vite build`) is completely
-// unaffected: `mode` is `"development"`/`"production"` in those cases,
-// so both conditionals below fall through to their original behaviour.
-const TEST_HARNESS_MODE = "test-harness";
+// other build (`vite dev`, ordinary `vite build`) is completely unaffected:
+// `mode` is `"development"`/`"production"` in those cases, so both
+// conditionals below fall through to their original behaviour. The mode
+// decisions live in the pure, unit-tested `viteBuildModes.ts` helper.
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
-  const isTestHarnessBuild = mode === TEST_HARNESS_MODE;
+  const htmlEntry = htmlEntryForMode(mode);
 
   return {
     plugins: [
@@ -26,11 +27,10 @@ export default defineConfig(({ mode }) => {
       // The PWA service worker/precache manifest has no purpose on a
       // temporary, torn-down-after-testing preview, and a stray cached SW
       // is exactly the kind of thing that could outlive the preview
-      // channel in a tester's browser — omitted entirely for this mode
+      // channel in a tester's browser — omitted entirely for those modes
       // rather than merely left unregistered.
-      ...(isTestHarnessBuild
-        ? []
-        : [
+      ...(includePwaForMode(mode)
+        ? [
             VitePWA({
               registerType: "autoUpdate",
               includeAssets: ["favicon.svg"],
@@ -51,17 +51,18 @@ export default defineConfig(({ mode }) => {
                 ],
               },
             }),
-          ]),
+          ]
+        : []),
     ],
     resolve: {
       alias: {
         "@": fileURLToPath(new URL("./src", import.meta.url)),
       },
     },
-    build: isTestHarnessBuild
+    build: htmlEntry
       ? {
           rollupOptions: {
-            input: fileURLToPath(new URL("./harness.html", import.meta.url)),
+            input: fileURLToPath(new URL(`./${htmlEntry}`, import.meta.url)),
           },
         }
       : undefined,
