@@ -32,6 +32,10 @@ const FUNCTIONS_ORIGIN = "https://europe-west1-eleventh-on-us-dev.cloudfunctions
 // `https://<authDomain>/__/auth/iframe`, governed by `frame-src`; without it the
 // mandatory Google sign-in preview is blocked.
 const AUTH_DOMAIN_ORIGIN = "https://eleventh-on-us-dev.firebaseapp.com";
+// `signInWithPopup` bootstraps the GAPI client from `https://apis.google.com/js/api.js`
+// (script-src) and opens a gapi messaging iframe on the same origin (frame-src);
+// both are required per Firebase Auth's documented CSP.
+const GAPI_ORIGIN = "https://apis.google.com";
 const RECAPTCHA_ORIGINS = [
   "https://www.google.com",
   "https://www.gstatic.com",
@@ -91,6 +95,13 @@ describe("Hosting CSP — authentication callable origin (P-2)", () => {
       expect(frameSrc).toContain(AUTH_DOMAIN_ORIGIN);
       // reCAPTCHA/Google popup frame must remain permitted.
       expect(frameSrc).toContain("https://www.google.com");
+    }
+  });
+
+  it("permits the GAPI popup bootstrap origin in script-src and frame-src on every document route", () => {
+    for (const { value } of cspValues()) {
+      expect(directive(value, "script-src")).toContain(GAPI_ORIGIN);
+      expect(directive(value, "frame-src")).toContain(GAPI_ORIGIN);
     }
   });
 

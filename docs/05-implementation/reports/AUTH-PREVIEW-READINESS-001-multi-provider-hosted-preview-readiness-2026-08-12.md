@@ -45,7 +45,8 @@ Mirror the governed EXT-TECH-001/CR3 mechanism: a dedicated `vite build --mode s
 ### Exact change
 In both `hosting.headers` CSP blocks (`/index.html` and `/`):
 - `connect-src` += `https://europe-west1-eleventh-on-us-dev.cloudfunctions.net` (the callable origin).
-- `frame-src` += `https://eleventh-on-us-dev.firebaseapp.com` — **added in review** (Codex P1, §11): Google `signInWithPopup` loads Firebase Auth's hidden resolver iframe at `https://<authDomain>/__/auth/iframe`, governed by `frame-src`; without the auth-domain origin the mandatory Google sign-in preview is CSP-blocked.
+- `frame-src` += `https://eleventh-on-us-dev.firebaseapp.com` — **added in review** (Codex P1 #1, §11): Google `signInWithPopup` loads Firebase Auth's hidden resolver iframe at `https://<authDomain>/__/auth/iframe`, governed by `frame-src`.
+- `script-src` += `https://apis.google.com` **and** `frame-src` += `https://apis.google.com` — **added in review** (Codex P1 #2, §11): `signInWithPopup` bootstraps the GAPI client from `https://apis.google.com/js/api.js` and opens a gapi messaging iframe on that origin (both required per Firebase Auth's documented CSP; the `frame-src` half added proactively to pre-empt the corresponding block).
 
 No other directive changed.
 
@@ -100,8 +101,11 @@ Every behavioural module was written test-first, each test observed failing (mod
 
 - Branch: `feat/auth-preview-readiness-001`. **PR #101** (base `main`). Not self-merged.
 - First commit `e5b4f7f` — CI **success** (run 31599991110).
-- **Automated review (Codex) — one P1, fixed:** _"Allow the Firebase Auth iframe origin"_ — Google `signInWithPopup` loads the resolver iframe at `https://eleventh-on-us-dev.firebaseapp.com/__/auth/iframe`, blocked by the original `frame-src` (`'self' https://www.google.com`). **Verified valid** (well-known Firebase Auth + CSP requirement; directly blocks the mandatory Google core preview). **Fixed (TDD):** added the auth-domain origin to `frame-src` in both blocks + extended `hostingCsp.test.ts` to assert it (RED→GREEN, 6/6). No human reviewer has commented at the time of writing.
-- Final reviewed head SHA + post-fix CI result: appended on the fix commit.
+- **Automated review (Codex) — two P1 CSP findings, both fixed (TDD).** Both are genuine Google-`signInWithPopup` CSP requirements that would block the mandatory Google core preview on a hosted channel; verified against Firebase Auth's documented CSP.
+  - **P1 #1 — `frame-src` resolver iframe** (`5d48d82`): the popup loads `https://<authDomain>/__/auth/iframe`; added `https://eleventh-on-us-dev.firebaseapp.com` to `frame-src` (both blocks) + regression assertion.
+  - **P1 #2 — GAPI popup bootstrap** (next commit): the popup loads `https://apis.google.com/js/api.js` and a gapi messaging iframe; added `https://apis.google.com` to `script-src` **and** `frame-src` (both blocks) + regression assertion.
+  - CSP test now 7/7. No human reviewer has commented at the time of writing.
+- **CI:** first commit `e5b4f7f` green (run 31599991110); frame-src fix `5d48d82` green (run 31601471084); gapi fix — appended below.
 
 ## 12. Resulting status & remaining prerequisites
 
