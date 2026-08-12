@@ -37,6 +37,7 @@ import { SignInPanel, type SignInPanelActions } from "../../authentication/SignI
 import type { AuthenticateOutcome } from "../../authentication/authenticateClient";
 import { isHarnessEnabled } from "../phoneAuthHarness/harnessGate";
 import { getSignInPreviewPlatform } from "./signInPreviewPlatform";
+import { createManagedRecaptcha } from "./recaptchaLifecycle";
 
 /** Page-owned container the optional Phone flow renders its reCAPTCHA into. */
 const RECAPTCHA_CONTAINER_ID = "sign-in-preview-recaptcha";
@@ -79,27 +80,40 @@ export function SignInPreviewPage({
 
   // Build the real composition lazily: only when the surface is enabled and no
   // test actions were injected — so a disabled page never initializes Firebase.
-  const resolvedActions = useMemo<SignInPanelActions | null>(() => {
-    if (actions) return actions;
-    if (!enabled) return null;
+  // The composition includes a managed reCAPTCHA verifier for the optional Phone
+  // flow: each send tears down the prior verifier + its DOM node before creating
+  // the next (a fresh child of the page-owned container), so retries never leak
+  // widgets or reuse an already-rendered reCAPTCHA element.
+  const composition = useMemo(() => {
+    if (actions || !enabled) return null;
 
     const platform = getSignInPreviewPlatform(getAppEnv());
-    // Called only at Phone send-time (a user event), never during render: a
-    // fresh child node under the page-owned container, so repeated attempts
-    // never reuse an already-rendered reCAPTCHA element.
-    const getRecaptchaVerifier: CreateSignInActionsDeps["getRecaptchaVerifier"] = () => {
-      const node = document.createElement("div");
-      document.getElementById(RECAPTCHA_CONTAINER_ID)?.appendChild(node);
-      return new RecaptchaVerifier(platform.auth, node, {
-        size: "invisible",
-      }) as unknown as ApplicationVerifier;
-    };
+    const recaptcha = createManagedRecaptcha({
+      createVerifier: (node) => new RecaptchaVerifier(platform.auth, node, { size: "invisible" }),
+      createNode: () => {
+        const node = document.createElement("div");
+        document.getElementById(RECAPTCHA_CONTAINER_ID)?.appendChild(node);
+        return node;
+      },
+      removeNode: (node) => node.parentNode?.removeChild(node),
+    });
 
-    return createSignInActions(platform, {
+    const getRecaptchaVerifier: CreateSignInActionsDeps["getRecaptchaVerifier"] = () =>
+      recaptcha.getVerifier() as unknown as ApplicationVerifier;
+
+    const builtActions = createSignInActions(platform, {
       flagSource: import.meta.env,
       getRecaptchaVerifier,
     });
+    return { actions: builtActions, recaptcha };
   }, [actions, enabled]);
+
+  // Tear down the current reCAPTCHA verifier + node when the page unmounts.
+  useEffect(() => {
+    return () => composition?.recaptcha.teardown();
+  }, [composition]);
+
+  const resolvedActions = actions ?? composition?.actions ?? null;
 
   if (!enabled || !resolvedActions) {
     return null;

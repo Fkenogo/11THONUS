@@ -72,7 +72,7 @@ No change to the identity/authentication model: one customer identity → one Fi
 
 ## 8. Files created / modified
 
-**Created:** `apps/web/sign-in-preview.html`; `apps/web/viteBuildModes.ts`; `apps/web/src/dev/signInPreview/{signInPreviewGate.ts, signInPreviewPlatform.ts, SignInPreviewPage.tsx, signInPreviewMain.tsx}` (+ tests for gate/platform/page/build-isolation); `apps/web/src/infrastructure/hosting/hostingCsp.test.ts`.
+**Created:** `apps/web/sign-in-preview.html`; `apps/web/viteBuildModes.ts`; `apps/web/src/dev/signInPreview/{signInPreviewGate.ts, signInPreviewPlatform.ts, SignInPreviewPage.tsx, signInPreviewMain.tsx, recaptchaLifecycle.ts}` (+ tests for gate/platform/page/build-isolation/recaptcha-lifecycle); `apps/web/src/infrastructure/hosting/hostingCsp.test.ts`.
 **Modified:** `apps/web/vite.config.ts`; `apps/web/package.json`; `apps/web/src/App.tsx` (+ `App.test.tsx`); `firebase.json`; `apps/web/.env.example`.
 **Docs:** this report + change-tracking (`IMPLEMENTATION_CHANGES.md`, documentation-changes-log Entry 106) + programme status (`CDR-001 §5`, Master Workflow).
 **Backend:** none. **Dependencies:** none. **Firebase Console / deploy / preview channel:** none.
@@ -91,7 +91,7 @@ Every behavioural module was written test-first, each test observed failing (mod
 
 - typecheck (all workspaces): **clean**.
 - eslint: **clean**. prettier `--check`: **clean**.
-- web vitest: **378/378** (was 335; +43 new).
+- web vitest: **386/386** (was 335; +51 new, incl. the closure-review reCAPTCHA-lifecycle tests).
 - functions vitest: **567/567** (no functions change).
 - `emulators:validate`: **221/221**.
 - e2e (Playwright): **1/1**.
@@ -105,7 +105,8 @@ Every behavioural module was written test-first, each test observed failing (mod
   - **P1 #1 — `frame-src` resolver iframe** (`5d48d82`): the popup loads `https://<authDomain>/__/auth/iframe`; added `https://eleventh-on-us-dev.firebaseapp.com` to `frame-src` (both blocks) + regression assertion.
   - **P1 #2 — GAPI popup bootstrap** (next commit): the popup loads `https://apis.google.com/js/api.js` and a gapi messaging iframe; added `https://apis.google.com` to `script-src` **and** `frame-src` (both blocks) + regression assertion.
   - CSP test now 7/7. No human reviewer has commented at the time of writing.
-- **CI:** first commit `e5b4f7f` green (run 31599991110); frame-src fix `5d48d82` green (run 31601471084); gapi fix `bd3de3a` green (run 31603990029). **Final reviewed head SHA: `bd3de3a`** — CI green; a Codex re-review was requested after the fix and produced no further findings on the current head.
+- **Closure re-review — one P2, fixed (TDD).** On the merge-gate re-review Codex raised a **P2** on `SignInPreviewPage.tsx`: the optional Phone flow constructed a new `RecaptchaVerifier` (+ DOM node) per send without retaining it, so it never `clear()`ed the prior widget or removed the node — repeated sends leak iframes/listeners and nothing tears down on unmount. **Verified valid** (only affects the optional Phone path, but a genuine resource leak in newly-added code). **Fixed:** extracted a pure, unit-tested `recaptchaLifecycle.ts` (`createManagedRecaptcha` — tears down the current verifier + node before creating the next and on unmount, best-effort/idempotent, robust to a throwing `clear()`); `SignInPreviewPage` now wires it and tears down on unmount. New `recaptchaLifecycle.test.ts` 6/6; no React refs introduced (lint clean).
+- **CI:** first commit `e5b4f7f` green (run 31599991110); frame-src fix `5d48d82` green (run 31601471084); gapi fix `bd3de3a` green (run 31603990029); P2 recaptcha-lifecycle fix — CI appended on that commit. A Codex re-review was requested after each fix.
 
 ## 12. Resulting status & remaining prerequisites
 
