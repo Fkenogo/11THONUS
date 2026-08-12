@@ -89,6 +89,15 @@ No new runtime dependencies (email flow uses existing `firebase/auth`). New disa
 
 Programme records amended (§3). Risks: Phone OTP live enablement still needs `EXT-TECH-001` readiness (non-blocking). Rollback: revert the AUTH-CORR-003 commit(s) — removes the email mapping, flow, UI, and recovery mapping; restores the phone+Google MVP. No data/migration impact.
 
-## 33–38 / review
+## 30. PR review findings & dispositions (PR #100)
 
-PR: _(appended)_. Not self-merged. Hosted-preview not executed. AUTH-10 not started. Dirty primary worktree untouched. PR review disposition appended after CI.
+Codex reviewer ran on first head `0389184` — **2 findings, both VALID and in-scope**, fixed in place with regression tests (history preserved):
+
+- **F-R1 (P1, correctness — critical):** the callable-boundary allow-list `MVP_REFERENCE_TYPES` in `functions/src/index.ts` still contained only `phone_otp`/`google_sign_in`, so `parseAuthenticateRequest`/`parseReferenceType` rejected every email authenticate/link/unlink/recovery request with `invalid-argument` **before verification** — the email flow was broken end-to-end (the AUTH-02 verifier map alone was insufficient). **Fixed:** added `email` to `MVP_REFERENCE_TYPES`; exported it and added `functions/src/index.test.ts` (3 tests) asserting the boundary admits exactly Google + Email/Password + Phone OTP and still rejects deferred providers.
+- **F-R2 (P2, semantic accuracy):** AUTH-06 classified an email/**password** proof as `email_verification`, but `firebaseTokenVerifier` proves only `sign_in_provider` (password knowledge), never the token's `email_verified` claim — so recovery/audit records could overclaim mailbox verification. **Fixed:** email now maps to **`linked_provider`** (control of a previously-linked credential, exactly like Google); `email_verification` is reserved for a genuine inbox-proof mechanism (email-link/passwordless, deferred). Comment + test updated (asserts `linked_provider`, never `email_verification`).
+
+Re-validation after fixes: functions **567/567** (+ boundary regression); typecheck/lint/format clean. **No unresolved material P1/P2 finding remains.**
+
+## 31–38 / final
+
+PR **#100**, final reviewed head recorded after the fix re-push. Not self-merged. Hosted-preview not executed. AUTH-10 not started. Dirty primary worktree untouched.

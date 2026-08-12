@@ -100,7 +100,7 @@ describe("recoverAuthenticatedIdentity", () => {
     expect(recover.mock.calls[0][1].recoveryProof.methodCategory).toBe("linked_provider");
   });
 
-  it("maps email to the email_verification recovery method category [AUTH-CORR-003]", async () => {
+  it("maps email/password to linked_provider (not email_verification — password proves credential control, not mailbox verification) [AUTH-CORR-003]", async () => {
     const resolve = vi
       .fn()
       .mockResolvedValue(resolvedAuthResult("cust_3", credential("email", "authuid_3")));
@@ -114,8 +114,10 @@ describe("recoverAuthenticatedIdentity", () => {
       { resolve, recover },
     );
 
-    expect(outcome.methodCategory).toBe("email_verification");
-    expect(recover.mock.calls[0][1].recoveryProof.methodCategory).toBe("email_verification");
+    expect(outcome.methodCategory).toBe("linked_provider");
+    expect(recover.mock.calls[0][1].recoveryProof.methodCategory).toBe("linked_provider");
+    // Never overclaims mailbox verification for a password proof.
+    expect(recover.mock.calls[0][1].recoveryProof.methodCategory).not.toBe("email_verification");
   });
 
   it("fails closed (RESOURCE_NOT_FOUND) and never calls -07 when the credential resolves to no identity", async () => {

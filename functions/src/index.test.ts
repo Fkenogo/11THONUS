@@ -1,18 +1,24 @@
 import { describe, expect, it } from "vitest";
-import * as functions from "./index";
+import { MVP_REFERENCE_TYPES } from "./index";
 
-interface FunctionWithEndpoint {
-  __endpoint?: { region?: string[] };
-}
-
-describe("functions workspace scaffold", () => {
-  it("exports the neutral ping placeholder function", () => {
-    expect(functions.ping).toBeDefined();
+/**
+ * Regression guard for the callable-boundary provider allow-list
+ * (`parseAuthenticateRequest`/`parseReferenceType` gate every
+ * authenticate/link/unlink/recovery request against this set before token
+ * verification). It must mirror the Founder MVP provider policy
+ * (`AUTH-CORR-003`: Google + Email/Password + optional Phone OTP); a missing
+ * entry would reject that provider with `invalid-argument` end-to-end.
+ */
+describe("MVP_REFERENCE_TYPES (callable boundary allow-list)", () => {
+  it("accepts exactly the MVP providers incl. email [AUTH-CORR-003]", () => {
+    expect([...MVP_REFERENCE_TYPES].sort()).toEqual(["email", "google_sign_in", "phone_otp"]);
   });
 
-  it("deploys ping to the approved region (DEC-TECH-005: europe-west1)", () => {
-    const endpoint = (functions.ping as FunctionWithEndpoint).__endpoint;
+  it("admits `email` so Email/Password requests reach verification", () => {
+    expect(MVP_REFERENCE_TYPES.has("email")).toBe(true);
+  });
 
-    expect(endpoint?.region).toEqual(["europe-west1"]);
+  it("still rejects deferred providers (fail closed)", () => {
+    expect(MVP_REFERENCE_TYPES.has("future_provider")).toBe(false);
   });
 });

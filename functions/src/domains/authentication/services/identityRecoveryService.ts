@@ -75,18 +75,21 @@ const RECOVER_OPERATION = "authentication.recover";
  * recovery-proof method categories. Only the MVP providers a `TokenVerifierPort`
  * can produce are mapped; a `google_sign_in` proof is control of a
  * previously-linked provider (`linked_provider`), a phone-OTP proof is
- * `phone_otp`, and an email/password proof is control of the email account
- * (`email_verification` — the governed recovery category per `DEC-SEC-001`'s
- * recovery order, added for the now-approved Email/Password provider by
- * `AUTH-CORR-003`). Still-deferred providers (`future_provider`) are
- * intentionally absent and fail closed — the endpoint restricts to the MVP set.
+ * `phone_otp`, and an **email/password** proof is control of a previously-linked
+ * credential — classified `linked_provider`, **not** `email_verification`
+ * (`AUTH-CORR-003`). `firebaseTokenVerifier` proves only `sign_in_provider`
+ * (password knowledge), never the token's `email_verified` claim, so labelling
+ * it `email_verification` would overclaim that the mailbox was verified; the
+ * `email_verification` category is reserved for a genuine inbox-proof mechanism
+ * (email-link/passwordless, still deferred). Still-deferred providers
+ * (`future_provider`) are intentionally absent and fail closed.
  */
 const PROVIDER_TO_RECOVERY_METHOD: Partial<
   Record<AuthenticationReferenceType, RecoveryProofMethodCategory>
 > = {
   phone_otp: "phone_otp",
   google_sign_in: "linked_provider",
-  email: "email_verification",
+  email: "linked_provider",
 };
 
 function recoveryMethodCategoryFor(
