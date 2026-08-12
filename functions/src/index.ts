@@ -94,9 +94,15 @@ function toHttpsError(error: unknown): HttpsError {
   return new HttpsError("internal", "authentication_failed");
 }
 
-const MVP_REFERENCE_TYPES: ReadonlySet<AuthenticationReferenceType> = new Set([
+// The closed callable-boundary allow-list of MVP `referenceType`s accepted at
+// the `authenticate`/linking/recovery entrypoints (mirrors AUTH-02's verified-
+// provider map and the frontend `AuthProviderId` registry). Per `AUTH-CORR-003`
+// the MVP set is Google + Email/Password + optional Phone OTP; still-deferred
+// providers are absent and rejected with `invalid-argument` before verification.
+export const MVP_REFERENCE_TYPES: ReadonlySet<AuthenticationReferenceType> = new Set([
   "phone_otp",
   "google_sign_in",
+  "email",
 ]);
 
 function parseAuthenticateRequest(data: unknown): AuthenticateRequest {

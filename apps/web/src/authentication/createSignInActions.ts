@@ -17,6 +17,7 @@ import type { Functions } from "firebase/functions";
 import { makeCallAuthenticate } from "./authenticateCallable";
 import type { CallAuthenticate } from "./authenticateClient";
 import { signInWithGoogle } from "./googleSignInFlow";
+import { registerWithEmailPassword, signInWithEmailPassword } from "./emailPasswordSignInFlow";
 import { confirmPhoneSignIn, startPhoneSignIn } from "./phoneSignInFlow";
 import { resolveEnabledAuthProviders } from "./providerConfig";
 import type { SignInPanelActions } from "./SignInPanel";
@@ -29,6 +30,8 @@ export type CreateSignInActionsDeps = {
   callAuthenticate?: CallAuthenticate;
   /** Flow seams (defaults = real flows) — injected only in tests. */
   runGoogle?: typeof signInWithGoogle;
+  runRegisterEmail?: typeof registerWithEmailPassword;
+  runSignInEmail?: typeof signInWithEmailPassword;
   runStartPhone?: typeof startPhoneSignIn;
   runConfirmPhone?: typeof confirmPhoneSignIn;
 };
@@ -39,12 +42,18 @@ export function createSignInActions(
 ): SignInPanelActions {
   const callAuthenticate = deps.callAuthenticate ?? makeCallAuthenticate(platform.functions);
   const runGoogle = deps.runGoogle ?? signInWithGoogle;
+  const runRegisterEmail = deps.runRegisterEmail ?? registerWithEmailPassword;
+  const runSignInEmail = deps.runSignInEmail ?? signInWithEmailPassword;
   const runStartPhone = deps.runStartPhone ?? startPhoneSignIn;
   const runConfirmPhone = deps.runConfirmPhone ?? confirmPhoneSignIn;
 
   return {
     enabledProviders: resolveEnabledAuthProviders(deps.flagSource),
     signInWithGoogle: () => runGoogle(platform.auth, { callAuthenticate }),
+    registerWithEmail: (email, password) =>
+      runRegisterEmail(platform.auth, email, password, { callAuthenticate }),
+    signInWithEmail: (email, password) =>
+      runSignInEmail(platform.auth, email, password, { callAuthenticate }),
     sendPhoneCode: (phoneNumber) =>
       runStartPhone(platform.auth, phoneNumber, deps.getRecaptchaVerifier()),
     confirmPhoneCode: (confirmation, code) =>

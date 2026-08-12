@@ -46,14 +46,17 @@ const PROVIDER = "firebase";
  * Authentication reference type. The verified provider in the decoded token —
  * never the client-declared `RawProviderCredential.referenceType` — is
  * authoritative for provider provenance (P1 correction). Only the MVP providers
- * are supported (`DEC-AUTH-001` D-A2: Phone OTP + Google); every other verified
- * provider has no entry and fails closed. Email/Apple/passkeys are Deferred, so
- * their Firebase providers are deliberately absent here — additions are a
- * governed provider-registry change, not a silent default.
+ * are supported (`DEC-AUTH-001` D-A2 as amended by `AUTH-CORR-003`: Google +
+ * Email/Password + optional Phone OTP); every other verified provider has no
+ * entry and fails closed. Apple/passkeys/email-link remain Deferred, so their
+ * Firebase providers are deliberately absent here — additions are a governed
+ * provider-registry change, not a silent default. The Firebase `sign_in_provider`
+ * for Email/Password is `password` (authoritative Firebase behaviour).
  */
 const VERIFIED_PROVIDER_TO_REFERENCE_TYPE: Readonly<Record<string, AuthenticationReferenceType>> = {
   phone: "phone_otp",
   "google.com": "google_sign_in",
+  password: "email",
 };
 
 /**

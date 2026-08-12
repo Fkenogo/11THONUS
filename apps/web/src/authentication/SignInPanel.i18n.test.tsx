@@ -19,8 +19,10 @@ const registered: AuthenticateOutcome = {
 
 function makeActions(overrides: Partial<SignInPanelActions> = {}): SignInPanelActions {
   return {
-    enabledProviders: new Set(["phone_otp", "google_sign_in"]),
+    enabledProviders: new Set(["phone_otp", "google_sign_in", "email"]),
     signInWithGoogle: vi.fn(async () => registered),
+    registerWithEmail: vi.fn(async () => registered),
+    signInWithEmail: vi.fn(async () => registered),
     sendPhoneCode: vi.fn(async () => ({ confirm: vi.fn() }) as unknown as PhoneConfirmation),
     confirmPhoneCode: vi.fn(async () => registered),
     ...overrides,
@@ -40,6 +42,43 @@ describe("SignInPanel — localization (I18N-001 retrofit)", () => {
     ).toBeInTheDocument();
     expect(screen.getByText(en.auth.signIn.phoneLabel)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: en.auth.signIn.sendCode })).toBeInTheDocument();
+  });
+
+  it("renders the Email/Password provider choice in English by default [AUTH-CORR-003]", () => {
+    render(<SignInPanel actions={makeActions({ enabledProviders: new Set(["email"]) })} />);
+    expect(screen.getByLabelText(en.auth.signIn.emailLabel)).toBeInTheDocument();
+    expect(screen.getByLabelText(en.auth.signIn.passwordLabel)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: en.auth.signIn.createAccount })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: en.auth.signIn.emailSignIn })).toBeInTheDocument();
+  });
+
+  it("renders the Email/Password provider choice in French when selected [AUTH-CORR-003]", async () => {
+    await i18n.changeLanguage("fr");
+    render(<SignInPanel actions={makeActions({ enabledProviders: new Set(["email"]) })} />);
+    expect(screen.getByLabelText(fr.auth.signIn.emailLabel)).toBeInTheDocument();
+    expect(screen.getByLabelText(fr.auth.signIn.passwordLabel)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: fr.auth.signIn.createAccount })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: fr.auth.signIn.emailSignIn })).toBeInTheDocument();
+  });
+
+  it("renders the full multi-provider choice UI in French [AUTH-CORR-003]", async () => {
+    await i18n.changeLanguage("fr");
+    const { container } = render(
+      <SignInPanel
+        actions={makeActions({
+          enabledProviders: new Set(["google_sign_in", "email", "phone_otp"]),
+        })}
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: fr.auth.signIn.continueWithGoogle }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(fr.auth.signIn.emailLabel)).toBeInTheDocument();
+    expect(screen.getByText(fr.auth.signIn.phoneLabel)).toBeInTheDocument();
+    // No untranslated English provider copy leaks into the French UI.
+    const text = container.textContent ?? "";
+    expect(text).not.toContain(en.auth.signIn.continueWithGoogle);
+    expect(text).not.toContain(en.auth.signIn.createAccount);
   });
 
   it("renders the French copy when French is selected", async () => {

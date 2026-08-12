@@ -103,6 +103,8 @@ Per `DEC-IDENTITY-001`'s Authentication Principle, supported customer authentica
 - email and password, or passwordless email;
 - Google and Apple sign-in.
 
+> **[MVP scope, `AUTH-CORR-003`, 2026-08-12]** The Founder-approved **MVP** subset of the equal providers above is **Google + Email/Password + optional Phone OTP** (email-link/passwordless, Apple, passkeys remain deferred). This aligns `DEC-AUTH-001` D-A2 (as amended) with this section's long-standing equal-providers model; it changes MVP scope only, not the equal-providers principle.
+
 Phone-based authentication remains important for customers who do not regularly use email, but its role is as one supported provider among several, not a default customers are routed through. Whether a given provider's credential has been verified is tracked separately as a progressive-trust signal (Identity Trust Management, internal-only — see `DEC-IDENTITY-001`), used for risk-based feature gating, not for gating registration, identity issuance, or standard platform access.
 
 ## 12.4.2 Business Owner and Manager Authentication
