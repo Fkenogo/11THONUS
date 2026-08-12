@@ -28,6 +28,10 @@ function findFirebaseJson(): string {
 }
 
 const FUNCTIONS_ORIGIN = "https://europe-west1-eleventh-on-us-dev.cloudfunctions.net";
+// Firebase Auth's popup/redirect resolver loads a hidden iframe at
+// `https://<authDomain>/__/auth/iframe`, governed by `frame-src`; without it the
+// mandatory Google sign-in preview is blocked.
+const AUTH_DOMAIN_ORIGIN = "https://eleventh-on-us-dev.firebaseapp.com";
 const RECAPTCHA_ORIGINS = [
   "https://www.google.com",
   "https://www.gstatic.com",
@@ -57,12 +61,16 @@ function cspValues(): { source: string; value: string }[] {
   );
 }
 
-function connectSrc(value: string): string {
+function directive(value: string, name: string): string {
   const match = value
     .split(";")
     .map((d) => d.trim())
-    .find((d) => d.startsWith("connect-src"));
+    .find((d) => d.startsWith(name + " ") || d === name);
   return match ?? "";
+}
+
+function connectSrc(value: string): string {
+  return directive(value, "connect-src");
 }
 
 describe("Hosting CSP — authentication callable origin (P-2)", () => {
@@ -74,6 +82,15 @@ describe("Hosting CSP — authentication callable origin (P-2)", () => {
   it("permits the europe-west1 callable Functions origin in connect-src on every document route", () => {
     for (const { value } of cspValues()) {
       expect(connectSrc(value)).toContain(FUNCTIONS_ORIGIN);
+    }
+  });
+
+  it("permits the Firebase Auth iframe origin in frame-src on every document route (Google popup)", () => {
+    for (const { value } of cspValues()) {
+      const frameSrc = directive(value, "frame-src");
+      expect(frameSrc).toContain(AUTH_DOMAIN_ORIGIN);
+      // reCAPTCHA/Google popup frame must remain permitted.
+      expect(frameSrc).toContain("https://www.google.com");
     }
   });
 

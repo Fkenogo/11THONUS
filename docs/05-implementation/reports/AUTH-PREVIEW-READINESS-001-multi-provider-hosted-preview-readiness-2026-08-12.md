@@ -43,10 +43,14 @@ Mirror the governed EXT-TECH-001/CR3 mechanism: a dedicated `vite build --mode s
 `connect-src` permitted `identitytoolkit`/`securetoken`/`www.google.com` but **not** the callable Functions origin. The `authenticate` callable resolves via `httpsCallable(getFunctions(app, "europe-west1"), …)` to `https://europe-west1-eleventh-on-us-dev.cloudfunctions.net` (functions region `europe-west1`, project `eleventh-on-us-dev`; `firebase-functions` v7 / gen-2, browser SDK uses the cloudfunctions.net endpoint). A hosted page would be CSP-blocked from completing any sign-in.
 
 ### Exact change
-In both `hosting.headers` CSP blocks (`/index.html` and `/`), appended exactly `https://europe-west1-eleventh-on-us-dev.cloudfunctions.net` to `connect-src`. No other directive changed.
+In both `hosting.headers` CSP blocks (`/index.html` and `/`):
+- `connect-src` += `https://europe-west1-eleventh-on-us-dev.cloudfunctions.net` (the callable origin).
+- `frame-src` += `https://eleventh-on-us-dev.firebaseapp.com` — **added in review** (Codex P1, §11): Google `signInWithPopup` loads Firebase Auth's hidden resolver iframe at `https://<authDomain>/__/auth/iframe`, governed by `frame-src`; without the auth-domain origin the mandatory Google sign-in preview is CSP-blocked.
+
+No other directive changed.
 
 ### No weakening
-No wildcard introduced; reCAPTCHA/Google + Identity Toolkit origins preserved; `default-src 'self'`, `object-src 'none'`, `script-src`/`frame-src`/`style-src`/`img-src` unchanged. A regression test (`hostingCsp.test.ts`) asserts the origin is present on every document route, no `*` in `connect-src`, and the restrictive directives remain. Local/emulator behaviour is unaffected (the client connects to `127.0.0.1:5001` in emulator mode; CSP applies only to hosted responses).
+No wildcard introduced; reCAPTCHA/Google (`www.google.com` in both `script-src` and `frame-src`) + Identity Toolkit/secure-token origins preserved; `default-src 'self'`, `object-src 'none'`, `script-src`/`style-src`/`img-src` unchanged. A regression test (`hostingCsp.test.ts`) asserts, on every document route: the callable origin in `connect-src`; the auth-domain origin in `frame-src`; no `*` in `connect-src`; and the restrictive directives remain. Local/emulator behaviour is unaffected (the client connects to `127.0.0.1:5001` in emulator mode; CSP applies only to hosted responses).
 
 ## 4. P-3 — Provider-flag documentation
 
@@ -94,8 +98,10 @@ Every behavioural module was written test-first, each test observed failing (mod
 
 ## 11. Review, PR, CI
 
-- Branch: `feat/auth-preview-readiness-001`. PR: _pending (opened on this branch; not self-merged)_.
-- Automated PR review findings + dispositions and final reviewed head SHA + CI result: _to be appended after PR creation_.
+- Branch: `feat/auth-preview-readiness-001`. **PR #101** (base `main`). Not self-merged.
+- First commit `e5b4f7f` — CI **success** (run 31599991110).
+- **Automated review (Codex) — one P1, fixed:** _"Allow the Firebase Auth iframe origin"_ — Google `signInWithPopup` loads the resolver iframe at `https://eleventh-on-us-dev.firebaseapp.com/__/auth/iframe`, blocked by the original `frame-src` (`'self' https://www.google.com`). **Verified valid** (well-known Firebase Auth + CSP requirement; directly blocks the mandatory Google core preview). **Fixed (TDD):** added the auth-domain origin to `frame-src` in both blocks + extended `hostingCsp.test.ts` to assert it (RED→GREEN, 6/6). No human reviewer has commented at the time of writing.
+- Final reviewed head SHA + post-fix CI result: appended on the fix commit.
 
 ## 12. Resulting status & remaining prerequisites
 
