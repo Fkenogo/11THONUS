@@ -2574,3 +2574,19 @@
 - **Programme impact:** `AUTH-09` implemented (pending merge); Authentication concern `Validation Complete — closure pending the Founder-executed hosted-preview check`. **Concern Completion ≠ Capability closure** — Capability 2 remains `Open — partially implemented; not closed`. AUTH-09 is the ninth and final AUTH package (closure); AUTH-10+ not started.
 - **Rollback:** documentation-only; `git revert` of the AUTH-09 commit(s) or discard the branch fully reverses it. No code/data/migration/runtime impact.
 - **Report link:** [`AUTH-09-validation-and-closure-review-2026-08-10.md`](../05-implementation/reports/AUTH-09-validation-and-closure-review-2026-08-10.md).
+
+## 2026-08-11 — I18N-001 — Centralized Localization Foundation (frontend, TDD) + AUTH-04 copy retrofit
+
+- **Nature:** Bounded implementation of the already-governed frontend localization requirement (TRD13; TRD16 §16.40) — English primary/default, French supported. **No new product requirement; frontend-only; no backend/`functions/`/Firestore/Firebase/provider change.** Unblocks `AUTH-CORR-003` (which stays blocked until this merges).
+- **Founder authorization:** task "I18N-001 Centralized Localization Foundation". AUTH-10+ not authorized.
+- **Entry main state:** `origin/main` = `2f57f9c` (AUTH-09 merged). Clean worktree; dirty primary worktree untouched; no worktree cleanup.
+- **Mechanism chosen:** `i18next` `^26.3.6` + `react-i18next` `^17.0.11` + `i18next-browser-languagedetector` `^8.2.1` — one centralized instance (TRD16 §16.40). Bundled `en`/`fr` resources (synchronous, Suspense-free); `fallbackLng: "en"`; namespaces `common`/`auth`; localStorage persistence + navigator detection; `preferredLanguage` seam for authenticated users. Alternatives (react-intl, lingui, custom context) rejected as heavier/insufficient/ungoverned.
+- **Implemented:** `apps/web/src/i18n/{config,index,preferredLanguage,LanguageSwitcher,locales/en,locales/fr}` + tests; boot/test init (`main.tsx`, `test/setup.ts`, one import each).
+- **AUTH-04 retrofit:** all `SignInPanel` customer-visible strings → `auth` translation keys with byte-identical English + new French copy; behaviour/flow unchanged; **no hard-coded customer copy remains** (grep + test verified). Email/Password flow stays AUTH-CORR-003 scope.
+- **Tests (+15 web):** English default; French on selection; English fallback for missing FR key; localStorage persistence; AUTH-04 copy from keys; EN correct; FR renders; no untranslated hard-coded copy; existing AUTH-04 behaviour green (`SignInPanel.test.tsx` unchanged); catalog key-parity; runtime switch; `preferredLanguage` normalize/ignore-unsupported. RED (317/319, 2 test-design bugs) → GREEN (319/319).
+- **Validation (branch):** typecheck/lint/format/build clean; web **319/319** (+15); e2e **1/1**; functions **564/564** (untouched — no regression).
+- **Manual Firebase config:** none (frontend-only; no provider/console change).
+- **Migrations:** none. **Dependencies added:** the three i18n packages above. **Configuration changes:** none beyond the deps.
+- **Programme impact:** localization foundation delivered; `AUTH-CORR-003` remains blocked until this merges. Concern/capability statuses unchanged.
+- **Rollback:** revert the I18N-001 commit(s) / discard the branch — removes `i18n/`, the three deps, restores SignInPanel inline English. No data/runtime/backend impact.
+- **Report link:** [`I18N-001-centralized-localization-foundation-2026-08-11.md`](../05-implementation/reports/I18N-001-centralized-localization-foundation-2026-08-11.md).
