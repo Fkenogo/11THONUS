@@ -11,7 +11,7 @@
 ## 0. Governing constraints (authoritative, unchanged here)
 
 - **`ENG-P2-ARCH-001` §7:** *Authentication provides access; it does not own identity.* Every authenticated action resolves through an Authentication reference to exactly one Identity Aggregate.
-- **`DEC-AUTH-001`:** MVP providers = **Phone OTP + Google Sign-In** (email/Apple/passkeys deferred; future additive); duplicate-identity merge is a **separate governed capability** (Authentication identifies + refers, never auto-merges); `EXT-TECH-001` (Burundi SMS) is a **production-launch** concern (build on the Firebase Auth Emulator); **customer ≠ staff** authentication.
+- **`DEC-AUTH-001`** (D-A2 as amended by **`AUTH-CORR-003`**, 2026-08-12): MVP providers = **Google + Email/Password + optional Phone OTP** (Apple/email-link/passkeys deferred; future additive; no provider defines identity); duplicate-identity merge is a **separate governed capability** (Authentication identifies + refers, never auto-merges); `EXT-TECH-001` (Burundi SMS) is a **production-launch** concern (build on the Firebase Auth Emulator) and Phone OTP is optional so its SMS readiness never blocks registration; **customer ≠ staff** authentication.
 - **`DEC-IDENTITY-001`:** browsing never requires authentication; standard loyalty participation is identity-gated, never authentication/trust-gated; providers are equal.
 - **TRD10 §10.6.1:** Firestore **never** stores passwords, OTP secrets, or provider tokens — these remain in Firebase Authentication. Firestore holds only *references*.
 - **TRD11 §11.35:** the closed **14-category error taxonomy** — reused, **no new category**.
@@ -45,9 +45,12 @@ Aligns exactly with `ENG-P2-ARCH-001` §3 (Guest → Registered → Active) — 
 
 Provider-neutral by construction (`DEC-IDENTITY-001` Authentication Principle; `DEC-PROV-004` point 2). One `TokenVerifierPort` with per-provider adapters; a closed provider registry keyed by `AuthenticationReferenceType`:
 
-- **`phone_otp`** — Firebase Phone Sign-In (reCAPTCHA/App-Check on the client; ID-token verified server-side). MVP. Reference implementation exists in `apps/web/src/dev/phoneAuthHarness`.
 - **`google_sign_in`** — Firebase Google provider. MVP.
-- **`email`, Apple, passkeys, `future_provider`** — **Deferred** (`DEC-AUTH-001` D-A2); the registry and `AuthenticationReferenceType` already reserve `future_provider`, so addition is additive with no identity change.
+- **`email`** — Firebase Email/Password (`sign_in_provider` = `password`). **MVP** _(added by `AUTH-CORR-003`, Founder multi-provider decision; email-link/passwordless stays deferred)_.
+- **`phone_otp`** — Firebase Phone Sign-In (reCAPTCHA/App-Check on the client; ID-token verified server-side). MVP, **optional/non-default** _(`AUTH-CORR-003`: SMS unavailability must not block Google/Email registration)_. Reference implementation exists in `apps/web/src/dev/phoneAuthHarness`.
+- **Apple, email-link/passwordless, passkeys, `future_provider`** — **Deferred** (`DEC-AUTH-001` D-A2 as amended by `AUTH-CORR-003`); the registry and `AuthenticationReferenceType` already reserve `future_provider`, so addition is additive with no identity change.
+
+> **[AMENDED 2026-08-12 — `AUTH-CORR-003`, Founder multi-provider decision.]** MVP approved providers are **Google + Email/Password + optional Phone OTP** — alternative authentication methods, **none defining the customer identity** (one identity → one Firebase principal → one or more methods). The earlier "Phone OTP + Google; email deferred" scope (originally listed above) is superseded. AUTH-02's verified-provider map adds `password → email`; the frontend registry (`AuthProviderId`) adds `email`, disabled-by-default. See the [`AUTH-CORR-003` report](../reports/AUTH-CORR-003-multi-provider-authentication-2026-08-12.md).
 
 Each adapter yields the same `AuthenticatedCredential { referenceType, referenceId (Firebase authUid), verifiedAt, providerSignals }`. **No credential material (tokens/OTP secrets) ever leaves Firebase Auth or enters Firestore** (TRD10 §10.6.1).
 
@@ -149,7 +152,14 @@ TDD (RED→GREEN) for every package. **Firebase Auth Emulator** for token-verifi
 
 ## 14. Validation strategy
 
-Per package: `tsc`/`eslint`/`prettier`/`vitest` + emulator suites; full monorepo build. Deny-by-default Rules coverage (no new client write path opened). AUTH-09 closure: concern-completion criteria (`CDR-001` §5 / DoD §2, per `DEC-GOV-009`/`-010`) + a bounded hosted-preview phone-OTP check (no live SMS in CI), per the `ENG-P1-003` hosting/preview precedent. Production SMS activation stays governed by `EXT-TECH-001` — **not** a build/validation gate.
+Per package: `tsc`/`eslint`/`prettier`/`vitest` + emulator suites; full monorepo build. Deny-by-default Rules coverage (no new client write path opened). AUTH-09 closure: concern-completion criteria (`CDR-001` §5 / DoD §2, per `DEC-GOV-009`/`-010`) + a bounded hosted-preview check. ~~a bounded hosted-preview phone-OTP check (no live SMS in CI)~~ Production SMS activation stays governed by `EXT-TECH-001` — **not** a build/validation gate.
+
+> **[AMENDED 2026-08-12 — `AUTH-CORR-003`: multi-provider hosted-preview closure criteria]** the stale Phone-OTP-only closure requirement is replaced. Authentication-concern hosted-preview closure (per the `ENG-P1-003`/`EXT-TECH-001` precedent; Founder-executed, no live SMS) is:
+> 1. **Email/Password** hosted sign-up/sign-in must **PASS** (mandatory core).
+> 2. **Google** hosted sign-up/sign-in must **PASS** (mandatory core).
+> 3. **Phone OTP** must remain implemented/provider-capable, exercised with a Firebase **test phone number** where the authorized dev environment supports it without live SMS.
+> 4. Phone OTP SMS/provider readiness **must not block** core Authentication-concern closure when Email/Password and Google pass and the remaining Phone OTP issue is **environment/provider readiness**, not a platform-authentication architecture defect.
+> 5. Phone OTP requires its own **provider/readiness validation before live market enablement** (`EXT-TECH-001`).
 
 ## 15. Exit criteria per package
 

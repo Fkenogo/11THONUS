@@ -26,6 +26,8 @@ import type { PhoneConfirmation } from "./phoneSignInFlow";
 export type SignInPanelActions = {
   enabledProviders: ReadonlySet<AuthProviderId>;
   signInWithGoogle: () => Promise<AuthenticateOutcome>;
+  registerWithEmail: (email: string, password: string) => Promise<AuthenticateOutcome>;
+  signInWithEmail: (email: string, password: string) => Promise<AuthenticateOutcome>;
   sendPhoneCode: (phoneNumber: string) => Promise<PhoneConfirmation>;
   confirmPhoneCode: (confirmation: PhoneConfirmation, code: string) => Promise<AuthenticateOutcome>;
 };
@@ -40,6 +42,8 @@ export function SignInPanel({
   const { t } = useTranslation("auth");
   const phoneInputId = useId();
   const codeInputId = useId();
+  const emailInputId = useId();
+  const passwordInputId = useId();
 
   // Store the stable error *code*, not a translated string, so a runtime
   // language switch re-translates any visible alert (never leaks a server
@@ -51,12 +55,15 @@ export function SignInPanel({
   const [phoneNumber, setPhoneNumber] = useState("");
   const [code, setCode] = useState("");
   const [confirmation, setConfirmation] = useState<PhoneConfirmation | null>(null);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [outcome, setOutcome] = useState<AuthenticateOutcome | null>(null);
   const [errorCode, setErrorCode] = useState<AuthenticateErrorCode | null>(null);
   const [busy, setBusy] = useState(false);
 
   const phoneEnabled = actions.enabledProviders.has("phone_otp");
   const googleEnabled = actions.enabledProviders.has("google_sign_in");
+  const emailEnabled = actions.enabledProviders.has("email");
 
   // A confirmation is bound to the exact number it was sent for. If the number
   // is edited after the code was sent, invalidate the pending confirmation (and
@@ -93,6 +100,19 @@ export function SignInPanel({
     }
   }
 
+  // Register (new) and sign-in (returning) are distinct Firebase operations;
+  // the password is cleared unconditionally after either so it never lingers in
+  // state/DOM (mirrors the OTP-clearing guard). Firebase is the sole credential
+  // authority — 11thONUS stores/logs/returns no password.
+  async function runEmail(op: (email: string, password: string) => Promise<AuthenticateOutcome>) {
+    const result = await run(() => op(email, password));
+    setPassword("");
+    if (result) {
+      setOutcome(result as AuthenticateOutcome);
+      onSignedIn?.(result as AuthenticateOutcome);
+    }
+  }
+
   async function handleSendCode() {
     const result = await run(() => actions.sendPhoneCode(phoneNumber));
     if (result) setConfirmation(result as PhoneConfirmation);
@@ -110,13 +130,15 @@ export function SignInPanel({
     }
   }
 
-  if (!phoneEnabled && !googleEnabled) {
+  if (!phoneEnabled && !googleEnabled && !emailEnabled) {
     return (
       <section aria-label={t("signIn.ariaLabel")}>
         <p role="status">{t("signIn.unavailable")}</p>
       </section>
     );
   }
+
+  const emailPasswordFilled = email.trim() !== "" && password !== "";
 
   return (
     <section aria-label={t("signIn.ariaLabel")} className="flex flex-col gap-4">
@@ -127,6 +149,41 @@ export function SignInPanel({
         <button type="button" onClick={handleGoogle} disabled={busy}>
           {t("signIn.continueWithGoogle")}
         </button>
+      )}
+
+      {emailEnabled && (
+        <div className="flex flex-col gap-2">
+          <label htmlFor={emailInputId}>{t("signIn.emailLabel")}</label>
+          <input
+            id={emailInputId}
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <label htmlFor={passwordInputId}>{t("signIn.passwordLabel")}</label>
+          <input
+            id={passwordInputId}
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          <button
+            type="button"
+            onClick={() => runEmail(actions.registerWithEmail)}
+            disabled={busy || !emailPasswordFilled}
+          >
+            {t("signIn.createAccount")}
+          </button>
+          <button
+            type="button"
+            onClick={() => runEmail(actions.signInWithEmail)}
+            disabled={busy || !emailPasswordFilled}
+          >
+            {t("signIn.emailSignIn")}
+          </button>
+        </div>
       )}
 
       {phoneEnabled && (

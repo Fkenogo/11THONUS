@@ -100,6 +100,24 @@ describe("recoverAuthenticatedIdentity", () => {
     expect(recover.mock.calls[0][1].recoveryProof.methodCategory).toBe("linked_provider");
   });
 
+  it("maps email to the email_verification recovery method category [AUTH-CORR-003]", async () => {
+    const resolve = vi
+      .fn()
+      .mockResolvedValue(resolvedAuthResult("cust_3", credential("email", "authuid_3")));
+    const recover = vi.fn().mockResolvedValue(identity("cust_3"));
+
+    const outcome = await recoverAuthenticatedIdentity(
+      db,
+      credential("email", "authuid_3"),
+      envelope(),
+      command("idem_3"),
+      { resolve, recover },
+    );
+
+    expect(outcome.methodCategory).toBe("email_verification");
+    expect(recover.mock.calls[0][1].recoveryProof.methodCategory).toBe("email_verification");
+  });
+
   it("fails closed (RESOURCE_NOT_FOUND) and never calls -07 when the credential resolves to no identity", async () => {
     const resolve = vi
       .fn()

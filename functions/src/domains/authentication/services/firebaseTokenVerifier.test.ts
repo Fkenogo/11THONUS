@@ -231,7 +231,32 @@ describe("createFirebaseAdminTokenVerifier", () => {
     ).rejects.toMatchObject({ category: "AUTH_FORBIDDEN" });
   });
 
-  it.each(["password", "apple.com", "custom", "anonymous"])(
+  it("derives the governed reference type (email) from a password-verified token [AUTH-CORR-003]", async () => {
+    const verifyIdToken = vi
+      .fn()
+      .mockResolvedValue(decoded({ firebase: { identities: {}, sign_in_provider: "password" } }));
+    const verifier = createFirebaseAdminTokenVerifier(verifyIdToken, { now: () => fixedNow });
+
+    const credential = await verifier.verify({ referenceType: "email", rawToken: "raw" });
+
+    expect(credential.referenceType).toBe("email");
+    expect(credential.providerSignals.signInProvider).toBe("password");
+    // Firebase authUid remains the referenceId (provider-neutral identity).
+    expect(credential.referenceId).toBe("authuid_123");
+  });
+
+  it("fails closed when a password-verified token is presented as google_sign_in [AUTH-CORR-003]", async () => {
+    const verifyIdToken = vi
+      .fn()
+      .mockResolvedValue(decoded({ firebase: { identities: {}, sign_in_provider: "password" } }));
+    const verifier = createFirebaseAdminTokenVerifier(verifyIdToken, { now: () => fixedNow });
+
+    await expect(
+      verifier.verify({ referenceType: "google_sign_in", rawToken: "raw" }),
+    ).rejects.toMatchObject({ category: "AUTH_FORBIDDEN" });
+  });
+
+  it.each(["apple.com", "custom", "anonymous"])(
     "fails closed for an unsupported verified provider (%s), regardless of declared type",
     async (provider) => {
       const verifyIdToken = vi

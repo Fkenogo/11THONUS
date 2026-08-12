@@ -50,6 +50,30 @@ describe("createSignInActions", () => {
     expect(result).toEqual(outcome);
   });
 
+  it("wires the Email/Password register and sign-in actions to platform auth + callable [AUTH-CORR-003]", async () => {
+    const runRegisterEmail = vi.fn(async () => outcome);
+    const runSignInEmail = vi.fn(async () => outcome);
+    const actions = createSignInActions(platform, {
+      flagSource: { VITE_AUTH_ENABLE_EMAIL_PASSWORD: "true" },
+      getRecaptchaVerifier: () => ({}) as never,
+      callAuthenticate,
+      runRegisterEmail,
+      runSignInEmail,
+    });
+
+    expect([...actions.enabledProviders]).toEqual(["email"]);
+
+    await actions.registerWithEmail("a@b.co", "pw");
+    expect(runRegisterEmail).toHaveBeenCalledWith(platform.auth, "a@b.co", "pw", {
+      callAuthenticate,
+    });
+
+    await actions.signInWithEmail("a@b.co", "pw");
+    expect(runSignInEmail).toHaveBeenCalledWith(platform.auth, "a@b.co", "pw", {
+      callAuthenticate,
+    });
+  });
+
   it("wires the phone send action to auth, number, and a fresh reCAPTCHA verifier", async () => {
     const verifier = { kind: "verifier" } as never;
     const confirmation = { confirm: vi.fn() } as unknown as PhoneConfirmation;

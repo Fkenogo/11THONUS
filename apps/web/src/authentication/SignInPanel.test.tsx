@@ -19,6 +19,8 @@ function makeActions(overrides: Partial<SignInPanelActions> = {}): SignInPanelAc
   return {
     enabledProviders: new Set(["phone_otp", "google_sign_in"]),
     signInWithGoogle: vi.fn(async () => registered),
+    registerWithEmail: vi.fn(async () => registered),
+    signInWithEmail: vi.fn(async () => registered),
     sendPhoneCode: vi.fn(async () => ({ confirm: vi.fn() }) as unknown as PhoneConfirmation),
     confirmPhoneCode: vi.fn(async () => registered),
     ...overrides,
@@ -69,6 +71,81 @@ describe("SignInPanel — Google flow", () => {
     expect(alert).toBeInTheDocument();
     // Never echoes a server message or the error code as a raw string.
     expect(alert.textContent).not.toContain("auth_forbidden");
+  });
+});
+
+describe("SignInPanel — Email/Password flow (AUTH-CORR-003)", () => {
+  it("registers a new Email/Password user", async () => {
+    const registerWithEmail = vi.fn(async () => registered);
+    const onSignedIn = vi.fn();
+    const actions = makeActions({ enabledProviders: new Set(["email"]), registerWithEmail });
+    render(<SignInPanel actions={actions} onSignedIn={onSignedIn} />);
+
+    await userEvent.type(screen.getByLabelText(/email/i), "new@user.co");
+    await userEvent.type(screen.getByLabelText(/password/i), "pw123456");
+    await userEvent.click(screen.getByRole("button", { name: /create account/i }));
+
+    await waitFor(() => expect(onSignedIn).toHaveBeenCalledWith(registered));
+    expect(registerWithEmail).toHaveBeenCalledWith("new@user.co", "pw123456");
+  });
+
+  it("signs in a returning Email/Password user", async () => {
+    const signInWithEmail = vi.fn(async () => registered);
+    const onSignedIn = vi.fn();
+    const actions = makeActions({ enabledProviders: new Set(["email"]), signInWithEmail });
+    render(<SignInPanel actions={actions} onSignedIn={onSignedIn} />);
+
+    await userEvent.type(screen.getByLabelText(/email/i), "back@user.co");
+    await userEvent.type(screen.getByLabelText(/password/i), "pw123456");
+    await userEvent.click(screen.getByRole("button", { name: /sign in with email/i }));
+
+    await waitFor(() => expect(onSignedIn).toHaveBeenCalledWith(registered));
+    expect(signInWithEmail).toHaveBeenCalledWith("back@user.co", "pw123456");
+  });
+
+  it("does not leave the password rendered in the DOM after authentication", async () => {
+    const actions = makeActions({ enabledProviders: new Set(["email"]) });
+    render(<SignInPanel actions={actions} />);
+
+    await userEvent.type(screen.getByLabelText(/email/i), "u@x.co");
+    await userEvent.type(screen.getByLabelText(/password/i), "top-secret-pw");
+    await userEvent.click(screen.getByRole("button", { name: /sign in with email/i }));
+
+    await waitFor(() => expect(screen.getByText(/registered/i)).toBeInTheDocument());
+    expect((screen.getByLabelText(/password/i) as HTMLInputElement).value).toBe("");
+    expect(document.body.textContent).not.toContain("top-secret-pw");
+  });
+});
+
+describe("SignInPanel — Phone OTP is optional, not required (AUTH-CORR-003)", () => {
+  it("does not render any Phone UI when only Email and Google are enabled", () => {
+    render(
+      <SignInPanel
+        actions={makeActions({ enabledProviders: new Set(["email", "google_sign_in"]) })}
+      />,
+    );
+    expect(screen.getByRole("button", { name: /continue with google/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
+    // Phone is not forced: no phone number field and no send-code button.
+    expect(screen.queryByLabelText(/phone number/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /send code/i })).not.toBeInTheDocument();
+  });
+
+  it("lets a customer complete Google sign-in with no Phone interaction", async () => {
+    const signInWithGoogle = vi.fn(async () => registered);
+    const onSignedIn = vi.fn();
+    render(
+      <SignInPanel
+        actions={makeActions({
+          enabledProviders: new Set(["email", "google_sign_in"]),
+          signInWithGoogle,
+        })}
+        onSignedIn={onSignedIn}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: /continue with google/i }));
+    await waitFor(() => expect(onSignedIn).toHaveBeenCalledWith(registered));
+    expect(makeActions().sendPhoneCode).not.toHaveBeenCalled();
   });
 });
 

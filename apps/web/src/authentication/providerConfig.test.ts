@@ -13,8 +13,8 @@ import {
  * misconfigured build from silently exposing a live sign-in path.
  */
 describe("AUTH_PROVIDER_IDS", () => {
-  it("is the closed MVP registry (phone_otp, google_sign_in) only", () => {
-    expect([...AUTH_PROVIDER_IDS].sort()).toEqual(["google_sign_in", "phone_otp"]);
+  it("is the closed MVP registry (google_sign_in, email, phone_otp) only [AUTH-CORR-003]", () => {
+    expect([...AUTH_PROVIDER_IDS].sort()).toEqual(["email", "google_sign_in", "phone_otp"]);
   });
 });
 
@@ -22,6 +22,8 @@ describe("isAuthProviderEnabled — disabled by default, fail closed", () => {
   it("is disabled when the flag is absent", () => {
     expect(isAuthProviderEnabled({}, "phone_otp")).toBe(false);
     expect(isAuthProviderEnabled({}, "google_sign_in")).toBe(false);
+    expect(isAuthProviderEnabled({}, "email")).toBe(false);
+    expect(isAuthProviderEnabled({ VITE_AUTH_ENABLE_EMAIL_PASSWORD: "true" }, "email")).toBe(true);
   });
 
   it('is enabled only when the explicit flag is exactly "true"', () => {

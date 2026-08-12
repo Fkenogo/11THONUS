@@ -10,6 +10,19 @@ Running log of all controlled changes to the documentation suite. Every consolid
 
 ---
 
+## Entry 105 — `AUTH-CORR-003` Multi-Provider Authentication Policy Alignment (Google + Email/Password + optional Phone OTP)
+
+- **Date:** 12 August 2026
+- **Performed by:** Claude (AI agent), per Founder task "AUTH-CORR-003 Resume After I18N-001" — implements the Founder multi-provider authentication decision; resumed only after `I18N-001` verified merged/authoritative on `main` (`0bc8975`). AUTH-10+ not authorized; hosted-preview not executed.
+- **Founder decision recorded:** MVP approved providers = **Google + Email/Password + optional Phone OTP** (Apple/email-link/passkeys deferred); providers are alternative methods, none defines identity (one identity → one Firebase principal → one or more methods).
+- **Governance amended (supersession, history preserved):** `DEC-AUTH-001` D-A2 (email/password now Included, phone optional — original struck through); `DEC-SEC-001` (phone no longer primary/mandatory); `DEC-PROV-004` (Email/Password added; SMS route optional); `TRD12 §12.4.1` (MVP-scope note); `AUTH-BP` §1/§3/§14 (provider list + multi-provider hosted-preview closure criteria).
+- **Code (TDD):** AUTH-02 `VERIFIED_PROVIDER_TO_REFERENCE_TYPE` += `password → email` (Firebase `sign_in_provider` = `password`, authoritative); AUTH-04 email provider (`providerConfig`, new `emailPasswordSignInFlow.ts`, `createSignInActions`, `SignInPanel` Email/Password section — Google retained, Phone optional); AUTH-06 recovery map += `email → email_verification` (existing governed category). All new customer copy via I18N-001 (en+fr), none hard-coded.
+- **Validation:** functions 566/566; web 335/335; typecheck/lint/format/build clean; e2e 1/1.
+- **Security:** Firebase-only credential authority; no custom password store; password never persisted/logged/returned; fail-closed verification, closed taxonomy, deny-by-default Rules preserved.
+- **Status:** implemented, pending Founder-authorized review/merge (not self-merged); hosted-preview not executed; AUTH-10 not started; dirty primary worktree untouched. See the [`AUTH-CORR-003` report](../05-implementation/reports/AUTH-CORR-003-multi-provider-authentication-2026-08-12.md).
+
+---
+
 ## Entry 104 — `I18N-001` Centralized Localization Foundation (frontend, TDD) + AUTH-04 copy retrofit
 
 - **Date:** 11 August 2026
