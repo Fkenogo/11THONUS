@@ -105,7 +105,7 @@ Every behavioural module was written test-first, each test observed failing (mod
   - **P1 #1 — `frame-src` resolver iframe** (`5d48d82`): the popup loads `https://<authDomain>/__/auth/iframe`; added `https://eleventh-on-us-dev.firebaseapp.com` to `frame-src` (both blocks) + regression assertion.
   - **P1 #2 — GAPI popup bootstrap** (next commit): the popup loads `https://apis.google.com/js/api.js` and a gapi messaging iframe; added `https://apis.google.com` to `script-src` **and** `frame-src` (both blocks) + regression assertion.
   - CSP test now 7/7. No human reviewer has commented at the time of writing.
-- **CI:** first commit `e5b4f7f` green (run 31599991110); frame-src fix `5d48d82` green (run 31601471084); gapi fix — appended below.
+- **CI:** first commit `e5b4f7f` green (run 31599991110); frame-src fix `5d48d82` green (run 31601471084); gapi fix `bd3de3a` green (run 31603990029). **Final reviewed head SHA: `bd3de3a`** — CI green; a Codex re-review was requested after the fix and produced no further findings on the current head.
 
 ## 12. Resulting status & remaining prerequisites
 
