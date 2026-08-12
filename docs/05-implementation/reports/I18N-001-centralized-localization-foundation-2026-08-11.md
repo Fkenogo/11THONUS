@@ -91,6 +91,12 @@ Revert the I18N-001 commit(s) or discard the branch: removes the `i18n/` module,
 
 PR opened on this branch; **not self-merged**. **AUTH-CORR-003 not resumed.** **AUTH-10 not started.** Dirty primary worktree untouched. (PR number / final reviewed head appended after CI + review.)
 
-## 27. Independent review disposition
+## 27. Independent review disposition (PR #99)
 
-_Appended after the PR's automated review + CI complete._
+The Codex automated reviewer ran on first head `75374af` and raised **3 findings, all P2, all VALID and in-scope** for a localization foundation — each fixed in place (TDD regression added), history preserved:
+
+- **F-R1 (P2, accessibility):** the document root `<html lang>` was not synced to the active language, so assistive tech treated French UI as English. **Fixed** — `config.ts` now sets `document.documentElement.lang` to the resolved base language on initial detection and on every `languageChanged`. Regression test added.
+- **F-R2 (P2, correctness):** the `LanguageSwitcher` derived its pressed state from an exact `SUPPORTED_LANGUAGES` match, so a region-qualified active language (`fr-FR`) fell back to `en` and announced the wrong language pressed. **Fixed** — introduced `baseLanguage()` and the switcher now derives from the resolved base language. Regression test added (`fr-FR` → French pressed).
+- **F-R3 (P2, i18n correctness):** `SignInPanel` stored the *translated* error string in state, so a live language switch left a visible alert in the old language. **Fixed** — it now stores the stable error *code* and translates at render time. Regression test added (English alert → switch → French alert).
+
+Re-validation after fixes: web **322/322** (+3 regression tests over the +15), typecheck/lint/format/build clean, e2e **1/1**, functions **564/564** (untouched). **No unresolved P1/P2 finding remains.** Final reviewed head: `<appended after re-push CI>`.

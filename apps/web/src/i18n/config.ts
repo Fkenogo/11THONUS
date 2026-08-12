@@ -32,6 +32,26 @@ export const resources = {
   fr: { common: fr.common, auth: fr.auth },
 } as const;
 
+/** Base language code (`fr-FR` → `fr`), constrained to a supported language. */
+export function baseLanguage(language: string | null | undefined): SupportedLanguage {
+  const base = (language ?? "").split("-")[0];
+  return (SUPPORTED_LANGUAGES as readonly string[]).includes(base)
+    ? (base as SupportedLanguage)
+    : DEFAULT_LANGUAGE;
+}
+
+/**
+ * Keep the document root `lang` attribute in sync with the active language so
+ * screen readers and language-aware browser features treat the UI correctly
+ * (accessibility). Applied on initial detection and on every change.
+ */
+function syncDocumentLanguage(): void {
+  if (typeof document !== "undefined") {
+    document.documentElement.lang = baseLanguage(i18n.resolvedLanguage ?? i18n.language);
+  }
+}
+i18n.on("languageChanged", syncDocumentLanguage);
+
 if (!i18n.isInitialized) {
   void i18n
     .use(LanguageDetector)
@@ -56,5 +76,9 @@ if (!i18n.isInitialized) {
       react: { useSuspense: false },
     });
 }
+
+// Apply once for the language resolved during initialization (the
+// `languageChanged` handler above covers every subsequent switch).
+syncDocumentLanguage();
 
 export default i18n;

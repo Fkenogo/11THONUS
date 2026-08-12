@@ -53,6 +53,16 @@ describe("i18n foundation", () => {
     expect(localStorage.getItem(LANGUAGE_STORAGE_KEY)).toBe("fr");
   });
 
+  it("keeps the document root lang attribute in sync with the active language (a11y)", async () => {
+    await i18n.changeLanguage("en");
+    expect(document.documentElement.lang).toBe("en");
+    await i18n.changeLanguage("fr");
+    expect(document.documentElement.lang).toBe("fr");
+    // Region variants resolve to the base language on the root attribute.
+    await i18n.changeLanguage("fr-FR");
+    expect(document.documentElement.lang).toBe("fr");
+  });
+
   it("keeps the English and French catalogs structurally in parity", () => {
     const keyPaths = (obj: unknown, prefix = ""): string[] =>
       obj && typeof obj === "object"
@@ -82,6 +92,20 @@ describe("LanguageSwitcher", () => {
   it("offers exactly the supported languages", () => {
     render(<LanguageSwitcher />);
     expect(screen.getAllByRole("button")).toHaveLength(SUPPORTED_LANGUAGES.length);
+  });
+
+  it("marks the correct language pressed for a region-qualified active language", async () => {
+    await i18n.changeLanguage("fr-FR");
+    render(<LanguageSwitcher />);
+    // Resolved base language is `fr` — French must be the pressed option.
+    expect(screen.getByRole("button", { name: "Français" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: "English" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
   });
 });
 

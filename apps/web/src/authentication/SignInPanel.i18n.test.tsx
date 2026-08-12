@@ -64,6 +64,30 @@ describe("SignInPanel — localization (I18N-001 retrofit)", () => {
     expect(screen.getByLabelText(fr.auth.signIn.ariaLabel)).toBeInTheDocument();
   });
 
+  it("re-translates a visible error alert when the language changes at runtime", async () => {
+    const { AuthenticateError } = await import("./authenticateClient");
+    const { act } = await import("@testing-library/react");
+    const { default: userEvent } = await import("@testing-library/user-event");
+    const actions = makeActions({
+      enabledProviders: new Set(["google_sign_in"]),
+      signInWithGoogle: vi.fn(async () => {
+        throw new AuthenticateError("auth_forbidden");
+      }),
+    });
+    render(<SignInPanel actions={actions} />);
+    await userEvent.click(screen.getByRole("button", { name: en.auth.signIn.continueWithGoogle }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toBe(en.auth.errors.auth_forbidden);
+
+    // Switching language must update the already-visible alert (code is stored,
+    // not the translated string).
+    await act(async () => {
+      await i18n.changeLanguage("fr");
+    });
+    expect(screen.getByRole("alert").textContent).toBe(fr.auth.errors.auth_forbidden);
+  });
+
   it("localizes the stable error message via keys without leaking the code", async () => {
     await i18n.changeLanguage("fr");
     const { AuthenticateError } = await import("./authenticateClient");

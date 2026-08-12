@@ -5,7 +5,7 @@
  * language is persisted by the LanguageDetector's localStorage cache.
  */
 import { useTranslation } from "react-i18next";
-import { SUPPORTED_LANGUAGES, DEFAULT_LANGUAGE, type SupportedLanguage } from "./config";
+import { SUPPORTED_LANGUAGES, baseLanguage, type SupportedLanguage } from "./config";
 
 /**
  * Autonyms — each language labelled in its OWN name, so a speaker can find
@@ -18,11 +18,9 @@ const LANGUAGE_AUTONYM: Record<SupportedLanguage, string> = {
 
 export function LanguageSwitcher() {
   const { i18n, t } = useTranslation("common");
-  const current: SupportedLanguage = (SUPPORTED_LANGUAGES as readonly string[]).includes(
-    i18n.language,
-  )
-    ? (i18n.language as SupportedLanguage)
-    : DEFAULT_LANGUAGE;
+  // Derive from the resolved base language so a region-qualified active value
+  // (e.g. `fr-FR`) still marks the correct language pressed.
+  const current: SupportedLanguage = baseLanguage(i18n.resolvedLanguage ?? i18n.language);
 
   return (
     <div role="group" aria-label={t("language.label")}>

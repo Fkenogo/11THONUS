@@ -16,7 +16,11 @@
 import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { AuthProviderId } from "./providerConfig";
-import { AuthenticateError, type AuthenticateOutcome } from "./authenticateClient";
+import {
+  AuthenticateError,
+  type AuthenticateErrorCode,
+  type AuthenticateOutcome,
+} from "./authenticateClient";
 import type { PhoneConfirmation } from "./phoneSignInFlow";
 
 export type SignInPanelActions = {
@@ -37,17 +41,18 @@ export function SignInPanel({
   const phoneInputId = useId();
   const codeInputId = useId();
 
-  // Stable, non-leaking client messages — one per code, never a server string.
-  function messageFor(error: unknown): string {
-    const code = error instanceof AuthenticateError ? error.code : "failed";
-    return t(`errors.${code}`);
+  // Store the stable error *code*, not a translated string, so a runtime
+  // language switch re-translates any visible alert (never leaks a server
+  // message — one message per code, resolved at render time).
+  function codeFor(error: unknown): AuthenticateErrorCode {
+    return error instanceof AuthenticateError ? error.code : "failed";
   }
 
   const [phoneNumber, setPhoneNumber] = useState("");
   const [code, setCode] = useState("");
   const [confirmation, setConfirmation] = useState<PhoneConfirmation | null>(null);
   const [outcome, setOutcome] = useState<AuthenticateOutcome | null>(null);
-  const [errorText, setErrorText] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState<AuthenticateErrorCode | null>(null);
   const [busy, setBusy] = useState(false);
 
   const phoneEnabled = actions.enabledProviders.has("phone_otp");
@@ -62,18 +67,18 @@ export function SignInPanel({
     if (confirmation) {
       setConfirmation(null);
       setCode("");
-      setErrorText(null);
+      setErrorCode(null);
     }
   }
 
   async function run(op: () => Promise<AuthenticateOutcome | PhoneConfirmation | void>) {
     if (busy) return;
     setBusy(true);
-    setErrorText(null);
+    setErrorCode(null);
     try {
       return await op();
     } catch (error) {
-      setErrorText(messageFor(error));
+      setErrorCode(codeFor(error));
       return undefined;
     } finally {
       setBusy(false);
@@ -116,7 +121,7 @@ export function SignInPanel({
   return (
     <section aria-label={t("signIn.ariaLabel")} className="flex flex-col gap-4">
       {outcome && <p role="status">{t("signIn.signedIn", { mode: outcome.mode })}</p>}
-      {errorText && <p role="alert">{errorText}</p>}
+      {errorCode && <p role="alert">{t(`errors.${errorCode}`)}</p>}
 
       {googleEnabled && (
         <button type="button" onClick={handleGoogle} disabled={busy}>
