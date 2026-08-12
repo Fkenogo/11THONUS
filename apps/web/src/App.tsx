@@ -18,6 +18,20 @@ const DevPhoneAuthHarnessRoute = import.meta.env.DEV
     )
   : null;
 
+// AUTH-PREVIEW-READINESS-001: the multi-provider sign-in preview's authoritative
+// hosted-validation surface is the isolated `sign-in-preview` build
+// (`sign-in-preview.html` / `signInPreviewMain.tsx`). This secondary dev-server
+// route mounts the same page for convenient local testing, guarded on the literal
+// `import.meta.env.DEV` so Vite statically drops it from the production bundle —
+// the same build-time exclusion the phone-auth harness route uses.
+const DevSignInPreviewRoute = import.meta.env.DEV
+  ? lazy(() =>
+      import("./dev/signInPreview/SignInPreviewPage").then((m) => ({
+        default: () => <m.SignInPreviewPage dev={import.meta.env.DEV} />,
+      })),
+    )
+  : null;
+
 function AppShell() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-3 p-8 text-center">
@@ -40,6 +54,16 @@ function App() {
           element={
             <Suspense fallback={null}>
               <DevPhoneAuthHarnessRoute />
+            </Suspense>
+          }
+        />
+      )}
+      {DevSignInPreviewRoute && (
+        <Route
+          path="/dev/sign-in-preview"
+          element={
+            <Suspense fallback={null}>
+              <DevSignInPreviewRoute />
             </Suspense>
           }
         />

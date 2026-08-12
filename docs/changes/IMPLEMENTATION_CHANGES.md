@@ -2607,3 +2607,20 @@
 - **Programme impact:** MVP provider policy corrected; Authentication concern remains `Validation Complete — closure pending` the (now multi-provider) Founder-executed hosted-preview check; Capability 2 `Open`.
 - **Rollback:** revert the AUTH-CORR-003 commit(s) — removes the email mapping, flow, UI, recovery mapping; restores the phone+Google MVP + prior governance wording. No data/migration impact.
 - **Report link:** [`AUTH-CORR-003-multi-provider-authentication-2026-08-12.md`](../05-implementation/reports/AUTH-CORR-003-multi-provider-authentication-2026-08-12.md).
+
+## 2026-08-12 — AUTH-PREVIEW-READINESS-001 — Multi-Provider Authentication Hosted-Preview Readiness
+
+- **Date:** 2026-08-12
+- **Task:** `AUTH-PREVIEW-READINESS-001` (resolves the `AUTH-PROVIDER-CONFIG-001` prerequisites P-1/P-2/P-3). Readiness only — no deploy, no hosted-preview execution, no AUTH-10.
+- **Status:** Implemented (TDD) — pending Founder-authorized review/merge; not self-merged.
+- **Entry `origin/main`:** `457f4aba01b469089ddfb56facc9620503625122` (AUTH-CORR-003 PR #100 merged; I18N-001 PR #99 merged; CI green).
+- **P-1 (preview surface):** new isolated `sign-in-preview` build (CR3-style, Founder-selected) — `apps/web/sign-in-preview.html` + `src/dev/signInPreview/{signInPreviewMain.tsx, SignInPreviewPage.tsx, signInPreviewPlatform.ts, signInPreviewGate.ts}`, `viteBuildModes.ts` helper, `build:sign-in-preview` script, and a secondary DEV-only `/dev/sign-in-preview` route in `App.tsx`. Mounts the **existing** `SignInPanel` via the **existing** `createSignInActions` over the shared Firebase modules (no auth logic duplicated); reuses `LanguageSwitcher` (I18N-001). Disabled-by-default provider flags; Email/Password + Google for the mandatory core, Phone OTP optional/non-default; fail-closed gate (flag+mode+project). Structurally excluded from the production bundle and omits the PWA SW (empirically grep-verified both directions).
+- **P-2 (Hosting CSP):** in both `firebase.json` CSP blocks: `connect-src` += `https://europe-west1-eleventh-on-us-dev.cloudfunctions.net` (the `authenticate` callable); and, after two Codex P1 review findings for Google `signInWithPopup`, `frame-src` += `https://eleventh-on-us-dev.firebaseapp.com` (Firebase Auth resolver iframe) and `script-src`+`frame-src` += `https://apis.google.com` (GAPI popup bootstrap + gapi iframe). Without these Google sign-in is CSP-blocked on a hosted channel. No wildcard; reCAPTCHA/Google + Identity Toolkit origins and all restrictive directives preserved. Regression test added/extended (7/7).
+- **P-3 (docs):** documented `VITE_AUTH_ENABLE_{EMAIL_PASSWORD,GOOGLE_SIGN_IN,PHONE_OTP}` + `VITE_ENABLE_SIGN_IN_PREVIEW` in `apps/web/.env.example` (blank, fail-closed; no secrets).
+- **Files changed:** see report §8. **Backend:** none (`functions/` byte-identical to `main`). **Firebase Console / deploy / preview channel:** none.
+- **Tests (TDD):** web **378/378** (+43: gate 9, platform 10, page 12, build-isolation 6, App route 1, CSP 5); functions **567/567** (unchanged); `emulators:validate` **221/221**; e2e **1/1**; typecheck/lint/format/build clean.
+- **Security/identity:** identity model unchanged (provider ≠ identity); Firebase credential authority; no raw password/token/OTP persisted/logged/rendered; deny-by-default Rules unchanged; no client write path; preview `noindex` + no PWA SW; project-ID allowlist on the preview platform.
+- **Migrations:** none. **Dependencies added:** none. **Config:** new build mode `sign-in-preview`; new disabled-by-default flag `VITE_ENABLE_SIGN_IN_PREVIEW`.
+- **Programme impact:** Authentication concern → `Validation Complete — hosted-preview ready`; final closure still depends on `AUTH-HOSTED-PREVIEW-002` PASS (Founder-executed). Capability 2 remains `Open`.
+- **Rollback:** revert the single PR; no data/migration/backend/console/deploy impact.
+- **Report link:** [`AUTH-PREVIEW-READINESS-001-multi-provider-hosted-preview-readiness-2026-08-12.md`](../05-implementation/reports/AUTH-PREVIEW-READINESS-001-multi-provider-hosted-preview-readiness-2026-08-12.md).

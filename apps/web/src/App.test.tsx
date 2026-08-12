@@ -29,4 +29,14 @@ describe("App shell", () => {
       }),
     ).toBeInTheDocument();
   });
+
+  it("wires the multi-provider sign-in preview at a dev-only, lazily-loaded route (isolated hosted build is the authoritative validation surface)", async () => {
+    render(
+      <MemoryRouter initialEntries={["/dev/sign-in-preview"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole("heading", { name: /Sign-in preview/i })).toBeInTheDocument();
+  });
 });
