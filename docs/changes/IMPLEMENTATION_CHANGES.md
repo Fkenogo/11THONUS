@@ -2624,3 +2624,17 @@
 - **Programme impact:** Authentication concern → `Validation Complete — hosted-preview ready`; final closure still depends on `AUTH-HOSTED-PREVIEW-002` PASS (Founder-executed). Capability 2 remains `Open`.
 - **Rollback:** revert the single PR; no data/migration/backend/console/deploy impact.
 - **Report link:** [`AUTH-PREVIEW-READINESS-001-multi-provider-hosted-preview-readiness-2026-08-12.md`](../05-implementation/reports/AUTH-PREVIEW-READINESS-001-multi-provider-hosted-preview-readiness-2026-08-12.md).
+
+## 2026-08-13 — AUTH-HOSTED-PREVIEW-002 (Stage 2) — Temporary Hosting Preview Deploy
+
+- **Date:** 2026-08-13
+- **Task:** `AUTH-HOSTED-PREVIEW-002` Stage 2 — deploy the merged isolated multi-provider sign-in preview to a temporary Firebase Hosting preview channel for Founder manual authentication validation. No runtime code change; ops/deployment + governance-tracking only.
+- **Git SHA tested/deployed:** `63f9ec9296a416b38829cb3cdfce94a35d7806af` (origin/main; AUTH-PREVIEW-READINESS-001 merge).
+- **Build:** `pnpm --filter web build:sign-in-preview` (isolated bundle, 79 modules; env from Founder-held `apps/web/.env.sign-in-preview.local`, values never printed/committed). Provider surface: Email/Password + Google enabled, Phone OTP disabled (mandatory core); en+fr resources present; no scaffold/phone-harness/PWA in the bundle; production-build isolation intact.
+- **Deploy (Hosting-only):** `firebase hosting:channel:deploy auth-preview-002 --project eleventh-on-us-dev --expires 7d`. Only Hosting deployed (4 files); no Functions/Firestore/Storage/Rules/Auth/App Check/OAuth change.
+- **Channel:** `auth-preview-002` · **Project:** `eleventh-on-us-dev` · **Preview URL:** `https://eleventh-on-us-dev--auth-preview-002-n6w9rkv8.web.app` · **Expires:** 2026-08-19.
+- **Authorized domains:** verified read-only (Identity Toolkit GET) — the preview-channel domain is present in Firebase Auth `authorizedDomains` (auto-added on deploy; localhost/firebaseapp.com/web.app also present). No domain added/removed by the agent.
+- **Static smoke (no authentication performed):** page loads; Email/Password visible; Google visible; Phone absent; English default; French switch renders the translated surface; no CSP/bootstrap/Firebase-init console errors.
+- **Not performed:** no Firebase user created; no email/password entered; no Google popup; no OTP/SMS; no phone number; no sign-in completed by the agent. No AUTH-10.
+- **Status:** Authentication concern `Validation Complete — hosted-preview deployed; Founder manual validation pending` (see CDR-001 §5 / Master Workflow). Capability 2 remains `Open — partially implemented; not closed`. Not self-merged; preview channel retained for Founder testing.
+- **Rollback/cleanup (after Founder validation recorded):** `firebase hosting:channel:delete auth-preview-002 --project eleventh-on-us-dev` (or let the 7d expiry lapse); re-confirm the channel domain leaves `authorizedDomains`; remove the local `apps/web/.env.sign-in-preview.local`. The `live` Hosting channel was never touched.
