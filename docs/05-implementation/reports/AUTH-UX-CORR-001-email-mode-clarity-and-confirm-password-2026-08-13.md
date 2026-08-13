@@ -21,7 +21,7 @@ Two explicit Email modes via local presentation state (`emailMode: "signin" | "r
 ## 4. Files modified
 - `apps/web/src/authentication/SignInPanel.tsx` — mode state, confirm-password field, validation, switch controls, autocomplete semantics.
 - `apps/web/src/i18n/locales/en.ts` / `fr.ts` — new keys `confirmPasswordLabel`, `passwordMismatch`, `switchToRegister`, `switchToSignIn` (parity preserved).
-- Tests: new `SignInPanel.emailMode.test.tsx` (9); updated `SignInPanel.test.tsx`, `SignInPanel.i18n.test.tsx`, `dev/signInPreview/SignInPreviewPage.test.tsx` for the mode model.
+- Tests: new `SignInPanel.emailMode.test.tsx` (11, incl. two review-driven regressions — mismatch clears on either password field, and a stale server error is dropped before a client-side mismatch); updated `SignInPanel.test.tsx`, `SignInPanel.i18n.test.tsx`, `dev/signInPreview/SignInPreviewPage.test.tsx` for the mode model.
 - Docs: this report + change-tracking (§13).
 - **No backend/contract/provider-flag/Rules/model change.** `SignInPanelActions` (incl. `registerWithEmail(email, password)`) unchanged.
 
@@ -35,7 +35,7 @@ Labels bound via `htmlFor`/`id`; register password + confirm use `new-password`,
 All new copy via I18N-001 in en + fr; catalog parity test green; no hard-coded customer-facing copy. English default + French switching verified.
 
 ## 8. Validation
-- web **395/395** (+9 new email-mode tests); functions **567/567** (unchanged); `emulators:validate` **221/221**; e2e **1/1**; typecheck/lint/format clean.
+- web **397/397** (+11 new email-mode tests); functions **567/567** (unchanged); `emulators:validate` **221/221**; e2e **1/1**; typecheck/lint/format clean.
 - Preview `build:sign-in-preview` succeeds and carries the corrected `SignInPanel` (en+fr confirm-password copy present in the bundle); production build excludes the preview (isolation intact both directions).
 - RED→GREEN: the 9 email-mode tests were written first and observed failing (missing keys/feature) before implementation.
 

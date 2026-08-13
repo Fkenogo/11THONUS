@@ -129,6 +129,10 @@ export function SignInPanel({
   // error, and focus the confirm field. Only `email`+`password` reach
   // `registerWithEmail` — the confirm value is never passed on.
   async function handleCreateAccount() {
+    // Start a fresh attempt: drop any prior server error so it can never be
+    // announced alongside a new client-side mismatch (only `run()` clears it,
+    // and the mismatch path below returns before reaching `run()`).
+    setErrorCode(null);
     if (password !== confirmPassword) {
       setLocalError("passwordMismatch");
       confirmPasswordRef.current?.focus();

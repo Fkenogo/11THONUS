@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SignInPanel, type SignInPanelActions } from "./SignInPanel";
-import type { AuthenticateOutcome } from "./authenticateClient";
+import { AuthenticateError, type AuthenticateOutcome } from "./authenticateClient";
 import type { PhoneConfirmation } from "./phoneSignInFlow";
 import { en } from "../i18n/locales/en";
 
@@ -172,6 +172,35 @@ describe("SignInPanel — Email mode clarity (AUTH-UX-CORR-001)", () => {
       "aria-invalid",
       "false",
     );
+  });
+
+  it("clears a stale server error before showing a client-side mismatch (Codex P2)", async () => {
+    // First create attempt reaches Firebase and fails → server errorCode is set.
+    const registerWithEmail = vi
+      .fn<SignInPanelActions["registerWithEmail"]>()
+      .mockRejectedValueOnce(new AuthenticateError("auth_forbidden"))
+      .mockResolvedValue(registered);
+    render(<SignInPanel actions={emailActions({ registerWithEmail })} />);
+    await userEvent.click(screen.getByRole("button", { name: en.auth.signIn.switchToRegister }));
+    await userEvent.type(screen.getByLabelText(en.auth.signIn.emailLabel), "new@user.co");
+    await userEvent.type(screen.getByLabelText(en.auth.signIn.passwordLabel), "pw123456");
+    await userEvent.type(screen.getByLabelText(en.auth.signIn.confirmPasswordLabel), "pw123456");
+    await userEvent.click(screen.getByRole("button", { name: en.auth.signIn.createAccount }));
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent(en.auth.errors.auth_forbidden),
+    );
+
+    // Retry with a NON-matching confirm: only the mismatch must show — the stale
+    // server error must not still be announced alongside it. (Both fields were
+    // cleared after the failed attempt, so a real retry re-enters them.)
+    await userEvent.type(screen.getByLabelText(en.auth.signIn.passwordLabel), "pw123456");
+    await userEvent.type(screen.getByLabelText(en.auth.signIn.confirmPasswordLabel), "different");
+    await userEvent.click(screen.getByRole("button", { name: en.auth.signIn.createAccount }));
+
+    const alerts = await screen.findAllByRole("alert");
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0]).toHaveTextContent(en.auth.signIn.passwordMismatch);
+    expect(document.body.textContent).not.toContain(en.auth.errors.auth_forbidden);
   });
 
   it("uses new-password autocomplete in register mode and current-password in sign-in mode", async () => {
