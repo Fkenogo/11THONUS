@@ -2624,3 +2624,18 @@
 - **Programme impact:** Authentication concern → `Validation Complete — hosted-preview ready`; final closure still depends on `AUTH-HOSTED-PREVIEW-002` PASS (Founder-executed). Capability 2 remains `Open`.
 - **Rollback:** revert the single PR; no data/migration/backend/console/deploy impact.
 - **Report link:** [`AUTH-PREVIEW-READINESS-001-multi-provider-hosted-preview-readiness-2026-08-12.md`](../05-implementation/reports/AUTH-PREVIEW-READINESS-001-multi-provider-hosted-preview-readiness-2026-08-12.md).
+
+## 2026-08-13 — AUTH-UX-CORR-001 — Email Mode Clarity & Confirm-Password Correction
+
+- **Date:** 2026-08-13
+- **Task:** `AUTH-UX-CORR-001` — bounded frontend UX correction discovered during `AUTH-HOSTED-PREVIEW-002` Stage 5 (Founder validation). No authentication architecture/semantics change; no backend change.
+- **Status:** Implemented (TDD) — pending Founder-authorized review/merge; not self-merged.
+- **Base:** `main` `63f9ec9`.
+- **Change:** `SignInPanel` gains two explicit Email modes (`signin` default / `register`) via local state — Sign-in shows Email+Password+"Sign in with email"+"New here? Create account"; Register shows Email+Password+**Confirm password**+"Create account"+"Already have an account? Sign in". Confirm-password is frontend validation only: mismatch fails closed (no Firebase), shows a localized accessible `role="alert"` bound to the confirm field (`aria-describedby`/`aria-invalid`), focuses it; match calls the **unchanged** `registerWithEmail(email, password)` (confirm never passed/persisted/logged). Mode switch never calls Firebase; clears password+confirm+errors; preserves email. Autocomplete: register password+confirm=`new-password`, sign-in password=`current-password`.
+- **Files:** `apps/web/src/authentication/SignInPanel.tsx` (+ new `SignInPanel.emailMode.test.tsx`; updated `SignInPanel.test.tsx`, `SignInPanel.i18n.test.tsx`, `dev/signInPreview/SignInPreviewPage.test.tsx`); `apps/web/src/i18n/locales/{en,fr}.ts` (+`confirmPasswordLabel`,`passwordMismatch`,`switchToRegister`,`switchToSignIn`, parity preserved). No backend/contract/flag/Rules change.
+- **Validation:** web **397/397** (+11); functions **567/567**; `emulators:validate` **221/221**; e2e **1/1**; typecheck/lint/format clean; preview build carries the corrected panel (en+fr), production excludes the preview (isolation intact).
+- **Security:** confirm-password validation-only; never sent to Firebase/authenticate, never persisted/logged/returned; password+confirm cleared after use and on mode switch; no `console`/storage of credentials.
+- **Migrations / dependencies / config / Firebase / deployment:** none.
+- **Governance:** `F-UX-1` resolved; the Founder elected it as an Authentication-concern closure condition (not an original AUTH-BP §14 criterion; historical §14 evidence not rewritten). Remaining §14 item: Founder Email/Password hosted retest.
+- **Rollback:** revert the PR; no data/migration/deploy impact. A later bounded preview refresh may be authorized to redeploy `auth-preview-002` with this change.
+- **Report:** [`AUTH-UX-CORR-001-email-mode-clarity-and-confirm-password-2026-08-13.md`](../05-implementation/reports/AUTH-UX-CORR-001-email-mode-clarity-and-confirm-password-2026-08-13.md).
