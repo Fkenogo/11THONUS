@@ -156,6 +156,24 @@ describe("SignInPanel — Email mode clarity (AUTH-UX-CORR-001)", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
+  it("clears the mismatch error when the primary password is edited to match (Codex P2)", async () => {
+    render(<SignInPanel actions={emailActions()} />);
+    await userEvent.click(screen.getByRole("button", { name: en.auth.signIn.switchToRegister }));
+    await userEvent.type(screen.getByLabelText(en.auth.signIn.emailLabel), "new@user.co");
+    await userEvent.type(screen.getByLabelText(en.auth.signIn.passwordLabel), "pw123456");
+    await userEvent.type(screen.getByLabelText(en.auth.signIn.confirmPasswordLabel), "pw1234");
+    await userEvent.click(screen.getByRole("button", { name: en.auth.signIn.createAccount }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(en.auth.signIn.passwordMismatch);
+
+    // Correcting via the PRIMARY password field must clear the stale error + aria-invalid.
+    await userEvent.type(screen.getByLabelText(en.auth.signIn.passwordLabel), "56");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByLabelText(en.auth.signIn.confirmPasswordLabel)).toHaveAttribute(
+      "aria-invalid",
+      "false",
+    );
+  });
+
   it("uses new-password autocomplete in register mode and current-password in sign-in mode", async () => {
     render(<SignInPanel actions={emailActions()} />);
     expect(screen.getByLabelText(en.auth.signIn.passwordLabel)).toHaveAttribute(

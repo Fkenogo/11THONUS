@@ -206,7 +206,12 @@ export function SignInPanel({
             type="password"
             autoComplete={registerMode ? "new-password" : "current-password"}
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              // A mismatch can be corrected from either field — clear the stale
+              // validation state when the primary password changes too.
+              if (localError) setLocalError(null);
+            }}
           />
 
           {registerMode ? (
