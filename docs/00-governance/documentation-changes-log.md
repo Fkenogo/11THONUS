@@ -10,6 +10,18 @@ Running log of all controlled changes to the documentation suite. Every consolid
 
 ---
 
+## Entry 107 — `AUTH-UX-CORR-001` Email Mode Clarity & Confirm-Password Correction (frontend UX, TDD)
+
+- **Date:** 13 August 2026
+- **Performed by:** Claude (AI agent), per Founder task "AUTH-UX-CORR-001" — a bounded frontend UX correction discovered during `AUTH-HOSTED-PREVIEW-002` Stage 5 Founder validation. No authentication architecture/semantics change; no backend/Firebase/deploy change.
+- **Change:** `SignInPanel` now presents two explicit Email states — **Sign-in mode** (Email + Password + "Sign in with email" + "New here? Create account") and **Register mode** (Email + Password + **Confirm password** + "Create account" + "Already have an account? Sign in"). Confirm-password is frontend validation only (mismatch fails closed with a localized accessible `role="alert"` bound to the field; never sent to Firebase/`authenticate`, never persisted/logged/returned); the `registerWithEmail(email, password)` contract is unchanged. Mode switching never calls Firebase and clears credentials + stale errors while preserving the email.
+- **Localization:** new keys `confirmPasswordLabel`, `passwordMismatch`, `switchToRegister`, `switchToSignIn` added to en + fr (I18N-001; parity preserved; no hard-coded copy).
+- **Validation (TDD):** web 395/395 (+9); functions 567/567; `emulators:validate` 221/221; e2e 1/1; typecheck/lint/format clean; preview build carries the corrected panel, production excludes it (isolation intact).
+- **Governance:** `F-UX-1` recorded **resolved**; the Founder **elected** to treat this hosted-preview-discovered UX issue as an Authentication-concern closure condition (not an original `AUTH-BP` §14 criterion; historical §14 evidence not rewritten). The remaining mandatory §14 item is the Founder Email/Password hosted retest.
+- **Status:** implemented, pending Founder-authorized review/merge (not self-merged); no deploy/console/preview-channel change; AUTH-10 not started; dirty primary worktree untouched; preview channel `auth-preview-002` retained. See the [`AUTH-UX-CORR-001` report](../05-implementation/reports/AUTH-UX-CORR-001-email-mode-clarity-and-confirm-password-2026-08-13.md).
+
+---
+
 ## Entry 106 — `AUTH-PREVIEW-READINESS-001` Multi-Provider Authentication Hosted-Preview Readiness (frontend build + Hosting CSP, TDD)
 
 - **Date:** 12 August 2026

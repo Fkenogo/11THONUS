@@ -13,7 +13,7 @@
  * account linking is AUTH-05; recovery is AUTH-06 — deliberately not here.
  */
 
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { AuthProviderId } from "./providerConfig";
 import {
@@ -44,6 +44,9 @@ export function SignInPanel({
   const codeInputId = useId();
   const emailInputId = useId();
   const passwordInputId = useId();
+  const confirmPasswordInputId = useId();
+  const mismatchErrorId = useId();
+  const confirmPasswordRef = useRef<HTMLInputElement | null>(null);
 
   // Store the stable error *code*, not a translated string, so a runtime
   // language switch re-translates any visible alert (never leaks a server
@@ -57,6 +60,13 @@ export function SignInPanel({
   const [confirmation, setConfirmation] = useState<PhoneConfirmation | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  // Register mode only; frontend validation value — never sent to Firebase/authenticate,
+  // never persisted/logged/returned, never enters a domain object or event.
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [emailMode, setEmailMode] = useState<"signin" | "register">("signin");
+  // Client-side validation error, kept separate from the server `errorCode` so the
+  // two never collide and each clears independently.
+  const [localError, setLocalError] = useState<"passwordMismatch" | null>(null);
   const [outcome, setOutcome] = useState<AuthenticateOutcome | null>(null);
   const [errorCode, setErrorCode] = useState<AuthenticateErrorCode | null>(null);
   const [busy, setBusy] = useState(false);
@@ -101,16 +111,42 @@ export function SignInPanel({
   }
 
   // Register (new) and sign-in (returning) are distinct Firebase operations;
-  // the password is cleared unconditionally after either so it never lingers in
-  // state/DOM (mirrors the OTP-clearing guard). Firebase is the sole credential
-  // authority — 11thONUS stores/logs/returns no password.
+  // password and confirm-password are cleared unconditionally after either so
+  // neither lingers in state/DOM (mirrors the OTP-clearing guard). Firebase is
+  // the sole credential authority — 11thONUS stores/logs/returns no password.
   async function runEmail(op: (email: string, password: string) => Promise<AuthenticateOutcome>) {
     const result = await run(() => op(email, password));
     setPassword("");
+    setConfirmPassword("");
     if (result) {
       setOutcome(result as AuthenticateOutcome);
       onSignedIn?.(result as AuthenticateOutcome);
     }
+  }
+
+  // Create Account: frontend-only confirm-password validation before any Firebase
+  // call. On mismatch, fail closed (no Firebase), surface a localized accessible
+  // error, and focus the confirm field. Only `email`+`password` reach
+  // `registerWithEmail` — the confirm value is never passed on.
+  async function handleCreateAccount() {
+    if (password !== confirmPassword) {
+      setLocalError("passwordMismatch");
+      confirmPasswordRef.current?.focus();
+      return;
+    }
+    setLocalError(null);
+    await runEmail(actions.registerWithEmail);
+  }
+
+  // Switching Email modes is a pure UI transition: never invokes Firebase; clears
+  // both credential values and any stale validation/server errors; preserves the
+  // (non-sensitive) email so a customer who mistyped a mode keeps their address.
+  function switchEmailMode(next: "signin" | "register") {
+    setEmailMode(next);
+    setPassword("");
+    setConfirmPassword("");
+    setLocalError(null);
+    setErrorCode(null);
   }
 
   async function handleSendCode() {
@@ -138,7 +174,10 @@ export function SignInPanel({
     );
   }
 
-  const emailPasswordFilled = email.trim() !== "" && password !== "";
+  const registerMode = emailMode === "register";
+  const emailFilled = email.trim() !== "";
+  const signInReady = emailFilled && password !== "";
+  const registerReady = emailFilled && password !== "" && confirmPassword !== "";
 
   return (
     <section aria-label={t("signIn.ariaLabel")} className="flex flex-col gap-4">
@@ -165,24 +204,53 @@ export function SignInPanel({
           <input
             id={passwordInputId}
             type="password"
-            autoComplete="current-password"
+            autoComplete={registerMode ? "new-password" : "current-password"}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
-          <button
-            type="button"
-            onClick={() => runEmail(actions.registerWithEmail)}
-            disabled={busy || !emailPasswordFilled}
-          >
-            {t("signIn.createAccount")}
-          </button>
-          <button
-            type="button"
-            onClick={() => runEmail(actions.signInWithEmail)}
-            disabled={busy || !emailPasswordFilled}
-          >
-            {t("signIn.emailSignIn")}
-          </button>
+
+          {registerMode ? (
+            <>
+              <label htmlFor={confirmPasswordInputId}>{t("signIn.confirmPasswordLabel")}</label>
+              <input
+                id={confirmPasswordInputId}
+                ref={confirmPasswordRef}
+                type="password"
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value);
+                  if (localError) setLocalError(null);
+                }}
+                aria-invalid={localError === "passwordMismatch"}
+                aria-describedby={localError === "passwordMismatch" ? mismatchErrorId : undefined}
+              />
+              {localError === "passwordMismatch" && (
+                <p id={mismatchErrorId} role="alert">
+                  {t("signIn.passwordMismatch")}
+                </p>
+              )}
+              <button type="button" onClick={handleCreateAccount} disabled={busy || !registerReady}>
+                {t("signIn.createAccount")}
+              </button>
+              <button type="button" onClick={() => switchEmailMode("signin")} disabled={busy}>
+                {t("signIn.switchToSignIn")}
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => runEmail(actions.signInWithEmail)}
+                disabled={busy || !signInReady}
+              >
+                {t("signIn.emailSignIn")}
+              </button>
+              <button type="button" onClick={() => switchEmailMode("register")} disabled={busy}>
+                {t("signIn.switchToRegister")}
+              </button>
+            </>
+          )}
         </div>
       )}
 

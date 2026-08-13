@@ -75,15 +75,17 @@ describe("SignInPanel — Google flow", () => {
 });
 
 describe("SignInPanel — Email/Password flow (AUTH-CORR-003)", () => {
-  it("registers a new Email/Password user", async () => {
+  it("registers a new Email/Password user (register mode + confirm password)", async () => {
     const registerWithEmail = vi.fn(async () => registered);
     const onSignedIn = vi.fn();
     const actions = makeActions({ enabledProviders: new Set(["email"]), registerWithEmail });
     render(<SignInPanel actions={actions} onSignedIn={onSignedIn} />);
 
-    await userEvent.type(screen.getByLabelText(/email/i), "new@user.co");
-    await userEvent.type(screen.getByLabelText(/password/i), "pw123456");
-    await userEvent.click(screen.getByRole("button", { name: /create account/i }));
+    await userEvent.click(screen.getByRole("button", { name: /new here\? create account/i }));
+    await userEvent.type(screen.getByLabelText(/^email$/i), "new@user.co");
+    await userEvent.type(screen.getByLabelText(/^password$/i), "pw123456");
+    await userEvent.type(screen.getByLabelText(/confirm password/i), "pw123456");
+    await userEvent.click(screen.getByRole("button", { name: /^create account$/i }));
 
     await waitFor(() => expect(onSignedIn).toHaveBeenCalledWith(registered));
     expect(registerWithEmail).toHaveBeenCalledWith("new@user.co", "pw123456");

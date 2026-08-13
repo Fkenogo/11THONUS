@@ -57,12 +57,16 @@ describe("SignInPreviewPage — gating", () => {
 });
 
 describe("SignInPreviewPage — provider surface (reuses the real SignInPanel)", () => {
-  it("exposes Email/Password when the email provider is enabled", () => {
+  it("exposes Email/Password when the email provider is enabled (sign-in mode default + register switch)", async () => {
+    const user = userEvent.setup();
     render(<SignInPreviewPage dev previewBuild actions={makeActions(["email"])} />);
     expect(screen.getByLabelText(en.auth.signIn.emailLabel)).toBeInTheDocument();
     expect(screen.getByLabelText(en.auth.signIn.passwordLabel)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: en.auth.signIn.createAccount })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: en.auth.signIn.emailSignIn })).toBeInTheDocument();
+    // The Create Account surface (with Confirm password) is reachable via the switch.
+    await user.click(screen.getByRole("button", { name: en.auth.signIn.switchToRegister }));
+    expect(screen.getByLabelText(en.auth.signIn.confirmPasswordLabel)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: en.auth.signIn.createAccount })).toBeInTheDocument();
   });
 
   it("exposes Google when the google provider is enabled", () => {

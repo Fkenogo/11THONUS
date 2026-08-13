@@ -44,21 +44,32 @@ describe("SignInPanel — localization (I18N-001 retrofit)", () => {
     expect(screen.getByRole("button", { name: en.auth.signIn.sendCode })).toBeInTheDocument();
   });
 
-  it("renders the Email/Password provider choice in English by default [AUTH-CORR-003]", () => {
+  it("renders the Email/Password sign-in-mode copy in English by default [AUTH-CORR-003 / AUTH-UX-CORR-001]", async () => {
+    const { default: userEvent } = await import("@testing-library/user-event");
     render(<SignInPanel actions={makeActions({ enabledProviders: new Set(["email"]) })} />);
+    // Sign-in mode (default): email + password + returning-sign-in + switch control.
     expect(screen.getByLabelText(en.auth.signIn.emailLabel)).toBeInTheDocument();
     expect(screen.getByLabelText(en.auth.signIn.passwordLabel)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: en.auth.signIn.createAccount })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: en.auth.signIn.emailSignIn })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: en.auth.signIn.switchToRegister }),
+    ).toBeInTheDocument();
+    // Register mode adds the confirm-password field and the Create account submit.
+    await userEvent.click(screen.getByRole("button", { name: en.auth.signIn.switchToRegister }));
+    expect(screen.getByLabelText(en.auth.signIn.confirmPasswordLabel)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: en.auth.signIn.createAccount })).toBeInTheDocument();
   });
 
-  it("renders the Email/Password provider choice in French when selected [AUTH-CORR-003]", async () => {
+  it("renders the Email/Password register-mode copy in French when selected [AUTH-CORR-003 / AUTH-UX-CORR-001]", async () => {
     await i18n.changeLanguage("fr");
+    const { default: userEvent } = await import("@testing-library/user-event");
     render(<SignInPanel actions={makeActions({ enabledProviders: new Set(["email"]) })} />);
     expect(screen.getByLabelText(fr.auth.signIn.emailLabel)).toBeInTheDocument();
     expect(screen.getByLabelText(fr.auth.signIn.passwordLabel)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: fr.auth.signIn.switchToRegister }));
+    expect(screen.getByLabelText(fr.auth.signIn.confirmPasswordLabel)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: fr.auth.signIn.createAccount })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: fr.auth.signIn.emailSignIn })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: fr.auth.signIn.switchToSignIn })).toBeInTheDocument();
   });
 
   it("renders the full multi-provider choice UI in French [AUTH-CORR-003]", async () => {
