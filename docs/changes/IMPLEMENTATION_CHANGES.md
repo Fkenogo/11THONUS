@@ -2651,3 +2651,13 @@
 - **Preview/test disposition:** `auth-preview-002` retained until this closure PR merges, then delete or expire (2026-08-21); env file + Firebase test users retained (deletion not authorized).
 - **Rollback:** revert the closure PR (docs-only) — reopens the concern status wording; no data/runtime impact.
 - **Report:** [`AUTH-HOSTED-PREVIEW-002-authentication-concern-closure-2026-08-14.md`](../05-implementation/reports/AUTH-HOSTED-PREVIEW-002-authentication-concern-closure-2026-08-14.md).
+
+## `ENG-P2-004-DESIGN-001` — Role-Context & Permission-Resolution Architecture (design/architecture only, no implementation)
+
+- **Date:** 14 August 2026
+- **Performed by:** Claude (AI agent), per Founder-issued bounded design task for `ENG-P2-004`. Design/architecture only — no production code, Firestore Rules, migration, UI, or deployment.
+- **Action:** delivers a design package resolving the four implementation-level prerequisites `DEC-ID-003` (CONFIRMED, 2026-07-30) left undesigned: (1) Sensitive Permission Catalogue (8 MVP sensitive permissions with inheritance/grant/audit rules), (2) Override-Resolution Rule (deterministic, fail-closed decision table and evaluation algorithm), (3) Permission Evaluation Design (service inputs/outputs/algorithm, reusing the existing Internal Customer ID, no second identity system), (4) Permission Audit Design (recommends reusing the existing outbox/audit-projection pattern already proven by `ENG-P2-001-10`/`AUTH-08`, not a new audit system) — plus cross-business role-context isolation (structural single-membership-per-evaluation invariant). `DEC-ID-003`'s own policy is not reopened or altered.
+- **Status change:** `ENG-P2-004` remains **Not started — Unauthorised** (design only). Capability 2 remains `Open — partially implemented; not closed`; Authentication `Complete`; ITM `Not started — Unauthorised`. Five Founder decision points identified (dual control for high-blast-radius permissions, evaluator caching, audit-mechanism confirmation, error-taxonomy-usage confirmation, implementation decomposition into four sub-packages 004A–004D) — see the design package §15.
+- **Files:** new design document + pointer-only notes in Master Workflow §6/§17, Engineering Implementation Programme (`ENG-P2-004` Notes cell), CDR-001 §5, this entry, documentation-changes-log. **No runtime/backend/config change. No Firebase change. No deployment. No decision-register change.**
+- **Rollback:** revert this task's commit(s) — additive documentation only.
+- **Report:** [`ENG-P2-004-DESIGN-001-role-context-permission-resolution-architecture.md`](../05-implementation/roadmap/ENG-P2-004-DESIGN-001-role-context-permission-resolution-architecture.md).
