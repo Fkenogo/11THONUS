@@ -139,7 +139,7 @@ Not applicable within one evaluation: a request always carries exactly one `busi
 
 8. **Suspended/removed membership** → deny (row above; membership-state gate).
 9. **Inactive/suspended business** → deny (row above; business-state gate) — regardless of membership or role.
-10. **Missing/unknown permission identifier** → deny, mapped to a data-integrity/validation error (§13), not silently treated as "no restriction."
+10. **Missing/unknown permission identifier** → deny, mapped to a data-integrity/validation error (§11), not silently treated as "no restriction."
 
 ## 5. Role-Context Isolation (Phase E)
 
@@ -191,7 +191,7 @@ Every permission decision's audit record carries both the accountable identity (
 
 ### 6.2 Outputs
 
-`AuthorizationDecision`: `allowed: boolean`, `reasonCode` (from §13's closed set), `role` (resolved role, if a membership was found), `permissionSource` ("owner-floor" | "role-default" | "explicit-grant" | "n/a-denied"), `evaluatedAt`. This is the TRD12 §12.12 contract, extended only by the `permissionSource` values §4 requires — no field is removed or renamed.
+`AuthorizationDecision`: `allowed: boolean`, `reasonCode` (from §11's closed set), `role` (resolved role, if a membership was found), `permissionSource` ("owner-floor" | "role-default" | "explicit-grant" | "n/a-denied"), `evaluatedAt`. This is the TRD12 §12.12 contract, extended only by the `permissionSource` values §4 requires — no field is removed or renamed.
 
 ### 6.3 Canonical subject identifier
 
@@ -248,7 +248,7 @@ Read-only evaluation (§6.18) does not require a transaction by itself. Where an
 
 ### 6.14 Error mapping
 
-See §13.
+See §11.
 
 ### 6.15 Dependency direction
 
@@ -313,7 +313,7 @@ Where governance requires durable attribution (every sensitive decision, §7.1),
 | `decisionSource` | One of: `role-default`, `explicit-grant`, `explicit-revocation`, `sensitive-rule`, `business-state-gate`, `membership-state-gate`, `owner-floor`, `unknown-permission` |
 | `effectiveRole` | Resolved role at time of decision, if a membership was found |
 | `overrideId` | Reference to the specific override entry applied, if any (traceability, not the whole override list) |
-| `reasonCode` | The `§13` closed error/decision code |
+| `reasonCode` | The `§11` closed error/decision code |
 | `correlationId` | Request correlation id (TRD11 §11.36) |
 | `schemaVersion` | Integer, starts at 1 |
 | `privacyClassification` | TRD21 §21.6 Class 2 (Internal Operational Data) — the record contains no PII beyond identifiers already treated as operational elsewhere in the outbox |
@@ -380,7 +380,7 @@ Mapped onto the existing closed 14-category taxonomy (TRD11 §11.35, governed by
 | Unauthenticated (no verified `userId`) | `AUTH_REQUIRED` |
 | Identity unavailable / resolution failure | `AUTH_REQUIRED` |
 | Membership missing (no record for `(userId, businessId)`) | `AUTH_FORBIDDEN` |
-| Membership inactive (`invited`/`suspended`/`removed`) | `ACCOUNT_SUSPENDED` (membership-level) or `AUTH_FORBIDDEN` if `invited`/`removed` — see note below |
+| Membership inactive (`invited`/`suspended`/`removed`) | `AUTH_FORBIDDEN` (uniform for all non-active membership states — AD-4, §17) |
 | Business inactive/suspended | `BUSINESS_INACTIVE` |
 | Permission denied (role default insufficient, no override) | `AUTH_FORBIDDEN` |
 | Sensitive permission not explicitly granted | `AUTH_FORBIDDEN` |
