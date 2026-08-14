@@ -218,7 +218,7 @@ Each profile below follows the same structure: Phase ID, Name, Purpose, Primary 
 | Implementation Report | *(future link)* | *(future link)* | *(future link)* | *(future link)* |
 | Commit Hash | *(future placeholder)* | *(future placeholder)* | *(future placeholder)* | *(future placeholder)* |
 | Deployment Reference | *(future placeholder)* | *(future placeholder)* | *(future placeholder)* | *(future placeholder)* |
-| Notes | Loyalty-code format depends on the DEC-DATA-007 decision brief (Task 7 companion) | Business "always has at least one active owner" (BR-007) must be enforced from creation | — | Security requirement: "loyalty number does not authenticate the customer" (TRD22 §22.12) |
+| Notes | Loyalty-code format depends on the DEC-DATA-007 decision brief (Task 7 companion) | Business "always has at least one active owner" (BR-007) must be enforced from creation | — | Security requirement: "loyalty number does not authenticate the customer" (TRD22 §22.12). **2026-08-14:** bounded design package [`ENG-P2-004-DESIGN-001`](../roadmap/ENG-P2-004-DESIGN-001-role-context-permission-resolution-architecture.md) delivered for Founder review — resolves the `DEC-ID-003` implementation prerequisites (Sensitive Permission Catalogue, Override-Resolution Rule, Permission Evaluation and Audit Design, cross-business role-context isolation). Design only; Status remains `Blocked` (implementation not authorized). |
 
 ---
 
