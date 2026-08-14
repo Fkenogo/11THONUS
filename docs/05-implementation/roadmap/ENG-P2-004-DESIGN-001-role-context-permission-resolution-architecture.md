@@ -1,8 +1,8 @@
 > **Title:** ENG-P2-004-DESIGN-001 — Role-Context & Permission-Resolution Architecture
-> **Version:** 1.0 · **Status:** Design package — prepared for Founder decision; NOT an implementation authorization · **Classification:** Working (execution-layer architecture record)
+> **Version:** 1.1 · **Status:** Design package — Founder dispositions recorded (§17); NOT an implementation authorization · **Classification:** Working (execution-layer architecture record)
 > **Governing document:** [Decision Register](../../00-governance/decisions/decision-register.md) `DEC-ID-003` (CONFIRMED, 2026-07-30); [`CDR-001` Capability 2](CDR-001-capability-delivery-roadmap.md#capability-2--customer-identity) / Capability 3; [ENG-P2-ARCH-001](ENG-P2-ARCH-001-customer-identity-architecture.md); PRD1; TRD10 §10.6.4; TRD11 §11.17, §11.34–11.37; TRD12 §12.7–12.16; TRD21 §21.6
 > **Source-of-truth path:** `docs/05-implementation/roadmap/ENG-P2-004-DESIGN-001-role-context-permission-resolution-architecture.md`
-> **Last controlled update:** 2026-08-14 (`ENG-P2-004-DESIGN-001` — created)
+> **Last controlled update:** 2026-08-14 (`ENG-P2-004-DESIGN-001` v1.1 — Founder dispositions AD-1–AD-5 recorded on F-1–F-5, §17; F-5/004D decomposition corrected to remove a Capability-3 sequencing dependency; F-4 configuration-integrity error mapping corrected)
 
 # ENG-P2-004-DESIGN-001 — Role-Context & Permission-Resolution Architecture
 
@@ -79,7 +79,7 @@ Rows 1–6 above (`staff.manage`, `staff.assignPermissions`, `business.transferO
 
 ### 3.4 Elevated approval / dual control
 
-**Not governed today.** No existing decision (`DEC-ID-003` or otherwise) specifies a dual-control or multi-party-approval mechanism for any permission. This package does **not** design one. Any permission that might eventually need dual control (candidate: `business.transferOwnership`) is marked **FUTURE / OUT OF SCOPE** — flagged as a Founder decision point in §15 (F-1) rather than designed here.
+**Resolved (AD-1, §17): no dual control in MVP.** No existing decision (`DEC-ID-003` or otherwise) specifies a dual-control or multi-party-approval mechanism for any permission, and the Founder has confirmed (§17 AD-1) that MVP will not introduce one. Every sensitive permission in the catalogue (§3.2), including `business.transferOwnership`, resolves under the ordinary sensitive-permission rule: never implicitly inherited, explicit grant required, deny-by-default, mandatorily audited where the catalogue marks it so. No dual-control state machine (pending-approval state, second-approver identity, expiry/timeout handling) is designed anywhere in this package — that would be speculative design for a workflow no governed product capability currently requires. Dual control remains a possible future addition, most plausibly attached to a future ownership-transfer workflow once one is actually built, and would require its own decision record at that time (§17 AD-1).
 
 ### 3.5 Owner-level permissions
 
@@ -236,11 +236,11 @@ Every branch in §6.9 that is not an explicit `allow` terminates in `deny`; ther
 
 ### 6.11 Stale/missing-data behavior
 
-A missing `businessMemberships` document, a missing business document, or a corrupt/unparseable `permissions` field are all treated as deny with `reasonCode = CONFIGURATION_INTEGRITY_FAILURE` (§13) — never as "no restriction found, allow."
+A missing `businessMemberships` document, a missing business document, or a corrupt/unparseable `permissions` field are all treated as deny — never as "no restriction found, allow." The client-facing outcome is `AUTH_FORBIDDEN` (§11, AD-4); the internal `reasonCode` distinguishes the specific cause (e.g. `CONFIGURATION_INTEGRITY_FAILURE`) for logs and audit only, never exposed as a distinct client-visible taxonomy category.
 
 ### 6.12 Caching
 
-TRD12 §12.11 permits brief caching ("should be cacheable briefly but must remain revocable"). This package sets that as: **no caching in the evaluator itself for v1** — every call re-reads Firestore. A future optimization (short-TTL, revocation-aware cache) is explicitly deferred, not designed here (§15 F-2), because TRD12 §12.9 already flags the specific risk (stale claims allowing a suspended staff member to act) that any cache design must not reintroduce.
+**Resolved (AD-2, §17): no cross-request evaluator cache in MVP — governed, not merely recommended.** TRD12 §12.11 permits brief caching ("should be cacheable briefly but must remain revocable"), but the Founder has confirmed (§17 AD-2) that MVP will not exercise that permission: every evaluation call re-reads Firestore for authoritative current state. No shared decision cache, no cache-invalidation machinery, and no stale-permission window may be introduced by an `ENG-P2-004` implementation. This directly satisfies TRD12 §12.9's staleness warning (a suspended staff member's next request is denied immediately, not after a cache window expires). A future governed optimization may reconsider caching only if demonstrated load requires it — that would be a new, separately authorized design decision, not an extension performed under this package.
 
 ### 6.13 Transaction/consistency expectations
 
@@ -278,9 +278,9 @@ Every decision on a **sensitive** permission (§3.2) is audited, allow or deny. 
 
 ### 7.2 Mechanism: reuse the existing outbox, do not build a second system
 
-**Recommendation:** reuse the TRD11 §11.17 outbox pattern and the read-side audit-projection precedent already built and proven by `ENG-P2-001-10` (Identity Audit and Observability Foundation) and reused again by `AUTH-08`. Comparison against a dedicated permission-audit repository:
+**Resolved (AD-3, §17): reuse the existing shared outbox/audit architecture — governed, not merely recommended.** No second permission-audit subsystem may be built. Comparison against a dedicated permission-audit repository (retained for the record):
 
-| Criterion | Reuse outbox + projection (recommended) | Dedicated permission-audit store |
+| Criterion | Reuse outbox + projection (adopted) | Dedicated permission-audit store (rejected) |
 |---|---|---|
 | Matches TRD11 §11.17's idempotent/retry/status contract | Yes, already built | Would have to rebuild it |
 | Precedent in this repo | Yes — `ENG-P2-001-10`, `AUTH-08` both do exactly this | None |
@@ -288,7 +288,13 @@ Every decision on a **sensitive** permission (§3.2) is audited, allow or deny. 
 | Privacy-classification reuse (TRD21 §21.6) | Direct — `ENG-P2-001-10` already reuses it verbatim | Would need re-deriving |
 | Query/read-side shape | Bounded, paginated query functions over `outboxEntries`, precedent exists | Undesigned |
 
-No governed reason favors a dedicated store; this package recommends outbox reuse and treats it as settled unless the Founder wants to weigh in (§15 lists it as F-3 in case there is a reason not visible from documentation alone).
+**Consistency boundary (Founder-directed clarification, AD-3):** the later implementation must preserve a specific consistency relationship between three distinct things, and must not collapse it into a disconnected best-effort emission:
+
+1. **The authorization decision** (§6, an in-process, read-only evaluation — never itself persisted).
+2. **The protected command/action** (the mutating domain command the decision gates — e.g. suspending a staff member, reversing a transaction).
+3. **The required sensitive-decision audit evidence** (§7.3's `PermissionAuditRecord`, mandatory for every sensitive-permission decision per §7.1).
+
+Where governance requires durable attribution (every sensitive decision, §7.1), the audit-record write is **not** an un-awaited, fire-and-forget emission — it follows the same durable-awaited-outbox-write-with-deterministic-`eventId` discipline `AUTH-08` already established for its own domain events (§7.4): the outbox entry is written **in the same transaction** as the protected command's own state change, so a sensitive decision's audit evidence and the action it gates commit atomically together, or neither does. An evaluation that only *logs* (non-sensitive decisions, §7.1) has no such atomicity requirement — only sensitive-decision audit evidence carries this durability guarantee.
 
 ### 7.3 Audit record shape
 
@@ -337,7 +343,7 @@ No Firestore collection-level schema changes are proposed beyond what TRD10 §10
 
 ## 9. Security & Privacy (Phase I)
 
-Verified against: deny-by-default (§4.1.7, §6.10), least privilege (§3.3 never-implicit set), explicit sensitive grants (§4.1.4), no implicit privilege escalation (§3.6 Owner floor is structural, not grantable), business isolation (§5.6), no cross-tenant leakage (§5), identity immutability (unaffected — this package adds no identity mutation), auditability (§7), enumeration resistance (permission-check failures return a uniform `AUTH_FORBIDDEN`/`VALIDATION_FAILED`, never revealing whether a business/membership exists to an unauthorized caller — §13), closed error taxonomy (§13, no new category introduced), no raw credential/token persistence (§7.3 excludes it explicitly).
+Verified against: deny-by-default (§4.1.7, §6.10), least privilege (§3.3 never-implicit set), explicit sensitive grants (§4.1.4), no implicit privilege escalation (§3.6 Owner floor is structural, not grantable), business isolation (§5.6), no cross-tenant leakage (§5), identity immutability (unaffected — this package adds no identity mutation), auditability (§7), enumeration resistance (permission-check failures return a uniform `AUTH_FORBIDDEN`/`VALIDATION_FAILED`, never revealing whether a business/membership exists to an unauthorized caller, and never distinguishing "denied" from "server could not soundly determine" — §11), closed error taxonomy (§11, no new category introduced), no raw credential/token persistence (§7.3 excludes it explicitly).
 
 ### Abuse cases and mitigations
 
@@ -380,11 +386,16 @@ Mapped onto the existing closed 14-category taxonomy (TRD11 §11.35, governed by
 | Sensitive permission not explicitly granted | `AUTH_FORBIDDEN` |
 | Invalid/unrecognized `businessContextId` | `VALIDATION_FAILED` |
 | Unknown/unrecognized permission identifier | `VALIDATION_FAILED` |
-| Configuration/data-integrity failure (§6.11) | `TEMPORARY_UNAVAILABLE` (retryable) if transient read failure; `VALIDATION_FAILED` if the stored data is structurally invalid |
+| Transient infrastructure read failure (e.g. Firestore timeout/unavailable) | `TEMPORARY_UNAVAILABLE` (retryable) |
+| Structurally invalid / corrupt **server-owned stored** authorization state (§6.11 — a malformed `businessMemberships` document, an unrecognized `role` value, a corrupt `permissions` override entry, or a missing/corrupt catalogue or role-template config) | `AUTH_FORBIDDEN` (fail-closed deny) — **corrected mapping, AD-4, §17** |
 
-**Note:** distinguishing `invited`/`removed` membership from `suspended` membership within the existing taxonomy needs one Founder-visible judgment call — both fit `AUTH_FORBIDDEN` (the taxonomy's general "not permitted" code) equally well as `ACCOUNT_SUSPENDED` (which reads as user-account-level, not membership-level, in existing usage). **This package's recommendation:** use `AUTH_FORBIDDEN` uniformly for all non-active membership states, reserving `ACCOUNT_SUSPENDED` for platform-user-level suspension (its existing, established usage) — avoiding taxonomy overload rather than requesting a new category. If a future implementer finds this insufficiently granular, the closed-taxonomy governance (`F9B-DEC-001`) requires escalation before adding a category — this package does not pre-authorize one (Phase K instruction: "STOP and escalate before inventing one" — no invention performed).
+**Resolved (AD-4, §17): `AUTH_FORBIDDEN` uniformly for all non-active membership states.** Both `invited`/`removed` and `suspended` membership map to `AUTH_FORBIDDEN`, reserving `ACCOUNT_SUSPENDED` for its established platform-user-level meaning (its existing, established usage elsewhere in the codebase) — avoiding taxonomy overload rather than requesting a new category.
+
+**Correction to the server-owned configuration/data-integrity mapping (Founder-directed, AD-4, §17):** the original design text mapped "structurally invalid stored data" to `VALIDATION_FAILED`. The Founder correctly flagged this as a misclassification: `VALIDATION_FAILED` is established in this taxonomy for *client-supplied* input the caller can fix by sending something different; a corrupt or structurally invalid `businessMemberships` document, an unrecognized `role` value, or a malformed permission override is **server-owned data**, not client input, and retrying with the same request cannot fix it — it is neither a validation failure of the caller's input nor a transient condition. On review, the existing closed taxonomy *can* represent this condition correctly without inventing a category: it maps to `AUTH_FORBIDDEN` — the taxonomy's fail-closed "not permitted" code — because a permission decision that cannot be soundly computed must resolve to deny, exactly as every other unresolved-in-the-caller's-favor branch in §6.9/§6.10 does; the client-visible response therefore never distinguishes "you don't have this permission" from "the server could not soundly determine whether you have this permission," which is also correct enumeration-resistance behavior (§9) — it does not leak that a data-integrity defect exists. The actual defect detail (which document, which field, why) is captured only in the internal `reasonCode`/structured log (TRD11 §11.36), never in the client-facing taxonomy code. Genuinely transient infrastructure failures (a timed-out or momentarily unavailable Firestore read) remain distinct and correctly map to `TEMPORARY_UNAVAILABLE`, because those *are* retryable and are not a data-integrity defect. No new error category is required or authorized by this correction — the existing taxonomy fully represents both conditions once mapped correctly. If a future implementer finds this insufficiently granular for operational purposes, the closed-taxonomy governance (`F9B-DEC-001`) requires escalation before adding a category — this package does not pre-authorize one.
 
 ## 12. Capability-3 Dependency Boundary (Phase L)
+
+**Dependency direction (corrected per AD-5, §14/§17):** `ENG-P2-004` depends only on the already-Complete Customer Identity concern and closes independently, entirely via governed test fixtures (§14, 004D) — it does not depend on any Capability-3 code. Capability 3 (`ENG-P2-002`/`ENG-P2-003`) consumes the completed `ENG-P2-004` authorization service only after `ENG-P2-004` closes. There is no circular dependency between the two.
 
 1. **Contracts that must be stable before Capability 3 starts:** the `AuthorizationRequest`/`AuthorizationDecision` shapes (§6.1–6.2) and the role/permission identifiers in the catalogue (§3.2) plus role-default templates (§6.6) — Capability 3's staff-invitation and owner/manager UI flows will call the evaluator and need these contracts fixed.
 2. **Role-assignment vs. evaluation split:** `ENG-P2-002`/`ENG-P2-003` (Capability 3) own *creating and mutating* `businessMemberships` records (invite, accept, suspend, remove — TRD10 §10.6.4 Membership Rules, PRD1 §13 lifecycle). `ENG-P2-004` owns *evaluating* those records against a requested permission (§6). Capability 3 does not implement its own parallel authorization logic.
@@ -410,21 +421,36 @@ An `ENG-P2-004` implementation is acceptable only if it demonstrably satisfies a
 13. No credential/token/session material appears in any audit record or log (§7.3, §9).
 14. All evaluator/decision outcomes map only to the existing closed 14-category taxonomy — a test asserts no other code is ever returned (§11).
 15. **Unit tests**: full coverage of the §4.2 decision table (every row), the §6.9 algorithm's branches, and §3.6's owner-floor invariant.
-16. **Emulator/integration tests**: end-to-end evaluator calls against the Firestore emulator using real `businessMemberships` documents, including the authorization test matrix already named in the Programme's own `ENG-P2-004` row ("owner/manager/staff × action," `engineering-implementation-programme.md:213`).
+16. **Emulator/integration tests**: end-to-end evaluator calls against the Firestore emulator using real `businessMemberships` documents (created via 004D's governed test fixtures, §14 — not a dependency on any Capability-3 production command), including the authorization test matrix already named in the Programme's own `ENG-P2-004` row ("owner/manager/staff × action," `engineering-implementation-programme.md:213`).
 17. **Security tests**: forged `businessContextId` rejection, cross-business leakage rejection, revoked-permission replay rejection, privilege-escalation-via-grant rejection — each abuse case in §9 has at least one corresponding test.
 
 ## 14. Implementation Decomposition Recommendation (Phase N)
 
-**Recommendation: (B) sub-packages**, not one bounded package, based on the same risk/architecture reasoning the Programme already applied to `ENG-P2-001` (ten child packages):
+**Resolved (AD-5, §17): four sub-packages, with the 004D boundary corrected to remove a Capability-3 sequencing dependency.** The original v1.0 text proposed 004D as "wiring the evaluator into at least one real protected command (candidate: an `ENG-P2-002`/`ENG-P2-003` staff-management action, once those exist)." The Founder correctly identified that this created a circular dependency: `ENG-P2-004` is positioned throughout this design and in `CDR-001` §5 as a prerequisite/unblocker Capability 3 consumes, but making `ENG-P2-004`'s own closure depend on a Capability-3 command existing first would mean neither capability could complete before the other — not approved. The corrected decomposition below makes `ENG-P2-004` a complete, closed, independently-consumable authorization capability entirely on its own, proven with governed test fixtures rather than a real Capability-3 command.
 
-- **004A — Catalogue & config**: Sensitive Permission Catalogue (§3), role-default templates (§6.6), versioned config data model (§8). Lowest risk, no cross-cutting dependency, unblocks everything else.
-- **004B — Permission evaluation service**: the evaluator itself (§6), decision table (§4.2), fail-closed invariants (§6.10). Depends on 004A.
-- **004C — Permission audit**: outbox-event integration (§7), audit-record projection. Depends on 004B (needs real decisions to audit) but is otherwise independently testable against a stubbed decision.
-- **004D — Integration & closure**: wiring the evaluator into at least one real protected command (candidate: an `ENG-P2-002`/`ENG-P2-003` staff-management action, once those exist) plus the full security/integration test matrix (§13 items 16–17) and Capability 2/3 closure evidence.
+- **004A — Permission Contracts & Sensitive Permission Catalogue.** Owns: permission identifiers (a governed enum, §8.3), the Sensitive Permission Catalogue (§3), role/template contracts (§6.6), and override model/configuration contracts (§8's `PermissionOverride`/`RoleTemplate`/`SensitivePermissionCatalogue`). No authorization runtime yet — this package is pure contract/config, matching TRD10 §10.6.4's existing `businessMemberships` shape without altering it. **Depends on:** the already-Complete Customer Identity concern (consumes the Internal Customer ID as the subject identifier, §6.3) — nothing else. **Acceptance boundary:** the catalogue and contracts exist, are versioned, and are independently reviewable; no evaluator exists to call them yet.
+- **004B — Permission Evaluation.** Owns: the deterministic evaluator (§6), the Override-Resolution Rule and decision table (§4), business-context isolation (§5.4–5.7), fail-closed decision semantics (§6.10, INV-1/2/3), authoritative-state reads (direct `businessMemberships`/business reads, never cached — §6.12, AD-2), and the security/unit/emulator proofs for the evaluator itself (decision-table coverage, owner-floor invariant, cross-business isolation test). **Depends on:** 004A (the catalogue and contracts it evaluates against). **Acceptance boundary:** given real or fixture `businessMemberships` documents, the evaluator produces the correct `AuthorizationDecision` for every §4.2 decision-table row and every §9 abuse case — provable entirely with fixture data, no dependency on any Capability-3 code.
+- **004C — Permission Decision Audit.** Owns: sensitive-decision audit/event integration (§7), the shared-outbox reuse and same-transaction durability discipline (§7.2's consistency-boundary clarification), the privacy-safe audit payload (§7.3, TRD21 §21.6 Class 2), and retry/idempotency behavior (deterministic `eventId`, dedup-by-`eventId`, §7.4/§10.6). **Depends on:** the stable `AuthorizationDecision` contract from 004B (needs a real decision shape to audit) — testable against 004B's decision output directly, still with no Capability-3 dependency. **Acceptance boundary:** every sensitive-permission decision (allow or deny) produces exactly one retry-safe, deduplicated audit record; non-sensitive decisions do not.
+- **004D — Authorization Boundary Integration, Security Validation & `ENG-P2-004` Closure.** **Must NOT depend on Capability 3 implementation.** Owns: the stable authorization/gate interface exposed for consuming domains (the API/service boundary, §6.16), repository/infrastructure integration (wiring 004A–004C together as one callable service), real Firestore-emulator persistence/emulator validation, the cross-business isolation proof (§5.6, §13 item 6) against real emulator data, concurrency/TOCTOU treatment (§10.8), and the full `ENG-P2-004` security/invariant validation and closure evidence (§13's acceptance criteria in their entirety). Where the acceptance criteria call for proving the evaluator against realistic protected-command scenarios (e.g. "owner/manager/staff × action," the authorization test matrix already named in the Programme's `ENG-P2-004` row), 004D uses **governed test fixtures, harnesses, and adapters internal to this package** — synthetic `businessMemberships`/business records and a minimal test-only command shim that calls the evaluator the same way a real domain command would — to prove the authorization boundary works correctly, without requiring an actual Capability-3 production command to exist. **Depends on:** 004A–004C only. **Acceptance boundary:** `ENG-P2-004` is closed — a stable, fully-tested, independently-usable authorization service exists and is ready for any consuming domain (Capability 3 or otherwise) to call.
 
-**Rationale:** mirrors the Programme's own successful decomposition pattern for `ENG-P2-001` (ten packages, each independently reviewable and mergeable); keeps the highest-risk piece (the evaluator, 004B) isolated from catalogue-content churn (004A) and from audit-plumbing churn (004C); and lets 004A–004C be authorized and merged before any real protected command exists to wire into (004D), avoiding the "half-finished integration" risk a single bounded package would carry if Capability 3's own packages are still Blocked when `ENG-P2-004` starts.
+**Corrected dependency direction (no circularity):**
 
-## 15. Founder Decision Points (Phase O)
+```
+Customer Identity (Complete)
+  → ENG-P2-004A (contracts & catalogue)
+  → ENG-P2-004B (evaluation)
+  → ENG-P2-004C (audit)
+  → ENG-P2-004D (integration, validation, closure) → ENG-P2-004 Complete
+      → Capability 3 (ENG-P2-002/ENG-P2-003) consumption/integration
+```
+
+`ENG-P2-004` depends only on the already-Complete Customer Identity concern; nothing in `ENG-P2-004A`–`004D` depends on Capability 3. Capability 3's own work packages (`ENG-P2-002`/`ENG-P2-003`) may consume the completed `ENG-P2-004` authorization service once it closes, exactly matching `CDR-001` §5's framing of `ENG-P2-004` as shared infrastructure for Capability 2 and Capability 3, not the reverse.
+
+**Rationale:** mirrors the Programme's own successful decomposition pattern for `ENG-P2-001` (ten packages, each independently reviewable and mergeable); keeps the highest-risk piece (the evaluator, 004B) isolated from catalogue-content churn (004A) and from audit-plumbing churn (004C); and — corrected per AD-5 — lets all four sub-packages, including closure, complete without waiting on Capability 3, so `ENG-P2-004` can be fully closed and handed off as a stable dependency *to* Capability 3 rather than the two capabilities blocking each other.
+
+## 15. Founder Decision Points (Phase O) — RESOLVED, see §17
+
+**All five decision points below are now resolved.** This section is preserved unmodified as the historical record of what was originally presented for Founder consideration (repository convention: preserve prior analysis, do not rewrite); §17 records the actual dispositions, rationale, dates, and authority, and supersedes the "Recommendation" column below wherever a disposition differs from what was originally recommended (only F-5's 004D boundary differs — see AD-5). The document body (§3.4, §6.12, §7.2, §11, §14) has been updated in place to reflect the governed outcome, not merely the recommendation.
 
 Only genuine policy/architecture choices not safely derivable from existing governance are listed. Implementation-level judgment calls already resolved above (e.g., decision-table precedence, audit mechanism reuse) are not repeated here.
 
@@ -445,6 +471,64 @@ Minimum, dated superseding notes only — no historical report rewritten:
 - `CDR-001-capability-delivery-roadmap.md` §5/§8: pointer to this design package added; no status value changed.
 - `docs/changes/IMPLEMENTATION_CHANGES.md` and `docs/00-governance/documentation-changes-log.md`: append-only entries recording this package's creation.
 - `decision-register.md`: **not modified** — `DEC-ID-003` is not reopened; this package is referenced from it only via the pointer already present in `DEC-ID-003`'s consequence field, which remains unchanged.
+
+## 17. Founder Dispositions (Recorded 2026-08-14)
+
+**Authority:** Founder, via task "ENG-P2-004-DESIGN-001 — Record Founder Dispositions & Correct Final Decomposition," 2026-08-14. Recorded here per this design package's own governance convention (the same inline, dated, attributed disposition pattern already used elsewhere in this repository for implementation-level Founder decisions, e.g. the `AD-1`/`AD-2` dispositions recorded in the `AUTH-07` entry of Master Workflow §17) — **not** a new Decision Register (`DEC-*`) entry, and **not** a reopening of `DEC-ID-003`. This section is the authoritative disposition record for the five items originally raised in §15; §15 itself is preserved unmodified as history.
+
+### AD-1 — Dual Control (resolves F-1)
+
+- **Disposition:** **APPROVED — Option A.** MVP will not introduce dual control for any permission.
+- **Rationale (Founder):** sensitive permissions remain never-implicitly-inherited where governed as sensitive, explicitly granted, deny-by-default, and mandatorily audited where required — that is sufficient for MVP. Dual control is deferred until a governed product capability actually requires it, particularly any future ownership-transfer workflow. No speculative dual-control state machine is to be designed within `ENG-P2-004`.
+- **Design updated:** §3.4.
+- **Superseded recommendation:** none — the Founder's disposition matches this package's original recommendation (§15 F-1, Option (i)) exactly; only the status changed from "recommended" to "governed."
+
+### AD-2 — Permission Evaluator Caching (resolves F-2)
+
+- **Disposition:** **APPROVED — Option A.** No cross-request evaluator cache in MVP.
+- **Rationale (Founder):** permission evaluation must read authoritative current state. No shared decision caching, invalidation machinery, or stale-permission window may be introduced. A future governed optimization may add caching only if demonstrated load requires it.
+- **Design updated:** §6.12, §10.7.
+- **Superseded recommendation:** none — matches §15 F-2 Option (i) exactly; status changed from "recommended" to "governed."
+
+### AD-3 — Audit Mechanism (resolves F-3)
+
+- **Disposition:** **APPROVED — Option A.** Reuse the existing shared outbox/audit architecture; no second permission-audit subsystem.
+- **Rationale (Founder):** the later implementation must preserve the correct consistency boundary between the authorization decision, the protected command/action, and the required sensitive-decision audit evidence — a disconnected best-effort audit emission is not sufficient where governance requires durable attribution. Existing transaction/idempotency/outbox patterns are to be reused wherever applicable.
+- **Design updated:** §7.2 (adds the consistency-boundary clarification as a Founder-directed addition, not present in the original recommendation).
+- **Superseded recommendation:** none in substance (§15 F-3 Option (i) was already "reuse outbox"); the consistency-boundary requirement is a **new, Founder-directed clarification** layered onto the original recommendation, not a reversal of it.
+
+### AD-4 — Error Taxonomy (resolves F-4)
+
+- **Disposition:** **APPROVED — Option A, with a correction to the configuration-integrity mapping.** `AUTH_FORBIDDEN` is used for membership-level authorization denial, including all non-active membership states; `ACCOUNT_SUSPENDED` is reserved for its established platform-account-suspension meaning. No new error category is authorized or required.
+- **Rationale (Founder):** the original v1.0 mapping of "structurally invalid stored data" to `VALIDATION_FAILED` was reviewed and found to misclassify a server-side integrity/configuration defect as client input for convenience — not acceptable. The condition must be mapped using the existing taxonomy according to its established semantics and must fail closed. On review (§11), the existing taxonomy fully represents the condition without a new category: server-owned configuration/data-integrity failures now map to `AUTH_FORBIDDEN` (fail-closed deny, consistent with every other unresolved-in-the-caller's-favor branch of the evaluation algorithm), and genuinely transient infrastructure failures remain separately mapped to `TEMPORARY_UNAVAILABLE`. The taxonomy was **not** found to be genuinely unable to represent the condition, so no escalation/STOP was triggered.
+- **Design updated:** §11 (mapping table and note rewritten), §6.11 (aligned to the corrected mapping), §9 (stray cross-reference corrected).
+- **Superseded recommendation:** the membership-state portion of §15 F-4 (Option (i)) is unchanged; the configuration-integrity portion of the original §11 text (which was not raised as an open Founder decision in §15's table, but was reviewed at the Founder's direction) is corrected as described above and superseded in place.
+
+### AD-5 — Implementation Decomposition (resolves F-5)
+
+- **Disposition:** **APPROVED — four sub-packages (004A–004D), with a required correction to the 004D boundary.**
+- **Rationale (Founder):** the original 004D proposal ("wiring the evaluator into at least one real protected command... once [`ENG-P2-002`/`ENG-P2-003`] exist") created a circular dependency — `ENG-P2-004` is described throughout this design and `CDR-001` §5 as a prerequisite/unblocker for Capability 3, but making 004D depend on a Capability-3-supplied command would mean neither could complete first. Not approved. `ENG-P2-004` must become a complete, stable, consumable authorization capability before a consuming Capability-3 command is required. 004D must not depend on Capability 3 implementation; governed test fixtures/harnesses/adapters are to be used to prove the authorization boundary without requiring an actual Capability-3 production command.
+- **Design updated:** §14 (004A–004D boundaries rewritten in full per the Founder's specification, corrected dependency-direction diagram added), §12 (dependency-direction cross-reference added), §13 item 16 (fixture clarification).
+- **Superseded recommendation:** §15 F-5's original 004D description ("wiring the evaluator into at least one real protected command... once [Capability 3 packages] exist") is **superseded** by §14's corrected 004D boundary (governed fixtures/harnesses, no Capability-3 dependency). 004A–004C are unchanged from the original recommendation.
+
+### Consistency Verification (post-disposition review)
+
+Performed against all five dispositions above:
+
+1. **Sensitive Permission Catalogue remains bounded to governed capabilities** — unchanged from §3.2; no permission added or removed by these dispositions.
+2. **No dual-control machinery remains required for MVP** — confirmed; §3.4 designs none (AD-1).
+3. **Evaluator is authoritative-state/read-through** — confirmed; §6.12 now states this as governed, no cache (AD-2).
+4. **Override resolution remains deterministic and fail-closed** — confirmed; §4's precedence order and decision table are unchanged by any disposition.
+5. **Business-context isolation remains explicit** — confirmed; §5 unchanged by any disposition.
+6. **Audit reuse is architecture-consistent** — confirmed; §7.2 now states the outbox-reuse requirement as governed and adds the consistency-boundary clarification (AD-3), consistent with the existing `ENG-P2-001-10`/`AUTH-08` precedent.
+7. **No new error category** — confirmed; §11's corrected mapping (AD-4) uses only existing categories (`AUTH_FORBIDDEN`, `TEMPORARY_UNAVAILABLE`).
+8. **Internal configuration/data-integrity errors are mapped consistently** — confirmed; §6.11 and §11 now agree (`AUTH_FORBIDDEN` client-facing, internal `reasonCode` for detail).
+9. **004A–004D have no circular dependency** — confirmed; §14's corrected dependency-direction diagram shows a single forward chain (Customer Identity → 004A → 004B → 004C → 004D → Capability 3 consumption), with no edge from `ENG-P2-004` back into Capability 3.
+10. **`ENG-P2-004` can complete before Capability 3 consumes it** — confirmed; 004D's acceptance boundary (§14) requires only 004A–004C and governed fixtures, not any Capability-3 code.
+11. **Capability 3 scope has not leaked into `ENG-P2-004`** — confirmed; §12 unchanged in substance — `ENG-P2-004` still owns evaluation/catalogue/audit only, not membership lifecycle (invite/accept/suspend/remove), which remains Capability 3's.
+12. **ITM remains independent and unstarted** — confirmed; no disposition above touches ITM; §0 status unchanged (Not started — Unauthorised).
+
+**No unresolved Founder decision remains in this design package.**
 
 ---
 
@@ -472,16 +556,16 @@ Minimum, dated superseding notes only — no historical report rewritten:
 20. **Acceptance criteria:** §13
 21. **Test strategy:** §13 items 15–17
 22. **Implementation decomposition:** §14
-23. **Founder decisions required:** §15 (F-1..F-5)
-24. **Recommended Founder dispositions:** §15 "Recommendation" column each row
-25. **Files created/modified:** this document (new); Master Workflow, Engineering Programme, CDR-001, `IMPLEMENTATION_CHANGES.md`, `documentation-changes-log.md` (dated pointer/notes only — see §16 and the actual diffs applied in this task)
-26. **Documentation diff summary:** one new architecture/design document; five pointer/cross-reference-only edits to existing tracking documents; zero historical reports rewritten; zero decision-register changes
+23. **Founder decisions required:** §15 (F-1..F-5) — **all five now resolved, see §17 AD-1–AD-5; no unresolved decision remains**
+24. **Recommended Founder dispositions:** §15 "Recommendation" column each row (historical); **actual recorded dispositions:** §17
+25. **Files created/modified (v1.0):** this document (new); Master Workflow, Engineering Programme, CDR-001, `IMPLEMENTATION_CHANGES.md`, `documentation-changes-log.md` (dated pointer/notes only — see §16 and the actual diffs applied in this task). **v1.1 (this update):** this document only (§3.4, §6.11, §7.2, §9, §11, §12, §14, §15, §17 added/revised) — no tracking-document edits were required for the disposition-recording pass itself.
+26. **Documentation diff summary (cumulative):** one new architecture/design document (v1.0) subsequently revised in place (v1.1) to record Founder dispositions and correct the §14/004D decomposition and §11 error mapping; five pointer/cross-reference-only edits to existing tracking documents (v1.0 only); zero historical reports rewritten; zero decision-register changes at either version.
 27. **Runtime code changed:** NONE
 28. **Dependencies added:** NONE
 29. **Config changes:** NONE
 30. **Deployment changes:** NONE
 31. **Programme/traceability updates:** pointer notes only (§16); RTM not modified (no RTM entry for `ENG-P2-004`/F11 wording was found to require correction)
-32. **Risks:** (a) F-1–F-5 remain open Founder decisions — an implementation prompt authorized before they're resolved would have to make its own judgment calls on those five points; (b) the catalogue (§3.2) is MVP-scoped and may need extension once Capability 3's actual staff-management UI surfaces further sensitive actions; (c) §6.12's no-caching choice trades latency for correctness — acceptable at current scale, revisit if evaluator call volume becomes a measured bottleneck
+32. **Risks:** (a) *(resolved in v1.1 — F-1–F-5 are no longer open; see §17)*; (b) the catalogue (§3.2) is MVP-scoped and may need extension once Capability 3's actual staff-management UI surfaces further sensitive actions; (c) §6.12's no-caching choice (now governed, AD-2) trades latency for correctness — acceptable at current scale, revisit only via a future separately authorized design if evaluator call volume becomes a measured bottleneck
 33. **Rollback instructions:** `git revert` of this task's commit(s) — this design package and its five pointer-note edits are additive/documentation-only; no code, schema, or deployment state to roll back
 34. **Design PR number:** not opened by this task (design package delivered on a worktree branch for Founder review; PR creation was not requested and would be a separate explicit step)
 35. **Final head SHA:** recorded at commit time (see task closure commit)
@@ -497,6 +581,6 @@ Minimum, dated superseding notes only — no historical report rewritten:
 
 ## FINAL GATE
 
-**ENG-P2-004 DESIGN READY FOR FOUNDER DECISION**
+**ENG-P2-004 DESIGN DECISIONS RECORDED — READY FOR FOUNDER FINAL REVIEW/MERGE**
 
-Five founder decision points remain (§15, F-1 through F-5), each with a recommended disposition; none block the design's internal coherence, and none require reopening `DEC-ID-003`. No implementation was performed. No new error-taxonomy category was invented. No Capability 3 or ITM work was begun.
+All five Founder decision points (§15, F-1 through F-5) are now resolved and recorded as dispositions AD-1–AD-5 (§17). No unresolved Founder decision remains in this design package. `DEC-ID-003` was not reopened. No new error-taxonomy category was invented — the one questionable mapping (server-owned configuration-integrity failures) was corrected to an existing category (`AUTH_FORBIDDEN`) rather than escalated. The 004D decomposition boundary was corrected to remove a circular dependency on Capability 3. No implementation was performed. No Capability 3 or ITM work was begun. This design package remains architecture only and does not itself authorize `ENG-P2-004` implementation — a separate implementation-authorization task is required before coding begins.
