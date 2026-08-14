@@ -2639,3 +2639,15 @@
 - **Governance:** `F-UX-1` resolved; the Founder elected it as an Authentication-concern closure condition (not an original AUTH-BP §14 criterion; historical §14 evidence not rewritten). Remaining §14 item: Founder Email/Password hosted retest.
 - **Rollback:** revert the PR; no data/migration/deploy impact. A later bounded preview refresh may be authorized to redeploy `auth-preview-002` with this change.
 - **Report:** [`AUTH-UX-CORR-001-email-mode-clarity-and-confirm-password-2026-08-13.md`](../05-implementation/reports/AUTH-UX-CORR-001-email-mode-clarity-and-confirm-password-2026-08-13.md).
+
+## 2026-08-14 — AUTH-HOSTED-PREVIEW-002 (Closure) — Authentication Concern Complete
+
+- **Date:** 2026-08-14
+- **Task:** `AUTH-HOSTED-PREVIEW-002` Stage 8 — final returning-Email evidence verification + Authentication concern closure. Evidence/governance only; no runtime/Firebase/deploy change.
+- **Authoritative main:** `5302940c09c3e0f32d5ba1d919d7a4dc536945cf` (CI green).
+- **Hosted-validation result (all mandatory §14 PASS, backend-evidenced):** Google hosted auth PASS; Email/Password fresh registration PASS (`registered`, identity `912ca4fd…`, `customer_identity_registered`+`authentication_reference_linked [email]`+`customer_authenticated [email]` at 08:15:30–31); Email/Password returning sign-in PASS (2nd `authentication.authenticate` + `customer_authenticated [email]` at 08:56:40, no register/link → `signed_in`, no new identity/reference); multi-provider surface + English/French PASS; Confirm-Password (`AUTH-UX-CORR-001`) closure condition PASS; backend integrity PASS (2 distinct principals password+google.com, 2 identities, 2 authoritative references, no duplicates, correct `-09`); AUTH-08 events PASS; no credential persisted; Phone OTP optional/non-blocking (no SMS).
+- **Status change:** Authentication concern → **`Complete`** (concern-level, `DEC-GOV-008`). **Capability 2 remains `Open — partially implemented; not closed`** — closure ≠ capability closure. Remaining Capability 2: ITM `Not started — Unauthorised`; `ENG-P2-004` `Blocked — partially`; release-readiness/manual-QA/deployment (G2) pending. AUTH-10 not started.
+- **Files:** closure report + CDR-001 §5 + Master Workflow + this entry + documentation-changes-log Entry 108. **No runtime/backend/config change. No Firebase change. No deployment.**
+- **Preview/test disposition:** `auth-preview-002` retained until this closure PR merges, then delete or expire (2026-08-21); env file + Firebase test users retained (deletion not authorized).
+- **Rollback:** revert the closure PR (docs-only) — reopens the concern status wording; no data/runtime impact.
+- **Report:** [`AUTH-HOSTED-PREVIEW-002-authentication-concern-closure-2026-08-14.md`](../05-implementation/reports/AUTH-HOSTED-PREVIEW-002-authentication-concern-closure-2026-08-14.md).
