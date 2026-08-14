@@ -10,6 +10,15 @@ Running log of all controlled changes to the documentation suite. Every consolid
 
 ---
 
+## Entry 108 — `AUTH-HOSTED-PREVIEW-002` Closure — Authentication Concern `Complete`
+
+- **Date:** 14 August 2026
+- **Performed by:** Claude (AI agent), per Founder task "AUTH-HOSTED-PREVIEW-002 Stage 8" — final returning-Email evidence verification and Authentication-concern closure. Evidence/governance only; no runtime/Firebase/deployment change.
+- **Result:** the Founder-executed bounded hosted-preview validation (Stages 1–8) is complete; every mandatory amended-`AUTH-BP` §14 criterion **PASSED with backend evidence** — Google hosted auth; Email/Password fresh registration (`registered`); Email/Password returning sign-in (`signed_in`, backend `authenticate` + `customer_authenticated [email]` at 2026-08-14T08:56, no new identity/reference); multi-provider surface + English/French; Confirm-Password (`AUTH-UX-CORR-001`) closure condition; backend identity/reference integrity (2 distinct principals, 2 identities, 2 authoritative references, no duplicates, correct `-09`); AUTH-08 events; no credential persisted; Phone OTP optional/non-blocking.
+- **Status:** **Authentication concern → `Complete`** (concern-level, `DEC-GOV-008`). **Concern completion ≠ Capability closure — Capability 2 remains `Open — partially implemented; not closed`** (ITM `Not started — Unauthorised`; `ENG-P2-004` `Blocked — partially`; release-readiness/manual-QA/deployment G2 pending). AUTH-10 not started; not self-merged; dirty primary worktree untouched; preview channel/env/test users retained until the closure PR merges. See the [`AUTH-HOSTED-PREVIEW-002` closure report](../05-implementation/reports/AUTH-HOSTED-PREVIEW-002-authentication-concern-closure-2026-08-14.md).
+
+---
+
 ## Entry 107 — `AUTH-UX-CORR-001` Email Mode Clarity & Confirm-Password Correction (frontend UX, TDD)
 
 - **Date:** 13 August 2026
