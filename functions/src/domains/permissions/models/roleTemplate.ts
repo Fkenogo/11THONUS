@@ -42,6 +42,7 @@ import {
   invalidPermissionIdError,
   sensitivePermissionCannotBeImplicitInRoleTemplateError,
   duplicatePermissionInRoleTemplateError,
+  sensitivePermissionNotDefaultForRoleError,
 } from "./permissionErrors";
 
 export type RoleTemplate = {
@@ -69,6 +70,21 @@ export function createRoleTemplate(
       const entry = getSensitivePermissionEntry(permissionId);
       if (!entry.inheritAllowed) {
         throw sensitivePermissionCannotBeImplicitInRoleTemplateError(validatedRole, permissionId);
+      }
+      // §3.2's "Inherit?" flag says the permission *can* be a role default
+      // for *some* role — it does not say every role qualifies. The
+      // catalogue's own "Default state" column names exactly which roles:
+      // today only `owner_and_manager_default` exists among inheritable
+      // entries, and Staff is not one of the two roles it names. Checked
+      // as a role-vs-defaultState match rather than a hardcoded "reject
+      // staff" rule, so a future `owner_only`-but-inheritable catalogue
+      // shape (were one ever added) would be handled correctly too.
+      if (
+        entry.defaultState === "owner_and_manager_default" &&
+        validatedRole !== "owner" &&
+        validatedRole !== "manager"
+      ) {
+        throw sensitivePermissionNotDefaultForRoleError(validatedRole, permissionId);
       }
     }
   }

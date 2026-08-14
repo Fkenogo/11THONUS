@@ -21,11 +21,13 @@
 import type { PermissionId } from "./permissionId";
 import { isWellFormedPermissionId } from "./permissionId";
 import type { Role } from "./role";
+import { isSensitivePermission, getSensitivePermissionEntry } from "./sensitivePermissionCatalogue";
 import {
   invalidPermissionIdError,
   malformedPermissionOverrideDirectionError,
   permissionOverrideCannotTargetOwnerError,
   invalidPermissionOverrideScopeError,
+  permissionOverrideDirectionNotSupportedError,
 } from "./permissionErrors";
 
 export const PERMISSION_OVERRIDE_DIRECTIONS = ["grant", "revoke"] as const;
@@ -75,6 +77,16 @@ export function createPermissionOverride(input: CreatePermissionOverrideInput): 
 
   if (input.targetRole === "owner") {
     throw permissionOverrideCannotTargetOwnerError(input.permissionId);
+  }
+
+  if (isSensitivePermission(input.permissionId)) {
+    const entry = getSensitivePermissionEntry(input.permissionId);
+    if (input.direction === "grant" && !entry.explicitGrantRequired) {
+      throw permissionOverrideDirectionNotSupportedError(input.permissionId, input.direction);
+    }
+    if (input.direction === "revoke" && !entry.explicitRevocationSupported) {
+      throw permissionOverrideDirectionNotSupportedError(input.permissionId, input.direction);
+    }
   }
 
   return {

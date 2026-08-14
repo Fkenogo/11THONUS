@@ -269,6 +269,63 @@ None.
 - `IMPLEMENTATION_CHANGES.md`, `documentation-changes-log.md` — new
   entries.
 
+## 24. Automated Review Findings & Dispositions
+
+The repository's Codex automated PR reviewer raised three P1 findings on
+this package's first push. Each was independently assessed against
+`ENG-P2-004A`'s own scope boundary before disposition:
+
+1. **"Reject sensitive defaults in Staff templates"** (`roleTemplate.ts`)
+   — **valid, fixed.** `createRoleTemplate` checked only the catalogue's
+   permission-level `inheritAllowed` flag, not its per-role `defaultState`
+   — so a caller could construct a Staff template listing
+   `customer.viewProtectedProfile`/`report.exportFinancial` even though
+   the catalogue names those two entries `owner_and_manager_default`
+   specifically. Fixed: `createRoleTemplate` now additionally rejects an
+   inheritable sensitive permission for any role its `defaultState` does
+   not name. New error `sensitivePermissionNotDefaultForRoleError`; the
+   test that had documented the old (permissive) behavior for Staff was
+   inverted to assert rejection. This is a genuine 004A contract-layer
+   gap (Phase E's own required coverage: "sensitive permissions cannot
+   accidentally become implicit inherited permissions through malformed
+   template configuration") — not scope creep into evaluation.
+2. **"Block overrides for ownership transfer"** (`permissionOverride.ts`)
+   — **valid, fixed.** `createPermissionOverride` validated identifier
+   shape, direction, and non-blank scope, but never consulted the
+   catalogue's `explicitGrantRequired`/`explicitRevocationSupported`
+   flags — so a grant or revoke override could be constructed for
+   `business.transferOwnership` despite the catalogue explicitly marking
+   both `false` ("N/A — owner-only, not grantable"). Fixed:
+   `createPermissionOverride` now rejects a `grant` direction when the
+   entry's `explicitGrantRequired` is `false`, and a `revoke` direction
+   when `explicitRevocationSupported` is `false`. New error
+   `permissionOverrideDirectionNotSupportedError`, with two new tests.
+3. **"Include baseline permissions in the default templates"**
+   (`roleTemplate.ts`, `DEFAULT_ROLE_TEMPLATES`) — **acknowledged, not
+   applied — outside 004A's authorized scope.** The finding is correct
+   that a future evaluator naively trusting `DEFAULT_ROLE_TEMPLATES` as a
+   *complete* role-default set would find Staff (and Owner/Manager beyond
+   the two sensitive entries) missing ordinary baseline permissions like
+   `purchase.record`. But populating that baseline would mean inventing
+   permission identifiers no governed document mints — precisely what
+   this package's header comments, README, and §7 above already disclose
+   as an intentional, design-driven scope boundary, not an oversight:
+   `ENG-P2-004-DESIGN-001` §6.6 states the non-sensitive baseline "remain[s]
+   governed by TRD12 §12.11's ordinary resolution path and PRD1 §7–§8's
+   role-default lists, unchanged by this package." Per this task's own
+   instruction ("Do not expand scope to satisfy speculative reviewer
+   suggestions"), no code change was made. `DEFAULT_ROLE_TEMPLATES`'s doc
+   comment already states explicitly it is not a complete default set;
+   this disclosure is treated as sufficient rather than renaming the
+   export, since the design does not require a different name and the
+   partial nature is the design's own boundary, not a naming defect.
+
+Post-fix validation: functions **669/669** (+4 from the two new tests
+above; +98 net from this package's original 98), `tsc --noEmit` clean,
+repo-root `eslint .` clean, `prettier --check` clean. Boundary audit
+(§17) re-run and unchanged: no evaluator/audit/persistence/protected-command
+code present.
+
 **Status recorded:** `ENG-P2-004A` = implemented, pending Founder review;
 `ENG-P2-004B` = NOT STARTED; `ENG-P2-004C` = NOT STARTED; `ENG-P2-004D` =
 NOT STARTED; `ENG-P2-004` overall = NOT COMPLETE; Capability 2 = Open —

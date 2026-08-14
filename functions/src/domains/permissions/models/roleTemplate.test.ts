@@ -52,14 +52,18 @@ describe("createRoleTemplate", () => {
     expect(() => createRoleTemplate("manager", ["customer.viewProtectedProfile"])).not.toThrow();
   });
 
-  it("also rejects an inheritable sensitive permission if placed under staff explicitly by a caller — the invariant is unconditional on role", () => {
-    // The catalogue's own default-state metadata (owner_and_manager_default)
-    // is advisory content baked into DEFAULT_ROLE_TEMPLATES below, not a
-    // per-role restriction enforced by createRoleTemplate itself — inherit
-    // ability is permission-level, not role-level. This test documents
-    // that createRoleTemplate does not reject it for staff (no invariant
-    // says it can't), while DEFAULT_ROLE_TEMPLATES.staff simply omits it.
-    expect(() => createRoleTemplate("staff", ["customer.viewProtectedProfile"])).not.toThrow();
+  it("rejects an inheritable-but-not-for-this-role sensitive permission under staff", () => {
+    // customer.viewProtectedProfile/report.exportFinancial are inheritable
+    // (inheritAllowed: true) but the catalogue's own defaultState says
+    // owner_and_manager_default — Staff is not one of the named roles, so
+    // the contract must reject it here, not silently accept it and rely
+    // on DEFAULT_ROLE_TEMPLATES.staff simply omitting it.
+    expect(() => createRoleTemplate("staff", ["customer.viewProtectedProfile"])).toThrow(
+      PermissionDomainError,
+    );
+    expect(() => createRoleTemplate("staff", ["report.exportFinancial"])).toThrow(
+      PermissionDomainError,
+    );
   });
 });
 

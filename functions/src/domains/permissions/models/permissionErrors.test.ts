@@ -6,9 +6,11 @@ import {
   unrecognisedSensitivePermissionError,
   sensitivePermissionCannotBeImplicitInRoleTemplateError,
   duplicatePermissionInRoleTemplateError,
+  sensitivePermissionNotDefaultForRoleError,
   malformedPermissionOverrideDirectionError,
   permissionOverrideCannotTargetOwnerError,
   invalidPermissionOverrideScopeError,
+  permissionOverrideDirectionNotSupportedError,
 } from "./permissionErrors";
 import { ERROR_CATEGORIES } from "../../../shared/errors/errorCategories";
 
@@ -27,9 +29,11 @@ describe("PermissionDomainError", () => {
     unrecognisedSensitivePermissionError("bad"),
     sensitivePermissionCannotBeImplicitInRoleTemplateError("owner", "staff.manage"),
     duplicatePermissionInRoleTemplateError("staff", "purchase.record"),
+    sensitivePermissionNotDefaultForRoleError("staff", "customer.viewProtectedProfile"),
     malformedPermissionOverrideDirectionError("bad"),
     permissionOverrideCannotTargetOwnerError("staff.manage"),
     invalidPermissionOverrideScopeError("businessId"),
+    permissionOverrideDirectionNotSupportedError("business.transferOwnership", "grant"),
   ])("maps to one of the closed 14 error categories", (error) => {
     expect(ERROR_CATEGORIES).toContain(error.category);
   });
@@ -41,9 +45,11 @@ describe("PermissionDomainError", () => {
       unrecognisedSensitivePermissionError("bad"),
       sensitivePermissionCannotBeImplicitInRoleTemplateError("owner", "staff.manage"),
       duplicatePermissionInRoleTemplateError("staff", "purchase.record"),
+      sensitivePermissionNotDefaultForRoleError("staff", "customer.viewProtectedProfile"),
       malformedPermissionOverrideDirectionError("bad"),
       permissionOverrideCannotTargetOwnerError("staff.manage"),
       invalidPermissionOverrideScopeError("businessId"),
+      permissionOverrideDirectionNotSupportedError("business.transferOwnership", "grant"),
     ];
     for (const error of factories) {
       expect(error.category).not.toBe("AUTH_FORBIDDEN");

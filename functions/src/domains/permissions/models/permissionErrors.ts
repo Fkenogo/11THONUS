@@ -75,6 +75,16 @@ export function duplicatePermissionInRoleTemplateError(
   );
 }
 
+export function sensitivePermissionNotDefaultForRoleError(
+  role: string,
+  permissionId: string,
+): PermissionDomainError {
+  return new PermissionDomainError(
+    "VALIDATION_FAILED",
+    `Sensitive permission "${permissionId}" cannot appear in the "${role}" role template's defaults — its governed default state does not include this role (ENG-P2-004-DESIGN-001 §3.2).`,
+  );
+}
+
 export function malformedPermissionOverrideDirectionError(value: string): PermissionDomainError {
   return new PermissionDomainError(
     "VALIDATION_FAILED",
@@ -95,5 +105,15 @@ export function invalidPermissionOverrideScopeError(field: string): PermissionDo
   return new PermissionDomainError(
     "VALIDATION_FAILED",
     `Invalid permission override: "${field}" must be a non-empty, non-whitespace string.`,
+  );
+}
+
+export function permissionOverrideDirectionNotSupportedError(
+  permissionId: string,
+  direction: string,
+): PermissionDomainError {
+  return new PermissionDomainError(
+    "VALIDATION_FAILED",
+    `Permission "${permissionId}" does not support the "${direction}" override direction (ENG-P2-004-DESIGN-001 §3.2's catalogue marks it unsupported for this permission).`,
   );
 }

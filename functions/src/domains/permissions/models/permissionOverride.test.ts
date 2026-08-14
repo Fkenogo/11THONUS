@@ -88,4 +88,26 @@ describe("createPermissionOverride", () => {
     });
     expect(override.permissionId).toBe("transaction.reverse");
   });
+
+  it("refuses a grant override for business.transferOwnership (no non-owner grant path exists)", () => {
+    expect(() =>
+      createPermissionOverride({
+        ...BASE_INPUT,
+        permissionId: "business.transferOwnership",
+        direction: "grant",
+        targetRole: "manager",
+      }),
+    ).toThrow(PermissionDomainError);
+  });
+
+  it("refuses a revoke override for business.transferOwnership (nothing to revoke)", () => {
+    expect(() =>
+      createPermissionOverride({
+        ...BASE_INPUT,
+        permissionId: "business.transferOwnership",
+        direction: "revoke",
+        targetRole: "manager",
+      }),
+    ).toThrow(PermissionDomainError);
+  });
 });
