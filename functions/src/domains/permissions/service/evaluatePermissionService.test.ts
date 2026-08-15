@@ -76,3 +76,49 @@ describe("evaluatePermission — businessId containing a Firestore path separato
     expect(decision.errorCategory).toBe("VALIDATION_FAILED");
   });
 });
+
+describe("evaluatePermission — short-circuit blank context/subject before any repository read (Codex review pass 7, PR #107)", () => {
+  // Uses a spy that records calls instead of throwing, so the assertion
+  // genuinely proves non-invocation — `dbThatShouldNeverBeCalled()`'s
+  // throw-and-catch masks this class of defect, since the repository's
+  // own try/catch swallows the throw and the pure evaluator's downstream
+  // empty-field check produces the same final decision regardless of
+  // whether the (wasted) repository call happened.
+  function dbWithSpy() {
+    const collectionSpy = vi.fn(() => ({
+      doc: vi.fn(() => ({ get: vi.fn().mockResolvedValue({ exists: false }) })),
+      where: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockReturnThis(),
+      get: vi.fn().mockResolvedValue({ empty: true, size: 0, docs: [] }),
+    }));
+    return { collectionSpy, db: { collection: collectionSpy } as unknown as Firestore };
+  }
+
+  it("never reaches the repository when businessId trims to an empty string", async () => {
+    const { collectionSpy, db } = dbWithSpy();
+
+    const decision = await evaluatePermission(db, {
+      userId: "user-1",
+      businessId: "   ",
+      permission: "customer.viewProtectedProfile",
+    });
+
+    expect(collectionSpy).not.toHaveBeenCalled();
+    expect(decision.allowed).toBe(false);
+    expect(decision.errorCategory).toBe("VALIDATION_FAILED");
+  });
+
+  it("never reaches the repository when userId is blank but businessId is well-formed", async () => {
+    const { collectionSpy, db } = dbWithSpy();
+
+    const decision = await evaluatePermission(db, {
+      userId: "   ",
+      businessId: "biz-a",
+      permission: "customer.viewProtectedProfile",
+    });
+
+    expect(collectionSpy).not.toHaveBeenCalled();
+    expect(decision.allowed).toBe(false);
+    expect(decision.errorCategory).toBe("AUTH_REQUIRED");
+  });
+});

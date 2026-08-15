@@ -55,24 +55,28 @@ export async function evaluatePermission(
   // either throw an SDK argument error (caught and mis-mapped to
   // `transient_failure`/`TEMPORARY_UNAVAILABLE`, inviting pointless
   // retries for input that can never succeed) or resolve to an
-  // unintended nested document path. Skipped here entirely; the pure
-  // evaluator's own context-validation step independently rejects the
-  // same malformed businessId as `VALIDATION_FAILED` (Codex review pass
-  // 6, PR #107).
-  const businessIdIsWellFormed = businessId !== undefined && !businessId.includes("/");
+  // unintended nested document path. An empty-after-trim businessId is
+  // equally never a valid document ID. Both are skipped here entirely;
+  // the pure evaluator's own context-validation step independently
+  // rejects the same malformed businessId as `VALIDATION_FAILED` (Codex
+  // review pass 6/7, PR #107).
+  const businessIdIsWellFormed =
+    businessId !== undefined && businessId.length > 0 && !businessId.includes("/");
 
   let business: BusinessReadResult = { kind: "not_found" };
   let membership: MembershipReadResult = { kind: "not_found" };
 
-  if (businessIdIsWellFormed) {
-    if (userId) {
-      [business, membership] = await Promise.all([
-        getBusinessById(db, businessId),
-        getBusinessMembershipByUserAndBusiness(db, userId, businessId),
-      ]);
-    } else {
-      business = await getBusinessById(db, businessId);
-    }
+  // Likewise, a blank userId can never resolve a membership, and the
+  // pure evaluator's subject check (§6.9 step 1) denies unconditionally
+  // before any business/membership state is even consulted — skip both
+  // repository reads entirely rather than consuming a real Firestore
+  // call for a request that cannot possibly succeed (Codex review pass
+  // 7, PR #107).
+  if (businessIdIsWellFormed && userId) {
+    [business, membership] = await Promise.all([
+      getBusinessById(db, businessId),
+      getBusinessMembershipByUserAndBusiness(db, userId, businessId),
+    ]);
   }
 
   // The pure evaluator must compare against the same normalized
