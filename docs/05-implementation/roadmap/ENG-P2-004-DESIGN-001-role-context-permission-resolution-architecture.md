@@ -530,6 +530,10 @@ Performed against all five dispositions above:
 
 **No unresolved Founder decision remains in this design package.**
 
+## 18. Persistence Encoding Clarification (2026-08-15, `ENG-P2-004D`)
+
+§8's `PermissionOverride` row states the concept is "embedded in `businessMemberships.permissions[]` (existing field)" but, as 004A's and 004B's own implementation comments disclosed, never specified the wire encoding — genuinely undesigned at authoring time. `ENG-P2-004D`'s bounded reconciliation task resolved this with Founder-approved Option C: `permissions` is a Firestore array of structured maps, `Array<{permissionId, direction, grantedBy, grantedAt}>` — see TRD10 §10.6.4's 2026-08-15 correction note for the exact shape. `businessId`/`membershipId` are not persisted per-element; they remain structural, established by the containing membership document, consistent with §5's "an override is never global." No other statement in §3–§17 changes. Full options-considered rationale is recorded in the `ENG-P2-004D` implementation report.
+
 ---
 
 ## Report (per task §REPORT)
