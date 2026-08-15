@@ -227,13 +227,23 @@ export default tseslint.config(
   },
   {
     // ENG-P2-004A: same machine-enforced boundary as the domain-foundation
-    // blocks above, scoped to the new Permission Contracts & Sensitive
+    // blocks above, scoped to the Permission Contracts & Sensitive
     // Permission Catalogue domain (`ENG-P2-004-DESIGN-001` §6.15/§14 004A —
-    // contract/configuration layer only, no runtime evaluator, no
-    // persistence). No `ignores` entry: unlike Identity/LoyaltyNumber/
-    // QrIdentity/Authentication, this domain has no `repositories/` or
-    // `services/` subfolder yet — 004A is `models/` only.
+    // `models/` is framework-independent contract/configuration only).
+    // `repositories/` and `service/` are excluded (ENG-P2-004B): per
+    // Repository and Folder Standards §4 (same rationale as Identity's
+    // `repositories/` exclusion above), `repositories/` bridges to
+    // Firestore and `service/` holds the orchestrator
+    // (`evaluatePermissionService.ts`) that performs those reads (design
+    // §6.5, §6.15). `evaluator/` (the pure decision function,
+    // `evaluateAuthorizationDecision`) is deliberately NOT excluded — it
+    // must stay framework-independent (design §6.18 purity), and this
+    // rule is what machine-enforces that.
     files: ["functions/src/domains/permissions/**/*.ts"],
+    ignores: [
+      "functions/src/domains/permissions/repositories/**",
+      "functions/src/domains/permissions/service/**",
+    ],
     languageOptions: {
       ecmaVersion: 2023,
       globals: globals.node,
