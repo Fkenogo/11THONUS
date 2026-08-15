@@ -104,6 +104,21 @@ describe("getBusinessMembershipByUserAndBusiness", () => {
     expect(result).toEqual({ kind: "malformed" });
   });
 
+  it("returns malformed for a document with a non-blank permissionSetId (unresolved reference, Codex review pass 4, PR #107)", async () => {
+    await db.collection("businessMemberships").doc("mem-with-permission-set").set({
+      userId: "user-2c",
+      businessId: "biz-a",
+      role: "manager",
+      status: "active",
+      permissions: [],
+      permissionSetId: "set-123",
+    });
+
+    const result = await getBusinessMembershipByUserAndBusiness(db, "user-2c", "biz-a");
+
+    expect(result).toEqual({ kind: "malformed" });
+  });
+
   it("returns malformed for an unrecognized status value", async () => {
     await db.collection("businessMemberships").doc("mem-bad-status").set({
       userId: "user-3",

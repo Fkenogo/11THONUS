@@ -203,30 +203,37 @@ export function evaluateAuthorizationDecision(input: EvaluationInput): Authoriza
   // constructible repository-owned data, so this is revalidated here
   // rather than trusted on presence alone (Codex review, PR #107).
   //
-  // A grant is honored only for a permission in the sensitive catalogue
-  // with an eligible role — never for any other well-formed identifier.
-  // No governed non-sensitive permission registry exists yet (matching
-  // the step-9 gap documented below), so there is no source of truth to
-  // validate a grant for e.g. `admin.superuser` or `purchase.record`
-  // against; treating "not sensitive" as "valid, grantable permission"
-  // would let a malformed/legacy/mistyped override authorize a request
-  // against an identifier nothing actually governs (Codex review pass 2
-  // finding, PR #107) — an ineligible/ungoverned grant is treated as if
-  // absent and falls through to the ordinary sensitive-permission gate
-  // below, not a hard deny, since the role may still qualify via
-  // role-default (§3.2 rows 7-8's carve-out).
+  // An applicable grant that fails eligibility now fails CLOSED
+  // (AUTH_FORBIDDEN) rather than being treated as absent and falling
+  // through to the sensitive gate/role-default below. An earlier version
+  // of this evaluator let an ineligible grant fall through, which was
+  // safe only by coincidence for an ungoverned permission (step 8/9/10
+  // always deny those anyway) but unsafe for a sensitive permission
+  // whose role-default carve-out (§3.2 rows 7-8) could still allow it —
+  // e.g. a stray/corrupted grant on a Manager's membership for
+  // `customer.viewProtectedProfile` (eligible role: Staff) would fall
+  // through to an allow via role-default, silently coexisting with
+  // override state that cannot be trusted (it could be a corrupted
+  // intended revocation that became a syntactically valid grant).
+  // Corrected after independent final security review, Codex review
+  // pass 5, PR #107 — this is the same "corrupt override state must
+  // deny, never be treated as absent" principle already applied to
+  // malformed override directions above.
   const grantOverride = applicableOverrides.find((override) => override.direction === "grant");
-  if (grantOverride && isSensitivePermission(permission)) {
-    const entry = getSensitivePermissionEntry(permission);
-    if (entry.explicitGrantRequired && entry.explicitGrantEligibleRole === role) {
-      return {
-        allowed: true,
-        reasonCode: "EXPLICIT_GRANT",
-        role,
-        permissionSource: "explicit-grant",
-        evaluatedAt: now,
-      };
+  if (grantOverride) {
+    if (isSensitivePermission(permission)) {
+      const entry = getSensitivePermissionEntry(permission);
+      if (entry.explicitGrantRequired && entry.explicitGrantEligibleRole === role) {
+        return {
+          allowed: true,
+          reasonCode: "EXPLICIT_GRANT",
+          role,
+          permissionSource: "explicit-grant",
+          evaluatedAt: now,
+        };
+      }
     }
+    return deny(now, "GRANT_NOT_HONORED", "AUTH_FORBIDDEN", role);
   }
 
   // Step 8: sensitive-permission gate (§4.1.4), with the §3.2 rows 7-8

@@ -28,8 +28,22 @@ export async function evaluatePermission(
 ): Promise<AuthorizationDecision> {
   // `AuthorizationRequest`'s TypeScript type does not validate an
   // untrusted runtime payload — a caller that doesn't enforce it at the
-  // network boundary could supply a non-string `userId`/`businessId`
-  // (e.g. a decoded JSON number), which `.trim()` cannot handle even with
+  // network boundary could supply `request` itself as `null`/`undefined`
+  // (a missing/malformed decoded payload), which would throw before any
+  // field could even be read. Checked first so a malformed request
+  // resolves to a fail-closed decision instead of throwing (Codex review
+  // pass 5, PR #107).
+  if (request === null || typeof request !== "object") {
+    return {
+      allowed: false,
+      reasonCode: "NO_SUBJECT",
+      errorCategory: "AUTH_REQUIRED",
+      evaluatedAt: new Date(),
+    };
+  }
+
+  // Likewise, `userId`/`businessId` could be a non-string (e.g. a
+  // decoded JSON number), which `.trim()` cannot handle even with
   // optional chaining (that only guards null/undefined). Runtime-checked
   // here so a malformed request resolves to the pure evaluator's own
   // fail-closed decision instead of throwing (Codex review pass 3, PR #107).
@@ -50,5 +64,23 @@ export async function evaluatePermission(
     }
   }
 
-  return evaluateAuthorizationDecision({ request, business, membership, now: new Date() });
+  // The pure evaluator must compare against the same normalized
+  // (trimmed) identifiers the repositories were queried with — passing
+  // the raw, possibly-padded `request` through would make a
+  // successfully-resolved business/membership fail the evaluator's own
+  // identity cross-checks (`business.id !== request.businessId`,
+  // `resolvedMembership.userId !== request.userId`) with a spurious
+  // mismatch denial (Codex review pass 5, PR #107).
+  const normalizedRequest: AuthorizationRequest = {
+    ...request,
+    userId: userId ?? request.userId,
+    businessId: businessId ?? request.businessId,
+  };
+
+  return evaluateAuthorizationDecision({
+    request: normalizedRequest,
+    business,
+    membership,
+    now: new Date(),
+  });
 }

@@ -48,3 +48,18 @@ describe("evaluatePermission — malformed request field types (Codex review pas
     expect(decision.errorCategory).toBe("VALIDATION_FAILED");
   });
 });
+
+describe("evaluatePermission — request object itself missing/null (Codex review pass 5, PR #107)", () => {
+  it.each([null, undefined, "not-an-object", 42])(
+    "resolves to a deny decision (never throws) when request is %p",
+    async (badRequest) => {
+      const decision = await evaluatePermission(
+        dbThatShouldNeverBeCalled(),
+        badRequest as unknown as AuthorizationRequest,
+      );
+
+      expect(decision.allowed).toBe(false);
+      expect(decision.errorCategory).toBe("AUTH_REQUIRED");
+    },
+  );
+});

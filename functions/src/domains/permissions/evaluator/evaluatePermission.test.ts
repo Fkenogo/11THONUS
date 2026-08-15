@@ -605,6 +605,62 @@ describe("evaluateAuthorizationDecision — adversarial: grant role-eligibility 
     expect(decision.allowed).toBe(true);
     expect(decision.permissionSource).toBe("explicit-grant");
   });
+
+  it("an applicable but catalogue-ineligible grant fails closed even when the role would otherwise get the permission via role-default (Codex review pass 5, PR #107)", () => {
+    // customer.viewProtectedProfile's catalogue-eligible grant role is
+    // Staff; a Manager already holds it via role-default (§3.2 rows 7-8).
+    // A grant override on the Manager's own membership is applicable but
+    // ineligible — treating it as "absent" would let a corrupted/
+    // misassigned override (e.g. one meant for a different membership,
+    // or a corrupted intended revocation that became a syntactically
+    // valid grant) silently coexist with an allow decision. Corrupt/
+    // inconsistent override state must deny, matching the same principle
+    // already applied to malformed override directions.
+    const decision = evaluateAuthorizationDecision(
+      baseInput({
+        membership: {
+          kind: "found",
+          membership: membership({
+            role: "manager",
+            overrides: [
+              {
+                permissionId: "customer.viewProtectedProfile",
+                direction: "grant",
+                businessId: "biz-a",
+                membershipId: "mem-1",
+              },
+            ],
+          }),
+        },
+      }),
+    );
+    expect(decision.allowed).toBe(false);
+    expect(decision.errorCategory).toBe("AUTH_FORBIDDEN");
+  });
+
+  it("an applicable grant for a well-formed but ungoverned permission fails closed (consistent treatment, defence-in-depth for a future non-sensitive baseline table)", () => {
+    const decision = evaluateAuthorizationDecision(
+      baseInput({
+        request: { userId: "user-1", businessId: "biz-a", permission: "some.ungoverned" },
+        membership: {
+          kind: "found",
+          membership: membership({
+            role: "staff",
+            overrides: [
+              {
+                permissionId: "some.ungoverned",
+                direction: "grant",
+                businessId: "biz-a",
+                membershipId: "mem-1",
+              },
+            ],
+          }),
+        },
+      }),
+    );
+    expect(decision.allowed).toBe(false);
+    expect(decision.errorCategory).toBe("AUTH_FORBIDDEN");
+  });
 });
 
 describe("evaluateAuthorizationDecision — adversarial: revoked-permission replay (§9 abuse #3)", () => {

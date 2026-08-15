@@ -54,6 +54,7 @@ export const REASON_CODES = [
   "ROLE_DEFAULT_ALLOW",
   "NO_APPLICABLE_GRANT",
   "MALFORMED_OVERRIDE_DIRECTION",
+  "GRANT_NOT_HONORED",
 ] as const;
 
 export type ReasonCode = (typeof REASON_CODES)[number];

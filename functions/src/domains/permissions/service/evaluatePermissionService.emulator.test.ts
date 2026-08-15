@@ -71,6 +71,26 @@ describe("evaluatePermission — real membership/business lookups", () => {
     expect(decision.allowed).toBe(false);
     expect(decision.errorCategory).toBe("BUSINESS_INACTIVE");
   });
+
+  it("a businessId/userId with surrounding whitespace resolves normally — the evaluator compares against the same trimmed values used for the repository reads, not the raw padded request (Codex review pass 5, PR #107)", async () => {
+    await db.collection("businesses").doc("biz-a").set({ status: "active" });
+    await db.collection("businessMemberships").doc("mem-1").set({
+      userId: "user-1",
+      businessId: "biz-a",
+      role: "manager",
+      status: "active",
+      permissions: [],
+    });
+
+    const decision = await evaluatePermission(db, {
+      userId: " user-1 ",
+      businessId: " biz-a ",
+      permission: "customer.viewProtectedProfile",
+    });
+
+    expect(decision.allowed).toBe(true);
+    expect(decision.permissionSource).toBe("role-default");
+  });
 });
 
 describe("evaluatePermission — cross-business isolation (§5.6, §9 abuse #4, matrix §J)", () => {
