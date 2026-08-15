@@ -226,6 +226,40 @@ export default tseslint.config(
     },
   },
   {
+    // ENG-P2-004A: same machine-enforced boundary as the domain-foundation
+    // blocks above, scoped to the new Permission Contracts & Sensitive
+    // Permission Catalogue domain (`ENG-P2-004-DESIGN-001` §6.15/§14 004A —
+    // contract/configuration layer only, no runtime evaluator, no
+    // persistence). No `ignores` entry: unlike Identity/LoyaltyNumber/
+    // QrIdentity/Authentication, this domain has no `repositories/` or
+    // `services/` subfolder yet — 004A is `models/` only.
+    files: ["functions/src/domains/permissions/**/*.ts"],
+    languageOptions: {
+      ecmaVersion: 2023,
+      globals: globals.node,
+    },
+    rules: {
+      "@typescript-eslint/no-unused-vars": "error",
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: [
+                "firebase-admin",
+                "firebase-admin/*",
+                "firebase-functions",
+                "firebase-functions/*",
+              ],
+              message:
+                "The Permission Contracts domain-foundation layer (ENG-P2-004A) is framework-independent — no Firebase SDK import is permitted here. Permission evaluation and persistence belong to future ENG-P2-004B/004D modules instead.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ["*.{js,ts}", "**/*.config.{js,ts}"],
     languageOptions: {
       ecmaVersion: 2023,

@@ -1,0 +1,138 @@
+/**
+ * Explicit permission-override contract (`ENG-P2-004A`).
+ *
+ * Represents one explicit, per-membership grant or revocation
+ * (`ENG-P2-004-DESIGN-001` §4.1.3/§4.1.5, §8's `PermissionOverride`
+ * concept) — the *input* `ENG-P2-004B`'s evaluator will later resolve.
+ * This module only validates and represents that input unambiguously; it
+ * does **not** implement override-resolution precedence, does not decide
+ * allow/deny, and is not itself persisted by this module.
+ *
+ * **Serialization/persistence mapping is undesigned and explicitly out
+ * of 004A's scope — corrected disclosure (Founder final-review pass).**
+ * An earlier version of this comment claimed persistence "is
+ * `businessMemberships.permissions[]` ... an existing, unmodified field
+ * this module does not touch," implying that field already accommodates
+ * this shape. It does not: TRD10 §10.6.4 declares
+ * `BusinessMembershipDocument.permissions` as `string[]` — a flat array
+ * of permission-id strings — while `PermissionOverride` is a richer
+ * object (direction, scope, attribution, a date) that cannot be written
+ * into a `string[]` without a serialization convention this package does
+ * not define. Reconciling that gap — a compatible serialized
+ * representation, a different persisted shape, or a governed TRD10
+ * schema amendment — is `ENG-P2-004D`'s repository/infrastructure
+ * integration work (design §14), not 004A's; this module intentionally
+ * stops at the in-memory contract.
+ *
+ * Scoped to `(businessId, membershipId)` per design §5 — an override is
+ * never global. `role` is accepted only to enforce the one structural
+ * invariant this contract layer owns (design §3.6, §8: an override
+ * "cannot target Owner membership"); it is not stored as part of the
+ * override's own shape, since `ENG-P2-004A` does not own the membership
+ * record itself.
+ */
+
+import type { PermissionId } from "./permissionId";
+import { isWellFormedPermissionId } from "./permissionId";
+import type { Role } from "./role";
+import { isSensitivePermission, getSensitivePermissionEntry } from "./sensitivePermissionCatalogue";
+import {
+  invalidPermissionIdError,
+  malformedPermissionOverrideDirectionError,
+  permissionOverrideCannotTargetOwnerError,
+  invalidPermissionOverrideScopeError,
+  permissionOverrideDirectionNotSupportedError,
+  permissionOverrideRoleNotEligibleForGrantError,
+} from "./permissionErrors";
+
+export const PERMISSION_OVERRIDE_DIRECTIONS = ["grant", "revoke"] as const;
+
+export type PermissionOverrideDirection = (typeof PERMISSION_OVERRIDE_DIRECTIONS)[number];
+
+export type PermissionOverride = {
+  readonly permissionId: PermissionId;
+  readonly direction: PermissionOverrideDirection;
+  readonly businessId: string;
+  readonly membershipId: string;
+  readonly grantedBy: string;
+  readonly grantedAt: Date;
+};
+
+export type CreatePermissionOverrideInput = {
+  permissionId: string;
+  direction: string;
+  businessId: string;
+  membershipId: string;
+  grantedBy: string;
+  grantedAt: Date;
+  /**
+   * The role of the membership this override targets. Required only to
+   * enforce the "cannot target Owner" invariant at construction time —
+   * not stored on the returned `PermissionOverride`.
+   */
+  targetRole: Role;
+};
+
+function requireNonBlank(value: string, field: string): void {
+  if (value.trim().length === 0) {
+    throw invalidPermissionOverrideScopeError(field);
+  }
+}
+
+export function createPermissionOverride(input: CreatePermissionOverrideInput): PermissionOverride {
+  if (!isWellFormedPermissionId(input.permissionId)) {
+    throw invalidPermissionIdError(input.permissionId);
+  }
+  if (!(PERMISSION_OVERRIDE_DIRECTIONS as readonly string[]).includes(input.direction)) {
+    throw malformedPermissionOverrideDirectionError(input.direction);
+  }
+  requireNonBlank(input.businessId, "businessId");
+  requireNonBlank(input.membershipId, "membershipId");
+  requireNonBlank(input.grantedBy, "grantedBy");
+
+  if (input.targetRole === "owner") {
+    throw permissionOverrideCannotTargetOwnerError(input.permissionId);
+  }
+
+  if (isSensitivePermission(input.permissionId)) {
+    const entry = getSensitivePermissionEntry(input.permissionId);
+    if (input.direction === "grant") {
+      if (!entry.explicitGrantRequired) {
+        throw permissionOverrideDirectionNotSupportedError(input.permissionId, input.direction);
+      }
+      // The catalogue names exactly one role eligible to receive an
+      // explicit grant of this permission (design §3.2's "(Manager)"/
+      // "for Staff" qualifiers) — not "any non-owner role." Rejecting a
+      // mismatched targetRole here is validating a static catalogue
+      // fact, not performing runtime precedence evaluation (that
+      // remains ENG-P2-004B's concern).
+      if (input.targetRole !== entry.explicitGrantEligibleRole) {
+        throw permissionOverrideRoleNotEligibleForGrantError(
+          input.permissionId,
+          input.targetRole,
+          entry.explicitGrantEligibleRole,
+        );
+      }
+    }
+    if (input.direction === "revoke" && !entry.explicitRevocationSupported) {
+      throw permissionOverrideDirectionNotSupportedError(input.permissionId, input.direction);
+    }
+  }
+
+  return {
+    permissionId: input.permissionId,
+    direction: input.direction as PermissionOverrideDirection,
+    businessId: input.businessId,
+    membershipId: input.membershipId,
+    grantedBy: input.grantedBy,
+    grantedAt: input.grantedAt,
+  };
+}
+
+export function isGrant(override: PermissionOverride): boolean {
+  return override.direction === "grant";
+}
+
+export function isRevocation(override: PermissionOverride): boolean {
+  return override.direction === "revoke";
+}
