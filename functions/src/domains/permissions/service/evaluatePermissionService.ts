@@ -50,10 +50,21 @@ export async function evaluatePermission(
   const userId = typeof request.userId === "string" ? request.userId.trim() : undefined;
   const businessId = typeof request.businessId === "string" ? request.businessId.trim() : undefined;
 
+  // A "/" is a Firestore document-path separator — passing it to
+  // `businessRepository.getBusinessById`'s `.doc(businessId)` would
+  // either throw an SDK argument error (caught and mis-mapped to
+  // `transient_failure`/`TEMPORARY_UNAVAILABLE`, inviting pointless
+  // retries for input that can never succeed) or resolve to an
+  // unintended nested document path. Skipped here entirely; the pure
+  // evaluator's own context-validation step independently rejects the
+  // same malformed businessId as `VALIDATION_FAILED` (Codex review pass
+  // 6, PR #107).
+  const businessIdIsWellFormed = businessId !== undefined && !businessId.includes("/");
+
   let business: BusinessReadResult = { kind: "not_found" };
   let membership: MembershipReadResult = { kind: "not_found" };
 
-  if (businessId) {
+  if (businessIdIsWellFormed) {
     if (userId) {
       [business, membership] = await Promise.all([
         getBusinessById(db, businessId),

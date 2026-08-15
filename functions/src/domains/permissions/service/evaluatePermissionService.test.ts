@@ -63,3 +63,16 @@ describe("evaluatePermission — request object itself missing/null (Codex revie
     },
   );
 });
+
+describe("evaluatePermission — businessId containing a Firestore path separator (Codex review pass 6, PR #107)", () => {
+  it("never reaches the repository for a businessId containing '/' — resolves to VALIDATION_FAILED", async () => {
+    const decision = await evaluatePermission(dbThatShouldNeverBeCalled(), {
+      userId: "user-1",
+      businessId: "a/b",
+      permission: "customer.viewProtectedProfile",
+    });
+
+    expect(decision.allowed).toBe(false);
+    expect(decision.errorCategory).toBe("VALIDATION_FAILED");
+  });
+});

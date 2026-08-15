@@ -50,6 +50,24 @@ describe("evaluateAuthorizationDecision — §4.2 decision table (verbatim rows)
     expect(decision.errorCategory).toBe("BUSINESS_INACTIVE");
   });
 
+  it("business status=trial is operational, not inactive — PRD3 §4 verbatim: 'Trial: Business may begin operating under trial rules' (Codex review pass 6, PR #107)", () => {
+    const decision = evaluateAuthorizationDecision(
+      baseInput({ business: { kind: "found", business: { id: "biz-a", status: "trial" } } }),
+    );
+    expect(decision.allowed).toBe(true);
+  });
+
+  it.each(["draft", "pending_verification", "suspended", "expired", "closed", "archived"] as const)(
+    "business status=%s is NOT operational (PRD3 §4: only Trial and Active are described as operating) → deny, BUSINESS_INACTIVE",
+    (status) => {
+      const decision = evaluateAuthorizationDecision(
+        baseInput({ business: { kind: "found", business: { id: "biz-a", status } } }),
+      );
+      expect(decision.allowed).toBe(false);
+      expect(decision.errorCategory).toBe("BUSINESS_INACTIVE");
+    },
+  );
+
   it("row 2: business not found → deny, AUTH_FORBIDDEN (§6.11 verbatim: 'a missing business document ... client-facing outcome is AUTH_FORBIDDEN')", () => {
     const decision = evaluateAuthorizationDecision(baseInput({ business: { kind: "not_found" } }));
     expect(decision.allowed).toBe(false);
@@ -454,6 +472,20 @@ describe("evaluateAuthorizationDecision — fail-closed / integrity (Phase G, ma
     const decision = evaluateAuthorizationDecision(
       baseInput({
         request: { userId: "user-1", businessId: "", permission: "customer.viewProtectedProfile" },
+      }),
+    );
+    expect(decision.allowed).toBe(false);
+    expect(decision.errorCategory).toBe("VALIDATION_FAILED");
+  });
+
+  it("businessId containing a Firestore path separator ('/') is rejected as malformed context before any repository read is even relevant → deny, VALIDATION_FAILED (Codex review pass 6, PR #107)", () => {
+    const decision = evaluateAuthorizationDecision(
+      baseInput({
+        request: {
+          userId: "user-1",
+          businessId: "a/b",
+          permission: "customer.viewProtectedProfile",
+        },
       }),
     );
     expect(decision.allowed).toBe(false);

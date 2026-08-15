@@ -43,6 +43,20 @@ import {
 import type { AuthorizationDecision, EvaluationInput, PermissionSource, ReasonCode } from "./types";
 import type { ErrorCategory } from "../../../shared/errors/errorCategories";
 
+/**
+ * "Operational" per PRD Section 3 §4 (Business Lifecycle, verbatim):
+ * Trial — "Business may begin operating under trial rules"; Active —
+ * "Business fully operational." Every other state's own description
+ * explicitly says otherwise (Draft "incomplete", Pending Verification
+ * "awaiting... verification", Suspended "access restricted", Expired
+ * "operational features disabled", Closed "permanently closed",
+ * Archived "no operational activity"). Corrected after independent
+ * final security review — the original narrow "only literal 'active'"
+ * interpretation was too restrictive and denied businesses PRD
+ * explicitly describes as operating (Codex review pass 6, PR #107).
+ */
+const OPERATIONAL_BUSINESS_STATUSES = new Set(["active", "trial"]);
+
 function deny(
   now: Date,
   reasonCode: ReasonCode,
@@ -78,6 +92,16 @@ export function evaluateAuthorizationDecision(input: EvaluationInput): Authoriza
   if (typeof request.businessId !== "string" || request.businessId.trim().length === 0) {
     return deny(now, "MISSING_BUSINESS_CONTEXT", "VALIDATION_FAILED");
   }
+  // A "/" is a Firestore document-path separator, not a valid character
+  // in a single document ID — a businessId containing one is malformed
+  // client input, not a value any repository read should ever be
+  // attempted against (it would either throw an SDK error, mis-mapped to
+  // TEMPORARY_UNAVAILABLE and inviting pointless retries, or silently
+  // resolve to an unintended nested document path). Rejected here as
+  // ordinary client-supplied validation failure (Codex review pass 6, PR #107).
+  if (request.businessId.includes("/")) {
+    return deny(now, "MALFORMED_BUSINESS_CONTEXT", "VALIDATION_FAILED");
+  }
 
   // Step 2: business-state gate (§4.1.1). Per §6.11 verbatim: "a missing
   // business document ... [is] treated as deny ... client-facing outcome
@@ -108,7 +132,7 @@ export function evaluateAuthorizationDecision(input: EvaluationInput): Authoriza
     // review pass 2, PR #107).
     return deny(now, "BUSINESS_CONTEXT_MISMATCH", "AUTH_FORBIDDEN");
   }
-  if (business.business.status !== "active") {
+  if (!OPERATIONAL_BUSINESS_STATUSES.has(business.business.status)) {
     return deny(now, "BUSINESS_NOT_ACTIVE", "BUSINESS_INACTIVE");
   }
 
