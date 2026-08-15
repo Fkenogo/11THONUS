@@ -26,8 +26,15 @@ export async function evaluatePermission(
   db: Firestore,
   request: AuthorizationRequest,
 ): Promise<AuthorizationDecision> {
-  const userId = request.userId?.trim();
-  const businessId = request.businessId?.trim();
+  // `AuthorizationRequest`'s TypeScript type does not validate an
+  // untrusted runtime payload — a caller that doesn't enforce it at the
+  // network boundary could supply a non-string `userId`/`businessId`
+  // (e.g. a decoded JSON number), which `.trim()` cannot handle even with
+  // optional chaining (that only guards null/undefined). Runtime-checked
+  // here so a malformed request resolves to the pure evaluator's own
+  // fail-closed decision instead of throwing (Codex review pass 3, PR #107).
+  const userId = typeof request.userId === "string" ? request.userId.trim() : undefined;
+  const businessId = typeof request.businessId === "string" ? request.businessId.trim() : undefined;
 
   let business: BusinessReadResult = { kind: "not_found" };
   let membership: MembershipReadResult = { kind: "not_found" };

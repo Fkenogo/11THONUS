@@ -63,26 +63,40 @@ function deny(
 export function evaluateAuthorizationDecision(input: EvaluationInput): AuthorizationDecision {
   const { request, business, membership } = input;
 
-  // Step 1: subject.
-  if (!request.userId || request.userId.trim().length === 0) {
+  // Step 1: subject. `AuthorizationRequest`'s TypeScript type does not
+  // validate an untrusted runtime payload — checked with `typeof` before
+  // `.trim()` so a non-string value (e.g. a caller not enforcing the type
+  // at the network boundary) resolves to the ordinary fail-closed
+  // decision instead of throwing (Codex review pass 3, PR #107).
+  if (typeof request.userId !== "string" || request.userId.trim().length === 0) {
     return deny("NO_SUBJECT", "AUTH_REQUIRED");
   }
 
   // Step 2 (context validation, ahead of the business-record read per §5.4 —
   // a malformed/missing businessId cannot even be looked up).
-  if (!request.businessId || request.businessId.trim().length === 0) {
+  if (typeof request.businessId !== "string" || request.businessId.trim().length === 0) {
     return deny("MISSING_BUSINESS_CONTEXT", "VALIDATION_FAILED");
   }
 
-  // Step 2: business-state gate (§4.1.1).
+  // Step 2: business-state gate (§4.1.1). Per §6.11 verbatim: "a missing
+  // business document ... [is] treated as deny ... client-facing outcome
+  // is AUTH_FORBIDDEN" — only a business record that was successfully
+  // read and whose own `status` field legitimately says non-active maps
+  // to `BUSINESS_INACTIVE` (§11's "Business inactive/suspended" row).
+  // Missing/malformed/mismatched-identity are all server-owned data
+  // conditions (AD-4), not a legitimate "business is inactive" read —
+  // corrected after independent re-derivation from §6.11 during the
+  // Founder-authorized final security review (a broader instance of the
+  // same class of bug Codex review pass 3 flagged for the malformed case
+  // only).
   if (business.kind === "transient_failure") {
     return deny("BUSINESS_READ_FAILURE", "TEMPORARY_UNAVAILABLE");
   }
   if (business.kind === "not_found") {
-    return deny("BUSINESS_NOT_FOUND", "BUSINESS_INACTIVE");
+    return deny("BUSINESS_NOT_FOUND", "AUTH_FORBIDDEN");
   }
   if (business.kind === "malformed") {
-    return deny("BUSINESS_CONFIG_MALFORMED", "BUSINESS_INACTIVE");
+    return deny("BUSINESS_CONFIG_MALFORMED", "AUTH_FORBIDDEN");
   }
   if (business.business.id !== request.businessId) {
     // Defence-in-depth mirroring the membership-mismatch check below: an
@@ -91,7 +105,7 @@ export function evaluateAuthorizationDecision(input: EvaluationInput): Authoriza
     // repository read) — the evaluator never trusts a business record
     // whose own id doesn't match the requested context (§5.6, Codex
     // review pass 2, PR #107).
-    return deny("BUSINESS_CONTEXT_MISMATCH", "BUSINESS_INACTIVE");
+    return deny("BUSINESS_CONTEXT_MISMATCH", "AUTH_FORBIDDEN");
   }
   if (business.business.status !== "active") {
     return deny("BUSINESS_NOT_ACTIVE", "BUSINESS_INACTIVE");

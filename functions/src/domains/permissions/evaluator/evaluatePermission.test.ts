@@ -47,10 +47,10 @@ describe("evaluateAuthorizationDecision — §4.2 decision table (verbatim rows)
     expect(decision.errorCategory).toBe("BUSINESS_INACTIVE");
   });
 
-  it("row 2: business not found → deny, BUSINESS_INACTIVE (§4.1.1/§6.11)", () => {
+  it("row 2: business not found → deny, AUTH_FORBIDDEN (§6.11 verbatim: 'a missing business document ... client-facing outcome is AUTH_FORBIDDEN')", () => {
     const decision = evaluateAuthorizationDecision(baseInput({ business: { kind: "not_found" } }));
     expect(decision.allowed).toBe(false);
-    expect(decision.errorCategory).toBe("BUSINESS_INACTIVE");
+    expect(decision.errorCategory).toBe("AUTH_FORBIDDEN");
   });
 
   it("row 3: membership missing → deny, AUTH_FORBIDDEN (§4.1.2)", () => {
@@ -255,6 +255,124 @@ describe("evaluateAuthorizationDecision — §4.2 decision table (verbatim rows)
   });
 });
 
+describe("evaluateAuthorizationDecision — Owner-floor scope and invariant (independent final review, §3.6/INV-1)", () => {
+  it("Owner receives NO bypass for a well-formed but ungoverned (non-catalogue) permission — the floor is scoped to the sensitive catalogue only", () => {
+    const decision = evaluateAuthorizationDecision(
+      baseInput({
+        request: { userId: "user-1", businessId: "biz-a", permission: "some.ungoverned" },
+        membership: { kind: "found", membership: membership({ role: "owner" }) },
+      }),
+    );
+    expect(decision.allowed).toBe(false);
+    expect(decision.errorCategory).toBe("AUTH_FORBIDDEN");
+  });
+
+  it("Owner's sensitive-permission floor cannot be narrowed by any override record, even a directly-constructed revoke (§3.6: 'never narrowed below the full sensitive-permission set by any override record')", () => {
+    // permissionOverride.ts already refuses to construct an override
+    // targeting an Owner membership at all — this is the evaluator-level
+    // defence-in-depth proof of the same invariant for a directly
+    // constructed EvaluationInput (repository-owned data, independently
+    // constructible).
+    const decision = evaluateAuthorizationDecision(
+      baseInput({
+        request: { userId: "user-1", businessId: "biz-a", permission: "staff.manage" },
+        membership: {
+          kind: "found",
+          membership: membership({
+            role: "owner",
+            overrides: [
+              {
+                permissionId: "staff.manage",
+                direction: "revoke",
+                businessId: "biz-a",
+                membershipId: "mem-1",
+              },
+            ],
+          }),
+        },
+      }),
+    );
+    expect(decision.allowed).toBe(true);
+    expect(decision.permissionSource).toBe("owner-floor");
+  });
+});
+
+describe("evaluateAuthorizationDecision — interaction cases (independent final review, Phase O)", () => {
+  it("business-mismatch denial takes precedence over an otherwise-valid grant (business gate evaluated before membership/overrides)", () => {
+    const decision = evaluateAuthorizationDecision(
+      baseInput({
+        request: { userId: "user-1", businessId: "biz-b", permission: "transaction.reverse" },
+        business: { kind: "found", business: { id: "biz-a", status: "active" } },
+        membership: {
+          kind: "found",
+          membership: membership({
+            businessId: "biz-b",
+            role: "manager",
+            overrides: [
+              {
+                permissionId: "transaction.reverse",
+                direction: "grant",
+                businessId: "biz-b",
+                membershipId: "mem-1",
+              },
+            ],
+          }),
+        },
+      }),
+    );
+    expect(decision.allowed).toBe(false);
+    expect(decision.errorCategory).toBe("AUTH_FORBIDDEN");
+  });
+
+  it("inactive-membership denial takes precedence over an otherwise-valid grant (membership gate evaluated before overrides)", () => {
+    const decision = evaluateAuthorizationDecision(
+      baseInput({
+        request: { userId: "user-1", businessId: "biz-a", permission: "transaction.reverse" },
+        membership: {
+          kind: "found",
+          membership: membership({
+            status: "suspended",
+            role: "manager",
+            overrides: [
+              {
+                permissionId: "transaction.reverse",
+                direction: "grant",
+                businessId: "biz-a",
+                membershipId: "mem-1",
+              },
+            ],
+          }),
+        },
+      }),
+    );
+    expect(decision.allowed).toBe(false);
+    expect(decision.errorCategory).toBe("AUTH_FORBIDDEN");
+  });
+
+  it("an override with an unrecognized/malformed direction value is ignored (treated as neither grant nor revoke), and role-default still resolves correctly", () => {
+    const decision = evaluateAuthorizationDecision(
+      baseInput({
+        membership: {
+          kind: "found",
+          membership: membership({
+            role: "manager",
+            overrides: [
+              {
+                permissionId: "customer.viewProtectedProfile",
+                direction: "unknown-direction" as unknown as "grant",
+                businessId: "biz-a",
+                membershipId: "mem-1",
+              },
+            ],
+          }),
+        },
+      }),
+    );
+    expect(decision.allowed).toBe(true);
+    expect(decision.permissionSource).toBe("role-default");
+  });
+});
+
 describe("evaluateAuthorizationDecision — fail-closed / integrity (Phase G, matrix §I)", () => {
   it("malformed stored membership (unrecognized role) → deny, AUTH_FORBIDDEN (§6.11, AD-4)", () => {
     const decision = evaluateAuthorizationDecision(
@@ -264,10 +382,10 @@ describe("evaluateAuthorizationDecision — fail-closed / integrity (Phase G, ma
     expect(decision.errorCategory).toBe("AUTH_FORBIDDEN");
   });
 
-  it("malformed stored business config → deny, BUSINESS_INACTIVE (§6.11, AD-4)", () => {
+  it("malformed stored business config → deny, AUTH_FORBIDDEN (§6.11, AD-4 — server-owned data-integrity failure, not a legitimate 'business is inactive' read)", () => {
     const decision = evaluateAuthorizationDecision(baseInput({ business: { kind: "malformed" } }));
     expect(decision.allowed).toBe(false);
-    expect(decision.errorCategory).toBe("BUSINESS_INACTIVE");
+    expect(decision.errorCategory).toBe("AUTH_FORBIDDEN");
   });
 
   it("transient business read failure → deny, TEMPORARY_UNAVAILABLE, never allow (§11)", () => {
@@ -284,6 +402,34 @@ describe("evaluateAuthorizationDecision — fail-closed / integrity (Phase G, ma
     );
     expect(decision.allowed).toBe(false);
     expect(decision.errorCategory).toBe("TEMPORARY_UNAVAILABLE");
+  });
+
+  it("non-string userId (untrusted external payload) → deny, AUTH_REQUIRED, never throws (Codex review pass 3, PR #107)", () => {
+    const decision = evaluateAuthorizationDecision(
+      baseInput({
+        request: {
+          userId: 123 as unknown as string,
+          businessId: "biz-a",
+          permission: "customer.viewProtectedProfile",
+        },
+      }),
+    );
+    expect(decision.allowed).toBe(false);
+    expect(decision.errorCategory).toBe("AUTH_REQUIRED");
+  });
+
+  it("non-string businessId (untrusted external payload) → deny, VALIDATION_FAILED, never throws (Codex review pass 3, PR #107)", () => {
+    const decision = evaluateAuthorizationDecision(
+      baseInput({
+        request: {
+          userId: "user-1",
+          businessId: { nested: "object" } as unknown as string,
+          permission: "customer.viewProtectedProfile",
+        },
+      }),
+    );
+    expect(decision.allowed).toBe(false);
+    expect(decision.errorCategory).toBe("VALIDATION_FAILED");
   });
 
   it("no authenticated subject → deny, AUTH_REQUIRED", () => {
@@ -672,6 +818,6 @@ describe("evaluateAuthorizationDecision — business-context isolation on the bu
       }),
     );
     expect(decision.allowed).toBe(false);
-    expect(decision.errorCategory).toBe("BUSINESS_INACTIVE");
+    expect(decision.errorCategory).toBe("AUTH_FORBIDDEN");
   });
 });
