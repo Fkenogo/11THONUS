@@ -11,15 +11,18 @@
  * §14), not this package's.
  *
  * A document with **no** persisted override state (`permissions` absent
- * or `[]`) is safely read as `overrides: []`. A document with a
- * **non-empty** `permissions` array is treated as `"malformed"`
- * (`null`), not silently discarded as `overrides: []` — this codebase
- * has no governed serialization for that field yet, so a non-empty value
- * could encode a revocation or grant this reader cannot recover; failing
- * closed (§6.11, AD-4) is the only sound outcome until 004D resolves the
- * serialization question, rather than risking a role-default permission
- * being allowed when the stored state actually revokes it (fixed after a
- * Codex review finding on PR #107).
+ * or `[]`, and no `permissionSetId`) is safely read as `overrides: []`.
+ * A document with a **non-empty** `permissions` array, or a **non-blank**
+ * `permissionSetId`, is treated as `"malformed"` (`null`), not silently
+ * discarded as `overrides: []` — design §6.7 names both fields as
+ * override sources, and this codebase has no governed serialization for
+ * either yet, so a non-empty/non-blank value could encode a revocation
+ * this reader cannot recover; failing closed (§6.11, AD-4) is the only
+ * sound outcome until 004D resolves the serialization/reference
+ * question, rather than risking a role-default permission being allowed
+ * when the referenced state actually revokes it (fixed after Codex
+ * review findings, PR #107 — the `permissions` case in review pass 1,
+ * the `permissionSetId` case in review pass 4).
  */
 
 import { isRole } from "./role";
@@ -46,6 +49,7 @@ export function fromBusinessMembershipDocument(
     role: unknown;
     status: unknown;
     permissions: unknown;
+    permissionSetId: unknown;
   }>;
 
   if (typeof data.userId !== "string" || data.userId.length === 0) return null;
@@ -55,6 +59,12 @@ export function fromBusinessMembershipDocument(
   if (
     data.permissions !== undefined &&
     !(Array.isArray(data.permissions) && data.permissions.length === 0)
+  ) {
+    return null;
+  }
+  if (
+    data.permissionSetId !== undefined &&
+    !(typeof data.permissionSetId === "string" && data.permissionSetId.trim().length === 0)
   ) {
     return null;
   }

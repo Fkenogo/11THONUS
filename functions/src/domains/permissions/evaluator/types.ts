@@ -53,6 +53,7 @@ export const REASON_CODES = [
   "SENSITIVE_PERMISSION_NOT_GRANTED",
   "ROLE_DEFAULT_ALLOW",
   "NO_APPLICABLE_GRANT",
+  "MALFORMED_OVERRIDE_DIRECTION",
 ] as const;
 
 export type ReasonCode = (typeof REASON_CODES)[number];
@@ -113,4 +114,15 @@ export type EvaluationInput = {
   readonly request: AuthorizationRequest;
   readonly business: BusinessReadResult;
   readonly membership: MembershipReadResult;
+  /**
+   * The evaluation instant, supplied by the caller rather than read
+   * internally — genuine purity (design §6.18, §13 item 1: "identical
+   * inputs always produce identical `AuthorizationDecision`") requires
+   * `evaluatedAt` to be a function of the *input*, not a wall-clock read
+   * inside the decision function itself (Codex review, PR #107). The
+   * Firestore orchestrator (`service/evaluatePermissionService.ts`)
+   * supplies `new Date()` at call time — that impurity is expected and
+   * acceptable there; it is not acceptable inside the pure function.
+   */
+  readonly now: Date;
 };

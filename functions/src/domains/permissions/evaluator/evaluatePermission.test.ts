@@ -29,11 +29,14 @@ function membership(
   };
 }
 
+const FIXED_NOW = new Date("2026-08-15T00:00:00.000Z");
+
 function baseInput(overrides: Partial<EvaluationInput> = {}): EvaluationInput {
   return {
     request: { userId: "user-1", businessId: "biz-a", permission: "customer.viewProtectedProfile" },
     business: { kind: "found", business: ACTIVE_BUSINESS },
     membership: { kind: "found", membership: membership() },
+    now: FIXED_NOW,
     ...overrides,
   };
 }
@@ -349,7 +352,12 @@ describe("evaluateAuthorizationDecision — interaction cases (independent final
     expect(decision.errorCategory).toBe("AUTH_FORBIDDEN");
   });
 
-  it("an override with an unrecognized/malformed direction value is ignored (treated as neither grant nor revoke), and role-default still resolves correctly", () => {
+  it("an override with an unrecognized/malformed direction value fails closed — it is NOT treated as absent, since it may have been an intended revocation corruption obscured (Codex review pass 4, PR #107)", () => {
+    // Corrected after independent final security review: an earlier
+    // version of this test asserted the opposite (ignored → role-default
+    // allow), which Codex review pass 4 correctly identified as unsafe —
+    // corrupt override state must deny, not silently fall through to
+    // whatever the rest of the algorithm would otherwise decide.
     const decision = evaluateAuthorizationDecision(
       baseInput({
         membership: {
@@ -368,8 +376,8 @@ describe("evaluateAuthorizationDecision — interaction cases (independent final
         },
       }),
     );
-    expect(decision.allowed).toBe(true);
-    expect(decision.permissionSource).toBe("role-default");
+    expect(decision.allowed).toBe(false);
+    expect(decision.errorCategory).toBe("AUTH_FORBIDDEN");
   });
 });
 
@@ -694,14 +702,12 @@ describe("evaluateAuthorizationDecision — resolved context on denied decisions
 });
 
 describe("evaluateAuthorizationDecision — determinism & purity (Phase K, matrix §K)", () => {
-  it("identical input always produces an identical decision (excluding evaluatedAt)", () => {
+  it("identical input always produces a byte-identical decision, including evaluatedAt (genuine purity — evaluatedAt is a function of input.now, never the wall clock, Codex review pass 4, PR #107)", () => {
     const input = baseInput();
     const d1 = evaluateAuthorizationDecision(input);
     const d2 = evaluateAuthorizationDecision(input);
-    expect(d1.allowed).toBe(d2.allowed);
-    expect(d1.reasonCode).toBe(d2.reasonCode);
-    expect(d1.permissionSource).toBe(d2.permissionSource);
-    expect(d1.errorCategory).toBe(d2.errorCategory);
+    expect(d1).toEqual(d2);
+    expect(d1.evaluatedAt).toBe(FIXED_NOW);
   });
 
   it("does not mutate its input", () => {

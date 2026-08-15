@@ -6,13 +6,13 @@
  * touches Firestore (machine-enforced — this whole directory is scoped by
  * the repo-root `eslint.config.js` `no-restricted-imports` rule to forbid
  * any Firebase SDK import, `evaluator/**`/`repositories/**` and
- * `service/**` excepted), never mutates its input, and is a function of
- * its input alone (design §6.18 purity, §13 item 1 determinism). The
- * Firestore-touching orchestrator that performs the two authoritative
- * reads and calls this function lives in
- * `../service/evaluatePermissionService.ts`, kept out of this file
- * specifically so this decision logic stays under the same
- * framework-independence guarantee `models/` already has.
+ * `service/**` excepted), never mutates its input, and is a genuine
+ * function of its input alone (design §6.18 purity, §13 item 1
+ * determinism) — including `evaluatedAt`, which is read from
+ * `input.now` rather than the wall clock, so calling this function twice
+ * with the same `EvaluationInput` always produces byte-identical output
+ * (Codex review, PR #107; a wall-clock read inside a "pure" function
+ * would silently violate the acceptance criterion).
  *
  * Reconciliation note (see PR description / implementation report for full
  * detail): design §4.1 item 6 states role/template defaults satisfy
@@ -44,6 +44,7 @@ import type { AuthorizationDecision, EvaluationInput, PermissionSource, ReasonCo
 import type { ErrorCategory } from "../../../shared/errors/errorCategories";
 
 function deny(
+  now: Date,
   reasonCode: ReasonCode,
   errorCategory: ErrorCategory,
   role?: Role,
@@ -55,13 +56,13 @@ function deny(
         errorCategory,
         role,
         permissionSource: "n/a-denied" as PermissionSource,
-        evaluatedAt: new Date(),
+        evaluatedAt: now,
       }
-    : { allowed: false, reasonCode, errorCategory, evaluatedAt: new Date() };
+    : { allowed: false, reasonCode, errorCategory, evaluatedAt: now };
 }
 
 export function evaluateAuthorizationDecision(input: EvaluationInput): AuthorizationDecision {
-  const { request, business, membership } = input;
+  const { request, business, membership, now } = input;
 
   // Step 1: subject. `AuthorizationRequest`'s TypeScript type does not
   // validate an untrusted runtime payload — checked with `typeof` before
@@ -69,13 +70,13 @@ export function evaluateAuthorizationDecision(input: EvaluationInput): Authoriza
   // at the network boundary) resolves to the ordinary fail-closed
   // decision instead of throwing (Codex review pass 3, PR #107).
   if (typeof request.userId !== "string" || request.userId.trim().length === 0) {
-    return deny("NO_SUBJECT", "AUTH_REQUIRED");
+    return deny(now, "NO_SUBJECT", "AUTH_REQUIRED");
   }
 
   // Step 2 (context validation, ahead of the business-record read per §5.4 —
   // a malformed/missing businessId cannot even be looked up).
   if (typeof request.businessId !== "string" || request.businessId.trim().length === 0) {
-    return deny("MISSING_BUSINESS_CONTEXT", "VALIDATION_FAILED");
+    return deny(now, "MISSING_BUSINESS_CONTEXT", "VALIDATION_FAILED");
   }
 
   // Step 2: business-state gate (§4.1.1). Per §6.11 verbatim: "a missing
@@ -90,13 +91,13 @@ export function evaluateAuthorizationDecision(input: EvaluationInput): Authoriza
   // same class of bug Codex review pass 3 flagged for the malformed case
   // only).
   if (business.kind === "transient_failure") {
-    return deny("BUSINESS_READ_FAILURE", "TEMPORARY_UNAVAILABLE");
+    return deny(now, "BUSINESS_READ_FAILURE", "TEMPORARY_UNAVAILABLE");
   }
   if (business.kind === "not_found") {
-    return deny("BUSINESS_NOT_FOUND", "AUTH_FORBIDDEN");
+    return deny(now, "BUSINESS_NOT_FOUND", "AUTH_FORBIDDEN");
   }
   if (business.kind === "malformed") {
-    return deny("BUSINESS_CONFIG_MALFORMED", "AUTH_FORBIDDEN");
+    return deny(now, "BUSINESS_CONFIG_MALFORMED", "AUTH_FORBIDDEN");
   }
   if (business.business.id !== request.businessId) {
     // Defence-in-depth mirroring the membership-mismatch check below: an
@@ -105,21 +106,21 @@ export function evaluateAuthorizationDecision(input: EvaluationInput): Authoriza
     // repository read) — the evaluator never trusts a business record
     // whose own id doesn't match the requested context (§5.6, Codex
     // review pass 2, PR #107).
-    return deny("BUSINESS_CONTEXT_MISMATCH", "AUTH_FORBIDDEN");
+    return deny(now, "BUSINESS_CONTEXT_MISMATCH", "AUTH_FORBIDDEN");
   }
   if (business.business.status !== "active") {
-    return deny("BUSINESS_NOT_ACTIVE", "BUSINESS_INACTIVE");
+    return deny(now, "BUSINESS_NOT_ACTIVE", "BUSINESS_INACTIVE");
   }
 
   // Step 3: membership-state gate (§4.1.2), including business-context isolation (§5.6).
   if (membership.kind === "transient_failure") {
-    return deny("MEMBERSHIP_READ_FAILURE", "TEMPORARY_UNAVAILABLE");
+    return deny(now, "MEMBERSHIP_READ_FAILURE", "TEMPORARY_UNAVAILABLE");
   }
   if (membership.kind === "not_found") {
-    return deny("MEMBERSHIP_NOT_FOUND", "AUTH_FORBIDDEN");
+    return deny(now, "MEMBERSHIP_NOT_FOUND", "AUTH_FORBIDDEN");
   }
   if (membership.kind === "malformed") {
-    return deny("MEMBERSHIP_CONFIG_MALFORMED", "AUTH_FORBIDDEN");
+    return deny(now, "MEMBERSHIP_CONFIG_MALFORMED", "AUTH_FORBIDDEN");
   }
   const resolvedMembership = membership.membership;
   if (
@@ -133,17 +134,17 @@ export function evaluateAuthorizationDecision(input: EvaluationInput): Authoriza
     // membership was still structurally *found* here, so the decision
     // contract's "role, if a membership was found" still applies (§6.2,
     // Codex review pass 2, PR #107).
-    return deny("MEMBERSHIP_BUSINESS_MISMATCH", "AUTH_FORBIDDEN", resolvedMembership.role);
+    return deny(now, "MEMBERSHIP_BUSINESS_MISMATCH", "AUTH_FORBIDDEN", resolvedMembership.role);
   }
   if (resolvedMembership.status !== "active") {
-    return deny("MEMBERSHIP_NOT_ACTIVE", "AUTH_FORBIDDEN", resolvedMembership.role);
+    return deny(now, "MEMBERSHIP_NOT_ACTIVE", "AUTH_FORBIDDEN", resolvedMembership.role);
   }
 
   const role = resolvedMembership.role;
 
   // Step 4: permission identifier shape (§4.1.7).
   if (!isWellFormedPermissionId(request.permission)) {
-    return deny("MALFORMED_PERMISSION_ID", "VALIDATION_FAILED", role);
+    return deny(now, "MALFORMED_PERMISSION_ID", "VALIDATION_FAILED", role);
   }
   const permission = request.permission;
 
@@ -157,7 +158,7 @@ export function evaluateAuthorizationDecision(input: EvaluationInput): Authoriza
       reasonCode: "OWNER_FLOOR",
       role,
       permissionSource: "owner-floor",
-      evaluatedAt: new Date(),
+      evaluatedAt: now,
     };
   }
 
@@ -171,9 +172,27 @@ export function evaluateAuthorizationDecision(input: EvaluationInput): Authoriza
       override.membershipId === resolvedMembership.id,
   );
 
+  // Corrupt override state fails closed rather than being treated as
+  // absent: an applicable override whose `direction` is neither "grant"
+  // nor "revoke" cannot be soundly interpreted — it may have been an
+  // intended revocation that corruption obscured — so evaluation must
+  // not silently fall through to whatever the rest of the algorithm
+  // would otherwise decide (which could itself be an allow via
+  // role-default). Corrected after independent final security review;
+  // an earlier version of this evaluator treated an unrecognized
+  // direction as absent, which a dedicated test then incorrectly
+  // asserted as the expected (and unsafe) behavior (Codex review, PR #107).
+  if (
+    applicableOverrides.some(
+      (override) => override.direction !== "grant" && override.direction !== "revoke",
+    )
+  ) {
+    return deny(now, "MALFORMED_OVERRIDE_DIRECTION", "AUTH_FORBIDDEN", role);
+  }
+
   // Step 6: explicit revocation (§4.1.3) — checked, and wins, before grant or sensitivity.
   if (applicableOverrides.some((override) => override.direction === "revoke")) {
-    return deny("EXPLICIT_REVOCATION", "AUTH_FORBIDDEN", role);
+    return deny(now, "EXPLICIT_REVOCATION", "AUTH_FORBIDDEN", role);
   }
 
   // Step 7: explicit grant (§4.1.5) — satisfies sensitivity too, but only
@@ -205,7 +224,7 @@ export function evaluateAuthorizationDecision(input: EvaluationInput): Authoriza
         reasonCode: "EXPLICIT_GRANT",
         role,
         permissionSource: "explicit-grant",
-        evaluatedAt: new Date(),
+        evaluatedAt: now,
       };
     }
   }
@@ -219,10 +238,10 @@ export function evaluateAuthorizationDecision(input: EvaluationInput): Authoriza
         reasonCode: "ROLE_DEFAULT_ALLOW",
         role,
         permissionSource: "role-default",
-        evaluatedAt: new Date(),
+        evaluatedAt: now,
       };
     }
-    return deny("SENSITIVE_PERMISSION_NOT_GRANTED", "AUTH_FORBIDDEN", role);
+    return deny(now, "SENSITIVE_PERMISSION_NOT_GRANTED", "AUTH_FORBIDDEN", role);
   }
 
   // Step 9: non-sensitive role/template default (§4.1.6). No governed
@@ -244,10 +263,10 @@ export function evaluateAuthorizationDecision(input: EvaluationInput): Authoriza
       reasonCode: "ROLE_DEFAULT_ALLOW",
       role,
       permissionSource: "role-default",
-      evaluatedAt: new Date(),
+      evaluatedAt: now,
     };
   }
 
   // Step 10: fail closed.
-  return deny("NO_APPLICABLE_GRANT", "AUTH_FORBIDDEN", role);
+  return deny(now, "NO_APPLICABLE_GRANT", "AUTH_FORBIDDEN", role);
 }

@@ -31,6 +31,15 @@ describe("fromBusinessMembershipDocument", () => {
     expect(result).toBeNull();
   });
 
+  it("treats a non-blank permissionSetId as malformed — a referenced permission set could contain a revocation this reader cannot resolve (Codex review pass 4, PR #107)", () => {
+    const result = fromBusinessMembershipDocument("mem-1", {
+      ...VALID_BASE,
+      permissions: [],
+      permissionSetId: "set-123",
+    });
+    expect(result).toBeNull();
+  });
+
   it("returns null for an unrecognized role", () => {
     expect(
       fromBusinessMembershipDocument("mem-1", { ...VALID_BASE, role: "superadmin" }),
