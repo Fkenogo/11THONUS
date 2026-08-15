@@ -20,6 +20,7 @@
  */
 
 import type { PermissionId } from "./permissionId";
+import type { Role } from "./role";
 import { unrecognisedSensitivePermissionError } from "./permissionErrors";
 
 /**
@@ -50,6 +51,19 @@ export type SensitivePermissionCatalogueEntry = {
   readonly inheritAllowed: boolean;
   /** Design §3.2 "Explicit grant required?" column. */
   readonly explicitGrantRequired: boolean;
+  /**
+   * Design §3.2's "Explicit grant required?" column names, in
+   * parentheses, exactly which role may receive the grant — e.g. "Yes
+   * (for Manager)" for rows 1/2/4/5/6, "Yes for Staff" for rows 7/8 (a
+   * different role than their `owner_and_manager_default` state, since
+   * Owner/Manager already hold those by default — an explicit grant
+   * would only ever be needed to extend them to Staff). `null` when
+   * `explicitGrantRequired` is `false` (row 3, no grant path at all).
+   * This is not a design invention — it is the literal role qualifier
+   * the design's own table already specifies, captured as structured
+   * data instead of being collapsed into a bare boolean.
+   */
+  readonly explicitGrantEligibleRole: Role | null;
   /** Design §3.2 "Explicit revoke supported?" column. */
   readonly explicitRevocationSupported: boolean;
   /** Design §3.2 "Audit req." column — every entry is "Mandatory" per the approved catalogue. */
@@ -69,6 +83,7 @@ export const SENSITIVE_PERMISSION_CATALOGUE: readonly SensitivePermissionCatalog
     defaultState: "owner_only",
     inheritAllowed: false,
     explicitGrantRequired: true,
+    explicitGrantEligibleRole: "manager",
     explicitRevocationSupported: true,
     auditRequirement: "mandatory",
     rationale: ["a"],
@@ -80,6 +95,7 @@ export const SENSITIVE_PERMISSION_CATALOGUE: readonly SensitivePermissionCatalog
     defaultState: "owner_only",
     inheritAllowed: false,
     explicitGrantRequired: true,
+    explicitGrantEligibleRole: "manager",
     explicitRevocationSupported: true,
     auditRequirement: "mandatory",
     rationale: ["a", "d"],
@@ -98,6 +114,7 @@ export const SENSITIVE_PERMISSION_CATALOGUE: readonly SensitivePermissionCatalog
     // targeting an Owner membership, and no non-owner grant path is
     // modeled anywhere in this catalogue for this entry.
     explicitGrantRequired: false,
+    explicitGrantEligibleRole: null,
     explicitRevocationSupported: false,
     auditRequirement: "mandatory",
     rationale: ["a"],
@@ -109,6 +126,7 @@ export const SENSITIVE_PERMISSION_CATALOGUE: readonly SensitivePermissionCatalog
     defaultState: "owner_only",
     inheritAllowed: false,
     explicitGrantRequired: true,
+    explicitGrantEligibleRole: "manager",
     explicitRevocationSupported: true,
     auditRequirement: "mandatory",
     rationale: ["d"],
@@ -120,6 +138,7 @@ export const SENSITIVE_PERMISSION_CATALOGUE: readonly SensitivePermissionCatalog
     defaultState: "owner_only",
     inheritAllowed: false,
     explicitGrantRequired: true,
+    explicitGrantEligibleRole: "manager",
     explicitRevocationSupported: true,
     auditRequirement: "mandatory",
     rationale: ["c"],
@@ -131,6 +150,7 @@ export const SENSITIVE_PERMISSION_CATALOGUE: readonly SensitivePermissionCatalog
     defaultState: "owner_only",
     inheritAllowed: false,
     explicitGrantRequired: true,
+    explicitGrantEligibleRole: "manager",
     explicitRevocationSupported: true,
     auditRequirement: "mandatory",
     rationale: ["c"],
@@ -143,6 +163,10 @@ export const SENSITIVE_PERMISSION_CATALOGUE: readonly SensitivePermissionCatalog
     defaultState: "owner_and_manager_default",
     inheritAllowed: true,
     explicitGrantRequired: true,
+    // Design §3.2 row 7: "No (role-default), Yes for Staff" — Owner and
+    // Manager already hold this by default (defaultState above); an
+    // explicit grant only ever makes sense to extend it to Staff.
+    explicitGrantEligibleRole: "staff",
     explicitRevocationSupported: true,
     auditRequirement: "mandatory",
     rationale: ["b"],
@@ -154,6 +178,8 @@ export const SENSITIVE_PERMISSION_CATALOGUE: readonly SensitivePermissionCatalog
     defaultState: "owner_and_manager_default",
     inheritAllowed: true,
     explicitGrantRequired: true,
+    // Design §3.2 row 8: same "Yes for Staff" pattern as row 7 above.
+    explicitGrantEligibleRole: "staff",
     explicitRevocationSupported: true,
     auditRequirement: "mandatory",
     rationale: ["c"],

@@ -390,6 +390,55 @@ authorized scope (no non-sensitive permission identifier invented):**
 test), `tsc --noEmit` clean, repo-root `eslint .` clean, `prettier
 --check` clean. Boundary audit re-run and unchanged.
 
+## 26. Second Automated Review Pass — New P1 Finding and Fix
+
+Triggering a fresh Codex review against the P1-1/P1-2 fix commit
+(`a25b955`) surfaced a **new, genuine P1 finding** not present in the
+first pass:
+
+**"Restrict sensitive grants to eligible target roles"**
+(`permissionOverride.ts`) — **valid, fixed.** `createPermissionOverride`'s
+P1-2 fix checked only whether a permission supported the `grant`
+direction *at all* (`explicitGrantRequired`), not *which specific role*
+the design names as eligible to receive it. The design's own §3.2 table
+does not say "Yes" for grants — it says "Yes (for Manager)" for rows
+1/2/4/5/6 and "Yes for Staff" for rows 7/8 — a role-specific qualifier my
+original catalogue transcription collapsed into a bare boolean. Left
+unfixed, an override could have been constructed granting, e.g.,
+`business.configureFraudRules` to a Staff membership, even though the
+design names only Manager as eligible.
+
+**Fix (verified against the authoritative design text on `origin/main`,
+not merely against my own prior report):** added
+`explicitGrantEligibleRole: Role | null` to
+`SensitivePermissionCatalogueEntry`, populated directly from the
+design's own parenthetical qualifiers (`"manager"` for rows 1/2/4/5/6,
+`"staff"` for rows 7/8 — since Owner/Manager already hold those two by
+default, an explicit grant only makes sense to extend them to Staff,
+`null` for row 3, which has no grant path at all).
+`createPermissionOverride` now rejects a `grant` whose `targetRole`
+doesn't match the entry's `explicitGrantEligibleRole`. New error
+`permissionOverrideRoleNotEligibleForGrantError`, with new tests
+covering both eligible-role families in both the accept and reject
+direction.
+
+**Scope justification:** this validates a static catalogue fact the
+design's own table already specifies (which single role may receive a
+grant), not a runtime precedence decision — the same category of
+structural validation as the Owner-target refusal already in this
+module, not an expansion into `ENG-P2-004B`'s evaluation territory.
+Revoke-direction role eligibility was deliberately **not** modeled the
+same way: unlike grant eligibility (a fixed catalogue fact), determining
+who may legitimately have an entitlement to revoke depends on whether it
+came from a role default or a prior grant — genuinely evaluation-time
+state, correctly left to `ENG-P2-004B`.
+
+**Validation:** functions **683/683** (+13: 1 new catalogue-field test
+suite + revised override tests), `tsc --noEmit` clean, repo-root
+`eslint .` clean, `prettier --check` clean. Boundary audit re-run,
+unchanged — no evaluator/audit/persistence/protected-command code
+present.
+
 **Status recorded:** `ENG-P2-004A` = implemented, pending Founder review;
 `ENG-P2-004B` = NOT STARTED; `ENG-P2-004C` = NOT STARTED; `ENG-P2-004D` =
 NOT STARTED; `ENG-P2-004` overall = NOT COMPLETE; Capability 2 = Open —

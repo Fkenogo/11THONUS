@@ -110,4 +110,48 @@ describe("createPermissionOverride", () => {
       }),
     ).toThrow(PermissionDomainError);
   });
+
+  it("refuses a grant of a Manager-eligible sensitive permission to Staff (design §3.2 names Manager only)", () => {
+    expect(() =>
+      createPermissionOverride({
+        ...BASE_INPUT,
+        permissionId: "business.configureFraudRules",
+        direction: "grant",
+        targetRole: "staff",
+      }),
+    ).toThrow(PermissionDomainError);
+  });
+
+  it("permits a grant of a Manager-eligible sensitive permission to Manager", () => {
+    expect(() =>
+      createPermissionOverride({
+        ...BASE_INPUT,
+        permissionId: "business.configureFraudRules",
+        direction: "grant",
+        targetRole: "manager",
+      }),
+    ).not.toThrow();
+  });
+
+  it("refuses a grant of a Staff-eligible sensitive permission to Manager (design §3.2 names Staff only — Manager already has it by default)", () => {
+    expect(() =>
+      createPermissionOverride({
+        ...BASE_INPUT,
+        permissionId: "customer.viewProtectedProfile",
+        direction: "grant",
+        targetRole: "manager",
+      }),
+    ).toThrow(PermissionDomainError);
+  });
+
+  it("permits a grant of a Staff-eligible sensitive permission to Staff", () => {
+    expect(() =>
+      createPermissionOverride({
+        ...BASE_INPUT,
+        permissionId: "customer.viewProtectedProfile",
+        direction: "grant",
+        targetRole: "staff",
+      }),
+    ).not.toThrow();
+  });
 });

@@ -28,6 +28,7 @@ import {
   permissionOverrideCannotTargetOwnerError,
   invalidPermissionOverrideScopeError,
   permissionOverrideDirectionNotSupportedError,
+  permissionOverrideRoleNotEligibleForGrantError,
 } from "./permissionErrors";
 
 export const PERMISSION_OVERRIDE_DIRECTIONS = ["grant", "revoke"] as const;
@@ -81,8 +82,23 @@ export function createPermissionOverride(input: CreatePermissionOverrideInput): 
 
   if (isSensitivePermission(input.permissionId)) {
     const entry = getSensitivePermissionEntry(input.permissionId);
-    if (input.direction === "grant" && !entry.explicitGrantRequired) {
-      throw permissionOverrideDirectionNotSupportedError(input.permissionId, input.direction);
+    if (input.direction === "grant") {
+      if (!entry.explicitGrantRequired) {
+        throw permissionOverrideDirectionNotSupportedError(input.permissionId, input.direction);
+      }
+      // The catalogue names exactly one role eligible to receive an
+      // explicit grant of this permission (design §3.2's "(Manager)"/
+      // "for Staff" qualifiers) — not "any non-owner role." Rejecting a
+      // mismatched targetRole here is validating a static catalogue
+      // fact, not performing runtime precedence evaluation (that
+      // remains ENG-P2-004B's concern).
+      if (input.targetRole !== entry.explicitGrantEligibleRole) {
+        throw permissionOverrideRoleNotEligibleForGrantError(
+          input.permissionId,
+          input.targetRole,
+          entry.explicitGrantEligibleRole,
+        );
+      }
     }
     if (input.direction === "revoke" && !entry.explicitRevocationSupported) {
       throw permissionOverrideDirectionNotSupportedError(input.permissionId, input.direction);

@@ -117,3 +117,14 @@ export function permissionOverrideDirectionNotSupportedError(
     `Permission "${permissionId}" does not support the "${direction}" override direction (ENG-P2-004-DESIGN-001 §3.2's catalogue marks it unsupported for this permission).`,
   );
 }
+
+export function permissionOverrideRoleNotEligibleForGrantError(
+  permissionId: string,
+  targetRole: string,
+  eligibleRole: string | null,
+): PermissionDomainError {
+  return new PermissionDomainError(
+    "VALIDATION_FAILED",
+    `Permission "${permissionId}" cannot be explicitly granted to role "${targetRole}" — ENG-P2-004-DESIGN-001 §3.2 names only "${eligibleRole ?? "no role"}" as eligible for an explicit grant of this permission.`,
+  );
+}

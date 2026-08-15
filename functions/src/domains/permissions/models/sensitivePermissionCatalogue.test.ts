@@ -83,6 +83,32 @@ describe("SENSITIVE_PERMISSION_CATALOGUE", () => {
       expect(entry.explicitRevocationSupported).toBe(true);
     },
   );
+
+  it("business.transferOwnership has no explicit-grant-eligible role", () => {
+    expect(
+      getSensitivePermissionEntry("business.transferOwnership").explicitGrantEligibleRole,
+    ).toBe(null);
+  });
+
+  it.each([
+    "staff.manage",
+    "staff.assignPermissions",
+    "business.configureFraudRules",
+    "transaction.reverse",
+    "reward.override",
+  ])(
+    "%s names Manager as the only explicit-grant-eligible role (design §3.2 'Yes (Manager)')",
+    (id) => {
+      expect(getSensitivePermissionEntry(id).explicitGrantEligibleRole).toBe("manager");
+    },
+  );
+
+  it.each(["customer.viewProtectedProfile", "report.exportFinancial"])(
+    "%s names Staff as the only explicit-grant-eligible role (design §3.2 'Yes for Staff' — Owner/Manager already default to it)",
+    (id) => {
+      expect(getSensitivePermissionEntry(id).explicitGrantEligibleRole).toBe("staff");
+    },
+  );
 });
 
 describe("SENSITIVE_PERMISSION_IDS", () => {
