@@ -63,14 +63,14 @@ describe("recordSensitiveDecision — real persistence, composed within a caller
     const probeRef = db.collection("membershipStateProbe").doc("probe-1");
 
     await db.runTransaction(async (transaction) => {
-      transaction.set(probeRef, { touchedBy: "protected-command-stand-in" });
-      const outcome = recordSensitiveDecision(
+      const outcome = await recordSensitiveDecision(
         transaction,
         db,
         { decision: decision(), request: request(), idempotencyKey: "emu-key-1" },
         FIXED_NOW,
       );
       expect(outcome.recorded).toBe(true);
+      transaction.set(probeRef, { touchedBy: "protected-command-stand-in" });
     });
 
     const probeSnapshot = await probeRef.get();
@@ -81,6 +81,44 @@ describe("recordSensitiveDecision — real persistence, composed within a caller
     const entry = outboxSnapshot.docs[0]!.data();
     expect(entry["event"].eventType).toBe("permissions.permission_decision_recorded.v1");
     expect(entry["event"].payload.result).toBe("allow");
+  });
+
+  it("does NOT reset an already-completed outbox entry to pending when a retried protected-command transaction re-invokes it with the same idempotency key (Phase J)", async () => {
+    const probeRef = db.collection("membershipStateProbe").doc("probe-2");
+
+    await db.runTransaction(async (transaction) => {
+      await recordSensitiveDecision(
+        transaction,
+        db,
+        { decision: decision(), request: request(), idempotencyKey: "emu-key-retry-core" },
+        FIXED_NOW,
+      );
+      transaction.set(probeRef, { touchedBy: "protected-command-stand-in" });
+    });
+
+    const snapshotBefore = await db.collection("outboxEntries").get();
+    expect(snapshotBefore.size).toBe(1);
+    const ref = snapshotBefore.docs[0]!.ref;
+    await ref.update({ status: "completed", retryCount: 3 });
+
+    // Simulates a client retry of the whole protected command: a brand-new
+    // transaction, same idempotency key, calling the core (non-standalone)
+    // API directly — exactly the 004D composition shape.
+    await db.runTransaction(async (transaction) => {
+      const outcome = await recordSensitiveDecision(
+        transaction,
+        db,
+        { decision: decision(), request: request(), idempotencyKey: "emu-key-retry-core" },
+        FIXED_NOW,
+      );
+      expect(outcome).toEqual({ recorded: true, written: false, eventId: expect.any(String) });
+    });
+
+    const after = await ref.get();
+    expect(after.data()?.["status"]).toBe("completed");
+    expect(after.data()?.["retryCount"]).toBe(3);
+    const snapshotAfter = await db.collection("outboxEntries").get();
+    expect(snapshotAfter.size).toBe(1);
   });
 });
 

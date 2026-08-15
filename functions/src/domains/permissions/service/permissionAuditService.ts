@@ -37,12 +37,21 @@
  * command's state change, and 004C has no real protected command yet
  * (004D owns that) — designing the primary API to accept an existing
  * transaction is what lets a future 004D command compose this call
- * alongside its own writes with zero redesign. `recordSensitiveDecisionStandalone`
- * is a thin, test-only convenience wrapper that opens its own
- * transaction (mirroring AUTH-08's `enqueueOnce` shape) for 004C's own
- * verification, where no real protected-command transaction exists yet
- * — it does **not** represent the eventual 004D integration shape and
- * must not be reused as one.
+ * alongside its own writes with zero redesign.
+ *
+ * `recordSensitiveDecision` performs its own `transaction.get` existence
+ * check before writing (async, hence `Promise`-returning) so that a
+ * retried invocation of the whole protected-command transaction — e.g.
+ * a client retry after a timeout, reusing the same idempotency key —
+ * can never reset an already-`processing`/`completed` outbox entry back
+ * to `pending`. Firestore requires all reads in a transaction to precede
+ * all writes; **callers composing this into their own transaction must
+ * call and `await` `recordSensitiveDecision` before performing any of
+ * their own transaction writes.** `recordSensitiveDecisionStandalone`
+ * now delegates directly to this same core function inside its own
+ * `runTransaction` call — it is a thin test-only convenience for 004C's
+ * own verification, where no real protected-command transaction exists
+ * yet, not a distinct code path.
  */
 
 import type { Firestore, Transaction } from "firebase-admin/firestore";
@@ -75,68 +84,19 @@ function isAccountableDecision(request: AuthorizationRequest): boolean {
  * unaccountable (no-subject) decision — callers must not branch on
  * sensitivity themselves; this function is the single source of truth
  * for "should this decision be audited."
+ *
+ * Async: performs a `transaction.get` existence check before writing,
+ * so a retried invocation reusing the same idempotency key can never
+ * reset an already-`processing`/`completed` outbox entry back to
+ * `pending` (Phase J). Firestore requires all transaction reads to
+ * precede all transaction writes — callers MUST `await` this call
+ * before issuing any of their own writes on the same transaction.
  */
-export function recordSensitiveDecision(
+export async function recordSensitiveDecision(
   transaction: Transaction,
   db: Firestore,
   params: RecordSensitiveDecisionParams,
   now: Date,
-): RecordSensitiveDecisionOutcome {
-  if (!isSensitivePermission(params.request.permission)) {
-    return { recorded: false };
-  }
-  if (!isAccountableDecision(params.request)) {
-    return { recorded: false };
-  }
-
-  const event = buildPermissionDecisionRecordedEvent({
-    actorUserId: params.request.userId,
-    businessId: params.request.businessId,
-    membershipId: params.membershipId,
-    permission: params.request.permission,
-    result: params.decision.allowed ? "allow" : "deny",
-    decisionSource: mapReasonCodeToDecisionSource(params.decision.reasonCode),
-    effectiveRole: params.decision.role,
-    reasonCode: params.decision.reasonCode,
-    idempotencyKey: params.idempotencyKey,
-    occurredAt: now.toISOString(),
-  });
-
-  // Idempotent enqueue: the caller's own transaction already owns the
-  // atomicity guarantee (it is composing this write with its protected
-  // command's state change); this function only needs to avoid writing
-  // a second entry for an id that already exists — checked by the
-  // caller *before* opening its transaction is not composable with an
-  // externally-supplied transaction, so composition is deferred to a
-  // transactional read here instead, mirroring the same read-then-set
-  // discipline `enqueueOnce` uses, just inside the caller's transaction
-  // rather than one this function opens itself.
-  const ref = outboxEntryRef(db, event.eventId);
-  transaction.set(ref, {
-    event,
-    status: "pending",
-    retryCount: 0,
-    createdAt: now,
-  });
-
-  return { recorded: true, written: true, eventId: event.eventId };
-}
-
-/**
- * Test-only standalone wrapper — opens its own transaction (mirroring
- * AUTH-08's `enqueueOnce`) and performs a genuine read-then-set-if-absent
- * idempotent enqueue, since `recordSensitiveDecision` itself cannot
- * safely check-then-set across an externally-supplied transaction it
- * doesn't own the read for. **Not** the shape 004D will use — 004D calls
- * `recordSensitiveDecision` directly inside its own transaction, where
- * the existence check is unnecessary because the protected command's
- * own idempotency handling already guards against a retried invocation
- * re-running the whole transaction from scratch.
- */
-export async function recordSensitiveDecisionStandalone(
-  db: Firestore,
-  params: RecordSensitiveDecisionParams,
-  now: Date = new Date(),
 ): Promise<RecordSensitiveDecisionOutcome> {
   if (!isSensitivePermission(params.request.permission)) {
     return { recorded: false };
@@ -158,13 +118,28 @@ export async function recordSensitiveDecisionStandalone(
     occurredAt: now.toISOString(),
   });
 
-  return db.runTransaction(async (transaction) => {
-    const ref = outboxEntryRef(db, event.eventId);
-    const existing = await transaction.get(ref);
-    if (existing.exists) {
-      return { recorded: true, written: false, eventId: event.eventId };
-    }
-    writeOutboxEntry(transaction, db, event);
-    return { recorded: true, written: true, eventId: event.eventId };
-  });
+  const ref = outboxEntryRef(db, event.eventId);
+  const existing = await transaction.get(ref);
+  if (existing.exists) {
+    return { recorded: true, written: false, eventId: event.eventId };
+  }
+
+  writeOutboxEntry(transaction, db, event);
+
+  return { recorded: true, written: true, eventId: event.eventId };
+}
+
+/**
+ * Test-only standalone wrapper — opens its own transaction (mirroring
+ * AUTH-08's `enqueueOnce`) and delegates to `recordSensitiveDecision`
+ * for 004C's own verification, where no real protected-command
+ * transaction exists yet. 004D composes `recordSensitiveDecision`
+ * directly inside its own transaction instead of using this wrapper.
+ */
+export async function recordSensitiveDecisionStandalone(
+  db: Firestore,
+  params: RecordSensitiveDecisionParams,
+  now: Date = new Date(),
+): Promise<RecordSensitiveDecisionOutcome> {
+  return db.runTransaction((transaction) => recordSensitiveDecision(transaction, db, params, now));
 }
