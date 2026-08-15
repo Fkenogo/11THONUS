@@ -6,9 +6,23 @@
  * concept) — the *input* `ENG-P2-004B`'s evaluator will later resolve.
  * This module only validates and represents that input unambiguously; it
  * does **not** implement override-resolution precedence, does not decide
- * allow/deny, and is not itself persisted anywhere (persistence is
- * `businessMemberships.permissions[]`, TRD10 §10.6.4 — an existing,
- * unmodified field this module does not touch).
+ * allow/deny, and is not itself persisted by this module.
+ *
+ * **Serialization/persistence mapping is undesigned and explicitly out
+ * of 004A's scope — corrected disclosure (Founder final-review pass).**
+ * An earlier version of this comment claimed persistence "is
+ * `businessMemberships.permissions[]` ... an existing, unmodified field
+ * this module does not touch," implying that field already accommodates
+ * this shape. It does not: TRD10 §10.6.4 declares
+ * `BusinessMembershipDocument.permissions` as `string[]` — a flat array
+ * of permission-id strings — while `PermissionOverride` is a richer
+ * object (direction, scope, attribution, a date) that cannot be written
+ * into a `string[]` without a serialization convention this package does
+ * not define. Reconciling that gap — a compatible serialized
+ * representation, a different persisted shape, or a governed TRD10
+ * schema amendment — is `ENG-P2-004D`'s repository/infrastructure
+ * integration work (design §14), not 004A's; this module intentionally
+ * stops at the in-memory contract.
  *
  * Scoped to `(businessId, membershipId)` per design §5 — an override is
  * never global. `role` is accepted only to enforce the one structural

@@ -444,3 +444,44 @@ present.
 NOT STARTED; `ENG-P2-004` overall = NOT COMPLETE; Capability 2 = Open —
 partially implemented; Capability 3 = Not started (existing governed
 status); ITM = Not started — Unauthorised.
+
+## 27. Third Automated Review Pass — Documentation Overclaim Corrected
+
+A third Codex review pass (triggered against the P1-4 fix commit,
+`7ba370c`) surfaced one further P1:
+
+**"Align overrides with the existing membership schema"**
+(`permissionOverride.ts`) — **valid, corrected (documentation only, no
+behavior/scope change).** This module's header comment claimed
+`PermissionOverride`'s persistence destination "is
+`businessMemberships.permissions[]`, TRD10 §10.6.4 — an existing,
+unmodified field this module does not touch," implying that field
+already accommodates this shape without any further work. Verified
+directly against TRD10 §10.6.4 on `origin/main`:
+`BusinessMembershipDocument.permissions` is declared `string[]` — a flat
+array of permission-id strings — while `PermissionOverride` is a richer
+object (`permissionId`, `direction`, `businessId`, `membershipId`,
+`grantedBy`, `grantedAt`). Writing one into the other requires a
+serialization convention this package never defined; the original
+comment overclaimed compatibility that does not exist.
+
+**Disposition:** corrected the header comment to disclose the gap
+plainly and assign it to the correct owner — reconciling the
+representation mismatch (a compatible serialization scheme, a different
+persisted shape, or a governed TRD10 schema amendment) is
+`ENG-P2-004D`'s repository/infrastructure integration work (design
+§14), not 004A's. **No code was written to solve the serialization
+question** — doing so in 004A would itself be scope creep into 004D's
+persistence-integration territory and, if it required changing TRD10's
+schema, would need its own governance decision this task is not
+authorized to make. This mirrors how earlier packages in this repository
+(e.g. `ENG-P2-001-10`'s undesignated audit-retention period) correctly
+disclose an open gap rather than resolving it out of scope.
+
+**Validation:** functions **683/683** (unchanged — comment-only edit),
+`tsc --noEmit` clean, repo-root `eslint .` clean, `prettier --check`
+clean. Boundary audit unaffected.
+
+**Status recorded (unchanged):** `ENG-P2-004A` = implemented, pending
+Founder review; `ENG-P2-004B`/`004C`/`004D` = NOT STARTED; `ENG-P2-004`
+overall = NOT COMPLETE.
