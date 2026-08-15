@@ -124,7 +124,9 @@ Only `status === "active"` passes; `invited`/`suspended`/`removed` all deny unif
 
 Malformed/unrecognized `role` or `status` on a stored membership document, or more than one membership document matching the same `(userId, businessId)` pair (contradictory stored data) → `"malformed"` read result → fail-closed `AUTH_FORBIDDEN` deny (business malformed → `BUSINESS_INACTIVE`). Internal `reasonCode` distinguishes the exact cause for logs; the client-facing `errorCategory` never does (§9 enumeration-resistance).
 
-**Known, explicitly-scoped limitation:** `ENG-P2-004A`'s `permissionOverride.ts` documents that the override *persistence/serialization* mapping (how grant/revoke direction is encoded into TRD10's flat `businessMemberships.permissions: string[]` field) is undesigned and deferred to `ENG-P2-004D`. This implementation honors that deferral: the membership repository reads only the fully-governed structural fields (`id`, `userId`, `businessId`, `role`, `status`) and always returns `overrides: []`; the pure evaluator's override-precedence logic is fully proven against directly-constructed fixtures in `evaluatePermission.test.ts` (29 of 34 evaluator unit tests exercise override scenarios), but a real Firestore round-trip of a *persisted* override record is not yet possible until 004D resolves the serialization question. This is flagged for Founder awareness, not silently worked around.
+**Known, explicitly-scoped limitation:** `ENG-P2-004A`'s `permissionOverride.ts` documents that the override *persistence/serialization* mapping (how grant/revoke direction is encoded into TRD10's flat `businessMemberships.permissions: string[]` field) is undesigned and deferred to `ENG-P2-004D`. This implementation honors that deferral: the membership repository reads only the fully-governed structural fields (`id`, `userId`, `businessId`, `role`, `status`) and always returns `overrides: []`; the pure evaluator's override-precedence logic is fully proven against directly-constructed fixtures in `evaluatePermission.test.ts`, but a real Firestore round-trip of a *persisted* override record is not yet possible until 004D resolves the serialization question. This is flagged for Founder awareness, not silently worked around.
+
+**Post-review hardening (review pass 1, PR #107):** the membership reader was additionally hardened so a document with a **non-empty** `permissions` array (state this reader cannot safely interpret — see the limitation above) is treated as `"malformed"` (fail-closed) rather than silently read as `overrides: []`. Only an absent or empty `permissions` array is safe to read as "no overrides."
 
 ## 22. Transient failure handling
 
@@ -148,11 +150,11 @@ Design §10.8 already resolves this: protected mutating commands must re-verify 
 
 ## 27. Unit tests
 
-34 tests in `evaluatePermission.test.ts` (§4.2 decision-table rows verbatim, fail-closed/integrity cases, cross-business isolation defence-in-depth, determinism/purity, closed-taxonomy assertion, adversarial revoked-permission replay) + 2 repository-level transient-failure tests. All pass (`npx vitest run src/domains/permissions/` — 148 tests total across the whole permissions domain, including pre-existing 004A tests).
+50 tests in `evaluatePermission.test.ts` (§4.2 decision-table rows verbatim, fail-closed/integrity cases, cross-business isolation defence-in-depth incl. business-record identity check, determinism/purity, closed-taxonomy assertion, adversarial revoked-permission replay, grant role-eligibility revalidation, resolved-context-on-denial) + 5 `businessMembershipDocument.test.ts` reader tests + 2 repository-level transient-failure tests. All pass (`npx vitest run src/domains/permissions/` — 166 tests total across the whole permissions domain, including pre-existing 004A tests).
 
 ## 28. Emulator tests
 
-18 new emulator tests across three files (`businessRepository.emulator.test.ts`, `businessMembershipRepository.emulator.test.ts`, `evaluatePermissionService.emulator.test.ts`) against real Firestore documents: correct lookup, not-found, malformed (bad role/status, missing status, contradictory duplicate documents), cross-business isolation (forged context, independent multi-membership resolution), no-cache (mutation-between-calls), and zero-write/zero-outbox-emission proofs. All pass as part of the full `pnpm emulators:validate` run (247/247 functions emulator tests, whole repo).
+19 new emulator tests across three files (`businessRepository.emulator.test.ts`, `businessMembershipRepository.emulator.test.ts`, `evaluatePermissionService.emulator.test.ts`) against real Firestore documents: correct lookup, not-found, malformed (bad role/status, missing status, non-empty unreadable permissions array, contradictory duplicate documents), cross-business isolation (forged context, independent multi-membership resolution), no-cache (mutation-between-calls), and zero-write/zero-outbox-emission proofs. All pass as part of the full `pnpm emulators:validate` run (248/248 functions emulator tests, whole repo).
 
 ## 29. Adversarial/security tests
 
@@ -165,26 +167,40 @@ All design §9 abuse cases with an evaluator-level test: forged `businessContext
 - `npx eslint .` (repo-wide): clean.
 - `pnpm format:check` (repo-wide): clean (after `prettier --write` on new files).
 - `pnpm -r run build` (functions + web production builds): both succeed; pre-existing `apps/web` chunk-size warning is unrelated/inherited.
-- `pnpm emulators:validate` (full Firebase Emulator Suite + `test:emulator`): 247/247 passing. One transient failure was observed when this command was run concurrently with `pnpm -r run build` in the same terminal session (port contention); an immediate, isolated rerun passed cleanly 247/247 — documented here as an environmental flake, not a code defect, per the task's "document inherited flakes with evidence" instruction.
-- `pnpm test` (repo-wide unit tests, functions + web): 715 functions tests + 397 web tests, all passing — no regression introduced in any domain outside `permissions/`.
+- `pnpm emulators:validate` (full Firebase Emulator Suite + `test:emulator`): 248/248 passing across two independent runs post-fix. One transient failure was observed on the very first run when this command was executed concurrently with `pnpm -r run build` in the same terminal session (port contention); an immediate, isolated rerun passed cleanly — documented here as an environmental flake, not a code defect.
+- `pnpm test` (repo-wide unit tests, functions + web): 728 functions tests + 397 web tests. One `apps/web/src/App.test.tsx` timing flake was observed in one full-suite run; confirmed unrelated by an isolated rerun (3/3 passing) — no `apps/web` file is touched by this PR.
 - No e2e run required (no UI/protected-command surface exists yet — 004D scope).
 - No secret/credential scan finding — no credentials, tokens, or PII appear in any new file (verified by inspection; `permissionAuditRecord`-style fields are 004C scope, not present here).
 
 ## 31. Review passes performed
 
-None yet at the time of this report — PR not yet opened. This report documents implementation and self-validation only; Phase O (Codex review passes) begins after PR creation, per the task's explicit instruction not to consider a single pass (or CI alone) sufficient.
+Two completed Codex review passes on PR #107, each with genuine findings that were investigated and fixed TDD-first. A third review was triggered (`@codex review` comment posted after the pass-2 fix commit) but had not returned a result within this session's working window; the PR remains open and the trigger is live — the next reviewer/Founder should confirm pass 3's outcome (or re-trigger it) before merge, per this task's explicit instruction not to consider fewer passes sufficient merely because CI is green.
 
 ## 32. Review findings/dispositions by pass
 
-N/A — no review pass has run yet.
+**Pass 1** (head `02744bf`): 3 P1 + 1 P2.
+1. P1 "Reject unreadable persisted permission state" — **valid, fixed.** A membership document with a non-empty `permissions` array is now `"malformed"` (fail-closed) rather than silently `overrides: []`.
+2. P1 "Validate grant eligibility before allowing overrides" — **valid, fixed.** A grant is now revalidated against the catalogue's `explicitGrantRequired`/`explicitGrantEligibleRole` before being honored.
+3. P1 "Supply the non-sensitive role-default templates" — **acknowledged, not applied.** Matches 004A's own disclosed scope boundary (`roleTemplate.ts`: "no governed document mints permission identifiers for that non-sensitive baseline") — inventing one here would be exactly the architecture invention out of scope for this task. Documented in code and flagged for Founder attention (see §14/§52).
+4. P2 "Preserve resolved context on denied decisions" — **valid, fixed.** Post-membership-resolution denials now carry `role`/`permissionSource: "n/a-denied"`.
+
+Fixed in commit `2fa2b7f`.
+
+**Pass 2** (head `2fa2b7f`): 1 P1 + 2 P2 (new findings; the pass also re-surfaced pass-1's now-fixed comments as stale thread copies, not new findings).
+1. P1 "Reject grants for unrecognized permission identifiers" — **valid, fixed.** A grant is now honored only for a sensitive-catalogue permission with an eligible role; any other well-formed-but-ungoverned identifier no longer bypasses the fail-closed default.
+2. P2 "Preserve role context for inactive memberships" — **valid, fixed.** Membership-not-active and membership-business-mismatch denials now also carry `role`/`permissionSource: "n/a-denied"`.
+3. P2 "Verify the business result belongs to the request" — **valid, fixed.** Added a `business.id` vs `request.businessId` check mirroring the existing membership-mismatch defence-in-depth check.
+
+Fixed in commit `0b3fffb`.
 
 ## 33. Remaining material findings
 
-None self-identified beyond the two explicitly-flagged items already called out in §14 (role-template carve-out reconciliation) and §21 (override-persistence deferral to 004D) — both are documented interpretations of existing governed artifacts, not defects, but are flagged for Founder/reviewer scrutiny.
+None confirmed-open at the time of this report beyond the one explicitly-flagged, disposed-not-fixed item (pass 1 finding 3 / this report §14/§52: the non-sensitive role-default baseline-table gap, an upstream data/governance gap 004A already scoped out, not a 004B defect). A third review pass was triggered on the fixed head (commit `0b3fffb`) but had not returned within this session — its outcome is unknown and must be checked before this PR is considered ready, per Phase O's explicit "do not consider one review pass sufficient" instruction extended to this incomplete third pass as well.
 
 ## 34. Files changed after review fixes
 
-N/A — no review pass has run yet.
+Pass 1: `evaluatePermission.ts`, `evaluatePermission.test.ts`, `businessMembershipDocument.ts` (+ new `businessMembershipDocument.test.ts`), `businessMembershipRepository.emulator.test.ts`.
+Pass 2: `evaluatePermission.ts`, `evaluatePermission.test.ts`, `types.ts` (added `BUSINESS_CONTEXT_MISMATCH` reason code).
 
 ## 35. Dependencies added
 
@@ -210,19 +226,19 @@ None.
 
 ## 40. PR number
 
-Not yet opened at the time of this report — see §41 in the completion message for the actual PR link once created.
+[#107](https://github.com/Fkenogo/11THONUS/pull/107) — `feat/eng-p2-004b-permission-evaluator` → `main`.
 
 ## 41. Final reviewed head SHA
 
-Not yet applicable — no review pass has run.
+`0b3fffbce2e2e81f5ce2f65205d8e89547983436` — the head reviewed by Codex pass 2. A third pass was triggered on this same head and had not returned within this session (§31/§33); it should be confirmed before merge.
 
 ## 42. CI result
 
-Not yet applicable — PR not yet pushed at report-writing time; local validation (§30) is complete and green.
+Green — "Build, Lint, Test, Emulator Validation" `SUCCESS` on head `0b3fffb` (run [31878174871](https://github.com/Fkenogo/11THONUS/actions/runs/31878174871)).
 
 ## 43–50. Status summary
 
-- **`ENG-P2-004B` status:** Implemented, test-first, all local validation green — pending PR creation, Codex review passes, and Founder review/merge. **NOT MERGED.**
+- **`ENG-P2-004B` status:** Implemented, test-first, all local validation green, two Codex review passes completed with all findings fixed or explicitly dispositioned, a third pass triggered but not yet returned — pending confirmation of pass 3 and Founder review/merge. **NOT MERGED.**
 - **`ENG-P2-004C` status:** NOT STARTED.
 - **`ENG-P2-004D` status:** NOT STARTED.
 - **`ENG-P2-004` overall status:** NOT COMPLETE.
@@ -255,4 +271,4 @@ Appended to `docs/changes/IMPLEMENTATION_CHANGES.md`, `docs/00-governance/docume
 
 ## FINAL GATE
 
-**ENG-P2-004B READY FOR FOUNDER REVIEW/MERGE** once the PR is opened and at least one Codex review pass (Phase O) has run with all P1/P2 findings resolved or explicitly dispositioned. At the time of this report's writing, local implementation and validation are complete; PR creation and review are the next steps — **do not merge**, and `ENG-P2-004C`/`004D` remain unauthorized and not started.
+**ENG-P2-004B BLOCKED — FOUNDER DECISION REQUIRED** (procedurally, not substantively): implementation, test coverage, and full local validation are complete and green; two Codex review passes ran with genuine P1/P2 findings, all fixed TDD-first or explicitly and defensibly dispositioned (§32); CI is green on the final head (`0b3fffb`). A third review pass was triggered on that head and had not returned within this session's working window. Per this task's own instruction not to consider fewer review passes sufficient merely because CI is green, this PR should not be treated as fully cleared until pass 3's outcome (if it lands) is checked, or the reviewer/Founder makes the call to proceed without it. `ENG-P2-004C`/`004D` remain unauthorized and not started; this package does not self-merge in any case.
