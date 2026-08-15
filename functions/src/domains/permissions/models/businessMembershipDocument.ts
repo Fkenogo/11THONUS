@@ -8,13 +8,18 @@
  * `ENG-P2-004A`'s `permissionOverride.ts` already documents that the
  * override persistence/serialization mapping is undesigned and is
  * `ENG-P2-004D`'s repository/infrastructure integration work (design
- * §14), not this package's. Returning `overrides: []` here is an honest,
- * explicit scope boundary, not a silent behavioral gap: the evaluator's
- * override-precedence logic (§4.1.3/§4.1.5, §6.9 steps 6-7) is fully
- * proven against directly-constructed fixtures in
- * `evaluator/evaluatePermission.test.ts`; only the real Firestore
- * round-trip of override *persistence* awaits a governed schema decision
- * this package does not invent.
+ * §14), not this package's.
+ *
+ * A document with **no** persisted override state (`permissions` absent
+ * or `[]`) is safely read as `overrides: []`. A document with a
+ * **non-empty** `permissions` array is treated as `"malformed"`
+ * (`null`), not silently discarded as `overrides: []` — this codebase
+ * has no governed serialization for that field yet, so a non-empty value
+ * could encode a revocation or grant this reader cannot recover; failing
+ * closed (§6.11, AD-4) is the only sound outcome until 004D resolves the
+ * serialization question, rather than risking a role-default permission
+ * being allowed when the stored state actually revokes it (fixed after a
+ * Codex review finding on PR #107).
  */
 
 import { isRole } from "./role";
@@ -40,12 +45,19 @@ export function fromBusinessMembershipDocument(
     businessId: unknown;
     role: unknown;
     status: unknown;
+    permissions: unknown;
   }>;
 
   if (typeof data.userId !== "string" || data.userId.length === 0) return null;
   if (typeof data.businessId !== "string" || data.businessId.length === 0) return null;
   if (typeof data.role !== "string" || !isRole(data.role)) return null;
   if (!isMembershipStatus(data.status)) return null;
+  if (
+    data.permissions !== undefined &&
+    !(Array.isArray(data.permissions) && data.permissions.length === 0)
+  ) {
+    return null;
+  }
 
   return {
     id,

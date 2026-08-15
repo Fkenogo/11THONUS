@@ -370,6 +370,88 @@ describe("evaluateAuthorizationDecision — cross-business isolation (Phase I, m
   });
 });
 
+describe("evaluateAuthorizationDecision — adversarial: grant role-eligibility revalidation (Codex review, PR #107)", () => {
+  it("does not honor a grant for a sensitive permission on a role the catalogue does not name as eligible (Staff granted staff.manage, catalogue names only Manager)", () => {
+    // `createPermissionOverride` already rejects this combination at
+    // construction time, but `EvaluationInput` is independently
+    // constructible (repository-owned data may be malformed or from a
+    // future/legacy write path) — the evaluator must not trust an
+    // override's mere presence without revalidating catalogue eligibility.
+    const decision = evaluateAuthorizationDecision(
+      baseInput({
+        request: { userId: "user-1", businessId: "biz-a", permission: "staff.manage" },
+        membership: {
+          kind: "found",
+          membership: membership({
+            role: "staff",
+            overrides: [
+              {
+                permissionId: "staff.manage",
+                direction: "grant",
+                businessId: "biz-a",
+                membershipId: "mem-1",
+              },
+            ],
+          }),
+        },
+      }),
+    );
+    expect(decision.allowed).toBe(false);
+    expect(decision.errorCategory).toBe("AUTH_FORBIDDEN");
+  });
+
+  it("does not honor a grant for a permission the catalogue marks as having no grant path at all (business.transferOwnership, explicitGrantRequired=false)", () => {
+    const decision = evaluateAuthorizationDecision(
+      baseInput({
+        request: {
+          userId: "user-1",
+          businessId: "biz-a",
+          permission: "business.transferOwnership",
+        },
+        membership: {
+          kind: "found",
+          membership: membership({
+            role: "manager",
+            overrides: [
+              {
+                permissionId: "business.transferOwnership",
+                direction: "grant",
+                businessId: "biz-a",
+                membershipId: "mem-1",
+              },
+            ],
+          }),
+        },
+      }),
+    );
+    expect(decision.allowed).toBe(false);
+  });
+
+  it("still honors a grant for a sensitive permission on the catalogue-eligible role (Manager granted staff.manage)", () => {
+    const decision = evaluateAuthorizationDecision(
+      baseInput({
+        request: { userId: "user-1", businessId: "biz-a", permission: "staff.manage" },
+        membership: {
+          kind: "found",
+          membership: membership({
+            role: "manager",
+            overrides: [
+              {
+                permissionId: "staff.manage",
+                direction: "grant",
+                businessId: "biz-a",
+                membershipId: "mem-1",
+              },
+            ],
+          }),
+        },
+      }),
+    );
+    expect(decision.allowed).toBe(true);
+    expect(decision.permissionSource).toBe("explicit-grant");
+  });
+});
+
 describe("evaluateAuthorizationDecision — adversarial: revoked-permission replay (§9 abuse #3)", () => {
   it("a permission granted then revoked at the same membership denies on replay, even though the grant record itself is still present", () => {
     // Models a client retrying a call after a revocation lands: both a
@@ -403,6 +485,64 @@ describe("evaluateAuthorizationDecision — adversarial: revoked-permission repl
     );
     expect(decision.allowed).toBe(false);
     expect(decision.errorCategory).toBe("AUTH_FORBIDDEN");
+  });
+});
+
+describe("evaluateAuthorizationDecision — resolved context on denied decisions (Codex review P2, PR #107)", () => {
+  it("an explicit-revocation denial still carries the resolved role and permissionSource: n/a-denied", () => {
+    const decision = evaluateAuthorizationDecision(
+      baseInput({
+        membership: {
+          kind: "found",
+          membership: membership({
+            role: "manager",
+            overrides: [
+              {
+                permissionId: "customer.viewProtectedProfile",
+                direction: "revoke",
+                businessId: "biz-a",
+                membershipId: "mem-1",
+              },
+            ],
+          }),
+        },
+      }),
+    );
+    expect(decision.allowed).toBe(false);
+    expect(decision.role).toBe("manager");
+    expect(decision.permissionSource).toBe("n/a-denied");
+  });
+
+  it("a sensitive-permission-not-granted denial still carries the resolved role and permissionSource: n/a-denied", () => {
+    const decision = evaluateAuthorizationDecision(
+      baseInput({
+        request: { userId: "user-1", businessId: "biz-a", permission: "staff.manage" },
+        membership: { kind: "found", membership: membership({ role: "manager" }) },
+      }),
+    );
+    expect(decision.allowed).toBe(false);
+    expect(decision.role).toBe("manager");
+    expect(decision.permissionSource).toBe("n/a-denied");
+  });
+
+  it("a no-applicable-grant denial still carries the resolved role and permissionSource: n/a-denied", () => {
+    const decision = evaluateAuthorizationDecision(
+      baseInput({
+        request: { userId: "user-1", businessId: "biz-a", permission: "unknown.permission" },
+        membership: { kind: "found", membership: membership({ role: "staff" }) },
+      }),
+    );
+    expect(decision.allowed).toBe(false);
+    expect(decision.role).toBe("staff");
+    expect(decision.permissionSource).toBe("n/a-denied");
+  });
+
+  it("a pre-membership denial (e.g. business inactive) has no role, since no membership was resolved", () => {
+    const decision = evaluateAuthorizationDecision(
+      baseInput({ business: { kind: "found", business: { id: "biz-a", status: "suspended" } } }),
+    );
+    expect(decision.allowed).toBe(false);
+    expect(decision.role).toBeUndefined();
   });
 });
 

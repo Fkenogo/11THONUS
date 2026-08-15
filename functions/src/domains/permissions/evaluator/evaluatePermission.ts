@@ -31,16 +31,33 @@
  */
 
 import { isWellFormedPermissionId } from "../models/permissionId";
-import { isSensitivePermission } from "../models/sensitivePermissionCatalogue";
+import type { Role } from "../models/role";
+import {
+  isSensitivePermission,
+  getSensitivePermissionEntry,
+} from "../models/sensitivePermissionCatalogue";
 import {
   SENSITIVE_PERMISSION_ROLE_TEMPLATES,
   isPermissionInRoleTemplateDefault,
 } from "../models/roleTemplate";
-import type { AuthorizationDecision, EvaluationInput, ReasonCode } from "./types";
+import type { AuthorizationDecision, EvaluationInput, PermissionSource, ReasonCode } from "./types";
 import type { ErrorCategory } from "../../../shared/errors/errorCategories";
 
-function deny(reasonCode: ReasonCode, errorCategory: ErrorCategory): AuthorizationDecision {
-  return { allowed: false, reasonCode, errorCategory, evaluatedAt: new Date() };
+function deny(
+  reasonCode: ReasonCode,
+  errorCategory: ErrorCategory,
+  role?: Role,
+): AuthorizationDecision {
+  return role
+    ? {
+        allowed: false,
+        reasonCode,
+        errorCategory,
+        role,
+        permissionSource: "n/a-denied" as PermissionSource,
+        evaluatedAt: new Date(),
+      }
+    : { allowed: false, reasonCode, errorCategory, evaluatedAt: new Date() };
 }
 
 export function evaluateAuthorizationDecision(input: EvaluationInput): AuthorizationDecision {
@@ -96,12 +113,13 @@ export function evaluateAuthorizationDecision(input: EvaluationInput): Authoriza
     return deny("MEMBERSHIP_NOT_ACTIVE", "AUTH_FORBIDDEN");
   }
 
+  const role = resolvedMembership.role;
+
   // Step 4: permission identifier shape (§4.1.7).
   if (!isWellFormedPermissionId(request.permission)) {
-    return deny("MALFORMED_PERMISSION_ID", "VALIDATION_FAILED");
+    return deny("MALFORMED_PERMISSION_ID", "VALIDATION_FAILED", role);
   }
   const permission = request.permission;
-  const role = resolvedMembership.role;
 
   // Step 5: Owner floor (§3.6, INV-1) — evaluated before overrides, since
   // an Owner's sensitive-permission set is structural, not a target of any
@@ -129,18 +147,37 @@ export function evaluateAuthorizationDecision(input: EvaluationInput): Authoriza
 
   // Step 6: explicit revocation (§4.1.3) — checked, and wins, before grant or sensitivity.
   if (applicableOverrides.some((override) => override.direction === "revoke")) {
-    return deny("EXPLICIT_REVOCATION", "AUTH_FORBIDDEN");
+    return deny("EXPLICIT_REVOCATION", "AUTH_FORBIDDEN", role);
   }
 
-  // Step 7: explicit grant (§4.1.5) — satisfies sensitivity too.
-  if (applicableOverrides.some((override) => override.direction === "grant")) {
-    return {
-      allowed: true,
-      reasonCode: "EXPLICIT_GRANT",
-      role,
-      permissionSource: "explicit-grant",
-      evaluatedAt: new Date(),
-    };
+  // Step 7: explicit grant (§4.1.5) — satisfies sensitivity too, but only
+  // for a role the catalogue actually names as grant-eligible for this
+  // permission (§3.2's per-row "Explicit grant required?" role
+  // qualifier). `createPermissionOverride` already enforces this at
+  // construction time, but `EvaluationInput`/overrides are independently
+  // constructible repository-owned data, so an ineligible-role grant is
+  // revalidated here rather than trusted on presence alone (Codex review
+  // finding, PR #107) — an ineligible grant is treated as if absent and
+  // falls through to the ordinary sensitive-permission gate below, not a
+  // hard deny, since the role may still qualify via role-default (§3.2
+  // rows 7-8's carve-out).
+  const grantOverride = applicableOverrides.find((override) => override.direction === "grant");
+  if (grantOverride) {
+    const grantIsEligible =
+      !isSensitivePermission(permission) ||
+      (() => {
+        const entry = getSensitivePermissionEntry(permission);
+        return entry.explicitGrantRequired && entry.explicitGrantEligibleRole === role;
+      })();
+    if (grantIsEligible) {
+      return {
+        allowed: true,
+        reasonCode: "EXPLICIT_GRANT",
+        role,
+        permissionSource: "explicit-grant",
+        evaluatedAt: new Date(),
+      };
+    }
   }
 
   // Step 8: sensitive-permission gate (§4.1.4), with the §3.2 rows 7-8
@@ -155,7 +192,7 @@ export function evaluateAuthorizationDecision(input: EvaluationInput): Authoriza
         evaluatedAt: new Date(),
       };
     }
-    return deny("SENSITIVE_PERMISSION_NOT_GRANTED", "AUTH_FORBIDDEN");
+    return deny("SENSITIVE_PERMISSION_NOT_GRANTED", "AUTH_FORBIDDEN", role);
   }
 
   // Step 9: non-sensitive role/template default (§4.1.6). No governed
@@ -164,6 +201,13 @@ export function evaluateAuthorizationDecision(input: EvaluationInput): Authoriza
   // added, this check can only ever match a sensitive-catalogue id, which
   // step 8 above already exhausted, so this branch is a documented no-op
   // placeholder for that future baseline table rather than dead code.
+  // Flagged for Founder attention (Codex review, PR #107; see the
+  // implementation report §14): ordinary role-based permissions (e.g.
+  // `purchase.record`) cannot be authorized by role-default until a
+  // governed non-sensitive baseline table exists — this is a data/
+  // governance gap upstream of this evaluator, not a defect in the
+  // algorithm below, and `ENG-P2-004A` explicitly declined to invent one
+  // (no governed document mints those identifiers).
   if (isPermissionInRoleTemplateDefault(SENSITIVE_PERMISSION_ROLE_TEMPLATES[role], permission)) {
     return {
       allowed: true,
@@ -175,5 +219,5 @@ export function evaluateAuthorizationDecision(input: EvaluationInput): Authoriza
   }
 
   // Step 10: fail closed.
-  return deny("NO_APPLICABLE_GRANT", "AUTH_FORBIDDEN");
+  return deny("NO_APPLICABLE_GRANT", "AUTH_FORBIDDEN", role);
 }
