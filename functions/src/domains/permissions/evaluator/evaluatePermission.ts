@@ -84,6 +84,15 @@ export function evaluateAuthorizationDecision(input: EvaluationInput): Authoriza
   if (business.kind === "malformed") {
     return deny("BUSINESS_CONFIG_MALFORMED", "BUSINESS_INACTIVE");
   }
+  if (business.business.id !== request.businessId) {
+    // Defence-in-depth mirroring the membership-mismatch check below: an
+    // independently constructed EvaluationInput could combine an active
+    // Business-A result with a Business-B request (stale/misrouted
+    // repository read) — the evaluator never trusts a business record
+    // whose own id doesn't match the requested context (§5.6, Codex
+    // review pass 2, PR #107).
+    return deny("BUSINESS_CONTEXT_MISMATCH", "BUSINESS_INACTIVE");
+  }
   if (business.business.status !== "active") {
     return deny("BUSINESS_NOT_ACTIVE", "BUSINESS_INACTIVE");
   }
@@ -106,11 +115,14 @@ export function evaluateAuthorizationDecision(input: EvaluationInput): Authoriza
     // Defence-in-depth: the repository is expected to resolve strictly by
     // (userId, businessId), so this should be structurally unreachable —
     // but the evaluator never trusts a membership record for the wrong
-    // subject/business even if one somehow reached it (§5.6).
-    return deny("MEMBERSHIP_BUSINESS_MISMATCH", "AUTH_FORBIDDEN");
+    // subject/business even if one somehow reached it (§5.6). A
+    // membership was still structurally *found* here, so the decision
+    // contract's "role, if a membership was found" still applies (§6.2,
+    // Codex review pass 2, PR #107).
+    return deny("MEMBERSHIP_BUSINESS_MISMATCH", "AUTH_FORBIDDEN", resolvedMembership.role);
   }
   if (resolvedMembership.status !== "active") {
-    return deny("MEMBERSHIP_NOT_ACTIVE", "AUTH_FORBIDDEN");
+    return deny("MEMBERSHIP_NOT_ACTIVE", "AUTH_FORBIDDEN", resolvedMembership.role);
   }
 
   const role = resolvedMembership.role;
@@ -155,21 +167,25 @@ export function evaluateAuthorizationDecision(input: EvaluationInput): Authoriza
   // permission (§3.2's per-row "Explicit grant required?" role
   // qualifier). `createPermissionOverride` already enforces this at
   // construction time, but `EvaluationInput`/overrides are independently
-  // constructible repository-owned data, so an ineligible-role grant is
-  // revalidated here rather than trusted on presence alone (Codex review
-  // finding, PR #107) — an ineligible grant is treated as if absent and
-  // falls through to the ordinary sensitive-permission gate below, not a
-  // hard deny, since the role may still qualify via role-default (§3.2
-  // rows 7-8's carve-out).
+  // constructible repository-owned data, so this is revalidated here
+  // rather than trusted on presence alone (Codex review, PR #107).
+  //
+  // A grant is honored only for a permission in the sensitive catalogue
+  // with an eligible role — never for any other well-formed identifier.
+  // No governed non-sensitive permission registry exists yet (matching
+  // the step-9 gap documented below), so there is no source of truth to
+  // validate a grant for e.g. `admin.superuser` or `purchase.record`
+  // against; treating "not sensitive" as "valid, grantable permission"
+  // would let a malformed/legacy/mistyped override authorize a request
+  // against an identifier nothing actually governs (Codex review pass 2
+  // finding, PR #107) — an ineligible/ungoverned grant is treated as if
+  // absent and falls through to the ordinary sensitive-permission gate
+  // below, not a hard deny, since the role may still qualify via
+  // role-default (§3.2 rows 7-8's carve-out).
   const grantOverride = applicableOverrides.find((override) => override.direction === "grant");
-  if (grantOverride) {
-    const grantIsEligible =
-      !isSensitivePermission(permission) ||
-      (() => {
-        const entry = getSensitivePermissionEntry(permission);
-        return entry.explicitGrantRequired && entry.explicitGrantEligibleRole === role;
-      })();
-    if (grantIsEligible) {
+  if (grantOverride && isSensitivePermission(permission)) {
+    const entry = getSensitivePermissionEntry(permission);
+    if (entry.explicitGrantRequired && entry.explicitGrantEligibleRole === role) {
       return {
         allowed: true,
         reasonCode: "EXPLICIT_GRANT",

@@ -316,6 +316,7 @@ describe("evaluateAuthorizationDecision — cross-business isolation (Phase I, m
           businessId: "biz-b",
           permission: "customer.viewProtectedProfile",
         },
+        business: { kind: "found", business: { id: "biz-b", status: "active" } },
         membership: { kind: "found", membership: membership({ businessId: "biz-a" }) },
       }),
     );
@@ -589,5 +590,88 @@ describe("evaluateAuthorizationDecision — every §11 outcome maps only to the 
     if (decision.errorCategory) {
       expect(closed.has(decision.errorCategory)).toBe(true);
     }
+  });
+});
+
+describe("evaluateAuthorizationDecision — adversarial: grants for unrecognized permission ids (Codex review pass 2, PR #107)", () => {
+  it("does not honor a grant for a well-formed but ungoverned permission identifier (e.g. admin.superuser)", () => {
+    // No governed non-sensitive permission registry exists yet (matching
+    // the step-9 role-default gap documented above) — a grant can only be
+    // honored against the one governed identifier space that exists, the
+    // sensitive catalogue. Honoring a grant for any other well-formed
+    // identifier would let a malformed/legacy/mistyped override authorize
+    // a request against an identifier nothing actually governs.
+    const decision = evaluateAuthorizationDecision(
+      baseInput({
+        request: { userId: "user-1", businessId: "biz-a", permission: "admin.superuser" },
+        membership: {
+          kind: "found",
+          membership: membership({
+            role: "staff",
+            overrides: [
+              {
+                permissionId: "admin.superuser",
+                direction: "grant",
+                businessId: "biz-a",
+                membershipId: "mem-1",
+              },
+            ],
+          }),
+        },
+      }),
+    );
+    expect(decision.allowed).toBe(false);
+    expect(decision.errorCategory).toBe("AUTH_FORBIDDEN");
+  });
+});
+
+describe("evaluateAuthorizationDecision — resolved context on inactive-membership denials (Codex review pass 2, PR #107)", () => {
+  it.each(["invited", "suspended", "removed"] as const)(
+    "a membership-not-active denial (status=%s) still carries the resolved role and permissionSource: n/a-denied",
+    (status) => {
+      const decision = evaluateAuthorizationDecision(
+        baseInput({ membership: { kind: "found", membership: membership({ status }) } }),
+      );
+      expect(decision.allowed).toBe(false);
+      expect(decision.role).toBe("manager");
+      expect(decision.permissionSource).toBe("n/a-denied");
+    },
+  );
+
+  it("a membership-business-mismatch denial still carries the resolved role and permissionSource: n/a-denied", () => {
+    const decision = evaluateAuthorizationDecision(
+      baseInput({
+        membership: { kind: "found", membership: membership({ businessId: "biz-other" }) },
+      }),
+    );
+    expect(decision.allowed).toBe(false);
+    expect(decision.role).toBe("manager");
+    expect(decision.permissionSource).toBe("n/a-denied");
+  });
+});
+
+describe("evaluateAuthorizationDecision — business-context isolation on the business record itself (Codex review pass 2, PR #107)", () => {
+  it("denies when a found business result's own id does not match the request's businessId, even if status is active and membership matches", () => {
+    // Defence-in-depth mirroring the existing membership-mismatch check:
+    // an independently constructed EvaluationInput could combine an
+    // active Business-A result with a Business-B request (e.g. a stale
+    // or misrouted repository read) — the evaluator must not trust a
+    // business record whose own id doesn't match the requested context.
+    const decision = evaluateAuthorizationDecision(
+      baseInput({
+        request: {
+          userId: "user-1",
+          businessId: "biz-b",
+          permission: "customer.viewProtectedProfile",
+        },
+        business: { kind: "found", business: { id: "biz-a", status: "active" } },
+        membership: {
+          kind: "found",
+          membership: membership({ businessId: "biz-b" }),
+        },
+      }),
+    );
+    expect(decision.allowed).toBe(false);
+    expect(decision.errorCategory).toBe("BUSINESS_INACTIVE");
   });
 });
