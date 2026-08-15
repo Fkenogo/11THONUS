@@ -2,10 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   createRoleTemplate,
   isPermissionInRoleTemplateDefault,
-  DEFAULT_ROLE_TEMPLATES,
+  SENSITIVE_PERMISSION_ROLE_TEMPLATES,
 } from "./roleTemplate";
 import { PermissionDomainError } from "./permissionErrors";
 import { ROLES } from "./role";
+import { SENSITIVE_PERMISSION_IDS } from "./sensitivePermissionCatalogue";
 
 describe("createRoleTemplate", () => {
   it("builds a deterministic template for a valid role with non-sensitive-style ids", () => {
@@ -57,7 +58,7 @@ describe("createRoleTemplate", () => {
     // (inheritAllowed: true) but the catalogue's own defaultState says
     // owner_and_manager_default — Staff is not one of the named roles, so
     // the contract must reject it here, not silently accept it and rely
-    // on DEFAULT_ROLE_TEMPLATES.staff simply omitting it.
+    // on SENSITIVE_PERMISSION_ROLE_TEMPLATES.staff simply omitting it.
     expect(() => createRoleTemplate("staff", ["customer.viewProtectedProfile"])).toThrow(
       PermissionDomainError,
     );
@@ -79,20 +80,20 @@ describe("isPermissionInRoleTemplateDefault", () => {
   });
 });
 
-describe("DEFAULT_ROLE_TEMPLATES", () => {
+describe("SENSITIVE_PERMISSION_ROLE_TEMPLATES", () => {
   it("gives owner and manager exactly the catalogue's inheritable entries by default", () => {
-    expect(DEFAULT_ROLE_TEMPLATES.owner.defaultPermissions).toEqual([
+    expect(SENSITIVE_PERMISSION_ROLE_TEMPLATES.owner.defaultPermissions).toEqual([
       "customer.viewProtectedProfile",
       "report.exportFinancial",
     ]);
-    expect(DEFAULT_ROLE_TEMPLATES.manager.defaultPermissions).toEqual([
+    expect(SENSITIVE_PERMISSION_ROLE_TEMPLATES.manager.defaultPermissions).toEqual([
       "customer.viewProtectedProfile",
       "report.exportFinancial",
     ]);
   });
 
   it("gives staff none of the catalogue's sensitive permissions by default", () => {
-    expect(DEFAULT_ROLE_TEMPLATES.staff.defaultPermissions).toEqual([]);
+    expect(SENSITIVE_PERMISSION_ROLE_TEMPLATES.staff.defaultPermissions).toEqual([]);
   });
 
   it("never includes a non-inheritable sensitive permission for any role", () => {
@@ -106,7 +107,15 @@ describe("DEFAULT_ROLE_TEMPLATES", () => {
     ];
     for (const role of ROLES) {
       for (const id of nonInheritable) {
-        expect(DEFAULT_ROLE_TEMPLATES[role].defaultPermissions).not.toContain(id);
+        expect(SENSITIVE_PERMISSION_ROLE_TEMPLATES[role].defaultPermissions).not.toContain(id);
+      }
+    }
+  });
+
+  it("machine-enforces its own scope: every id in every role's defaults is a Sensitive Permission Catalogue member — this is not, and must never silently become, a complete role-default baseline", () => {
+    for (const role of ROLES) {
+      for (const id of SENSITIVE_PERMISSION_ROLE_TEMPLATES[role].defaultPermissions) {
+        expect(SENSITIVE_PERMISSION_IDS).toContain(id);
       }
     }
   });

@@ -108,15 +108,29 @@ const CATALOGUE_INHERITABLE_IDS: readonly PermissionId[] =
   getInheritableSensitivePermissionEntries().map((entry) => entry.id);
 
 /**
- * The only role-default content this design precisely specifies:
- * Owner and Manager both default to the catalogue's inheritable entries;
- * Staff defaults to none of them (design §3.2 rows 7–8, "No (role-default),
- * Yes for Staff" under "Explicit grant required?"). This does **not**
- * claim to be Owner/Manager/Staff's *complete* default permission set —
- * the non-sensitive baseline remains outside this catalogue's and this
- * module's scope (see this file's header comment).
+ * **Not a complete role-default permission baseline.** This is the
+ * *sensitive-permission-catalogue-derived subset only* of each role's
+ * defaults — the only role-default content this design precisely
+ * specifies: Owner and Manager both default to the catalogue's two
+ * inheritable entries; Staff defaults to none of them (design §3.2 rows
+ * 7–8). It deliberately excludes the entire non-sensitive baseline
+ * (e.g. `purchase.record`, `redemption.process`) — no governed
+ * document mints identifiers for that baseline (see this file's header
+ * comment and `permissionId.ts`), so this constant cannot include it
+ * without inventing content.
+ *
+ * The name is deliberately scoped (`SENSITIVE_PERMISSION_*`, matching
+ * `sensitivePermissionCatalogue.ts`'s own naming family) rather than
+ * `DEFAULT_ROLE_TEMPLATES` — a name like that would read as "the
+ * complete default permissions per role," which this is not. A future
+ * `ENG-P2-004B` evaluator must combine this with a *separately governed*
+ * non-sensitive baseline default table (not modeled anywhere in this
+ * package) rather than treating this constant as role defaults in full;
+ * `roleTemplate.test.ts` machine-enforces that every id here is drawn
+ * exclusively from `SENSITIVE_PERMISSION_IDS`, so this scope boundary
+ * cannot silently drift as the catalogue or this table changes.
  */
-export const DEFAULT_ROLE_TEMPLATES: Readonly<Record<Role, RoleTemplate>> = {
+export const SENSITIVE_PERMISSION_ROLE_TEMPLATES: Readonly<Record<Role, RoleTemplate>> = {
   owner: createRoleTemplate("owner", CATALOGUE_INHERITABLE_IDS),
   manager: createRoleTemplate("manager", CATALOGUE_INHERITABLE_IDS),
   staff: createRoleTemplate("staff", []),

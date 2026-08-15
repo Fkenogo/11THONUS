@@ -34,12 +34,16 @@ framework-independent — no Firebase SDK import is permitted here
   `ENG-P2-004-DESIGN-001` §3.2. Provides `isSensitivePermission`,
   `getSensitivePermissionEntry`, `getInheritableSensitivePermissionEntries`.
 - `roleTemplate.ts` — the `RoleTemplate` contract (role → default
-  permissions), enforcing the structural invariant that a sensitive,
-  non-inheritable permission may never appear in any role's defaults
-  (`DEC-ID-003`). `DEFAULT_ROLE_TEMPLATES` is derived entirely from the
-  catalogue's own `inheritAllowed` metadata — the only role-default
-  content the approved design specifies precisely — not a reproduction of
-  PRD1 §7–§8's full non-sensitive baseline lists.
+  permissions), enforcing that a sensitive permission may never appear as
+  a role default for a role its own catalogue `defaultState` does not
+  name (`DEC-ID-003`). `SENSITIVE_PERMISSION_ROLE_TEMPLATES` is derived
+  entirely from the catalogue's own metadata — the only role-default
+  content the approved design specifies precisely. Deliberately named
+  (not `DEFAULT_ROLE_TEMPLATES`) and tested to make explicit that it is
+  **not** a complete role-default baseline — it excludes PRD1 §7–§8's
+  entire non-sensitive baseline, which no governed document mints
+  identifiers for; a future evaluator must combine it with a separately
+  governed baseline table, not treat it as role defaults in full.
 - `permissionOverride.ts` — the explicit grant/revocation contract
   (`PermissionOverride`), business/membership-scoped, refusing any
   override that targets an Owner membership (design §3.6, §8). Input
