@@ -26,7 +26,7 @@ A snapshot only — where the programme currently stands, at a glance. This does
 |---|---|---|
 | 0 | Engineering Foundation | Complete |
 | 1 | Platform Foundation | Complete |
-| 2 | Customer Identity | Open — partially implemented; not closed. **Concern-level status (`DEC-GOV-008`; authoritative in §5):** Customer Identity `Complete` (all 10 `ENG-P2-001` packages merged; `CAP-P2-007`/`-008`); Authentication `Complete` (all `AUTH-01`–`AUTH-09` + corrections merged, hosted-preview PASS — `AUTH-HOSTED-PREVIEW-002`); ITM `Not started — design authorized` (`ITM-DESIGN-001`, `CAP-P2-ITM-DESIGN-001`, 2026-08-16). `ENG-P2-004` `Complete` (merged PR #109 `2d7573b`, 2026-08-16). Concern Completion ≠ Capability closure — see §5. **This row was stale (last synced 2026-07-29); corrected 2026-08-16, `CAP-P2-ITM-DESIGN-001`, per §5 which remains authoritative.** |
+| 2 | Customer Identity | Open — partially implemented; not closed. **Concern-level status (`DEC-GOV-008`; authoritative in §5):** Customer Identity `Complete` (all 10 `ENG-P2-001` packages merged; `CAP-P2-007`/`-008`); Authentication `Complete` (all `AUTH-01`–`AUTH-09` + corrections merged, hosted-preview PASS — `AUTH-HOSTED-PREVIEW-002`); ITM `Not started — design fully resolved (FDR-1–FDR-4), pending fresh implementation authorization` (`ITM-DESIGN-001` v1.2, `CAP-P2-ITM-DESIGN-001`, 2026-08-16). `ENG-P2-004` `Complete` (merged PR #109 `2d7573b`, 2026-08-16). Concern Completion ≠ Capability closure — see §5. **This row was stale (last synced 2026-07-29); corrected 2026-08-16, `CAP-P2-ITM-DESIGN-001`, per §5 which remains authoritative.** |
 | 3 | Business Identity | Planned |
 | 4 | First Verified Purchase | Planned |
 | 5 | Progress Tracking | Planned |

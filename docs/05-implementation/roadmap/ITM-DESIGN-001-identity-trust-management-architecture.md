@@ -395,7 +395,7 @@ No package here depends on unbuilt Reward Engine implementation — the dependen
 This document itself is complete when:
 1. The ITM boundary (§3–§4) is internally consistent with `ENG-P2-ARCH-001` §8 and introduces no contradiction.
 2. The trust-record model (§5) contains no speculative field and no PII/credential beyond what §5 explicitly justifies.
-3. A trust-level model is recommended (§6) with the numeric-score alternative explicitly rejected for MVP, and every genuine threshold/weighting decision is surfaced to the Founder (§17 below), not silently chosen.
+3. A trust-level model is recommended (§6) with the numeric-score alternative explicitly rejected for MVP, and every genuine threshold/weighting decision is surfaced to the Founder (§18) — now all resolved, §22 — not silently chosen.
 4. The signal model (§7) classifies every signal without inventing an unbuilt data source.
 5. The risk-gate contract (§9) is clearly distinguished from `ENG-P2-004`'s role/permission contract, with no circular dependency (§4).
 6. Standard participation is provably protected by construction (§10 — opt-in-only gating).
