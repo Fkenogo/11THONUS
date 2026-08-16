@@ -5,6 +5,7 @@ import * as trustRecordModule from "./trustRecord";
 import * as trustLevelModule from "./trustLevel";
 
 const TRUST_DOMAIN_DIR = path.resolve(__dirname, "..");
+const TRUST_MODELS_DIR = path.resolve(__dirname, ".");
 const IDENTITY_DOMAIN_DIR = path.resolve(__dirname, "../../identity");
 
 function listSourceFiles(dir: string): string[] {
@@ -47,8 +48,18 @@ describe("ITM-A domain boundary (Phase P/Phase T)", () => {
     );
   });
 
-  it("contains no firebase-admin/firebase-functions import anywhere in the trust domain", () => {
-    const files = listSourceFiles(TRUST_DOMAIN_DIR);
+  it("contains no firebase-admin/firebase-functions import anywhere in the trust domain's pure model layer", () => {
+    // Scoped to `models/` (ITM-A's own layer), not the whole trust domain
+    // recursively — CAP-P2-ITM-B adds a `repositories/`/`services/` layer
+    // alongside `models/` that legitimately imports `firebase-admin/firestore`
+    // (Firestore persistence, ITM-DESIGN-001 §12) — the same
+    // pure-model-vs-Firestore-converter split the identity domain already
+    // uses (`userDocument.ts` is the "only file permitted to import both").
+    // This narrowing is additive: it does not relax any assertion this test
+    // previously made about `models/` itself, and does not change any
+    // ITM-A export shape or semantics (see the two `exports` assertions
+    // above, unchanged).
+    const files = listSourceFiles(TRUST_MODELS_DIR);
     expect(files.length).toBeGreaterThan(0);
 
     for (const file of files) {
@@ -74,7 +85,30 @@ describe("ITM-A domain boundary (Phase P/Phase T)", () => {
   });
 
   it("does not import the identity domain's value objects (customerIdentityId reference stays a plain string)", () => {
-    const files = listSourceFiles(TRUST_DOMAIN_DIR);
+    // Scoped to `models/` for the same reason as the firebase-admin check
+    // above: CAP-P2-ITM-B's service layer legitimately calls identity's
+    // own read-only lookup contract (`identityLookupRepository.ts`,
+    // `ENG-P2-001-09`) to confirm a Customer Identity exists before
+    // *creating* a trust record (`ITM-DESIGN-001` §4's no-circularity
+    // note — a function call, not a value-object/type-level coupling).
+    // The pure `models/` layer itself still never imports `domains/identity`.
+    const files = listSourceFiles(TRUST_MODELS_DIR);
+    for (const file of files) {
+      const contents = fs.readFileSync(file, "utf8");
+      expect(contents).not.toMatch(/from\s+["'].*domains\/identity/);
+    }
+  });
+
+  it("confines any domains/identity import in the trust domain to the ITM-B service layer only (never models/ or repositories/)", () => {
+    // The one-directional boundary (§4's no-circularity check): identity
+    // is called for a read-only existence check on the trust-record
+    // *creation* path only, from `services/trustSignalIngestionService.ts`
+    // — never from `models/` (pure contracts) or `repositories/`
+    // (Firestore persistence, which only ever handles an already-plain
+    // `customerIdentityId` string).
+    const files = listSourceFiles(TRUST_DOMAIN_DIR).filter(
+      (file) => !file.startsWith(path.join(TRUST_DOMAIN_DIR, "services")),
+    );
     for (const file of files) {
       const contents = fs.readFileSync(file, "utf8");
       expect(contents).not.toMatch(/from\s+["'].*domains\/identity/);
