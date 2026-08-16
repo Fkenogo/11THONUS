@@ -41,6 +41,7 @@ import {
   type IngestTrustEvidenceOutcome,
 } from "../repositories/trustRecordRepository";
 import {
+  malformedCustomerIdentityForTrustEvidenceError,
   malformedTrustSignalEventError,
   unknownCustomerIdentityForTrustEvidenceError,
   unsupportedTrustSignalEventTypeError,
@@ -120,6 +121,18 @@ async function assertCustomerIdentityExists(
     if (error instanceof IdentityDomainError && error.category === "RESOURCE_NOT_FOUND") {
       throw unknownCustomerIdentityForTrustEvidenceError(customerIdentityId);
     }
+    // A malformed (not missing) `users/{id}` document — fail closed the
+    // same way, and map it into ITM-B's own error type so
+    // `trustEventHandler.ts` classifies it non-retryable rather than
+    // falling through to the generic retryable default (a genuinely
+    // corrupt identity record cannot be fixed by retrying).
+    if (error instanceof IdentityDomainError && error.category === "VALIDATION_FAILED") {
+      throw malformedCustomerIdentityForTrustEvidenceError(customerIdentityId);
+    }
+    // Any other category (e.g. a transient `TEMPORARY_UNAVAILABLE`/
+    // `INTEGRATION_FAILED` from the identity repository) is left to
+    // propagate unmapped, so the outbox handler's existing retryable
+    // default applies unchanged.
     throw error;
   }
 }

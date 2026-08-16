@@ -270,6 +270,39 @@ describe("ITM-B — trust-signal ingestion (real Firestore emulator)", () => {
     );
   });
 
+  it("9b. malformed (corrupt) Customer Identity document fails closed AND is classified non-retryable", async () => {
+    // Distinct from test 9 (missing identity): here `users/{id}` exists but
+    // does not match `fromUserDocument`'s expected shape — an
+    // `IdentityDomainError` with category `VALIDATION_FAILED`, not
+    // `RESOURCE_NOT_FOUND`. Adversarial review (`CAP-P2-ITM-B` independent
+    // review, Phase C) found this path was previously unmapped: it
+    // propagated as a raw `IdentityDomainError`, which
+    // `trustEventHandler.ts` did not recognise as a `TrustDomainError`, so
+    // the outbox handler fell through to the generic *retryable* default
+    // instead of dead-lettering immediately — still fail-closed (no orphan
+    // trust record), but an inefficient/imprecise classification for a
+    // condition retrying can never fix.
+    await db.collection("users").doc("cust-9b").set({
+      // Missing the fields `fromUserDocument` requires (e.g. `status`,
+      // `authenticationReferences`) — malformed, not merely absent.
+      id: "cust-9b",
+    });
+
+    const event = customerAuthenticatedEvent("cust-9b", "key-9b");
+    await expect(ingestAuthenticationSignal(db, event)).rejects.toThrow(TrustDomainError);
+
+    const persisted = await getTrustRecordByCustomerIdentityId(db, "cust-9b");
+    expect(persisted).toBeUndefined();
+
+    // Outbox-level classification: must dead-letter on the FIRST attempt
+    // (non-retryable), not after exhausting the retry budget.
+    await db.runTransaction(async (transaction) => writeOutboxEntry(transaction, db, event));
+    await processOutboxEntries(db, (evt) => handleTrustSignalEvent(db, evt));
+    const entry = await db.collection("outboxEntries").doc(event.eventId).get();
+    expect(entry.data()?.["status"]).toBe("dead_letter");
+    expect(entry.data()?.["deadLetter"]?.["reason"]).toBe("invalid_payload_for_version");
+  });
+
   it("11. malformed event payload fails closed", async () => {
     await seedCustomerIdentity("cust-11");
     const malformed = customerAuthenticatedEvent("cust-11", "key-11");
