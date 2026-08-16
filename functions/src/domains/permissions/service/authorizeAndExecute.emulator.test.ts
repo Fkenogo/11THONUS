@@ -448,14 +448,56 @@ describe("authorizeAndExecute — deny paths (mutation blocked)", () => {
 });
 
 describe("authorizeAndExecute — trusted-decision boundary (Phase D)", () => {
-  it("17: the public API has no parameter through which a caller can supply an AuthorizationDecision", () => {
-    // Structural, not runtime: touchPermissionBoundaryFixture's params type
-    // (TouchPermissionBoundaryFixtureParams) has no `decision`/`allowed`/
-    // `role`/`reasonCode` field — this is enforced at compile time by
-    // authorizeAndExecute's own AuthorizeAndExecuteParams type, which
-    // carries only primitive request fields and a mutation callback.
-    // A TS compile failure here would be the only way this could regress.
+  it("17a (structural): neither AuthorizeAndExecuteParams nor AuthorizationRequest has a field of type AuthorizationDecision, role, reasonCode, or membershipId", () => {
+    // Structural, not runtime: TouchPermissionBoundaryFixtureParams and
+    // AuthorizeAndExecuteParams carry only primitive request fields
+    // (userId, businessId, permission, resourceType?, resourceId?) plus
+    // idempotency/correlation metadata and a mutation callback — no
+    // decision-shaped field exists to smuggle a fabricated result
+    // through, and AuthorizationRequest (evaluator/types.ts) has no
+    // `membershipId` field either, so a "forged membership context"
+    // attack (matrix item 9's sibling) has no parameter to target. A TS
+    // compile failure would be the only way this regresses; the runtime
+    // test below (17b) covers a caller that bypasses the type system.
     expect(true).toBe(true);
+  });
+
+  it("17b (adversarial): a request payload with fabricated decision-shaped fields (allowed, decision, role, reasonCode), injected past the type system, has zero effect on the outcome", async () => {
+    await seedBusiness("biz-a");
+    await seedMembership({
+      membershipId: "mem-1",
+      userId: "user-1",
+      businessId: "biz-a",
+      role: "manager",
+    });
+    // No override, no grant — real authoritative state denies this permission.
+
+    const { authorizeAndExecute } = await import("./authorizeAndExecute");
+    const forgedRequest = {
+      userId: "user-1",
+      businessId: "biz-a",
+      permission: "staff.manage",
+      // Fields with no place in `AuthorizationRequest`'s type — only
+      // reachable by a caller that bypasses TypeScript (`as unknown as`),
+      // simulating a compromised or malicious caller.
+      allowed: true,
+      decision: { allowed: true, reasonCode: "OWNER_FLOOR" },
+      role: "owner",
+      reasonCode: "OWNER_FLOOR",
+      permissionSource: "explicit-grant",
+    } as unknown as Parameters<typeof authorizeAndExecute>[1]["request"];
+
+    const outcome = await authorizeAndExecute(db, {
+      request: forgedRequest,
+      ...newIds(),
+      actorId: "user-1",
+      mutation: { prepare: () => undefined, apply: () => ({}) },
+    });
+
+    // Real, transaction-read authoritative state (Manager, no grant) wins —
+    // the fabricated fields were never read by any code path.
+    expect(outcome.outcome).toBe("denied");
+    expect(await fixtureDoc("fixture-1")).toBeNull();
   });
 });
 
@@ -490,7 +532,21 @@ describe("authorizeAndExecute — transaction atomicity & idempotency", () => {
     ).rejects.toThrow("simulated protected-mutation failure");
 
     expect(await outboxEntries()).toHaveLength(0);
+    expect(await fixtureDoc("fixture-1")).toBeNull();
   });
+
+  // A prior version of this suite attempted to force a genuine
+  // Firestore-internal transaction retry by issuing a blocking external
+  // write to the same document from inside `prepare`, nested within the
+  // still-open transaction. That design deadlocked against the open
+  // transaction (observed: a 5s test timeout, then cascading 10s
+  // `beforeEach` hook timeouts on every subsequent test in this file) and
+  // was removed rather than fixed with a timing hack — retry-safety for a
+  // single logical operation is not directly tested here. 19a/19b below
+  // remain the real, currently-passing evidence for retry/contention
+  // safety: two independent concurrent commands racing on the same
+  // document, which requires the same underlying optimistic-concurrency
+  // retry machinery to resolve correctly without a lost update.
 
   it("20: a completed request replayed with the same idempotency key returns duplicate, does not reset the audit entry", async () => {
     await seedBusiness("biz-a");
