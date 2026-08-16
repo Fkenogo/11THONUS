@@ -271,13 +271,18 @@ export default tseslint.config(
   },
   {
     // CAP-P2-ITM-A: same machine-enforced boundary as the domain-foundation
-    // blocks above, scoped to the new Trust domain-contracts module
+    // blocks above, scoped to the Trust domain-contracts module
     // (ITM-DESIGN-001 §15 ITM-A — "Pure domain layer... no Firebase; no
-    // persistence"). No `repositories/`/`service/` exclusion exists yet
-    // because ITM-A defines `models/` only; a future ITM-B persistence
-    // package will need its own carve-out when it adds one, mirroring the
-    // Identity/Loyalty Number/QR Identity/Permissions precedents above.
+    // persistence"). `repositories/`/`services/` are excluded (CAP-P2-ITM-B):
+    // per `ITM-DESIGN-001` §12/§15, ITM-B adds the Firestore repository and
+    // the AUTH-08 event-consumption service in this same domain — mirroring
+    // the Identity/Loyalty Number/QR Identity/Permissions `repositories/`
+    // carve-out precedent above. `models/` itself stays fully restricted.
     files: ["functions/src/domains/trust/**/*.ts"],
+    ignores: [
+      "functions/src/domains/trust/repositories/**",
+      "functions/src/domains/trust/services/**",
+    ],
     languageOptions: {
       ecmaVersion: 2023,
       globals: globals.node,
