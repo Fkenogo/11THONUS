@@ -270,6 +270,40 @@ export default tseslint.config(
     },
   },
   {
+    // CAP-P2-ITM-A: same machine-enforced boundary as the domain-foundation
+    // blocks above, scoped to the new Trust domain-contracts module
+    // (ITM-DESIGN-001 §15 ITM-A — "Pure domain layer... no Firebase; no
+    // persistence"). No `repositories/`/`service/` exclusion exists yet
+    // because ITM-A defines `models/` only; a future ITM-B persistence
+    // package will need its own carve-out when it adds one, mirroring the
+    // Identity/Loyalty Number/QR Identity/Permissions precedents above.
+    files: ["functions/src/domains/trust/**/*.ts"],
+    languageOptions: {
+      ecmaVersion: 2023,
+      globals: globals.node,
+    },
+    rules: {
+      "@typescript-eslint/no-unused-vars": "error",
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: [
+                "firebase-admin",
+                "firebase-admin/*",
+                "firebase-functions",
+                "firebase-functions/*",
+              ],
+              message:
+                "The Trust domain-contracts layer (CAP-P2-ITM-A) is framework-independent — no Firebase SDK import is permitted here. Persistence and event consumption belong to a future ITM-B module instead.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ["*.{js,ts}", "**/*.config.{js,ts}"],
     languageOptions: {
       ecmaVersion: 2023,
