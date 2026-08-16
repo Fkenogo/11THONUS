@@ -276,11 +276,11 @@ Graded against design §13's 17 criteria plus the Founder's four explicit dispos
 
 ## 38. Review passes
 
-Pending — PR to be opened and Codex review triggered per Phase R, this task.
+PR #109 opened against `main`. `@codex review` posted twice (initial trigger and one retry): both attempts returned "You have reached your Codex usage limits for code reviews" — Codex is currently unavailable at the account level, not a review-content issue. Per standing instruction ("if Codex is unavailable, do not wait indefinitely; stop for Founder direction after reasonable retries rather than self-waiving review"), stopping here rather than retrying further or treating the absence of findings as a clean review.
 
 ## 39. Findings/dispositions
 
-Pending Codex review; will be recorded here or in a superseding dated section per repository convention once returned.
+None available — no Codex review has actually run against this PR. Nothing here should be read as "reviewed, no findings"; it is "not yet reviewed."
 
 ## 40. Remaining material findings
 
@@ -304,7 +304,7 @@ Final diff contains exactly: the authorization/gate integration service (`author
 
 ## 45–47. PR number / final reviewed head / CI result
 
-Pending — recorded after PR creation and CI completion, this task.
+PR [#109](https://github.com/Fkenogo/11THONUS/pull/109). Head at time of writing: `7e04fd5`. CI (`Build, Lint, Test, Emulator Validation`) `SUCCESS` (run `31937914811`, 3m31s). No Codex review has completed (§38) — "final reviewed head" is not yet applicable.
 
 ## 48–52. Status summary
 
@@ -344,4 +344,4 @@ This file: `docs/05-implementation/reports/ENG-P2-004D-authorization-boundary-im
 
 **ENG-P2-004D BLOCKED — FOUNDER DECISION REQUIRED**
 
-Blocked pending: (1) PR creation, full CI, and Codex review (§38–39, not yet performed); (2) Founder review of the two disclosed process/coverage limitations (§13, §14/§25); (3) Founder confirmation of the §33 assessment that the non-sensitive-ALLOW gap does not block `ENG-P2-004` closure. Not self-merged per standing instruction.
+PR #109 open, CI green. Blocked pending: (1) Codex review — currently unavailable (account usage limit, not a content issue), two attempts made, not retried further per standing instruction; (2) Founder review of the two disclosed process/coverage limitations (§13, §14/§25); (3) Founder confirmation of the §33 assessment that the non-sensitive-ALLOW gap does not block `ENG-P2-004` closure. Not self-merged per standing instruction.
