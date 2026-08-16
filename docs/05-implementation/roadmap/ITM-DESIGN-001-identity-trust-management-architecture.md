@@ -1,8 +1,8 @@
 > **Title:** `ITM-DESIGN-001` — Identity Trust Management (ITM) Design Package
-> **Version:** 1.1 · **Status:** Design package — Founder dispositions FDR-2/FDR-3/FDR-4 recorded; FDR-1 process approved (Option B), concrete band model proposed and **awaiting Founder countersignature**; not implementation authorization · **Classification:** Working (execution-layer design record)
+> **Version:** 1.2 · **Status:** Design package — **all four Founder decisions (FDR-1–FDR-4) fully resolved**; zero remaining Founder decisions required to make the design implementation-ready; ITM-A–D implementation itself remains separately unauthorized (requires the standard fresh-authorization convention) · **Classification:** Working (execution-layer design record)
 > **Governing document:** [Decision Register](../../00-governance/decisions/decision-register.md) `DEC-IDENTITY-001`, `DEC-PROV-004` (point 7), `DEC-SEC-001`, `DEC-ID-003`; [`CDR-001` Capability 2](CDR-001-capability-delivery-roadmap.md#capability-2--customer-identity); [`ENG-P2-ARCH-001`](ENG-P2-ARCH-001-customer-identity-architecture.md) §8, §10; [`ENG-P2-004-DESIGN-001`](ENG-P2-004-DESIGN-001-role-context-permission-resolution-architecture.md); TRD10 §10.6; TRD11 §11.35; TRD21
 > **Source-of-truth path:** `docs/05-implementation/roadmap/ITM-DESIGN-001-identity-trust-management-architecture.md`
-> **Last controlled update:** 2026-08-16 (`ITM-DESIGN-001` v1.1 — Founder dispositions AD-ITM-2/AD-ITM-3/AD-ITM-4 recorded on FDR-2/FDR-3/FDR-4, §22: recovery-proof events are neutral trust input; no trust regression at MVP; no ITM operator-visibility surface at MVP. AD-ITM-1 records FDR-1's *process* approval (Option B — engineering-proposed band structure) only; the concrete three-band MVP model is proposed in new §6.6 and remains **PROVISIONALLY OPEN pending Founder countersignature** — ITM-A/ITM-C implementation is not authorized until that countersignature is recorded. §7, §8, §11, §18 updated in place to reflect the resolved dispositions; §15 preserved unmodified as history per this repository's disposition convention (`ENG-P2-004-DESIGN-001` §17 precedent). No ITM code implemented.)
+> **Last controlled update:** 2026-08-16 (`ITM-DESIGN-001` v1.2 — Founder countersigns the `AD-ITM-1` band model (§6.6, §22): `unverified`/`provisional`/`established`, evidence conditions and 30-day threshold approved with an MVP policy clarification — the 30-day threshold is a Founder-approved policy boundary, not a statistically-validated or fraud-calibrated figure (§6.6.3); `established` means only "established under the current MVP trust-evidence model," never legal-identity verification, fraud clearance, financial credibility, or eligibility for standard participation (§6.6.3); precise elapsed-time semantics for the 30-day boundary recorded (§6.6.4). `FDR-1` is now fully resolved — no longer provisional. Combined with the already-resolved `AD-ITM-2`/`AD-ITM-3`/`AD-ITM-4` (v1.1), **zero Founder decisions remain open** in this design package. §6.6, §18, §19, §20, §22 updated in place; §15/§18's original analysis preserved unmodified as history per this repository's disposition convention (`ENG-P2-004-DESIGN-001` §17 precedent). Independent final consistency review performed (§23) — no contradictions found. No ITM code implemented; ITM-A–D implementation remains separately unauthorized.)
 
 # ITM-DESIGN-001 — Identity Trust Management Design Package
 
@@ -141,7 +141,7 @@ This is the smallest MVP-safe model that satisfies §2 Principle 8 (explainable/
 
 ### 6.3 Recommended bands (illustrative structure, not a Founder-binding enumeration)
 
-A small ordered set — e.g., `unverified` → `provisional` → `established` — where each band's membership rule is a deterministic, auditable function of `verificationState`/`signalState` fields (e.g., "`established` requires at least one verified provider AND account age ≥ N days AND no unresolved dispute"). The exact band count, names, and membership thresholds are a genuine product/policy decision — **not decided by this document** (Phase F instruction: "any scoring thresholds or weighting that are genuine product/policy decisions must be surfaced for Founder disposition"). See Founder Decision **FDR-1** in §17.
+A small ordered set — e.g., `unverified` → `provisional` → `established` — where each band's membership rule is a deterministic, auditable function of `verificationState`/`signalState` fields. The exact band count, names, and membership thresholds were a genuine product/policy decision, originally **not decided by this document** (Phase F instruction: "any scoring thresholds or weighting that are genuine product/policy decisions must be surfaced for Founder disposition") and surfaced as Founder Decision **FDR-1** in §18. **`FDR-1` is now fully resolved** — the Founder-countersigned model is recorded in §6.6, with its MVP policy clarification in §6.6.3–§6.6.4 and the disposition record in §22 `AD-ITM-1`.
 
 ### 6.4 Why not numerical scoring at MVP
 
@@ -151,11 +151,11 @@ A weighted numerical score requires the Founder to approve specific weights and 
 
 A hybrid model inherits B's governance and gaming risks while adding A's operational surface. Revisit only if a future risk-gated consumer demonstrates a genuine need for finer-grained comparison than discrete bands provide (Phase P: defer to Capabilities 4–5 if needed).
 
-### 6.6 Proposed MVP Band Model — **DRAFT, AWAITING FOUNDER COUNTERSIGNATURE**
+### 6.6 Approved MVP Band Model — **FOUNDER-COUNTERSIGNED, 2026-08-16**
 
-**Status: this subsection is a proposal only.** Per Founder disposition **AD-ITM-1** (§22), FDR-1's *process* (Option B — engineering proposes, Founder countersigns) is approved; the concrete band names and thresholds below are **not yet approved**. FDR-1 remains **PROVISIONALLY OPEN** until the Founder countersigns this proposal (or an amended version of it). **ITM-A and ITM-C implementation is not authorized until that countersignature is recorded** (§15).
+**Status: countersigned.** Per Founder disposition **`AD-ITM-1`** (§22, task "CAP-P2-ITM-DESIGN-001 — FDR-1 Founder Countersignature"), the band model below is **approved with the MVP policy clarification recorded in §6.6.3–§6.6.4**. `FDR-1` is **fully resolved** — no longer provisional. This subsection (originally proposed as a draft, per the earlier `AD-ITM-1` process approval) is preserved with its original derivation rationale intact; the countersignature narrows and clarifies its *meaning*, not its structure. **ITM-A and ITM-C implementation remains separately unauthorized** — countersignature of the *design* does not itself grant implementation authorization, which still requires the fresh-authorization convention already established for `AUTH-*`/`ENG-P2-004*` packages (§15, §18).
 
-**Band names and ordering:** `unverified` < `provisional` < `established` (internal ordinal ranking; never customer-facing per Principle 9 — see §8 of the Founder disposition prompt's constraint 7, satisfied structurally since no field in §5 or this proposal is read by any customer-facing surface).
+**Band names and ordering:** `unverified` < `provisional` < `established` (internal ordinal ranking; never customer-facing per Principle 9 and §6.6.3 below — no field in §5 or this proposal is read by any customer-facing surface).
 
 **Rationale for three bands:** matches `DEC-PROV-004` point 7's existing, already-approved "Anonymous/Authenticated/Verified" reference points, reinterpreted as evidence-derived bands rather than a fixed ladder (§6.2) — `unverified` ≈ the pre-signal default; `provisional` ≈ "Authenticated" (a working credential exists); `established` ≈ "Verified" (evidence-backed, time-tested). No repository evidence was found that argues for more or fewer than three bands at MVP; per constraint 2 of the disposition prompt, three is proposed as the smallest useful structure.
 
@@ -169,7 +169,7 @@ A hybrid model inherits B's governance and gaming risks while adding A's operati
 
 `hasSuccessfulAuthentication` is set `true` the first time any `CustomerAuthenticated` event (§7, `AUTH-08`, merged) is idempotently ingested for the identity, and is never unset (append-only-derived, per §7.1's replay-determinism requirement) — consistent with `DEC-ID-003`'s Identity and Accountability Principle, this condition treats all three MVP-approved authentication providers (Google, Email/Password, Phone OTP) identically; **no per-provider weighting is proposed**, since `DEC-AUTH-001`/`AUTH-CORR-003` establish all three as equally approved MVP mechanisms and inventing an unweighted preference between them is exactly the kind of arbitrary weighting constraint 5 prohibits.
 
-**30-day threshold — proposed, not fixed.** Rationale: long enough that a purely opportunistic register-then-immediately-attempt-a-risk-action pattern does not reach `established` on day one (there is currently no risk-gated consumer to attack, but the threshold is proposed with that eventual purpose in mind, per Principle 6/7); short enough that any genuinely returning customer reaches it automatically, without needing any unbuilt signal. This is the one number in this proposal the Founder may want to adjust directly; changing it requires no `signalState` migration (§6's version-bumped derivation model, below).
+**30-day threshold — Founder-approved MVP policy boundary (see §6.6.4 for exact semantics; not a statistical or fraud-calibrated figure — see §6.6.3).** Rationale: long enough that a purely opportunistic register-then-immediately-attempt-a-risk-action pattern does not reach `established` on day one (there is currently no risk-gated consumer to attack, but the threshold is chosen with that eventual purpose in mind, per Principle 6/7); short enough that any genuinely returning customer reaches it automatically, without needing any unbuilt signal. Changing this number in a future revision requires no `signalState` migration (§6.6.2's version-bumped derivation model).
 
 **Progression conditions** (how an identity moves between bands):
 
@@ -179,7 +179,7 @@ A hybrid model inherits B's governance and gaming risks while adding A's operati
 
 **Current evidence used (available now):** `CustomerAuthenticated` events (`AUTH-08`, merged); Customer Identity's `Registered`-transition timestamp (existing, merged; referenced, not duplicated per §5's "avoid unnecessary PII/duplication" instruction).
 
-**Future evidence explicitly excluded from these MVP thresholds:** purchase history, merchant interaction history, device history, and future fraud/risk signals (§7 — none exist yet, none are made mandatory for any band above); `AuthenticationRecoveryProofProvided` (per Founder disposition **AD-ITM-2**, §22 — resolved neutral, never a band-membership condition); a per-provider verified-phone/verified-email distinction (deliberately excluded from thresholds, above, to avoid unweighted preferential treatment among the three equally-approved MVP providers — a considered exclusion, not an oversight, but flagged here in case the Founder wants to countersign a version that *does* distinguish providers).
+**Future evidence explicitly excluded from these MVP thresholds (confirmed by Founder countersignature, `AD-ITM-1`, §22):** purchase history, merchant interaction history, device history, and future fraud/risk signals (§7 — none exist yet, none are made mandatory for any band above); `AuthenticationRecoveryProofProvided` (per Founder disposition **AD-ITM-2**, §22 — resolved neutral, never a band-membership condition); a per-provider verified-phone/verified-email distinction (deliberately excluded from thresholds, to avoid unweighted preferential treatment among the three equally-approved MVP providers — a considered exclusion, confirmed, not amended, by the Founder's countersignature, which approved the model exactly as proposed).
 
 **Can any customer become permanently stuck?** **No.** Both signals used — "has ever successfully authenticated" and "elapsed account age" — are universally reachable by construction: every registered identity authenticates at registration (satisfying `provisional` immediately), and time passes identically for every identity (satisfying `established`'s second condition for anyone who remains registered 30 days). No band in this proposal depends on a signal that does not exist yet, satisfying constraint 4.
 
@@ -190,6 +190,35 @@ A hybrid model inherits B's governance and gaming risks while adding A's operati
 #### 6.6.2 Versioned evolution without rebuilding identity
 
 Because `trustLevel` is always re-derived from `signalState` (§6.6.1) rather than stored as an independent fact, changing a threshold (e.g., 30 days → 14 days), renaming a band, or adjusting the band count in a future revision requires only bumping a band-rule version and re-running the same deterministic derivation function against already-stored `signalState` — no `signalState` migration, no Customer Identity change, no re-ingestion of historical `AUTH-08` events, and no rebuild of any identity record. This mirrors §8.5's existing statement that "band boundaries are a version-bumped derivation rule, not stored per-record weights."
+
+#### 6.6.3 Semantic boundary — what these band names mean, and do not mean (Founder clarification, `AD-ITM-1`)
+
+**The term `established` is internal-only** (Principle 9) and means, precisely and only: ***established under the current MVP trust-evidence model*** — i.e., "ITM has recorded at least one successful authentication signal and at least 30 elapsed days since registration, per §6.6.4's precise semantics." It must **not** be represented, documented, coded, or reasoned about as meaning any of the following, none of which this MVP evidence model can support:
+
+- verified legal identity;
+- fraud clearance;
+- financial credibility or reliability;
+- customer quality or loyalty value;
+- a risk-free account;
+- eligibility for ordinary platform participation (participation is identity-gated only, per §10 — never trust-gated by default);
+- a customer-facing status, badge, or label of any kind.
+
+Likewise, the **30-day threshold is a Founder-approved MVP policy boundary, not a validated risk figure.** It must not be represented as statistically validated, fraud-calibrated, externally benchmarked, evidence of financial reliability, evidence of low fraud risk, or stronger proof of identity ownership than Authentication itself already provides (§8 Principle 3 — authentication events remain signals only; `established` does not elevate an authentication event into something authentication itself does not claim). It is a simple initial policy threshold for the Capability-2 ITM foundation; future governed ITM versions may change it through the versioned derivation mechanism (§6.6.2), and any such change is itself a policy decision, not an engineering optimization.
+
+This semantic boundary is a documentation/design-review discipline, not a runtime control — it constrains how `TrustLevel` values may be named, documented, logged, and reasoned about in any future ITM-A–D implementation and in any future risk-gate consumer's own documentation, so that "established" is never silently read by a later engineer or product decision as meaning more than the MVP evidence model actually supports.
+
+#### 6.6.4 Precise account-age (time) semantics
+
+To make the 30-day threshold unambiguous for a future implementer's boundary tests, without writing any implementation code here:
+
+- **Authoritative source:** the Customer Identity's existing `Registered`-transition timestamp (`ENG-P2-ARCH-001` §3) — referenced, never duplicated (§5).
+- **Elapsed-time computation, not calendar-month arithmetic:** `accountAgeDays` is the number of whole 24-hour periods elapsed between the `Registered` timestamp and the current authoritative server time at the moment of derivation (§6.6.1) — i.e., `floor((currentServerTime − registeredAt) / 86400 seconds)`. This avoids ambiguous "calendar month" or "same day of month" semantics, which would produce inconsistent day-counts across months of different lengths.
+- **`established`'s condition is `accountAgeDays ≥ 30`** — a closed, non-strict inequality; the boundary belongs to `established`, not `provisional`.
+- **Deterministic boundary behavior a future implementation must test for:**
+  - `accountAgeDays == 29` (just below 30 elapsed days) → `provisional` (assuming `hasSuccessfulAuthentication == true`), never `established`.
+  - `accountAgeDays == 30` (exactly 30 elapsed days) → `established` (assuming `hasSuccessfulAuthentication == true`) — the crossing point belongs to `established`.
+  - `accountAgeDays == 31` (just above 30 elapsed days) → `established`, same as the exact-30 case, confirming the condition is a simple threshold, not a narrow window.
+- **Current time is authoritative, evidence is authoritative, rule version is authoritative — `trustLevel` is derived state** (§6.6.1, §22's Derivation Authority clarification). No scheduled job, cron, or event is required merely because an account crosses day 30 — the transition is observed the next time the record is read or re-derived, consistent with the "no scheduled transition event is required" instruction.
 
 ---
 
@@ -340,14 +369,16 @@ Customer-facing message copy is not decided here (Phase N instruction: "do not d
 
 ## 15. Implementation Decomposition (Phase Q — bounded packages, not yet authorized)
 
+**Re-confirmed after final Founder dispositions (`AD-ITM-1`–`AD-ITM-4`, §22) — no boundary change from the original decomposition; only the design inputs each package depends on have moved from "pending" to "resolved."**
+
 | Package | Responsibility | Dependencies | Acceptance criteria (illustrative) | Explicit exclusions |
 |---|---|---|---|---|
-| **ITM-A — Contracts & trust-record model** | Pure domain layer: `TrustRecord`, `VerificationState`, `TrustLevel` (closed enum per §6.3, exact bands per Founder disposition **FDR-1**), value objects, domain errors reusing the 14-category taxonomy (§13) | `ENG-P2-ARCH-001` (merged/reference); none from `ENG-P2-004` | Pure unit tests; no Firebase; no persistence; matches §5 field list exactly | No event consumer; no persistence; no risk-gate contract |
-| **ITM-B — Persistence & signal ingestion** | Firestore repository for `trustRecords/{customerIdentityId}` (§12); the outbox consumer for `CustomerAuthenticated`/`AuthenticationRecoveryProofProvided` implementing the idempotent/commutative ingestion contract (§7.1) | ITM-A; `AUTH-08` (merged); shared outbox/processor infrastructure | Real Firebase Emulator tests; replay-determinism test (§7.1) passes; recovery event never resets trust (§8.4) proven by test | No progression-band computation beyond the deterministic rule already in ITM-A; no risk-gate read contract yet |
-| **ITM-C — Progression / trust-level derivation** | The deterministic function from `signalState` → `trustLevel` band (§6.3, §8.2); explainability surface (why a record is at a given band) | ITM-A, ITM-B; Founder disposition on **FDR-1** (band thresholds) | Unit tests proving determinism (same signal state → same band, every time); explainability test (band change always traces to a `reasonReferences` entry) | No regression/suspension policy (deferred pending **FDR-3**) |
-| **ITM-D — Risk-gate read contract + closure validation** | The read-only `checkRiskGate(customerIdentityId, riskRequirement)` contract (§9.1); Capability-2-level validation/closure report for the ITM concern (mirrors `AUTH-09`'s pattern) | ITM-A/B/C | Deterministic decision function; no side effects; concern-closure report matches `DEC-GOV-009`/`-010` criteria | No actual caller wiring into Reward Engine (that belongs to the future capability that defines the first real risk-gated action) |
+| **ITM-A — Contracts & trust-record model** | Pure domain layer: `TrustRecord`, `VerificationState`, `TrustLevel` (closed enum — `unverified`/`provisional`/`established`, Founder-countersigned §6.6), the signal/evidence contracts `signalState` is shaped from (§5, §7), value objects, domain errors reusing the 14-category taxonomy (§13). **No progression/derivation logic — that is ITM-C's responsibility, not ITM-A's.** | `ENG-P2-ARCH-001` (merged/reference); none from `ENG-P2-004` | Pure unit tests; no Firebase; no persistence; matches §5 field list and §6.6's band enum exactly | No event consumer; no persistence; no risk-gate contract; no band-derivation function |
+| **ITM-B — Persistence & signal ingestion** | Firestore repository for `trustRecords/{customerIdentityId}` (§12); the outbox consumer for `CustomerAuthenticated`/`AuthenticationRecoveryProofProvided` implementing the idempotent/commutative ingestion contract (§7.1) — the **AUTH-08 event-consumption boundary**. Ingests and retains `AuthenticationRecoveryProofProvided` strictly as auditable evidence (`AD-ITM-2`), never as a `trustLevel`-mutating signal. | ITM-A; `AUTH-08` (merged); shared outbox/processor infrastructure | Real Firebase Emulator tests; replay-determinism test (§7.1) passes; duplicate-delivery test (same `eventId` twice → no double-count); out-of-order-delivery test; recovery event proven to never increase, decrease, or reset `trustLevel` (§8.4, `AD-ITM-2`) | No progression-band computation (ITM-C's responsibility); no risk-gate read contract yet |
+| **ITM-C — Progression / trust-level derivation** | The deterministic function from `signalState` + current server time → `trustLevel` band, implementing §6.6's exact conditions and §6.6.4's precise elapsed-time semantics (`accountAgeDays = floor((currentServerTime − registeredAt) / 86400s)`, closed `≥ 30` inequality); recomputes-on-read per §6.6.1 rather than trusting a stale persisted value; **monotonic non-decreasing only** — no downward transition, no suspension, no evidence-expiry regression (`AD-ITM-3`); explainability surface (why a record is at a given band, via `reasonReferences`) | ITM-A, ITM-B; **`FDR-1` fully resolved (§6.6, `AD-ITM-1`)** — no longer a blocking dependency | Unit tests proving determinism (same `signalState` + same server time → same band, every time); explicit boundary tests at `accountAgeDays` = 29 / 30 / 31 (§6.6.4); explainability test (band change always traces to a `reasonReferences` entry); regression-impossibility test (no code path can decrease `trustLevel`) | No regression/suspension policy (confirmed excluded, `AD-ITM-3` — not "deferred pending a decision," the decision is made) |
+| **ITM-D — Risk-gate read contract + closure validation** | The read-only `checkRiskGate(customerIdentityId, riskRequirement)` contract (§9.1); Capability-2-level validation/closure report for the ITM concern (mirrors `AUTH-09`'s pattern), including confirmation that no operator-visibility surface was built (`AD-ITM-4`) | ITM-A/B/C | Deterministic decision function; no side effects; concern-closure report matches `DEC-GOV-009`/`-010` criteria and confirms all four `AD-ITM-*` dispositions were respected | No actual caller wiring into Reward Engine (that belongs to the future capability that defines the first real risk-gated action); no operator endpoint/UI/permission (`AD-ITM-4`) |
 
-No package here depends on unbuilt Reward Engine implementation — the dependency direction runs ITM → (future) Reward Engine consumption, never the reverse, preserving §4's no-circularity finding.
+No package here depends on unbuilt Reward Engine implementation — the dependency direction runs ITM → (future) Reward Engine consumption, never the reverse, preserving §4's no-circularity finding. **All four packages' design inputs are now fully specified; none is blocked on an open Founder decision. Implementation authorization for any package remains a separate, not-yet-granted step.**
 
 ---
 
@@ -379,12 +410,12 @@ This document itself is complete when:
 
 | ID | Question | Options | Recommendation | Security implication | Product implication | Reversibility | MVP or future | Disposition |
 |---|---|---|---|---|---|---|---|---|
-| **FDR-1** | What are the exact trust-band names and membership thresholds (§6.3)? | (a) Founder names/defines bands directly; (b) Engineering proposes a specific 3-band structure for Founder countersignature, mirroring the `DEC-PROV-004`-point-7 "Anonymous/Authenticated/Verified" reference points reinterpreted as evidence-derived bands | (b) — smallest change from already-approved reference points, fastest path to unblock ITM-A | Low — bands are internal, not exposed | Medium — determines what "established" trust looks like to future risk-gated features | Reversible (band boundaries are a version-bumped derivation rule, not stored per-record weights) | MVP (blocks ITM-A) | **`AD-ITM-1` (§22): Option B process approved. Concrete band model proposed in §6.6 — PROVISIONALLY OPEN, awaiting Founder countersignature. ITM-A/ITM-C not authorized until countersigned.** |
+| **FDR-1** | What are the exact trust-band names and membership thresholds (§6.3)? | (a) Founder names/defines bands directly; (b) Engineering proposes a specific 3-band structure for Founder countersignature, mirroring the `DEC-PROV-004`-point-7 "Anonymous/Authenticated/Verified" reference points reinterpreted as evidence-derived bands | (b) — smallest change from already-approved reference points, fastest path to unblock ITM-A | Low — bands are internal, not exposed | Medium — determines what "established" trust looks like to future risk-gated features | Reversible (band boundaries are a version-bumped derivation rule, not stored per-record weights) | MVP (blocks ITM-A) | **`AD-ITM-1` (§22): FULLY RESOLVED, Founder-countersigned 2026-08-16. Band model + MVP policy clarification approved in §6.6. Design decision resolved; ITM-A/ITM-C implementation remains separately unauthorized (fresh-authorization convention still required).** |
 | **FDR-2** | Should a successful recovery-proof event (`AuthenticationRecoveryProofProvided`) count as neutral or cautionary trust input, given that account recovery is itself a moment of elevated fraud risk elsewhere in the industry? | (a) Neutral (no trust effect); (b) Cautionary (may not increase trust, may flag for future review-signal use) | (a) for MVP — avoids inventing an unreviewed fraud heuristic; revisit under **FDR-3** once regression/review policy exists | Medium — an unreviewed cautionary rule could be gamed or could unfairly flag legitimate recoveries | Low at MVP (no consumer acts on it yet) | Reversible | MVP-adjacent (affects ITM-C default, but not blocking ITM-A/B) | **`AD-ITM-2` (§22): Option A (neutral) APPROVED — resolved, Capability-2 MVP treatment.** |
 | **FDR-3** | Should trust ever regress, and under what triggers (§8.3)? | (a) No regression at MVP — trust is monotonic non-decreasing until a future governed policy exists; (b) Define specific regression triggers now | (a) — regression policy is exactly the kind of "genuine product/policy decision" this document must surface, not silently choose; no fraud-signal source exists yet to trigger it responsibly | High if done wrong — a bad regression rule can unfairly restrict legitimate customers (false-positive impact, §11) | High — determines whether trust is a ratchet or a living state | Reversible now (deferring costs nothing); a later regression policy is itself reversible in principle but customer-impacting in practice | Future (not required for Capability-2 ITM-A/B/C MVP under Option A) | **`AD-ITM-3` (§22): Option A (no regression at MVP) APPROVED — resolved, MVP scope decision, not permanent.** |
 | **FDR-4** | Should ITM eventually expose any trust-adjacent signal to internal operators (e.g., support tooling), and if so, gated by what permission? | (a) Defer entirely — no operator surface at MVP; (b) Define an operator read surface now, reusing `ENG-P2-004`'s permission model | (a) — no operator need has been demonstrated yet; inventing the surface speculatively risks exactly the "if a field is speculative, leave it out" anti-pattern this task warns against | Low-medium — an operator surface, if built carelessly, could leak internal risk scoring (Principle 10) | Low at MVP | Reversible | Future | **`AD-ITM-4` (§22): Option A (defer entirely) APPROVED — resolved.** |
 
-None of FDR-1–FDR-4 authorizes engineering by itself — each still requires the fresh implementation authorization convention already established for `AUTH-*`/`ENG-P2-004*` packages before any ITM-A–D package may begin. **FDR-2/FDR-3/FDR-4 are fully resolved (§22). FDR-1 remains provisionally open — see `AD-ITM-1`.**
+None of FDR-1–FDR-4 authorizes engineering by itself — each still requires the fresh implementation authorization convention already established for `AUTH-*`/`ENG-P2-004*` packages before any ITM-A–D package may begin. **FDR-1/FDR-2/FDR-3/FDR-4 are all fully resolved (§22) — zero Founder decisions remain open in this design package.**
 
 ---
 
@@ -403,13 +434,13 @@ G2 / Deployment / Preview Review / Manual QA   (a closure GATE — begins once t
 Capability 2 Complete
 ```
 
-This document does not execute G2, does not close Capability 2, and does not mark ITM `Complete` or `In Progress` — it marks ITM **design now authorized**, moving it from "Not started — Unauthorised" to "Not started — design delivered; `FDR-2`/`FDR-3`/`FDR-4` Founder-resolved (§22); `FDR-1` provisionally open pending Founder countersignature of §6.6; implementation packages defined, none authorized to begin."
+This document does not execute G2, does not close Capability 2, and does not mark ITM `Complete` or `In Progress` — it marks ITM **design now authorized**, moving it from "Not started — Unauthorised" to "Not started — design fully resolved; `FDR-1`/`FDR-2`/`FDR-3`/`FDR-4` all Founder-resolved (§22); zero remaining Founder decisions; implementation packages defined, none authorized to begin."
 
 ---
 
 ## 20. Explicit Exclusions
 
-This document does not: implement any ITM code; implement or wire an authentication-event consumer; implement a risk-gate caller; modify TRD10, TRD11, or `firestore.rules`; authorize Capability 3; authorize `AUTH-10`; authorize G2/Release Readiness execution; invent a non-sensitive permission identifier; reopen `ENG-P2-004`; or **finally resolve `FDR-1`** (the §6.6 band model remains a proposal awaiting Founder countersignature — see §22). `FDR-2`/`FDR-3`/`FDR-4` are resolved (§22); implementing ITM-A/B/C/D against any of the four remains separately unauthorized regardless.
+This document does not: implement any ITM code; implement or wire an authentication-event consumer; implement a risk-gate caller; modify TRD10, TRD11, or `firestore.rules`; authorize Capability 3; authorize `AUTH-10`; authorize G2/Release Readiness execution; invent a non-sensitive permission identifier; or reopen `ENG-P2-004`. `FDR-1`/`FDR-2`/`FDR-3`/`FDR-4` are all resolved (§22); **implementing ITM-A/B/C/D against any of the four remains separately unauthorized regardless** — design resolution is not implementation authorization.
 
 ---
 
@@ -423,13 +454,18 @@ Created under task `CAP-P2-ITM-DESIGN-001`, an explicit design/governance author
 
 **Authority:** Founder, via task "CAP-P2-ITM-DESIGN-001 — Founder Disposition," 2026-08-16. Recorded here per this repository's established disposition convention (the same inline, dated, attributed pattern used in `ENG-P2-004-DESIGN-001` §17 for `AD-1`–`AD-5`) — **not** a new Decision Register (`DEC-*`) entry, and **not** a reopening of `DEC-IDENTITY-001`/`DEC-PROV-004`. This section is the authoritative disposition record for the four items originally raised in §18; §18 itself is preserved unmodified as history (its Disposition column added above is a pointer only, not a rewrite of the original analysis). The document body (§7, §8.2–§8.5, §11, §19, §20, and new §6.6) has been updated in place to reflect the governed outcome, not merely the recommendation.
 
-### AD-ITM-1 — Trust-band names and membership thresholds (addresses FDR-1) — **PROVISIONALLY OPEN**
+### AD-ITM-1 — Trust-band names and membership thresholds (addresses FDR-1) — ~~PROVISIONALLY OPEN~~ **FULLY RESOLVED (Founder-countersigned, 2026-08-16)**
 
-**Approved: Option B (process only).** Engineering shall propose the concrete MVP band structure and explicit evidence-based membership conditions for Founder countersignature. **This does not yet constitute final approval of the actual band names or thresholds.** `FDR-1` remains **provisionally open** until the concrete proposal is countersigned.
+**Original process approval (preserved as history, not rewritten):** *"Approved: Option B (process only). Engineering shall propose the concrete MVP band structure and explicit evidence-based membership conditions for Founder countersignature. This does not yet constitute final approval of the actual band names or thresholds. `FDR-1` remains provisionally open until the concrete proposal is countersigned."* The concrete proposal, prepared per the Founder's ten stated constraints, was recorded in §6.6 — three discrete evidence-derived bands (`unverified` / `provisional` / `established`), no numerical score, grounded entirely in currently-available signals, no future-only signal made mandatory, no per-provider weighting, and a versioned-evolution mechanism (§6.6.2).
 
-The concrete proposal, prepared per the Founder's ten stated constraints, is recorded in new **§6.6** — three discrete evidence-derived bands (`unverified` / `provisional` / `established`), no numerical score, grounded entirely in currently-available signals (`CustomerAuthenticated` events and Customer Identity's existing `Registered` timestamp), with no future-only signal made mandatory for any band, no per-provider weighting, and an explicit versioned-evolution mechanism (§6.6.2) so that a later threshold change requires no identity rebuild.
+**[UPDATED 2026-08-16 — Founder countersignature, task "CAP-P2-ITM-DESIGN-001 — FDR-1 Founder Countersignature, Design Finalization, Final Review & Merge Gate"]** The Founder has reviewed and **countersigns** the §6.6 band model **with an MVP policy clarification**, now recorded in §6.6.3 (semantic boundary) and §6.6.4 (precise time semantics):
 
-**ITM-A and ITM-C implementation is NOT authorized until this proposal (or an amended version of it) is Founder-countersigned.** ITM-B and ITM-D remain additionally blocked transitively (§15's dependency chain).
+- The approved band model is exactly as proposed: `unverified` < `provisional` < `established`, determined by the highest satisfied condition (§6.6).
+- The 30-day threshold is confirmed as a **Founder-approved MVP policy boundary** — explicitly **not** statistically validated, fraud-calibrated, externally benchmarked, evidence of financial reliability, evidence of low fraud risk, or stronger proof of identity ownership than Authentication itself provides (§6.6.3).
+- The term `established` is confirmed **internal-only**, meaning precisely "established under the current MVP trust-evidence model" — and must **not** be read, documented, or coded as meaning verified legal identity, fraud clearance, financial credibility, customer quality, loyalty value, a risk-free account, eligibility for ordinary platform participation, or any customer-facing status/badge (§6.6.3).
+- Derivation authority is confirmed: evidence (`signalState`), the current rule version, and current server time (for account age) are authoritative; `trustLevel` is derived state, never itself authoritative when stale (§6.6.1, §6.6.4). No scheduled transition event is required for the day-30 crossing.
+
+**`FDR-1` is now fully resolved — no longer provisional.** Design countersignature does **not** itself authorize implementation: **ITM-A and ITM-C implementation remains separately unauthorized**, pending the fresh implementation-authorization convention already established for `AUTH-*`/`ENG-P2-004*` packages (§15, §18). ITM-B and ITM-D remain additionally blocked transitively (§15's dependency chain).
 
 ### AD-ITM-2 — Recovery-event trust treatment (resolves FDR-2)
 
@@ -458,9 +494,87 @@ A future demonstrated operational requirement may trigger a separately governed 
 
 | FDR | Disposition | Status |
 |---|---|---|
-| FDR-1 | `AD-ITM-1` — process (Option B) approved | **Provisionally open** — concrete §6.6 proposal awaiting Founder countersignature |
+| FDR-1 | `AD-ITM-1` — band model + MVP policy clarification, Founder-countersigned 2026-08-16 | **Fully resolved** — §6.6, §6.6.3, §6.6.4 |
 | FDR-2 | `AD-ITM-2` — Option A (neutral) approved | **Resolved** |
 | FDR-3 | `AD-ITM-3` — Option A (no regression) approved | **Resolved** (MVP scope, not permanent) |
 | FDR-4 | `AD-ITM-4` — Option A (defer) approved | **Resolved** |
 
-**ITM-A/B/C/D implementation remains unauthorized** — three of four Founder decisions are resolved, but `FDR-1`'s concrete thresholds are not yet countersigned, and even upon countersignature each ITM-A–D package would still separately require the fresh implementation-authorization convention already established for `AUTH-*`/`ENG-P2-004*` packages (§18's closing note, unchanged by this section). No Capability 3, `AUTH-10`, Firebase/deployment, or G2 work is authorized by this section.
+**Zero Founder decisions remain open in this design package.** `ITM-A/B/C/D implementation remains unauthorized` regardless — design resolution is not implementation authorization; each package still separately requires the fresh implementation-authorization convention already established for `AUTH-*`/`ENG-P2-004*` packages (§18's closing note, unchanged by this section). No Capability 3, `AUTH-10`, Firebase/deployment, or G2 work is authorized by this section.
+
+---
+
+## 23. Independent Final Consistency Review (2026-08-16)
+
+Performed after `AD-ITM-1`'s countersignature, before recommending this design for Founder final review/merge, per task "CAP-P2-ITM-DESIGN-001 — FDR-1 Founder Countersignature, Design Finalization, Final Review & Merge Gate." Reviewed against `ENG-P2-ARCH-001`, `DEC-IDENTITY-001`, `DEC-PROV-004`, the Customer Identity trust-reference boundary, `AUTH-08`'s event contracts, `ENG-P2-004`'s permission boundary, Capability-2 closure requirements, the closed 14-category error taxonomy, and privacy/security requirements.
+
+### A — Identity boundary
+
+Verified: nothing in §2–§6.6 permits trust to create, merge, or split identity, or to replace authentication, or to become the identity identifier. §3.4 confirms Customer Identity holds only the opaque `trustRecordId` reference (§5); no field in §5 or §6.6 is read by Customer Identity code. **No violation found.**
+
+### B — Authentication boundary
+
+Verified: §7's signal table and §8.1 treat `CustomerAuthenticated`/`AuthenticationRecoveryProofProvided` strictly as signals, never as an authentication decision. §6.6.3 (new, this task) makes explicit that `established` must never be read as "proof of legal identity, fraud clearance, or financial reliability" stronger than Authentication itself already provides — directly satisfying this checkpoint by name. **No violation found.**
+
+### C — Permissions vs. trust
+
+Verified: §9's two-question framing ("Is this actor authorized by role/context?" vs. "Does trust evidence satisfy the risk requirement?") is unchanged by this task's dispositions and remains textually present and unmodified. No `AD-ITM-*` disposition touches `ENG-P2-004`'s boundary. **No violation found.**
+
+### D — Standard participation
+
+Verified: §10's "no global gate is permitted" rule and its explicit rejection of `if trustLevel < X → reject everything` are untouched by this task. §6.6.3 additionally reinforces that `established` must never be read as "eligibility for ordinary platform participation." Trust-gating remains opt-in per action (§9.1/§10). **No violation found.**
+
+### E — Band model consistency
+
+Verified against §6.6's conditions, applied to each required scenario:
+
+| Scenario | Design outcome | Verified against |
+|---|---|---|
+| First `CustomerAuthenticated` evidence ingested | `hasSuccessfulAuthentication` becomes `true` → band is `provisional` (assuming `accountAgeDays < 30`) | §6.6 entry table; §8.2 |
+| Account age < 30 elapsed days | Cannot produce `established` regardless of authentication evidence — `established`'s condition is a conjunction (`AND`), not satisfied by age alone or auth alone | §6.6 entry table; §6.6.4 boundary tests |
+| Account age ≥ 30 elapsed days **and** `hasSuccessfulAuthentication == true` | `established` | §6.6 entry table; §6.6.4 |
+| No authentication evidence at all, regardless of account age | `unverified` — age alone is never sufficient for `provisional` or `established` (both require `hasSuccessfulAuthentication == true` as a precondition) | §6.6 entry table (both non-`unverified` rows require the authentication condition) |
+| Recovery event alone | Cannot cause progression — `AD-ITM-2` confirms strictly neutral, not a band-membership condition anywhere in §6.6 | §6.6 exclusions list; §22 `AD-ITM-2` |
+| Provider type (Google/Email/Phone OTP) | Does not alter band — §6.6's `hasSuccessfulAuthentication` condition is provider-agnostic by design, explicitly reasoned in §6.6 ("no per-provider weighting is proposed") | §6.6 |
+| Downward transition | Does not exist at MVP — `AD-ITM-3` (§22) and §8.5 both confirm monotonic non-decreasing; §6.6's progression rules state "no band ever moves downward at MVP" | §6.6; §8.3; §8.5; §22 |
+
+The model is deterministic: given a fixed `signalState` and a fixed current time, exactly one band is produced by the highest-satisfied-condition rule (§6.6, "no band is assigned by weighting or accumulation"). **No inconsistency found.**
+
+### F — Time / account-age semantics
+
+§6.6.4 (added by this task) now defines `accountAgeDays` precisely as `floor((currentServerTime − registeredAt) / 86400 seconds)` — elapsed 24-hour periods from the authoritative `Registered` timestamp, not calendar-month arithmetic — and specifies the three required deterministic boundary behaviors (`accountAgeDays` = 29 / 30 / 31). This satisfies the Founder's instruction to define the threshold "precisely enough for implementation" without writing implementation code. **Satisfied.**
+
+### G — Derived state
+
+§6.6.1 (unchanged by this task, already present from the prior countersignature-pending draft) already states `trustLevel` is "derived state, not authoritative-when-persisted" and must be recomputed at read time; §22's `AD-ITM-1` finalization restates this as "Derivation Authority" — evidence, rule version, and current time are authoritative, `trustLevel` is derived. No design text anywhere treats a persisted `trustLevel` value as overriding current evidence. **No violation found.**
+
+### H — Event idempotency
+
+§7.1 (unchanged) requires ingestion to be idempotent on `eventId`, commutative/order-independent (`signalState` fields as "has this fact ever been true," not sequence-dependent), and to satisfy a replay-determinism property. ITM-B's acceptance criteria (§15, updated by this task) now explicitly require a duplicate-delivery test and an out-of-order-delivery test. **Satisfied** — no implementation performed, design requirement is explicit.
+
+### I — Privacy / fairness
+
+Verified against §11 (unchanged in substance, `AD-ITM-4` applied in place) and §6.6.3 (new): no protected/demographic attribute is used anywhere in the band model (§7's signal table lists only authentication-event and account-age facts); no customer-visible social score exists (`trustLevel` is internal-only, §6.6.3); no hidden behavioral-penalty model exists (`AD-ITM-3` — no regression at MVP, so no penalty mechanism exists to hide); no arbitrary numerical weight is used anywhere (§6.6's conditions are boolean conjunctions, not weighted sums, per §6.4's original rejection of numeric scoring); no speculative fraud inference is made (§6.6.3 explicitly disclaims "fraud clearance" as a meaning of `established`). **No violation found.**
+
+### J — Future evolution
+
+§6.6.2 (unchanged) confirms threshold/band changes require only a version-bumped derivation-rule change against already-stored `signalState` — no Customer Identity rebuild, no identity-ID change, no merge/split. This is structurally guaranteed by `trustLevel` never being authoritative-when-persisted (§6.6.1/§G above) — there is nothing in Customer Identity or the identity ID that a trust-rule change could ever need to touch. **Satisfied.**
+
+### K — ITM-A/B/C/D decomposition
+
+Re-confirmed and refined in §15 (updated by this task) with explicit responsibility, dependency, and acceptance-boundary clarifications matching the Founder's stated minimum: ITM-A holds contracts only (no progression engine); ITM-B owns persistence and the AUTH-08 idempotent ingestion boundary; ITM-C owns deterministic derivation, the §6.6.4 account-age semantics, recovery-neutral behavior, and monotonic progression; ITM-D owns the risk-gate read contract and concern-closure validation. No boundary change was needed beyond confirming and citing the now-resolved dispositions — the original decomposition (proposed before countersignature) already implied this exact split. **Confirmed, refined in place, no restructuring required.**
+
+### L — Capability-2 closure sequence
+
+§19 (unchanged in structure) still states: Customer Identity Complete → Authentication Complete → `ENG-P2-004` Complete → ITM Complete → G2/Deployment/Preview Review/Manual QA → Capability 2 Complete. This task does not alter that sequence, does not mark ITM `Complete`, and does not touch Capability 3 (§20's exclusions, updated in place, still list "authorize Capability 3" among what this document does not do). **Confirmed unchanged.**
+
+### M — Stale references / decision completeness
+
+Full-document search performed for: "pending FDR-1," "pending Founder guidance," "illustrative... bands," "thresholds TBD," "recovery classification TBD," "regression undecided," "operator visibility undecided," "Founder decisions remain open," "not yet approved," "awaiting Founder," "provisionally open," and similar phrasing.
+
+**One genuinely stale reference found and corrected** (not introduced by this task's own dispositions, but discovered during this review): §6.3's original text read "See Founder Decision **FDR-1** in §17" — a leftover from a pre-renumbering draft; §17 is "Acceptance Criteria," not the Founder Decisions section (§18). Corrected to point to §18 (original framing) and to §6.6/§6.6.3–§6.6.4/§22 (the now-resolved outcome).
+
+All other historical "not decided by this document" / "not designed by this document" phrasing found (e.g., §6.3's own preserved original sentence, §18's preserved original table) is **intentionally retained** per this repository's disposition convention — it describes what was true *when originally written*, and is superseded, not deleted, by the dated `AD-ITM-*` updates layered on top of it (§7, §8.2–§8.5, §11, §15, §18's Disposition column, §22). No further stale references found. **No historical analysis was removed.**
+
+### Review outcome
+
+No contradiction, circularity, or governed-principle violation was found. All thirteen items (A–M) checked pass. The design is internally consistent and fully resolved.
