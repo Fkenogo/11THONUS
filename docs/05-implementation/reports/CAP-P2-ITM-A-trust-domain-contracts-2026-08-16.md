@@ -1,5 +1,5 @@
 > **Title:** CAP-P2-ITM-A — Trust Domain Contracts & Trust Record Model — Implementation Report
-> **Status:** Implemented, pending Founder-authorized review/merge (do not merge)
+> **Status:** Complete/merged — PR #111 merged as `eea87269f9312eb9dfddba199de7e31fab75579d` (2026-08-16), post-merge CI green
 > **Governing document:** [ITM-DESIGN-001](../roadmap/ITM-DESIGN-001-identity-trust-management-architecture.md) v1.2, §5–§7, §15 `ITM-A`, §22 (`AD-ITM-1`–`AD-ITM-4`)
 > **Prerequisites:** `CAP-P2-ITM-DESIGN-001` (merged PR #110, `b14239d`) — CI green
 
@@ -231,6 +231,77 @@ Items 1–36 above map directly to the task's Completion Report checklist items 
 - **Persistent implementation-report path:** `docs/05-implementation/reports/CAP-P2-ITM-A-trust-domain-contracts-2026-08-16.md` (this file).
 - **Changes-tracking state:** `documentation-changes-log.md` Entry 118 and `IMPLEMENTATION_CHANGES.md`'s `CAP-P2-ITM-A` entry both added, both cross-referencing this report.
 
+## Final Gate (superseded by the closure section below)
+
+~~**ITM-A READY FOR FOUNDER REVIEW/MERGE.**~~ — superseded 2026-08-16 by independent final review, merge, and closure (below). Preserved as history, not rewritten.
+
+---
+
+## Closure Addendum — Independent Final Contract Review, Merge & Closure (2026-08-16)
+
+Appended per Founder task "CAP-P2-ITM-A — Independent Final Contract Review, Merge & Closure." The sections above are preserved unmodified as the pre-merge implementation record; this addendum records the independent review and merge that followed.
+
+### Entry verification
+
+`origin/main` confirmed unchanged at `b14239d` prior to this task's start. PR #111 confirmed `OPEN`, head `fabfed67a71c5236d146fe254291419608caf5d3` — exactly the expected head, zero commits landed after it (single-commit PR). CI on that head confirmed `pass` (3m28s). `gh pr view 111 --json mergeable` confirmed `MERGEABLE`. `ITM-DESIGN-001` re-confirmed merged/authoritative. `git branch -a` / `gh pr list` re-confirmed no `ITM-B`/`-C`/`-D` branch or PR exists anywhere. Dirty primary worktree (`/Users/theo/11THONUS`, branch `chore/eng-p1-001-closure`) re-confirmed untouched — 33 uncommitted paths, unchanged from the start of the prior task.
+
+### Independent review method (not trusting the prior implementation report as source of truth)
+
+`ITM-DESIGN-001` was re-read directly from the file, not recalled from the earlier report's summary. Scope was re-verified against the actual merged code, not against prose describing it:
+
+- **Export-surface inspection (executed, not inferred):** `npx tsx -e "import * as tr from './src/domains/trust/models/trustRecord.ts'; ... console.log(Object.keys(tr))"` printed exactly `['createTrustRecord']` — no mutation/transition/derivation function exists in the trust-record module, confirmed by direct execution rather than by re-reading the boundary test's assertion. The same check on `trustLevel.ts` printed exactly `['TRUST_LEVELS', 'compareTrustLevels', 'createTrustLevel', 'isAtLeastTrustLevel', 'isTrustLevel', 'trustLevelRank']` — ordering utilities only, no band-membership/derivation function.
+- **Repository-wide greps for prohibited patterns**, run fresh against the merged domain directory: numeric score/rank-as-authority; `accountAgeDays`/30-day/`Date.now()`/`new Date()`/highest-satisfied-band logic; purchase/merchant/device/fraud signals, weighting, `delta`/`trustPoints`/`positiveWeight`/`negativeWeight`; regression/expiry/operator/Reward-Engine/participation-restriction terms. Every match was in a comment, docstring, or a test asserting the *absence* of the term (e.g. `expect(record.trustScore).toBeUndefined()`) — zero executable-logic matches.
+- **Trust-record authority model:** re-read `trustRecord.ts`'s own field-level JSDoc directly — `trustLevel` is documented as "a read-optimization cache, never authoritative when persisted," matching `ITM-DESIGN-001` §6.6.1 precisely; no code anywhere treats a constructed record's `trustLevel` as sufficient evidence without re-derivation (no such re-derivation function exists in this package at all).
+- **Identity boundary:** confirmed one-directional in both directions — `functions/src/domains/trust/**` contains no import of `domains/identity`; `functions/src/domains/identity/**` contains no import of `domains/trust`. `TrustRecord.customerIdentityId` is a plain `string`, not a second identity-identifier type.
+- **Data minimization:** re-inspected every field of `TrustRecord`, `VerificationState`, `SignalState`, `TrustReasonReference` — no email/phone/password/OTP/token/credential/demographic field exists anywhere in the public contract.
+- **Full diff review:** `git diff --name-status origin/main..fabfed6` re-run and inspected line-by-line — confirmed the entire diff is `functions/src/domains/trust/models/**` (21 files), one additive block in `eslint.config.js`, and documentation/traceability files only. No executable file outside `ITM-A` scope.
+- **Secret/security scan:** targeted grep for API-key/private-key/password-literal/secret patterns across the diff — zero matches.
+
+### Codex availability
+
+Unavailable in this session, as in the prior task — disclosed accurately here rather than silently omitted. The independent review above is the final review gate this task's authorization designates for that circumstance.
+
+### Full validation (re-run on the exact PR head, not re-cited)
+
+- Focused: `npx vitest run src/domains/trust` — **74/74**.
+- Full functions: `npx vitest run` — **872/872**.
+- `npx tsc --noEmit` — clean. Functions `npx tsc` build — clean.
+- Root `npx eslint .` — clean (including the new `trust` boundary block).
+- `npx prettier --check functions/src/domains/trust eslint.config.js` — clean.
+- Web: `pnpm --filter ./apps/web run test` — **397/397**.
+- `pnpm emulators:validate` (`firebase emulators:exec ... test:emulator`) — **288/288**. No `ITM-A`-specific emulator coverage exists or was expected — this package has no Firestore/Firebase surface to exercise, consistent with its designed scope (persistence is `ITM-B`'s responsibility).
+
+### Findings
+
+**None material.** No `ITM-B`/`ITM-C`/`ITM-D` scope leakage; `trustLevel` authority semantics correct; no future signal/policy invented; domain remains framework-independent; validation sufficient; no unresolved finding.
+
+### Merge
+
+PR #111 merged via `gh pr merge 111 --merge` (standard merge commit, matching the repository's established convention — e.g. PR #110's "Merge pull request #110 from ..." pattern). **No merge-time implementation change was introduced** — the merged code is byte-identical to the reviewed head `fabfed6`.
+
+- **Merge commit SHA:** `eea87269f9312eb9dfddba199de7e31fab75579d`
+- **Merged at:** 2026-08-16T13:50:26Z
+
+### Post-merge verification
+
+- `git fetch origin` — `origin/main` moved `b14239d..eea8726`.
+- `git rev-parse origin/main` = `eea87269f9312eb9dfddba199de7e31fab75579d`.
+- `git merge-base --is-ancestor fabfed6 origin/main` — confirmed true.
+- Post-merge CI on `main` (run `31950968714`, triggered by the merge push): confirmed **`success`** (`Build, Lint, Test, Emulator Validation`, ~3m20s — build/lint/format/typecheck/unit/e2e/emulator suite all green, watched via `gh run watch` to completion).
+- `git ls-tree -r origin/main --name-only | grep domains/trust` — confirmed all 20 `ITM-A` implementation/test files present on `origin/main`.
+
+### Status change
+
+`ITM-A` = **Complete/merged**. `ITM-B`/`ITM-C`/`ITM-D` remain **Not started** — each requires its own fresh Founder implementation authorization; **none begun by this task**. ITM overall remains **Not complete**. Capability 2 remains `Open — partially implemented; not closed`. Capability 3 remains `Not started`. G2 not started. Dirty primary worktree remains untouched throughout.
+
+### Files touched by this closure task
+
+`CDR-001-capability-delivery-roadmap.md` (§2/§5 ITM lines + header dated append), `documentation-changes-log.md` (Entry 119), `IMPLEMENTATION_CHANGES.md` (closure entry), this addendum. **No application/runtime code changed by this task's own diff** — PR #111's code was reviewed and merged unmodified.
+
+### Rollback
+
+`git revert` the merge commit `eea8726` — the underlying `ITM-A` change is entirely additive (one new domain directory, one additive ESLint block); no schema, no deployed resource, no data to roll back.
+
 ## Final Gate
 
-**ITM-A READY FOR FOUNDER REVIEW/MERGE.**
+**ITM-A MERGED AND CLOSED — ITM-B AWAITS FRESH FOUNDER AUTHORIZATION.**
