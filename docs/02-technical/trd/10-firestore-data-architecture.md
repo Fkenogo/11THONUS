@@ -356,7 +356,7 @@ userId: string;
 businessId: string;  
 role: "owner" | "manager" | "staff";  
 permissionSetId?: string;  
-permissions: string\[\];  
+permissions: PermissionOverrideRecord\[\];  
 status: "invited" | "active" | "suspended" | "removed";  
 invitedBy: string;  
 invitedAt: Timestamp;  
@@ -366,6 +366,15 @@ createdAt: Timestamp;
 updatedAt: Timestamp;  
 schemaVersion: number;  
 };
+
+type PermissionOverrideRecord = {  
+permissionId: string;  
+direction: "grant" | "revoke";  
+grantedBy: string;  
+grantedAt: Timestamp;  
+};
+
+**2026-08-15 correction (`ENG-P2-004D`, Founder-approved Option C):** `permissions` was previously declared `string[]` with no encoding — undesigned since authoring. Now resolved as a Firestore array of structured `PermissionOverrideRecord` maps. `businessId`/`membershipId` are intentionally not fields on the record — an override is scoped to the containing membership document structurally, never persisted redundantly. No live data existed under the prior declaration; this is a declaration correction, not a migration. See `ENG-P2-004-DESIGN-001` §18 and the `ENG-P2-004D` implementation report for the full rationale and options considered.
 
 ### Membership Rules
 

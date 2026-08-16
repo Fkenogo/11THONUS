@@ -1,5 +1,5 @@
 import { deleteApp, getApps, initializeApp } from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
+import { getFirestore, Timestamp } from "firebase-admin/firestore";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { getBusinessMembershipByUserAndBusiness } from "./businessMembershipRepository";
 
@@ -30,7 +30,7 @@ beforeEach(async () => {
 });
 
 describe("getBusinessMembershipByUserAndBusiness", () => {
-  it("resolves the membership matching (userId, businessId), including overrides:[] (persistence-mapping deferred to 004D)", async () => {
+  it("resolves the membership matching (userId, businessId), including overrides:[] for no persisted override state", async () => {
     await db.collection("businessMemberships").doc("mem-1").set({
       userId: "user-1",
       businessId: "biz-a",
@@ -87,7 +87,7 @@ describe("getBusinessMembershipByUserAndBusiness", () => {
     expect(result).toEqual({ kind: "malformed" });
   });
 
-  it("returns malformed for a document with a non-empty persisted permissions array (unserialized override state, Codex review PR #107)", async () => {
+  it("returns malformed for a document whose permissions array holds the pre-004D-correction bare permission-id string shape (Codex review PR #107)", async () => {
     await db
       .collection("businessMemberships")
       .doc("mem-with-permissions")
@@ -100,6 +100,112 @@ describe("getBusinessMembershipByUserAndBusiness", () => {
       });
 
     const result = await getBusinessMembershipByUserAndBusiness(db, "user-2b", "biz-a");
+
+    expect(result).toEqual({ kind: "malformed" });
+  });
+
+  it("resolves a genuine explicit-grant override persisted with a real Firestore Timestamp (ENG-P2-004D persistence correction, Option C)", async () => {
+    await db
+      .collection("businessMemberships")
+      .doc("mem-grant")
+      .set({
+        userId: "user-2d",
+        businessId: "biz-a",
+        role: "manager",
+        status: "active",
+        permissions: [
+          {
+            permissionId: "staff.manage",
+            direction: "grant",
+            grantedBy: "user-owner",
+            grantedAt: Timestamp.now(),
+          },
+        ],
+      });
+
+    const result = await getBusinessMembershipByUserAndBusiness(db, "user-2d", "biz-a");
+
+    expect(result).toEqual({
+      kind: "found",
+      membership: {
+        id: "mem-grant",
+        userId: "user-2d",
+        businessId: "biz-a",
+        role: "manager",
+        status: "active",
+        overrides: [
+          {
+            permissionId: "staff.manage",
+            direction: "grant",
+            businessId: "biz-a",
+            membershipId: "mem-grant",
+          },
+        ],
+      },
+    });
+  });
+
+  it("resolves a genuine explicit-revocation override persisted with a real Firestore Timestamp", async () => {
+    await db
+      .collection("businessMemberships")
+      .doc("mem-revoke")
+      .set({
+        userId: "user-2e",
+        businessId: "biz-a",
+        role: "manager",
+        status: "active",
+        permissions: [
+          {
+            permissionId: "transaction.reverse",
+            direction: "revoke",
+            grantedBy: "user-owner",
+            grantedAt: Timestamp.now(),
+          },
+        ],
+      });
+
+    const result = await getBusinessMembershipByUserAndBusiness(db, "user-2e", "biz-a");
+
+    expect(result).toEqual({
+      kind: "found",
+      membership: {
+        id: "mem-revoke",
+        userId: "user-2e",
+        businessId: "biz-a",
+        role: "manager",
+        status: "active",
+        overrides: [
+          {
+            permissionId: "transaction.reverse",
+            direction: "revoke",
+            businessId: "biz-a",
+            membershipId: "mem-revoke",
+          },
+        ],
+      },
+    });
+  });
+
+  it("returns malformed when a persisted override element has a bad direction value (fail-closed, no partial acceptance)", async () => {
+    await db
+      .collection("businessMemberships")
+      .doc("mem-bad-override")
+      .set({
+        userId: "user-2f",
+        businessId: "biz-a",
+        role: "manager",
+        status: "active",
+        permissions: [
+          {
+            permissionId: "staff.manage",
+            direction: "sideways",
+            grantedBy: "user-owner",
+            grantedAt: Timestamp.now(),
+          },
+        ],
+      });
+
+    const result = await getBusinessMembershipByUserAndBusiness(db, "user-2f", "biz-a");
 
     expect(result).toEqual({ kind: "malformed" });
   });

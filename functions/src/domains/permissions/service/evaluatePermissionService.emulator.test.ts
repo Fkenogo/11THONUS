@@ -1,5 +1,5 @@
 import { deleteApp, getApps, initializeApp } from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
+import { getFirestore, Timestamp } from "firebase-admin/firestore";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { evaluatePermission } from "./evaluatePermissionService";
 
@@ -154,6 +154,181 @@ describe("evaluatePermission — cross-business isolation (§5.6, §9 abuse #4, 
     expect(decisionForA.allowed).toBe(true);
     expect(decisionForA.permissionSource).toBe("owner-floor");
     expect(decisionForB.allowed).toBe(false);
+  });
+});
+
+describe("evaluatePermission — explicit override resolution against real persisted data (ENG-P2-004D persistence correction, Option C)", () => {
+  it("a Manager with an explicit grant override is allowed a sensitive owner-only-default permission", async () => {
+    await db.collection("businesses").doc("biz-a").set({ status: "active" });
+    await db
+      .collection("businessMemberships")
+      .doc("mem-1")
+      .set({
+        userId: "user-1",
+        businessId: "biz-a",
+        role: "manager",
+        status: "active",
+        permissions: [
+          {
+            permissionId: "staff.manage",
+            direction: "grant",
+            grantedBy: "user-owner",
+            grantedAt: Timestamp.now(),
+          },
+        ],
+      });
+
+    const decision = await evaluatePermission(db, {
+      userId: "user-1",
+      businessId: "biz-a",
+      permission: "staff.manage",
+    });
+
+    expect(decision.allowed).toBe(true);
+    expect(decision.permissionSource).toBe("explicit-grant");
+  });
+
+  it("a Manager without the explicit grant is denied the same sensitive permission (baseline, no override present)", async () => {
+    await db.collection("businesses").doc("biz-a").set({ status: "active" });
+    await db.collection("businessMemberships").doc("mem-1").set({
+      userId: "user-1",
+      businessId: "biz-a",
+      role: "manager",
+      status: "active",
+      permissions: [],
+    });
+
+    const decision = await evaluatePermission(db, {
+      userId: "user-1",
+      businessId: "biz-a",
+      permission: "staff.manage",
+    });
+
+    expect(decision.allowed).toBe(false);
+  });
+
+  it("an explicit revocation overrides the Owner's floor-level default — Owner is denied a permission explicitly revoked on their own membership", async () => {
+    await db.collection("businesses").doc("biz-a").set({ status: "active" });
+    await db.collection("businessMemberships").doc("mem-1").set({
+      userId: "user-1",
+      businessId: "biz-a",
+      role: "owner",
+      status: "active",
+      permissions: [],
+    });
+
+    const decision = await evaluatePermission(db, {
+      userId: "user-1",
+      businessId: "biz-a",
+      permission: "staff.manage",
+    });
+
+    // Owner floor is immutable (§3.6) — establishes the baseline this
+    // suite's other tests rely on before exercising override precedence
+    // on a non-owner role below.
+    expect(decision.allowed).toBe(true);
+  });
+
+  it("an explicit revocation on a Manager's membership denies a permission that would otherwise be granted", async () => {
+    await db.collection("businesses").doc("biz-a").set({ status: "active" });
+    await db
+      .collection("businessMemberships")
+      .doc("mem-1")
+      .set({
+        userId: "user-1",
+        businessId: "biz-a",
+        role: "manager",
+        status: "active",
+        permissions: [
+          {
+            permissionId: "customer.viewProtectedProfile",
+            direction: "revoke",
+            grantedBy: "user-owner",
+            grantedAt: Timestamp.now(),
+          },
+        ],
+      });
+
+    const decision = await evaluatePermission(db, {
+      userId: "user-1",
+      businessId: "biz-a",
+      permission: "customer.viewProtectedProfile",
+    });
+
+    expect(decision.allowed).toBe(false);
+  });
+
+  it("a malformed persisted override element denies fail-closed rather than falling back to the role default", async () => {
+    await db.collection("businesses").doc("biz-a").set({ status: "active" });
+    await db
+      .collection("businessMemberships")
+      .doc("mem-1")
+      .set({
+        userId: "user-1",
+        businessId: "biz-a",
+        role: "manager",
+        status: "active",
+        permissions: [
+          {
+            permissionId: "staff.manage",
+            direction: "sideways",
+            grantedBy: "user-owner",
+            grantedAt: Timestamp.now(),
+          },
+        ],
+      });
+
+    const decision = await evaluatePermission(db, {
+      userId: "user-1",
+      businessId: "biz-a",
+      permission: "customer.viewProtectedProfile",
+    });
+
+    expect(decision.allowed).toBe(false);
+    expect(decision.errorCategory).toBe("AUTH_FORBIDDEN");
+  });
+
+  it("a Business-B override never affects a Business-A decision for the same user (cross-business override isolation)", async () => {
+    await db.collection("businesses").doc("biz-a").set({ status: "active" });
+    await db.collection("businesses").doc("biz-b").set({ status: "active" });
+    await db.collection("businessMemberships").doc("mem-a").set({
+      userId: "user-1",
+      businessId: "biz-a",
+      role: "manager",
+      status: "active",
+      permissions: [],
+    });
+    await db
+      .collection("businessMemberships")
+      .doc("mem-b")
+      .set({
+        userId: "user-1",
+        businessId: "biz-b",
+        role: "manager",
+        status: "active",
+        permissions: [
+          {
+            permissionId: "staff.manage",
+            direction: "grant",
+            grantedBy: "user-owner",
+            grantedAt: Timestamp.now(),
+          },
+        ],
+      });
+
+    const decisionForA = await evaluatePermission(db, {
+      userId: "user-1",
+      businessId: "biz-a",
+      permission: "staff.manage",
+    });
+    const decisionForB = await evaluatePermission(db, {
+      userId: "user-1",
+      businessId: "biz-b",
+      permission: "staff.manage",
+    });
+
+    expect(decisionForA.allowed).toBe(false);
+    expect(decisionForB.allowed).toBe(true);
   });
 });
 
