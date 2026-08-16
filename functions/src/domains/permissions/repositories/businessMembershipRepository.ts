@@ -8,9 +8,14 @@
  * Rules imply at most one `(userId, businessId)` record; more than one
  * match is contradictory stored data and is treated as `"malformed"`
  * (fail-closed, §6.11) rather than silently picking one.
+ *
+ * **`ENG-P2-004D` additive seam:** an optional trailing `transaction`
+ * reads the same query via `transaction.get(query)` instead of a plain
+ * `.get()` — Firestore transactions support query reads, not only
+ * single-document reads. Omitted, behavior is byte-identical to before.
  */
 
-import type { Firestore } from "firebase-admin/firestore";
+import type { Firestore, Transaction } from "firebase-admin/firestore";
 import { fromBusinessMembershipDocument } from "../models/businessMembershipDocument";
 import type { MembershipReadResult } from "../evaluator/types";
 
@@ -20,15 +25,16 @@ export async function getBusinessMembershipByUserAndBusiness(
   db: Firestore,
   userId: string,
   businessId: string,
+  transaction?: Transaction,
 ): Promise<MembershipReadResult> {
   let snapshot;
   try {
-    snapshot = await db
+    const query = db
       .collection(COLLECTION)
       .where("userId", "==", userId)
       .where("businessId", "==", businessId)
-      .limit(2)
-      .get();
+      .limit(2);
+    snapshot = await (transaction ? transaction.get(query) : query.get());
   } catch {
     return { kind: "transient_failure" };
   }

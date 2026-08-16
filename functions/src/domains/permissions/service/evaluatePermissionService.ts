@@ -3,15 +3,29 @@
  *
  * Performs the two authoritative-state reads (§6.5, §6.15) and delegates
  * to the pure decision function (`evaluator/evaluatePermission.ts`).
- * Always live — no cross-request cache (§6.12, AD-2), no transaction
- * (§6.13 — read-only evaluation needs none), no write of any kind (§6.18
- * purity). This is the one function in `ENG-P2-004B` permitted to import
- * both a Firestore type and the pure evaluator, matching the same
- * repository/service-boundary pattern the Identity domain already uses
- * for its own `no-restricted-imports` exclusion.
+ * Always live — no cross-request cache (§6.12, AD-2), no write of any
+ * kind (§6.18 purity). This is the one function in `ENG-P2-004B`
+ * permitted to import both a Firestore type and the pure evaluator,
+ * matching the same repository/service-boundary pattern the Identity
+ * domain already uses for its own `no-restricted-imports` exclusion.
+ *
+ * **`ENG-P2-004D` additive seams:**
+ * 1. An optional trailing `transaction` parameter on `evaluatePermission`
+ *    (and the new `evaluatePermissionWithContext`) is passed straight
+ *    through to both repository reads (§6.13, TOCTOU) — omitted,
+ *    behavior is identical to before this package.
+ * 2. `evaluatePermissionWithContext` exposes the resolved
+ *    `MembershipReadResult` alongside the decision — 004D's protected-
+ *    action boundary needs the resolved membership's `id` to pass into
+ *    004C's `recordSensitiveDecision` (which `AuthorizationDecision`
+ *    itself deliberately does not carry — 004B's own report assigned
+ *    resolving that to 004D, not a change to the decision contract).
+ *    `evaluatePermission` is now a one-line delegate to it — identical
+ *    external behavior and return type, zero duplicated read/
+ *    normalization logic.
  */
 
-import type { Firestore } from "firebase-admin/firestore";
+import type { Firestore, Transaction } from "firebase-admin/firestore";
 import { evaluateAuthorizationDecision } from "../evaluator/evaluatePermission";
 import { getBusinessById } from "../repositories/businessRepository";
 import { getBusinessMembershipByUserAndBusiness } from "../repositories/businessMembershipRepository";
@@ -22,10 +36,24 @@ import type {
   MembershipReadResult,
 } from "../evaluator/types";
 
+export type EvaluatePermissionContext = {
+  readonly decision: AuthorizationDecision;
+  readonly membership: MembershipReadResult;
+};
+
 export async function evaluatePermission(
   db: Firestore,
   request: AuthorizationRequest,
+  transaction?: Transaction,
 ): Promise<AuthorizationDecision> {
+  return (await evaluatePermissionWithContext(db, request, transaction)).decision;
+}
+
+export async function evaluatePermissionWithContext(
+  db: Firestore,
+  request: AuthorizationRequest,
+  transaction?: Transaction,
+): Promise<EvaluatePermissionContext> {
   // `AuthorizationRequest`'s TypeScript type does not validate an
   // untrusted runtime payload — a caller that doesn't enforce it at the
   // network boundary could supply `request` itself as `null`/`undefined`
@@ -35,10 +63,13 @@ export async function evaluatePermission(
   // pass 5, PR #107).
   if (request === null || typeof request !== "object") {
     return {
-      allowed: false,
-      reasonCode: "NO_SUBJECT",
-      errorCategory: "AUTH_REQUIRED",
-      evaluatedAt: new Date(),
+      decision: {
+        allowed: false,
+        reasonCode: "NO_SUBJECT",
+        errorCategory: "AUTH_REQUIRED",
+        evaluatedAt: new Date(),
+      },
+      membership: { kind: "not_found" },
     };
   }
 
@@ -74,8 +105,8 @@ export async function evaluatePermission(
   // 7, PR #107).
   if (businessIdIsWellFormed && userId) {
     [business, membership] = await Promise.all([
-      getBusinessById(db, businessId),
-      getBusinessMembershipByUserAndBusiness(db, userId, businessId),
+      getBusinessById(db, businessId, transaction),
+      getBusinessMembershipByUserAndBusiness(db, userId, businessId, transaction),
     ]);
   }
 
@@ -92,10 +123,12 @@ export async function evaluatePermission(
     businessId: businessId ?? request.businessId,
   };
 
-  return evaluateAuthorizationDecision({
+  const decision = evaluateAuthorizationDecision({
     request: normalizedRequest,
     business,
     membership,
     now: new Date(),
   });
+
+  return { decision, membership };
 }
