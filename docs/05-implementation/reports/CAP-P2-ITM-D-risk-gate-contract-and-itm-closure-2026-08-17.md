@@ -1,5 +1,5 @@
 > **Title:** CAP-P2-ITM-D — Risk-Gate Contract, Integration Validation & ITM Closure — Implementation Report
-> **Status:** Implemented, TDD, full validation green — pending Founder-authorized review/merge (**not self-merged**)
+> **Status:** Complete/merged (PR #117, merged as `54c93e9fbe13772a0689a24048699b83c5dbcd37`, 2026-08-17) — see §54 Independent Final Review, Merge & Closure
 > **Governing document:** [ITM-DESIGN-001](../roadmap/ITM-DESIGN-001-identity-trust-management-architecture.md) v1.2, §9 (Risk-Gated Action Contract), §10 (Standard Participation Protection), §13 (Failure Model), §15 `ITM-D` row, §22
 > **Prerequisites:** `CAP-P2-ITM-A` (merged PR #111/#112), `CAP-P2-ITM-B` (merged PR #113/#114), `CAP-P2-ITM-C` (merged PR #115/#116) — CI green
 
@@ -285,8 +285,157 @@ This report: `docs/05-implementation/reports/CAP-P2-ITM-D-risk-gate-contract-and
 
 ---
 
-## FINAL GATE
+## FINAL GATE (original submission)
 
 **ITM-D READY FOR FOUNDER REVIEW/MERGE.**
 
 Not self-merged. G2 not begun.
+
+---
+
+## §54. Independent Final Risk-Gate Review, Merge & ITM Closure (2026-08-17)
+
+Per Founder task "CAP-P2-ITM-D — Independent Final Risk-Gate Review, Merge & ITM Closure."
+
+### Entry verification
+
+PR #117 confirmed `OPEN` at expected head `7fb9bf2766d6bf6f88d78090ad020ba320213651` exactly, zero later commits at review start, CI `SUCCESS` (3m42s/3m48s reruns), `mergeable: MERGEABLE`, `mergeStateStatus: CLEAN`, 2 commits. `origin/main` confirmed unchanged at `31a176a8ccbaacb9a0c154a9025ef0ecce1758fc` since the PR was cut. `ITM-A` (PR #111/#112), `ITM-B` (PR #113/#114), `ITM-C` (PR #115/#116) confirmed merged and, via `git diff origin/main...7fb9bf2 --stat` scoped to their own files, byte-identical — zero diff. Capability 3/G2 confirmed `Not started`. Only PR #34 (unrelated) open besides #117. Dirty primary worktree confirmed untouched throughout — all review work performed in a fresh linked worktree (`.claude/worktrees/itm-d-closure`).
+
+### Requirement-vocabulary authority (Phase C)
+
+Independently re-read `ITM-DESIGN-001` §9.1/§9.2 directly (not the prior implementation report). Answered the four required questions: (1) §9.1 explicitly authorizes ITM to own a closed requirement vocabulary — "the requirement vocabulary is ITM-owned and closed, analogous to the closed 14-category error taxonomy"; (2) the three identifiers (`TRUST_UNVERIFIED_OR_ABOVE`/`TRUST_PROVISIONAL_OR_ABOVE`/`TRUST_ESTABLISHED_OR_ABOVE`) map 1:1 onto the already Founder-countersigned `unverified`/`provisional`/`established` bands (`AD-ITM-1`) — no new band, threshold, or evidence category is introduced; (3) `RiskRequirementId` is a closed literal union validated by `isRiskRequirementId`, and `evaluateRiskGate`'s input type takes `riskRequirement: string` (never a numeric threshold or `TrustLevel` directly) — a caller cannot construct an ad hoc threshold; (4) the vocabulary is phrased purely as "what degree of trust is required" (`TRUST_X_OR_ABOVE`) with zero action/product semantics anywhere in its three identifiers. **No Founder decision required — the vocabulary does not exceed the approved design.**
+
+### Product-policy separation (Phase D)
+
+Repository-wide grep of the full ITM-D diff for `redemption`/`reward`/`ownership`/`fraud`/hardcoded value thresholds — the only matches are doc-comment references to `ITM-DESIGN-001`'s own illustrative examples (§14/§20), never encoded policy. No action identifier, redemption threshold, or value band exists anywhere in the implementation. **Confirmed: ITM-D decides only "does trust satisfy this ITM-owned requirement," never "which action needs which requirement."**
+
+### Requirement truth table (Phase E)
+
+Directly verified against `evaluateRiskGate.ts`: uses ITM-A's existing `isAtLeastTrustLevel` (non-strict `>=`, rank-based over the closed 3-band ordering) — exactly the nine-row truth table the task specifies, with no fourth semantic state and no hidden alternative ordering. Confirmed by direct code reading and by all nine dedicated unit-test cases passing.
+
+### Unavailable fail-closed result (Phase F — primary security gate)
+
+Traced every call seam: `evaluateRiskGate` returns `decision: "sufficient" | "insufficient" | "unavailable"` as a plain string union (no boolean coercion anywhere). The one production call site, `touchRiskGateBoundaryFixtureCommand.ts`, gates via `if (decision.decision !== "sufficient") { return denied }` — an **allow-list check** (only the affirmative case proceeds), not a deny-list check for `"insufficient"` alone — so `"unavailable"`, `"insufficient"`, and any hypothetical future value are all denied by construction, not by enumeration. `checkRiskGateService.ts`'s catch-all for a genuinely unexpected thrown-error shape also fails closed to `"unavailable"` rather than defaulting to `"sufficient"` or rethrowing past the contract boundary. No destructuring fallback, default value, or boolean conversion exists anywhere in the diff that could conflate `"unavailable"` with `"sufficient"`. Representing `unavailable` as a decision-state value (not a thrown failure) matches `ITM-DESIGN-001` §13's own explicit design choice ("a decision function, not an error-throwing gate") — **no redesign is warranted; this is the approved contract shape, correctly implemented.**
+
+### Malformed/unknown requirements (Phase G)
+
+`isRiskRequirementId` is checked **before** `minimumTrustLevelForRequirement` is ever called and before any Firestore read — an unknown or blank `riskRequirement` returns `unavailable`/`UNKNOWN_RISK_REQUIREMENT` immediately, with `requiredTrustLevel` left `undefined` (never resolved to a default). No code path exists that falls back to `TRUST_UNVERIFIED_OR_ABOVE` or any other requirement. Verified directly (both the "malformed" and dedicated "blank" unit tests) and via the emulator suite's "malformed risk requirement fails closed" test.
+
+### ITM-C sole trust authority (Phase H)
+
+`checkRiskGateService.ts` imports only `getEffectiveTrust` from `./effectiveTrustService` — no `trustRecordRepository`, no `customerIdentityRepository`, no raw Firestore read of `signalState` or `trustLevel` anywhere in the ITM-D diff. `riskGate/`'s own boundary test (`riskGateDomainBoundary.test.ts`) mechanically confirms zero `domains/identity` import. **ITM-C remains the sole effective-trust derivation authority — structurally, not by convention.**
+
+### Recovery/provider neutrality (Phase I)
+
+`evaluateRiskGate` reads only `effectiveTrust.result.effectiveTrustLevel` and `.ruleVersion` — never `.basis` (the field that would carry `hasSuccessfulAuthentication`/`accountAgeDays`), so recovery-event count, provider type, and authentication-event count cannot mathematically reach the decision. This session added three integration tests through `checkRiskGate` itself (not merely inherited from ITM-C's own suite) directly proving this: **provider type** (Google vs. Phone OTP identities with identical age/evidence → identical decisions), **event count** (one vs. three authentication events → identical decisions), and **stale persisted `trustLevel` cache** (forged `unverified` cache via ITM-B's own `ingestTrustEvidence`, still resolves to `established` at day 40). All three passed against the real Firebase Emulator Suite (committed `c31318f`, CI green). **No material finding — this closes a genuine, narrow test-coverage gap in the original submission (structural guarantee existed; direct integration-level proof did not) without any implementation change.**
+
+### Standard-participation protection (Phase J)
+
+Re-ran `riskGateStandardParticipationBoundary.test.ts` fresh: `checkRiskGateService`/`riskGate/` confirmed never imported by `functions/src/index.ts`; `checkRiskGateService` confirmed referenced only within `domains/trust` itself; `touchStandardParticipationFixtureCommand.ts` confirmed to have zero source-level dependency on the risk gate; a repository-wide grep confirms no file outside `domains/trust` references `effectiveTrustLevel` at all. Independently re-verified `functions/src/index.ts` in full — zero trust-domain import of any kind exists in any Cloud Function. **No global trust middleware, registration hook, sign-in hook, session hook, or default platform trust requirement exists anywhere.**
+
+### Test-fixture production isolation (Phase K)
+
+`riskGateBoundaryTestFixtures`/`standardParticipationTestFixtures` are synthetic Firestore collections never referenced by any Cloud Function trigger, `index.ts` export, or production domain repository. `touchRiskGateBoundaryFixtureCommand`/`touchStandardParticipationFixtureCommand` are plain exported functions with no `onCall`/`onRequest`/HTTP wiring — confirmed by the same `index.ts` inspection above (zero `domains/trust` import). No production action identifier was minted for either fixture. **No fixture-to-production leakage found.**
+
+### `ENG-P2-004` separation (Phase L)
+
+Repository-wide grep of the full ITM-D diff for `domains/permissions` found only doc-comment references to the pattern being mirrored — zero actual import. `checkRiskGateService.ts`/the fixture commands never reference `businessMemberships`, role templates, permission overrides, business-authorization decisions, or permission-audit events anywhere. **Confirmed: ITM-D does not replace or duplicate `ENG-P2-004`'s authority.**
+
+### Authentication separation (Phase M)
+
+Same grep for `domains/authentication` — zero actual import anywhere in the ITM-D diff (only doc-comment references). `checkRiskGateService.ts` consumes only an already-resolved `customerIdentityId` string; it never verifies a Firebase token, establishes a session, links a provider, or performs recovery. **Confirmed: Authentication remains an independent authority.**
+
+### Result/explainability contract (Phase N)
+
+`RiskGateDecision`'s six fields (`decision`, `reasonCode`, `requiredTrustLevel`, `effectiveTrustLevel`, `ruleVersion`, `evaluatedAt`, `errorCategory`) were independently re-inspected — no raw evidence, PII, token claim, fraud probability, customer-facing score, or operator diagnostic field exists in the type or is ever populated at runtime. `EffectiveTrustResult.basis` (ITM-C's underlying evidence) is never forwarded — confirmed both by type inspection and by the existing "no PII/credential material" unit-test assertion on the decision's exact serialized key set.
+
+### Rule-version consistency (Phase O)
+
+`SUPPORTED_TRUST_RULE_VERSION` (= ITM-C's own `CURRENT_TRUST_RULE_VERSION`) is checked against the derived result's `ruleVersion` before any comparison; a mismatch fails closed (`UNSUPPORTED_TRUST_RULE_VERSION`/`VALIDATION_FAILED`) rather than silently comparing. No speculative multi-version engine was built — the guard is a single explicit equality check, matching the task's "no speculative generic multi-version engine" instruction.
+
+### Pure evaluator review (Phase P)
+
+`evaluateRiskGate.ts` re-confirmed deterministic (no wall-clock read, `now` supplied by caller), framework-independent (no Firebase import), identity-repository-independent, permissions-independent, and Authentication-independent — all mechanically enforced by `riskGateDomainBoundary.test.ts`, re-run fresh in this review (5/5 pass). The "identical inputs produce identical output" unit test and the emulator-level determinism test both re-verified.
+
+### Error taxonomy (Phase Q)
+
+No fifteenth error category exists — every ITM-D failure maps to `VALIDATION_FAILED` or propagates a category ITM-C itself already produces (`RESOURCE_NOT_FOUND`, `VALIDATION_FAILED`, `TEMPORARY_UNAVAILABLE`). `TRUST_INSUFFICIENT` is a distinct reason code from `ENG-P2-004`'s `AUTH_FORBIDDEN`-family denial codes — ITM-D never returns `AUTH_FORBIDDEN` for any outcome, keeping trust-insufficiency and role-denial semantics structurally unblurred.
+
+### Test adequacy (Phase R) / New tests added during review
+
+All 25 matrix items independently checked. Items 1–13 and 18–25 were already directly covered by the original submission's 33 tests (17 pure + 5 boundary + 7 emulator + 4 fixture). Items 14/16/17 (stale-cache, provider-type, event-count non-influence) were previously provable only by structural argument plus ITM-C's own separate test suite, not by a test exercised directly through `checkRiskGate` itself — a genuine, narrow gap, not a defect. **Fixed by adding exactly three new integration tests** (`checkRiskGateService.emulator.test.ts`, committed `c31318f`) proving each scenario directly through the risk-gate contract; no implementation code was changed. Full new test count: 17 pure + 5 boundary + 10 emulator (`checkRiskGateService`) + 4 fixture emulator = **36 tests** for ITM-D.
+
+### ITM-A/B/C regression (Phases S/23–25 of original report)
+
+`git diff origin/main...c31318f --stat` scoped to every ITM-A/B/C file: empty. Full `domains/trust` unit suite (145/145) and the full repo-wide `emulators:validate` (336/336 confirmed at the original submission's head 7fb9bf2, 339/339 after this review's three additional tests) re-run clean.
+
+### Review tooling (Phase X)
+
+`gh pr view 117 --json reviews,reviewRequests` returned empty for both fields — confirmed no automated Codex/external review bot is configured on this repository. Disclosed per this task's own instruction; this independent review served as the merge gate.
+
+### Full validation re-run (Phase W)
+
+Functions unit suite: **943/943**. Web suite (untouched): **397/397**. `emulators:validate`: **336/336** confirmed at the original submission head `7fb9bf2` (fresh rerun, no residual flake), then **339/339** after this review added the three new integration tests (confirmed via the PR's own CI run on final head `c31318f`, `SUCCESS`, 3m48s). `tsc --noEmit`/build clean (both workspaces). `eslint .` clean. `prettier --check` clean (after one auto-format pass on the newly-added test file). Secret/PII scan of the full diff — none found.
+
+### Merge
+
+With all gates clean, PR #117 merged via `gh pr merge 117 --merge` as `54c93e9fbe13772a0689a24048699b83c5dbcd37`. Post-merge: `origin/main` confirmed at `54c93e9`; `c31318fbb84a930f4321cd01dee613b6c8c16b91` (final reviewed head) confirmed an ancestor via `git merge-base --is-ancestor`; post-merge CI (`main`, run `32006357967`) confirmed `SUCCESS` (3m41s).
+
+### Final ITM acceptance matrix
+
+Reconstructed from `ITM-DESIGN-001` §15's per-package acceptance-criteria column (not §17, which is the design-package's own, already-satisfied acceptance criteria) — independently, not trusting the original implementation report as authority:
+
+| Criterion | ITM-A | ITM-B | ITM-C | ITM-D |
+|---|---|---|---|---|
+| Boundary consistency with `ENG-P2-ARCH-001` §8 (§3–§4) | PASS | PASS | PASS | PASS |
+| No speculative field / no unjustified PII (§5) | PASS | PASS | N/A | PASS |
+| Numeric-score model explicitly rejected (§6) | PASS | N/A | PASS | PASS |
+| Every threshold/weighting decision Founder-surfaced (§6, §18/§22) | PASS | N/A | PASS | N/A (reuses ITM-A's already-Founder-approved bands; no new threshold) |
+| Signal model classifies every signal, no invented source (§7) | N/A | PASS | N/A | N/A |
+| Idempotent/commutative/replay-deterministic ingestion (§7.1) | N/A | PASS | N/A | N/A |
+| Deterministic derivation, exact 30-day boundary semantics (§6.6.4) | N/A | N/A | PASS | N/A (consumed via `getEffectiveTrust`, not re-derived) |
+| Recovery evidence strictly neutral (`AD-ITM-2`) | N/A | PASS | PASS | PASS (independently re-verified this review, §I above) |
+| Monotonic non-decreasing, no regression (`AD-ITM-3`) | PASS | PASS | PASS | N/A (ITM-D never mutates trust) |
+| No operator visibility surface (`AD-ITM-4`) | N/A | N/A | N/A | PASS |
+| Risk-gate contract distinguished from `ENG-P2-004`, no circularity (§4, §9) | N/A | N/A | N/A | PASS |
+| Standard participation provably protected (§10) | N/A | N/A | N/A | PASS |
+| Deterministic, versioned, read-only decision (§9.1) | N/A | N/A | N/A | PASS |
+| MVP scope bounded, Reward Engine policy deferred (§14) | PASS | PASS | PASS | PASS |
+| Fail-closed on malformed/unknown input (§13) | PASS | PASS | PASS | PASS |
+| Concern-closure report matches `DEC-GOV-009`/`-010` (§15 `ITM-D` row) | N/A | N/A | N/A | PASS — `DEC-GOV-009`: no new architectural decision was introduced after `ITM-DESIGN-001`'s own countersigned architecture/consistency review (§23), so a separate per-package Technical Review is not required; `DEC-GOV-010`: ITM-D has no deployable customer-facing surface, so deployment/Preview/Manual QA are correctly deferred to Capability Closure/G2, not required at concern-completion level |
+
+No item was converted from unknown to PASS; every row was independently re-derived from the design text and the merged code, not from the original implementation report.
+
+### ITM closure assessment
+
+All sixteen matrix rows are PASS or N/A — zero FAIL, zero unresolved DEFERRED-BY-DESIGN item, zero NOT-CURRENTLY-GOVERNED gap. `ITM-A` = Complete/merged. `ITM-B` = Complete/merged. `ITM-C` = Complete/merged. `ITM-D` = **Complete/merged** (this review). Every `AD-ITM-1`–`AD-ITM-4` disposition independently re-confirmed respected (band model, recovery-neutral, no-regression, no-operator-visibility). No outstanding Founder ITM decision remains (`FDR-1`–`FDR-4` all resolved, `ITM-DESIGN-001` §22). No unresolved material finding (the one narrow test-coverage gap found in this review was fixed with additive tests, no implementation change, before merge).
+
+**ITM concern-level status: `Complete`.**
+
+### Capability-2 post-ITM position
+
+Per `ITM-DESIGN-001` §19: Customer Identity `Complete`, Authentication `Complete`, `ENG-P2-004` `Complete`, ITM now `Complete`. Per this task's own explicit instruction, Capability 2 is **not** marked `Complete` by this review. **Expected next state:** `Capability 2 = Open — concerns complete, capability-level closure gates pending`. The next governed activity is a **PRE-G2 / Capability-2 closure-readiness assessment** — not executed by this task. G2/Release Readiness itself remains **not begun**.
+
+### Files (this closure-sync task)
+
+`CDR-001-capability-delivery-roadmap.md` (§2 table row + header dated append), `documentation-changes-log.md` (Entry 123), `engineering-implementation-programme.md` (header dated append), `IMPLEMENTATION_CHANGES.md` (new closure entry), this §54 section, and — committed to PR #117 itself before merge — three new integration tests (`checkRiskGateService.emulator.test.ts`, no implementation code changed).
+
+### Dependencies / config / Firebase / Rules / deployment changes
+
+None. No `package.json` change. No `firestore.rules`/`storage.rules`/`firebase.json` change. No Cloud Function created or wired.
+
+### Rollback
+
+`git revert` the merge commit `54c93e9` — the underlying change is entirely additive (new files only, plus this closure-sync commit's own additive test file and documentation); no schema, no deployed resource, no data to roll back.
+
+### Dirty primary worktree
+
+Confirmed untouched throughout — all review work performed in the isolated `.claude/worktrees/itm-d-closure` linked worktree, fresh from the post-merge `origin/main`.
+
+---
+
+## FINAL GATE
+
+**ITM-D MERGED AND CLOSED — ITM CONCERN COMPLETE; CAPABILITY 2 PRE-G2 ASSESSMENT REQUIRED.**
+
+G2 not begun. Capability 2 not marked Complete.
