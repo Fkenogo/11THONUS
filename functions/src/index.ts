@@ -326,7 +326,8 @@ function parseSupportedLanguages(value: unknown): string[] {
  * structural guarantee, not a denylist: an attacker cannot smuggle authority
  * through an unanticipated field name.
  */
-function parseCreateBusinessCommand(data: unknown): CreateBusinessCommand {
+/** Exported only for the mass-assignment regression test in `index.test.ts`. */
+export function parseCreateBusinessCommand(data: unknown): CreateBusinessCommand {
   const value = (data ?? {}) as Record<string, unknown>;
   const business: CreateBusinessRequest = {
     legalName: parseOptionalString(value.legalName, "legalName"),

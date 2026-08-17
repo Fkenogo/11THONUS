@@ -276,6 +276,47 @@ describe("bootstrapBusiness — businessCode collision handling", () => {
 
     expect(a.businessCode).not.toBe(b.businessCode);
   });
+
+  it("two concurrent bootstraps racing for the exact same first-choice candidate never both claim it", async () => {
+    // Both generators offer the *identical* first candidate — this proves the
+    // transaction actually detects an occupied code before claiming it (a
+    // real `transaction.get()` race), not merely that two independent
+    // generators happened to draw different values.
+    const contestedCode = "BIZ23456H";
+    const [a, b] = await Promise.all([
+      bootstrapBusiness(
+        db,
+        baseRequest,
+        buildParams({
+          ownerUserId: "cust_racer_1",
+          idempotencyKey: "key_race_a",
+          generator: new SequenceGenerator([contestedCode, "BIZ23456J"]),
+        }),
+      ),
+      bootstrapBusiness(
+        db,
+        baseRequest,
+        buildParams({
+          ownerUserId: "cust_racer_2",
+          idempotencyKey: "key_race_b",
+          generator: new SequenceGenerator([contestedCode, "BIZ23456K"]),
+        }),
+      ),
+    ]);
+
+    // Exactly one of the two winners got the contested code; the other was
+    // forced onto its own fallback candidate — never both, never neither.
+    expect(a.businessCode).not.toBe(b.businessCode);
+    expect([a.businessCode, b.businessCode]).toContain(contestedCode);
+
+    const reservationsForContestedCode = await db
+      .collection("businessCodeReservations")
+      .doc(contestedCode)
+      .get();
+    expect(reservationsForContestedCode.exists).toBe(true);
+    const winnerBusinessId = a.businessCode === contestedCode ? a.businessId : b.businessId;
+    expect(reservationsForContestedCode.data()?.["businessId"]).toBe(winnerBusinessId);
+  });
 });
 
 describe("bootstrapBusiness — partial failure leaves no persistent state", () => {
