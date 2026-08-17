@@ -1,7 +1,7 @@
 # ENG-P2-002B — Business Creation, Persistence & Atomic Bootstrap — Implementation Report
 
 **Date:** 2026-08-19
-**Status:** Implemented / pending Founder review
+**Status:** Complete/merged — see ADDENDUM below (independent review, PR #124 merged as `755a666`, 2026-08-19)
 **Scope authorization:** ENG-P2-002B only (governed Business bootstrap path + supporting persistence/infrastructure). Does NOT include ENG-P2-002C, ENG-P2-003, subscription enforcement, Commerce Knowledge, frontend onboarding, or deployment.
 
 ---
@@ -263,16 +263,43 @@ Revert the PR's merge commit; no data migration, no Firestore Rules change, no d
 
 ## 52. Changes-tracking state
 
-To be updated minimally, with dated supersession, in the established programme-tracking location, in the closure-sync commit accompanying this PR — no historical report rewritten.
+Updated in the established programme-tracking location (`docs/05-implementation/change-tracking/engineering-implementation-programme.md`), dated supersession, in the closure-sync commit accompanying this update — no historical report rewritten.
 
 ## 53. Exact next Founder action
 
-Review PR #(pending) — in particular sections 25 (security/privacy) and 49 (risks) — and merge if satisfied. This session does not self-merge.
+Superseded by the addendum below — PR #124 has been independently reviewed and merged under Founder authorization for that specific action.
 
 ---
 
+## FINAL GATE (superseded — see addendum)
+
+~~**ENG-P2-002B BLOCKED — FOUNDER DECISION REQUIRED**~~
+
+~~(Blocked on PR review/merge, not on any unresolved technical defect — all validation is green. Do NOT begin ENG-P2-002C.)~~
+
+---
+
+## ADDENDUM — Independent Final Review, Merge & Closure (2026-08-19)
+
+Performed under a separate Founder authorization scoped exactly to: independent final review of PR #124, correction of genuine defects only, merge if all gates pass, and closure. Did not begin ENG-P2-002C.
+
+**Reviewer availability:** the `codex` CLI is present on the host but this session is non-interactive; its own subcommands fail with "stdin is not a terminal" — not usably available. Independent manual review was performed instead (below), per this task's own explicit fallback.
+
+**New findings and dispositions:**
+
+1. **Runtime mass-assignment proof (Phase E).** The original implementation relied on `CreateBusinessRequest`'s TypeScript shape lacking an `ownerUserId` key — a compile-time guarantee only. Added `parseCreateBusinessCommand` mass-assignment regression tests (`functions/src/index.test.ts`) that pass a malicious raw payload attaching `ownerUserId`/`membershipId`/`role`/`businessCode`/`branchId`/`businessId`/`status`/`createdAt`/`updatedAt`/`schemaVersion`/`permissions` and assert none of them survive into the parsed command at runtime, plus an exact-whitelist assertion on the resulting key set. **Fixed** (test added; no source defect found — the whitelist parser was already correct, now proven at runtime rather than merely by type).
+2. **Same-candidate concurrency proof (Phase Q.3).** The original concurrency tests used two *different* generators drawing two *different* candidate codes — proving no cross-request collision, but not proving the transaction actually detects an *occupied* code under real contention. Added a test where two concurrent bootstraps both offer the identical first-choice candidate; verified exactly one claims it and the other is forced onto its own fallback, with the reservation doc correctly attributed to the winner. **Fixed** (test added; no source defect found — the `transaction.get()`-before-claim design was already correct, now proven under genuine contention).
+3. **`businessCodeReservations` governance (Phase F/G).** Independently researched whether this new collection needs a TRD10 schema amendment. Found direct precedent: `ENG-P2-001-05`'s implementation report shows `loyaltyNumbers`/`qrIdentityRecords` were introduced as new doc-ID-as-value uniqueness collections with no TRD10 amendment (disclosed only in the roadmap doc). TRD10 itself (`docs/99-archive/source-backups/phase-1-2026-07-16/TRD/TRD10_Firestore Data Architecture.md`) does not enumerate `loyaltyNumbers`, `idempotencyRecords`, `outboxEntries`, or `authenticationReferences` either — these are accepted engineering-owned implementation-infrastructure collections beneath the TRD10-governed domain schema. **Disposition: Category A — legitimate reuse of established architecture. No escalation required, no code change made.**
+4. **Owner authority chain (Phase D).** Independently re-traced (not re-asserted from the prior report) through `authenticationReferences/{type}:{id}` → `getActiveAuthenticationReferenceOwner` → `owner.customerIdentityId` → `users/{customerIdentityId}`. Confirmed the raw email/phone/provider reference is never itself ownership authority — only the resolved, opaque internal Customer ID is, via the identical trusted lookup every other authenticated command in this codebase already uses. **No defect found.**
+
+**Remaining material findings:** none.
+
+**Validation (fresh re-run on the final reviewed head):** `functions` unit 1045/1045 (+2 mass-assignment tests), `emulators:validate` 349/349 (+1 concurrency test), `web` 397/397 unchanged, typecheck/lint/format/build all clean, secret scan clean.
+
+**Final reviewed head:** `644b96ac3540ef379d754ef427ed66aa3ab7fef8` — CI green (run `32047009016`).
+
+**Merge:** PR #124 squash-merged as `755a66663810ddb2d64bc98bc815660f2c421ec8`. `git diff 644b96a origin/main` is empty — the merged tree is byte-identical to the reviewed head (squash preserved content exactly, only the commit graph was flattened). Post-merge CI on `main` green (run `32047320443`).
+
 ## FINAL GATE
 
-**ENG-P2-002B BLOCKED — FOUNDER DECISION REQUIRED**
-
-(Blocked on PR review/merge, not on any unresolved technical defect — all validation is green. Do NOT begin ENG-P2-002C.)
+**ENG-P2-002B MERGED AND CLOSED — ENG-P2-002C AWAITS FRESH FOUNDER AUTHORIZATION**
