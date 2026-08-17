@@ -309,6 +309,42 @@ export default tseslint.config(
     },
   },
   {
+    // ENG-P2-002A: same machine-enforced boundary as the domain-foundation
+    // blocks above, scoped to the new Business Identity domain-foundation
+    // module (`models/` value types/readers/writers/errors, `services/`
+    // the pure `businessCode` candidate-generator port + implementation —
+    // both framework-independent by design, §20). No `ignores` yet: unlike
+    // the Identity/Loyalty Number/QR Identity/Trust precedents above, no
+    // `repositories/` (or Firebase-touching `services/`) exists in this
+    // domain until a future `ENG-P2-002B` persistence task adds one — this
+    // block should gain its own `ignores` entry at that time, not before.
+    files: ["functions/src/domains/business/**/*.ts"],
+    languageOptions: {
+      ecmaVersion: 2023,
+      globals: globals.node,
+    },
+    rules: {
+      "@typescript-eslint/no-unused-vars": "error",
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: [
+                "firebase-admin",
+                "firebase-admin/*",
+                "firebase-functions",
+                "firebase-functions/*",
+              ],
+              message:
+                "The Business Identity domain-foundation layer (ENG-P2-002A) is framework-independent — no Firebase SDK import is permitted here. Persistence/transaction/callable implementation belongs to a future ENG-P2-002B module instead.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ["*.{js,ts}", "**/*.config.{js,ts}"],
     languageOptions: {
       ecmaVersion: 2023,
