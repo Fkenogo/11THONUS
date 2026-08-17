@@ -5,6 +5,7 @@ import { createCustomerIdentity } from "../../identity/repositories/customerIden
 import type { EventActor } from "../../../shared/events/domainEvent";
 import { buildCustomerAuthenticatedEvent } from "../../authentication/events/authenticationEventFactories";
 import { ingestAuthenticationSignal } from "./trustSignalIngestionService";
+import { ingestTrustEvidence } from "../repositories/trustRecordRepository";
 import { checkRiskGate } from "./checkRiskGateService";
 
 // Real Firestore round trip against the Firebase Emulator Suite
@@ -165,6 +166,122 @@ describe("ITM-D — checkRiskGate (real Firestore emulator)", () => {
     );
     expect(decision.decision).toBe("insufficient");
     expect(decision.effectiveTrustLevel).toBe("unverified");
+  });
+
+  it("provider type cannot influence the decision — Google and Phone OTP identities with identical age/evidence produce identical decisions", async () => {
+    const registeredAt = new Date("2026-07-01T00:00:00.000Z");
+    await seedCustomerIdentity("cust-provider-google", registeredAt);
+    await ingestAuthenticationSignal(
+      db,
+      buildCustomerAuthenticatedEvent({
+        customerIdentityId: "cust-provider-google",
+        referenceType: "google_sign_in",
+        idempotencyKey: "key-provider-google",
+        occurredAt: "2026-07-01T00:00:00.000Z",
+      }),
+    );
+    await seedCustomerIdentity("cust-provider-phone", registeredAt);
+    await ingestAuthenticationSignal(
+      db,
+      buildCustomerAuthenticatedEvent({
+        customerIdentityId: "cust-provider-phone",
+        referenceType: "phone_otp",
+        idempotencyKey: "key-provider-phone",
+        occurredAt: "2026-07-01T00:00:00.000Z",
+      }),
+    );
+
+    const at = new Date(registeredAt.getTime() + 10 * DAY_MS);
+    const googleDecision = await checkRiskGate(
+      db,
+      "cust-provider-google",
+      "TRUST_PROVISIONAL_OR_ABOVE",
+      at,
+    );
+    const phoneDecision = await checkRiskGate(
+      db,
+      "cust-provider-phone",
+      "TRUST_PROVISIONAL_OR_ABOVE",
+      at,
+    );
+
+    expect(googleDecision.decision).toBe(phoneDecision.decision);
+    expect(googleDecision.effectiveTrustLevel).toBe(phoneDecision.effectiveTrustLevel);
+  });
+
+  it("number of authentication events cannot influence the decision — one event vs. three produce identical decisions", async () => {
+    const registeredAt = new Date("2026-07-01T00:00:00.000Z");
+    await seedCustomerIdentity("cust-single-event", registeredAt);
+    await ingestAuthenticationSignal(
+      db,
+      buildCustomerAuthenticatedEvent({
+        customerIdentityId: "cust-single-event",
+        referenceType: "phone_otp",
+        idempotencyKey: "key-single-event",
+        occurredAt: "2026-07-01T00:00:00.000Z",
+      }),
+    );
+
+    await seedCustomerIdentity("cust-many-events", registeredAt);
+    for (let i = 0; i < 3; i += 1) {
+      await ingestAuthenticationSignal(
+        db,
+        buildCustomerAuthenticatedEvent({
+          customerIdentityId: "cust-many-events",
+          referenceType: "phone_otp",
+          idempotencyKey: `key-many-events-${i}`,
+          occurredAt: `2026-07-0${i + 1}T00:00:00.000Z`,
+        }),
+      );
+    }
+
+    const at = new Date(registeredAt.getTime() + 10 * DAY_MS);
+    const singleDecision = await checkRiskGate(
+      db,
+      "cust-single-event",
+      "TRUST_PROVISIONAL_OR_ABOVE",
+      at,
+    );
+    const manyDecision = await checkRiskGate(
+      db,
+      "cust-many-events",
+      "TRUST_PROVISIONAL_OR_ABOVE",
+      at,
+    );
+
+    expect(singleDecision.decision).toBe(manyDecision.decision);
+    expect(singleDecision.effectiveTrustLevel).toBe(manyDecision.effectiveTrustLevel);
+  });
+
+  it("a stale persisted trustLevel cache cannot influence the risk-gate decision — recomputes established from evidence + time alone", async () => {
+    const registeredAt = new Date("2026-07-01T00:00:00.000Z");
+    await seedCustomerIdentity("cust-stale-cache-gate", registeredAt);
+
+    // Forces the persisted `trustLevel` cache to `unverified` at day 0 via
+    // ITM-B's own repository (not a raw Firestore write) — mirrors ITM-C's
+    // own independent-review adversarial test, exercised here through the
+    // risk-gate contract itself rather than `getEffectiveTrust` directly.
+    await ingestTrustEvidence(db, {
+      customerIdentityId: "cust-stale-cache-gate",
+      category: "customer_authenticated",
+      eventId: "evt-stale-cache-gate",
+      correlationId: "corr-stale-cache-gate",
+      occurredAt: registeredAt,
+      actorId: null,
+    });
+    const persistedBefore = await db.collection("trustRecords").doc("cust-stale-cache-gate").get();
+    expect(persistedBefore.data()?.["trustLevel"]).toBe("unverified");
+
+    const fortyDaysLater = new Date(registeredAt.getTime() + 40 * DAY_MS);
+    const decision = await checkRiskGate(
+      db,
+      "cust-stale-cache-gate",
+      "TRUST_ESTABLISHED_OR_ABOVE",
+      fortyDaysLater,
+    );
+
+    expect(decision.decision).toBe("sufficient");
+    expect(decision.effectiveTrustLevel).toBe("established");
   });
 
   it("identical inputs produce identical decisions (determinism, real Firestore round trip)", async () => {
