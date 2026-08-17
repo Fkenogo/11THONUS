@@ -278,10 +278,18 @@ describe("bootstrapBusiness — businessCode collision handling", () => {
   });
 
   it("two concurrent bootstraps racing for the exact same first-choice candidate never both claim it", async () => {
-    // Both generators offer the *identical* first candidate — this proves the
-    // transaction actually detects an occupied code before claiming it (a
-    // real `transaction.get()` race), not merely that two independent
-    // generators happened to draw different values.
+    // Both generators offer the *identical* first candidate, forcing a real
+    // `transaction.get()`-level race on `businessCodeReservations/{code}`.
+    //
+    // Firestore's own optimistic concurrency means a transaction whose read
+    // is invalidated by a concurrent writer is retried *from scratch* by
+    // `db.runTransaction` — re-invoking `reserveBusinessCode` again, which
+    // draws the *next* item from the (deliberately stateful, for this test)
+    // generator rather than repeating the exact same first candidate. So the
+    // one guaranteed, safety-relevant property under real contention is: the
+    // contested code is never assigned twice — never that a specific caller
+    // is guaranteed to win it (that depends on Firestore's own retry timing,
+    // which this test does not control and must not assert on).
     const contestedCode = "BIZ23456H";
     const [a, b] = await Promise.all([
       bootstrapBusiness(
@@ -290,7 +298,7 @@ describe("bootstrapBusiness — businessCode collision handling", () => {
         buildParams({
           ownerUserId: "cust_racer_1",
           idempotencyKey: "key_race_a",
-          generator: new SequenceGenerator([contestedCode, "BIZ23456J"]),
+          generator: new SequenceGenerator([contestedCode, "BIZ23456J", "BIZ23456M"]),
         }),
       ),
       bootstrapBusiness(
@@ -299,23 +307,33 @@ describe("bootstrapBusiness — businessCode collision handling", () => {
         buildParams({
           ownerUserId: "cust_racer_2",
           idempotencyKey: "key_race_b",
-          generator: new SequenceGenerator([contestedCode, "BIZ23456K"]),
+          generator: new SequenceGenerator([contestedCode, "BIZ23456K", "BIZ23456N"]),
         }),
       ),
     ]);
 
-    // Exactly one of the two winners got the contested code; the other was
-    // forced onto its own fallback candidate — never both, never neither.
+    // The core safety property: two concurrent callers racing for the same
+    // candidate never both end up with it — whatever codes they land on,
+    // they are always distinct, and both businesses are created.
     expect(a.businessCode).not.toBe(b.businessCode);
-    expect([a.businessCode, b.businessCode]).toContain(contestedCode);
+    expect(a.businessId).not.toBe(b.businessId);
 
-    const reservationsForContestedCode = await db
-      .collection("businessCodeReservations")
-      .doc(contestedCode)
+    // If the contested code was actually claimed by either side (it may or
+    // may not have been, depending on retry timing — see above), its
+    // reservation doc correctly attributes exactly the business that holds
+    // that code as its `businessCode` — never a mismatched or dangling owner.
+    const winner = [a, b].find((result) => result.businessCode === contestedCode);
+    if (winner) {
+      const reservation = await db.collection("businessCodeReservations").doc(contestedCode).get();
+      expect(reservation.exists).toBe(true);
+      expect(reservation.data()?.["businessId"]).toBe(winner.businessId);
+    }
+
+    const businessesSnapshot = await db
+      .collection("businesses")
+      .where("ownerUserId", "in", ["cust_racer_1", "cust_racer_2"])
       .get();
-    expect(reservationsForContestedCode.exists).toBe(true);
-    const winnerBusinessId = a.businessCode === contestedCode ? a.businessId : b.businessId;
-    expect(reservationsForContestedCode.data()?.["businessId"]).toBe(winnerBusinessId);
+    expect(businessesSnapshot.size).toBe(2);
   });
 });
 
