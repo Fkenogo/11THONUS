@@ -16,7 +16,7 @@
 - **Capability 2 (Customer Identity):** `Complete` — closed via `CAP-P2-G2-001` (2026-08-17); all four constituent concerns (Customer Identity, Authentication, `ENG-P2-004`, ITM) `Complete`.
 - **Capability 3 (Business Identity):** `Not started`, awaiting fresh Founder authorization (`CDR-001` §8, `engineering-implementation-programme.md:284`). Constituent work packages: `ENG-P2-002` (business identity — create, owner, profile, branch), `ENG-P2-003` (staff identity — invite, membership, suspend/remove), `ENG-P2-004` (already `Complete`, shared with Capability 2), `ENG-P3-001..003` (Commerce Knowledge seed data, onboarding flow, Knowledge Studio).
 - **`ENG-P2-002`:** `Blocked` (`coding-agent-prompt-register.md:52`). No implementation code exists anywhere in the repository (confirmed by repository-wide search — zero matches for `businessBranches`/`BusinessBranch` outside documentation; the only code touching the `businesses`/`businessMemberships` collections is `ENG-P2-004`'s narrow, read-only evaluator surface).
-- **`ENG-P2-003`:** `Blocked`. Not designed by this package (§14 below explains why a separate `ENG-P2-003-DESIGN-001` is still expected).
+- **`ENG-P2-003`:** `Blocked`. Not designed by this package (§21 below explains why a separate `ENG-P2-003-DESIGN-001` is still expected).
 - **This package's authorization:** design/architecture only, matching the same constraint pattern `ENG-P2-ARCH-001` and `ENG-P2-004-DESIGN-001` operated under.
 - **[UPDATED 2026-08-17]** Founder dispositions recorded for FD-1/FD-2/FD-3 (§24). `ENG-P2-002` Status remains `Blocked` — this document still authorizes no implementation; a fresh Founder implementation authorization is required before `ENG-P2-002A` begins.
 
@@ -46,7 +46,7 @@ This document is authorized as a **design package**, not an implementation packa
 
 Per the Programme's own description (`engineering-implementation-programme.md:159`, `:284`) and requirement traceability (`coding-agent-prompt-register.md:52`: `AP-003`, `AP-004`, `BR-007`, `BR-008`):
 
-- The `Business` aggregate itself: creation, profile fields, lifecycle-state transitions that are within Capability-3 authority (§7), and the `businessCode`/`ownerUserId` identity binding.
+- The `Business` aggregate itself: creation, profile fields, lifecycle-state transitions that are within Capability-3 authority (§6), and the `businessCode`/`ownerUserId` identity binding.
 - The **initial** Owner `BusinessMembership` created atomically alongside the business (§15) — creation only, not the ongoing staff-membership lifecycle.
 - The `businessBranches` minimum architecture needed to satisfy `DEC-SUB-005`'s "one branch record created automatically or during onboarding" requirement (§5).
 - Tenant-isolation enforcement for business-scoped reads/writes at the repository/query-surface level that `ENG-P2-004` does not already cover (§12).
@@ -62,7 +62,7 @@ Per the Programme's own description (`engineering-implementation-programme.md:15
 | Permission evaluation, Sensitive Permission Catalogue, Override-Resolution Rule, audit mechanism | `ENG-P2-004` (`Complete`) | Frozen, consumed not modified (§10–§11) |
 | Subscription/billing policy, plan entitlements, staff/branch/product limits (values) | Subscription domain (`DEC-SUB-*`, mostly `OPEN_FOUNDER`) | `Business.subscriptionId` is an optional reference field only (TRD10 §10.6.3); ENG-P2-002 never computes or enforces entitlement values (§13) |
 | Commerce Knowledge (categories, taxonomy) | Commerce Knowledge domain, `ENG-P3-001` | `Business.primaryCategoryId`/`businessTypeId` reference Commerce Knowledge nodes; ENG-P2-002 stores the reference, never defines the taxonomy |
-| Frontend onboarding flow/UI | `ENG-P3-002` (not started) | Backend contract only (§16) |
+| Frontend onboarding flow/UI | `ENG-P3-002` (not started) | Backend contract only (§19) |
 
 ## 3. Principles
 
@@ -114,7 +114,7 @@ PRD3 §4's eight lifecycle-state names (Draft, Pending Verification, Trial, Acti
 
 ### 4.3 Reconciliation against code
 
-`functions/src/domains/permissions/models/businessDocument.ts` deliberately reads **only** `status` — its header states: "No other `BusinessDocument` field (`businessCode`, `ownerUserId`, etc.) is read or modeled here — 004B's evaluator has no use for them." This is not a discrepancy; `ENG-P2-004B` intentionally scoped its reader narrowly. **`ENG-P2-002` will need a full-shape `BusinessDocument` reader/writer** covering every field in §4.1 — this is new code the design decomposition (§16) accounts for, not a correction to existing code.
+`functions/src/domains/permissions/models/businessDocument.ts` deliberately reads **only** `status` — its header states: "No other `BusinessDocument` field (`businessCode`, `ownerUserId`, etc.) is read or modeled here — 004B's evaluator has no use for them." This is not a discrepancy; `ENG-P2-004B` intentionally scoped its reader narrowly. **`ENG-P2-002` will need a full-shape `BusinessDocument` reader/writer** covering every field in §4.1 — this is new code the design decomposition (§20) accounts for, not a correction to existing code.
 
 ### 4.4 Reconciliation against RTM
 
@@ -171,7 +171,7 @@ TRD10 §10.6.3's eight `status` values, cross-referenced against PRD3 §4/§24/�
 
 | Transition | Allowed initiator | Preconditions | Reversible? | Downstream effect | Governed? | ENG-P2-002 ownership |
 |---|---|---|---|---|---|---|
-| — → `draft` | New Owner (via bootstrap, §10) | Authenticated Customer Identity exists (§9); no existing business with same `businessCode` | N/A (initial state) | None yet — business not operational | PRD3 §5 Step 2 ("Create business") | **Owns** — this is the bootstrap command |
+| — → `draft` | New Owner (via bootstrap, §10) | Authenticated Customer Identity exists (§10.3); no existing business with same `businessCode` | N/A (initial state) | None yet — business not operational | PRD3 §5 Step 2 ("Create business") | **Owns** — this is the bootstrap command |
 | `draft` → `pending_verification` | Owner | Required registration fields complete (PRD3 §6 Mandatory list) | Yes, implicitly (owner may continue editing until submission — not explicitly governed either way) | None described | PRD3 §4 ("Required registration completed") | **Owns** |
 | `pending_verification` → `trial` | System (platform verification, "where applicable" per PRD3 §4) | Verification step, if applicable — **not specified** which businesses require verification vs. proceed automatically | Not specified | Business may begin operating under trial rules (PRD3 §4) | Partially — PRD3 names the state, not the verification mechanism | **Owns the transition; does NOT own or invent the verification mechanism** (flagged gap, not designed here) |
 | `trial` → `active` | System (subscription becomes valid) | Subscription plan selected and valid (PRD3 §5 Step 4; TRD10 `subscriptionId` populated) | Not specified | Business "fully operational" (PRD3 §4) | Yes, at the state-name level; trial *structure* (duration/volume) is `DEC-SUB-003`, `OPEN_FOUNDER` | **Owns the transition; does not own trial-length policy** |
