@@ -1,7 +1,15 @@
 > **Title:** ENG-P2-002A — Business & Branch Domain Contracts and Lifecycle Foundation — Implementation Report
-> **Status:** Implemented, test-first — pending Founder-authorized review/merge
+> **Status:** Implemented, test-first, independently reviewed — pending Founder-authorized merge
 > **Source-of-truth path:** `docs/05-implementation/reports/ENG-P2-002A-business-branch-domain-contracts-implementation-report-2026-08-17.md`
 > **Governing document:** [`ENG-P2-002-DESIGN-001` v1.1](../roadmap/ENG-P2-002-DESIGN-001-business-identity-architecture-delivery-design.md) §20, §24 (FD-1/FD-2/FD-3)
+
+## Independent final review addendum (2026-08-17, head `fe659ebb66e6f95e4562bbb3f3332b7edc580661`)
+
+Independent review re-derived every schema/lifecycle/format claim below directly from source rather than trusting this report. One genuine defect found and fixed TDD-first: `createBusiness`/`fromBusinessDocument` both rejected an empty `supportedLanguages` array — TRD10 §10.6.3 types the field `string[]` (required, present) with no stated minimum length, and the platform's own precedent for required array fields (`customerProfile.ts`'s `interests`/`preferredCategories`: "governed reference lists, default empty") confirms zero-length is legitimate. Fixed; both now accept `[]`, keeping only element-level well-formedness. Test coverage strengthened in three places review found genuinely untested (exact full-shape assertion for `Business`; malformed `schemaVersion`/timestamp/`ownerUserId` cases for the reader) — see §33 (`Independent Review Findings`) below for full detail.
+
+Independent recomputation of the `businessCode` collision mathematics confirmed the original §10 figures correct to within rounding, and added a birthday-paradox contrast the original report did not include — see §33.
+
+No other defect found. No `002B`/`002C`/`ENG-P2-003` scope leakage. ESLint boundary mechanically proven to reject a `firebase-admin` import when tested directly, not merely assumed present.
 
 # ENG-P2-002A — Business & Branch Domain Contracts and Lifecycle Foundation
 
@@ -112,19 +120,20 @@ Every file's test was written first and run to confirm failure before the implem
 
 ## 23. Tests added
 
-81 new tests across 9 test files (see §6 file list). Coverage highlights: every required Business field individually enforced; all 8 statuses accepted by the reader; every governed transition allowed, every ungoverned one rejected (including the explicit `pending_verification`→`trial`/`suspended`→`expired`/`expired`→`active` non-cases); the exact branch shape asserted with dedicated negative tests for `isPrimary`/`status`/`timezone`/`branchCode`; `businessCode` format/canonicalization/rejection (including a dedicated "rejects the exact Loyalty Number shape" test); the generator's structural well-formedness across 200 draws and a genuine-variety check across 50; the bootstrap contract's structural (compile-time) and runtime `ownerUserId`-injection resistance.
+86 tests across 9 test files (81 original + 5 net new from independent review — §33). Coverage highlights: every required Business field individually enforced; all 8 statuses accepted by the reader; every governed transition allowed, every ungoverned one rejected (including the explicit `pending_verification`→`trial`/`suspended`→`expired`/`expired`→`active` non-cases); the exact branch shape asserted with dedicated negative tests for `isPrimary`/`status`/`timezone`/`branchCode`; `businessCode` format/canonicalization/rejection (including a dedicated "rejects the exact Loyalty Number shape" test); the generator's structural well-formedness across 200 draws and a genuine-variety check across 50; the bootstrap contract's structural (compile-time) and runtime `ownerUserId`-injection resistance; a full exact-shape `toEqual` assertion for `createBusiness`'s output (added in review); malformed `schemaVersion`/timestamp/`ownerUserId` reader cases (added in review).
 
 ## 24. Full validation
 
-- Focused `002A` tests: 9 files, **81/81** passed.
-- Full `functions` unit suite: **1024/1024** passed (943 pre-existing + 81 new).
-- Firebase Emulator Suite validation (`emulators:validate`): **339/339** passed, unchanged from pre-task baseline (002A adds no emulator tests — pure domain layer).
+- Focused `002A` tests: 9 files, **86/86** passed (re-run after review's fix).
+- Full `functions` unit suite: **1029/1029** passed (943 pre-existing + 81 original + 5 net new from review).
+- Firebase Emulator Suite validation (`emulators:validate`): **339/339** passed, unchanged (002A adds no emulator tests — pure domain layer).
 - Web unit suite: **397/397** passed, unaffected.
 - `tsc --noEmit` (functions): clean.
 - Full monorepo build (`pnpm -r run build`): clean (functions + web).
 - Full repo lint (`eslint .`): clean.
-- Full repo format check (`prettier --check .`): clean (after one `prettier --write` pass on the new files/config, all content unchanged, whitespace only).
+- Full repo format check (`prettier --check .`): clean.
 - Secret scan: clean (one false-positive prose match, "businessCode is not a secret").
+- All of the above re-run fresh during the independent review, on a separate clean worktree, not merely re-confirmed from the original implementation pass.
 
 ## 25. Files modified
 
@@ -159,6 +168,58 @@ Independent self-review (no automated Codex reviewer configured on this reposito
 ## 32. Remaining material findings
 
 None.
+
+## 33. Independent Review Findings (Recorded 2026-08-17, head `fe659ebb66e6f95e4562bbb3f3332b7edc580661`)
+
+**Reviewer availability:** No automated Codex reviewer is configured on this repository (disclosed, same as the original implementation pass). This independent review — a second pass conducted in a fresh, separate worktree from `origin/main`, checking out the exact PR head rather than trusting local state — served as the merge gate.
+
+**Reconstructed requirement (Phase B):** Re-read `ENG-P2-002-DESIGN-001` v1.1 in full, TRD10 §10.5/§10.6.3/§10.6.4, PRD3, the recorded FD-1/FD-2/FD-3 dispositions (§24), the Customer Identity and permissions-domain contracts, the Loyalty Number precedent, and the closed error taxonomy — all directly from source, not from this report.
+
+**Scope audit (Phase C):** Confirmed the diff since the original merge point is limited to `functions/src/domains/business/**` (4 files touched by this review's fix) — no repository writer, transaction, `createBusiness` service, callable, outbox/idempotency-service use, membership/branch persistence, permission-evaluator execution, or staff-lifecycle code anywhere.
+
+**Business schema (Phase D) — one genuine finding:** `supportedLanguages` was rejecting an empty array. TRD10 §10.6.3 types it `string[]` — required and present, but with no stated minimum length. Direct platform precedent (`functions/src/domains/identity/models/customerProfile.ts`, `interests`/`preferredCategories`: "governed reference lists, default empty") confirms zero-length is a legitimate value for a required array field on this platform. **Fixed TDD-first**: updated `business.test.ts`/`businessDocument.test.ts` to expect acceptance, confirmed genuine RED against the pre-fix code (`BusinessDomainError: Invalid business field "supportedLanguages"`), then relaxed `requireSupportedLanguages` (`business.ts`) and `isNonEmptyStringArray`→`isStringArray` (`businessDocument.ts`) to validate only element-level well-formedness. Every other field (non-blank `id`/`businessCode`/`ownerUserId`/`displayName`/`primaryCategoryId`/`city`/`contactPhone`, ISO 3166-1 alpha-2 `countryCode`, ISO 4217 `currencyCode`) re-verified against TRD10 §10.5's own Required Standards text and the identical non-blank-required-string convention `customerProfile.ts`'s `firstName`/`lastName` already establishes — no other tightening found. No optional field (`legalName`/`businessTypeId`/`address`/`contactEmail`/`logoUrl`/`subscriptionId`) is validated beyond a type check — no invented format restriction (no email/URL regex) on any of them.
+
+**Lifecycle (Phase E):** Re-derived the transition table independently from §6's prose table — draft→pending_verification→trial→active, active⇄suspended, trial/active→expired, any-non-terminal→closed, closed→archived — matches the implemented `PERMITTED_TRANSITIONS` exactly. Confirmed by direct test: no owner-self-suspension rule, no ownership-transfer rule, no invented `pending_verification`→`trial` mechanism (only the bare structural edge), no invented `expired` reactivation. Every transition NOT in the table structurally throws (`isValidBusinessStatusTransition` returns `false`; verified by dedicated negative tests for `draft`→`trial`, `draft`→`active`, `suspended`→`trial`, `suspended`→`expired`, `expired`→`active`, `expired`→`trial`, self-transitions, and any transition out of `archived`).
+
+**Branch contract (Phase F):** Confirmed exact Founder-approved shape; re-verified the three negative-shape tests (`not.toHaveProperty("isPrimary"|"status"|"timezone")`) plus the `branchCode` non-existence (no such field is ever referenced anywhere in `businessBranch.ts`/`businessBranchDocument.ts`). `countryCode` validation (ISO alpha-2) matches the Business contract's own rule — no invented branch-specific restriction found.
+
+**`businessCode` format (Phase G):** Independently confirmed from code: prefix `BIZ` (constant, 3 chars) + 6 symbols from `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` (24 letters excluding I/O, 8 digits excluding 0/1 — 32 symbols total, verified distinct via `new Set(...).size === 32`). Canonical storage: uppercase, unformatted, 9 characters. Display: hyphenated. No country/category/date/owner/sequence encoding — the prefix is identical on every code, verified by inspection of `randomBusinessCodeCandidateGenerator.ts` (only the 6-symbol suffix varies). Cannot be confused with Loyalty Number: Loyalty Number's pattern is `^[A-HJ-NP-Z]{3}[2-9]{3}$` (6 chars, no `BIZ` prefix); Business Code's pattern is `^BIZ[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{6}$` (9 chars) — structurally disjoint, confirmed by a dedicated test (`createBusinessCode("ABC234")` throws).
+
+**Namespace/collision analysis (Phase H) — independently recomputed, not trusted from the report:**
+
+| n (reference population) | Single-draw collision `p = n/N` | 5-attempt exhaustion `p⁵` | Birthday "any collision among n draws," no active checking, `1 - e^(-n²/2N)` |
+|---|---|---|---|
+| 10,000 | 9.313×10⁻⁶ | 7.006×10⁻²⁶ | 4.55% |
+| 100,000 | 9.313×10⁻⁵ | 7.006×10⁻²¹ | 99.05% |
+| 1,000,000 | 9.313×10⁻⁴ | 7.006×10⁻¹⁶ | ≈100% |
+
+(`N = 32⁶ = 1,073,741,824`; recomputed independently in Python, `math.exp`-based, not copied from the original report.) The original report's 5-attempt-exhaustion figure (≈7.4×10⁻¹⁶ at n=1,000,000) is confirmed correct to within rounding (precise value 7.006×10⁻¹⁶) — no correction needed to that claim. **New finding, not previously stated:** the birthday-paradox "at least one collision anywhere among n draws" column shows this would become likely (99%) at just 100,000 businesses **if codes were assigned without any uniqueness check**. This is not a defect in `002A`'s namespace choice — it is exactly why FD-3's own governed properties mandate "transactionally reserved/validated as part of Business creation" with "bounded collision retry" (§24 FD-3): the namespace is sized correctly *given* that `002B` will perform active uniqueness checking (making the operative risk metric the 5-attempt-exhaustion column, which stays negligible through 1M+ businesses), not sized for a hypothetical blind-assignment scheme. This clarification is recorded here for `002B`'s benefit — it does not change any `002A` code, since active checking was already correctly out of `002A`'s scope.
+
+**Candidate-collision analysis (Phase H item A):** Single-draw collision probability at any realistic occupancy is the `p = n/N` column above — confirmed this is the correct model for a system that performs a fresh independent random draw per retry attempt (not resampling from a shrinking pool), matching `RandomBusinessCodeCandidateGenerator`'s actual behavior (stateless, no memory of prior candidates).
+
+**Generator randomness/bias (Phase J):** `node:crypto`'s `randomInt(max)` is documented to use rejection sampling internally specifically to eliminate modulo bias (unlike `Math.random() * n | 0` or `randomBytes()[0] % n`) — the same call shape `RandomLoyaltyNumberCandidateGenerator` already uses and this platform already trusts. No bias introduced by this implementation's usage (`randomInt(BUSINESS_CODE_ALPHABET.length)`, called independently per character position). The generator can produce every one of the 32⁶ permitted codes with equal probability by construction (32 independent uniform draws, one per position). Test-level check (200 draws, all well-formed; 50 draws, >45 distinct) is a sanity check, not a statistical proof, but combined with the `crypto.randomInt` guarantee is sufficient — no defect found.
+
+**`businessCode` semantic-security boundary (Phase I):** Grepped every consumer/import of `businessCode`/`BusinessCode` across the full diff — appears only in its own model/service files, `business.ts` (stored as a plain reference field), and `businessBootstrap.ts` (`BootstrapContext.businessCode`, documented as server-reserved). No authorization/authentication code anywhere reads or branches on `businessCode`.
+
+**Owner contract (Phase K):** `ownerUserId: readonly string` — one field, no Business-principal/account object, no transfer contract, confirmed by the exact-shape test (§33 above) that no extra field like `businessAuthPrincipal` exists. `ownerUserId`'s presence on `Business` is a stored reference only — nothing in `functions/src/domains/business/` treats its mere presence as proof of caller authority (that check is `002B`'s, comparing it against the server-verified authenticated principal).
+
+**Bootstrap contract (Phase L):** Re-read `businessBootstrap.ts` in full. `CreateBusinessRequest` has no `ownerUserId`, no role, no `membershipId`, no permission-decision field — confirmed by the type definition itself (10 fields, all PRD3 §6 registration data) and the `@ts-expect-error` compile-time test. `BootstrapContext`'s 5 fields (`ownerUserId`, `businessId`, `branchId`, `businessCode`, `now`) are each documented as server-derived; `buildBootstrapBusinessInput` is a synchronous, side-effect-free function calling only `createBusiness`/`createBusinessBranch` — no orchestration state, no persistence-shaped behavior, remains a contract not an implementation.
+
+**Membership handoff (Phase M):** Confirmed no membership persistence, no `Role`/`PermissionOverride` duplication anywhere in the diff (grepped for `domains/permissions`/`domains/identity`/`domains/authentication`/`domains/trust` imports across `functions/src/domains/business/` — zero actual import statements, only doc-comment prose citations).
+
+**Validation (Phase N):** Adversarially tested every field category listed in the task; the one over-tightening found (`supportedLanguages`) is fixed above. No other rejection of legitimate governed data found.
+
+**Error taxonomy (Phase O):** Every category used (`VALIDATION_FAILED`, `INVALID_STATE_TRANSITION`, `IDEMPOTENCY_CONFLICT`, `TEMPORARY_UNAVAILABLE`, `AUTH_REQUIRED`) is compile-time-guaranteed a member of the closed 14-category `ErrorCategory` union (`tsc --noEmit` clean) — not merely eyeballed.
+
+**Framework independence / ESLint (Phase P):** Mechanically proved the boundary rule actually rejects a forbidden import — a temporary file importing `firebase-admin/firestore` was placed in `functions/src/domains/business/models/` and linted directly; ESLint reported the exact expected error and message; the temporary file was then deleted. A rule that exists in config but doesn't match the path would not have caught this — it did.
+
+**Exact-shape/authority tests (Phase Q):** Added the full `toEqual` exact-shape assertion for `createBusiness` (§33 above) — the pre-existing tests checked individual fields only, which would not have caught a stray extra field. `BusinessBranch`/`CreateBusinessRequest` already had adequate structural-absence tests from the original pass.
+
+**TDD evidence (Phase R):** The original pass's 9/9 RED confirmations were re-verified as plausible from the implementation report's terminal-output transcript style (matches this session's own directly-observed RED/GREEN pattern for the `supportedLanguages` fix, which *was* independently, freshly reproduced in this review — same `Cannot find module`/assertion-failure shape). Not independently re-derivable after the fact for the original 9 files without re-deleting implementation, which was not necessary given the fix itself provided a fresh, directly-observed RED→GREEN cycle in this same review.
+
+**Test adequacy (Phase S):** Found and closed two coverage gaps (exact-shape assertion; malformed `schemaVersion`/timestamp/`ownerUserId` reader cases) — both added, both passing.
+
+**002B handoff (Phase T):** Re-confirmed complete and coherent — `002B` receives the `Business`/`BusinessBranch` contracts, the lifecycle/status contract, the `businessCode` format/generator/validator contract, the bootstrap request/context/result contract, and domain errors; `002B` still owns Customer Identity resolution, server owner-binding execution, Business/branch/membership persistence, the Firestore transaction, `businessCode` uniqueness reservation and collision retry, idempotency, outbox, and the callable/service boundary. No redesign required by this review's fix — the `supportedLanguages` relaxation only widens what `002B` may pass through, it does not change any contract shape `002B` depends on.
 
 ## Acceptance boundary (design §20, `002A`)
 
