@@ -1,12 +1,12 @@
 > **Title:** ENG-P2-002-DESIGN-001 — Business Identity Architecture & Delivery Design
-> **Version:** 1.0 · **Status:** Design package — architecture and decomposition only; NOT an implementation authorization · **Classification:** Working (execution-layer architecture record)
+> **Version:** 1.1 · **Status:** Design package — Founder dispositions recorded (§24); NOT an implementation authorization · **Classification:** Working (execution-layer architecture record)
 > **Governing document:** [Decision Register](../../00-governance/decisions/decision-register.md) `DEC-ID-002`, `DEC-ID-003` (via [`ENG-P2-004-DESIGN-001`](ENG-P2-004-DESIGN-001-role-context-permission-resolution-architecture.md)), `DEC-SUB-005`, `DEC-FUT-005`; [`CDR-001` Capability 3](CDR-001-capability-delivery-roadmap.md#8-engineering-work-package-mapping); [ENG-P2-ARCH-001](ENG-P2-ARCH-001-customer-identity-architecture.md); [ENG-P2-004-DESIGN-001](ENG-P2-004-DESIGN-001-role-context-permission-resolution-architecture.md); PRD1 (`01-accounts-roles-and-permissions.md`); PRD3 (`03-business-registration.md`); TRD10 §10.6.3–10.6.4, §10.14.1, §10.3–10.4; TRD18 §18.11–18.13; TRD23 §23.14
 > **Source-of-truth path:** `docs/05-implementation/roadmap/ENG-P2-002-DESIGN-001-business-identity-architecture-delivery-design.md`
-> **Last controlled update:** 2026-08-17 (`ENG-P2-002-DESIGN-001` v1.0 — created)
+> **Last controlled update:** 2026-08-17 (`ENG-P2-002-DESIGN-001` v1.1 — Founder dispositions FD-1/FD-2/FD-3 recorded, §24; original §17 register preserved as history)
 
 # ENG-P2-002-DESIGN-001 — Business Identity Architecture & Delivery Design
 
-**This document defines architecture only. It authorizes no implementation.** No production code, Firestore Rules, migration, client UI, or deployment is created or modified by this document. It is analogous in role to [ENG-P2-ARCH-001](ENG-P2-ARCH-001-customer-identity-architecture.md) (Customer Identity) and [ENG-P2-004-DESIGN-001](ENG-P2-004-DESIGN-001-role-context-permission-resolution-architecture.md) (Role-Context & Permission Resolution) for the Business Identity concern of Capability 3. It resolves the architecture-level prerequisites the Engineering Implementation Programme's `ENG-P2-002` row ("business identity — create, owner, profile, branch," `AP-003`, `AP-004`, `BR-007`, `BR-008`) needs before a future `ENG-P2-002A`/`002B`/`002C` implementation prompt can be authorized without a coding agent inventing business-identity semantics. It does not decide any open Decision Register item — every open decision touched below is presented as options plus a recommendation, with no Founder disposition recorded.
+**This document defines architecture only. It authorizes no implementation.** No production code, Firestore Rules, migration, client UI, or deployment is created or modified by this document. It is analogous in role to [ENG-P2-ARCH-001](ENG-P2-ARCH-001-customer-identity-architecture.md) (Customer Identity) and [ENG-P2-004-DESIGN-001](ENG-P2-004-DESIGN-001-role-context-permission-resolution-architecture.md) (Role-Context & Permission Resolution) for the Business Identity concern of Capability 3. It resolves the architecture-level prerequisites the Engineering Implementation Programme's `ENG-P2-002` row ("business identity — create, owner, profile, branch," `AP-003`, `AP-004`, `BR-007`, `BR-008`) needs before a future `ENG-P2-002A`/`002B`/`002C` implementation prompt can be authorized without a coding agent inventing business-identity semantics. **[UPDATED 2026-08-17]** The three items originally raised as an undispositioned Founder Decision Register (§17, preserved below as history) are now resolved — see §24 for the recorded Founder dispositions (FD-1/FD-2/FD-3) and the "Other Design Dispositions" they confirm (owner self-suspension and ownership-transfer scope deferral, `pending_verification`→`trial` treatment, business-event contract clarification). No `DEC-ID-005` Decision Register disposition is recorded by this document — only this package's own scope boundary is confirmed.
 
 ---
 
@@ -18,6 +18,7 @@
 - **`ENG-P2-002`:** `Blocked` (`coding-agent-prompt-register.md:52`). No implementation code exists anywhere in the repository (confirmed by repository-wide search — zero matches for `businessBranches`/`BusinessBranch` outside documentation; the only code touching the `businesses`/`businessMemberships` collections is `ENG-P2-004`'s narrow, read-only evaluator surface).
 - **`ENG-P2-003`:** `Blocked`. Not designed by this package (§14 below explains why a separate `ENG-P2-003-DESIGN-001` is still expected).
 - **This package's authorization:** design/architecture only, matching the same constraint pattern `ENG-P2-ARCH-001` and `ENG-P2-004-DESIGN-001` operated under.
+- **[UPDATED 2026-08-17]** Founder dispositions recorded for FD-1/FD-2/FD-3 (§24). `ENG-P2-002` Status remains `Blocked` — this document still authorizes no implementation; a fresh Founder implementation authorization is required before `ENG-P2-002A` begins.
 
 ## 1. Authority & Provenance
 
@@ -25,10 +26,10 @@ This document is authorized as a **design package**, not an implementation packa
 
 **What this document does:**
 - Reconciles the `businesses`/`businessMemberships` schema already governed by TRD10 §10.6.3–10.6.4 against the current codebase (`functions/src/domains/permissions/models/businessDocument.ts`, `businessMembershipDocument.ts`) and the PRD/RTM text, flagging (not silently fixing) any mismatch.
-- Investigates the `businessBranches` gap (§5) and proposes a minimum schema, explicitly flagged as requiring Founder confirmation (FD-1, §17) rather than treating the proposal as self-authorizing.
-- Designs the business-creation **bootstrap** boundary against `ENG-P2-004`'s already-`Complete`, unmodified permission-evaluation contract (§10–§11).
-- Recommends an implementation decomposition (`ENG-P2-002A`/`002B`/`002C`, §16) for a future, separately authorized implementation task.
-- Produces a small, evidence-grounded Founder Decision Register (§17) — options and recommendations only, no dispositions recorded.
+- Investigates the `businessBranches` gap (§5) and records the Founder-approved minimum schema (FD-1, §24; originally proposed and flagged for confirmation at §17).
+- Designs the business-creation **bootstrap** boundary against `ENG-P2-004`'s already-`Complete`, unmodified permission-evaluation contract (§10–§11), with the bootstrap mechanism now resolved (FD-2, §24).
+- Recommends an implementation decomposition (`ENG-P2-002A`/`002B`/`002C`, §20) for a future, separately authorized implementation task.
+- Records Founder dispositions for the three items originally raised as an evidence-grounded Founder Decision Register (§17, preserved as history) — see §24 for the recorded dispositions, with date and provenance.
 
 **What this document explicitly does NOT do:**
 - It does not authorize `ENG-P2-002A`, `002B`, or `002C` implementation. Each requires its own fresh Founder implementation authorization, exactly as every `AUTH-*` and `ENG-P2-004*` package required (`engineering-implementation-programme.md`, throughout).
@@ -36,8 +37,8 @@ This document is authorized as a **design package**, not an implementation packa
 - It does not design the Customer Identity aggregate (already closed by `ENG-P2-ARCH-001`) or duplicate any of its boundary text.
 - It does not design `ENG-P2-003` (Staff Membership) beyond the single minimum handoff contract §15 states is unavoidable (the initial Owner membership).
 - It does not design Subscription/billing policy, Commerce Knowledge, or any frontend onboarding UI.
-- It does not record a disposition on any open Decision Register item (`DEC-ID-004`, `DEC-ID-005`, `DEC-SEC-003`, `DEC-SUB-002`, `DEC-SUB-009`, `DEC-UX-003`) or on any newly identified gap (`businessBranches` schema authorship, bootstrap mechanism, `businessCode` generation) — §17 presents options and a recommendation for each, explicitly withholding a Founder disposition.
-- It does not touch any file outside `docs/` and this document plus the scratch research report.
+- It does not record a Decision Register disposition on `DEC-ID-004`, `DEC-ID-005`, `DEC-SEC-003`, `DEC-SUB-002`, `DEC-SUB-009`, or `DEC-UX-003` — those remain open in `decision-register.md`, unmodified. **[UPDATED 2026-08-17]** It now *does* record Founder dispositions on the three items this package itself raised (`businessBranches` schema authorship, bootstrap mechanism, `businessCode` generation) — see §24, recorded as an inline dated disposition in this design document, following the same convention `ENG-P2-004-DESIGN-001` §17 already established (not a new Decision Register entry, and not a reopening of any `DEC-*` item).
+- It does not touch any file outside `docs/` and this document, the Engineering Implementation Programme, and `CDR-001`.
 
 ## 2. Scope & Boundary
 
@@ -140,31 +141,29 @@ PRD3 §4's eight lifecycle-state names (Draft, Pending Verification, Trial, Acti
 - `subscriptions.branchLimit: number` (TRD10 §10.14.1) already anticipates plan-tier branch capacity, but nothing defines what a branch record itself contains.
 - Zero code anywhere in `functions/src` reads or writes `businessBranches` (repository-wide grep, zero matches outside documentation).
 
-### 5.3 Minimum architecture proposal (for Founder confirmation — see FD-1, §17)
+### 5.3 Minimum architecture — Founder-approved MVP shape (FD-1, §24, recorded 2026-08-17)
 
-Consistent only with what §5.1 already governs (auto-created, single-branch, `businessId`-scoped, referenced by `branchId`), no new product capability invented:
+**Resolved (FD-1, §24).** The shape below is the Founder-approved MVP `BusinessBranchDocument` — `ENG-P2-002B` implements against it directly. It supersedes the original proposal this section carried at v1.0, which additionally included `isPrimary`, `status`, and `timezone`; the Founder disposition (§24 FD-1) explicitly excludes all three from MVP (rationale: `isPrimary` is redundant while exactly one branch exists; `timezone` has no governed per-branch requirement distinct from the Business's own `timezone`; `status` would introduce an independent branch lifecycle that is not governed). Consistent only with what §5.1 already governs (auto-created, single-branch, `businessId`-scoped, referenced by `branchId`), no new product capability invented:
 
 ```
 type BusinessBranchDocument = {
-  id: string;
-  businessId: string;
-  displayName: string;       // defaults to the business's own displayName at auto-creation (TRD23 §23.14)
-  isPrimary: boolean;        // true for the single MVP branch; multi-branch (DEC-FUT-005) may add more, none primary-exclusive rule TBD then
-  countryCode: string;       // inherited from Business at creation
-  city: string;              // inherited from Business at creation
-  address?: string;
-  status: "active" | "closed"; // minimal — branch lifecycle beyond this is DEC-FUT-005 scope
+  id: string;                // immutable document identifier
+  businessId: string;        // immutable tenant/Business reference (DAP-006)
+  displayName: string;       // mutable; defaults to the business's own displayName at auto-creation (TRD23 §23.14)
+  countryCode: string;       // required location context; initialized from the Business/onboarding authoritative value at creation
+  city: string;               // required MVP branch-location field
+  address?: string;          // optional MVP branch-location detail
   createdAt: Timestamp;
   updatedAt: Timestamp;
   schemaVersion: number;
 };
 ```
 
-This is the smallest shape that satisfies "one branch record created automatically or during onboarding" (TRD23 §23.14) and gives `purchaseRecords.branchId`/`redemptions.branchId` something concrete to reference, without inventing multi-branch fields (no `parentBranchId`, no branch-level staff assignment, no branch-level reporting — all explicitly `DEC-FUT-005` territory). **This proposal is not self-authorizing** — it requires Founder confirmation before `ENG-P2-002B` may implement against it (FD-1, §17), because it is new schema text, not merely a restatement of an existing one.
+This is the smallest Founder-approved shape that satisfies "one branch record created automatically" (TRD23 §23.14, per FD-1/FD-2's atomic-bootstrap disposition, §5.4) and gives `purchaseRecords.branchId`/`redemptions.branchId` something concrete to reference, without inventing multi-branch fields (no `parentBranchId`, no branch-level staff assignment, no branch-level reporting, no `isPrimary`, no independent `status` — all out of MVP scope per this disposition or explicitly `DEC-FUT-005` territory) and without inventing a `branchCode` (no such field is established anywhere in governance; §24 FD-3 explicitly does not establish a `branchCode` relationship). `isPrimary`, per-branch `timezone`, and an independent branch lifecycle `status` may be added later when actual multi-branch/lifecycle requirements are separately authorized (`DEC-FUT-005`).
 
 ### 5.4 Ownership and creation boundary
 
-Branch auto-creation happens **inside the same atomic business-creation transaction** ENG-P2-002B designs (§13) — not a separate command, not deferred to onboarding-flow UI, per TRD23 §23.14's "created automatically **or** during onboarding" (the "or" already permits auto-creation as the default; onboarding-time creation would be an alternative UX path building on the same backend contract, out of scope here).
+**Resolved (FD-1/FD-2, §24).** Branch auto-creation happens **inside the same atomic business-creation transaction** `ENG-P2-002B` designs (§13) — not a separate command, not a deferred onboarding-flow-UI step. TRD23 §23.14's literal wording ("created automatically **or** during onboarding") technically permitted reading "during onboarding" as a second, parallel MVP bootstrap path; the Founder disposition (§24 FD-1) resolves this ambiguity explicitly: onboarding-time creation is **not adopted as a second MVP bootstrap path**. Business creation must never leave a persistent `Business` with no branch — the auto-created branch is always part of the same bootstrap transaction as the business and its Owner membership (§13.1).
 
 ## 6. Business Lifecycle
 
@@ -204,6 +203,8 @@ TRD10 §10.6.3's eight `status` values, cross-referenced against PRD3 §4/§24/�
 4. **Which actor/permission model would apply if built?** Structurally similar in shape to `business.transferOwnership` (Owner-only, high blast radius on the business's own operability) — but it is **not** in `ENG-P2-004-DESIGN-001`'s 8-row Sensitive Permission Catalogue (§3.2) today. Adding it would follow the catalogue's own extension mechanism (§3.9, "amending this catalogue's table under the same test via the normal documentation-governance change process") — not something `ENG-P2-002` may add unilaterally, since that would reopen `ENG-P2-004`'s frozen catalogue.
 5. **Is this a blocker to `ENG-P2-002` closing?** No. The minimum viable business lifecycle (§6) — draft→pending_verification→trial→active, plus administrator-driven suspended/expired/closed/archived — does not require the self-suspend button. Recommendation: defer `DEC-ID-005` to whichever future package first builds a live "Suspend business" UI surface (most plausibly a Business-Operations/Capability-7 concern), not `ENG-P2-002`.
 
+**Resolved — scope boundary confirmed (§24, "Other Design Dispositions" item 1, recorded 2026-08-17).** The Founder confirms owner-initiated self-suspension is **not** pulled into `ENG-P2-002A`; `ENG-P2-002` implements `suspended` as an administrator/system-reachable state only (§6), and does not invent the owner-facing trigger. **This is a scope-boundary confirmation for `ENG-P2-002`, not a `DEC-ID-005` Decision Register disposition** — `DEC-ID-005` itself remains `OPEN_FOUNDER` in `decision-register.md`, unmodified and unresolved by this design package.
+
 ## 9. Ownership Transfer Disposition
 
 **Recommendation: explicit deferral for Capability-3 MVP — not required for `ENG-P2-002` to close.**
@@ -214,6 +215,8 @@ TRD10 §10.6.3's eight `status` values, cross-referenced against PRD3 §4/§24/�
 - Nothing in `CDR-001`'s Capability 3 definition or the Programme's `ENG-P2-002`/`ENG-P2-003` rows lists ownership transfer as in scope.
 
 **Recommendation:** `ENG-P2-002` preserves the existing `business.transferOwnership` identifier and the single-`ownerUserId` model exactly as already governed — no change needed, since it is already correctly modeled upstream in the (frozen) permissions domain — and does not design or implement a transfer command. This defers the workflow to a future package that would also need to resolve `DEC-ID-005`-adjacent questions (is a dual-control/second-approver step warranted for an ownership change specifically, revisiting AD-1's own stated reopening condition).
+
+**Resolved — scope boundary confirmed (§24, "Other Design Dispositions" item 2, recorded 2026-08-17).** The Founder explicitly defers the Business ownership-transfer workflow; the single current `ownerUserId` and the `business.transferOwnership` sensitive-permission identifier are preserved unchanged, with the future ability to add a governed workflow left open. No dual control is designed, consistent with AD-1. Ownership transfer is not implemented in `ENG-P2-002A`/`002B`/`002C` unless separately authorized later.
 
 ## 10. Bootstrap Authority Integration with `ENG-P2-004`
 
@@ -236,13 +239,18 @@ TRD10 §10.6.3's eight `status` values, cross-referenced against PRD3 §4/§24/�
 
 ### 10.3 Bootstrap authority design
 
-The bootstrap command's authority rests on exactly three checks, none of which call `ENG-P2-004`'s evaluator:
+**Resolved (FD-2, §24, recorded 2026-08-17).** Business creation uses a **dedicated bootstrap command/service** — the same endpoint-service architecture already established and merged for `AUTH-03` (`functions/src/domains/authentication/services/authenticationEndpointService.ts`: a plain, dependency-injected function, testable without the Functions runtime, composing a domain orchestration function, with `index.ts` supplying the `onCall` transport seam). No exception, special case, or new branch is added to `ENG-P2-004`'s evaluator.
 
-1. **Authenticated principal** — a verified Firebase-Authentication-resolved `userId` must exist (the same `AIR-001` one-UID-to-one-platform-user resolution `ENG-P2-004-DESIGN-001` §6.3 already consumes, not redefines).
-2. **Customer Identity existence** — the authenticated `userId` must resolve to an existing, non-`closed`/non-`archived` Customer Identity (`ENG-P2-ARCH-001` §3) via the Customer Identity concern's own repository — read-only consumption, no modification.
-3. **No permission check** — because no `businessMemberships` document can exist yet for a business that does not yet exist, none is required or possible; authority is "any authenticated Customer Identity may create a business and become its Owner," which is exactly what PRD3 §5 Step 1–2 already describes ("Create owner account (or sign in)... Create business").
+The bootstrap authority model, in order:
 
-This is presented as **Option A** of a genuine architecture choice; **Option B** (a dedicated "system-authored" write path that bypasses the evaluator's normal call shape entirely, vs. a narrowly-scoped exception recognized *inside* the evaluator's own call surface) is the substance of **FD-2** (§17) — this document does not resolve which implementation shape is preferred, only that some pre-permission bootstrap path is structurally required.
+1. The request arrives through the normal authenticated callable boundary.
+2. Firebase/authentication establishes the principal — a verified Firebase-Authentication-resolved `userId` must exist (the same `AIR-001` one-UID-to-one-platform-user resolution `ENG-P2-004-DESIGN-001` §6.3 already consumes, not redefines).
+3. The authoritative Customer Identity is resolved server-side — the authenticated `userId` must resolve to an existing, non-`closed`/non-`archived` Customer Identity (`ENG-P2-ARCH-001` §3) via the Customer Identity concern's own repository — read-only consumption, no modification.
+4. `ownerUserId` is derived server-side from that identity — the client cannot choose or override it (§11).
+5. `ENG-P2-004` is **not** invoked to authorize creation of a Business that does not yet exist — because no `businessMemberships` document can exist yet for a business that does not yet exist, no permission check is required or possible; authority is "any authenticated Customer Identity may create a business and become its Owner," which is exactly what PRD3 §5 Step 1–2 already describes ("Create owner account (or sign in)... Create business").
+6. The bootstrap command establishes the first valid Business context (business + Owner membership + branch, atomically, §13.1).
+
+This resolves the choice this section originally posed as an open "Option A vs. Option B" architecture question (`ENG-P2-004`-evaluator-internal exception vs. dedicated pre-permission command) — Option A (dedicated command) is adopted, and no evaluator-internal exception is designed or authorized.
 
 ## 11. Bootstrap Security
 
@@ -250,9 +258,9 @@ This is presented as **Option A** of a genuine architecture choice; **Option B**
 - **Customer Identity requirement**: mandatory (§10.3.2) — a business cannot be owned by a principal with no Customer Identity, since `ownerUserId` (TRD10 §10.6.3) has no meaning otherwise.
 - **`ownerUserId` binding — client-supplied identity must never become authority merely because supplied**: the bootstrap command must derive `ownerUserId` from the **server-verified authenticated principal**, never from a client-supplied field in the request body — the same pattern `ENG-P2-004-DESIGN-001` §5.4/§9 abuse case 1 already establishes for `businessContextId` ("the client value is never trusted"). A request body that includes an `ownerUserId` field differing from the authenticated principal must be rejected (`VALIDATION_FAILED` or `AUTH_FORBIDDEN`, §18), never silently honored or silently overwritten without rejection.
 - **Replay/idempotency**: the bootstrap command must use the same client-supplied idempotency-key discipline already established for other identity-mutating commands (`AUTH-03`'s "credential-keyed registration with durable id recovery," `TRD11 §11.17/§11.34`) — a retried business-creation request with the same idempotency key must return the same result, not create a second business.
-- **Duplicate-business considerations**: no governed uniqueness rule beyond `businessCode` (TRD10 §10.6.3, generation/uniqueness mechanism ungoverned — FD-3, §17). Nothing in PRD3 limits one owner to one business — PRD3 §28 (referenced by `DEC-SUB-009`) explicitly discusses "one owner with several businesses," and `BR-097` (cited by `DEC-SUB-009`) confirms "businesses isolated per owner" — so one Customer Identity creating multiple businesses is allowed by governance; the bootstrap command must not artificially block it.
-- **Transaction boundary**: business document write + Owner membership document write + branch auto-creation write must be one atomic Firestore transaction (§13) — a partial write (business exists, no owner; or owner exists, no branch) would violate `BR-007` and DEC-SUB-005 simultaneously.
-- **Audit/event requirement**: a `BusinessCreated` (or equivalently named) domain event, emitted via the existing shared outbox in the same transaction (§13.3, reusing `functions/src/shared/outbox/outboxWriter.ts`'s pattern exactly as `AUTH-08`/`ENG-P2-004C` already do) — this is the natural business-identity analogue of `CustomerIdentityRegistered` (`ENG-P2-001`).
+- **Duplicate-business considerations**: `businessCode` uniqueness is now governed (FD-3, §24) — server-generated, globally unique, opaque, transactionally reserved as part of business creation (bounded collision retry, same category `DEC-DATA-007` established for the Loyalty Number, adopted independently for `businessCode` by this Founder disposition, not by `DEC-DATA-007` itself). Nothing in PRD3 limits one owner to one business — PRD3 §28 (referenced by `DEC-SUB-009`) explicitly discusses "one owner with several businesses," and `BR-097` (cited by `DEC-SUB-009`) confirms "businesses isolated per owner" — so one Customer Identity creating multiple businesses is allowed by governance; the bootstrap command must not artificially block it.
+- **Transaction boundary**: business document write (including the transactionally-reserved `businessCode`, FD-3) + Owner membership document write + branch auto-creation write (FD-1) must be one atomic Firestore transaction (§13) — a partial write (business exists, no owner; or owner exists, no branch) would violate `BR-007` and `DEC-SUB-005` simultaneously.
+- **Audit/event requirement**: a `BusinessCreated` (or equivalently named) domain event, emitted via the existing shared outbox in the same transaction (§13.3, reusing `functions/src/shared/outbox/outboxWriter.ts`'s pattern exactly as `AUTH-08`/`ENG-P2-004C` already do) — this is the natural business-identity analogue of `CustomerIdentityRegistered` (`ENG-P2-001`). This event name/contract is a design-level recommendation, not a pre-existing governed name (§14, §24 item 4).
 - **Partial-failure handling**: Firestore transactions are all-or-nothing by platform guarantee — a failed transaction leaves no partial state; the caller must surface a retryable error (`TEMPORARY_UNAVAILABLE`, §18) on transient infrastructure failure, never a partially-created business.
 
 ## 12. Tenant Isolation
@@ -268,13 +276,15 @@ This is presented as **Option A** of a genuine architecture choice; **Option B**
 
 Reuses existing platform patterns exclusively — no second transaction/idempotency/outbox infrastructure is proposed, per `ENG-P2-004-DESIGN-001` §7.2/AD-3's own precedent and this document's Principle 6 (§3).
 
-1. **Business creation transaction**: one Firestore transaction containing (a) the `businesses/{id}` document write, (b) the `businessMemberships/{id}` Owner-membership write, (c) the `businessBranches/{id}` auto-created branch write (§5.4), (d) the outbox entry write (§13.3) — all four in the same `transaction.set(...)` calls, mirroring the exact pattern `functions/src/shared/outbox/outboxWriter.ts`'s own header comment describes: "a future domain command handler combines its own domain write with this call in one transaction."
+1. **Business creation transaction**: one Firestore transaction containing (a) `businessCode` transactional uniqueness reservation and the `businesses/{id}` document write (FD-3, §24), (b) the `businessMemberships/{id}` Owner-membership write, (c) the `businessBranches/{id}` auto-created branch write per the Founder-approved MVP shape (§5.3, §5.4, FD-1), (d) the outbox entry write (§13.3) — all in the same `transaction.set(...)` calls, mirroring the exact pattern `functions/src/shared/outbox/outboxWriter.ts`'s own header comment describes: "a future domain command handler combines its own domain write with this call in one transaction."
 2. **Lifecycle transitions**: each transition (§6) is its own transaction, re-reading current `status` inside the transaction before writing the new one — the same TOCTOU discipline `ENG-P2-004-DESIGN-001` §6.13/§10.8 already requires of any protected mutating command ("protected mutating actions must re-verify authorization state within their own transaction rather than trusting a prior decision").
 3. **Audit/outbox events**: reuse `functions/src/shared/outbox/outboxWriter.ts`'s `writeOutboxEntry(transaction, db, event)` function directly — the same durable-awaited, deterministic-`eventId`, same-transaction-as-the-domain-write discipline `AUTH-08` and `ENG-P2-004C` already established. No new outbox collection, no new processor.
 4. **Idempotency**: reuse the existing idempotency-key pattern already established for other identity-mutating commands (`AUTH-03`'s credential-keyed registration idempotency, TRD11 §11.17/§11.34) — a business-creation request idempotency key derived from the client's request, checked before the transaction runs, returning the prior result on replay rather than creating a duplicate.
 5. **Branch creation, if in scope**: covered by transaction item 1(c) above — not a separate transaction, since §5.4 requires it be atomic with business creation, not a follow-up step.
 
 ## 14. Events/Audit
+
+**Clarified (§24 item 4, recorded 2026-08-17).** `BusinessCreated` and the per-transition lifecycle event names below are **design-level recommendations and contracts, not pre-existing named governed events** — verified: no PRD/TRD/RTM text names them. Their exact event contract (payload shape, precise name) may be finalized during `ENG-P2-002B` using the existing shared outbox conventions, the same way every other domain event in this codebase (`CustomerIdentityRegistered`, `IdentityRecovered`, etc.) was named and shaped during its own implementation package rather than pre-approved by a named Founder decision. No additional Founder decision is required for this, unless implementation uncovers a new product/governance semantic.
 
 Only events actually required by already-governed architecture — no invented catalogue:
 
@@ -298,7 +308,9 @@ Only events actually required by already-governed architecture — no invented c
 
 Already covered in full in §10 (bootstrap classification) and §12 (tenant isolation) — this section confirms no `ENG-P2-004` file is modified. `ENG-P2-002` is a **consumer** of the frozen `AuthorizationRequest`/`AuthorizationDecision` contract (`ENG-P2-004-DESIGN-001` §6.1–6.2, explicitly named in §12.1 of that document as the contract that "must be stable before Capability 3 starts"). Every owner-authorized operation in §10.2's table calls the evaluator exactly as any other protected command would (`ENG-P2-004-DESIGN-001` §6.16's "single shared server-side service, callable only from trusted Cloud Function contexts"); the bootstrap operations (§10.3) are the sole exception, by structural necessity (§10.1), not by choice.
 
-## 17. Founder Decision Register
+## 17. Founder Decision Register (Original, v1.0) — RESOLVED, see §24
+
+**Preserved unmodified as history.** All three items below are now resolved — see §24 for the recorded Founder dispositions (FD-1/FD-2/FD-3), dated and attributed. This section is retained exactly as originally drafted so the options/recommendation trail that led to the disposition remains visible; it is no longer the current authority on these three items.
 
 Only decisions that materially **block** `ENG-P2-002` implementation. Three items — deliberately narrow, since most of the open decisions this investigation touched (`DEC-ID-004`, `DEC-SEC-003`, `DEC-SUB-002`, `DEC-SUB-009`, `DEC-UX-003`, `DEC-ID-005`) are safely deferred to later packages (§8, §18). **No disposition is recorded for any item below — options and a recommendation only, per this task's explicit constraint.**
 
@@ -325,6 +337,7 @@ Mapped onto the existing closed 14-category taxonomy (`functions/src/shared/erro
 | Permission denied on an owner-authorized operation (non-bootstrap) | `AUTH_FORBIDDEN` | Delegated entirely to `ENG-P2-004`'s evaluator output — `ENG-P2-002` never computes this itself (§10.2) |
 | Business/branch limit reached (subscription-tier enforcement) | `SUBSCRIPTION_LIMIT_REACHED` | Existing category (`errorCategories.ts:14`) — reused when `ENG-P2-002` consumes a Subscription-domain-supplied limit value (§13's boundary — `ENG-P2-002` does not compute the limit, only surfaces the denial) |
 | Transient Firestore/infrastructure failure during bootstrap transaction | `TEMPORARY_UNAVAILABLE` | Existing category (`errorCategories.ts:22`), matching `ENG-P2-004`'s own transient-failure mapping (`businessRepository.ts`'s `"transient_failure"` internal kind → this client-facing code) |
+| `businessCode` collision-retry bound exhausted (FD-3, §24) | `TEMPORARY_UNAVAILABLE` | Never surfaced as a caller-visible defect — a customer-invisible retry, same posture `DEC-DATA-007` established for the Loyalty Number ("an exceeded-retry event signals the codespace needs future expansion, not a design defect"), adopted independently for `businessCode` by this disposition |
 
 **No condition encountered in this analysis required escalation for a 15th category** — every case maps onto the existing set without misclassification (the same care AD-4 in `ENG-P2-004-DESIGN-001` §11 modeled for the configuration-integrity mapping).
 
@@ -337,9 +350,9 @@ Mapped onto the existing closed 14-category taxonomy (`functions/src/shared/erro
 
 The prompt's starting hypothesis (`ENG-P2-002A` domain contracts/lifecycle, `002B` creation/persistence + owner bootstrap, `002C` profile/branch management) is **adopted with minor refinement** — evidence from this repo's own successful decomposition precedents (`ENG-P2-001`'s ten packages, `ENG-P2-004`'s four sub-packages A–D) supports a contracts-first, then-bootstrap, then-management split; refined only by folding branch *auto-creation* into `002B` (since §5.4/§13.1 require it be atomic with business creation, not a separable later step) while leaving branch *management* (any future update/list operations beyond the single auto-created record) in `002C`.
 
-- **`ENG-P2-002A` — Business & Branch Domain Contracts.** **Responsibility:** `BusinessDocument`/`BusinessBranchDocument` value types and readers/writers (full shape, unlike `ENG-P2-004B`'s narrow status-only reader), the lifecycle-state machine (§6, transitions this document owns only), domain-local errors reusing the closed taxonomy (§18), the bootstrap request/response contract shape (§19). **Inputs:** TRD10 §10.6.3 (as-is) + the FD-1-confirmed branch schema (§5.3). **Outputs:** pure contract/config layer, no runtime persistence, mirroring `ENG-P2-004A`'s own acceptance boundary ("this package is pure contract/config... no evaluator exists to call them yet"). **Dependencies:** none beyond the already-`Complete` Customer Identity concern (consumes the Internal Customer ID as `ownerUserId`'s reference type) and the already-`Complete` `ENG-P2-004` (consumes, does not modify, its permission-identifier/contract shapes). **Exclusions:** no Firestore reads/writes, no transaction logic, no bootstrap-authority enforcement yet. **Acceptance boundary:** contracts exist, are versioned, independently reviewable; no live business can yet be created. **Test strategy:** unit tests only, mirroring `ENG-P2-004A`'s own test shape (construction-time validation, state-machine transition-table coverage).
-- **`ENG-P2-002B` — Business Creation, Owner Bootstrap & Persistence.** **Responsibility:** the atomic creation transaction (§13.1: business + Owner membership + auto-branch + outbox event), bootstrap security enforcement (§11), tenant-isolation enforcement for creation/lookup-by-id (§12), idempotency (§11), the resolved bootstrap-mechanism shape per FD-2's outcome. **Inputs:** `002A`'s contracts, the already-`Complete` Customer Identity concern (existence check, §10.3.2), the already-`Complete` `ENG-P2-004`'s frozen contracts (consumed only for the Owner-membership shape it writes, §15) and shared outbox infra (`functions/src/shared/outbox/*`). **Outputs:** a live, callable business-creation command; a business and its Owner membership and branch actually persist in Firestore. **Dependencies:** `002A` (contracts), `ENG-P2-004` (Complete, consumed not modified), Customer Identity (Complete, consumed). **Exclusions:** no profile-update command, no lifecycle-transition commands beyond the initial `draft` creation, no ownership transfer (§9, deferred), no owner-self-suspend (§8, deferred). **Acceptance boundary:** given a valid authenticated Customer Identity, a business can be created exactly once per idempotency key, always with exactly one Owner membership and one branch, atomically, auditable via the outbox. **Test strategy:** unit tests for the transaction-construction logic; Firestore-emulator integration tests proving the three-way atomicity (business+membership+branch all exist or none do) and idempotency-replay behavior, mirroring `ENG-P2-004D`'s emulator-validation pattern.
-- **`ENG-P2-002C` — Profile, Lifecycle-Transition & Branch Management Commands.** **Responsibility:** owner-authorized profile-update commands (calling `ENG-P2-004`'s evaluator per §10.2's table), the remaining lifecycle transitions this document assigns Owner/administrator authority to (§6), branch read/list operations (§12), tenant-isolation enforcement for these additional query surfaces (§12's "list-my-businesses" pattern). **Inputs:** `002A`+`002B`'s outputs, `ENG-P2-004`'s evaluator (consumed for every permission-gated operation here, per §10.2). **Outputs:** the remaining business-management surface a future onboarding/business-settings UI would call. **Dependencies:** `002A`, `002B`, `ENG-P2-004`. **Exclusions:** owner self-suspension (§8, deferred to a future package), ownership transfer (§9, deferred), any subscription/billing logic (§2.2), any staff-membership mutation beyond the `002B`-created Owner record (`ENG-P2-003`'s scope). **Acceptance boundary:** every owner-authorized operation in §10.2's table is callable, evaluator-gated, tenant-isolated, and produces the correct audit trail (§14). **Test strategy:** unit tests for command logic; emulator integration tests for the full evaluator-gated call path (business A owner cannot affect business B, mirroring `ENG-P2-004-DESIGN-001` §13 item 6's cross-tenant test pattern).
+- **`ENG-P2-002A` — Business & Branch Domain Contracts.** **Responsibility:** `BusinessDocument`/`BusinessBranchDocument` value types and readers/writers (full shape, unlike `ENG-P2-004B`'s narrow status-only reader, using the Founder-approved MVP branch shape, §5.3), the lifecycle-state machine (§6, transitions this document owns only), domain-local errors reusing the closed taxonomy (§18), the `businessCode` value-object contract and policy constants (FD-3, §24 — opaque/non-sequential/immutable properties as a typed contract; literal alphabet/length/retry-bound delegated to Engineering Lead per the same disposition), the bootstrap request/response contract shape (§19). **Inputs:** TRD10 §10.6.3 (as-is) + the Founder-approved branch schema (§5.3, FD-1) + the `businessCode` policy (§24, FD-3). **Outputs:** pure contract/config layer, no runtime persistence, mirroring `ENG-P2-004A`'s own acceptance boundary ("this package is pure contract/config... no evaluator exists to call them yet"). **Dependencies:** none beyond the already-`Complete` Customer Identity concern (consumes the Internal Customer ID as `ownerUserId`'s reference type) and the already-`Complete` `ENG-P2-004` (consumes, does not modify, its permission-identifier/contract shapes). **Exclusions:** no Firestore reads/writes, no transaction logic, no bootstrap-authority enforcement yet, no literal `businessCode` alphabet/length decision (Engineering Lead, during this package, per FD-3). **Acceptance boundary:** contracts exist, are versioned, independently reviewable; no live business can yet be created. **Test strategy:** unit tests only, mirroring `ENG-P2-004A`'s own test shape (construction-time validation, state-machine transition-table coverage).
+- **`ENG-P2-002B` — Business Creation, Owner Bootstrap & Persistence.** **Responsibility:** the atomic creation transaction (§13.1: `businessCode` reservation + business + Owner membership + auto-branch + outbox event), the dedicated bootstrap command/service per the AUTH-03 endpoint-service pattern (FD-2, §24, §10.3), bootstrap security enforcement (§11), tenant-isolation enforcement for creation/lookup-by-id (§12), idempotency (§11), `businessCode` generation and transactional-uniqueness reservation with bounded collision retry (FD-3, §24). **Inputs:** `002A`'s contracts, the already-`Complete` Customer Identity concern (existence check, §10.3.2), the already-`Complete` `ENG-P2-004`'s frozen contracts (consumed only for the Owner-membership shape it writes, §15, and explicitly never invoked to authorize creation, §10.3) and shared outbox infra (`functions/src/shared/outbox/*`). **Outputs:** a live, callable business-creation command; a business and its Owner membership and branch actually persist in Firestore, `businessCode` populated. **Dependencies:** `002A` (contracts), `ENG-P2-004` (Complete, consumed not modified), Customer Identity (Complete, consumed). **Exclusions:** no profile-update command, no lifecycle-transition commands beyond the initial `draft` creation, no ownership transfer (§9, deferred), no owner-self-suspend (§8, deferred), no `ENG-P2-004` evaluator modification (§10.3 resolved to Option A). **Acceptance boundary:** given a valid authenticated Customer Identity, a business can be created exactly once per idempotency key, always with exactly one Owner membership, one branch, and one unique `businessCode`, atomically, auditable via the outbox. **Test strategy:** unit tests for the transaction-construction logic; Firestore-emulator integration tests proving the atomicity (business+membership+branch+`businessCode` all exist or none do) and idempotency-replay behavior, mirroring `ENG-P2-004D`'s emulator-validation pattern.
+- **`ENG-P2-002C` — Profile, Lifecycle-Transition & Branch Management Commands.** **Responsibility:** owner-authorized profile-update commands (calling `ENG-P2-004`'s evaluator per §10.2's table), the remaining lifecycle transitions this document assigns Owner/administrator authority to (§6) — **explicitly excluding `pending_verification`→`trial`**, whose verification mechanism remains ungoverned (§6, §24 item 3) and must not be implemented until separately governed — branch read/list operations (§12), tenant-isolation enforcement for these additional query surfaces (§12's "list-my-businesses" pattern). **Inputs:** `002A`+`002B`'s outputs, `ENG-P2-004`'s evaluator (consumed for every permission-gated operation here, per §10.2). **Outputs:** the remaining business-management surface a future onboarding/business-settings UI would call. **Dependencies:** `002A`, `002B`, `ENG-P2-004`. **Exclusions:** owner self-suspension (§8, deferred to a future package), ownership transfer (§9, deferred), the `pending_verification`→`trial` verification mechanism (ungoverned, §24 item 3), any subscription/billing logic (§2.2), any staff-membership mutation beyond the `002B`-created Owner record (`ENG-P2-003`'s scope). **Acceptance boundary:** every owner-authorized, currently-governed operation in §10.2's table is callable, evaluator-gated, tenant-isolated, and produces the correct audit trail (§14). **Test strategy:** unit tests for command logic; emulator integration tests for the full evaluator-gated call path (business A owner cannot affect business B, mirroring `ENG-P2-004-DESIGN-001` §13 item 6's cross-tenant test pattern).
 
 ## 21. `ENG-P2-003` Handoff
 
@@ -359,9 +372,9 @@ Mirroring `ENG-P2-004-DESIGN-001` §13's own self-certification pattern, adapted
 1. Every non-trivial claim above cites a specific governing file/section (TRD10, PRD3, decision-register.md line ranges, code file paths) — no fact is asserted without a citation.
 2. The `businessBranches` investigation reaches exactly one of the four named outcomes (§5: a hybrid of (B)/(C), resolved as (B) with explicit evidence for both halves) rather than guessing a schema without evidence.
 3. No lifecycle transition is asserted that PRD3/TRD18 do not describe (§6's explicit "ungoverned gap" callouts for verification mechanism, self-suspend, expired-reactivation).
-4. `DEC-ID-005`'s five-question analysis (§8) presents options and a recommendation without recording a Founder disposition.
-5. The ownership-transfer disposition (§9) is grounded in `ENG-P2-004-DESIGN-001` §3.4/AD-1's own text, not invented reasoning.
-6. The Founder Decision Register (§17) contains only items that block `ENG-P2-002` implementation specifically (3 items — businessBranches schema authorship, bootstrap mechanism shape, `businessCode` generation) — every other open decision touched is explicitly routed to a later package (§8, §21, research report §7) rather than listed here.
+4. `DEC-ID-005`'s five-question analysis (§8) presents options and a recommendation; the Founder has confirmed the `ENG-P2-002` scope boundary (§24 item 1) without recording a `DEC-ID-005` Decision Register disposition, which remains `OPEN_FOUNDER`, unmodified.
+5. The ownership-transfer disposition (§9) is grounded in `ENG-P2-004-DESIGN-001` §3.4/AD-1's own text, not invented reasoning; the Founder has confirmed explicit deferral (§24 item 2).
+6. The Founder Decision Register (§17, preserved as history) raised only items that block `ENG-P2-002` implementation specifically (3 items — `businessBranches` schema authorship, bootstrap mechanism shape, `businessCode` generation) — every other open decision touched is explicitly routed to a later package (§8, §21, research report §7) rather than listed here. **[UPDATED 2026-08-17]** All three are now resolved as Founder dispositions FD-1/FD-2/FD-3, §24.
 7. No `ENG-P2-004` file, decision record, or DEC-ID/DEC-SUB/DEC-UX entry is modified by this document.
 8. The error-taxonomy mapping (§18) introduces zero new categories.
 9. The transaction/outbox design (§13–§14) reuses `functions/src/shared/outbox/outboxWriter.ts` directly rather than proposing a second mechanism.
@@ -371,10 +384,71 @@ Mirroring `ENG-P2-004-DESIGN-001` §13's own self-certification pattern, adapted
 
 | Recipient | What this document hands off |
 |---|---|
-| `ENG-P2-002A` (future implementation) | Contract shapes (§4.1, §5.3-pending-FD-1, §6's transition table, §18's error mapping) |
-| `ENG-P2-002B` (future implementation) | Bootstrap security requirements (§11), transaction design (§13.1), the FD-1/FD-2/FD-3 decisions it is blocked on (§17) |
-| `ENG-P2-002C` (future implementation) | The owner-authorized operation classification (§10.2), tenant-isolation requirements (§12), acceptance boundary (§20) |
+| `ENG-P2-002A` (future implementation) | Contract shapes (§4.1, §5.3 Founder-approved branch shape, §6's transition table, §18's error mapping, `businessCode` policy contract, FD-3) |
+| `ENG-P2-002B` (future implementation) | Bootstrap security requirements (§11), transaction design (§13.1), the resolved FD-1/FD-2/FD-3 dispositions it implements against (§24) |
+| `ENG-P2-002C` (future implementation) | The owner-authorized operation classification (§10.2), tenant-isolation requirements (§12), acceptance boundary (§20) — explicitly excluding `pending_verification`→`trial` until separately governed (§24 item 3) |
 | `ENG-P2-003` (future design + implementation) | The Owner-membership handoff contract (§15); confirmation that a separate `ENG-P2-003-DESIGN-001` is still required (§21) |
 | `ENG-P3-002` (business onboarding frontend, future) | The i18n-ready foundation confirmation (§19), the bootstrap request/response contract shape to build against once `002A`/`002B` fix it concretely |
-| Founder | The 3-item Decision Register (§17); the DEC-ID-005/ownership-transfer/subscription-boundary recommendations (§8, §9, §13 of research report) presented as options, no disposition recorded |
+| Founder | **[UPDATED 2026-08-17]** FD-1/FD-2/FD-3 now resolved and recorded (§24); `DEC-ID-005`/ownership-transfer scope-boundary confirmations recorded (§24 items 1–2, not Decision Register dispositions); `pending_verification` verification mechanism and `DEC-ID-005`/ownership-transfer's own future Decision Register resolution remain open, future Founder items, not blocking `ENG-P2-002` |
 | Future Subscription-domain design work | Confirmation that `Business.subscriptionId` is a bare optional reference (§13 boundary, research report §6) — no entitlement logic expected from `ENG-P2-002` |
+
+## 24. Founder Dispositions (Recorded 2026-08-17)
+
+**Authority:** Founder, via task "ENG-P2-002-DESIGN-001 — Record Founder Dispositions FD-1 / FD-2 / FD-3 and Finalize Design," 2026-08-17. Recorded here per this design package's own governance convention — the same inline, dated, attributed disposition pattern already established in this repository for design-level Founder decisions (`ENG-P2-004-DESIGN-001` §17, recording `AD-1`–`AD-5`) — **not** a new Decision Register (`DEC-*`) entry, and **not** a reopening of `DEC-ID-005`, `DEC-SUB-002`, `DEC-SUB-009`, `DEC-ID-004`, `DEC-SEC-003`, or `DEC-UX-003`, all of which remain unmodified in `decision-register.md`. This section is the authoritative disposition record for the three items originally raised in §17; §17 itself is preserved unmodified as history.
+
+### FD-1 — `businessBranches` MVP schema (resolves the original FD-1)
+
+**Approved with MVP schema clarification.** A separate `businessBranches` collection is approved, implementing the already-governed single-branch/branch-ready architecture (`DEC-SUB-005`, TRD23 §23.14).
+
+**MVP cardinality:** exactly one operational branch per Business; the branch is automatically created as part of Business bootstrap; Business creation must not leave a persistent Business with no branch; the "create later during onboarding" interpretation is **not** adopted as a second MVP bootstrap path (§5.4); multi-branch remains deferred under existing future governance (`DEC-FUT-005`).
+
+**Approved MVP persisted shape** (recorded at §5.3):
+
+```
+type BusinessBranchDocument = {
+  id: string;
+  businessId: string;
+  displayName: string;
+  countryCode: string;
+  city: string;
+  address?: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+  schemaVersion: number;
+};
+```
+
+`id`/`businessId` are immutable; `displayName`/`address` are mutable; `countryCode`/`city` initialize from the Business/onboarding authoritative value; `createdAt`/`updatedAt`/`schemaVersion` follow existing platform metadata conventions.
+
+**Explicitly not included at MVP:** `isPrimary` (redundant while exactly one branch exists), branch-specific `timezone` (the Business already owns `timezone`; no governed MVP requirement establishes an independent per-branch value), independent branch `status` (would create an independent branch lifecycle that has not been governed). These may be added later when actual multi-branch/lifecycle requirements are authorized. No `branchCode` is introduced — no governed source establishes one, and none is invented here.
+
+### FD-2 — Business creation bootstrap (resolves the original FD-2)
+
+**Approved.** Business creation uses a dedicated bootstrap command/service, per the established `AUTH-03` endpoint-service architecture (`functions/src/domains/authentication/services/authenticationEndpointService.ts`) as implementation precedent. No bootstrap exception is added to `ENG-P2-004`.
+
+**Bootstrap authority model** (recorded at §10.3): (1) the request arrives through the normal authenticated callable boundary; (2) Firebase/authentication establishes the principal; (3) the authoritative Customer Identity is resolved server-side; (4) `ownerUserId` is derived server-side from that identity — the client cannot choose or override it; (5) `ENG-P2-004` is not invoked to authorize creation of a Business that does not yet exist; (6) the bootstrap command establishes the first valid Business context.
+
+The Business bootstrap transaction atomically establishes the required initial state: Business, initial Owner `businessMembership`, single default `businessBranch`, required same-transaction outbox evidence (§13.1). Existing platform idempotency, Firestore transaction, outbox, and error-taxonomy infrastructure is reused — no second infrastructure, no special-case weakening of the `ENG-P2-004` evaluator. The literal callable/service implementation belongs to `ENG-P2-002B`, not this design document.
+
+### FD-3 — `businessCode` purpose and policy (resolves the original FD-3)
+
+**Approved with MVP purpose clarification.** For MVP, `businessCode` is a permanent, system-generated, human-readable reference for a Business, suitable for internal operational and support use. It is **not** currently governed as a public business identifier, URL slug, authentication credential, customer lookup key, QR identifier, or commerce identifier — any later customer/public/commercial use requires separate governance.
+
+**Approved properties:** generated server-side; globally unique; opaque; non-sequential; immutable once assigned; never recycled/reassigned after Business closure; transactionally reserved/validated as part of Business creation; bounded collision retry; one Business receives at most one permanent `businessCode`.
+
+`DEC-DATA-007`/Loyalty Number is used as an **implementation precedent** for opacity, non-sequential generation, transactional uniqueness, bounded collision retry, and single immutable assignment — `DEC-DATA-007` does not itself govern `businessCode`; this Founder disposition independently adopts those principles for Business Code.
+
+**Delegated to Engineering Lead during `ENG-P2-002A`/`002B`:** exact alphabet, exact length, separator/display formatting, bounded retry count. Engineering should prefer a human-readable format and avoid ambiguous characters, consistent with established platform conventions (e.g. the `loyaltyNumber` alphabet excluding `I`/`O`).
+
+**Not encoded into `businessCode`:** country, category, date, owner, or sequence/order. No `branchCode` relationship is established.
+
+### Other Design Dispositions
+
+1. **Owner self-suspension / `DEC-ID-005`.** Not pulled into `ENG-P2-002A`. The Business lifecycle may contain `suspended` as already governed (§6). MVP owner-initiated self-suspension remains unresolved/deferred — the trigger is not invented here. A platform/admin-controlled suspension path may be handled under its existing governance (TRD18 §18.12). **`DEC-ID-005` itself remains `OPEN_FOUNDER` in `decision-register.md`** — this is a scope-boundary confirmation for `ENG-P2-002`, not a Decision Register disposition.
+2. **Ownership transfer.** Explicitly deferred. The single current `ownerUserId` and the `business.transferOwnership` sensitive permission identifier are preserved, with the future ability to add a governed workflow. No dual control is designed. Ownership transfer is not implemented in `ENG-P2-002A`/`002B`/`002C` unless separately authorized later.
+3. **`pending_verification` → `trial`.** The state values are kept (§6); the verification mechanism is not invented. This gap does not block `ENG-P2-002A` (the `status` enum is fully governed independent of the mechanism) or bootstrap creation in `ENG-P2-002B` (which only produces `draft`); it blocks only implementation of the actual verification transition in `ENG-P2-002C` (§20), which requires future governance before that transition is implemented.
+4. **Business events.** `BusinessCreated`/lifecycle event names in this design are design-level recommendations/contracts, not pre-existing named governed events (§14). Their exact event contract may be finalized during the relevant implementation package using existing shared outbox conventions. No additional Founder decision is required unless implementation uncovers a new product/governance semantic.
+
+### Status after this disposition
+
+All three items originally raised as this package's own Founder Decision Register (§17) are now resolved. No `DEC-ID-005`, `DEC-SUB-002`, `DEC-SUB-009`, `DEC-ID-004`, `DEC-SEC-003`, `DEC-UX-003`, or other Decision Register entry was reopened or modified by this disposition. No implementation was performed; no `ENG-P2-002A`/`002B`/`002C`, `ENG-P2-003`, runtime code, Firebase configuration, or deployment change was made. This design package remains architecture only and does not itself authorize `ENG-P2-002` implementation — a separate implementation-authorization task is required before `ENG-P2-002A` coding begins.
