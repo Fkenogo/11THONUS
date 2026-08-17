@@ -1,5 +1,5 @@
 > **Title:** CAP-P2-ITM-C — Effective Trust Derivation & MVP Progression — Implementation Report
-> **Status:** Implemented, pending Founder-authorized review/merge (do not merge)
+> **Status:** Complete/merged (PR #115, merged as `e090d86814a7583d0ac03ae26575f3a231414547`, 2026-08-16) — see §53 Independent Final Review, Merge & Closure
 > **Governing document:** [ITM-DESIGN-001](../roadmap/ITM-DESIGN-001-identity-trust-management-architecture.md) v1.2, §6.6/§6.6.1–§6.6.4, §15 `ITM-C`, §22 (`AD-ITM-1`–`AD-ITM-3`)
 > **Prerequisites:** `CAP-P2-ITM-A` (merged PR #111/#112), `CAP-P2-ITM-B` (merged PR #113/#114) — CI green
 
@@ -260,8 +260,58 @@ Revert PR #115 (or `git revert 78eb35d`) — the change is strictly additive (se
 
 ---
 
+## 53. Independent Final Review, Merge & Closure
+
+**Date:** 16 August 2026. **Performed by:** Claude (AI agent), per Founder task "CAP-P2-ITM-C — Independent Final Derivation Review, Merge & Closure." Authorizes independent final review of `ITM-C` and, if clean, merge/closure of PR #115 only — does not authorize `ITM-D`, Capability 3, G2, or any ITM policy modification.
+
+**Entry verification:** PR #115 confirmed `OPEN`, head `8786d09b7f8bedaeccadef1ca4152ff9b6702e3d` (exact expected head, zero later commits at review start), CI `pass` (3m32s), `mergeable: MERGEABLE`, `mergeStateStatus: CLEAN`. `origin/main` confirmed unchanged at `1be2ff7` since the PR was cut. `ITM-A`/`ITM-B` confirmed merged. No `ITM-D` branch or PR found anywhere (`gh pr list`/`git branch -a`). Dirty primary worktree confirmed untouched (this session has no access to it, by harness-enforced worktree isolation).
+
+**Independent requirement reconstruction:** re-read `ITM-DESIGN-001` §6.6/§6.6.1–§6.6.4/§22 directly rather than trusting §1–§52 above as authoritative. Confirmed §6.6's exact three-condition algorithm, §6.6.4's precise `floor((now−registeredAt)/86400s)` formula and closed `>=30` inequality, and §22's "Derivation Authority" clarification (evidence + rule version + current time authoritative; persisted `trustLevel` never authoritative) against the design text itself, then against the actual merged code (`deriveEffectiveTrust.ts`, `types.ts`, `effectiveTrustService.ts`) read fresh.
+
+**Primary merge gate — stored `trustLevel` cannot become authority (Phase F):** confirmed structurally first — `TrustRecordReadResult` (the pure function's own input type) has no `trustLevel` field at all, so no code path could read one even if it wanted to. Then confirmed adversarially: wrote `effectiveTrustService.independentReview.emulator.test.ts`, a new test file written separately from §1–§52's own suite, which forges a persisted `trustRecords` document directly via raw Firestore writes — bypassing `ingestTrustEvidence`/ITM-B's repository entirely, so the forged value cannot be "corrected" on the write path — across all three adversarial directions this review task's Phase F explicitly named:
+
+1. forged `trustLevel = established` + no auth evidence → effective derivation still returned `unverified`.
+2. forged `trustLevel = established` + auth evidence + age < 30 days → effective derivation still returned `provisional`.
+3. forged `trustLevel = unverified` + auth evidence + age ≥ 30 days → effective derivation still returned `established` (only this direction had prior coverage, from §1–§52's own `effectiveTrustService.emulator.test.ts`).
+
+A fourth scenario (forged `provisional` + no evidence + age ≥ 30 days → still `unverified`) was added to additionally confirm age alone is never sufficient. All four passed against the real Firebase Emulator Suite on the first run.
+
+**Concurrency / read-consistency (Phase O):** two further new tests confirmed a read taken before ITM-B's evidence commits returns `unverified`, the identical read taken after commit returns `provisional`, and ten concurrent `getEffectiveTrust` calls against a fixed record never mutate the underlying Firestore document (byte-identical before/after). No transaction exists in the read-only orchestrator, correctly — a plain read needs none.
+
+**Other gates independently re-verified by direct code inspection, not re-assertion:**
+- **Recovery neutrality (Phase G):** `TrustRecordReadResult` carries only `hasSuccessfulAuthentication` — no recovery field exists anywhere in the type for a recovery signal to move the band through, positively or negatively.
+- **Authentication evidence (Phase H):** a single boolean; no count, no provider field, is representable in the input type at all.
+- **Monotonic MVP (Phase I):** no downward-transition code path exists anywhere in `deriveEffectiveTrust.ts`; malformed customer-identity or trust-record state fails closed via a thrown error rather than silently preserving a stale high band.
+- **Rule version (Phase J):** `CURRENT_TRUST_RULE_VERSION = 1`; a malformed (non-positive-integer) version and a well-formed-but-unsupported version fail closed via two distinct reasons; no rule engine exists.
+- **Customer Identity source (Phase K):** `registeredAt` is read via the unmodified `customerIdentityRepository.getCustomerIdentityById`; missing/malformed identity fails closed (`RESOURCE_NOT_FOUND`/`VALIDATION_FAILED`); a trust-record/`customerIdentityId` mismatch is explicitly checked and fails closed as malformed; no write path to `users/{id}` exists anywhere in the diff.
+- **Effective-result contract (Phase L):** `EffectiveTrustResult` contains exactly `customerIdentityId`/`effectiveTrustLevel`/`ruleVersion`/`evaluatedAt`/bounded `basis` — no score, no PII, no operator-facing field.
+- **ITM-D boundary (Phase M):** `getEffectiveTrust(db, customerIdentityId, now?)` takes no action identifier and no risk-threshold parameter; a repository-wide grep for `riskGate`/`checkRiskGate`/`riskRequirement`/`sufficient`/`insufficient` across the diff returned zero matches.
+- **Pure-function boundary (Phase N):** `derivation/deriveEffectiveTrust.ts` imports only ITM-A's `trustRuleVersion.ts`/`trustErrors.ts` and its own `types.ts` — no `firebase-admin`, no `domains/identity`; confirmed both by direct import inspection and by the existing `effectiveTrustDomainBoundary.test.ts` passing.
+- **ITM-A/B regression (Phase Q):** `git diff 1be2ff7 883bb6d -- functions/src/domains/trust/{models,repositories}` plus the three ITM-B service files is empty — zero semantic change.
+- **Privacy/security (Phase R):** grepped the full diff for email/phone/token/OTP/password/raw-claim/demographic/fraud-score terms — none found beyond the test file's own assertion of their absence.
+
+**Review tooling (Phase T):** no automated Codex/external review bot configured on this repository (`gh pr view 115 --json reviews` returned an empty array); disclosed accurately — this independent review served as the merge gate, per this task's explicit authorization for that circumstance.
+
+**Full validation re-run (Phase S), fresh, not re-cited:** functions **917/917**; `domains/trust` emulator suite isolated (real Firebase Emulator Suite via `firebase emulators:exec`) **37/37** (31 from §1–§52's own suite + 6 new independent-review tests); web **397/397** (untouched); `tsc --noEmit`/build clean (both workspaces); `eslint .` clean; `prettier --check` clean; PR CI **pass** (3m34s) on the final reviewed head `883bb6d`.
+
+**New tests added during review:** `functions/src/domains/trust/services/effectiveTrustService.independentReview.emulator.test.ts` (6 tests) — no implementation code changed.
+
+**Findings:** none material. No scope leakage into ITM-D/risk-gating, no algorithm deviation, no boundary-semantics defect, no stored-cache leak, no ITM-A/B regression.
+
+**Merge:** with all Phase U gates clean, PR #115 merged via `gh pr merge 115 --merge` (standard merge commit, matching repository convention) as `e090d86814a7583d0ac03ae26575f3a231414547`. Post-merge: `origin/main` fetched and confirmed at `e090d86`; `883bb6d` (the final reviewed head) confirmed an ancestor (`git merge-base --is-ancestor`); post-merge CI (`main`, run `31958885277`) confirmed `success`; `functions/src/domains/trust/{derivation,services}/**` confirmed present on `origin/main`.
+
+**Status change:** `ITM-C` = **Complete/merged**. `ITM-D` remains **Not started** — not begun by this task, requiring its own fresh Founder implementation authorization. ITM overall remains **Not complete**. Capability 2 remains `Open — partially implemented; not closed`. Capability 3 remains `Not started`. G2 not started.
+
+**Files:** `CDR-001-capability-delivery-roadmap.md` (§2/§5 ITM lines + header dated append), `documentation-changes-log.md` (Entry 121), `engineering-implementation-programme.md` (header dated append), `IMPLEMENTATION_CHANGES.md`, this closure section, and one additive test file (`effectiveTrustService.independentReview.emulator.test.ts`) committed to PR #115 itself before merge. **No implementation code changed by this review task's own diff** beyond the one additive test file.
+
+**Dirty primary worktree status:** untouched throughout — this session has no access to it, by harness-enforced worktree isolation.
+
+**Rollback:** `git revert` the merge commit `e090d86` — the underlying change is entirely additive (new files only); no schema, no deployed resource, no data to roll back.
+
+---
+
 # FINAL GATE
 
-**ITM-C READY FOR FOUNDER REVIEW/MERGE**
+**ITM-C MERGED AND CLOSED — ITM-D AWAITS FRESH FOUNDER AUTHORIZATION**
 
-Do NOT self-merge. Do NOT begin ITM-D.
+Do NOT begin ITM-D.
