@@ -39,6 +39,12 @@ import {
   emitCustomerAuthenticated,
 } from "./domains/authentication/services/authenticationEventEmitter";
 import type { AuthenticationReferenceType } from "./domains/identity/models/authenticationReference";
+import { BusinessDomainError } from "./domains/business/models/businessErrors";
+import {
+  handleCreateBusiness,
+  type CreateBusinessCommand,
+} from "./domains/business/services/businessBootstrapEndpointService";
+import type { CreateBusinessRequest } from "./domains/business/models/businessBootstrap";
 
 setGlobalOptions({ region: PLATFORM_REGION, maxInstances: 10 });
 
@@ -90,6 +96,15 @@ function toHttpsError(error: unknown): HttpsError {
   }
   if (error instanceof AuthenticationDomainError || error instanceof IdentityDomainError) {
     return new HttpsError(CATEGORY_TO_HTTPS[error.category] ?? "internal", "authentication_failed");
+  }
+  if (error instanceof BusinessDomainError) {
+    // Never echoes the domain message (which may name the exact idempotency
+    // key or field) — a single stable client message per code, same posture
+    // as the Authentication/Identity mapping above.
+    return new HttpsError(
+      CATEGORY_TO_HTTPS[error.category] ?? "internal",
+      "business_creation_failed",
+    );
   }
   return new HttpsError("internal", "authentication_failed");
 }
@@ -271,6 +286,91 @@ export const recoverAuthenticatedIdentity = onCall(async (request) => {
       idempotencyKey: parsed.idempotencyKey,
     });
     return result;
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+function parseOptionalString(value: unknown, field: string): string | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new HttpsError("invalid-argument", "business_creation_failed", { field });
+  }
+  return value;
+}
+
+function parseRequiredString(value: unknown, field: string): string {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new HttpsError("invalid-argument", "business_creation_failed", { field });
+  }
+  return value;
+}
+
+function parseSupportedLanguages(value: unknown): string[] {
+  if (
+    !Array.isArray(value) ||
+    !value.every((entry) => typeof entry === "string" && entry.trim().length > 0)
+  ) {
+    throw new HttpsError("invalid-argument", "business_creation_failed", {
+      field: "supportedLanguages",
+    });
+  }
+  return value;
+}
+
+/**
+ * Whitelist parser (Phase F): only the exact `CreateBusinessRequest` fields
+ * are read off `data` — any other key the client sends (`ownerUserId`,
+ * `membershipId`, `role`, `businessCode`, `branchId`, or anything else) is
+ * silently dropped here, never reaching `CreateBusinessRequest`. This is a
+ * structural guarantee, not a denylist: an attacker cannot smuggle authority
+ * through an unanticipated field name.
+ */
+/** Exported only for the mass-assignment regression test in `index.test.ts`. */
+export function parseCreateBusinessCommand(data: unknown): CreateBusinessCommand {
+  const value = (data ?? {}) as Record<string, unknown>;
+  const business: CreateBusinessRequest = {
+    legalName: parseOptionalString(value.legalName, "legalName"),
+    displayName: parseRequiredString(value.displayName, "displayName"),
+    primaryCategoryId: parseRequiredString(value.primaryCategoryId, "primaryCategoryId"),
+    businessTypeId: parseOptionalString(value.businessTypeId, "businessTypeId"),
+    countryCode: parseRequiredString(value.countryCode, "countryCode"),
+    currencyCode: parseRequiredString(value.currencyCode, "currencyCode"),
+    timezone: parseRequiredString(value.timezone, "timezone"),
+    city: parseRequiredString(value.city, "city"),
+    address: parseOptionalString(value.address, "address"),
+    contactPhone: parseRequiredString(value.contactPhone, "contactPhone"),
+    contactEmail: parseOptionalString(value.contactEmail, "contactEmail"),
+    logoUrl: parseOptionalString(value.logoUrl, "logoUrl"),
+    supportedLanguages: parseSupportedLanguages(value.supportedLanguages),
+    subscriptionId: parseOptionalString(value.subscriptionId, "subscriptionId"),
+  };
+
+  return {
+    ...business,
+    rawToken: parseRawToken(value.rawToken),
+    referenceType: parseReferenceType(value.referenceType),
+    idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+  };
+}
+
+/**
+ * `createBusiness` (ENG-P2-002B) — the sole Business bootstrap integration
+ * (Phase E/I/V). Verifies the presented provider credential (AUTH-02),
+ * resolves it to an existing, eligible Customer Identity (never registering
+ * one), and atomically creates the Business + default Branch + initial Owner
+ * membership + businessCode reservation + `BusinessCreated` outbox evidence
+ * in one Firestore transaction. `ownerUserId` is derived exclusively from the
+ * verified credential — never accepted from the request (Phase F). Admin-SDK
+ * callable — no client Firestore write path is opened.
+ */
+export const createBusiness = onCall(async (request) => {
+  const parsed = parseCreateBusinessCommand(request.data);
+  const db = getFirestore(getAdminApp());
+  try {
+    return await handleCreateBusiness(db, parsed, {
+      verifier: firebaseAdminTokenVerifier(),
+    });
   } catch (error) {
     throw toHttpsError(error);
   }

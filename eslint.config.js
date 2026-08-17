@@ -309,16 +309,24 @@ export default tseslint.config(
     },
   },
   {
-    // ENG-P2-002A: same machine-enforced boundary as the domain-foundation
-    // blocks above, scoped to the new Business Identity domain-foundation
-    // module (`models/` value types/readers/writers/errors, `services/`
-    // the pure `businessCode` candidate-generator port + implementation —
-    // both framework-independent by design, §20). No `ignores` yet: unlike
-    // the Identity/Loyalty Number/QR Identity/Trust precedents above, no
-    // `repositories/` (or Firebase-touching `services/`) exists in this
-    // domain until a future `ENG-P2-002B` persistence task adds one — this
-    // block should gain its own `ignores` entry at that time, not before.
+    // ENG-P2-002A/002B: same machine-enforced boundary as the
+    // domain-foundation blocks above, scoped to the Business Identity
+    // domain (`models/` value types/readers/writers/errors stay
+    // framework-independent by design, §20). `ENG-P2-002B` adds the
+    // persistence layer this block's own comment predicted: `repositories/`
+    // (the Firestore bootstrap transaction) and the one Firebase-touching
+    // `services/` file (`businessBootstrapEndpointService.ts`, which
+    // resolves the authenticated owner through the Authentication/Identity
+    // domains' own Firebase-adapter services) are exempted by name/glob —
+    // `businessCodeGenerator.ts`/`randomBusinessCodeCandidateGenerator.ts`/
+    // `businessCodeReservationService.ts` remain covered by the restriction
+    // and stay framework-independent, matching `businessCodeGenerator.ts`'s
+    // own header ("this port produces candidates only").
     files: ["functions/src/domains/business/**/*.ts"],
+    ignores: [
+      "functions/src/domains/business/repositories/**",
+      "functions/src/domains/business/services/businessBootstrapEndpointService.ts",
+    ],
     languageOptions: {
       ecmaVersion: 2023,
       globals: globals.node,
