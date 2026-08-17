@@ -236,15 +236,15 @@ None — no Cloud Function created, modified, or wired; `functions/src/index.ts`
 
 ## 41. PR number
 
-To be recorded once opened (see completion message accompanying this report).
+[PR #117](https://github.com/Fkenogo/11THONUS/pull/117), branch `feat/cap-p2-itm-d-risk-gate`.
 
 ## 42. Final reviewed head
 
-The commit created in this session on `feat/cap-p2-itm-d-risk-gate`.
+`9dc353609acdfc53c8cd932f4293cc38c17167f5`.
 
 ## 43. CI result
 
-Pending — will be recorded once the PR's CI run completes.
+`SUCCESS` (run [32004436522](https://github.com/Fkenogo/11THONUS/actions/runs/32004436522), 3m42s) — Build, Lint, Test, Emulator Validation all green. `mergeable: MERGEABLE`, `mergeStateStatus: CLEAN`. No automated Codex/external review bot configured on this repository (`reviews: []`) — disclosed per this task's own instruction; this report's self-review (§35) and the full validation suite (§34) serve as the review gate pending Founder disposition.
 
 ## 44. ITM-D status
 
