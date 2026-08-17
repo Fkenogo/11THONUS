@@ -218,15 +218,15 @@ None outstanding. All emulator/unit/build/lint/typecheck/format checks are green
 
 ## 41. PR number
 
-To be recorded after PR creation (see closure sync).
+[PR #124](https://github.com/Fkenogo/11THONUS/pull/124).
 
 ## 42. Final reviewed head
 
-To be recorded after PR creation.
+`7ee862b5a32e57a925d1badaa9292f21b6cb6839`.
 
 ## 43. CI result
 
-To be recorded after PR creation.
+Green — `Build, Lint, Test, Emulator Validation` (run `32045753513`) passed in full: Build, Lint, Format check, Typecheck, Unit/component tests, Playwright e2e, and the Firebase Emulator Suite validation all succeeded.
 
 ## 44. ENG-P2-002B status
 
