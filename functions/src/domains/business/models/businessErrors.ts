@@ -1,0 +1,124 @@
+/**
+ * Business domain errors (`ENG-P2-002A`).
+ *
+ * Domain-local error type, structurally compatible with the shared error
+ * shape but defined independently so this domain layer stays
+ * framework-independent (`functions/src/domains/identity/models/identityErrors.ts`'s
+ * own precedent for why — no `commandDispatcher.ts` import here either).
+ *
+ * Every category used below is one of the existing, closed 14 categories
+ * `functions/src/shared/errors/errorCategories.ts` defines (TRD11 §11.35,
+ * `ENG-P2-002-DESIGN-001` §18) — no new category is introduced.
+ */
+
+import type { ErrorCategory } from "../../../shared/errors/errorCategories";
+import type { PlatformFieldError } from "../../../shared/errors/platformError";
+
+export class BusinessDomainError extends Error {
+  readonly category: ErrorCategory;
+  readonly fieldErrors?: PlatformFieldError[];
+
+  constructor(category: ErrorCategory, message: string, fieldErrors?: PlatformFieldError[]) {
+    super(message);
+    this.name = "BusinessDomainError";
+    this.category = category;
+    this.fieldErrors = fieldErrors;
+  }
+}
+
+export function invalidBusinessFieldError(field: string, value: string): BusinessDomainError {
+  return new BusinessDomainError(
+    "VALIDATION_FAILED",
+    `Invalid business field "${field}": "${value}" is not acceptable.`,
+    [{ field, code: "invalid", messageKey: "business.field.invalid" }],
+  );
+}
+
+export function invalidBusinessBranchFieldError(field: string, value: string): BusinessDomainError {
+  return new BusinessDomainError(
+    "VALIDATION_FAILED",
+    `Invalid business branch field "${field}": "${value}" is not acceptable.`,
+    [{ field, code: "invalid", messageKey: "businessBranch.field.invalid" }],
+  );
+}
+
+/** Design §6/§18: invalid lifecycle transitions map to the taxonomy's dedicated category. */
+export function invalidBusinessStatusTransitionError(
+  from: string,
+  to: string,
+): BusinessDomainError {
+  return new BusinessDomainError(
+    "INVALID_STATE_TRANSITION",
+    `Cannot transition business status from "${from}" to "${to}".`,
+  );
+}
+
+export function businessAlreadyClosedError(businessId: string): BusinessDomainError {
+  return new BusinessDomainError(
+    "INVALID_STATE_TRANSITION",
+    `Business "${businessId}" is already closed.`,
+  );
+}
+
+export function businessArchivedError(businessId: string): BusinessDomainError {
+  return new BusinessDomainError(
+    "INVALID_STATE_TRANSITION",
+    `Business "${businessId}" is archived and cannot be modified.`,
+  );
+}
+
+export function invalidBusinessCodeFormatError(value: string): BusinessDomainError {
+  return new BusinessDomainError(
+    "VALIDATION_FAILED",
+    `Invalid business code: "${value}" does not match the governed format (§24 FD-3).`,
+  );
+}
+
+/**
+ * Design §18: `businessCode` duplicate/idempotency conflict. Defined here
+ * (not only in a future `002B` module) because it is a pure taxonomy
+ * mapping with no persistence dependency — `002B`'s repository/service
+ * layer is the actual caller once transactional reservation exists;
+ * `002A` never triggers this itself (no Firestore uniqueness check is
+ * performed here).
+ */
+export function duplicateBusinessCodeError(businessCode: string): BusinessDomainError {
+  return new BusinessDomainError(
+    "IDEMPOTENCY_CONFLICT",
+    `Business code "${businessCode}" is already assigned to another business.`,
+  );
+}
+
+/**
+ * Design §18: a `businessCode` collision-retry bound exhausted — never a
+ * caller-visible defect, the same customer-invisible-retry posture
+ * `DEC-DATA-007` established for the Loyalty Number, adopted independently
+ * for `businessCode` (§24 FD-3). `002A` only defines the mapping; the
+ * retry loop itself is `002B`'s.
+ */
+export function businessCodeGenerationExhaustedError(attempts: number): BusinessDomainError {
+  return new BusinessDomainError(
+    "TEMPORARY_UNAVAILABLE",
+    `Business code generation did not find an available code after ${attempts} attempts.`,
+  );
+}
+
+/**
+ * Bootstrap authority boundary (§11, §24 FD-2): a client-supplied
+ * `ownerUserId` differing from the server-derived authenticated principal
+ * must be rejected, never silently honored or silently overwritten.
+ */
+export function clientSuppliedOwnerUserIdError(): BusinessDomainError {
+  return new BusinessDomainError(
+    "VALIDATION_FAILED",
+    "ownerUserId is derived from the authenticated principal and must not be supplied by the client.",
+  );
+}
+
+/** §10.3.2: the authenticated principal must resolve to an existing, eligible Customer Identity. */
+export function invalidCustomerIdentityForOwnerError(userId: string): BusinessDomainError {
+  return new BusinessDomainError(
+    "AUTH_REQUIRED",
+    `No eligible Customer Identity resolves for authenticated principal "${userId}".`,
+  );
+}
