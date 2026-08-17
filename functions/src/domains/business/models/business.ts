@@ -86,10 +86,16 @@ function requireNonBlank(field: string, value: string): string {
   return value;
 }
 
+/**
+ * TRD10 §10.6.3 types `supportedLanguages` as `string[]` (required field,
+ * present) — it does not state a minimum length. No empty-array rejection
+ * is governed; this mirrors the identity domain's own precedent for
+ * required array fields (`functions/src/domains/identity/models/customerProfile.ts`'s
+ * `interests`/`preferredCategories`: "governed reference lists, default
+ * empty"). Only element-level well-formedness (each entry a non-blank
+ * string) is validated — that's structural, not a new business rule.
+ */
 function requireSupportedLanguages(value: string[]): string[] {
-  if (value.length === 0) {
-    throw invalidBusinessFieldError("supportedLanguages", "[]");
-  }
   for (const language of value) {
     if (language.trim().length === 0) {
       throw invalidBusinessFieldError("supportedLanguages", JSON.stringify(value));

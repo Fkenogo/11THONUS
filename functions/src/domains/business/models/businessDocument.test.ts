@@ -59,9 +59,33 @@ describe("fromBusinessDocument", () => {
     expect(fromBusinessDocument("biz-1", {})).toBeNull();
     expect(fromBusinessDocument("biz-1", { ...validRaw, businessCode: "not-a-code" })).toBeNull();
     expect(fromBusinessDocument("biz-1", { ...validRaw, status: "unknown_status" })).toBeNull();
-    expect(fromBusinessDocument("biz-1", { ...validRaw, supportedLanguages: [] })).toBeNull();
+    expect(
+      fromBusinessDocument("biz-1", { ...validRaw, supportedLanguages: "not-an-array" }),
+    ).toBeNull();
+    expect(
+      fromBusinessDocument("biz-1", { ...validRaw, supportedLanguages: ["fr", ""] }),
+    ).toBeNull();
     expect(() => fromBusinessDocument("biz-1", null)).not.toThrow();
     expect(() => fromBusinessDocument("biz-1", "a string")).not.toThrow();
+  });
+
+  it("rejects a malformed schemaVersion (wrong type)", () => {
+    expect(fromBusinessDocument("biz-1", { ...validRaw, schemaVersion: "1" })).toBeNull();
+  });
+
+  it("rejects a malformed createdAt/updatedAt (not timestamp-like)", () => {
+    expect(fromBusinessDocument("biz-1", { ...validRaw, createdAt: "2026-08-17" })).toBeNull();
+    expect(fromBusinessDocument("biz-1", { ...validRaw, updatedAt: "2026-08-17" })).toBeNull();
+    expect(fromBusinessDocument("biz-1", { ...validRaw, createdAt: undefined })).toBeNull();
+  });
+
+  it("rejects a malformed businessId-adjacent required string field (ownerUserId, blank)", () => {
+    expect(fromBusinessDocument("biz-1", { ...validRaw, ownerUserId: "" })).toBeNull();
+  });
+
+  it("accepts an empty supportedLanguages array (no minimum cardinality is governed, TRD10 §10.6.3)", () => {
+    const business = fromBusinessDocument("biz-1", { ...validRaw, supportedLanguages: [] });
+    expect(business?.supportedLanguages).toEqual([]);
   });
 
   it("accepts all 8 governed statuses", () => {

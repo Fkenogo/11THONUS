@@ -59,8 +59,9 @@ describe("createBusiness", () => {
     expect(() => createBusiness({ ...baseParams(), currencyCode: "BI" })).toThrow();
   });
 
-  it("rejects an empty supportedLanguages array", () => {
-    expect(() => createBusiness({ ...baseParams(), supportedLanguages: [] })).toThrow();
+  it("accepts an empty supportedLanguages array (TRD10 §10.6.3 types it string[], not a non-empty array — no minimum cardinality is governed; matches the identity domain's own precedent for required array fields, customerProfile.ts's interests/preferredCategories, 'governed reference lists, default empty')", () => {
+    const business = createBusiness({ ...baseParams(), supportedLanguages: [] });
+    expect(business.supportedLanguages).toEqual([]);
   });
 
   it("rejects a supportedLanguages array containing a blank entry", () => {
@@ -100,6 +101,33 @@ describe("createBusiness", () => {
     // createBusiness's own params type has no `status` field at all —
     // this is a structural (compile-time), not merely runtime, guarantee.
     expect(business.status).toBe("draft");
+  });
+
+  it("produces exactly the TRD10 §10.6.3 field set — no extra field, no secondary Business-auth principal, no client-authority field", () => {
+    const business = createBusiness(baseParams());
+    expect(business).toEqual({
+      id: "biz-1",
+      businessCode: "BIZABCDEF",
+      legalName: undefined,
+      displayName: "Kwetu Café",
+      ownerUserId: "user-1",
+      primaryCategoryId: "category-1",
+      businessTypeId: undefined,
+      countryCode: "BI",
+      currencyCode: "BIF",
+      timezone: "Africa/Bujumbura",
+      city: "Bujumbura",
+      address: undefined,
+      contactPhone: "+25761234567",
+      contactEmail: undefined,
+      logoUrl: undefined,
+      supportedLanguages: ["fr", "en"],
+      status: "draft",
+      subscriptionId: undefined,
+      createdAt: baseParams().createdAt,
+      updatedAt: baseParams().createdAt,
+      schemaVersion: 1,
+    });
   });
 });
 

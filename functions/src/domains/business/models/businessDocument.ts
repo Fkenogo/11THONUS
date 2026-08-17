@@ -31,10 +31,16 @@ function isBusinessStatus(value: unknown): value is BusinessStatus {
 const COUNTRY_CODE_PATTERN = /^[A-Z]{2}$/;
 const CURRENCY_CODE_PATTERN = /^[A-Z]{3}$/;
 
-function isNonEmptyStringArray(value: unknown): value is string[] {
+/**
+ * TRD10 §10.6.3 types `supportedLanguages` as `string[]`, not a
+ * non-empty array — no minimum cardinality is governed (matches
+ * `customerProfile.ts`'s "governed reference lists, default empty"
+ * precedent for `interests`/`preferredCategories`). Element-level
+ * well-formedness only.
+ */
+function isStringArray(value: unknown): value is string[] {
   return (
     Array.isArray(value) &&
-    value.length > 0 &&
     value.every((entry) => typeof entry === "string" && entry.trim().length > 0)
   );
 }
@@ -83,7 +89,7 @@ export function fromBusinessDocument(id: string, raw: unknown): Business | null 
   if (typeof data.timezone !== "string" || data.timezone.length === 0) return null;
   if (typeof data.city !== "string" || data.city.length === 0) return null;
   if (typeof data.contactPhone !== "string" || data.contactPhone.length === 0) return null;
-  if (!isNonEmptyStringArray(data.supportedLanguages)) return null;
+  if (!isStringArray(data.supportedLanguages)) return null;
   if (!isBusinessStatus(data.status)) return null;
   if (data.legalName !== undefined && typeof data.legalName !== "string") return null;
   if (data.businessTypeId !== undefined && typeof data.businessTypeId !== "string") return null;
