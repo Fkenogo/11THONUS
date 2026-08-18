@@ -1229,6 +1229,28 @@ describe("evaluateAuthorizationDecision — ordinary permission + override: no g
     expect(decision.allowed).toBe(false);
   });
 
+  it("a grant override on an ordinary permission does not bypass the Staff role default either (Staff stays denied — ENG-P2-004-CORR-001 independent review, Phase G)", () => {
+    const decision = evaluateAuthorizationDecision(
+      ordinaryInput({
+        membership: {
+          kind: "found",
+          membership: membership({
+            role: "staff",
+            overrides: [
+              {
+                permissionId: "business.updateProfile",
+                direction: "grant",
+                businessId: "biz-a",
+                membershipId: "mem-1",
+              },
+            ],
+          }),
+        },
+      }),
+    );
+    expect(decision.allowed).toBe(false);
+  });
+
   it("a revoke override on an ordinary permission does not block the Owner's role-default allow (overrides are simply not consulted for ordinary permissions)", () => {
     const decision = evaluateAuthorizationDecision(
       ordinaryInput({

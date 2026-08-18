@@ -375,19 +375,25 @@ export function evaluateAuthorizationDecision(input: EvaluationInput): Authoriza
     return deny(now, "SENSITIVE_PERMISSION_NOT_GRANTED", "AUTH_FORBIDDEN", role);
   }
 
-  // Step 9: non-sensitive role/template default (§4.1.6). No governed
-  // non-sensitive baseline table exists yet (ENG-P2-004A explicitly
-  // deferred it — see roleTemplate.ts's module header); until one is
-  // added, this check can only ever match a sensitive-catalogue id, which
-  // step 8 above already exhausted, so this branch is a documented no-op
-  // placeholder for that future baseline table rather than dead code.
-  // Flagged for Founder attention (Codex review, PR #107; see the
-  // implementation report §14): ordinary role-based permissions (e.g.
-  // `purchase.record`) cannot be authorized by role-default until a
-  // governed non-sensitive baseline table exists — this is a data/
-  // governance gap upstream of this evaluator, not a defect in the
-  // algorithm below, and `ENG-P2-004A` explicitly declined to invent one
-  // (no governed document mints those identifiers).
+  // Step 9: non-sensitive role/template default (§4.1.6), consulting only
+  // `SENSITIVE_PERMISSION_ROLE_TEMPLATES` — this is provably unreachable
+  // for every permission this evaluator currently knows how to classify.
+  // A sensitive-catalogue id is always exhausted by step 8 above; an
+  // ordinary-catalogue id (`ENG-P2-004-CORR-001`) always returns earlier,
+  // at Step 5a, via its own dedicated `ORDINARY_PERMISSION_CATALOGUE`
+  // role-default table — never this one; any other id matches no role
+  // template here by construction (`SENSITIVE_PERMISSION_ROLE_TEMPLATES`
+  // is derived exclusively from the sensitive catalogue's inheritable
+  // entries — see `roleTemplate.ts`). Retained rather than removed as a
+  // documented no-op placeholder: a *third*, still-ungoverned non-
+  // sensitive baseline permission space (e.g. `purchase.record`) remains
+  // outside both catalogues — `ENG-P2-004A` explicitly declined to invent
+  // one, and `ENG-P2-004-CORR-001` was explicitly authorized only for the
+  // four named ordinary ids, not a general baseline (FD-CORR-2: "Do not
+  // globally widen Business-status eligibility"). This step is where that
+  // future baseline's own role-default check would go, once (if ever)
+  // Founder-authorized (Codex review, PR #107; see the `ENG-P2-004B`
+  // implementation report §14).
   if (isPermissionInRoleTemplateDefault(SENSITIVE_PERMISSION_ROLE_TEMPLATES[role], permission)) {
     return {
       allowed: true,
