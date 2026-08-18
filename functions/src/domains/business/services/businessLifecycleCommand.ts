@@ -4,7 +4,7 @@
  * Only the two governed, mechanism-resolved, Owner-authorized transitions
  * `ENG-P2-002-DESIGN-001` §6 actually supports right now:
  *
- *   - `draft → pending_verification` (`advanceBusinessToPendingVerificationCommand`)
+ *   - `draft → pending_verification` (`submitBusinessForVerificationCommand`)
  *   - any non-terminal status → `closed` (`closeBusinessCommand`)
  *
  * Every other §6 transition is deliberately absent from this file:
@@ -25,13 +25,27 @@
  *   - `closed → archived`: system/retention-elapse-initiated, not an
  *     owner-callable action.
  *
- * Each command uses a distinct permission id (`business.advanceLifecycle`,
+ * Each command uses a distinct permission id (`business.submitForVerification`,
  * `business.close`) rather than one generic "transition" permission with a
  * client-supplied target status — the target status is fixed per command,
  * server-side, never client input, so a caller cannot request an
  * unauthorized transition merely by naming it (Phase M). Both permissions
- * are non-sensitive (absent from the Sensitive Permission Catalogue, same
- * classification and precedent as `business.updateProfile`).
+ * are governed, non-sensitive entries in `ENG-P2-004-CORR-001`'s
+ * `ORDINARY_PERMISSION_CATALOGUE` (absent from the Sensitive Permission
+ * Catalogue). `business.submitForVerification`'s own catalogue entry
+ * further restricts it to `draft`-only lifecycle eligibility — the
+ * evaluator itself denies this command on every other Business status, so
+ * this file relies on that governed narrowness rather than re-implementing
+ * it (Phase F/H/J: 002C must not duplicate the evaluator's own lifecycle
+ * matrix in conflicting local configuration).
+ *
+ * Renamed from an earlier `business.advanceLifecycle` working name (used
+ * while this package was paused) to the Founder-approved
+ * `business.submitForVerification` (FD-CORR-3, `ENG-P2-004-CORR-001`) —
+ * the earlier name was explicitly rejected because it read as generic
+ * lifecycle authority; the approved name and its `draft`-only eligibility
+ * set make clear it authorizes exactly one narrow transition, never any
+ * other (Phase J/N of the controlled-resume task).
  *
  * `isValidBusinessStatusTransition`/`transitionBusinessStatus` (`ENG-P2-002A`,
  * unchanged) still gate the *structural* legality of the transition from
@@ -40,7 +54,10 @@
  */
 
 import type { Firestore } from "firebase-admin/firestore";
-import { authorizeAndExecute, type AuthorizeAndExecuteResult } from "../../permissions/service/authorizeAndExecute";
+import {
+  authorizeAndExecute,
+  type AuthorizeAndExecuteResult,
+} from "../../permissions/service/authorizeAndExecute";
 import { writeOutboxEntry } from "../../../shared/outbox/outboxWriter";
 import type { EventActor } from "../../../shared/events/domainEvent";
 import { transitionBusinessStatus } from "../models/business";
@@ -116,11 +133,16 @@ async function transitionBusinessLifecycle(
 }
 
 /** `draft → pending_verification` — Owner-initiated, §6's second lifecycle row. */
-export async function advanceBusinessToPendingVerificationCommand(
+export async function submitBusinessForVerificationCommand(
   db: Firestore,
   params: TransitionBusinessLifecycleCommandParams,
 ): Promise<AuthorizeAndExecuteResult<TransitionBusinessLifecycleResult>> {
-  return transitionBusinessLifecycle(db, "business.advanceLifecycle", "pending_verification", params);
+  return transitionBusinessLifecycle(
+    db,
+    "business.submitForVerification",
+    "pending_verification",
+    params,
+  );
 }
 
 /** Any non-terminal status → `closed` — Owner-initiated half of §6's "any → closed" row. */

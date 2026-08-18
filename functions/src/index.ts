@@ -59,7 +59,7 @@ import {
   type BusinessBranchProfilePatch,
 } from "./domains/business/services/businessBranchProfileCommand";
 import {
-  advanceBusinessToPendingVerificationCommand,
+  submitBusinessForVerificationCommand,
   closeBusinessCommand,
 } from "./domains/business/services/businessLifecycleCommand";
 import { AuthorizeAndExecuteError } from "./domains/permissions/service/authorizeAndExecute";
@@ -403,7 +403,9 @@ export const createBusiness = onCall(async (request) => {
   }
 });
 
-function parseActorRequest(value: Record<string, unknown>): ResolveAuthenticatedBusinessActorParams {
+function parseActorRequest(
+  value: Record<string, unknown>,
+): ResolveAuthenticatedBusinessActorParams {
   return {
     rawToken: parseRawToken(value.rawToken),
     referenceType: parseReferenceType(value.referenceType),
@@ -418,12 +420,21 @@ function parseBusinessId(value: unknown): string {
  * Whitelist parser (`ENG-P2-002C`, Phase M): only these exact
  * `BusinessProfilePatch` fields are read off `data`. Any other key the
  * client sends (`id`, `businessCode`, `ownerUserId`, `status`, `createdAt`,
- * `schemaVersion`, or anything else) is silently dropped here, never
- * reaching `updateBusinessProfile` — the same structural guarantee
- * `parseCreateBusinessCommand` established for bootstrap. Every field is
- * genuinely optional (a partial update) and, where present, `undefined` is
- * accepted to clear an optional field — validated to be a string when a
- * value is actually supplied.
+ * `schemaVersion`, `subscriptionId`, or anything else) is silently dropped
+ * here, never reaching `updateBusinessProfile` — the same structural
+ * guarantee `parseCreateBusinessCommand` established for bootstrap. Every
+ * field is genuinely optional (a partial update) and, where present,
+ * `undefined` is accepted to clear an optional field — validated to be a
+ * string when a value is actually supplied.
+ *
+ * `subscriptionId` deliberately does NOT appear in this whitelist
+ * (controlled-resume review, Phase J): no subscription/billing governance
+ * exists yet (`ENG-P2-003` not started, not authorized by this package),
+ * so accepting client-supplied `subscriptionId` here would let any Owner
+ * set an arbitrary, ungoverned value on their own Business through this
+ * ordinary profile-update permission — a mass-assignment-adjacent gap the
+ * paused pre-pause version of this parser had (it accepted the field),
+ * corrected during reconciliation rather than carried forward unexamined.
  */
 /** Exported only for the mass-assignment regression test in `index.test.ts`. */
 export function parseBusinessProfilePatch(value: Record<string, unknown>): BusinessProfilePatch {
@@ -453,7 +464,6 @@ export function parseBusinessProfilePatch(value: Record<string, unknown>): Busin
   optionalStringField("contactPhone", "contactPhone");
   optionalStringField("contactEmail", "contactEmail");
   optionalStringField("logoUrl", "logoUrl");
-  optionalStringField("subscriptionId", "subscriptionId");
 
   if ("supportedLanguages" in value) {
     const raw = value.supportedLanguages;
@@ -562,11 +572,15 @@ export const updateBusinessBranchProfile = onCall(async (request) => {
 });
 
 /**
- * `advanceBusinessLifecycle` (`ENG-P2-002C`) — the sole `draft →
+ * `submitBusinessForVerification` (`ENG-P2-002C`) — the sole `draft →
  * pending_verification` integration (Phase H/I). No target-status
  * parameter exists on the request — the transition is fixed server-side.
+ * Renamed from an earlier `advanceBusinessLifecycle` working name to
+ * match the Founder-approved `business.submitForVerification` permission
+ * id (FD-CORR-3, `ENG-P2-004-CORR-001`) — never deployed under the old
+ * name, so this is a same-package rename, not a breaking API change.
  */
-export const advanceBusinessLifecycle = onCall(async (request) => {
+export const submitBusinessForVerification = onCall(async (request) => {
   const value = (request.data ?? {}) as Record<string, unknown>;
   const db = getFirestore(getAdminApp());
   try {
@@ -574,11 +588,11 @@ export const advanceBusinessLifecycle = onCall(async (request) => {
       verifier: firebaseAdminTokenVerifier(),
     });
     const businessId = parseBusinessId(value.businessId);
-    return await advanceBusinessToPendingVerificationCommand(db, {
+    return await submitBusinessForVerificationCommand(db, {
       userId,
       businessId,
       idempotencyKey: parseNonEmptyString(value.idempotencyKey),
-      requestHash: `business.advanceLifecycle:${businessId}`,
+      requestHash: `business.submitForVerification:${businessId}`,
       correlationId: randomUUID(),
       now: new Date(),
       newId: randomUUID,

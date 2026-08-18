@@ -12,7 +12,10 @@
  */
 
 import type { Firestore } from "firebase-admin/firestore";
-import { authorizeAndExecute, type AuthorizeAndExecuteResult } from "../../permissions/service/authorizeAndExecute";
+import {
+  authorizeAndExecute,
+  type AuthorizeAndExecuteResult,
+} from "../../permissions/service/authorizeAndExecute";
 import { writeOutboxEntry } from "../../../shared/outbox/outboxWriter";
 import type { EventActor } from "../../../shared/events/domainEvent";
 import {

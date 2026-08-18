@@ -132,7 +132,7 @@ describe("parseCreateBusinessCommand (mass-assignment boundary)", () => {
  * runtime, not merely be absent from the TypeScript type.
  */
 describe("parseBusinessProfilePatch (mass-assignment boundary)", () => {
-  it("drops id/businessCode/ownerUserId/status/createdAt/schemaVersion even if present on the payload", () => {
+  it("drops id/businessCode/ownerUserId/status/createdAt/schemaVersion/subscriptionId even if present on the payload", () => {
     const malicious = {
       displayName: "Legit New Name",
       id: "attacker-id",
@@ -141,6 +141,11 @@ describe("parseBusinessProfilePatch (mass-assignment boundary)", () => {
       status: "active",
       createdAt: "2020-01-01T00:00:00.000Z",
       schemaVersion: 999,
+      // `subscriptionId` (controlled-resume review, Phase J): no
+      // subscription/billing governance exists yet (`ENG-P2-003` not
+      // started) — an ungoverned value here must never reach the domain
+      // layer through this ordinary profile-update permission.
+      subscriptionId: "attacker-controlled-plan",
     };
 
     const patch = parseBusinessProfilePatch(malicious);
@@ -153,6 +158,7 @@ describe("parseBusinessProfilePatch (mass-assignment boundary)", () => {
       "status",
       "createdAt",
       "schemaVersion",
+      "subscriptionId",
     ]) {
       expect(patchKeys).not.toContain(forbiddenKey);
     }

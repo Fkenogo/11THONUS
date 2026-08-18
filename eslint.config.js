@@ -334,6 +334,7 @@ export default tseslint.config(
       "functions/src/domains/business/services/businessBranchProfileCommand.ts",
       "functions/src/domains/business/services/businessLifecycleCommand.ts",
       "functions/src/domains/business/services/authenticatedBusinessActor.ts",
+      "functions/src/domains/business/services/businessProfileLifecycle.emulator.test.ts",
     ],
     languageOptions: {
       ecmaVersion: 2023,

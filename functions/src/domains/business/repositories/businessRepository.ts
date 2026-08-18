@@ -260,7 +260,11 @@ export async function readBusinessBranchForBusiness(
  * TOCTOU-safety boundary: no `.get` available after the audit write has
  * started), so this takes that narrower type rather than a full `Transaction`.
  */
-export function writeBusinessUpdate(writer: TransactionWriter, db: Firestore, business: Business): void {
+export function writeBusinessUpdate(
+  writer: TransactionWriter,
+  db: Firestore,
+  business: Business,
+): void {
   writer.set(
     db.collection(BUSINESSES_COLLECTION).doc(business.id),
     stripUndefined(toBusinessDocumentFields(business)),

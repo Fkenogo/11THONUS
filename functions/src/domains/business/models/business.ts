@@ -194,7 +194,9 @@ export function updateBusinessProfile(
     legalName: "legalName" in params ? params.legalName : business.legalName,
     displayName: params.displayName !== undefined ? params.displayName : business.displayName,
     primaryCategoryId:
-      params.primaryCategoryId !== undefined ? params.primaryCategoryId : business.primaryCategoryId,
+      params.primaryCategoryId !== undefined
+        ? params.primaryCategoryId
+        : business.primaryCategoryId,
     businessTypeId: "businessTypeId" in params ? params.businessTypeId : business.businessTypeId,
     countryCode: params.countryCode !== undefined ? params.countryCode : business.countryCode,
     currencyCode: params.currencyCode !== undefined ? params.currencyCode : business.currencyCode,

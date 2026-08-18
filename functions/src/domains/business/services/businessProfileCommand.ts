@@ -18,7 +18,10 @@
  */
 
 import type { Firestore } from "firebase-admin/firestore";
-import { authorizeAndExecute, type AuthorizeAndExecuteResult } from "../../permissions/service/authorizeAndExecute";
+import {
+  authorizeAndExecute,
+  type AuthorizeAndExecuteResult,
+} from "../../permissions/service/authorizeAndExecute";
 import { writeOutboxEntry } from "../../../shared/outbox/outboxWriter";
 import type { EventActor } from "../../../shared/events/domainEvent";
 import { updateBusinessProfile, type UpdateBusinessProfileParams } from "../models/business";
@@ -28,8 +31,25 @@ import { readBusinessById, writeBusinessUpdate } from "../repositories/businessR
 
 const PERMISSION = "business.updateProfile";
 
-/** Every field a client may patch — `updatedAt` is server-derived, never client input. */
-export type BusinessProfilePatch = Omit<UpdateBusinessProfileParams, "updatedAt">;
+/**
+ * Every field a client may patch — `updatedAt` is server-derived, never
+ * client input. `subscriptionId` is also excluded here (controlled-resume
+ * review, Phase J) even though `UpdateBusinessProfileParams` (the domain
+ * layer's general-purpose merge function) accepts it: no subscription/
+ * billing governance exists yet (`ENG-P2-003` is explicitly not started
+ * and not authorized), so no value this client-facing patch could ever
+ * legitimately supply for it is defined. Excluding it here — the
+ * client-facing type boundary — rather than from the domain function
+ * itself preserves `updateBusinessProfile` as a genuinely general-purpose
+ * merge a future, separately-governed `ENG-P2-003` subscription command
+ * could still call directly (bypassing this untrusted-input boundary
+ * entirely, the same way no command today calls `parseBusinessProfilePatch`
+ * except this file's own `onCall` handler).
+ */
+export type BusinessProfilePatch = Omit<
+  UpdateBusinessProfileParams,
+  "updatedAt" | "subscriptionId"
+>;
 
 export type UpdateBusinessProfileCommandParams = {
   /** Server-resolved Customer Identity id — never client-supplied. */
