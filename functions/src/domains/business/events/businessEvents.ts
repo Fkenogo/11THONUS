@@ -56,3 +56,98 @@ export function buildBusinessCreatedEvent(
     },
   };
 }
+
+/**
+ * `ENG-P2-002C` (Phase Q). Privacy-minimal by the same principle
+ * `BusinessCreatedPayload` established: a downstream consumer needing the
+ * *new* value of a changed field can always read the current
+ * `businesses/{id}` document — the event only needs to say *which* fields
+ * changed, never carry the values themselves (avoids duplicating profile
+ * PII, e.g. `contactPhone`/`contactEmail`, into the immutable event log).
+ */
+export type BusinessProfileUpdatedPayload = {
+  businessId: string;
+  updatedFields: string[];
+};
+
+export function buildBusinessProfileUpdatedEvent(
+  params: EventEnvelopeParams & BusinessProfileUpdatedPayload,
+): DomainEvent<BusinessProfileUpdatedPayload> {
+  return {
+    eventId: params.eventId,
+    eventType: buildEventType(SOURCE_DOMAIN, "business_profile_updated", 1),
+    eventVersion: 1,
+    sourceDomain: SOURCE_DOMAIN,
+    aggregateType: AGGREGATE_TYPE,
+    aggregateId: params.businessId,
+    correlationId: params.correlationId,
+    actor: params.actor,
+    occurredAt: params.occurredAt,
+    payload: {
+      businessId: params.businessId,
+      updatedFields: params.updatedFields,
+    },
+  };
+}
+
+/**
+ * `ENG-P2-002C` (Phase Q). `fromStatus`/`toStatus` are not PII and are
+ * exactly what a lifecycle-reacting consumer (e.g. future capability-3
+ * provisioning) needs — no other Business field is included.
+ */
+export type BusinessLifecycleChangedPayload = {
+  businessId: string;
+  fromStatus: string;
+  toStatus: string;
+};
+
+export function buildBusinessLifecycleChangedEvent(
+  params: EventEnvelopeParams & BusinessLifecycleChangedPayload,
+): DomainEvent<BusinessLifecycleChangedPayload> {
+  return {
+    eventId: params.eventId,
+    eventType: buildEventType(SOURCE_DOMAIN, "business_lifecycle_changed", 1),
+    eventVersion: 1,
+    sourceDomain: SOURCE_DOMAIN,
+    aggregateType: AGGREGATE_TYPE,
+    aggregateId: params.businessId,
+    correlationId: params.correlationId,
+    actor: params.actor,
+    occurredAt: params.occurredAt,
+    payload: {
+      businessId: params.businessId,
+      fromStatus: params.fromStatus,
+      toStatus: params.toStatus,
+    },
+  };
+}
+
+/** `ENG-P2-002C` (Phase Q). Same field-names-only privacy minimization as `BusinessProfileUpdatedPayload`. */
+export type BusinessBranchUpdatedPayload = {
+  businessId: string;
+  branchId: string;
+  updatedFields: string[];
+};
+
+const BRANCH_AGGREGATE_TYPE = "business_branch";
+
+export function buildBusinessBranchUpdatedEvent(
+  params: EventEnvelopeParams & BusinessBranchUpdatedPayload,
+): DomainEvent<BusinessBranchUpdatedPayload> {
+  return {
+    eventId: params.eventId,
+    eventType: buildEventType(SOURCE_DOMAIN, "business_branch_updated", 1),
+    eventVersion: 1,
+    sourceDomain: SOURCE_DOMAIN,
+    aggregateType: BRANCH_AGGREGATE_TYPE,
+    aggregateId: params.branchId,
+    correlationId: params.correlationId,
+    actor: params.actor,
+    occurredAt: params.occurredAt,
+    payload: {
+      businessId: params.businessId,
+      branchId: params.branchId,
+      updatedFields: params.updatedFields,
+    },
+  };
+}

@@ -11,6 +11,7 @@
  * logic.
  */
 
+import { randomUUID } from "node:crypto";
 import { setGlobalOptions } from "firebase-functions";
 import { HttpsError, onCall, onRequest } from "firebase-functions/https";
 import { getFirestore } from "firebase-admin/firestore";
@@ -45,6 +46,23 @@ import {
   type CreateBusinessCommand,
 } from "./domains/business/services/businessBootstrapEndpointService";
 import type { CreateBusinessRequest } from "./domains/business/models/businessBootstrap";
+import {
+  resolveAuthenticatedBusinessActor,
+  type ResolveAuthenticatedBusinessActorParams,
+} from "./domains/business/services/authenticatedBusinessActor";
+import {
+  updateBusinessProfileCommand,
+  type BusinessProfilePatch,
+} from "./domains/business/services/businessProfileCommand";
+import {
+  updateBusinessBranchProfileCommand,
+  type BusinessBranchProfilePatch,
+} from "./domains/business/services/businessBranchProfileCommand";
+import {
+  advanceBusinessToPendingVerificationCommand,
+  closeBusinessCommand,
+} from "./domains/business/services/businessLifecycleCommand";
+import { AuthorizeAndExecuteError } from "./domains/permissions/service/authorizeAndExecute";
 
 setGlobalOptions({ region: PLATFORM_REGION, maxInstances: 10 });
 
@@ -104,6 +122,15 @@ function toHttpsError(error: unknown): HttpsError {
     return new HttpsError(
       CATEGORY_TO_HTTPS[error.category] ?? "internal",
       "business_creation_failed",
+    );
+  }
+  if (error instanceof AuthorizeAndExecuteError) {
+    // The one `ENG-P2-004` boundary error class — thrown only for an
+    // idempotency-key *conflict* (a same-key, materially different retry);
+    // the ordinary "denied" outcome is a normal return value, not this.
+    return new HttpsError(
+      CATEGORY_TO_HTTPS[error.category as ErrorCategory] ?? "internal",
+      "business_command_failed",
     );
   }
   return new HttpsError("internal", "authentication_failed");
@@ -370,6 +397,219 @@ export const createBusiness = onCall(async (request) => {
   try {
     return await handleCreateBusiness(db, parsed, {
       verifier: firebaseAdminTokenVerifier(),
+    });
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+function parseActorRequest(value: Record<string, unknown>): ResolveAuthenticatedBusinessActorParams {
+  return {
+    rawToken: parseRawToken(value.rawToken),
+    referenceType: parseReferenceType(value.referenceType),
+  };
+}
+
+function parseBusinessId(value: unknown): string {
+  return parseNonEmptyString(value);
+}
+
+/**
+ * Whitelist parser (`ENG-P2-002C`, Phase M): only these exact
+ * `BusinessProfilePatch` fields are read off `data`. Any other key the
+ * client sends (`id`, `businessCode`, `ownerUserId`, `status`, `createdAt`,
+ * `schemaVersion`, or anything else) is silently dropped here, never
+ * reaching `updateBusinessProfile` — the same structural guarantee
+ * `parseCreateBusinessCommand` established for bootstrap. Every field is
+ * genuinely optional (a partial update) and, where present, `undefined` is
+ * accepted to clear an optional field — validated to be a string when a
+ * value is actually supplied.
+ */
+/** Exported only for the mass-assignment regression test in `index.test.ts`. */
+export function parseBusinessProfilePatch(value: Record<string, unknown>): BusinessProfilePatch {
+  const patch: BusinessProfilePatch = {};
+  const optionalStringField = (key: keyof BusinessProfilePatch, field: string) => {
+    if (!(key in value)) return;
+    const raw = value[key];
+    if (raw === null) {
+      (patch as Record<string, unknown>)[key] = undefined;
+      return;
+    }
+    if (typeof raw !== "string") {
+      throw new HttpsError("invalid-argument", "business_command_failed", { field });
+    }
+    (patch as Record<string, unknown>)[key] = raw;
+  };
+
+  optionalStringField("legalName", "legalName");
+  optionalStringField("displayName", "displayName");
+  optionalStringField("primaryCategoryId", "primaryCategoryId");
+  optionalStringField("businessTypeId", "businessTypeId");
+  optionalStringField("countryCode", "countryCode");
+  optionalStringField("currencyCode", "currencyCode");
+  optionalStringField("timezone", "timezone");
+  optionalStringField("city", "city");
+  optionalStringField("address", "address");
+  optionalStringField("contactPhone", "contactPhone");
+  optionalStringField("contactEmail", "contactEmail");
+  optionalStringField("logoUrl", "logoUrl");
+  optionalStringField("subscriptionId", "subscriptionId");
+
+  if ("supportedLanguages" in value) {
+    const raw = value.supportedLanguages;
+    if (
+      !Array.isArray(raw) ||
+      !raw.every((entry) => typeof entry === "string" && entry.trim().length > 0)
+    ) {
+      throw new HttpsError("invalid-argument", "business_command_failed", {
+        field: "supportedLanguages",
+      });
+    }
+    patch.supportedLanguages = raw;
+  }
+
+  return patch;
+}
+
+/** Exported only for the mass-assignment regression test in `index.test.ts`. */
+export function parseBusinessBranchProfilePatch(
+  value: Record<string, unknown>,
+): BusinessBranchProfilePatch {
+  const patch: BusinessBranchProfilePatch = {};
+  const optionalStringField = (key: keyof BusinessBranchProfilePatch, field: string) => {
+    if (!(key in value)) return;
+    const raw = value[key];
+    if (raw === null) {
+      (patch as Record<string, unknown>)[key] = undefined;
+      return;
+    }
+    if (typeof raw !== "string") {
+      throw new HttpsError("invalid-argument", "business_command_failed", { field });
+    }
+    (patch as Record<string, unknown>)[key] = raw;
+  };
+
+  optionalStringField("displayName", "displayName");
+  optionalStringField("countryCode", "countryCode");
+  optionalStringField("city", "city");
+  optionalStringField("address", "address");
+
+  return patch;
+}
+
+/**
+ * `updateBusinessProfile` (`ENG-P2-002C`) — Owner-authorized Business
+ * profile update. Resolves the caller through the same authenticated-owner
+ * chain bootstrap uses (never a client-supplied `userId`), then defers the
+ * entire authorization decision to `ENG-P2-004`'s `authorizeAndExecute`
+ * boundary — no local role/owner check here. Returns the boundary's own
+ * `{outcome, decision?, result?}` contract unchanged; a denied/duplicate/
+ * in-progress outcome is a normal response, not an exception.
+ */
+export const updateBusinessProfile = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId } = await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    const businessId = parseBusinessId(value.businessId);
+    const patch = parseBusinessProfilePatch(value);
+    return await updateBusinessProfileCommand(db, {
+      userId,
+      businessId,
+      patch,
+      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+      requestHash: `business.updateProfile:${businessId}:${JSON.stringify(patch)}`,
+      correlationId: randomUUID(),
+      now: new Date(),
+      newId: randomUUID,
+    });
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+/**
+ * `updateBusinessBranchProfile` (`ENG-P2-002C`) — Owner-authorized default
+ * Branch profile update. Tenant isolation (Phase N) is enforced inside the
+ * command itself, not here.
+ */
+export const updateBusinessBranchProfile = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId } = await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    const businessId = parseBusinessId(value.businessId);
+    const branchId = parseNonEmptyString(value.branchId);
+    const patch = parseBusinessBranchProfilePatch(value);
+    return await updateBusinessBranchProfileCommand(db, {
+      userId,
+      businessId,
+      branchId,
+      patch,
+      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+      requestHash: `businessBranch.updateProfile:${businessId}:${branchId}:${JSON.stringify(patch)}`,
+      correlationId: randomUUID(),
+      now: new Date(),
+      newId: randomUUID,
+    });
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+/**
+ * `advanceBusinessLifecycle` (`ENG-P2-002C`) — the sole `draft →
+ * pending_verification` integration (Phase H/I). No target-status
+ * parameter exists on the request — the transition is fixed server-side.
+ */
+export const advanceBusinessLifecycle = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId } = await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    const businessId = parseBusinessId(value.businessId);
+    return await advanceBusinessToPendingVerificationCommand(db, {
+      userId,
+      businessId,
+      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+      requestHash: `business.advanceLifecycle:${businessId}`,
+      correlationId: randomUUID(),
+      now: new Date(),
+      newId: randomUUID,
+    });
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+/**
+ * `closeBusiness` (`ENG-P2-002C`) — the sole Owner-initiated half of §6's
+ * "any → closed" row (Phase H/J/K). Administrator-initiated closure and
+ * owner self-suspension are both out of scope (Phase J/K) — this command
+ * never accepts a target status other than `closed`.
+ */
+export const closeBusiness = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId } = await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    const businessId = parseBusinessId(value.businessId);
+    return await closeBusinessCommand(db, {
+      userId,
+      businessId,
+      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+      requestHash: `business.close:${businessId}`,
+      correlationId: randomUUID(),
+      now: new Date(),
+      newId: randomUUID,
     });
   } catch (error) {
     throw toHttpsError(error);

@@ -9,12 +9,23 @@
  * shared writer cannot see or control the domain write, only guarantee
  * its own entry is written atomically alongside whatever else the
  * caller's transaction contains.
+ *
+ * `transaction`'s parameter type (`ENG-P2-002C`) is narrowed to exactly
+ * the one member this function ever calls (`.set`) rather than the full
+ * `Transaction` — every existing caller already passes a real `Transaction`,
+ * which trivially satisfies this narrower shape, so this is a
+ * backward-compatible widening, not a behavior change. It lets a
+ * write-only caller (e.g. `authorizeAndExecute.ts`'s `TransactionWriter`,
+ * deliberately read-incapable past its own audit write) reuse this single
+ * outbox-write implementation instead of a second, duplicated one.
  */
 
-import type { DocumentReference, Firestore, Transaction } from "firebase-admin/firestore";
+import type { DocumentReference, Firestore } from "firebase-admin/firestore";
 import type { DomainEvent } from "../events/domainEvent";
 import { serverTimestamp } from "../metadata/serverTimestamp";
 import type { OutboxEntry } from "./outboxEntry";
+
+type OutboxWriteCapable = { set: (ref: DocumentReference, data: unknown) => unknown };
 
 const COLLECTION = "outboxEntries";
 
@@ -31,7 +42,7 @@ export function outboxEntryRef(db: Firestore, eventId: string): DocumentReferenc
 }
 
 export function writeOutboxEntry<T>(
-  transaction: Transaction,
+  transaction: OutboxWriteCapable,
   db: Firestore,
   event: DomainEvent<T>,
 ): void {
