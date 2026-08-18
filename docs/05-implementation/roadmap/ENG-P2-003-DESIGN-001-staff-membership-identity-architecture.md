@@ -1,8 +1,8 @@
 > **Title:** ENG-P2-003-DESIGN-001 — Staff Membership & Identity Architecture
-> **Version:** 1.0 · **Status:** Design package — NOT an implementation authorization · **Classification:** Working (execution-layer architecture record)
+> **Version:** 1.1 · **Status:** Design package — Founder dispositions recorded (§28); NOT an implementation authorization · **Classification:** Working (execution-layer architecture record)
 > **Governing document:** [Decision Register](../../00-governance/decisions/decision-register.md) `DEC-ID-002`, `DEC-ID-003`, `DEC-ID-004`, `DEC-SEC-003`, `DEC-SUB-002`, `DEC-SUB-009`; [`CDR-001` Capability 3](CDR-001-capability-delivery-roadmap.md#capability-3--business-identity); [`ENG-P2-002-DESIGN-001`](ENG-P2-002-DESIGN-001-business-identity-architecture-delivery-design.md); [`ENG-P2-004-DESIGN-001`](ENG-P2-004-DESIGN-001-role-context-permission-resolution-architecture.md); PRD1 (`01-accounts-roles-and-permissions.md`); PRD3 (`03-business-registration.md`); TRD10 §10.6.4; TRD11 §11.35 (error taxonomy); TRD12 §12.4.3/§12.11–12.16
 > **Source-of-truth path:** `docs/05-implementation/roadmap/ENG-P2-003-DESIGN-001-staff-membership-identity-architecture.md`
-> **Last controlled update:** 2026-08-19 (initial delivery)
+> **Last controlled update:** 2026-08-18 (`ENG-P2-003-DESIGN-001` v1.1 — Founder dispositions FD-1-STAFF through FD-7-STAFF, plus DEC-SUB-002/DEC-ID-004/Capability-3-status cross-cutting items, recorded per §28. No implementation authorized or performed by this revision.)
 
 # ENG-P2-003-DESIGN-001 — Staff Membership & Identity Architecture
 
@@ -213,6 +213,8 @@ TRD10's three Membership Rules (§4.1) directly govern this state machine: multi
 
 An `invited` membership may also be **revoked/cancelled** before acceptance (§8 below) — whether this is a distinct transition into `removed`, or a separate pre-acceptance-only state, is a **Founder decision surfaced in §21 (FD-3-STAFF)**, not resolved by this package, because TRD10's status enum has no fifth value and the transition's target is therefore ambiguous without a governed answer.
 
+> **[2026-08-18 — Founder disposition, §28 FD-2-STAFF]** Resolved: FD-2-STAFF (Founder's authoritative numbering, §28 — see §28.0's numbering-reconciliation note for why this differs from this table's own placeholder `FD-3-STAFF` label below) approves the separate pre-acceptance invitation record (Option B, §7), so this ambiguity dissolves exactly as §21's own "resolves automatically under FD-2 = B" anticipated — **the `invited` state and its revoke/expire/consume terminal states live entirely on the new Business-scoped invitation record, never on `businessMembership`'s four-value status enum.** TRD10 §10.6.4's `BusinessMembershipDocument.status` enum (`invited`/`active`/`suspended`/`removed`) is **unchanged**; `businessMembership.userId` remains **non-nullable**, exactly as declared today — FD-2-STAFF explicitly rejects making it optional. A `businessMembership` (with `status: "active"` from creation, per §6 below) is created for the first time only on successful invitation acceptance; there is no `businessMembership` in an `invited` state under the resolved model. The `invited` value in TRD10's status enum is therefore not exercised by any invitation created under the resolved FD-2-STAFF model — it is preserved unmodified in the schema (`ENG-P2-004`'s reader is not touched) and is not repurposed. This is a design-local reconciliation only; TRD10 §10.6.4 itself is not amended by this document (§18/§26).
+
 ### 5.2 Per-transition table
 
 | Transition | Initiator | Required permission | Prerequisites | Reversible? | Persisted timestamps | Audit/event |
@@ -224,6 +226,8 @@ An `invited` membership may also be **revoked/cancelled** before acceptance (§8
 | **REMOVE** (`active` or `suspended` → `removed`) | A member with remove authority | `staff.manage` | Target is not the sole active Owner (§12); historical record is retained, never deleted (TRD10 Membership Rule 3) | **Non-reversible** — a removed member must be re-invited (a fresh `invited` record, new `id`), never resurrected in place | `endedAt` set; `updatedAt` | `StaffMembershipRemoved` (proposed) |
 
 Every governed transition above is grounded in TRD10's status enum (`invited`/`active`/`suspended`/`removed`) and its own Membership Rules — no transition is inferred solely from enum ordering; each is cross-checked against the "historical records remain" and "at least one active owner" rules, both of which directly constrain REMOVE and SUSPEND respectively.
+
+> **[2026-08-18 — Founder disposition addendum, §28 FD-2-STAFF]** The **INVITE** row above (`— → invited` on `businessMembership`) is superseded by the resolved invitation model: INVITE now creates a **Business Membership Invitation** record (§7, not a `businessMembership`), with lifecycle states `pending → accepted / revoked / expired` (§7's addendum below). The **ACCEPT** row's mechanics are corrected accordingly: ACCEPT consumes a `pending` invitation and, in one atomic operation (§8's addendum below), creates the `businessMembership` document directly with `status: "active"` — there is no intermediate `businessMembership` row in an `invited` state. `invitedBy`/`invitedAt` are recorded on the invitation record and copied onto the created membership for historical continuity (matching TRD10's existing field names). The governed-permission requirement (`staff.manage` for INVITE) and every other constraint in the table (Owner-protection on SUSPEND/REMOVE, non-reversibility of REMOVE, etc.) is unchanged.
 
 ### 5.3 What is NOT governed by any source found
 
@@ -261,6 +265,8 @@ This mirrors the same separation Authentication already enforces between a *cred
 
 **No governed mechanism selection exists.** This package does not invent one. §21 (Founder Decision FD-1-STAFF) surfaces the choice explicitly.
 
+> **[2026-08-18 — Founder disposition, §28 FD-1-STAFF]** **Approved with clarification.** Option (b) — email/phone as a delivery/targeting address, with the Customer Identity bound only on governed acceptance — is confirmed as the MVP mechanism, **not** as a stand-alone policy but with the explicit clarification that email/phone is **never** authoritative 11thONUS identity under any circumstance; a Business may invite a prospective staff member who does not yet have a registered/resolved Customer Identity at all. Options (a) (existing-identity-only) and (d) (loyalty-number invitation) are not excluded as *additional*, narrower invitation-target conveniences a future package may add (e.g., once `DEC-ID-004` resolves, per §16.2's confirmed out-of-scope disposition below) — but they are not required for MVP and this package does not design them. Option (c) (bare invite code/link) is **not adopted**: FD-3-STAFF's acceptance-authority disposition (§8 addendum) requires more than possession of a reference/token.
+
 ---
 
 ## 7. Invitation Record / Token Model (Phase H)
@@ -278,6 +284,51 @@ Given §6's finding that `userId` is required by the current schema and its read
 
 Option **B** (separate invitation record) is recommended over C because it requires no amendment to the already-Founder-reviewed, already-implemented `businessMembership` schema or its evaluator-facing reader (`ENG-P2-004B`/`004D` stay untouched — respecting `ENG-P2-004`'s Complete, unmodified status), and over A because A would make `DEC-ID-004`'s resolution a hard blocker for any staff invitation at all, which seems disproportionate for a feature PRD3 describes as core to business onboarding. This is a **recommendation for Founder disposition**, not an authorized design — see §21 (FD-2-STAFF). If Option B is selected, the new collection is itself only a *proposal* (§18), not an authorized schema, per the task's explicit "do not amend schema yet" instruction.
 
+> **[2026-08-18 — Founder disposition, §28 FD-2-STAFF]** **Approved: Option B, separate invitation record.** `businessMembership.userId` is confirmed **non-nullable**, unchanged from TRD10 §10.6.4's current declaration; Option C is explicitly rejected. A `businessMembership` is created only once an authoritative Customer Identity exists, through successful invitation acceptance — never before. The pre-acceptance record — a **"Business Membership Invitation"** — is a structurally separate, Business-scoped concept from `businessMembership`, defined below. This resolution does not reopen or alter `ENG-P2-004`'s membership-reader semantics (`businessMembershipDocument.ts` is untouched) — the completed `ENG-P2-004` invariant that a membership represents a known identity/Business relationship is preserved exactly.
+
+### 7.1a Business Membership Invitation — conceptual data (proposal only, not a frozen schema)
+
+Per the approved model, the minimum conceptual data a pre-acceptance invitation needs — proposed for the later `ENG-P2-003A` implementation package to formalize as an actual Firestore contract (§18), not frozen here:
+
+| Field (conceptual) | Purpose |
+|---|---|
+| Invitation identity/reference | An opaque, unguessable identifier distinct from the eventual `businessMembership.id` — the reference an invitee's acceptance action names, never a client-supplied `userId` |
+| `businessId` | The inviting Business — invitations are Business-scoped, matching the cross-Business isolation principle §13 already establishes for memberships |
+| Intended role | `manager` or `staff` only — never `owner` (§11.4 unchanged; role assignment reconciliation §11.2a below) |
+| Delivery target + type | The email address or phone number (and which kind) the invitation was targeted to — delivery/verification evidence, never identity (§6.2/§6.3 unchanged) |
+| Inviter identity | The accepting-authority-holding member who issued the invitation (mirrors `invitedBy`) |
+| Lifecycle state | `pending` / `accepted` / `revoked` / `expired` — see §7.2a below |
+| Issued time | Mirrors `invitedAt` |
+| Expiry | A time-limited boundary per FD-4-STAFF (§9 addendum) — the concrete duration is Engineering-owned, not frozen here |
+| Terminal-state metadata | When/how the invitation reached a terminal state (accepted/revoked/expired), for audit/history — terminal records are retained, never hard-deleted (FD-4-STAFF) |
+| Acceptance linkage | Once accepted, a reference to the `businessMembership` the acceptance created, so the invitation's history remains traceable |
+| Schema/version metadata | If repository convention calls for it (matching `schemaVersion` on every other Capability 2/3 document) |
+
+No field beyond this minimum is proposed. This is conceptual/proposed data only — not a frozen Firestore schema (§18 addresses the governance question of who formalizes it and when).
+
+### 7.2a Invitation lifecycle (resolved)
+
+```
+              INVITE
+  (none) ─────────────► pending
+                            │
+        ┌───────────────────┼───────────────────┐
+        │ ACCEPT             │ REVOKE             │ (time elapses past expiry)
+        ▼                    ▼                    ▼
+     accepted             revoked              expired
+   (terminal —         (terminal —          (terminal —
+   businessMembership   retained, never       retained, never
+   created, §8a)        hard-deleted)         hard-deleted)
+```
+
+- **`pending`** — the only non-terminal state; the invitation may be ACCEPTed or REVOKEd, or may lapse into `expired`.
+- **`accepted`** (terminal) — set atomically with `businessMembership` creation on successful ACCEPT (§8a).
+- **`revoked`** (terminal) — set when the same `staff.manage`-holding actor who could INVITE cancels a still-`pending` invitation before acceptance.
+- **`expired`** (terminal) — set once the invitation's time-limited window has elapsed without acceptance; an expired invitation cannot be accepted (FD-4-STAFF, §9 addendum).
+- **No fifth state is needed.** This package reviewed whether a distinct "consumed" state is required beyond `accepted` and found none — `accepted` already implies single-use consumption (FD-4-STAFF: single-use, incapable of reacceptance).
+- **Resend/reissue** creates a **new** invitation record (new reference/id) rather than reactivating a terminal one (FD-4-STAFF) — mirrors the REMOVE-is-non-reversible pattern §5.3 already recommends for memberships, applied consistently to invitations.
+- **Terminal records are retained** for operational/audit history, never hard-deleted — matching TRD10's existing "historical membership records shall remain after removal" principle, extended by this disposition to invitations.
+
 ---
 
 ## 8. Invitation Acceptance Authority (Phase I)
@@ -290,6 +341,22 @@ The task requires that acceptance not be authorized merely by possessing a membe
 - If the accepting identity's verified contact information does **not** match the invitation's delivery address, ACCEPT must fail closed (`RESOURCE_NOT_FOUND` or `AUTH_FORBIDDEN`, §16) — never silently accept on the invitation-reference alone (this is the exact anti-pattern the task calls out: "Do not authorize acceptance merely because someone possesses a membership ID").
 
 **This is this package's design recommendation, grounded in the AUTH-06 precedent already Founder-approved for an analogous problem (recovery-proof authority) — it is not itself a Founder-ratified acceptance-authority policy**, since no `DEC-ID-*` decision addresses invitation acceptance specifically. Surfaced at §21 (FD-2-STAFF, bundled with the invitation-model decision since the two are inseparable).
+
+> **[2026-08-18 — Founder disposition, §28 FD-3-STAFF]** **Approved with clarification.** ACCEPT requires all three of: (1) an authenticated Customer Identity (resolved server-side via the existing Authentication→Customer-Identity path, never client-supplied); (2) a valid invitation proof (the opaque reference resolving to exactly one `pending` invitation, per §7.2a); and (3) secure verification that the accepting identity is entitled to accept, where the invitation was targeted to an email address or phone number. **Possession of the invitation reference alone is confirmed insufficient** — this package's recommended "verified contact must match the delivery target" mechanism is one valid way to satisfy requirement (3), but the Founder's disposition leaves the exact secure mechanism **Engineering-owned** within these three constraints (e.g., a verified-claim match, a delivery-bound one-time confirmation step, or another mechanism achieving the same entitlement guarantee) — not frozen as the single literal design here. The client never chooses or supplies the authoritative membership `userId` under any mechanism. Email/phone remains delivery/verification evidence only and never substitutes for Customer Identity as platform identity (§6.2/§6.3 unchanged).
+
+#### 8a. Acceptance consistency boundary (resolved)
+
+A successful ACCEPT must atomically ensure all of the following, or fail closed with no partial effect:
+1. The invitation still resolves and is `pending` (not already `accepted`/`revoked`/`expired`).
+2. The principal is authenticated (Authentication→Customer-Identity resolution succeeds).
+3. Acceptance authority is verified per FD-3-STAFF above (delivery-target entitlement check).
+4. The authoritative Customer Identity is resolved (never client-supplied).
+5. No duplicate active/invited membership already exists for this `(userId, businessId)` pair (mirrors §16.3's existing `ALREADY_A_MEMBER` handling).
+6. The `businessMembership` document is created, `status: "active"`, `userId` populated from step 4, `invitedBy`/`invitedAt` copied from the invitation.
+7. The invitation is marked `accepted` (terminal, §7.2a) and linked to the created membership.
+8. Durable audit/outbox evidence is recorded (§17).
+
+**Recommendation: yes, this requires a Firestore transaction.** Steps 5–7 constitute a classic check-then-act sequence (duplicate-membership check, membership creation, invitation consumption) across two documents (the invitation and the new membership) that must never be observed in a partial state — the same TOCTOU-safety concern `ENG-P2-004D`'s `authorizeAndExecute` boundary and `ENG-P2-002B`'s bootstrap transaction already establish as this platform's governed pattern for exactly this shape of multi-document, check-then-write operation. This package does not design the literal transaction code (that is `ENG-P2-003B`'s scope) — it records the requirement and the precedent it must follow.
 
 ---
 
@@ -304,6 +371,8 @@ Recommended (unauthorized) minimum, modeled on already-governed idempotency/secu
 - **Reissue/resend**: a cancelled or expired invitation is re-created (new record/reference), not "revived" — consistent with §5.3's REMOVE-is-non-reversible recommendation.
 
 None of the above is adopted as governed policy by this package.
+
+> **[2026-08-18 — Founder disposition, §28 FD-4-STAFF]** **Approved.** Staff invitations shall be: time-limited; single-use; revocable before acceptance; incapable of acceptance after expiry, revocation, or consumption; reissued through a **new** invitation rather than reactivating a terminal one. Terminal invitation records are retained for operational/audit history, never hard-deleted (§7.2a). **Remaining Engineering-owned implementation details, not frozen by this disposition:** exact expiry duration; token entropy; token encoding; storage representation; bounded retry parameters. This package continues to invent no numeric value.
 
 ---
 
@@ -343,6 +412,8 @@ Both exist today and are exactly the identifiers the task's Phase Q/R asked this
 
 This package does **not** resolve this ambiguity by inventing an identifier (per the task's explicit instruction not to do so without surfacing it as new) — it is surfaced as **Founder Decision FD-6-STAFF** (§21).
 
+> **[2026-08-18 — Founder disposition, §28 FD-6-STAFF]** **Approved: new sensitive permission, recorded as an approved future catalogue entry.** The narrow reading (reading 2) is confirmed: `staff.manage` does **not** cover role assignment/change. A new sensitive permission identifier is approved: **`staff.assignRole`** — authority to change a Business membership's role between Staff and Manager. `staff.assignRole`'s actual runtime addition to `sensitivePermissionCatalogue.ts` is **not performed by this document** (it is out of scope for this docs-only package, per its own non-authorization list) — it is recorded here as an **approved future catalogue entry** for a later, separately-authorized implementation package (§22 recommends its home). `staff.manage` and `staff.assignPermissions` are **not** reinterpreted to include role-change authority — they remain exactly as `sensitivePermissionCatalogue.ts` defines them today, untouched.
+
 ### 11.3 Who may invite, and does the assigned role matter?
 
 - **Owner** holds `staff.manage` by default (`owner_only` default state) — may invite any role.
@@ -365,6 +436,30 @@ This package does **not** resolve this ambiguity by inventing an identifier (per
 
 **All of the above must be enforced by deferring to `ENG-P2-004`'s evaluator** (its already-Complete override-precedence and audit machinery) — `ENG-P2-003` commands must never implement a local, parallel authorization check. This mirrors `ENG-P2-004-CORR-001`'s own precedent: a "pre-operational Business authorization correction" that (per its title) corrected `ENG-P2-002`'s own commands to defer to `ENG-P2-004` rather than re-implement authorization locally — the same discipline applies here.
 
+### 11.6 Founder disposition — role policy and the two authoritative matrices (2026-08-18, §28 FD-5-STAFF/FD-6-STAFF)
+
+**Every question in §11.5's table is now resolved.** `staff.assignRole` (§11.2's approved catalogue entry) governs role-change; `staff.manage` (unchanged) governs invite/suspend/reactivate/remove. Initial invitation role is **`manager` or `staff` only, never `owner`** (§7.1a's "Intended role" field; §11.4's Owner-assignment exclusion is unchanged and reconfirmed).
+
+#### 11.6.1 Staff-management target matrix (`staff.manage` — invite/suspend/reactivate/remove)
+
+| Actor \ Target | Owner | Manager | Staff | Self |
+|---|---|---|---|---|
+| **Owner** | N/A (structurally excluded, §12) | Allowed | Allowed | **Prohibited** (self-suspend/self-remove via staff-management commands) |
+| **Manager holding `staff.manage`** | **Prohibited** (may never suspend/reactivate/remove a Manager or Owner) | **Prohibited** | Allowed | **Prohibited** |
+| **Staff** | **Prohibited** (cannot administer memberships at all) | **Prohibited** | **Prohibited** | **Prohibited** |
+
+Manager's `staff.manage` grant is narrowed by this disposition to **Staff-membership administration only** — a Manager may never suspend/reactivate/remove another Manager, and may never target the Owner. Self-action (self-suspend/self-remove through staff-management commands) is prohibited for every actor, not only Manager. This corrects §12.1's prior "not found in any source" self-action gap (§12 addendum below) and narrows §11.3's prior "Manager may invite only if explicitly granted `staff.manage`" wording — a Manager's `staff.manage` grant, once approved, carries this Staff-only target ceiling structurally, not merely by convention.
+
+#### 11.6.2 Role-change target matrix (`staff.assignRole` — Staff↔Manager only)
+
+| Actor \ Target | Owner | Manager | Staff | Self |
+|---|---|---|---|---|
+| **Owner** | **Prohibited** (`role=owner` assignment/reassignment is never in scope, §11.4; ownership transfer stays separately governed) | Allowed (Manager→Staff) | Allowed (Staff→Manager) | **Prohibited** |
+| **Manager** | **Prohibited** | **Prohibited** (no role-change authority at MVP, non-delegable) | **Prohibited** (no role-change authority at MVP, non-delegable) | **Prohibited** |
+| **Staff** | **Prohibited** | **Prohibited** | **Prohibited** | **Prohibited** |
+
+`staff.assignRole` is **Owner-only and non-delegable to Manager at MVP** — unlike `staff.manage`/`staff.assignPermissions`, its catalogue entry (once added, §22) carries no `explicitGrantEligibleRole` for Manager. No actor may change their own role through this command, including Owner. `ENG-P2-003` may never assign `role: "owner"` through any command (§11.4 reconfirmed, §12 addendum). `staff.manage` and `staff.assignPermissions` are **not** reinterpreted as role-change authority — `staff.assignRole` is a fully distinct permission, consumed by a fully distinct command.
+
 ---
 
 ## 12. Suspend / Reactivate / Remove & Owner Protection (Phases N, O)
@@ -376,12 +471,20 @@ Already tabulated in §5.2. Restated here for the specific self-action/session-e
 - **Required permission**: `staff.manage` for all three (§11.1).
 - **Authorized roles**: Owner (default); Manager (if explicitly granted).
 - **Self-action rules**: not found in any source — **not invented here**. Whether a Manager may suspend/remove themselves is a gap; recommended default (unauthorized) is to disallow self-suspend/self-remove for any membership that would leave the acting identity locked out of a Business it manages, but this is not grounded in a governed source (§21, folded into FD-6-STAFF).
+
+> **[2026-08-18 — Founder disposition, §28 FD-5-STAFF]** **Resolved.** Self-suspend/self-remove through staff-management commands is **prohibited for anyone**, not only Manager (§11.6.1's matrix, "Self" column). Manager holding `staff.manage` may administer **Staff memberships only** — may **not** suspend/reactivate/remove another Manager, and may **not** administer Owner. Staff cannot administer memberships at all. This supersedes the "recommended default, not grounded" framing above — it is now governed policy.
 - **Can Owner membership be targeted?** No — see §12.2 (Owner Protection).
 - **Session effect**: none, by design (§12.3).
 
 ### 12.2 Owner Protection (machine-enforced invariant)
 
 TRD10's Membership Rule — *"A business must retain at least one active owner"* — is the authoritative source for this invariant. This package's required design consequence: **SUSPEND and REMOVE must structurally refuse any target membership where `role === "owner"` and the target is the Business's sole active Owner**, exactly mirroring `permissionOverride.ts`'s already-implemented pattern (`permissionOverrideCannotTargetOwnerError` — an override can never target an Owner membership at all, full stop, not merely "the sole Owner"). Given the catalogue's `business.transferOwnership` entry is `explicitGrantRequired: false` (§11.4), this package recommends the **stronger** rule — Owner membership can never be targeted by ordinary SUSPEND/REMOVE/role-change commands at all, matching the override precedent's absolute exclusion, rather than a "count check" that only blocks removal of the *last* Owner. Ownership transfer (the only governed way an Owner's status could ever legitimately change) remains **separately deferred** — confirmed, not assumed, per §11.4.
+
+> **[2026-08-18 — Founder disposition addendum, §28 FD-5-STAFF/FD-6-STAFF]** Owner Protection is reconfirmed, and now stated exhaustively across every command surface this package defines: the Owner membership can never be a target of `staff.manage` (invite is moot — Owner already exists; suspend/reactivate/remove), `staff.assignRole` (§11.6.2 — `role=owner` is never an assignable value, and Owner-as-target is prohibited outright, not merely "the sole Owner"), or `staff.assignPermissions` (§14, unchanged — `permissionOverrideCannotTargetOwnerError` already enforces this at the `ENG-P2-004A` contract level). Ownership transfer remains the sole, separately-governed exception path and stays entirely outside `ENG-P2-003`.
+
+### 12.4 Operational Staff Roster Visibility (separate read-surface policy, §28 FD-5-STAFF)
+
+> **[2026-08-18 — Founder disposition, §28 FD-5-STAFF]** Roster visibility is confirmed as a **separate policy from `staff.manage` administration**, not a byproduct of holding it. Active Business members may view the Business's operational staff roster **without** holding `staff.manage` — this is a read surface, distinct from the write/administration surface §11.6.1 governs. The roster view must expose only the **minimum operational information required** (e.g., name, role, status — the kind of information needed to operate day-to-day, not exhaustive identity data) and must **never** expose protected Customer Identity information (profile data, contact details, auth/trust internals, or anything `ENG-P2-004`'s `customer.viewProtectedProfile` sensitive permission would otherwise gate). **This package does not enumerate an exact roster DTO field list** — the precise fields are Engineering/frontend-owned and must be finalized during the relevant implementation/frontend package (§19), consistent with how `permissionSetId`'s serialization and expiry durations are left to their respective owning packages elsewhere in this document. The governing constraint recorded here is exclusionary, not a frozen inclusion list: whatever fields are chosen, they must exclude protected Customer Identity/auth/trust/permission-audit internals.
 
 ### 12.3 Authentication/session separation (Phase V)
 
@@ -416,6 +519,8 @@ No new mechanism is invented here — this section restates, for the staff-manag
 
 `ENG-P2-003` must **consume** these 004A–D contracts exactly as written, per the task's explicit instruction not to redesign evaluator semantics.
 
+> **[2026-08-18 — Founder disposition addendum, §28 FD-6-STAFF]** Reconfirmed: `staff.assignPermissions` (override administration, this section) stays entirely separate from `staff.manage` (§11.1) and the newly-approved `staff.assignRole` (§11.2/§11.6.2). Role change is **never** modeled as a permission override — it is its own command, gated by its own sensitive permission, producing a `role` field mutation on `businessMembership`, never a `PermissionOverrideRecord` entry. `PermissionOverride`'s existing semantics (`permissionOverride.ts`, `ENG-P2-004A`) are unmodified by this disposition.
+
 ---
 
 ## 15. Shared-Device Authentication Disposition (Phase S)
@@ -425,6 +530,8 @@ No new mechanism is invented here — this section restates, for the staff-manag
 Options the decision register itself lists (verbatim): *"(a) per-staff PIN switch on shared session; (b) full re-login per staff; (c) device-bound staff selection + PIN."* No option is selected; the register states *"needs UX/security prototyping."*
 
 **Disposition (verified, not assumed):** `DEC-SEC-003`'s own "Blocks" field says *"staff app UX"* — not "staff membership backend architecture." Every membership-model, lifecycle, invitation, and authorization element this package designs (§4–§14) is defined entirely in terms of the `businessMembership` record and `ENG-P2-004`'s evaluator — neither depends on how a physical device authenticates a returning staff member. **`ENG-P2-003`'s backend membership contracts can therefore proceed independent of `DEC-SEC-003`'s resolution; the shared-device UX itself remains deferred**, confirming the task's stated likely disposition rather than merely assuming it.
+
+> **[2026-08-18 — Founder disposition, §28 FD-7-STAFF]** **Deferred / non-blocking, confirmed.** Shared-device staff switching remains governed through `DEC-SEC-003` and does **not** block `ENG-P2-003A/B/C/D` backend implementation. Any future shared-device solution must preserve individual identity, individual authentication, and individual action attribution, and must never introduce shared staff accounts (unconditional, per `DEC-ID-002`, §3). **Confirmed by direct inspection of this package's own contracts:** no PIN, device-identifier, or session-switch field appears anywhere in the `businessMembership` schema (§4.1), the invitation conceptual data (§7.1a), the lifecycle transitions (§5), or the acceptance boundary (§8a) — shared-device UX is kept entirely outside the current backend Staff Membership packages, exactly as this disposition requires.
 
 ---
 
@@ -436,9 +543,13 @@ Its "Current confirmed position" (verbatim): *"staff limits exist as plan entitl
 
 **Disposition:** the `businessMembership` domain (schema, lifecycle, authorization) can be fully designed and eventually implemented without concrete plan-limit numbers — exactly as `ENG-P2-002`/`ENG-P2-004` were implemented while `DEC-SUB-001/003/008` (plan names, trial structure, pricing) remained open. What **cannot** proceed without `DEC-SUB-002` resolving is the **INVITE command's entitlement-enforcement check** (comparing current active-membership count against a concrete plan ceiling) — that specific, narrow piece of INVITE must either (a) wait for `DEC-SUB-002`, or (b) ship INVITE without entitlement enforcement initially, with enforcement added as a later, additive correction once the plan catalogue exists. This package does **not** hardcode any plan-count value (per the task's explicit instruction) and recommends option (b) only as the smaller implementation-sequencing question, not as a policy decision — surfaced at §21 (FD-7-STAFF, low priority, safely deferrable).
 
+> **[2026-08-18 — Founder disposition, §28 DEC-SUB-002 cross-cutting item]** `DEC-SUB-002` **remains open and non-blocking**, confirmed. No staff-count value is invented anywhere in this document. **Correction to the wording above:** option (b) is confirmed, but must not be read as "production invitation enforcement will *permanently* ignore subscription entitlements." The correct statement is: **entitlement enforcement is not implemented at MVP contract-design time; it is an integration requirement that must be added once `DEC-SUB-002`'s governed subscription-entitlement contract exists.** The specific, identified integration point is `ENG-P2-003B`'s **INVITE command** — it is the sole call site that would consume a not-yet-existing entitlement check (a staff-count-vs-plan-ceiling comparison) once that contract is governed. `ENG-P2-003B`'s package scope (§22) is updated to record this as a known future integration hook, not a permanently-omitted concern.
+
 ### 16.2 `DEC-ID-004` (customer phone lookup) — `OPEN_FOUNDER`, verified
 
 As found in §10 above: `DEC-ID-004` governs point-of-sale customer lookup, a distinct feature from staff invitation. This package finds it affects Staff Identity **only conditionally** — if a future implementation chooses invitation Option 6.4(a) (existing-identity lookup) as the invitation mechanism, and specifically chooses to reuse the *same* lookup surface `DEC-ID-004` will eventually govern, rather than a separately-scoped staff-invitation lookup. **Recommendation: do not let `DEC-ID-004` block Staff Identity architecture** — it is unrelated to the membership model itself, matching the task's own stated expectation, now confirmed by direct comparison of the two decisions' text rather than assumed.
+
+> **[2026-08-18 — Founder disposition, §28 DEC-ID-004 cross-cutting item]** **Confirmed out of scope.** Customer phone lookup is POS/customer-lookup functionality, not a Staff Membership architecture dependency. Staff invitation is **not** coupled to `DEC-ID-004` — FD-1-STAFF's approved mechanism (§6.4 addendum) is email/phone-as-delivery-address, which requires no customer-lookup capability at all. `DEC-ID-004` remains `OPEN_FOUNDER`, unmodified in `decision-register.md`, and unaffected by this disposition.
 
 ### 16.3 Error taxonomy mapping (Phase Y)
 
@@ -464,19 +575,37 @@ No new category is proposed — every anticipated `ENG-P2-003` failure maps onto
 | Cross-business membership mismatch | `AUTH_FORBIDDEN` |
 | Subscription/staff-count limit reached | `SUBSCRIPTION_LIMIT_REACHED` — already exists precisely for this purpose |
 
+> **[2026-08-18 — Founder disposition addendum, §28]** Re-mapped against the now-resolved invitation/membership split and the FD-3/FD-4/FD-5/FD-6 dispositions — still zero new categories:
+
+| Anticipated failure (post-disposition) | Category |
+|---|---|
+| Invalid/unresolvable invitation reference | `RESOURCE_NOT_FOUND` |
+| Expired invitation (FD-4-STAFF) | `RESOURCE_NOT_FOUND` (an expired reference no longer resolves as acceptable — the ambiguity the original §16.3 flagged is resolved in favor of treating an expired invitation the same as a non-existent one for ACCEPT purposes; this remains an Engineering-owned mapping choice, not a taxonomy gap) |
+| Revoked invitation | `RESOURCE_NOT_FOUND` (same reasoning — a revoked reference no longer resolves) |
+| Consumed (already-`accepted`) invitation replayed | `IDEMPOTENCY_CONFLICT` (mirrors AUTH-06's recovery-proof-reuse rejection pattern §8) |
+| Duplicate active/invited membership (§8a step 5) | `VALIDATION_FAILED` — unchanged from the original table |
+| Cross-Business invitation reference used against the wrong Business context | `AUTH_FORBIDDEN` — mirrors §13's cross-business membership-mismatch mapping |
+| Wrong accepting identity (FD-3-STAFF entitlement-verification failure) | `AUTH_FORBIDDEN` (or `RESOURCE_NOT_FOUND` if the reference itself does not resolve for that principal — an Engineering-owned choice between the two fail-closed categories, consistent with the pattern already accepted for expiry above) |
+| Unauthorized staff-management target (§11.6.1 matrix violation — e.g., Manager targeting a Manager) | `AUTH_FORBIDDEN` — deferred to `ENG-P2-004`'s evaluator outcome, never a locally-thrown category |
+| Target is Owner (`staff.manage`, `staff.assignRole`, or `staff.assignPermissions`) | `AUTH_FORBIDDEN` — unchanged |
+| Role-assignment denied (§11.6.2 matrix violation — e.g., Manager attempting a role change, or self-role-change) | `AUTH_FORBIDDEN` |
+| Subscription/staff-count limit reached (once `DEC-SUB-002`'s contract exists, §16.1 addendum) | `SUBSCRIPTION_LIMIT_REACHED` — future integration hook only, not exercised until that contract is governed |
+
 ---
 
 ## 17. Events / Audit Model (Phase X)
 
 Reusing the shared outbox pattern already established by `ENG-P1-002` and consumed by `ENG-P2-002B` (`businessEvents.ts`'s `DomainEvent<T>`/`buildEventType` contract) and by AUTH-08 (durable, at-least-once, `eventId`-deduplicated outbox emission) — this package proposes, as **candidate names only, not Founder-approved facts**:
 
-- `StaffInvited`
+- ~~`StaffInvited`~~
 - `StaffMembershipActivated`
 - `StaffMembershipSuspended`
 - `StaffMembershipReactivated`
 - `StaffMembershipRemoved`
 - `StaffRoleChanged`
 - `PermissionOverrideChanged`
+
+> **[2026-08-18 — Founder disposition addendum, §28 FD-2-STAFF]** `StaffInvited` (struck through above) is superseded by the resolved invitation/membership split: the invitation record's own lifecycle (§7.2a) now more accurately produces its own candidate event names — **`StaffInvitationCreated`**, **`StaffInvitationAccepted`**, **`StaffInvitationRevoked`**, **`StaffInvitationExpired`** — since an invitation is no longer a `businessMembership` state transition. `StaffMembershipActivated` is retained: it now fires at the point ACCEPT creates the `businessMembership` document (§8a), rather than at a separate "invited→active" transition. `StaffMembershipSuspended`/`Reactivated`/`Removed`/`StaffRoleChanged`/`PermissionOverrideChanged` are unchanged. Every name above remains a **candidate, Engineering-owned implementation-detail list**, not a Founder-approved/frozen event contract — nothing in `decision-register.md` or the FD-1…FD-7-STAFF dispositions governs literal event names, consistent with `ENG-P2-002-DESIGN-001` §24's own "Business events" disposition (event names are design-level recommendations, finalized during implementation).
 
 Every payload should follow `BusinessCreatedPayload`'s already-approved privacy-minimal pattern (`businessEvents.ts`'s own comment: *"deliberately excluded — no governed necessity … already durably available on the … document itself"*) — carry only identifiers (`membershipId`, `businessId`, `userId`, categorical `role`/`status`), never contact details or permission-override content beyond identifiers. `ENG-P2-004`'s sensitive-permission-decision audit (already-Complete, `ENG-P2-004C`) stays entirely separate — these are lifecycle/domain events, not authorization-decision audit records, matching the task's explicit instruction.
 
@@ -491,6 +620,18 @@ Every payload should follow `BusinessCreatedPayload`'s already-approved privacy-
 | Invitations, if Option B (§7) is selected | **Insufficient as-is** — would require a new collection, tentatively named `businessMembershipInvitations` (delivery address, businessId, proposed role, invitedBy, expiry, status: pending/accepted/revoked/expired, opaque reference/token). **Proposal only** — this package does not amend TRD10, per the task's explicit instruction; a future, separately-governed TRD10 amendment (matching the precedent `ENG-P2-004D`'s 2026-08-15 correction note itself set — a documented, dated correction, not a silent rewrite) would be required before implementation |
 
 No schema is amended by this document.
+
+### 18.1 Governance-consequence finding (2026-08-18, grounded precedent investigation)
+
+**Question:** now that FD-2-STAFF (§7 addendum) makes a separate Business Membership Invitation collection Founder-approved architecture, does `ENG-P2-003A` require a formal, standalone TRD10 amendment *before* it may define the invitation's persisted contract — or may the implementing package define its own additive, non-`businessMembership` collection with its own dated TRD10 tracking note, the same way other additive collections in this repository were introduced?
+
+**Investigation performed:** direct search of TRD10 (`docs/02-technical/trd/10-firestore-data-architecture.md`) for `authenticationReferences`, `loyaltyNumbers`, `qrIdentityRecords`, `trustRecords`, `businessCodeReservations`, `idempotencyRecords`, `outboxEntries`, and `recoveryProofReferences` — **zero matches** for any of these collection names anywhere in TRD10's own text (confirmed by direct grep of the file, not assumed). Cross-checked against `CDR-001`'s own dated notes, which record the actual governance history in the implementer's own words:
+
+- `CDR-001` §5 Capability 2 (`CAP-P2-ITM-B` independent review note, 2026-08-16, quoted verbatim): *"Independent review re-verified `ITM-DESIGN-001` §12's Firestore schema authority directly against TRD10 (found six other Capability-2 collections — `loyaltyNumbers`, `qrIdentityRecords`, `outboxEntries`, `authenticationReferences`, `idempotencyRecords`, `recoveryProofReferences` — already implemented and merged with zero TRD10 section, establishing clear precedent that a domain-design document, not a TRD10 amendment, governs a new collection's shape at this stage."*
+- `engineering-implementation-programme.md`'s `ENG-P2-002B` independent-review note (2026-08-19, quoted verbatim) reaches the identical conclusion for `businessCodeReservations`: *"researched `businessCodeReservations` collection governance: confirmed legitimate reuse of the `loyaltyNumbers`/`qrIdentityRecords` doc-ID-as-value uniqueness precedent … TRD10 enumerates none of the existing implementation-infrastructure collections (`loyaltyNumbers`/`idempotencyRecords`/`outboxEntries`/`authenticationReferences`) either, so no schema amendment was required or made."*
+- Every one of these collections was instead governed by its **own owning design document** (`ITM-DESIGN-001` §12 for `trustRecords`/`recoveryProofReferences`; `ENG-P2-002-DESIGN-001`/its implementation reports for `businessCodeReservations`) and later, where TRD10 *is* eventually amended, the amendment is delivered **as part of the implementing package itself**, dated and additive (the one confirmed exception found — TRD10 §10.6.4's own `permissions` field — was amended by `ENG-P2-004D`, the implementing package, via its "2026-08-15 correction" note, not by a prerequisite standalone TRD10-amendment package).
+
+**Finding (grounded, not a guess):** the repository's own, consistently-applied precedent — independently established across at least two prior domains (ITM's `trustRecords` family and Business Identity's `businessCodeReservations`) and re-confirmed by two separate independent-review passes — is that **an implementing package may define an additive, non-conflicting collection's shape in its own governing design document, and may deliver the corresponding TRD10 section as part of that same implementation package's own delivery, with a dated addition rather than a silent rewrite.** No prerequisite, standalone "schema-correction" package preceded any of the four collections found. Applying this precedent directly: **`ENG-P2-003A` may define the Business Membership Invitation's persisted contract directly** (building on §7.1a's conceptual data above), **with the corresponding TRD10 §10.6.4a (or similar) addition delivered as part of `ENG-P2-003A`'s own implementation package**, exactly as `ITM-B` delivered `trustRecords`' TRD10 documentation and `ENG-P2-002B` delivered `businessCodeReservations`'. A separate, prerequisite docs/schema-correction package is **not required** by this finding. This is this package's own grounded conclusion, not a re-litigation of `ENG-P2-004D`'s already-Founder-approved `permissions`-field correction (§4.1, unchanged).
 
 ---
 
@@ -539,9 +680,17 @@ Business Identity (ENG-P2-002,   ENG-P2-004 role-context/
 
 No cycle exists. Staff Membership depends on Customer Identity, Authentication, Business Identity, and `ENG-P2-004` — all four already `Complete`/merged. It has no reverse dependency from any of those four (none of them reference `businessMembership`'s write-side; `ENG-P2-004` only *reads* the schema, a one-directional consumption already in place). Subscription, Shared-device UX, and Frontend all depend *on* Staff Membership, never the reverse. **Result: acyclic.**
 
+> **[2026-08-18 — Founder disposition addendum, §28]** Re-confirmed acyclic after incorporating every FD-1…FD-7-STAFF disposition. Two new edges are added by the dispositions, neither introduces a cycle:
+> - **Invitation → Staff Membership** (new node, sits between Business Identity/`ENG-P2-004` and Staff Membership in the same position `businessMembership` occupied before — §7.1a/§7.2a's Business Membership Invitation record is consumed by ACCEPT to produce a `businessMembership`, a one-directional data flow with no reverse reference).
+> - **`ENG-P2-004`-owned `staff.assignRole` catalogue addition → `ENG-P2-003C`'s role-change command** (§22 below) — this is a **forward** dependency only: the recommended bounded `ENG-P2-004`-owned correction package (§22) adds one new catalogue entry that `003C` consumes; the correction package has no dependency on any `ENG-P2-003` code or output, so no reverse edge exists and no cycle is created.
+>
+> Subscription's dependency on Staff Membership gains one specific, narrow edge (§16.1 addendum: `ENG-P2-003B`'s INVITE command as the future integration hook) — still forward-only, Subscription depends on Staff Membership existing, not the reverse. **Result: acyclic, reconfirmed.**
+
 ---
 
 ## 21. Founder Decisions Required (Phase AB — consolidated register)
+
+> **[2026-08-18 — Founder disposition addendum, §28]** **All seven items below are now resolved.** This table is preserved unmodified as the historical record of the questions originally surfaced (matching this document's own additive/dated-supersession convention, §19's precedent) — it is **not** rewritten. The authoritative disposition for each item is recorded in **§28 Founder Dispositions**, which supersedes the "Recommendation"/open-question framing below in substance, not in text.
 
 | ID | Question | Why needed | Options | Recommendation | Package blocked | Safely deferrable? | Security impact | Customer/operational impact | Reversibility |
 |---|---|---|---|---|---|---|---|---|---|
@@ -615,6 +764,27 @@ Derived from the actual dependency structure found (§20), not mechanically copi
 
 No package is authorized to begin coding by this document. This matrix records readiness classification only.
 
+> **[2026-08-18 — Founder disposition addendum, §28]** §22/§23 above are preserved unmodified as history; both are superseded in substance by the following now that FD-1…FD-7-STAFF are all resolved.
+>
+> **Package decomposition, updated:**
+> - **`ENG-P2-003A`** — Membership & Invitation Domain Contracts. Now unblocked: builds the invitation contract per §7.1a's approved conceptual shape and the membership lifecycle per §5 (as corrected by §5.1/§5.2's addenda). Its own TRD10 §10.6.4a addition ships as part of this package (§18.1 finding) — added scope, not new blocking dependency.
+> - **`ENG-P2-003B`** — Invitation / Acceptance Persistence. Now unblocked: implements INVITE/REVOKE/EXPIRE against §7.2a's lifecycle and the ACCEPT transaction against §8a's consistency boundary. Carries the **future entitlement-integration hook** for `DEC-SUB-002` (§16.1 addendum) as a disclosed, non-blocking placeholder in its INVITE command — not implemented until that decision resolves.
+> - **`ENG-P2-003C`** — Membership Lifecycle & Role Management. Now unblocked for SUSPEND/REACTIVATE/REMOVE (§11.6.1's matrix) and Owner protection (§12.2 addendum). Its **role-change command specifically requires `staff.assignRole` to exist in `sensitivePermissionCatalogue.ts` first** (§11.2's approved future catalogue entry) — this package's own explicit instruction to prefer `ENG-P2-004` ownership of permission-catalogue definitions is followed here: **the actual catalogue edit does not belong in `ENG-P2-003A/003C`.** Recommendation: a bounded, `ENG-P2-004`-owned correction package — by analogy to the existing `ENG-P2-004-CORR-001` precedent (a bounded, catalogue/evaluator-scoped correction package, not a full re-open of `ENG-P2-004`) — tentatively `ENG-P2-004-CORR-002`, scoped **only** to adding the single `staff.assignRole` catalogue entry (Owner-only, non-delegable, per §11.6.2's matrix). `ENG-P2-003C`'s role-change command then **consumes** that entry, exactly as `003D` already consumes `ENG-P2-004A`'s existing entries — never authoring it itself. `ENG-P2-004-CORR-002` is not authorized by this document; it requires its own future Founder implementation authorization, same as every other implementation package here.
+> - **`ENG-P2-003D`** — Permission Override Administration. Unchanged; reconfirmed `staff.assignRole` is never modeled as an override (§14 addendum).
+> - **`ENG-P2-003E`** — Integration / Closure. Unchanged in shape; its event-wiring scope now includes the corrected candidate event names (§17 addendum).
+>
+> **Implementation Readiness Matrix, updated:**
+>
+> | Package | Classification | Basis |
+> |---|---|---|
+> | `ENG-P2-003A` | **READY AFTER DESIGN MERGE** | FD-1/FD-2-STAFF resolved (§28); invitation contract shape and TRD10 addition path both settled (§7.1a, §18.1) |
+> | `ENG-P2-003B` | **READY AFTER DESIGN MERGE** (depends on `003A`) | FD-3/FD-4-STAFF resolved (§28); `DEC-SUB-002` remains open but is explicitly non-blocking (§16.1 addendum) — INVITE ships without entitlement enforcement, integration hook only |
+> | `ENG-P2-003C` | **READY AFTER DESIGN MERGE for SUSPEND/REACTIVATE/REMOVE** (FD-5-STAFF resolved, §11.6.1); **role-change specifically is BLOCKED BY SIBLING PACKAGE** — requires the recommended `ENG-P2-004-CORR-002` catalogue addition (above) to merge first | Owner-protection and target-matrix enforcement are fully specified; only the catalogue entry's existence is an external prerequisite |
+> | `ENG-P2-003D` | **READY AFTER DESIGN MERGE** | Unchanged — no open Founder question was ever specific to `003D`'s own scope |
+> | `ENG-P2-003E` | **DEFERRED** — cannot begin before `003A`-`003D` reach `Complete` | Sequencing dependency only, unchanged |
+>
+> "READY AFTER DESIGN MERGE" means: no remaining Founder-decision blocker: each package still requires its own, separate, fresh Founder **implementation** authorization before coding begins — this document authorizes no implementation, for any package, at any readiness classification (unchanged from §22/§23's own original framing).
+
 ---
 
 ## 24. Capability-3 Status Recommendation (restated from §1.4)
@@ -632,6 +802,13 @@ This package applies the minimal dated-supersession correction identified in §1
 
 No historical report is rewritten. `decision-register.md` is **not modified** by this package — no pre-existing decision's content is altered, and no new pointer entry was found to be required by established convention (the design packages this one mirrors, `ENG-P2-002-DESIGN-001`/`ENG-P2-004-DESIGN-001`, do not add Decision Register pointer entries either — they cite decisions by ID from the roadmap document instead, the same pattern this package follows).
 
+> **[2026-08-18 — v1.1 addendum]** This v1.1 revision applies one further dated-supersession note to the same two files listed above (§25.1 below), appended after the notes this section originally described — the same two-file footprint, not a new file. `decision-register.md` remains unmodified. `docs/05-implementation/11thonus-master-workflow.md` §17 is **not** touched by this v1.1 revision, consistent with the precedent `ENG-P2-002-DESIGN-001`'s own v1.1 Founder-disposition-recording pass set (its dispositions §24 touched only `CDR-001` and the Engineering Implementation Programme, not the Master Workflow) — the alternate precedent (`ENG-P2-004-DESIGN-001`'s v1.1 pass, which did add a Master Workflow §17 bullet) is disclosed here as a divergent precedent, not silently ignored, but this document follows its own §25's already-established two-file convention rather than switch footprints mid-document.
+
+### 25.1 v1.1 tracking updates (applied by this revision)
+
+1. `docs/05-implementation/roadmap/CDR-001-capability-delivery-roadmap.md` §5 Capability 3 — a new dated note appended after the `[UPDATED 2026-08-19 — ENG-P2-003-DESIGN-001, programme-currency correction]` note (not rewriting it), recording that Founder dispositions FD-1-STAFF…FD-7-STAFF and the three cross-cutting items are now resolved (§28) and the design is ready for final Founder review.
+2. `docs/05-implementation/change-tracking/engineering-implementation-programme.md` — a synchronized note added at the same point in the P2 row's Notes cell.
+
 ---
 
 ## 26. Validation
@@ -642,6 +819,78 @@ Docs-only change. No `functions/`, `apps/web/`, Firestore Rules, or CI-configura
 
 ## 27. Report Pointer
 
-The full 53-item report required by the founder task specification is delivered as the task's final chat response (per the task's own instruction), not duplicated verbatim inside this document beyond the analysis above.
+The full report required by the founder task specification is delivered as the task's final chat response (per the task's own instruction), not duplicated verbatim inside this document beyond the analysis above.
 
-**FINAL GATE: ENG-P2-003 DESIGN READY FOR FOUNDER DISPOSITION**
+---
+
+## 28. Founder Dispositions (Recorded 2026-08-18)
+
+**Authority:** Founder, via task "ENG-P2-003-DESIGN-001 — Record Founder Dispositions and Prepare for Final Merge Review," 2026-08-18. Recorded here per this repository's established design-local disposition convention — the same inline, dated, attributed pattern already used by `ENG-P2-002-DESIGN-001` §24 (recording FD-1/FD-2/FD-3) and `ENG-P2-004-DESIGN-001` §17 (recording AD-1–AD-5) — **not** a new Decision Register (`DEC-*`) entry, and **not** a reopening of `DEC-ID-002`, `DEC-ID-003`, `DEC-ID-004`, `DEC-SEC-003`, `DEC-SUB-002`, or `DEC-SUB-009`, all of which remain unmodified in `decision-register.md` (verified: no edit made to that file by this revision). This section is the authoritative disposition record for the seven Founder Decisions this document's own §21 raised, plus three cross-cutting items; §21 itself is preserved unmodified as history (§21's own addendum note points here).
+
+### 28.0 Numbering-reconciliation note (read this first)
+
+The Founder's actual disposition task used its own canonical `FD-1-STAFF`…`FD-7-STAFF` numbering, given directly to this recording task. **This numbering does not map one-to-one onto §21's own placeholder `FD-1-STAFF`…`FD-7-STAFF` table**, which this document authored earlier, independently, before Founder disposition. The correspondence is:
+
+| Founder's authoritative ID (used throughout this §28 and this revision's addenda) | Topic | §21's placeholder item covering the same or an overlapping topic |
+|---|---|---|
+| `FD-1-STAFF` | Invitation-target mechanism | §21 `FD-1-STAFF` (same topic — numbers align) |
+| `FD-2-STAFF` | Invitation-persistence model (Option B) | §21 `FD-2-STAFF` (same topic — numbers align) |
+| `FD-3-STAFF` | Acceptance authority (three-part requirement) | §21 bundled this under its own `FD-2-STAFF` (§8's own text: "surfaced at §21, FD-2-STAFF, bundled with the invitation-model decision"); the Founder's task gave it a dedicated number instead |
+| `FD-4-STAFF` | Invitation lifecycle policy (time-limited/single-use/revocable/reissue-new) | Closest to §21's placeholder `FD-5-STAFF` (expiry/single-use/resend policy); also settles §21's separate placeholder `FD-4-STAFF` (REMOVE reversibility) by the same reissue-not-restore principle, extended by analogy from invitations to memberships (§5.3, unchanged) |
+| `FD-5-STAFF` | Staff-management target restrictions + roster visibility | New scope not separately itemized in §21's placeholder table (closest overlap: §21's placeholder `FD-6-STAFF`'s self-action-rule sub-question) |
+| `FD-6-STAFF` | New sensitive permission `staff.assignRole` | §21's placeholder `FD-6-STAFF` (same topic — numbers align) |
+| `FD-7-STAFF` | Shared-device deferral/non-blocking confirmation | Not itemized in §21's placeholder table at all (§15 already treated this as a disposition-verified finding, not an open FD); §21's placeholder `FD-7-STAFF` (subscription-enforcement timing) is instead resolved by the separate `DEC-SUB-002` cross-cutting item below |
+
+Every in-document addendum added by this v1.1 revision (§5.1, §6.4, §7.1/§7.1a/§7.2a, §8/§8a, §9, §11.2/§11.6, §12.1/§12.2/§12.4, §14, §15, §16.1, §16.2, §17, §18.1, §20.1, §22/§23) cites the **Founder's authoritative numbering** (this table's left column), not §21's placeholder numbering — this table exists precisely so the two are never confused.
+
+### FD-1-STAFF — Invitation-target mechanism
+
+**Approved with clarification.** Businesses may invite a prospective staff member who does not yet have a registered/resolved 11thONUS Customer Identity. Email and/or phone may be used as invitation delivery/targeting information. Email/phone is **not** authoritative 11thONUS identity. The authoritative staff identity remains Customer Identity and is bound only through the governed invitation-acceptance process. Full reconciliation: §6.4 addendum.
+
+### FD-2-STAFF — Separate invitation record
+
+**Approved.** Pre-acceptance staff invitations are represented separately from `businessMemberships`. `businessMembership.userId` is **not** made nullable. A `businessMembership` is created/bound only when an authoritative Customer Identity exists, through successful invitation-acceptance. The invitation record is Business-scoped. The completed `ENG-P2-004` invariant that a membership represents a known identity/business relationship is preserved; `ENG-P2-004`'s membership-reader semantics are not reopened. Full reconciliation: §5.1, §7.1/§7.1a/§7.2a addenda.
+
+### FD-3-STAFF — Acceptance authority
+
+**Approved with clarification.** Invitation acceptance requires: (1) an authenticated Customer Identity; (2) a valid invitation proof; and (3) secure verification that the accepting identity is entitled to accept, where the invitation was targeted to an email address or phone number. Possession of an invitation reference/token alone is not sufficient authority. The client never chooses or supplies the authoritative membership `userId`. Email/phone remains delivery/verification evidence, never platform identity. Engineering may determine the secure implementation mechanism within these constraints. Full reconciliation: §8/§8a addenda.
+
+### FD-4-STAFF — Invitation lifecycle policy
+
+**Approved.** Staff invitations shall be: time-limited; single-use; revocable before acceptance; incapable of acceptance after expiry, revocation, or consumption; reissued through a new invitation rather than reactivating a terminal one. Terminal invitation records are retained for operational/audit history, never hard-deleted. Exact expiry duration, token entropy/encoding, storage representation, and bounded retry parameters remain Engineering-owned; no numeric value is frozen by this document. Full reconciliation: §9 addendum.
+
+### FD-5-STAFF — Staff-management target restrictions and roster visibility
+
+**Approved with target restrictions.** `staff.manage` remains the sensitive permission governing invite/suspend/reactivate/remove. MVP target authority: Owner may administer Manager and Staff memberships. Manager holding `staff.manage` may administer Staff memberships only — may not suspend/reactivate/remove another Manager, may not administer Owner. Self-suspend/self-remove through staff-management commands is prohibited for anyone. Staff cannot administer memberships. Active Business members may view the Business's operational staff roster without holding `staff.manage`; roster visibility exposes only the minimum operational information required and must not expose protected Customer Identity information; this is recorded as a read-surface policy separate from `staff.manage` administration. Full reconciliation: §11.6.1 matrix, §12.1/§12.2/§12.4 addenda.
+
+### FD-6-STAFF — New sensitive permission `staff.assignRole`
+
+**Approved: new sensitive permission, recorded as an approved future catalogue entry.** Its runtime addition to `sensitivePermissionCatalogue.ts` is **not performed by this document** — that belongs to a later, separately-authorized implementation package (§22 addendum recommends a bounded `ENG-P2-004`-owned correction package, tentatively `ENG-P2-004-CORR-002`). Identifier: `staff.assignRole`. Meaning: authority to change a Business membership role between Staff and Manager. MVP policy: Owner-only; non-delegable to Manager at MVP; Staff→Manager and Manager→Staff both performable by Owner only; Manager cannot change another membership's role; no actor may change their own role through this command; `ENG-P2-003` may never assign `role: "owner"`; ownership transfer remains separately governed and outside `ENG-P2-003`. `staff.manage` and `staff.assignPermissions` are not reinterpreted as role-change authority. Full reconciliation: §11.2/§11.6.2 matrix, §14 addenda.
+
+### FD-7-STAFF — Shared-device deferral, confirmed non-blocking
+
+**Deferred / non-blocking.** Shared-device staff switching remains governed through `DEC-SEC-003`. It does not block `ENG-P2-003A/B/C/D` backend implementation. Any future shared-device solution must preserve individual identity, individual authentication, individual action attribution, and must never introduce shared staff accounts. No PIN/device/session-switch field appears anywhere in the `ENG-P2-003` membership or invitation contracts described in this document (verified, §15 addendum). Full reconciliation: §15 addendum.
+
+### Cross-cutting item — `DEC-SUB-002` (remains open / non-blocking)
+
+No staff-count value is invented anywhere in this document. `ENG-P2-003` contracts/architecture proceed without numeric plan limits. Production invitation enforcement is **not** permanently omitted — enforcement is an integration requirement to be added once `DEC-SUB-002`'s governed subscription-entitlement contract exists, with `ENG-P2-003B`'s INVITE command identified as the specific future integration hook. `DEC-SUB-002` itself remains `OPEN_FOUNDER`, unmodified in `decision-register.md`. Full reconciliation: §16.1 addendum.
+
+### Cross-cutting item — `DEC-ID-004` (out of scope)
+
+Customer phone lookup is POS/customer-lookup functionality, not a Staff Membership architecture dependency. Staff invitation is not coupled to `DEC-ID-004`. `DEC-ID-004` remains `OPEN_FOUNDER`, unmodified in `decision-register.md`. Full reconciliation: §16.2 addendum.
+
+### Cross-cutting item — Capability 3 status vocabulary (approved)
+
+**Approved.** "Open — partially implemented; not closed" is confirmed as established, long-standing programme-status terminology (already used for Capability 2 throughout `docs/05-implementation/11thonus-master-workflow.md` §17 since 2026-08-07 — independently verified as pre-existing vocabulary, not newly invented by this package). §1/§24's recommendation to apply this label to Capability 3 is approved; the stale `CDR-001`/Engineering Implementation Programme tracking is updated accordingly using normal dated-supersession conventions (§25.1) — appended, not rewritten.
+
+### New unresolved item found during reconciliation
+
+**None found that requires a new Founder decision gate.** This revision performed the internal-consistency sweep the task required (§28.0's numbering table plus every in-document addendum above) and did not surface a decision that is both new and unavoidable. The items that remain open after this revision are Engineering-owned implementation judgment calls **within** the now-resolved policy boundary, not additional Founder gates — specifically: (a) the exact secure mechanism satisfying FD-3-STAFF's entitlement-verification requirement (delegated to Engineering by FD-3-STAFF's own text); (b) the exact roster DTO field list under FD-5-STAFF (explicitly delegated to the relevant implementation/frontend package, §12.4); (c) the exact split between `RESOURCE_NOT_FOUND`/`AUTH_FORBIDDEN` for a few edge-case ACCEPT failures (§16.3 addendum, an Engineering mapping choice, not a taxonomy gap); (d) whether `ENG-P2-004-CORR-002` (the recommended catalogue-only correction package for `staff.assignRole`) itself requires a separate future Founder **implementation** authorization before it may begin — yes, exactly as every other implementation package in this document already requires (§22 addendum) — this is a sequencing note, not a new open design question, since FD-6-STAFF already fully specifies what that package must do.
+
+### Status after this disposition
+
+All seven Founder Decisions originally raised by this package's own §21 are now resolved, along with the three cross-cutting items. No `DEC-ID-002`, `DEC-ID-003`, `DEC-ID-004`, `DEC-SEC-003`, `DEC-SUB-002`, `DEC-SUB-009`, or other Decision Register entry was reopened or modified by this disposition. No implementation was performed; no `ENG-P2-003A`/`B`/`C`/`D`/`E`, `ENG-P2-004-CORR-002`, runtime code, Firebase configuration, or deployment change was made by this revision. This design package remains architecture only and does not itself authorize `ENG-P2-003` implementation — each package still requires its own, separate, fresh Founder implementation authorization before coding begins.
+
+---
+
+**FINAL GATE: ENG-P2-003 DESIGN — FOUNDER DISPOSITIONS RECORDED (v1.1) — READY FOR FINAL FOUNDER MERGE REVIEW**
