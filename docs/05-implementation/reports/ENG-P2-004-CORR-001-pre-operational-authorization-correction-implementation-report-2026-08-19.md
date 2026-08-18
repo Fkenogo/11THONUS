@@ -1,7 +1,7 @@
 # ENG-P2-004-CORR-001 — Pre-Operational Business Authorization Correction — Implementation Report
 
 **Date:** 2026-08-19
-**Status:** Implemented, pending Founder-authorized independent review/merge — **not self-merged**
+**Status:** **Complete / merged** (PR #126, merge `ce2b026`) — **[UPDATED 2026-08-19 — merge-gate closure]**
 
 ---
 
@@ -165,33 +165,35 @@ None. No Cloud Function signature changed, no new endpoint added.
 
 Independent manual review performed (no automated Codex/review-bot tooling was available in this non-interactive session — disclosed; GitHub also blocks a same-account formal "Approve" review on one's own PR, so the review was posted as a PR comment, findings/disposition unaffected). Full text: [PR #126 review comment](https://github.com/Fkenogo/11THONUS/pull/126#issuecomment-5329187500). Areas re-verified independently against the diff and full test evidence: fail-closed unknown-permission behavior (traced to confirm it can never resolve to `allowed: true`), sensitive-permission non-regression (confirmed the sensitive code path is untouched line-for-line, only wrapped), the exact lifecycle matrix (cross-checked against both FD-CORR-5/7 and `businessStatus.ts`'s independent structural transition table), Owner-only role defaults (test-enforced per entry), absence of ordinary-permission override support (confirmed structurally unreachable, not merely untested), absence of global status widening (the sensitive gate's own constant is unmodified), and `submitForVerification` narrowness (tested against all seven non-draft statuses). **Disposition: no defects found. Recommend merge.**
 
+**[UPDATED 2026-08-19 — `ENG-P2-004-CORR-001` merge-gate review]** A second, independent-final-review pass was performed under a fresh Founder authorization scoped specifically to review/merge/closure, in a fresh clean worktree from `origin/main`, re-deriving every claim from source rather than trusting this report or the first review. It independently re-confirmed all of the above (catalogue exactness, disjointness, evaluator classification order, sensitive non-regression, ordinary role defaults, ordinary override isolation, unknown-permission fail-closed, the lifecycle matrix reproduced from actual runtime configuration, `submitForVerification` narrowness, `business.close` scope, membership/role security, malformed/unknown-Business-status handling — confirmed rejected upstream at `businessDocument.ts`'s `isBusinessStatus` type guard, unchanged by this correction — the audit boundary, and a structural grep for hidden authority paths, none found) by independently re-running the full validation suite fresh (not merely re-reading prior results). It found two minor, non-functional gaps and fixed both directly on the PR: (1) Step 9's comment in `evaluatePermission.ts` still said "no governed non-sensitive baseline table exists yet," which `ordinaryPermissionCatalogue.ts` now partially contradicts — corrected to explain precisely why that step remains provably unreachable for every permission id this evaluator currently classifies (sensitive-catalogue ids are exhausted by Step 8; ordinary-catalogue ids never reach Step 9 at all, always returning earlier at Step 5a); (2) the override-isolation test suite covered a Manager-role grant-looking-override case but not the equivalent Staff-role case — added. Both are comment/test-only; zero behavior change. No other finding of any kind.
+
 ## 33. Remaining material findings
 
-None. The pre-existing test whose semantics the correction legitimately changed (§26) was already fixed before PR creation; no other pre-existing test's expected outcome changed; the independent review (§32) found nothing further.
+None, after two independent review passes. The pre-existing test whose semantics the correction legitimately changed (§26) was fixed before PR creation; the two review-time gaps above were fixed on the PR itself and both are documentation/test-coverage only, not defects in the correction's actual authorization behavior.
 
 ## 34. PR number
 
-[#126](https://github.com/Fkenogo/11THONUS/pull/126)
+[#126](https://github.com/Fkenogo/11THONUS/pull/126) — **Merged.**
 
 ## 35. Final reviewed head
 
-`eaaf4c1` (the sole commit on `feat/eng-p2-004-corr-001-authorization-correction`, unchanged since PR creation — no fixup commits were needed).
+`256ddc7` (the head at merge time, on `feat/eng-p2-004-corr-001-authorization-correction`; three commits total: `eaaf4c1` implementation, `0882e22` review/CI-evidence docs, `256ddc7` the merge-gate review's comment fix + Staff-override test).
 
 ## 36. CI result
 
-**Green.** `Build, Lint, Test, Emulator Validation` — pass, 3m32s ([run](https://github.com/Fkenogo/11THONUS/actions/runs/32144668664)).
+**Green** at every commit. Final pre-merge run: `Build, Lint, Test, Emulator Validation` — pass, 4m23s ([run](https://github.com/Fkenogo/11THONUS/actions/runs/32145991853)). **Post-merge, on `origin/main`:** also green ([run](https://github.com/Fkenogo/11THONUS/actions/runs/32146494898), 3m42s).
 
 ## 37. ENG-P2-004-CORR-001 status
 
-**Implemented, pending Founder-authorized independent review/merge.**
+**Complete / merged.** PR #126 squash-merged as `ce2b02627faa1af2f6f224d75bb907bfb2a25ca8`, post-merge CI green.
 
 ## 38. ENG-P2-004 status
 
-**Complete**, with this bounded correction pending merge as an amendment — no sensitive-permission behavior changed, so this does not reopen `ENG-P2-004`'s prior closure.
+**Complete**, corrected for ordinary Business permissions. PR #126 merged as `ce2b02627faa1af2f6f224d75bb907bfb2a25ca8` — no sensitive-permission behavior changed, so this does not reopen `ENG-P2-004`'s prior closure; it amends it with the bounded, Founder-approved correction.
 
 ## 39. ENG-P2-002C status
 
-**Paused**, unchanged by this task (worktree still exactly 17 uncommitted files) — awaits this correction's merge before its own resumption, which is not authorized by this task.
+**Paused — now technically unblocked, awaiting controlled resume.** The dedicated worktree still carries exactly its 17 pre-existing uncommitted files, untouched by this task or its merge-gate review. Resuming it (rebasing onto `origin/main` at or after `ce2b026`, completing its interrupted emulator test suite, writing its own implementation report, opening its own PR) requires a separate, fresh Founder authorization — not granted or exercised by this task.
 
 ## 40. ENG-P2-003 status
 
@@ -203,16 +205,17 @@ None. The pre-existing test whose semantics the correction legitimately changed 
 
 ## 42. Dirty primary worktree
 
-Clean. The primary worktree (`/Users/theo/11THONUS`) was never entered or modified by this task; all work occurred in the new `eng-p2-004-corr-001` linked worktree.
+Clean. The primary worktree (`/Users/theo/11THONUS`) was never entered or modified by this task or its merge-gate review; all work occurred in dedicated linked worktrees (`eng-p2-004-corr-001`, `eng-p2-004-corr-001-review`, `eng-p2-004-corr-001-closure`).
 
 ## 43. Risks
 
-- The evaluator's business-status gate is now permission-class-dependent rather than a single global rule — a future new sensitive or ordinary permission must be added to the correct catalogue, or it silently falls into the "unknown" (no-gate, always-fail-closed) bucket. This is the intended, governed behavior (fail-closed by omission), not a defect, but is worth reviewer attention.
+- The evaluator's business-status gate is now permission-class-dependent rather than a single global rule — a future new sensitive or ordinary permission must be added to the correct catalogue, or it silently falls into the "unknown" (no-gate, always-fail-closed) bucket. This is the intended, governed behavior (fail-closed by omission), not a defect, but is worth continued reviewer attention on any future permission addition.
 - `ordinaryPermissionCorrection.emulator.test.ts` and `businessRepository.emulator.test.ts`'s new case both depend on `bootstrapBusiness`/`touchPermissionBoundaryFixture` — pre-existing, unmodified infrastructure — so this risk is no different from the existing emulator-test surface.
+- `ENG-P2-002C`'s paused worktree has not been rebased onto this merge — its own resumption task will need to reconcile against `main` at `ce2b026` (a straightforward rebase; no conflicting file was touched by this correction, since 002C's changes live entirely under `functions/src/domains/business/` while this correction lives under `functions/src/domains/permissions/`, with the sole exception of the one already-merged `businessRepository.emulator.test.ts` edit under `domains/business/repositories/`, which 002C's own worktree does not otherwise touch).
 
 ## 44. Rollback
 
-Revert the PR (single squash commit expected, matching prior package precedent) — no data migration to reverse, no deployed endpoint changed, no Firebase config touched. `ENG-P2-004` reverts to its exact pre-correction state; `ENG-P2-002C` remains paused either way.
+Revert `ce2b02627faa1af2f6f224d75bb907bfb2a25ca8` on `main` — no data migration to reverse, no deployed endpoint changed, no Firebase config touched. `ENG-P2-004` reverts to its exact pre-correction state; `ENG-P2-002C` remains paused either way, and its eventual resumption would simply rebase onto whatever `main` looks like post-revert instead.
 
 ## 45. Persistent implementation-report path
 
@@ -220,14 +223,14 @@ Revert the PR (single squash commit expected, matching prior package precedent) 
 
 ## 46. Changes-tracking state
 
-`docs/05-implementation/change-tracking/engineering-implementation-programme.md` updated with two dated-supersession notes (`[UPDATED 2026-08-19 — ...]`, appended, no historical text rewritten): one on the "Business identity" column recording `ENG-P2-002C`'s pause and its cause, one on the "Role context and permission resolution" column recording the correction itself.
+`docs/05-implementation/change-tracking/engineering-implementation-programme.md` updated with three dated-supersession notes (`[UPDATED 2026-08-19 — ...]`, appended, no historical text rewritten): one on the "Business identity" column recording `ENG-P2-002C`'s pause and its cause (added during implementation), one on the "Role context and permission resolution" column recording the correction itself (added during implementation), and a closure note on the latter recording the merge (added by this closure task).
 
 ## 47. Exact next Founder action
 
-Authorize an independent security/authorization review of PR (number pending, branch `feat/eng-p2-004-corr-001-authorization-correction`) — reviewing especially: fail-closed unknown-permission behavior, sensitive-permission non-regression, the exact lifecycle matrix, Owner-only role defaults, the absence of ordinary-permission override support, the absence of any global status-eligibility widening, and `business.submitForVerification`'s narrowness — then merge if the gates pass. `ENG-P2-002C`'s own resumption requires a further, separate Founder action after this correction merges.
+Authorize `ENG-P2-002C`'s controlled resumption: rebase its preserved worktree onto `origin/main` at (or after) `ce2b026`, complete its interrupted emulator test suite (Task 25 was interrupted mid-work when the `CAP-P3-BIZ-AUTH-001` blocker was discovered), write its own implementation report, and proceed through its own independent review/merge cycle — none of which this task performs.
 
 ---
 
 ## FINAL GATE
 
-**ENG-P2-004-CORR-001 READY FOR FOUNDER REVIEW/MERGE**
+**ENG-P2-004-CORR-001 MERGED AND CLOSED — ENG-P2-002C MAY RESUME UNDER CONTROLLED REBASE**
