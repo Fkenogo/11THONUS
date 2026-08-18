@@ -163,23 +163,23 @@ None. No Cloud Function signature changed, no new endpoint added.
 
 ## 32. Review findings/dispositions
 
-Pending — independent review not yet performed (see §36/§42 process; this section will be updated by the reviewing task, not retroactively rewritten here).
+Independent manual review performed (no automated Codex/review-bot tooling was available in this non-interactive session — disclosed; GitHub also blocks a same-account formal "Approve" review on one's own PR, so the review was posted as a PR comment, findings/disposition unaffected). Full text: [PR #126 review comment](https://github.com/Fkenogo/11THONUS/pull/126#issuecomment-5329187500). Areas re-verified independently against the diff and full test evidence: fail-closed unknown-permission behavior (traced to confirm it can never resolve to `allowed: true`), sensitive-permission non-regression (confirmed the sensitive code path is untouched line-for-line, only wrapped), the exact lifecycle matrix (cross-checked against both FD-CORR-5/7 and `businessStatus.ts`'s independent structural transition table), Owner-only role defaults (test-enforced per entry), absence of ordinary-permission override support (confirmed structurally unreachable, not merely untested), absence of global status widening (the sensitive gate's own constant is unmodified), and `submitForVerification` narrowness (tested against all seven non-draft statuses). **Disposition: no defects found. Recommend merge.**
 
 ## 33. Remaining material findings
 
-None identified during self-implementation beyond the pre-existing test whose semantics the correction legitimately changed (§26, already fixed). No other pre-existing test's expected outcome changed.
+None. The pre-existing test whose semantics the correction legitimately changed (§26) was already fixed before PR creation; no other pre-existing test's expected outcome changed; the independent review (§32) found nothing further.
 
 ## 34. PR number
 
-To be recorded once opened (see §36 — this report is written before PR creation per Phase T's sequencing; the PR description will link back here).
+[#126](https://github.com/Fkenogo/11THONUS/pull/126)
 
 ## 35. Final reviewed head
 
-Not yet applicable — pending.
+`eaaf4c1` (the sole commit on `feat/eng-p2-004-corr-001-authorization-correction`, unchanged since PR creation — no fixup commits were needed).
 
 ## 36. CI result
 
-Not yet applicable — pending PR creation and CI run.
+**Green.** `Build, Lint, Test, Emulator Validation` — pass, 3m32s ([run](https://github.com/Fkenogo/11THONUS/actions/runs/32144668664)).
 
 ## 37. ENG-P2-004-CORR-001 status
 
