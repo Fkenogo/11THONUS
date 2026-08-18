@@ -109,7 +109,7 @@ Combined, these two Founder-confirmed decisions establish the boundary this pack
 |---|---|---|
 | Customer Identity (`ENG-P2-001`) | The permanent identity triad, profile, recovery. One identity per person, portable across every Business. | Creating a second, Business-scoped identity type |
 | Authentication (`AUTH-*`) | Proving *which* credential belongs to which identity (`DEC-AUTH-001` D-A5: *"Customer Authentication is independent from Staff Authentication … No staff-authentication scope shall enter the Customer Authentication stream"*). | Any provider/session logic — staff sign in exactly as customers do, via the same Authentication stream |
-| Business Identity (`ENG-P2-002`) | The `Business`/`BusinessBranch` aggregates, `ownerUserId`, bootstrap. `Business.ownerUserId` is set once at bootstrap and is the structural Owner-floor anchor `ENG-P2-002-DESIGN-001` defines. | Reassigning `ownerUserId` (ownership transfer is separately deferred, §8 below) |
+| Business Identity (`ENG-P2-002`) | The `Business`/`BusinessBranch` aggregates, `ownerUserId`, bootstrap. `Business.ownerUserId` is set once at bootstrap and is the structural Owner-floor anchor `ENG-P2-002-DESIGN-001` defines. | Reassigning `ownerUserId` (ownership transfer is separately deferred, §11.4 below) |
 | `ENG-P2-004` (role-context & permission resolution) | The **evaluator**: given a `businessMembership`, resolve role-template + override precedence into an allow/deny decision. Already `Complete`. | `ENG-P2-003` is a **producer** of the `businessMemberships` documents `ENG-P2-004` **reads**; it must never redesign `ENG-P2-004`'s evaluator, catalogue, or audit contracts — those are consumed unmodified |
 | Subscription enforcement | Plan-level staff-count entitlement ceilings (once `DEC-SUB-002` resolves, §10). | Enforcing a concrete numeric limit before that policy exists |
 | Frontend UX | Invite/list/suspend/remove/role-assignment screens, permission-override admin UI, shared-device staff-switcher UX. | Any UI — this package is docs-only, backend-architecture-only |
@@ -119,7 +119,7 @@ Combined, these two Founder-confirmed decisions establish the boundary this pack
 Per `DEC-ID-002`'s "shared accounts prohibited" text and the accountability principle above, this package confirms the following are **structurally excluded**, matching the task's explicit non-authorization list:
 - **No `StaffIdentity` aggregate.** A membership document referencing an existing Customer Identity `userId` is the entire staff-identity model.
 - **No Business-specific authentication principal.** A staff member signs in through the same Authentication stream as any customer; the *membership* — not a separate credential — is what confers Business-context authority.
-- **No shared-account model.** DEC-ID-002 is unconditional on this point; a shared-device convenience mechanism (`DEC-SEC-003`) must not weaken per-identity attribution (§9).
+- **No shared-account model.** DEC-ID-002 is unconditional on this point; a shared-device convenience mechanism (`DEC-SEC-003`) must not weaken per-identity attribution (§15).
 
 ---
 
@@ -294,7 +294,7 @@ Per the approved model, the minimum conceptual data a pre-acceptance invitation 
 |---|---|
 | Invitation identity/reference | An opaque, unguessable identifier distinct from the eventual `businessMembership.id` — the reference an invitee's acceptance action names, never a client-supplied `userId` |
 | `businessId` | The inviting Business — invitations are Business-scoped, matching the cross-Business isolation principle §13 already establishes for memberships |
-| Intended role | `manager` or `staff` only — never `owner` (§11.4 unchanged; role assignment reconciliation §11.2a below) |
+| Intended role | `manager` or `staff` only — never `owner` (§11.4 unchanged; role assignment reconciliation §11.6 below) |
 | Delivery target + type | The email address or phone number (and which kind) the invitation was targeted to — delivery/verification evidence, never identity (§6.2/§6.3 unchanged) |
 | Inviter identity | The accepting-authority-holding member who issued the invitation (mirrors `invitedBy`) |
 | Lifecycle state | `pending` / `accepted` / `revoked` / `expired` — see §7.2a below |
