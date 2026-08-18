@@ -28,6 +28,35 @@
  * (`SENSITIVE_PERMISSION_ROLE_TEMPLATES`); every other sensitive permission
  * (§3.3's never-implicitly-inheritable set) still strictly requires an
  * explicit grant or the Owner floor, matching §4.1.4 exactly.
+ *
+ * **`ENG-P2-004-CORR-001` per-permission lifecycle gate (Founder-approved
+ * correction, FD-CORR-1/2).** The single global `business.status ∈
+ * {trial, active}` gate below governed every permission identically,
+ * which structurally denied all four Founder-approved ordinary Business
+ * permissions (`business.updateProfile`, `businessBranch.updateProfile`,
+ * `business.submitForVerification`, `business.close`) on a `draft`
+ * Business — including the Owner's own bootstrap-created business,
+ * before it could ever be submitted for verification (`CAP-P3-BIZ-AUTH-001`
+ * forensic finding). The permission requested is now classified
+ * (sensitive / ordinary / unknown) immediately after the Business record
+ * resolves, and that classification's own governed lifecycle-eligibility
+ * set is applied — the sensitive catalogue's `{trial, active}` gate is
+ * unchanged, byte-for-byte, for every sensitive permission; the four
+ * ordinary permissions each carry their own Founder-approved eligibility
+ * set (`ordinaryPermissionCatalogue.ts`); an unknown/unconfigured
+ * permission has no lifecycle gate at all applied here and instead denies
+ * later, exactly as it already did (`NO_APPLICABLE_GRANT`) — this
+ * correction never widens what an unconfigured permission can do.
+ *
+ * Ordinary permissions are resolved through their own dedicated
+ * role-default lookup (`ORDINARY_PERMISSION_CATALOGUE`), reached
+ * immediately after the sensitive-only Owner floor and returning before
+ * the override-resolution steps run at all — `PermissionOverride`
+ * grant/revoke resolution is therefore never consulted for an ordinary
+ * permission (FD-CORR-6: ordinary permissions do not support explicit
+ * grant/revoke in this correction), and every override-adjacent branch
+ * below (steps 6-9) keeps operating exactly as it did before this
+ * correction for every permission that reaches it.
  */
 
 import { isWellFormedPermissionId } from "../models/permissionId";
@@ -40,6 +69,10 @@ import {
   SENSITIVE_PERMISSION_ROLE_TEMPLATES,
   isPermissionInRoleTemplateDefault,
 } from "../models/roleTemplate";
+import {
+  isOrdinaryPermission,
+  getOrdinaryPermissionEntry,
+} from "../models/ordinaryPermissionCatalogue";
 import type { AuthorizationDecision, EvaluationInput, PermissionSource, ReasonCode } from "./types";
 import type { ErrorCategory } from "../../../shared/errors/errorCategories";
 
@@ -54,8 +87,25 @@ import type { ErrorCategory } from "../../../shared/errors/errorCategories";
  * final security review — the original narrow "only literal 'active'"
  * interpretation was too restrictive and denied businesses PRD
  * explicitly describes as operating (Codex review pass 6, PR #107).
+ *
+ * Sensitive-catalogue-only, unchanged by `ENG-P2-004-CORR-001` — the
+ * four ordinary permissions each carry their own lifecycle-eligibility
+ * set instead of this one (see the module header note and
+ * `ordinaryPermissionCatalogue.ts`).
  */
 const OPERATIONAL_BUSINESS_STATUSES = new Set(["active", "trial"]);
+
+type PermissionClass = "sensitive" | "ordinary" | "unknown";
+
+function classifyPermission(permission: string): PermissionClass {
+  if (isSensitivePermission(permission)) {
+    return "sensitive";
+  }
+  if (isOrdinaryPermission(permission)) {
+    return "ordinary";
+  }
+  return "unknown";
+}
 
 function deny(
   now: Date,
@@ -132,9 +182,30 @@ export function evaluateAuthorizationDecision(input: EvaluationInput): Authoriza
     // review pass 2, PR #107).
     return deny(now, "BUSINESS_CONTEXT_MISMATCH", "AUTH_FORBIDDEN");
   }
-  if (!OPERATIONAL_BUSINESS_STATUSES.has(business.business.status)) {
-    return deny(now, "BUSINESS_NOT_ACTIVE", "BUSINESS_INACTIVE");
+  // Step 2 (cont.) — permission classification + per-class lifecycle
+  // eligibility (`ENG-P2-004-CORR-001`, FD-CORR-1/2). Classification uses
+  // the raw, not-yet-format-validated `request.permission` — both
+  // catalogues are exact-match membership checks against a closed id set,
+  // so a malformed string simply classifies as "unknown" here and is
+  // rejected by its own format check at Step 4 below, exactly as before
+  // this correction (Codex-review-equivalent reasoning: classification
+  // must never be able to throw on untrusted input).
+  const permissionClass = classifyPermission(request.permission);
+  if (permissionClass === "sensitive") {
+    if (!OPERATIONAL_BUSINESS_STATUSES.has(business.business.status)) {
+      return deny(now, "BUSINESS_NOT_ACTIVE", "BUSINESS_INACTIVE");
+    }
+  } else if (permissionClass === "ordinary") {
+    const ordinaryEntry = getOrdinaryPermissionEntry(request.permission);
+    if (!ordinaryEntry.eligibleBusinessStatuses.includes(business.business.status)) {
+      return deny(now, "BUSINESS_NOT_ACTIVE", "BUSINESS_INACTIVE");
+    }
   }
+  // permissionClass === "unknown": no lifecycle gate applies here — an
+  // unconfigured permission was never eligible on any Business status
+  // before this correction either; it is still rejected below (Step 9),
+  // just not by this gate (defence-in-depth: adding a gate for a class
+  // with no governed eligibility table would mean inventing one).
 
   // Step 3: membership-state gate (§4.1.2), including business-context isolation (§5.6).
   if (membership.kind === "transient_failure") {
@@ -184,6 +255,35 @@ export function evaluateAuthorizationDecision(input: EvaluationInput): Authoriza
       permissionSource: "owner-floor",
       evaluatedAt: now,
     };
+  }
+
+  // Step 5a (`ENG-P2-004-CORR-001`, FD-CORR-2/4/6): ordinary permissions
+  // resolve entirely through their own role-default table and return here
+  // — they never reach the override-resolution steps below at all. This
+  // is what keeps FD-CORR-6 ("do NOT add ordinary-permission explicit
+  // grant/revoke support") true by construction: an override record
+  // stamped against an ordinary permission (however it got there) is
+  // simply never inspected, so it can neither grant unconfigured access
+  // nor revoke the Owner's configured default. `permissionClass` was
+  // already resolved from the same `request.permission` above; using
+  // `isOrdinaryPermission(permission)` again here would be redundant, but
+  // is checked directly (rather than trusting the outer `permissionClass`
+  // closure) so this branch's correctness does not depend on that
+  // variable never being reassigned above — a defence-in-depth match to
+  // this evaluator's existing style (Codex review precedent throughout
+  // this file).
+  if (isOrdinaryPermission(permission)) {
+    const ordinaryEntry = getOrdinaryPermissionEntry(permission);
+    if (ordinaryEntry.roleDefaults[role]) {
+      return {
+        allowed: true,
+        reasonCode: "ROLE_DEFAULT_ALLOW",
+        role,
+        permissionSource: "role-default",
+        evaluatedAt: now,
+      };
+    }
+    return deny(now, "NO_APPLICABLE_GRANT", "AUTH_FORBIDDEN", role);
   }
 
   // Overrides embedded in the resolved membership only — an override
@@ -275,19 +375,25 @@ export function evaluateAuthorizationDecision(input: EvaluationInput): Authoriza
     return deny(now, "SENSITIVE_PERMISSION_NOT_GRANTED", "AUTH_FORBIDDEN", role);
   }
 
-  // Step 9: non-sensitive role/template default (§4.1.6). No governed
-  // non-sensitive baseline table exists yet (ENG-P2-004A explicitly
-  // deferred it — see roleTemplate.ts's module header); until one is
-  // added, this check can only ever match a sensitive-catalogue id, which
-  // step 8 above already exhausted, so this branch is a documented no-op
-  // placeholder for that future baseline table rather than dead code.
-  // Flagged for Founder attention (Codex review, PR #107; see the
-  // implementation report §14): ordinary role-based permissions (e.g.
-  // `purchase.record`) cannot be authorized by role-default until a
-  // governed non-sensitive baseline table exists — this is a data/
-  // governance gap upstream of this evaluator, not a defect in the
-  // algorithm below, and `ENG-P2-004A` explicitly declined to invent one
-  // (no governed document mints those identifiers).
+  // Step 9: non-sensitive role/template default (§4.1.6), consulting only
+  // `SENSITIVE_PERMISSION_ROLE_TEMPLATES` — this is provably unreachable
+  // for every permission this evaluator currently knows how to classify.
+  // A sensitive-catalogue id is always exhausted by step 8 above; an
+  // ordinary-catalogue id (`ENG-P2-004-CORR-001`) always returns earlier,
+  // at Step 5a, via its own dedicated `ORDINARY_PERMISSION_CATALOGUE`
+  // role-default table — never this one; any other id matches no role
+  // template here by construction (`SENSITIVE_PERMISSION_ROLE_TEMPLATES`
+  // is derived exclusively from the sensitive catalogue's inheritable
+  // entries — see `roleTemplate.ts`). Retained rather than removed as a
+  // documented no-op placeholder: a *third*, still-ungoverned non-
+  // sensitive baseline permission space (e.g. `purchase.record`) remains
+  // outside both catalogues — `ENG-P2-004A` explicitly declined to invent
+  // one, and `ENG-P2-004-CORR-001` was explicitly authorized only for the
+  // four named ordinary ids, not a general baseline (FD-CORR-2: "Do not
+  // globally widen Business-status eligibility"). This step is where that
+  // future baseline's own role-default check would go, once (if ever)
+  // Founder-authorized (Codex review, PR #107; see the `ENG-P2-004B`
+  // implementation report §14).
   if (isPermissionInRoleTemplateDefault(SENSITIVE_PERMISSION_ROLE_TEMPLATES[role], permission)) {
     return {
       allowed: true,

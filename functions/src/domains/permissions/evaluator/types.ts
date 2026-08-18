@@ -86,17 +86,26 @@ export type EvaluationBusinessMembership = {
   readonly overrides: readonly EvaluationPermissionOverride[];
 };
 
+/**
+ * The eight Business lifecycle statuses TRD10 §10.6.3 governs — named here
+ * so `ordinaryPermissionCatalogue.ts` (`ENG-P2-004-CORR-001`) can express
+ * its per-permission `eligibleBusinessStatuses` against the same closed
+ * set `EvaluationBusiness.status` already used, without a second,
+ * independently-drifting status union.
+ */
+export type BusinessLifecycleStatus =
+  | "draft"
+  | "pending_verification"
+  | "trial"
+  | "active"
+  | "suspended"
+  | "expired"
+  | "closed"
+  | "archived";
+
 export type EvaluationBusiness = {
   readonly id: string;
-  readonly status:
-    | "draft"
-    | "pending_verification"
-    | "trial"
-    | "active"
-    | "suspended"
-    | "expired"
-    | "closed"
-    | "archived";
+  readonly status: BusinessLifecycleStatus;
 };
 
 export type BusinessReadResult =

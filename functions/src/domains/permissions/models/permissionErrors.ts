@@ -55,6 +55,22 @@ export function unrecognisedSensitivePermissionError(value: string): PermissionD
   );
 }
 
+export function unrecognisedOrdinaryPermissionError(value: string): PermissionDomainError {
+  return new PermissionDomainError(
+    "VALIDATION_FAILED",
+    `"${value}" is not a governed Ordinary Permission Catalogue entry (ENG-P2-004-CORR-001).`,
+  );
+}
+
+export function permissionCannotBeBothSensitiveAndOrdinaryError(
+  permissionId: string,
+): PermissionDomainError {
+  return new PermissionDomainError(
+    "VALIDATION_FAILED",
+    `"${permissionId}" cannot appear in both the Sensitive and Ordinary Permission Catalogues — the two are structurally disjoint by design (ENG-P2-004-CORR-001, FD-CORR-2).`,
+  );
+}
+
 export function sensitivePermissionCannotBeImplicitInRoleTemplateError(
   role: string,
   permissionId: string,
