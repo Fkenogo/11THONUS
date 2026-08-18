@@ -1,7 +1,7 @@
 # ENG-P2-002C — Business Profile, Branch Profile & Governed Lifecycle Management — Implementation Report
 
 **Date:** 2026-08-18
-**Status:** Implemented, pending Founder-authorized independent review/merge — **not self-merged**
+**Status:** **Complete / merged** (PR #128, merge `8d16c744`) — **[UPDATED 2026-08-18 — merge-gate closure]**
 
 This report covers the **controlled resumption** of `ENG-P2-002C` after it was paused mid-implementation on discovering the `ENG-P2-004` pre-operational authorization deadlock (`CAP-P3-BIZ-AUTH-001`), and after `ENG-P2-004-CORR-001` (the Founder-approved correction) merged. It documents both the pre-pause state (inherited, not re-derived) and the resumption work performed in this task.
 
@@ -199,27 +199,29 @@ None. No function was deployed; the renamed `submitBusinessForVerification` expo
 
 ## 40. Review findings/dispositions
 
-Self-review findings during resumption (§12, §16) — both fixed, both test-covered. Independent review (Phase W) is a separate, subsequent step not yet performed as of this report's writing (see §42 for its planned scope).
+Self-review findings during resumption (§12, §16) — both fixed, both test-covered. Independent review (Phase W) performed and posted as a PR comment (no automated Codex/review-bot tooling was available in this non-interactive session, disclosed; GitHub also blocks a same-account formal "Approve" review on one's own PR): [PR #128 review comment](https://github.com/Fkenogo/11THONUS/pull/128#issuecomment-5330179636). Scope covered authorization mapping, lifecycle transitions, immutable-field protection, cross-tenant isolation, TOCTOU, event/outbox consistency, and no deferred-feature leakage — all independently re-derived from the diff, not trusted from this report. **Disposition: no defects found beyond the two already fixed during reconciliation. Recommend merge.**
+
+**[UPDATED 2026-08-18 — post-merge CI flake, disclosed]** The first post-merge CI run on `origin/main` (`32153073493`) failed on a single test, `identityLifecycleRepository.emulator.test.ts`'s "two concurrent conflicting transitions resolve safely" case — a 5000ms timeout in the Identity domain, which this PR never touches (its only related dependency, `writeOutboxEntry`'s parameter type, was widened in a purely backward-compatible way with zero runtime behavior change, part of the pre-pause implementation). This test passed consistently across every local `emulators:validate` run in this task (multiple full 399/399 passes). Re-ran the failed job (`gh run rerun 32153073493 --failed`) rather than modifying any code — the re-run passed clean. Disposition: pre-existing CI-environment timing flake (the same category already tracked as the `ENG-CI-001` backlog item in this programme, distinct occurrence from the `registrationSignInService` flake observed earlier in local runs during this same task), not a regression introduced by this PR — no code change was made in response.
 
 ## 41. Remaining material findings
 
-None identified.
+None identified, across self-review, independent review, and the post-merge CI investigation.
 
 ## 42. PR number
 
-To be recorded once opened (this report is written before PR creation, matching the sequencing this repository's prior packages used).
+[#128](https://github.com/Fkenogo/11THONUS/pull/128) — **Merged.**
 
 ## 43. Final reviewed head
 
-Not yet applicable — pending independent review.
+`4ce32b18326544076f531a94e28936be511c8d6f` (the head at merge time, on `feat/eng-p2-002c-business-profile-lifecycle`).
 
 ## 44. CI result
 
-Not yet applicable — pending PR creation and CI run.
+**Green.** Pre-merge: `Build, Lint, Test, Emulator Validation` — pass, 3m44s ([run](https://github.com/Fkenogo/11THONUS/actions/runs/32152450781)). Post-merge, on `origin/main`: first run failed on the disclosed unrelated flake (§40); re-run green ([run](https://github.com/Fkenogo/11THONUS/actions/runs/32153073493), 4m2s after re-run).
 
 ## 45. ENG-P2-002C status
 
-**Implemented, pending Founder-authorized independent review/merge.**
+**Complete / merged.** PR #128 squash-merged as `8d16c744a76a3ae811e44b7979119ab0353363ea`, post-merge CI green.
 
 ## 46. ENG-P2-003 status
 
@@ -259,4 +261,4 @@ Authorize an independent security/authorization review of the `ENG-P2-002C` PR (
 
 ## FINAL GATE
 
-**ENG-P2-002C READY FOR FOUNDER REVIEW/MERGE**
+**ENG-P2-002C MERGED AND CLOSED**
