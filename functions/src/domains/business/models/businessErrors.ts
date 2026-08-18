@@ -122,3 +122,23 @@ export function invalidCustomerIdentityForOwnerError(userId: string): BusinessDo
     `No eligible Customer Identity resolves for authenticated principal "${userId}".`,
   );
 }
+
+/** `ENG-P2-002C`: a profile/lifecycle command targeted a Business that does not exist. */
+export function businessNotFoundError(businessId: string): BusinessDomainError {
+  return new BusinessDomainError("RESOURCE_NOT_FOUND", `Business "${businessId}" was not found.`);
+}
+
+/**
+ * `ENG-P2-002C`: a branch profile command targeted a branch that does not
+ * exist, *or* that exists but belongs to a different Business than the
+ * authorized context (Phase N tenant isolation) — both fail closed onto
+ * the same `RESOURCE_NOT_FOUND`, never distinguishing the two cases in the
+ * client-facing error (enumeration resistance: a caller cannot use this
+ * error to learn whether a given branch id exists at all).
+ */
+export function businessBranchNotFoundError(branchId: string): BusinessDomainError {
+  return new BusinessDomainError(
+    "RESOURCE_NOT_FOUND",
+    `Business branch "${branchId}" was not found.`,
+  );
+}

@@ -149,6 +149,89 @@ export function createBusiness(params: CreateBusinessParams): Business {
   };
 }
 
+/**
+ * `ENG-P2-002C` (Phase D). Every field a caller may patch, all optional
+ * (partial update) — deliberately has no `id`/`businessCode`/`ownerUserId`/
+ * `status`/`createdAt`/`schemaVersion` key: those are immutable-by-this-
+ * command (immutable entirely, or mutable only through a separately
+ * governed command — lifecycle transition, not this one). This is the same
+ * structural-prevention pattern `CreateBusinessRequest` (`businessBootstrap.ts`)
+ * already established for `ownerUserId`.
+ */
+export type UpdateBusinessProfileParams = {
+  legalName?: string;
+  displayName?: string;
+  primaryCategoryId?: string;
+  businessTypeId?: string;
+  countryCode?: string;
+  currencyCode?: string;
+  timezone?: string;
+  city?: string;
+  address?: string;
+  contactPhone?: string;
+  contactEmail?: string;
+  logoUrl?: string;
+  supportedLanguages?: string[];
+  subscriptionId?: string;
+  updatedAt: Date;
+};
+
+/**
+ * Merges the supplied fields onto `business` and re-validates the resulting
+ * *whole* state through the same rules `createBusiness` enforces (Phase S:
+ * reuse 002A validators, validate resulting state rather than accepting a
+ * malformed patch in isolation). A field omitted from `params` is left
+ * unchanged; a field explicitly supplied as `undefined` clears an optional
+ * field (distinguished via `in`, since a plain `??`/property-merge cannot
+ * tell "not supplied" from "supplied as undefined").
+ */
+export function updateBusinessProfile(
+  business: Business,
+  params: UpdateBusinessProfileParams,
+): Business {
+  const next: Business = {
+    ...business,
+    legalName: "legalName" in params ? params.legalName : business.legalName,
+    displayName: params.displayName !== undefined ? params.displayName : business.displayName,
+    primaryCategoryId:
+      params.primaryCategoryId !== undefined
+        ? params.primaryCategoryId
+        : business.primaryCategoryId,
+    businessTypeId: "businessTypeId" in params ? params.businessTypeId : business.businessTypeId,
+    countryCode: params.countryCode !== undefined ? params.countryCode : business.countryCode,
+    currencyCode: params.currencyCode !== undefined ? params.currencyCode : business.currencyCode,
+    timezone: params.timezone !== undefined ? params.timezone : business.timezone,
+    city: params.city !== undefined ? params.city : business.city,
+    address: "address" in params ? params.address : business.address,
+    contactPhone: params.contactPhone !== undefined ? params.contactPhone : business.contactPhone,
+    contactEmail: "contactEmail" in params ? params.contactEmail : business.contactEmail,
+    logoUrl: "logoUrl" in params ? params.logoUrl : business.logoUrl,
+    supportedLanguages:
+      params.supportedLanguages !== undefined
+        ? params.supportedLanguages
+        : business.supportedLanguages,
+    subscriptionId: "subscriptionId" in params ? params.subscriptionId : business.subscriptionId,
+    updatedAt: params.updatedAt,
+  };
+
+  requireNonBlank("displayName", next.displayName);
+  requireNonBlank("primaryCategoryId", next.primaryCategoryId);
+  requireNonBlank("city", next.city);
+  requireNonBlank("contactPhone", next.contactPhone);
+  requireSupportedLanguages(next.supportedLanguages);
+  if (!COUNTRY_CODE_PATTERN.test(next.countryCode)) {
+    throw invalidBusinessFieldError("countryCode", next.countryCode);
+  }
+  if (!CURRENCY_CODE_PATTERN.test(next.currencyCode)) {
+    throw invalidBusinessFieldError("currencyCode", next.currencyCode);
+  }
+  if (next.timezone.trim().length === 0) {
+    throw invalidBusinessFieldError("timezone", next.timezone);
+  }
+
+  return next;
+}
+
 export type TransitionBusinessStatusParams = {
   updatedAt: Date;
 };

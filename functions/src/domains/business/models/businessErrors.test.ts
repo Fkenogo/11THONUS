@@ -11,6 +11,8 @@ import {
   invalidBusinessFieldError,
   invalidBusinessStatusTransitionError,
   invalidCustomerIdentityForOwnerError,
+  businessNotFoundError,
+  businessBranchNotFoundError,
 } from "./businessErrors";
 
 describe("BusinessDomainError", () => {
@@ -67,5 +69,13 @@ describe("factory functions map to the existing closed taxonomy only", () => {
 
   it("invalidCustomerIdentityForOwnerError -> AUTH_REQUIRED", () => {
     expect(invalidCustomerIdentityForOwnerError("user-1").category).toBe("AUTH_REQUIRED");
+  });
+
+  it("businessNotFoundError -> RESOURCE_NOT_FOUND (ENG-P2-002C)", () => {
+    expect(businessNotFoundError("biz-1").category).toBe("RESOURCE_NOT_FOUND");
+  });
+
+  it("businessBranchNotFoundError -> RESOURCE_NOT_FOUND (ENG-P2-002C, also the fail-closed tenant-mismatch outcome)", () => {
+    expect(businessBranchNotFoundError("branch-1").category).toBe("RESOURCE_NOT_FOUND");
   });
 });

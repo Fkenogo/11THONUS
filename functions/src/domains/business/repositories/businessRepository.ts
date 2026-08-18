@@ -35,7 +35,7 @@
  * client-side, it performs no I/O), so no read against them is needed.
  */
 
-import type { Firestore } from "firebase-admin/firestore";
+import type { Firestore, Transaction } from "firebase-admin/firestore";
 import {
   checkAndReserveIdempotencyKey,
   completeIdempotencyKey,
@@ -51,12 +51,18 @@ import {
   type CreateBusinessRequest,
   type CreateBusinessResult,
 } from "../models/businessBootstrap";
-import { toBusinessDocumentFields } from "../models/businessDocument";
-import { toBusinessBranchDocumentFields } from "../models/businessBranchDocument";
+import type { Business } from "../models/business";
+import type { BusinessBranch } from "../models/businessBranch";
+import { fromBusinessDocument, toBusinessDocumentFields } from "../models/businessDocument";
+import {
+  fromBusinessBranchDocument,
+  toBusinessBranchDocumentFields,
+} from "../models/businessBranchDocument";
 import { reserveBusinessCode } from "../services/businessCodeReservationService";
 import { RandomBusinessCodeCandidateGenerator } from "../services/randomBusinessCodeCandidateGenerator";
 import type { BusinessCodeCandidateGenerator } from "../services/businessCodeGenerator";
 import type { BusinessCodeUniquenessPort } from "../services/businessCodeUniquenessPort";
+import type { TransactionWriter } from "../../permissions/service/authorizeAndExecute";
 
 const BUSINESSES_COLLECTION = "businesses";
 const BRANCHES_COLLECTION = "businessBranches";
@@ -207,4 +213,71 @@ export async function bootstrapBusiness(
     await failIdempotencyKey(db, params.idempotencyKey);
     throw error;
   }
+}
+
+/**
+ * `ENG-P2-002C` read helper — used from a protected command's
+ * `authorizeAndExecute` `mutation.prepare` phase, which is given the full
+ * `Transaction` (read-capable). Returns `null` for a missing or
+ * structurally malformed document — the command layer maps that to
+ * `businessNotFoundError` (`RESOURCE_NOT_FOUND`), never a raw Firestore
+ * "not found" leak.
+ */
+export async function readBusinessById(
+  transaction: Transaction,
+  db: Firestore,
+  businessId: string,
+): Promise<Business | null> {
+  const snapshot = await transaction.get(db.collection(BUSINESSES_COLLECTION).doc(businessId));
+  if (!snapshot.exists) return null;
+  return fromBusinessDocument(businessId, snapshot.data());
+}
+
+/**
+ * `ENG-P2-002C` read helper with tenant isolation built in (Phase N): a
+ * branch that exists but whose own `businessId` does not match the
+ * authorized `businessId` context returns `null` — structurally identical
+ * to "does not exist," so a caller can never distinguish "wrong business"
+ * from "no such branch" (enumeration resistance), and can never escape the
+ * authorized Business context by supplying another business's branch id.
+ */
+export async function readBusinessBranchForBusiness(
+  transaction: Transaction,
+  db: Firestore,
+  businessId: string,
+  branchId: string,
+): Promise<BusinessBranch | null> {
+  const snapshot = await transaction.get(db.collection(BRANCHES_COLLECTION).doc(branchId));
+  if (!snapshot.exists) return null;
+  const branch = fromBusinessBranchDocument(branchId, snapshot.data());
+  if (!branch || branch.businessId !== businessId) return null;
+  return branch;
+}
+
+/**
+ * `ENG-P2-002C` write helper — the `mutation.apply` phase only has a
+ * write-only `TransactionWriter` (`authorizeAndExecute.ts`'s own
+ * TOCTOU-safety boundary: no `.get` available after the audit write has
+ * started), so this takes that narrower type rather than a full `Transaction`.
+ */
+export function writeBusinessUpdate(
+  writer: TransactionWriter,
+  db: Firestore,
+  business: Business,
+): void {
+  writer.set(
+    db.collection(BUSINESSES_COLLECTION).doc(business.id),
+    stripUndefined(toBusinessDocumentFields(business)),
+  );
+}
+
+export function writeBusinessBranchUpdate(
+  writer: TransactionWriter,
+  db: Firestore,
+  branch: BusinessBranch,
+): void {
+  writer.set(
+    db.collection(BRANCHES_COLLECTION).doc(branch.id),
+    stripUndefined(toBusinessBranchDocumentFields(branch)),
+  );
 }

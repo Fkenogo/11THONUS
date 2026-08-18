@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createBusiness, transitionBusinessStatus } from "./business";
+import { createBusiness, transitionBusinessStatus, updateBusinessProfile } from "./business";
 import { BUSINESS_STATUSES } from "./businessStatus";
 
 const baseParams = () => ({
@@ -168,5 +168,86 @@ describe("transitionBusinessStatus", () => {
     // in sync — a status this domain declares but the table can never
     // reach would be a genuine defect.
     expect(BUSINESS_STATUSES).toHaveLength(8);
+  });
+});
+
+describe("updateBusinessProfile (ENG-P2-002C)", () => {
+  const updatedAt = new Date("2026-08-19T00:00:00.000Z");
+
+  it("updates only the supplied mutable fields, leaving everything else unchanged", () => {
+    const business = createBusiness(baseParams());
+    const updated = updateBusinessProfile(business, {
+      displayName: "New Name Café",
+      updatedAt,
+    });
+
+    expect(updated.displayName).toBe("New Name Café");
+    expect(updated.updatedAt).toBe(updatedAt);
+    // Untouched fields survive unchanged.
+    expect(updated.city).toBe(business.city);
+    expect(updated.contactPhone).toBe(business.contactPhone);
+  });
+
+  it("re-validates the resulting merged state, not just the patch in isolation", () => {
+    const business = createBusiness(baseParams());
+    expect(() => updateBusinessProfile(business, { displayName: "", updatedAt })).toThrow();
+    expect(() => updateBusinessProfile(business, { countryCode: "usa", updatedAt })).toThrow();
+    expect(() => updateBusinessProfile(business, { currencyCode: "dollars", updatedAt })).toThrow();
+    expect(() =>
+      updateBusinessProfile(business, { supportedLanguages: ["fr", ""], updatedAt }),
+    ).toThrow();
+  });
+
+  it("accepts an empty supportedLanguages array (no minimum-cardinality rule, TRD10 §10.6.3)", () => {
+    const business = createBusiness(baseParams());
+    const updated = updateBusinessProfile(business, { supportedLanguages: [], updatedAt });
+    expect(updated.supportedLanguages).toEqual([]);
+  });
+
+  it("allows clearing an optional field back to undefined", () => {
+    const business = createBusiness({ ...baseParams(), address: "123 Main St" });
+    const updated = updateBusinessProfile(business, { address: undefined, updatedAt });
+    expect(updated.address).toBeUndefined();
+  });
+
+  it("the params type has no id/businessCode/ownerUserId/status/createdAt/schemaVersion key at all", () => {
+    const business = createBusiness(baseParams());
+    // @ts-expect-error — id is not part of the update-params shape.
+    updateBusinessProfile(business, { id: "attacker-id", updatedAt });
+    // @ts-expect-error — businessCode is not part of the update-params shape.
+    updateBusinessProfile(business, { businessCode: "BIZATTACK1", updatedAt });
+    // @ts-expect-error — ownerUserId is not part of the update-params shape.
+    updateBusinessProfile(business, { ownerUserId: "attacker-uid", updatedAt });
+    // @ts-expect-error — status is not part of the update-params shape.
+    updateBusinessProfile(business, { status: "active", updatedAt });
+    // @ts-expect-error — createdAt is not part of the update-params shape.
+    updateBusinessProfile(business, { createdAt: new Date(0), updatedAt });
+    // @ts-expect-error — schemaVersion is not part of the update-params shape.
+    updateBusinessProfile(business, { schemaVersion: 999, updatedAt });
+  });
+
+  it("runtime: even if a caller forges the params object past the type system, immutable fields never change", () => {
+    const business = createBusiness(baseParams());
+    const forged = {
+      displayName: "Legit Update",
+      updatedAt,
+      id: "attacker-id",
+      businessCode: "BIZATTACK1",
+      ownerUserId: "attacker-uid",
+      status: "active",
+      createdAt: new Date(0),
+      schemaVersion: 999,
+    } as unknown as Parameters<typeof updateBusinessProfile>[1];
+
+    const updated = updateBusinessProfile(business, forged);
+
+    expect(updated.id).toBe(business.id);
+    expect(updated.businessCode).toBe(business.businessCode);
+    expect(updated.ownerUserId).toBe(business.ownerUserId);
+    expect(updated.status).toBe(business.status);
+    expect(updated.createdAt).toBe(business.createdAt);
+    expect(updated.schemaVersion).toBe(business.schemaVersion);
+    // Only the legitimate field changed.
+    expect(updated.displayName).toBe("Legit Update");
   });
 });

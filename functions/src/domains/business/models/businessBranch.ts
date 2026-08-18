@@ -70,3 +70,41 @@ export function createBusinessBranch(params: CreateBusinessBranchParams): Busine
     schemaVersion: 1,
   };
 }
+
+/**
+ * `ENG-P2-002C` (Phase E). No `id`/`businessId`/`createdAt`/`schemaVersion`
+ * key — all immutable-by-this-command, structurally prevented the same way
+ * `business.ts`'s `UpdateBusinessProfileParams` prevents `id`/`businessCode`/
+ * `ownerUserId`. Only the MVP-mutable location fields (`displayName`,
+ * `countryCode`, `city`, `address`) are patchable.
+ */
+export type UpdateBusinessBranchProfileParams = {
+  displayName?: string;
+  countryCode?: string;
+  city?: string;
+  address?: string;
+  updatedAt: Date;
+};
+
+/** Merges the supplied fields and re-validates the resulting whole state (Phase S). */
+export function updateBusinessBranchProfile(
+  branch: BusinessBranch,
+  params: UpdateBusinessBranchProfileParams,
+): BusinessBranch {
+  const next: BusinessBranch = {
+    ...branch,
+    displayName: params.displayName !== undefined ? params.displayName : branch.displayName,
+    countryCode: params.countryCode !== undefined ? params.countryCode : branch.countryCode,
+    city: params.city !== undefined ? params.city : branch.city,
+    address: "address" in params ? params.address : branch.address,
+    updatedAt: params.updatedAt,
+  };
+
+  requireNonBlank("displayName", next.displayName);
+  requireNonBlank("city", next.city);
+  if (!COUNTRY_CODE_PATTERN.test(next.countryCode)) {
+    throw invalidBusinessBranchFieldError("countryCode", next.countryCode);
+  }
+
+  return next;
+}

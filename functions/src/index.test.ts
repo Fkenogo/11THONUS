@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { MVP_REFERENCE_TYPES, parseCreateBusinessCommand } from "./index";
+import {
+  MVP_REFERENCE_TYPES,
+  parseCreateBusinessCommand,
+  parseBusinessProfilePatch,
+  parseBusinessBranchProfilePatch,
+} from "./index";
 
 /**
  * Regression guard for the callable-boundary provider allow-list
@@ -116,5 +121,87 @@ describe("parseCreateBusinessCommand (mass-assignment boundary)", () => {
         "idempotencyKey",
       ].sort(),
     );
+  });
+});
+
+/**
+ * Adversarial mass-assignment regression (`ENG-P2-002C`, Phase M) — the
+ * same runtime proof `ENG-P2-002B`'s independent review established for
+ * `parseCreateBusinessCommand`: a malicious raw payload attaching
+ * authority-sensitive fields must never survive the whitelist parser at
+ * runtime, not merely be absent from the TypeScript type.
+ */
+describe("parseBusinessProfilePatch (mass-assignment boundary)", () => {
+  it("drops id/businessCode/ownerUserId/status/createdAt/schemaVersion/subscriptionId even if present on the payload", () => {
+    const malicious = {
+      displayName: "Legit New Name",
+      id: "attacker-id",
+      businessCode: "BIZATTACK1",
+      ownerUserId: "attacker-uid",
+      status: "active",
+      createdAt: "2020-01-01T00:00:00.000Z",
+      schemaVersion: 999,
+      // `subscriptionId` (controlled-resume review, Phase J): no
+      // subscription/billing governance exists yet (`ENG-P2-003` not
+      // started) — an ungoverned value here must never reach the domain
+      // layer through this ordinary profile-update permission.
+      subscriptionId: "attacker-controlled-plan",
+    };
+
+    const patch = parseBusinessProfilePatch(malicious);
+    const patchKeys = Object.keys(patch);
+
+    for (const forbiddenKey of [
+      "id",
+      "businessCode",
+      "ownerUserId",
+      "status",
+      "createdAt",
+      "schemaVersion",
+      "subscriptionId",
+    ]) {
+      expect(patchKeys).not.toContain(forbiddenKey);
+    }
+    expect(patch.displayName).toBe("Legit New Name");
+  });
+
+  it("rejects a non-string value for a legitimate field rather than coercing it", () => {
+    expect(() => parseBusinessProfilePatch({ displayName: 12345 })).toThrow();
+    expect(() => parseBusinessProfilePatch({ displayName: { $ne: null } })).toThrow();
+  });
+
+  it("accepts an explicit null as a request to clear an optional field", () => {
+    const patch = parseBusinessProfilePatch({ address: null });
+    expect("address" in patch).toBe(true);
+    expect(patch.address).toBeUndefined();
+  });
+
+  it("an omitted field never appears in the resulting patch at all (true partial update)", () => {
+    const patch = parseBusinessProfilePatch({ displayName: "Only This" });
+    expect(Object.keys(patch)).toEqual(["displayName"]);
+  });
+});
+
+describe("parseBusinessBranchProfilePatch (mass-assignment boundary)", () => {
+  it("drops id/businessId/createdAt/schemaVersion even if present on the payload", () => {
+    const malicious = {
+      displayName: "Legit Branch Name",
+      id: "attacker-id",
+      businessId: "attacker-business",
+      createdAt: "2020-01-01T00:00:00.000Z",
+      schemaVersion: 999,
+    };
+
+    const patch = parseBusinessBranchProfilePatch(malicious);
+    const patchKeys = Object.keys(patch);
+
+    for (const forbiddenKey of ["id", "businessId", "createdAt", "schemaVersion"]) {
+      expect(patchKeys).not.toContain(forbiddenKey);
+    }
+    expect(patch.displayName).toBe("Legit Branch Name");
+  });
+
+  it("rejects a non-string value for a legitimate field", () => {
+    expect(() => parseBusinessBranchProfilePatch({ city: 12345 })).toThrow();
   });
 });

@@ -3,6 +3,8 @@
 **Date:** 2026-08-19
 **Status:** **Complete / merged** (PR #126, merge `ce2b026`) — **[UPDATED 2026-08-19 — merge-gate closure]**
 
+> **Date-label correction (recorded 2026-08-18, `ENG-P2-002C` controlled-resume task, Phase C).** This report's filename and header date (`2026-08-19`) were labeled one day ahead of the actual date on which the work was performed and merged — the merge commit timestamps (`ce2b026` at `2026-08-18T14:08:12Z`, `bc44216` at `2026-08-18T14:20:14Z`) are the accurate historical record. Per this repository's "do not rewrite historical evidence unnecessarily" convention, the filename and body are left as originally written rather than retroactively edited; this note exists only so a reader cross-referencing merge timestamps against the label isn't misled.
+
 ---
 
 ## 1. Entry origin/main SHA

@@ -309,16 +309,20 @@ export default tseslint.config(
     },
   },
   {
-    // ENG-P2-002A/002B: same machine-enforced boundary as the
+    // ENG-P2-002A/002B/002C: same machine-enforced boundary as the
     // domain-foundation blocks above, scoped to the Business Identity
     // domain (`models/` value types/readers/writers/errors stay
-    // framework-independent by design, §20). `ENG-P2-002B` adds the
+    // framework-independent by design, §20). `ENG-P2-002B` added the
     // persistence layer this block's own comment predicted: `repositories/`
     // (the Firestore bootstrap transaction) and the one Firebase-touching
     // `services/` file (`businessBootstrapEndpointService.ts`, which
     // resolves the authenticated owner through the Authentication/Identity
-    // domains' own Firebase-adapter services) are exempted by name/glob —
-    // `businessCodeGenerator.ts`/`randomBusinessCodeCandidateGenerator.ts`/
+    // domains' own Firebase-adapter services). `ENG-P2-002C` adds its three
+    // protected-command files (`businessProfileCommand.ts`,
+    // `businessBranchProfileCommand.ts`, `businessLifecycleCommand.ts`),
+    // each composing through `ENG-P2-004`'s `authorizeAndExecute` (itself a
+    // Firestore-adapter service) — exempted by name/glob for the same
+    // reason. `businessCodeGenerator.ts`/`randomBusinessCodeCandidateGenerator.ts`/
     // `businessCodeReservationService.ts` remain covered by the restriction
     // and stay framework-independent, matching `businessCodeGenerator.ts`'s
     // own header ("this port produces candidates only").
@@ -326,6 +330,11 @@ export default tseslint.config(
     ignores: [
       "functions/src/domains/business/repositories/**",
       "functions/src/domains/business/services/businessBootstrapEndpointService.ts",
+      "functions/src/domains/business/services/businessProfileCommand.ts",
+      "functions/src/domains/business/services/businessBranchProfileCommand.ts",
+      "functions/src/domains/business/services/businessLifecycleCommand.ts",
+      "functions/src/domains/business/services/authenticatedBusinessActor.ts",
+      "functions/src/domains/business/services/businessProfileLifecycle.emulator.test.ts",
     ],
     languageOptions: {
       ecmaVersion: 2023,
