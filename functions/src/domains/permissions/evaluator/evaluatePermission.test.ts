@@ -915,3 +915,442 @@ describe("evaluateAuthorizationDecision — business-context isolation on the bu
     expect(decision.errorCategory).toBe("AUTH_FORBIDDEN");
   });
 });
+
+// ---------------------------------------------------------------------------
+// ENG-P2-004-CORR-001 — Ordinary Permission Catalogue correction.
+// ---------------------------------------------------------------------------
+
+function ordinaryInput(overrides: Partial<EvaluationInput> = {}): EvaluationInput {
+  return baseInput({
+    request: { userId: "user-1", businessId: "biz-a", permission: "business.updateProfile" },
+    ...overrides,
+  });
+}
+
+describe("evaluateAuthorizationDecision — ordinary permissions: business.updateProfile (FD-CORR-3/4/5)", () => {
+  it("Owner + draft = allow", () => {
+    const decision = evaluateAuthorizationDecision(
+      ordinaryInput({
+        business: { kind: "found", business: { id: "biz-a", status: "draft" } },
+        membership: { kind: "found", membership: membership({ role: "owner" }) },
+      }),
+    );
+    expect(decision.allowed).toBe(true);
+    expect(decision.permissionSource).toBe("role-default");
+  });
+
+  it("Owner + pending_verification = allow", () => {
+    const decision = evaluateAuthorizationDecision(
+      ordinaryInput({
+        business: { kind: "found", business: { id: "biz-a", status: "pending_verification" } },
+        membership: { kind: "found", membership: membership({ role: "owner" }) },
+      }),
+    );
+    expect(decision.allowed).toBe(true);
+  });
+
+  it("Owner + trial = allow", () => {
+    const decision = evaluateAuthorizationDecision(
+      ordinaryInput({
+        business: { kind: "found", business: { id: "biz-a", status: "trial" } },
+        membership: { kind: "found", membership: membership({ role: "owner" }) },
+      }),
+    );
+    expect(decision.allowed).toBe(true);
+  });
+
+  it("Owner + active = allow", () => {
+    const decision = evaluateAuthorizationDecision(
+      ordinaryInput({
+        business: { kind: "found", business: { id: "biz-a", status: "active" } },
+        membership: { kind: "found", membership: membership({ role: "owner" }) },
+      }),
+    );
+    expect(decision.allowed).toBe(true);
+  });
+
+  it("Owner + suspended = deny (administrator-imposed restriction, FD-CORR-5/7)", () => {
+    const decision = evaluateAuthorizationDecision(
+      ordinaryInput({
+        business: { kind: "found", business: { id: "biz-a", status: "suspended" } },
+        membership: { kind: "found", membership: membership({ role: "owner" }) },
+      }),
+    );
+    expect(decision.allowed).toBe(false);
+    expect(decision.errorCategory).toBe("BUSINESS_INACTIVE");
+  });
+
+  it("Owner + expired = allow (expiry is not itself an enforcement state, FD-CORR-5/7)", () => {
+    const decision = evaluateAuthorizationDecision(
+      ordinaryInput({
+        business: { kind: "found", business: { id: "biz-a", status: "expired" } },
+        membership: { kind: "found", membership: membership({ role: "owner" }) },
+      }),
+    );
+    expect(decision.allowed).toBe(true);
+  });
+
+  it("Owner + closed = deny (terminal)", () => {
+    const decision = evaluateAuthorizationDecision(
+      ordinaryInput({
+        business: { kind: "found", business: { id: "biz-a", status: "closed" } },
+        membership: { kind: "found", membership: membership({ role: "owner" }) },
+      }),
+    );
+    expect(decision.allowed).toBe(false);
+    expect(decision.errorCategory).toBe("BUSINESS_INACTIVE");
+  });
+
+  it("Owner + archived = deny (terminal)", () => {
+    const decision = evaluateAuthorizationDecision(
+      ordinaryInput({
+        business: { kind: "found", business: { id: "biz-a", status: "archived" } },
+        membership: { kind: "found", membership: membership({ role: "owner" }) },
+      }),
+    );
+    expect(decision.allowed).toBe(false);
+    expect(decision.errorCategory).toBe("BUSINESS_INACTIVE");
+  });
+
+  it("Manager + active = deny (FD-CORR-4)", () => {
+    const decision = evaluateAuthorizationDecision(
+      ordinaryInput({
+        membership: { kind: "found", membership: membership({ role: "manager" }) },
+      }),
+    );
+    expect(decision.allowed).toBe(false);
+    expect(decision.errorCategory).toBe("AUTH_FORBIDDEN");
+    expect(decision.role).toBe("manager");
+  });
+
+  it("Staff + active = deny (FD-CORR-4)", () => {
+    const decision = evaluateAuthorizationDecision(
+      ordinaryInput({
+        membership: { kind: "found", membership: membership({ role: "staff" }) },
+      }),
+    );
+    expect(decision.allowed).toBe(false);
+    expect(decision.errorCategory).toBe("AUTH_FORBIDDEN");
+    expect(decision.role).toBe("staff");
+  });
+});
+
+describe("evaluateAuthorizationDecision — ordinary permissions: businessBranch.updateProfile (identical treatment)", () => {
+  it("Owner + draft = allow, Owner + suspended = deny, Manager/Staff = deny", () => {
+    const allow = evaluateAuthorizationDecision(
+      ordinaryInput({
+        request: {
+          userId: "user-1",
+          businessId: "biz-a",
+          permission: "businessBranch.updateProfile",
+        },
+        business: { kind: "found", business: { id: "biz-a", status: "draft" } },
+        membership: { kind: "found", membership: membership({ role: "owner" }) },
+      }),
+    );
+    expect(allow.allowed).toBe(true);
+
+    const denySuspended = evaluateAuthorizationDecision(
+      ordinaryInput({
+        request: {
+          userId: "user-1",
+          businessId: "biz-a",
+          permission: "businessBranch.updateProfile",
+        },
+        business: { kind: "found", business: { id: "biz-a", status: "suspended" } },
+        membership: { kind: "found", membership: membership({ role: "owner" }) },
+      }),
+    );
+    expect(denySuspended.allowed).toBe(false);
+
+    for (const role of ["manager", "staff"] as const) {
+      const denyRole = evaluateAuthorizationDecision(
+        ordinaryInput({
+          request: {
+            userId: "user-1",
+            businessId: "biz-a",
+            permission: "businessBranch.updateProfile",
+          },
+          membership: { kind: "found", membership: membership({ role }) },
+        }),
+      );
+      expect(denyRole.allowed).toBe(false);
+    }
+  });
+});
+
+describe("evaluateAuthorizationDecision — ordinary permission: business.submitForVerification narrowness (Phase H)", () => {
+  it("Owner + draft = allow", () => {
+    const decision = evaluateAuthorizationDecision(
+      ordinaryInput({
+        request: {
+          userId: "user-1",
+          businessId: "biz-a",
+          permission: "business.submitForVerification",
+        },
+        business: { kind: "found", business: { id: "biz-a", status: "draft" } },
+        membership: { kind: "found", membership: membership({ role: "owner" }) },
+      }),
+    );
+    expect(decision.allowed).toBe(true);
+  });
+
+  it("Manager + draft = deny", () => {
+    const decision = evaluateAuthorizationDecision(
+      ordinaryInput({
+        request: {
+          userId: "user-1",
+          businessId: "biz-a",
+          permission: "business.submitForVerification",
+        },
+        business: { kind: "found", business: { id: "biz-a", status: "draft" } },
+        membership: { kind: "found", membership: membership({ role: "manager" }) },
+      }),
+    );
+    expect(decision.allowed).toBe(false);
+  });
+
+  it("Staff + draft = deny", () => {
+    const decision = evaluateAuthorizationDecision(
+      ordinaryInput({
+        request: {
+          userId: "user-1",
+          businessId: "biz-a",
+          permission: "business.submitForVerification",
+        },
+        business: { kind: "found", business: { id: "biz-a", status: "draft" } },
+        membership: { kind: "found", membership: membership({ role: "staff" }) },
+      }),
+    );
+    expect(decision.allowed).toBe(false);
+  });
+
+  it.each([
+    "pending_verification",
+    "trial",
+    "active",
+    "suspended",
+    "expired",
+    "closed",
+    "archived",
+  ] as const)(
+    "Owner + %s = deny — cannot authorize any transition other than draft→pending_verification, even for the Owner",
+    (status) => {
+      const decision = evaluateAuthorizationDecision(
+        ordinaryInput({
+          request: {
+            userId: "user-1",
+            businessId: "biz-a",
+            permission: "business.submitForVerification",
+          },
+          business: { kind: "found", business: { id: "biz-a", status } },
+          membership: { kind: "found", membership: membership({ role: "owner" }) },
+        }),
+      );
+      expect(decision.allowed).toBe(false);
+      expect(decision.errorCategory).toBe("BUSINESS_INACTIVE");
+    },
+  );
+});
+
+describe("evaluateAuthorizationDecision — ordinary permission: business.close (FD-CORR-5/7 exact matrix)", () => {
+  it.each(["draft", "pending_verification", "trial", "active", "suspended", "expired"] as const)(
+    "Owner + %s = allow",
+    (status) => {
+      const decision = evaluateAuthorizationDecision(
+        ordinaryInput({
+          request: { userId: "user-1", businessId: "biz-a", permission: "business.close" },
+          business: { kind: "found", business: { id: "biz-a", status } },
+          membership: { kind: "found", membership: membership({ role: "owner" }) },
+        }),
+      );
+      expect(decision.allowed).toBe(true);
+    },
+  );
+
+  it.each(["closed", "archived"] as const)("Owner + %s = deny (terminal)", (status) => {
+    const decision = evaluateAuthorizationDecision(
+      ordinaryInput({
+        request: { userId: "user-1", businessId: "biz-a", permission: "business.close" },
+        business: { kind: "found", business: { id: "biz-a", status } },
+        membership: { kind: "found", membership: membership({ role: "owner" }) },
+      }),
+    );
+    expect(decision.allowed).toBe(false);
+    expect(decision.errorCategory).toBe("BUSINESS_INACTIVE");
+  });
+
+  it("Manager = deny, Staff = deny", () => {
+    for (const role of ["manager", "staff"] as const) {
+      const decision = evaluateAuthorizationDecision(
+        ordinaryInput({
+          request: { userId: "user-1", businessId: "biz-a", permission: "business.close" },
+          membership: { kind: "found", membership: membership({ role }) },
+        }),
+      );
+      expect(decision.allowed).toBe(false);
+    }
+  });
+});
+
+describe("evaluateAuthorizationDecision — unknown ordinary permission (Phase N/Phase F/K: fail-closed)", () => {
+  it("an unconfigured permission id (well-formed, no catalogue entry) denies regardless of role or business status", () => {
+    const decision = evaluateAuthorizationDecision(
+      ordinaryInput({
+        request: { userId: "user-1", businessId: "biz-a", permission: "purchase.record" },
+        business: { kind: "found", business: { id: "biz-a", status: "draft" } },
+        membership: { kind: "found", membership: membership({ role: "owner" }) },
+      }),
+    );
+    expect(decision.allowed).toBe(false);
+  });
+});
+
+describe("evaluateAuthorizationDecision — ordinary permission + override: no grant/revoke support (FD-CORR-6, Phase K)", () => {
+  it("a grant override on an ordinary permission does not bypass the Manager role default (Manager stays denied)", () => {
+    const decision = evaluateAuthorizationDecision(
+      ordinaryInput({
+        membership: {
+          kind: "found",
+          membership: membership({
+            role: "manager",
+            overrides: [
+              {
+                permissionId: "business.updateProfile",
+                direction: "grant",
+                businessId: "biz-a",
+                membershipId: "mem-1",
+              },
+            ],
+          }),
+        },
+      }),
+    );
+    expect(decision.allowed).toBe(false);
+  });
+
+  it("a revoke override on an ordinary permission does not block the Owner's role-default allow (overrides are simply not consulted for ordinary permissions)", () => {
+    const decision = evaluateAuthorizationDecision(
+      ordinaryInput({
+        membership: {
+          kind: "found",
+          membership: membership({
+            role: "owner",
+            overrides: [
+              {
+                permissionId: "business.updateProfile",
+                direction: "revoke",
+                businessId: "biz-a",
+                membershipId: "mem-1",
+              },
+            ],
+          }),
+        },
+      }),
+    );
+    expect(decision.allowed).toBe(true);
+    expect(decision.permissionSource).toBe("role-default");
+  });
+
+  it("a malformed-direction override on an ordinary permission does not affect the outcome either (ordinary permissions never inspect override state)", () => {
+    const decision = evaluateAuthorizationDecision(
+      ordinaryInput({
+        membership: {
+          kind: "found",
+          membership: membership({
+            role: "owner",
+            overrides: [
+              {
+                permissionId: "business.updateProfile",
+                direction: "not-a-real-direction" as never,
+                businessId: "biz-a",
+                membershipId: "mem-1",
+              },
+            ],
+          }),
+        },
+      }),
+    );
+    expect(decision.allowed).toBe(true);
+  });
+});
+
+describe("evaluateAuthorizationDecision — ordinary permission interaction cases (Phase O)", () => {
+  it("ordinary permission + malformed membership → deny, AUTH_FORBIDDEN", () => {
+    const decision = evaluateAuthorizationDecision(
+      ordinaryInput({ membership: { kind: "malformed" } }),
+    );
+    expect(decision.allowed).toBe(false);
+    expect(decision.errorCategory).toBe("AUTH_FORBIDDEN");
+  });
+
+  it("ordinary permission + inactive (invited) membership → deny, AUTH_FORBIDDEN", () => {
+    const decision = evaluateAuthorizationDecision(
+      ordinaryInput({
+        membership: { kind: "found", membership: membership({ status: "invited", role: "owner" }) },
+      }),
+    );
+    expect(decision.allowed).toBe(false);
+    expect(decision.errorCategory).toBe("AUTH_FORBIDDEN");
+  });
+
+  it("ordinary permission + wrong business (membership businessId mismatch) → deny, AUTH_FORBIDDEN", () => {
+    const decision = evaluateAuthorizationDecision(
+      ordinaryInput({
+        membership: {
+          kind: "found",
+          membership: membership({ businessId: "biz-other", role: "owner" }),
+        },
+      }),
+    );
+    expect(decision.allowed).toBe(false);
+    expect(decision.errorCategory).toBe("AUTH_FORBIDDEN");
+  });
+
+  it("ordinary permission + malformed business → deny, AUTH_FORBIDDEN", () => {
+    const decision = evaluateAuthorizationDecision(
+      ordinaryInput({ business: { kind: "malformed" } }),
+    );
+    expect(decision.allowed).toBe(false);
+    expect(decision.errorCategory).toBe("AUTH_FORBIDDEN");
+  });
+
+  it("ordinary permission + unsupported (ineligible) Business status → deny, BUSINESS_INACTIVE", () => {
+    const decision = evaluateAuthorizationDecision(
+      ordinaryInput({
+        business: { kind: "found", business: { id: "biz-a", status: "suspended" } },
+        membership: { kind: "found", membership: membership({ role: "owner" }) },
+      }),
+    );
+    expect(decision.allowed).toBe(false);
+    expect(decision.errorCategory).toBe("BUSINESS_INACTIVE");
+  });
+
+  it("sensitive permission + draft → still denies BUSINESS_INACTIVE (non-regression: the per-permission gate did not loosen the sensitive gate)", () => {
+    const decision = evaluateAuthorizationDecision(
+      baseInput({
+        request: { userId: "user-1", businessId: "biz-a", permission: "staff.manage" },
+        business: { kind: "found", business: { id: "biz-a", status: "draft" } },
+        membership: { kind: "found", membership: membership({ role: "owner" }) },
+      }),
+    );
+    expect(decision.allowed).toBe(false);
+    expect(decision.errorCategory).toBe("BUSINESS_INACTIVE");
+  });
+
+  it("sensitive permission + pending_verification → still denies BUSINESS_INACTIVE (non-regression)", () => {
+    const decision = evaluateAuthorizationDecision(
+      baseInput({
+        request: {
+          userId: "user-1",
+          businessId: "biz-a",
+          permission: "customer.viewProtectedProfile",
+        },
+        business: { kind: "found", business: { id: "biz-a", status: "pending_verification" } },
+        membership: { kind: "found", membership: membership({ role: "owner" }) },
+      }),
+    );
+    expect(decision.allowed).toBe(false);
+    expect(decision.errorCategory).toBe("BUSINESS_INACTIVE");
+  });
+});

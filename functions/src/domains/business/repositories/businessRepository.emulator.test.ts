@@ -405,18 +405,53 @@ describe("bootstrapBusiness — ENG-P2-004 evaluator compatibility (read-only)",
     }
 
     // A freshly-bootstrapped Business is `draft` (§6's only initial
-    // transition) — the evaluator correctly denies on business-not-active,
-    // never on a malformed/not-found membership or business read. This is
-    // the designed boundary (Phase V/§10.1): 002B does not special-case a
-    // newly-created business, and 002C's lifecycle transitions are the only
-    // path to an operational business.
+    // transition). `business.viewSettings` is not one of the four
+    // Founder-approved Ordinary Permission Catalogue entries
+    // (`ENG-P2-004-CORR-001`) — it remains an unconfigured/ungoverned
+    // permission id, so it is denied on the unknown-permission fail-closed
+    // path, never on a malformed/not-found membership or business read.
+    //
+    // Before `ENG-P2-004-CORR-001`, every permission (governed or not)
+    // was denied via the single global `business.status ∈ {trial, active}`
+    // gate applied ahead of permission classification — that is what this
+    // test originally asserted, and it is exactly the architectural
+    // deadlock `CAP-P3-BIZ-AUTH-001` identified (it denied the four
+    // ordinary Business-administration permissions too, on the Owner's own
+    // freshly-bootstrapped Business). The correction replaced that single
+    // gate with a per-permission-class one: an *unconfigured* permission
+    // like this one no longer receives any lifecycle gate at all (there is
+    // no governed eligibility table for it to consult) and instead denies
+    // at the evaluator's existing fail-closed step, `NO_APPLICABLE_GRANT`/
+    // `AUTH_FORBIDDEN` — never `BUSINESS_NOT_ACTIVE`/`BUSINESS_INACTIVE`,
+    // since that reason code is now reserved for a business-status failure
+    // against a *governed* permission's own eligibility set.
     const decision = await evaluatePermission(db, {
       userId: "cust_10",
       businessId: result.businessId,
       permission: "business.viewSettings",
     });
     expect(decision.allowed).toBe(false);
-    expect(decision.reasonCode).toBe("BUSINESS_NOT_ACTIVE");
-    expect(decision.errorCategory).toBe("BUSINESS_INACTIVE");
+    expect(decision.reasonCode).toBe("NO_APPLICABLE_GRANT");
+    expect(decision.errorCategory).toBe("AUTH_FORBIDDEN");
+  });
+
+  it("business.updateProfile (a governed ordinary permission) is now allowed for the Owner on a freshly-bootstrapped draft Business (ENG-P2-004-CORR-001 — the CAP-P3-BIZ-AUTH-001 deadlock is resolved)", async () => {
+    const result = await bootstrapBusiness(
+      db,
+      baseRequest,
+      buildParams({
+        ownerUserId: "cust_11",
+        idempotencyKey: "key_evaluator_2",
+        generator: new SequenceGenerator(["BIZ23456J"]),
+      }),
+    );
+
+    const decision = await evaluatePermission(db, {
+      userId: "cust_11",
+      businessId: result.businessId,
+      permission: "business.updateProfile",
+    });
+    expect(decision.allowed).toBe(true);
+    expect(decision.permissionSource).toBe("role-default");
   });
 });
