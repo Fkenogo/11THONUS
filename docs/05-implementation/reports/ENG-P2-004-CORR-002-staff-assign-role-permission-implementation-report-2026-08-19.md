@@ -1,6 +1,7 @@
 > **Title:** ENG-P2-004-CORR-002 — Add `staff.assignRole` Sensitive Permission (Implementation Report)
-> **Status:** Implemented / pending Founder review
+> **Status:** Complete / merged
 > **Classification:** Working (implementation report)
+> **Closure update (2026-08-19):** PR #134 independently re-reviewed against `ENG-P2-003-DESIGN-001` v1.1 FD-6-STAFF directly (not the report's own claims), merged as `3153ae6eba106a06404aec8a7a482f5c23c66977`, post-merge CI **PASS**. See the [Closure Addendum](#closure-addendum-2026-08-19) at the end of this report for the full independent-review and merge record; §35–48 below are superseded by that addendum where they conflict (original text preserved, not rewritten).
 > **Authorization:** Bounded Founder correction task, ENG-P2-004-owned only — does not authorize `ENG-P2-003C`, any staff-lifecycle or role-change command, membership suspend/reactivate/remove, invitation changes, `PermissionOverride` administration, frontend/UI, Firebase deployment, Rules changes, shared-device functionality, subscription enforcement, or ownership-transfer functionality.
 
 ## 1. Entry `origin/main` SHA
@@ -288,6 +289,84 @@ Review and, if satisfied, merge the draft PR from `feat/eng-p2-004-corr-002-staf
 
 ---
 
+## FINAL GATE (superseded — see addendum)
+
+~~**ENG-P2-004-CORR-002 READY FOR FOUNDER REVIEW/MERGE**~~ — superseded 2026-08-19 by merge; see below.
+
+---
+
+## Closure Addendum (2026-08-19)
+
+CI-confirmation, independent final review, and merge, performed as a separate governed task against PR #134's actual final head — not by trusting this report's own §33 self-review.
+
+**1. Entry PR/head.** PR #134, head `557d444afd1a170f1fd5b61d9c35fd6bf19d8dce` at task entry — confirmed `OPEN`/`DRAFT`/`MERGEABLE`, no commits landed after this report was originally written, `origin/main` unchanged at `123a60ed4eaa01370883850acb1505d811359594`, `ENG-P2-003C` confirmed still not started (no branch/PR anywhere).
+
+**2. Final reviewed head.** `557d444afd1a170f1fd5b61d9c35fd6bf19d8dce` (unchanged from entry — no corrective commits were needed).
+
+**3. CI result.** Pre-merge: `Build, Lint, Test, Emulator Validation` — **PASS** (4m47s, run [32279042316](https://github.com/Fkenogo/11THONUS/actions/runs/32279042316)). Post-merge on `main`: **PASS** (4m17s, run [32280014926](https://github.com/Fkenogo/11THONUS/actions/runs/32280014926)).
+
+**4. Exact catalogue entry.** Re-read directly from source on the reviewed head: exactly one entry, `id: "staff.assignRole"`, inserted between `staff.assignPermissions` and `business.transferOwnership`. Nine total catalogue entries (confirmed by direct enumeration of every `id:` field in the file, not by trusting a test assertion). No other identifier added; no `role: "owner"` semantics anywhere in the entry (`defaultState: "owner_only"` is the same naming convention `staff.manage`/`business.transferOwnership` already use for "Owner accesses via the runtime floor," not a literal owner-role grant).
+
+**5. Catalogue flags.** Independently re-derived from `ENG-P2-003-DESIGN-001` v1.1 §28 FD-6-STAFF's own text ("Owner-only; non-delegable to Manager at MVP; ... Manager cannot change another membership's role; no actor may change their own role...") before reading the implementation, then confirmed byte-for-byte against source: `meaning: "Change a Business membership role between Staff and Manager"`, `defaultState: "owner_only"`, `inheritAllowed: false`, `explicitGrantRequired: false`, `explicitGrantEligibleRole: null`, `explicitRevocationSupported: false`, `rationale: ["a"]`. Matches FD-6-STAFF exactly — meaning text is verbatim.
+
+**6. Owner result.** **PASS**, proven by direct code execution (a standalone verification test, independent of the implementer's own suite, run against the actual PR head and then deleted — not committed): `evaluateAuthorizationDecision` with an Owner membership and no override returns `allowed: true, permissionSource: "owner-floor"`.
+
+**7. Manager non-delegability result.** **PASS**, proven on every acquisition path by the same independent execution: no role default (absent from `SENSITIVE_PERMISSION_ROLE_TEMPLATES.manager`), no inherited authority (same), `createPermissionOverride` throws for a Manager-targeted grant, and a *fabricated* persisted grant-shaped override fed directly into the evaluator still denies (the evaluator revalidates `entry.explicitGrantRequired && entry.explicitGrantEligibleRole === role` independently of override construction — both are `false`/`null` for this entry, so `GRANT_NOT_HONORED` fires regardless of what a malformed/forged override document claims).
+
+**8. Staff non-delegability result.** **PASS**, identical reasoning and identical independent-execution proof, role `staff`.
+
+**9. `PermissionOverride` result.** **PASS.** Direct execution confirms: Manager grant rejected, Staff grant rejected, revoke rejected (nothing to revoke), Owner-target rejected by the pre-existing general invariant (unconditional on permission id). `git diff origin/main -- .../permissionOverride.ts` is **empty** — no production changes to this file at all.
+
+**10. Role-template result.** **PASS.** `git diff origin/main -- .../roleTemplate.ts` is **empty**. `SENSITIVE_PERMISSION_ROLE_TEMPLATES` is derived at module load from `getInheritableSensitivePermissionEntries()`; since the new entry's `inheritAllowed` is `false`, it is structurally absent from Owner's, Manager's, and Staff's templates with zero code change — confirmed by direct inspection of all three templates on the reviewed head, not by trusting the test suite alone. The catalogue's exact-set test was expanded from 8→9 ids and the owner-only/non-inheritable list correctly grew by one; no assertion was weakened (the filtered `it.each` exclusion list correctly grew from one exclusion to two, still asserting every *other* entry supports grant/revoke).
+
+**11. Evaluator-change result.** **PASS — zero changes.** `git diff origin/main -- .../evaluatePermission.ts` is **empty**. Confirmed directly: the evaluator has no per-permission-id branch anywhere; classification, the lifecycle gate, override resolution, and the Owner floor all operate purely off catalogue-entry flags, so the new entry participates correctly with no evaluator modification, exactly as the original report claimed.
+
+**12. Sensitive-audit result.** **PASS.** `permissionAuditService.ts`'s `recordSensitiveDecision` gates solely on `isSensitivePermission(params.request.permission)` (confirmed by direct read of source, line 101) — catalogue-membership-keyed, not an id allow-list — so any future command resolving `staff.assignRole` through `authorizeAndExecute`/`evaluatePermissionService` automatically receives mandatory sensitive-decision audit. `git diff origin/main -- .../permissionAuditService.ts .../authorizeAndExecute.ts` is **empty** — no changes to either file.
+
+**13. Target-policy boundary result.** **PASS — no leakage.** `staffMembershipTargetPolicy.ts` and `staffRoleChangeRequest.ts` (pre-existing `ENG-P2-003A`/`B`-era scaffolding for the future role-change command, confirmed present on `origin/main` before this PR) both have **empty** diffs against `origin/main` — this correction added no target-is-self/target-is-Owner/Staff↔Manager-only logic anywhere; those remain entirely `ENG-P2-003C`'s domain-command responsibility, exactly as `ENG-P2-003-DESIGN-001` §22's addendum specifies.
+
+**14. Non-regression result.** **PASS.** Fresh full-suite re-run on the reviewed head (not reused from the original report): functions **1233/1233**, web **397/397**, `emulators:validate` **434/434**, focused `domains/permissions` suite **397/397** in isolation. `staff.manage`, `staff.assignPermissions`, `business.transferOwnership`, the four `CORR-001` ordinary permissions, and unknown-permission fail-closed behavior are all covered by these same passing suites with no assertion weakened.
+
+**15. New findings/fixes.** None. No corrective commit was required — the reviewed head is identical to what was independently re-verified.
+
+**16. Remaining material findings.** None.
+
+**17. Tests.** Unchanged from the original report (§21) — 20 new test cases across 5 test files, plus 10 ad hoc independent-verification assertions executed directly against the reviewed head during this review pass (not committed to the repository — a standalone review artifact, deleted after use, per this task's "independently verify rather than trusting the report" instruction).
+
+**18. Full validation.** typecheck — clean; lint — clean; `format:check` — clean; `build` — clean (functions + web); `test` — functions 1233/1233, web 397/397; `emulators:validate` — 434/434; secret scan of the diff — no obvious secret patterns found.
+
+**19. Files changed.** Unchanged from §25–26 of the original report — 6 code/test files under `functions/src/domains/permissions/`, all under `ENG-P2-004`'s own ownership; plus the 2 documentation files. Confirmed again directly via `git diff origin/main --stat` on the reviewed head.
+
+**20. Dependencies/config changes.** None.
+
+**21. Firebase/Rules/deployment changes.** None.
+
+**22. Merge commit.** `3153ae6eba106a06404aec8a7a482f5c23c66977` (`Merge pull request #134 from Fkenogo/feat/eng-p2-004-corr-002-staff-assign-role`).
+
+**23. Post-merge `origin/main`.** `3153ae6eba106a06404aec8a7a482f5c23c66977`; `git merge-base --is-ancestor 557d444 origin/main` confirmed the reviewed head is an ancestor.
+
+**24. Post-merge CI.** **PASS** — run [32280014926](https://github.com/Fkenogo/11THONUS/actions/runs/32280014926), 4m17s.
+
+**25. `ENG-P2-004-CORR-002` status.** **Complete / merged.**
+
+**26. `ENG-P2-003C` status.** **Not started** — not begun by this task or the original implementation task.
+
+**27. Capability 3 status.** **Open — partially implemented; not closed** (unchanged).
+
+**28. Dirty primary worktree.** `/Users/theo/11THONUS` (primary checkout) was not entered or modified by this review/merge task; its pre-existing untracked governance/docs files remain outside this task's scope, exactly as before.
+
+**29. Risks.** Low — unchanged assessment from §44 of the original report, now strengthened: the independent-reconstruction review in this addendum was performed by direct code execution against the actual merged head (not report-trusting), found zero discrepancies, and post-merge CI is green.
+
+**30. Rollback.** Unchanged from §45 — trivial single-commit/PR revert; no persisted data, migration, Rules, or deployed surface touched.
+
+**31. Persistent implementation-report path.** This file (unchanged path).
+
+**32. Changes-tracking state.** A direct docs-only closure-sync commit was pushed to `main` (mirroring the established precedent of commit `123a60e`, "docs: record ENG-P2-003B independent-review closure" — a direct commit, no PR, confirmed via `gh api .../commits/123a60e/pulls` returning empty) recording this closure in `engineering-implementation-programme.md`'s changelog header and finalizing this report.
+
+**33. Exact next Founder action.** None required for `ENG-P2-004-CORR-002` — it is closed. `ENG-P2-003C` remains a **separate, still-unauthorized** future task; its role-change command may now consume the merged `staff.assignRole` catalogue entry once (and only once) the Founder issues fresh, dedicated authorization for `ENG-P2-003C` itself.
+
+---
+
 ## FINAL GATE
 
-**ENG-P2-004-CORR-002 READY FOR FOUNDER REVIEW/MERGE**
+**ENG-P2-004-CORR-002 MERGED AND CLOSED — ENG-P2-003C AWAITS FRESH FOUNDER AUTHORIZATION**
