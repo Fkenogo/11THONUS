@@ -61,6 +61,7 @@ import {
 import {
   invalidMembershipLifecycleTransitionError,
   membershipCrossBusinessMismatchError,
+  membershipReadTransientFailureError,
   staffManagementTargetNotPermittedError,
   targetMembershipNotFoundError,
 } from "../models/permissionErrors";
@@ -97,11 +98,16 @@ async function resolveAuthorizedTarget(
   action: StaffLifecycleAction,
 ): Promise<EvaluationBusinessMembership> {
   const targetRead = await getBusinessMembershipById(db, params.targetMembershipId, transaction);
-  if (
-    targetRead.kind === "not_found" ||
-    targetRead.kind === "malformed" ||
-    targetRead.kind === "transient_failure"
-  ) {
+  if (targetRead.kind === "transient_failure") {
+    // Distinct from not_found/malformed (Phase AB independent review
+    // finding): a transient read failure is retry-safe and must never be
+    // reported to the client as "this membership doesn't exist" — reuses
+    // the existing TEMPORARY_UNAVAILABLE constructor `ENG-P2-003B`'s
+    // acceptStaffInvitationService.ts already established for the same
+    // class of failure, rather than a second, differently-shaped error.
+    throw membershipReadTransientFailureError();
+  }
+  if (targetRead.kind === "not_found" || targetRead.kind === "malformed") {
     throw targetMembershipNotFoundError();
   }
   const target = targetRead.membership;

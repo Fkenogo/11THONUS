@@ -509,6 +509,9 @@ describe("Role-change / PermissionOverride security review (Phase N/O, mandatory
 });
 
 describe("concurrency (Phase R)", () => {
+  // Explicit longer per-test timeouts below (disclosed, pre-existing infra
+  // class, ENG-CI-001 backlog): real-Firestore transaction-contention races
+  // occasionally exceed vitest's 5000ms default under load.
   it("two simultaneous role changes — deterministic legal final state, no lost-update escalation", async () => {
     await seedBusiness("biz-a");
     await seedMembership({
@@ -553,7 +556,7 @@ describe("concurrency (Phase R)", () => {
       (r) => r.status === "fulfilled" && r.value.outcome === "executed",
     ).length;
     expect(executedCount).toBe(1);
-  });
+  }, 15000);
 
   it("role change vs suspend racing the same target — deterministic legal final state", async () => {
     await seedBusiness("biz-a");
@@ -599,5 +602,5 @@ describe("concurrency (Phase R)", () => {
     // single, consistent document (no duplicate, no missing role).
     expect(["staff", "manager"]).toContain(doc?.["role"]);
     expect(["active", "suspended"]).toContain(doc?.["status"]);
-  });
+  }, 15000);
 });

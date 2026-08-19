@@ -48,6 +48,7 @@ import { createStaffRoleChangeRequest } from "../models/staffRoleChangeRequest";
 import { buildStaffRoleChangedEvent } from "../events/staffMembershipLifecycleEvents";
 import {
   membershipCrossBusinessMismatchError,
+  membershipReadTransientFailureError,
   roleChangeFromRoleMismatchError,
   roleChangeTargetNotPermittedError,
   targetMembershipNotFoundError,
@@ -111,11 +112,14 @@ export async function changeStaffMembershipRoleCommand(
         }
 
         const targetRead = await getBusinessMembershipById(db, request.membershipId, transaction);
-        if (
-          targetRead.kind === "not_found" ||
-          targetRead.kind === "malformed" ||
-          targetRead.kind === "transient_failure"
-        ) {
+        if (targetRead.kind === "transient_failure") {
+          // Distinct from not_found/malformed (Phase AB independent review
+          // finding, same as staffMembershipLifecycleCommand.ts) — a
+          // transient read failure is retry-safe and must not be reported
+          // as "this membership doesn't exist."
+          throw membershipReadTransientFailureError();
+        }
+        if (targetRead.kind === "not_found" || targetRead.kind === "malformed") {
           throw targetMembershipNotFoundError();
         }
         const target = targetRead.membership;

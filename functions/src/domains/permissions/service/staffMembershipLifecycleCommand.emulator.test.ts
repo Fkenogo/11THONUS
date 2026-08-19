@@ -950,6 +950,9 @@ describe("idempotency (Phase S)", () => {
 });
 
 describe("concurrency (Phase R, real Firestore)", () => {
+  // Explicit longer per-test timeouts below (disclosed, pre-existing infra
+  // class, ENG-CI-001 backlog): real-Firestore transaction-contention races
+  // occasionally exceed vitest's 5000ms default under load.
   it("two simultaneous suspend attempts — deterministic final state, no double effect", async () => {
     await seedBusiness("biz-a");
     await seedMembership({
@@ -995,7 +998,7 @@ describe("concurrency (Phase R, real Firestore)", () => {
     );
     const executedCount = outcomes.filter((o) => o === "executed").length;
     expect(executedCount).toBe(1);
-  });
+  }, 15000);
 
   it("suspend vs remove racing the same target — deterministic legal final state", async () => {
     await seedBusiness("biz-a");
@@ -1037,7 +1040,7 @@ describe("concurrency (Phase R, real Firestore)", () => {
     // applied by the other and, if it read post-suspend, denies since
     // suspended->removed is still legal — so removed is also possible).
     expect(["suspended", "removed"]).toContain(doc?.["status"]);
-  });
+  }, 15000);
 
   it("reactivate vs remove racing a suspended target — deterministic legal final state", async () => {
     await seedBusiness("biz-a");
@@ -1076,5 +1079,5 @@ describe("concurrency (Phase R, real Firestore)", () => {
 
     const doc = await getMembership("mem-staff");
     expect(["active", "removed"]).toContain(doc?.["status"]);
-  });
+  }, 15000);
 });
