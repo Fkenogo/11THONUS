@@ -224,7 +224,7 @@ None that block merge. Both defects found during independent review (§41) were 
 
 ## 44. Final Reviewed Head
 
-`a240ae342b52aa5d44c51352aa134a0621e02dbe` — the second commit, incorporating the two Phase AB independent-review fixes (§29/§41) on top of the first commit `78526795e96806a05832c560b98655c68b0a6509`. Confirmed via `gh pr view 135 --json headRefOid`.
+`c4e314f2d6d6c87f119fa3cf4d18d9ad3285745a` — a third, docs-only commit (this report's own §43/§44/§45 finalization) layered on `a240ae342b52aa5d44c51352aa134a0621e02dbe` (`git diff a240ae3 c4e314f --stat`: this report file only, zero functional-code diff), which itself incorporates the two Phase AB independent-review fixes (§29/§41) on top of the first commit `78526795e96806a05832c560b98655c68b0a6509`. All functional-code test/validation evidence in this report (§33/§34) was captured against `a240ae3`'s code and remains byte-identical at `c4e314f`.
 
 ## 45. CI Result
 
