@@ -220,15 +220,17 @@ None that block merge. Both defects found during independent review (§41) were 
 
 ## 43. PR Number
 
-See the summary message accompanying this report for the opened draft PR's number/URL (created after this report was written, from this exact branch/SHA).
+**PR #135**, `https://github.com/Fkenogo/11THONUS/pull/135`, draft, open, targeting `main` from `feat/eng-p2-003c-staff-membership-lifecycle`.
 
 ## 44. Final Reviewed Head
 
-The tip of `feat/eng-p2-003c-staff-membership-lifecycle` at the time this report was written — see the PR's own head SHA for the exact committed value.
+`a240ae342b52aa5d44c51352aa134a0621e02dbe` — the second commit, incorporating the two Phase AB independent-review fixes (§29/§41) on top of the first commit `78526795e96806a05832c560b98655c68b0a6509`. Confirmed via `gh pr view 135 --json headRefOid`.
 
 ## 45. CI Result
 
-Pending — the draft PR's CI run result is not yet known at report-authoring time (opened immediately after this report). All CI-equivalent checks (build/lint/test/emulator validation) were run locally first and passed, per §34; the hosted CI run is expected to reproduce the same result but is not itself claimed as evidence here until observed.
+**Local validation on this exact head: full green** — typecheck, lint, format, `functions` unit (1240/1240), `web` unit (397/397), `emulators:validate` (479/479, all five concurrency tests now timeout-hardened), and build all re-run and passed directly against `a240ae342b52aa5d44c51352aa134a0621e02dbe` (§33/§34).
+
+**Hosted CI (GitHub Actions, run `32294772338`): stalled, not failed.** Every step through `Unit / component tests` passed (✓ Set up job, Checkout, Set up pnpm, Set up Node, Install dependencies, Build, Lint, Format check, Typecheck, Unit / component tests). The run then stalled at the **"Install Playwright browsers"** step for 17+ minutes with no progress and no failure — a step that occurs *before* this package's own emulator validation ever runs. This is a previously-and-independently-disclosed infrastructure pattern, not a defect introduced by this task: the `ENG-P2-003B` implementation report (merged, `main` `b0277bf`) explicitly records "post-merge `main` CI stalled twice on an unrelated Playwright-install infrastructure step," and this repository's own tracked backlog carries a dedicated item for the broader class of Firebase-emulator/CI timing flakiness (`ENG-CI-001`, `docs/05-implementation/change-tracking/engineering-implementation-programme.md` §C.1). The first CI run on this same PR, on the prior commit `78526795e96806a05832c560b98655c68b0a6509` (identical code shape, only the two Phase AB fixes differ), completed cleanly in 6m31s with `pass` (`gh pr checks 135`, run `32290904050`). No hosted-CI evidence of an actual failure exists on either commit; the second run's Playwright-install stall is disclosed here as an open, unresolved observation at report-finalization time — not treated as a merge blocker on its own, consistent with the precedent already established in this repository's own governance history for this exact infra class.
 
 ## 46. ENG-P2-003C Status
 
