@@ -16,7 +16,7 @@
  * key against an already-registered `customerIdentityId`.
  */
 
-import type { Firestore } from "firebase-admin/firestore";
+import type { Firestore, Transaction } from "firebase-admin/firestore";
 import {
   checkAndReserveIdempotencyKey,
   completeIdempotencyKey,
@@ -114,11 +114,22 @@ export async function createCustomerIdentity(
   }
 }
 
+/**
+ * `transaction` (`ENG-P2-003B` additive seam, matching
+ * `businessMembershipRepository.ts`'s/`evaluatePermissionWithContext`'s own
+ * precedent): when supplied, reads via `transaction.get()` instead of a
+ * plain `.get()`, so a caller with its own read-before-write transaction
+ * (e.g. invitation ACCEPT) can read the accepting identity consistently
+ * within that same transaction. Omitted, behavior is byte-identical to
+ * before this parameter existed.
+ */
 export async function getCustomerIdentityById(
   db: Firestore,
   customerIdentityId: string,
+  transaction?: Transaction,
 ): Promise<CustomerIdentity> {
-  const snapshot = await db.collection(COLLECTION).doc(customerIdentityId).get();
+  const ref = db.collection(COLLECTION).doc(customerIdentityId);
+  const snapshot = await (transaction ? transaction.get(ref) : ref.get());
   if (!snapshot.exists) {
     throw unknownCustomerIdentityError(customerIdentityId);
   }

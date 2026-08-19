@@ -224,3 +224,86 @@ export function invalidRoleChangeRequestError(reason: string): PermissionDomainE
     `Invalid staff role-change request: ${reason}.`,
   );
 }
+
+/**
+ * `ENG-P2-003B` command-layer errors (invitation persistence/acceptance).
+ *
+ * Unlike the contract-construction errors above, these are runtime command
+ * outcomes (INVITE/REVOKE/ACCEPT) — `AUTH_FORBIDDEN` and
+ * `IDEMPOTENCY_CONFLICT` are used here deliberately, per the closed-taxonomy
+ * mapping `ENG-P2-003-DESIGN-001` §16.3's addendum table records. No new
+ * error category is introduced.
+ */
+
+export function invitationNotFoundError(): PermissionDomainError {
+  return new PermissionDomainError(
+    "RESOURCE_NOT_FOUND",
+    "Invitation reference does not resolve to a pending invitation.",
+  );
+}
+
+export function invitationExpiredError(): PermissionDomainError {
+  return new PermissionDomainError(
+    "RESOURCE_NOT_FOUND",
+    "Invitation has expired and can no longer be accepted (ENG-P2-003-DESIGN-001 FD-4-STAFF).",
+  );
+}
+
+export function invitationRevokedError(): PermissionDomainError {
+  return new PermissionDomainError(
+    "RESOURCE_NOT_FOUND",
+    "Invitation has been revoked and can no longer be accepted.",
+  );
+}
+
+export function invitationAlreadyAcceptedError(): PermissionDomainError {
+  return new PermissionDomainError(
+    "IDEMPOTENCY_CONFLICT",
+    "Invitation has already been accepted and cannot be consumed again (single-use, FD-4-STAFF).",
+  );
+}
+
+export function invitationAcceptanceEntitlementDeniedError(): PermissionDomainError {
+  return new PermissionDomainError(
+    "AUTH_FORBIDDEN",
+    "The authenticated identity is not entitled to accept this invitation — its verified contact information does not match the invitation's delivery target (ENG-P2-003-DESIGN-001 FD-3-STAFF).",
+  );
+}
+
+export function duplicateBusinessMembershipError(): PermissionDomainError {
+  return new PermissionDomainError(
+    "VALIDATION_FAILED",
+    "An active or suspended membership already exists for this identity in this Business.",
+  );
+}
+
+export function invitationTargetNotPermittedForActorError(
+  actorRole: string,
+  targetRole: string,
+): PermissionDomainError {
+  return new PermissionDomainError(
+    "AUTH_FORBIDDEN",
+    `A "${actorRole}" holding staff.manage may not invite a "${targetRole}" — Manager-held staff.manage is restricted to Staff-target invitations only (ENG-P2-003-DESIGN-001 §11.6.1/FD-5-STAFF).`,
+  );
+}
+
+export function invitationAlreadyPendingError(): PermissionDomainError {
+  return new PermissionDomainError(
+    "VALIDATION_FAILED",
+    "A pending invitation already exists for this delivery target in this Business.",
+  );
+}
+
+export function invitationCrossBusinessMismatchError(): PermissionDomainError {
+  return new PermissionDomainError(
+    "AUTH_FORBIDDEN",
+    "Invitation does not belong to the requested Business context.",
+  );
+}
+
+export function membershipReadTransientFailureError(): PermissionDomainError {
+  return new PermissionDomainError(
+    "TEMPORARY_UNAVAILABLE",
+    "Could not verify existing membership state; please retry.",
+  );
+}
