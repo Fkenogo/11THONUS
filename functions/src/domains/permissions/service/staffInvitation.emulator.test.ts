@@ -1,5 +1,6 @@
 import { deleteApp, getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore, type Firestore } from "firebase-admin/firestore";
+import { getAuth } from "firebase-admin/auth";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
   bootstrapBusiness,
@@ -14,6 +15,7 @@ import { revokeStaffInvitation } from "./revokeStaffInvitationService";
 import { acceptStaffInvitation } from "./acceptStaffInvitationService";
 import { getInvitationByReference } from "../repositories/businessMembershipInvitationRepository";
 import { getBusinessMembershipByUserAndBusiness } from "../repositories/businessMembershipRepository";
+import { evaluatePermissionWithContext } from "./evaluatePermissionService";
 
 // Real Firestore round trip against the Firebase Emulator Suite. Not run as
 // part of `pnpm test` — see `pnpm test:emulator` / `pnpm emulators:validate`.
@@ -73,6 +75,11 @@ beforeEach(async () => {
     const snapshot = await db.collection(collection).get();
     await Promise.all(snapshot.docs.map((doc) => doc.ref.delete()));
   }
+
+  const { users: authUsers } = await getAuth(app).listUsers();
+  if (authUsers.length > 0) {
+    await getAuth(app).deleteUsers(authUsers.map((u) => u.uid));
+  }
 });
 
 let businessCodeCounter = 0;
@@ -130,7 +137,18 @@ async function seedMembership(
   return id;
 }
 
+/**
+ * Creates a REAL Firebase Auth user (via the Auth emulator) and links its
+ * own Firebase UID — never the literal email string — as the identity's
+ * `email`-type `AuthenticationReference.referenceId`. This mirrors
+ * production reality exactly: `referenceId` is always a Firebase UID
+ * (`firebaseTokenVerifier.ts`, `decoded.uid`); the corrected entitlement
+ * mechanism (`verifiedContactLookup.ts`) resolves that UID back to its
+ * live, verified Firebase Auth email. `emailVerified: true` is required —
+ * an unverified email must never satisfy entitlement.
+ */
 async function seedCustomerIdentityWithEmail(userId: string, email: string): Promise<void> {
+  const userRecord = await getAuth(app).createUser({ email, emailVerified: true });
   const key = nextId("identity");
   await createCustomerIdentity(db, {
     eventId: `evt_${key}`,
@@ -139,8 +157,31 @@ async function seedCustomerIdentityWithEmail(userId: string, email: string): Pro
     occurredAt: "2026-08-19T00:00:00.000Z",
     customerIdentityId: userId,
     initialAuthenticationReference: {
-      referenceId: email,
+      referenceId: userRecord.uid,
       referenceType: "email",
+      createdAt: new Date("2026-08-19T00:00:00.000Z"),
+      createdBy: userId,
+    },
+    createdAt: new Date("2026-08-19T00:00:00.000Z"),
+    createdBy: userId,
+    idempotencyKey: `idem_${key}`,
+    requestHash: `hash_${key}`,
+  });
+}
+
+/** Same as `seedCustomerIdentityWithEmail`, for a `phone_otp` reference. */
+async function seedCustomerIdentityWithPhone(userId: string, phoneNumber: string): Promise<void> {
+  const userRecord = await getAuth(app).createUser({ phoneNumber });
+  const key = nextId("identity");
+  await createCustomerIdentity(db, {
+    eventId: `evt_${key}`,
+    correlationId: `corr_${key}`,
+    actor: { actorType: "system", actorId: "system" },
+    occurredAt: "2026-08-19T00:00:00.000Z",
+    customerIdentityId: userId,
+    initialAuthenticationReference: {
+      referenceId: userRecord.uid,
+      referenceType: "phone_otp",
       createdAt: new Date("2026-08-19T00:00:00.000Z"),
       createdBy: userId,
     },
@@ -461,6 +502,46 @@ describe("revokeStaffInvitation — REVOKE", () => {
     const second = await revokeStaffInvitation(db, request, params);
     expect(second.outcome).toBe("duplicate");
   });
+
+  it("expiry precedence: revoking a pending invitation that is already past its expiresAt resolves to expired, never revoked", async () => {
+    const businessId = await seedActiveBusiness("owner_r4");
+    const created = await createStaffInvitation(
+      db,
+      { businessId, role: "staff", deliveryTarget: { type: "email", value: "r4@example.com" } },
+      inviteParams({ idempotencyKey: nextId("invite"), actorUserId: "owner_r4" }),
+    );
+    if (created.outcome !== "created") throw new Error("setup failed");
+    // Force the invitation past its natural expiry before REVOKE runs —
+    // chronologically it already lapsed; a later REVOKE call must not
+    // overwrite that fact by recording "revoked" instead.
+    await db
+      .collection("businessMembershipInvitations")
+      .doc(created.invitation.id)
+      .update({
+        expiresAt: new Date("2020-01-01T00:00:00.000Z"),
+      });
+
+    const result = await revokeStaffInvitation(
+      db,
+      { businessId, invitationId: created.invitation.id },
+      inviteParams({ idempotencyKey: nextId("revoke"), actorUserId: "owner_r4" }),
+    );
+    expect(result.outcome).toBe("revoked"); // command-level outcome — see .invitation.status for the true terminal state
+    if (result.outcome !== "revoked") return;
+    expect(result.invitation.status).toBe("expired");
+
+    const outbox = await db.collection("outboxEntries").get();
+    expect(
+      outbox.docs.some(
+        (d) => d.data()["event"]?.eventType === "staffInvitation.staff_invitation_expired.v1",
+      ),
+    ).toBe(true);
+    expect(
+      outbox.docs.some(
+        (d) => d.data()["event"]?.eventType === "staffInvitation.staff_invitation_revoked.v1",
+      ),
+    ).toBe(false);
+  });
 });
 
 describe("acceptStaffInvitation — ACCEPT", () => {
@@ -641,6 +722,13 @@ describe("acceptStaffInvitation — ACCEPT", () => {
       .doc(created.invitation.id)
       .get();
     expect(invitationSnap.data()?.["status"]).toBe("expired");
+
+    const outbox = await db.collection("outboxEntries").get();
+    expect(
+      outbox.docs.some(
+        (d) => d.data()["event"]?.eventType === "staffInvitation.staff_invitation_expired.v1",
+      ),
+    ).toBe(true);
   });
 
   it("a revoked invitation is denied", async () => {
@@ -723,7 +811,92 @@ describe("acceptStaffInvitation — ACCEPT", () => {
     ).rejects.toMatchObject({ category: "VALIDATION_FAILED" });
   });
 
-  it("a REMOVED historical membership does NOT block acceptance — a fresh membership document is created", async () => {
+  it("duplicate suspended membership is also prevented (not treated as reactivatable via ACCEPT)", async () => {
+    const businessId = await seedActiveBusiness("owner_a7s");
+    await seedMembership(businessId, "cust_susp", "staff", "suspended");
+    const created = await createStaffInvitation(
+      db,
+      { businessId, role: "staff", deliveryTarget: { type: "email", value: "susp@example.com" } },
+      inviteParams({ idempotencyKey: nextId("invite"), actorUserId: "owner_a7s" }),
+    );
+    if (created.outcome !== "created") throw new Error("setup failed");
+    await seedCustomerIdentityWithEmail("cust_susp", "susp@example.com");
+
+    // A suspended membership represents a current (not historical, not
+    // terminal) relationship — reactivation from suspension is REACTIVATE's
+    // job (a future ENG-P2-003C command), never something ACCEPT performs
+    // implicitly. ACCEPT must reject rather than silently reactivate it.
+    await expect(
+      acceptStaffInvitation(
+        db,
+        acceptParams({
+          idempotencyKey: nextId("accept"),
+          authenticatedCustomerIdentityId: "cust_susp",
+          invitationReference: created.invitation.id,
+        }),
+      ),
+    ).rejects.toMatchObject({ category: "VALIDATION_FAILED" });
+
+    const snap = await db
+      .collection("businessMemberships")
+      .where("userId", "==", "cust_susp")
+      .get();
+    expect(snap.size).toBe(1);
+    expect(snap.docs[0]!.data()["status"]).toBe("suspended"); // untouched
+  });
+
+  it("an unverified email does not satisfy entitlement even if it matches the invitation target", async () => {
+    const businessId = await seedActiveBusiness("owner_a7u");
+    const created = await createStaffInvitation(
+      db,
+      {
+        businessId,
+        role: "staff",
+        deliveryTarget: { type: "email", value: "unverified@example.com" },
+      },
+      inviteParams({ idempotencyKey: nextId("invite"), actorUserId: "owner_a7u" }),
+    );
+    if (created.outcome !== "created") throw new Error("setup failed");
+
+    // Deliberately NOT using seedCustomerIdentityWithEmail (which sets
+    // emailVerified: true) — this identity's Firebase Auth email matches
+    // the invitation target exactly, but is unverified.
+    const userRecord = await getAuth(app).createUser({
+      email: "unverified@example.com",
+      emailVerified: false,
+    });
+    const key = nextId("identity");
+    await createCustomerIdentity(db, {
+      eventId: `evt_${key}`,
+      correlationId: `corr_${key}`,
+      actor: { actorType: "system", actorId: "system" },
+      occurredAt: "2026-08-19T00:00:00.000Z",
+      customerIdentityId: "cust_unverified",
+      initialAuthenticationReference: {
+        referenceId: userRecord.uid,
+        referenceType: "email",
+        createdAt: new Date("2026-08-19T00:00:00.000Z"),
+        createdBy: "cust_unverified",
+      },
+      createdAt: new Date("2026-08-19T00:00:00.000Z"),
+      createdBy: "cust_unverified",
+      idempotencyKey: `idem_${key}`,
+      requestHash: `hash_${key}`,
+    });
+
+    await expect(
+      acceptStaffInvitation(
+        db,
+        acceptParams({
+          idempotencyKey: nextId("accept"),
+          authenticatedCustomerIdentityId: "cust_unverified",
+          invitationReference: created.invitation.id,
+        }),
+      ),
+    ).rejects.toMatchObject({ category: "AUTH_FORBIDDEN" });
+  });
+
+  it("a REMOVED historical membership is reactivated in place (same document id) and the result is usable through the real ENG-P2-004 evaluator", async () => {
     const businessId = await seedActiveBusiness("owner_a8");
     const oldMembershipId = await seedMembership(businessId, "cust_returning", "staff", "removed");
     const created = await createStaffInvitation(
@@ -747,9 +920,42 @@ describe("acceptStaffInvitation — ACCEPT", () => {
       }),
     );
 
-    expect(result.membershipId).not.toBe(oldMembershipId);
-    const oldSnap = await db.collection("businessMemberships").doc(oldMembershipId).get();
-    expect(oldSnap.data()?.["status"]).toBe("removed"); // untouched historical record
+    // Reactivated in place — the SAME document id, not a second document.
+    // `getBusinessMembershipByUserAndBusiness` (ENG-P2-004B) queries only
+    // on (userId, businessId), with no status filter, and fails the whole
+    // read closed to "malformed" the instant more than one document
+    // matches that pair — so a genuinely new membership document
+    // coexisting with the old removed one would silently deny every
+    // future permission check for this identity. Proven two ways below:
+    // the repository-level read, and a real evaluator call.
+    expect(result.membershipId).toBe(oldMembershipId);
+    const reactivatedSnap = await db.collection("businessMemberships").doc(oldMembershipId).get();
+    expect(reactivatedSnap.data()?.["status"]).toBe("active");
+    expect(reactivatedSnap.data()?.["userId"]).toBe("cust_returning");
+
+    // Exactly one document exists for this (userId, businessId) pair.
+    const allForPair = await db
+      .collection("businessMemberships")
+      .where("businessId", "==", businessId)
+      .where("userId", "==", "cust_returning")
+      .get();
+    expect(allForPair.size).toBe(1);
+
+    // The real ENG-P2-004 evaluator resolves the reactivated membership
+    // cleanly (not "malformed") and produces an ordinary role-based
+    // decision — proving the reactivated staff member actually authorizes
+    // through the production authorization path, not merely that a
+    // Firestore document exists.
+    const decisionContext = await evaluatePermissionWithContext(db, {
+      userId: "cust_returning",
+      businessId,
+      permission: "staff.manage",
+    });
+    expect(decisionContext.membership.kind).toBe("found");
+    expect(decisionContext.decision.reasonCode).not.toBe("MEMBERSHIP_CONFIG_MALFORMED");
+    // Staff holds no staff.manage grant by default — correctly denied, but
+    // via an ordinary role-based decision, not a malformed-read fail-close.
+    expect(decisionContext.decision.allowed).toBe(false);
   });
 
   it("phone-delivered invitation accepts against a matching phone_otp reference", async () => {
@@ -760,25 +966,7 @@ describe("acceptStaffInvitation — ACCEPT", () => {
       inviteParams({ idempotencyKey: nextId("invite"), actorUserId: "owner_a9" }),
     );
     if (created.outcome !== "created") throw new Error("setup failed");
-
-    const key = nextId("identity");
-    await createCustomerIdentity(db, {
-      eventId: `evt_${key}`,
-      correlationId: `corr_${key}`,
-      actor: { actorType: "system", actorId: "system" },
-      occurredAt: "2026-08-19T00:00:00.000Z",
-      customerIdentityId: "cust_phone",
-      initialAuthenticationReference: {
-        referenceId: "+15557778888",
-        referenceType: "phone_otp",
-        createdAt: new Date("2026-08-19T00:00:00.000Z"),
-        createdBy: "cust_phone",
-      },
-      createdAt: new Date("2026-08-19T00:00:00.000Z"),
-      createdBy: "cust_phone",
-      idempotencyKey: `idem_${key}`,
-      requestHash: `hash_${key}`,
-    });
+    await seedCustomerIdentityWithPhone("cust_phone", "+15557778888");
 
     const result = await acceptStaffInvitation(
       db,
@@ -823,6 +1011,13 @@ describe("cross-business isolation (ACCEPT)", () => {
 });
 
 describe("concurrency", () => {
+  // Both tests below pass an explicit 20s Vitest timeout (default 5s):
+  // two genuinely concurrent Firestore transactions contending on the same
+  // document retry under real optimistic-concurrency control, and the
+  // 5000ms Vitest default was observed to flake under CI's more
+  // resource-constrained runners (a real, reproduced CI failure, not a
+  // hypothetical) even though it consistently passes locally in under 3s.
+  // 20s is a generous margin, not a masked correctness issue.
   it("two concurrent acceptance attempts for the same invitation result in exactly one membership", async () => {
     const businessId = await seedActiveBusiness("owner_c1");
     const created = await createStaffInvitation(
@@ -858,7 +1053,7 @@ describe("concurrency", () => {
       .where("userId", "==", "cust_race")
       .get();
     expect(memberships.size).toBe(1);
-  });
+  }, 20000);
 
   it("revoke racing with accept: at most one of them succeeds, never both", async () => {
     const businessId = await seedActiveBusiness("owner_c2");
@@ -906,7 +1101,7 @@ describe("concurrency", () => {
       .where("userId", "==", "cust_race2")
       .get();
     expect(memberships.size).toBeLessThanOrEqual(1);
-  });
+  }, 20000);
 });
 
 describe("privacy — outbox payloads", () => {

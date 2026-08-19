@@ -59,7 +59,10 @@ import {
 import { transitionInvitationStatus } from "../models/businessMembershipInvitation";
 import { invitationRoleAsRole } from "../models/invitationRole";
 import { isInvitationPastExpiry } from "../models/invitationPolicy";
-import { isEntitledToAcceptInvitation } from "../models/invitationEntitlement";
+import {
+  isEntitledToAcceptInvitation,
+  type VerifiedContactLookup,
+} from "../models/invitationEntitlement";
 import {
   getInvitationByReference,
   writeInvitation,
@@ -69,11 +72,13 @@ import {
   mintBusinessMembershipId,
   writeNewBusinessMembership,
 } from "../repositories/businessMembershipWriteRepository";
+import { lookupVerifiedContactByFirebaseUid } from "../repositories/verifiedContactLookup";
 import { createActiveBusinessMembership } from "../models/businessMembershipWrite";
 import { getCustomerIdentityById } from "../../identity/repositories/customerIdentityRepository";
 import { IdentityDomainError } from "../../identity/models/identityErrors";
 import {
   buildStaffInvitationAcceptedEvent,
+  buildStaffInvitationExpiredEvent,
   buildStaffMembershipActivatedEvent,
 } from "../events/staffInvitationEvents";
 import {
@@ -96,6 +101,8 @@ export type AcceptStaffInvitationParams = {
   actor: EventActor;
   now: Date;
   newId: () => string;
+  /** Injection seam for testing (real Firebase Auth by default). */
+  verifiedContactLookup?: VerifiedContactLookup;
 };
 
 const OPERATION_TYPE = "staffInvitation.accept";
@@ -103,17 +110,42 @@ const OPERATION_TYPE = "staffInvitation.accept";
 type TransactionOutcome =
   { kind: "ok"; result: AcceptInvitationResult } | { kind: "fail"; error: PermissionDomainError };
 
-async function readExistingMembershipStatus(
+type ExistingMembershipRead =
+  | { status: "none" }
+  | { status: "malformed" }
+  | { status: "transient_failure" }
+  | { status: "active" | "suspended" | "removed"; id: string };
+
+/**
+ * `getBusinessMembershipByUserAndBusiness` (`ENG-P2-004B`) is a
+ * `(userId, businessId)` query with no `status` filter — it returns
+ * **every** document matching that pair, and its own contract fails closed
+ * to `"malformed"` the instant more than one such document exists (TRD10
+ * §10.6.4's Membership Rules "imply at most one `(userId, businessId)`
+ * record"; the evaluator treats a second one as contradictory stored data,
+ * not as history). This means a *new* membership document can never
+ * coexist with an existing `removed` one for the same pair — doing so
+ * would make the evaluator deny every future permission check for that
+ * identity as `"malformed"`, silently breaking the very membership ACCEPT
+ * just "successfully" created. Returning the existing document's own `id`
+ * here (rather than only its `status`) is what lets the caller reactivate
+ * that exact document in place instead of minting a second one — see
+ * `acceptStaffInvitation`'s `existingRead.status === "removed"` branch.
+ */
+async function readExistingMembership(
   db: Firestore,
   userId: string,
   businessId: string,
   transaction: Transaction,
-): Promise<"active" | "suspended" | "removed" | "none" | "malformed" | "transient_failure"> {
+): Promise<ExistingMembershipRead> {
   const read = await getBusinessMembershipByUserAndBusiness(db, userId, businessId, transaction);
-  if (read.kind === "not_found") return "none";
-  if (read.kind === "malformed") return "malformed";
-  if (read.kind === "transient_failure") return "transient_failure";
-  return read.membership.status as "active" | "suspended" | "removed";
+  if (read.kind === "not_found") return { status: "none" };
+  if (read.kind === "malformed") return { status: "malformed" };
+  if (read.kind === "transient_failure") return { status: "transient_failure" };
+  return {
+    status: read.membership.status as "active" | "suspended" | "removed",
+    id: read.membership.id,
+  };
 }
 
 export async function acceptStaffInvitation(
@@ -178,10 +210,26 @@ export async function acceptStaffInvitation(
         // Lazily discovered expiry (§9/Phase V): persist the terminal
         // transition durably now, even though this ACCEPT attempt fails —
         // this is the one branch that writes despite ultimately failing.
+        // Also records the same durable outbox evidence `accepted`/
+        // `revoked` terminal transitions get (independent-review
+        // correction, Phase K) — a terminal transition's audit treatment
+        // should not depend on which command happened to observe it.
         const expired = transitionInvitationStatus(invitation, "expired", {
           resolvedAt: params.now,
         });
         writeInvitation(transaction, db, expired);
+        writeOutboxEntry(
+          transaction,
+          db,
+          buildStaffInvitationExpiredEvent({
+            eventId: params.newId(),
+            correlationId: params.correlationId,
+            actor: params.actor,
+            occurredAt: params.now.toISOString(),
+            invitationId: invitation.id,
+            businessId: invitation.businessId,
+          }),
+        );
         return { kind: "fail", error: invitationExpiredError() };
       }
 
@@ -201,44 +249,46 @@ export async function acceptStaffInvitation(
         throw error;
       }
 
-      const entitled = isEntitledToAcceptInvitation(
+      const entitled = await isEntitledToAcceptInvitation(
         invitation.deliveryTarget,
         identity.authenticationReferences,
+        params.verifiedContactLookup ?? lookupVerifiedContactByFirebaseUid,
       );
       if (!entitled) {
         return { kind: "fail", error: invitationAcceptanceEntitlementDeniedError() };
       }
 
-      const existingStatus = await readExistingMembershipStatus(
+      const existingRead = await readExistingMembership(
         db,
         params.authenticatedCustomerIdentityId,
         invitation.businessId,
         transaction,
       );
-      if (existingStatus === "transient_failure") {
+      if (existingRead.status === "transient_failure") {
         return { kind: "fail", error: membershipReadTransientFailureError() };
       }
       if (
-        existingStatus === "malformed" ||
-        existingStatus === "active" ||
-        existingStatus === "suspended"
+        existingRead.status === "malformed" ||
+        existingRead.status === "active" ||
+        existingRead.status === "suspended"
       ) {
         // Blocks active/suspended (a current membership already exists) and
         // fails closed on an unreadable/malformed existing record, rather
-        // than risk a silent duplicate. A "removed" (terminal, historical)
-        // existing record does NOT block — §5.3's own "REMOVE is
-        // non-reversible; re-invited as a fresh record" precedent is
-        // exactly this scenario: a removed member re-accepting a new
-        // invitation gets a brand-new membership document (new id), the
-        // prior removed record staying untouched as history (TRD10's
-        // "historical records remain" rule). Disclosed Engineering
-        // judgment call — see the implementation report's Phase N note.
+        // than risk a silent duplicate.
         return { kind: "fail", error: duplicateBusinessMembershipError() };
       }
 
       // --- Writes ---
+      // `existingRead.status === "removed"` reuses that document's own id
+      // (reactivation-in-place) rather than minting a new one — required
+      // for compatibility with `getBusinessMembershipByUserAndBusiness`'s
+      // "at most one `(userId, businessId)` document" invariant (see
+      // `readExistingMembership`'s doc comment). `existingRead.status ===
+      // "none"` mints a fresh id exactly as before.
+      const resolvedMembershipId =
+        existingRead.status === "removed" ? existingRead.id : membershipId;
       const membership = createActiveBusinessMembership({
-        id: membershipId,
+        id: resolvedMembershipId,
         userId: params.authenticatedCustomerIdentityId,
         businessId: invitation.businessId,
         role: invitationRoleAsRole(invitation.role),
@@ -246,11 +296,14 @@ export async function acceptStaffInvitation(
         invitedAt: invitation.invitedAt,
         acceptedAt: params.now,
       });
+      // Full `.set()` (no merge) — reactivation replaces the entire
+      // document, so no stale field from the document's prior "removed"
+      // lifecycle (e.g. a future 003C's `endedAt`) survives.
       writeNewBusinessMembership(transaction, db, membership);
 
       const acceptedInvitation = transitionInvitationStatus(invitation, "accepted", {
         resolvedAt: params.now,
-        acceptedMembershipId: membershipId,
+        acceptedMembershipId: resolvedMembershipId,
       });
       writeInvitation(transaction, db, acceptedInvitation);
 
@@ -264,7 +317,7 @@ export async function acceptStaffInvitation(
           occurredAt: params.now.toISOString(),
           invitationId: invitation.id,
           businessId: invitation.businessId,
-          membershipId,
+          membershipId: resolvedMembershipId,
         }),
       );
       writeOutboxEntry(
@@ -275,7 +328,7 @@ export async function acceptStaffInvitation(
           correlationId: params.correlationId,
           actor: params.actor,
           occurredAt: params.now.toISOString(),
-          membershipId,
+          membershipId: resolvedMembershipId,
           businessId: invitation.businessId,
           userId: params.authenticatedCustomerIdentityId,
           role: membership.role,
@@ -284,7 +337,7 @@ export async function acceptStaffInvitation(
       );
 
       const result: AcceptInvitationResult = {
-        membershipId,
+        membershipId: resolvedMembershipId,
         businessId: invitation.businessId,
         userId: params.authenticatedCustomerIdentityId,
         role: invitation.role,

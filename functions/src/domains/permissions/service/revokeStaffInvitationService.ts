@@ -13,6 +13,17 @@
  * with `INVALID_STATE_TRANSITION` (a genuine state conflict, distinct from
  * idempotent replay of the *same* key, which the shared idempotency layer
  * already handles beneath this command without re-executing it).
+ *
+ * **Expiry precedence (independent-review correction).** A `pending`
+ * invitation whose `expiresAt` has already passed is, in truth, already
+ * `expired` — FD-4-STAFF's "incapable of acceptance after expiry" is a
+ * fact about the invitation's own timeline, not something a later REVOKE
+ * call gets to overwrite by recording a "revoked" decision no one actually
+ * made in time. This command checks expiry *before* transitioning: a
+ * past-due `pending` invitation is reclassified to `expired` (not
+ * `revoked`) — the actor's underlying goal (the invitation must no longer
+ * be acceptable) is still achieved, but the persisted terminal state and
+ * its outbox evidence honestly reflect why.
  */
 
 import type { Firestore, Transaction } from "firebase-admin/firestore";
@@ -22,12 +33,16 @@ import {
   transitionInvitationStatus,
   type BusinessMembershipInvitation,
 } from "../models/businessMembershipInvitation";
+import { isInvitationPastExpiry } from "../models/invitationPolicy";
 import {
   getInvitationByReference,
   writeInvitation,
 } from "../repositories/businessMembershipInvitationRepository";
 import { writeOutboxEntry } from "../../../shared/outbox/outboxWriter";
-import { buildStaffInvitationRevokedEvent } from "../events/staffInvitationEvents";
+import {
+  buildStaffInvitationExpiredEvent,
+  buildStaffInvitationRevokedEvent,
+} from "../events/staffInvitationEvents";
 import type { EventActor } from "../../../shared/events/domainEvent";
 import {
   invitationCrossBusinessMismatchError,
@@ -94,20 +109,40 @@ export async function revokeStaffInvitation(
           // exist at all" to the caller — both fail closed identically.
           throw invitationCrossBusinessMismatchError();
         }
+        if (
+          read.invitation.status === "pending" &&
+          isInvitationPastExpiry(read.invitation.expiresAt, params.now)
+        ) {
+          // Expiry precedence — see the module comment. Reclassify to
+          // `expired`, never `revoked`.
+          return transitionInvitationStatus(read.invitation, "expired", {
+            resolvedAt: params.now,
+          });
+        }
         return transitionInvitationStatus(read.invitation, "revoked", { resolvedAt: params.now });
       },
       apply(writer: TransactionWriter, invitation: BusinessMembershipInvitation) {
         writeInvitation(writer, db, invitation);
 
-        const event = buildStaffInvitationRevokedEvent({
-          eventId: params.newId(),
-          correlationId: params.correlationId,
-          actor: params.actor,
-          occurredAt: params.now.toISOString(),
-          invitationId: invitation.id,
-          businessId: invitation.businessId,
-          revokedBy: params.actorUserId,
-        });
+        const event =
+          invitation.status === "expired"
+            ? buildStaffInvitationExpiredEvent({
+                eventId: params.newId(),
+                correlationId: params.correlationId,
+                actor: params.actor,
+                occurredAt: params.now.toISOString(),
+                invitationId: invitation.id,
+                businessId: invitation.businessId,
+              })
+            : buildStaffInvitationRevokedEvent({
+                eventId: params.newId(),
+                correlationId: params.correlationId,
+                actor: params.actor,
+                occurredAt: params.now.toISOString(),
+                invitationId: invitation.id,
+                businessId: invitation.businessId,
+                revokedBy: params.actorUserId,
+              });
         writeOutboxEntry(writer, db, event);
 
         return invitation;
