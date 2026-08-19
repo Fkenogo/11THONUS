@@ -198,7 +198,9 @@ None identified beyond §38's disclosed items.
 
 ## 40. PR Number / 41. Final Reviewed Head / 42. CI Result
 
-Recorded after PR creation (see the chat response accompanying this report — filled in once the PR is opened, immediately following this report's commit).
+- **PR:** [#133](https://github.com/Fkenogo/11THONUS/pull/133) (draft, not self-merged).
+- **Reviewed head:** `3e20dc1f6ebcd2f9d4a89cdafde52bfbeb9dfae8`.
+- **CI:** "Build, Lint, Test, Emulator Validation" — **SUCCESS** (run [32260082755](https://github.com/Fkenogo/11THONUS/actions/runs/32260082755), 3m56s).
 
 ## 43. ENG-P2-003B Status
 
