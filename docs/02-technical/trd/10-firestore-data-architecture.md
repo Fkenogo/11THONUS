@@ -382,6 +382,34 @@ grantedAt: Timestamp;
 - A business must retain at least one active owner.
 - Historical membership records shall remain after removal.
 
+## 10.6.4a businessMembershipInvitations (additive, `ENG-P2-003A`)
+
+**2026-08-19 addition (`ENG-P2-003A`, Founder-approved FD-1/FD-2/FD-3/FD-4-STAFF via `ENG-P2-003-DESIGN-001` §7/§8/§9, §28).** A new, additive collection — not a `businessMemberships` field — following the same governance precedent `ENG-P2-004D`'s correction above and `ENG-P2-002B`'s `businessCodeReservations` collection already established: an implementing package may define an additive, non-conflicting collection's shape in its own governing design document and deliver the corresponding TRD10 section as part of that same implementation package (`ENG-P2-003-DESIGN-001` §18.1's grounded finding). No prerequisite, standalone schema-correction package precedes this addition.
+
+Represents the pre-acceptance state of a staff invitation — structurally separate from `businessMembershipDocument` above. `businessMembership.userId` remains required/non-nullable, unchanged; no document in this collection ever carries a `userId` field. A `businessMembership` is created for the first time only on successful invitation acceptance (§8a of the design), never before.
+
+    type BusinessMembershipInvitationDocument = {
+      id: string;
+      businessId: string;
+      role: "manager" | "staff";
+      deliveryTarget: { type: "email" | "phone"; value: string };
+      invitedBy: string;
+      status: "pending" | "accepted" | "revoked" | "expired";
+      invitedAt: Timestamp;
+      expiresAt: Timestamp;
+      resolvedAt?: Timestamp;
+      acceptedMembershipId?: string;
+      createdAt: Timestamp;
+      updatedAt: Timestamp;
+      schemaVersion: number;
+    };
+
+Lifecycle (`ENG-P2-003-DESIGN-001` §7.2a): `pending` is the only non-terminal state; `accepted`/`revoked`/`expired` are all terminal — no reverse transition to `pending`. A resend/reissue creates a **new** invitation record (new `id`), never reactivates a terminal one. Terminal records are retained for operational/audit history, never hard-deleted (mirrors this section's own "historical membership records shall remain" rule, extended to invitations).
+
+`role` is restricted to `"manager"`/`"staff"` — `"owner"` is never a valid invitation intended role (§11.4). `deliveryTarget` is delivery/targeting evidence only — email/phone are never authoritative platform identity (§6.2/§6.3); the authoritative Customer Identity `userId` is bound only on ACCEPT, when the `businessMembership` document is created.
+
+Exact expiry duration, token/reference entropy, encoding, and storage representation for the opaque invitation reference are Engineering-owned implementation details, not frozen by this schema declaration (FD-4-STAFF) — deferred to `ENG-P2-003B`. No Firestore Rules or live-data migration accompany this addition (the collection does not yet exist in any environment). This declaration is contract-only (`functions/src/domains/permissions/models/businessMembershipInvitation.ts`, `ENG-P2-003A`) — no repository, transaction, or write path is implemented by `ENG-P2-003A`; those are `ENG-P2-003B`'s scope.
+
 # 10.7 Commerce Knowledge Domain Collections
 
 ## 10.7.1 knowledgeNodes

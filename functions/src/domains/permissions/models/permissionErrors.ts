@@ -144,3 +144,83 @@ export function permissionOverrideRoleNotEligibleForGrantError(
     `Permission "${permissionId}" cannot be explicitly granted to role "${targetRole}" — ENG-P2-004-DESIGN-001 §3.2 names only "${eligibleRole ?? "no role"}" as eligible for an explicit grant of this permission.`,
   );
 }
+
+/*
+ * ENG-P2-003A — Business Membership Invitation domain errors.
+ *
+ * Same closed-taxonomy discipline as every error above: every category
+ * used below is one of the existing 14 categories
+ * (`functions/src/shared/errors/errorCategories.ts`), never a new one
+ * (ENG-P2-003-DESIGN-001 §16.3's error-taxonomy mapping). These are all
+ * construction-time contract-validation failures (malformed invitation
+ * field, invalid lifecycle transition, disallowed intended role) — never
+ * an authorization allow/deny outcome, matching this file's own header
+ * discipline for `AUTH_FORBIDDEN`.
+ */
+
+export function invalidInvitationFieldError(field: string, value: string): PermissionDomainError {
+  return new PermissionDomainError(
+    "VALIDATION_FAILED",
+    `Invalid invitation field "${field}": "${value}" is not acceptable.`,
+    [{ field, code: "invalid", messageKey: "invitation.field.invalid" }],
+  );
+}
+
+export function ownerCannotBeInvitationRoleError(): PermissionDomainError {
+  return new PermissionDomainError(
+    "VALIDATION_FAILED",
+    `Invalid invitation intended role: "owner" can never be an invitation's intended role — ownership is never assigned by invitation (ENG-P2-003-DESIGN-001 §11.4).`,
+  );
+}
+
+export function invalidInvitationDeliveryTypeError(value: string): PermissionDomainError {
+  return new PermissionDomainError(
+    "VALIDATION_FAILED",
+    `Invalid invitation delivery type: "${value}" is not a supported delivery channel (must be "email" or "phone").`,
+  );
+}
+
+export function invalidInvitationDeliveryTargetError(field: string): PermissionDomainError {
+  return new PermissionDomainError(
+    "VALIDATION_FAILED",
+    `Invalid invitation delivery target: "${field}" must be a non-empty, non-whitespace string.`,
+  );
+}
+
+export function invalidInvitationStatusError(value: string): PermissionDomainError {
+  return new PermissionDomainError(
+    "VALIDATION_FAILED",
+    `Invalid invitation status: "${value}" is not a recognised invitation lifecycle state (must be "pending", "accepted", "revoked", or "expired").`,
+  );
+}
+
+export function invalidInvitationStatusTransitionError(
+  from: string,
+  to: string,
+): PermissionDomainError {
+  return new PermissionDomainError(
+    "INVALID_STATE_TRANSITION",
+    `Invalid invitation status transition: "${from}" -> "${to}" is not a permitted invitation lifecycle transition (ENG-P2-003-DESIGN-001 §7.2a).`,
+  );
+}
+
+export function invalidInvitationTimestampError(field: string): PermissionDomainError {
+  return new PermissionDomainError(
+    "VALIDATION_FAILED",
+    `Invalid invitation timestamp: "${field}" must be a valid date.`,
+  );
+}
+
+export function invitationExpiryNotAfterIssuedError(): PermissionDomainError {
+  return new PermissionDomainError(
+    "VALIDATION_FAILED",
+    `Invalid invitation expiry: "expiresAt" must be strictly after "invitedAt".`,
+  );
+}
+
+export function invalidRoleChangeRequestError(reason: string): PermissionDomainError {
+  return new PermissionDomainError(
+    "VALIDATION_FAILED",
+    `Invalid staff role-change request: ${reason}.`,
+  );
+}
