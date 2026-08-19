@@ -93,6 +93,78 @@ describe("evaluatePermission — real membership/business lookups", () => {
   });
 });
 
+describe("evaluatePermission — staff.assignRole (ENG-P2-004-CORR-002, real persisted data)", () => {
+  it("Owner membership + valid Business lifecycle → allow, owner-floor", async () => {
+    await db.collection("businesses").doc("biz-a").set({ status: "active" });
+    await db.collection("businessMemberships").doc("mem-1").set({
+      userId: "user-1",
+      businessId: "biz-a",
+      role: "owner",
+      status: "active",
+      permissions: [],
+    });
+
+    const decision = await evaluatePermission(db, {
+      userId: "user-1",
+      businessId: "biz-a",
+      permission: "staff.assignRole",
+    });
+
+    expect(decision.allowed).toBe(true);
+    expect(decision.permissionSource).toBe("owner-floor");
+  });
+
+  it("Manager membership, even with a fabricated persisted grant-looking override → deny/fail closed", async () => {
+    await db.collection("businesses").doc("biz-a").set({ status: "active" });
+    await db
+      .collection("businessMemberships")
+      .doc("mem-1")
+      .set({
+        userId: "user-1",
+        businessId: "biz-a",
+        role: "manager",
+        status: "active",
+        permissions: [
+          {
+            permissionId: "staff.assignRole",
+            direction: "grant",
+            grantedBy: "user-owner",
+            grantedAt: Timestamp.now(),
+          },
+        ],
+      });
+
+    const decision = await evaluatePermission(db, {
+      userId: "user-1",
+      businessId: "biz-a",
+      permission: "staff.assignRole",
+    });
+
+    expect(decision.allowed).toBe(false);
+    expect(decision.errorCategory).toBe("AUTH_FORBIDDEN");
+  });
+
+  it("Staff membership → deny", async () => {
+    await db.collection("businesses").doc("biz-a").set({ status: "active" });
+    await db.collection("businessMemberships").doc("mem-1").set({
+      userId: "user-1",
+      businessId: "biz-a",
+      role: "staff",
+      status: "active",
+      permissions: [],
+    });
+
+    const decision = await evaluatePermission(db, {
+      userId: "user-1",
+      businessId: "biz-a",
+      permission: "staff.assignRole",
+    });
+
+    expect(decision.allowed).toBe(false);
+    expect(decision.errorCategory).toBe("AUTH_FORBIDDEN");
+  });
+});
+
 describe("evaluatePermission — cross-business isolation (§5.6, §9 abuse #4, matrix §J)", () => {
   it("Business-A Owner receives deny for a Business-B-scoped request (forged businessContextId, §9 abuse #1)", async () => {
     await db.collection("businesses").doc("biz-a").set({ status: "active" });

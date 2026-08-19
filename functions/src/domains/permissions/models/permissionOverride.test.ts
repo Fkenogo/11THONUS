@@ -111,6 +111,50 @@ describe("createPermissionOverride", () => {
     ).toThrow(PermissionDomainError);
   });
 
+  it("refuses a grant override for staff.assignRole targeting Manager (no Manager grant path exists, ENG-P2-004-CORR-002)", () => {
+    expect(() =>
+      createPermissionOverride({
+        ...BASE_INPUT,
+        permissionId: "staff.assignRole",
+        direction: "grant",
+        targetRole: "manager",
+      }),
+    ).toThrow(PermissionDomainError);
+  });
+
+  it("refuses a grant override for staff.assignRole targeting Staff (no Staff grant path exists, ENG-P2-004-CORR-002)", () => {
+    expect(() =>
+      createPermissionOverride({
+        ...BASE_INPUT,
+        permissionId: "staff.assignRole",
+        direction: "grant",
+        targetRole: "staff",
+      }),
+    ).toThrow(PermissionDomainError);
+  });
+
+  it("refuses a revoke override for staff.assignRole (nothing to revoke, ENG-P2-004-CORR-002)", () => {
+    expect(() =>
+      createPermissionOverride({
+        ...BASE_INPUT,
+        permissionId: "staff.assignRole",
+        direction: "revoke",
+        targetRole: "manager",
+      }),
+    ).toThrow(PermissionDomainError);
+  });
+
+  it("refuses an override targeting an Owner membership for staff.assignRole (general Owner-target invariant still applies)", () => {
+    expect(() =>
+      createPermissionOverride({
+        ...BASE_INPUT,
+        permissionId: "staff.assignRole",
+        direction: "grant",
+        targetRole: "owner",
+      }),
+    ).toThrow(PermissionDomainError);
+  });
+
   it("refuses a grant of a Manager-eligible sensitive permission to Staff (design §3.2 names Manager only)", () => {
     expect(() =>
       createPermissionOverride({

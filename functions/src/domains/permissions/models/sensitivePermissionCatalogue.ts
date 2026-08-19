@@ -101,6 +101,23 @@ export const SENSITIVE_PERMISSION_CATALOGUE: readonly SensitivePermissionCatalog
     rationale: ["a", "d"],
   },
   {
+    id: "staff.assignRole",
+    meaning: "Change a Business membership role between Staff and Manager",
+    owningDomain: "Business membership",
+    defaultState: "owner_only",
+    inheritAllowed: false,
+    // ENG-P2-004-CORR-002 (Founder policy): Owner-only, non-delegable to
+    // Manager or Staff at MVP — no grant path exists, modeled identically
+    // to `business.transferOwnership` (row 3) rather than the
+    // "Yes (Manager)" shape rows 1/2/4/5/6 use. `explicitGrantRequired:
+    // true` here would wrongly imply a Manager grant path exists.
+    explicitGrantRequired: false,
+    explicitGrantEligibleRole: null,
+    explicitRevocationSupported: false,
+    auditRequirement: "mandatory",
+    rationale: ["a"],
+  },
+  {
     id: "business.transferOwnership",
     meaning: "Reassign the Owner role",
     owningDomain: "Business membership",
