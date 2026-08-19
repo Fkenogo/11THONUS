@@ -54,3 +54,38 @@ export async function getBusinessMembershipByUserAndBusiness(
 
   return { kind: "found", membership };
 }
+
+/**
+ * Resolves a specific membership by its own document id (`ENG-P2-003C`,
+ * additive — every function above this one is unmodified). A target
+ * membership for a lifecycle/role-change command is addressed by
+ * `membershipId`, not `(userId, businessId)` — the actor's own membership
+ * is what `getBusinessMembershipByUserAndBusiness` resolves for
+ * authorization; the *target* of the command is a different membership
+ * document, looked up directly. Always a live Firestore read — no caching,
+ * matching the read-only repository's existing discipline above.
+ */
+export async function getBusinessMembershipById(
+  db: Firestore,
+  membershipId: string,
+  transaction?: Transaction,
+): Promise<MembershipReadResult> {
+  let snapshot;
+  try {
+    const ref = db.collection(COLLECTION).doc(membershipId);
+    snapshot = await (transaction ? transaction.get(ref) : ref.get());
+  } catch {
+    return { kind: "transient_failure" };
+  }
+
+  if (!snapshot.exists) {
+    return { kind: "not_found" };
+  }
+
+  const membership = fromBusinessMembershipDocument(snapshot.id, snapshot.data());
+  if (!membership) {
+    return { kind: "malformed" };
+  }
+
+  return { kind: "found", membership };
+}
