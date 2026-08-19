@@ -274,6 +274,63 @@ describe("evaluateAuthorizationDecision — §4.2 decision table (verbatim rows)
     expect(decision.allowed).toBe(true);
     expect(decision.permissionSource).toBe("owner-floor");
   });
+
+  it("ENG-P2-004-CORR-002: Owner is allowed staff.assignRole via the owner floor, no override on file", () => {
+    const decision = evaluateAuthorizationDecision(
+      baseInput({
+        request: { userId: "user-1", businessId: "biz-a", permission: "staff.assignRole" },
+        membership: { kind: "found", membership: membership({ role: "owner" }) },
+      }),
+    );
+    expect(decision.allowed).toBe(true);
+    expect(decision.permissionSource).toBe("owner-floor");
+  });
+
+  it("ENG-P2-004-CORR-002: Manager has no inherited/default allow for staff.assignRole", () => {
+    const decision = evaluateAuthorizationDecision(
+      baseInput({
+        request: { userId: "user-1", businessId: "biz-a", permission: "staff.assignRole" },
+        membership: { kind: "found", membership: membership({ role: "manager" }) },
+      }),
+    );
+    expect(decision.allowed).toBe(false);
+    expect(decision.errorCategory).toBe("AUTH_FORBIDDEN");
+  });
+
+  it("ENG-P2-004-CORR-002: Staff has no inherited/default allow for staff.assignRole", () => {
+    const decision = evaluateAuthorizationDecision(
+      baseInput({
+        request: { userId: "user-1", businessId: "biz-a", permission: "staff.assignRole" },
+        membership: { kind: "found", membership: membership({ role: "staff" }) },
+      }),
+    );
+    expect(decision.allowed).toBe(false);
+    expect(decision.errorCategory).toBe("AUTH_FORBIDDEN");
+  });
+
+  it("ENG-P2-004-CORR-002: a malformed persisted grant-looking override for staff.assignRole on a Manager membership still denies (fails closed, no grant path exists to honor)", () => {
+    const decision = evaluateAuthorizationDecision(
+      baseInput({
+        request: { userId: "user-1", businessId: "biz-a", permission: "staff.assignRole" },
+        membership: {
+          kind: "found",
+          membership: membership({
+            role: "manager",
+            overrides: [
+              {
+                permissionId: "staff.assignRole",
+                direction: "grant",
+                businessId: "biz-a",
+                membershipId: "mem-1",
+              },
+            ],
+          }),
+        },
+      }),
+    );
+    expect(decision.allowed).toBe(false);
+    expect(decision.errorCategory).toBe("AUTH_FORBIDDEN");
+  });
 });
 
 describe("evaluateAuthorizationDecision — Owner-floor scope and invariant (independent final review, §3.6/INV-1)", () => {
@@ -612,6 +669,34 @@ describe("evaluateAuthorizationDecision — adversarial: grant role-eligibility 
       }),
     );
     expect(decision.allowed).toBe(false);
+  });
+
+  it("does not honor a grant for staff.assignRole (no grant path at all, ENG-P2-004-CORR-002)", () => {
+    const decision = evaluateAuthorizationDecision(
+      baseInput({
+        request: {
+          userId: "user-1",
+          businessId: "biz-a",
+          permission: "staff.assignRole",
+        },
+        membership: {
+          kind: "found",
+          membership: membership({
+            role: "manager",
+            overrides: [
+              {
+                permissionId: "staff.assignRole",
+                direction: "grant",
+                businessId: "biz-a",
+                membershipId: "mem-1",
+              },
+            ],
+          }),
+        },
+      }),
+    );
+    expect(decision.allowed).toBe(false);
+    expect(decision.errorCategory).toBe("AUTH_FORBIDDEN");
   });
 
   it("still honors a grant for a sensitive permission on the catalogue-eligible role (Manager granted staff.manage)", () => {

@@ -12,6 +12,7 @@ import { PermissionDomainError } from "./permissionErrors";
 const EXPECTED_IDS = [
   "staff.manage",
   "staff.assignPermissions",
+  "staff.assignRole",
   "business.transferOwnership",
   "business.configureFraudRules",
   "transaction.reverse",
@@ -21,7 +22,7 @@ const EXPECTED_IDS = [
 ] as const;
 
 describe("SENSITIVE_PERMISSION_CATALOGUE", () => {
-  it("has exactly the eight entries the approved design specifies, in order", () => {
+  it("has exactly the nine entries (eight design-specified plus ENG-P2-004-CORR-002's staff.assignRole), in order", () => {
     expect(SENSITIVE_PERMISSION_CATALOGUE.map((entry) => entry.id)).toEqual(EXPECTED_IDS);
   });
 
@@ -47,10 +48,11 @@ describe("SENSITIVE_PERMISSION_CATALOGUE", () => {
     expect(inheritable).toEqual(["customer.viewProtectedProfile", "report.exportFinancial"]);
   });
 
-  it("marks rows 1-6 as owner_only and non-inheritable", () => {
+  it("marks rows 1-6 plus staff.assignRole as owner_only and non-inheritable", () => {
     const nonInheritableOwnerOnly = [
       "staff.manage",
       "staff.assignPermissions",
+      "staff.assignRole",
       "business.transferOwnership",
       "business.configureFraudRules",
       "transaction.reverse",
@@ -75,19 +77,34 @@ describe("SENSITIVE_PERMISSION_CATALOGUE", () => {
     expect(entry.explicitRevocationSupported).toBe(false);
   });
 
-  it.each(EXPECTED_IDS.filter((id) => id !== "business.transferOwnership"))(
-    "%s supports explicit grant and revocation",
-    (id) => {
-      const entry = getSensitivePermissionEntry(id);
-      expect(entry.explicitGrantRequired).toBe(true);
-      expect(entry.explicitRevocationSupported).toBe(true);
-    },
-  );
+  it("staff.assignRole is not grantable/revocable via the ordinary override path (Owner-only, non-delegable per Founder MVP policy)", () => {
+    const entry = getSensitivePermissionEntry("staff.assignRole");
+    expect(entry.explicitGrantRequired).toBe(false);
+    expect(entry.explicitRevocationSupported).toBe(false);
+  });
+
+  it.each(
+    EXPECTED_IDS.filter((id) => id !== "business.transferOwnership" && id !== "staff.assignRole"),
+  )("%s supports explicit grant and revocation", (id) => {
+    const entry = getSensitivePermissionEntry(id);
+    expect(entry.explicitGrantRequired).toBe(true);
+    expect(entry.explicitRevocationSupported).toBe(true);
+  });
 
   it("business.transferOwnership has no explicit-grant-eligible role", () => {
     expect(
       getSensitivePermissionEntry("business.transferOwnership").explicitGrantEligibleRole,
     ).toBe(null);
+  });
+
+  it("staff.assignRole has no explicit-grant-eligible role (no Manager/Staff grant path exists)", () => {
+    expect(getSensitivePermissionEntry("staff.assignRole").explicitGrantEligibleRole).toBe(null);
+  });
+
+  it("staff.assignRole's meaning matches the Founder-approved MVP policy", () => {
+    expect(getSensitivePermissionEntry("staff.assignRole").meaning).toBe(
+      "Change a Business membership role between Staff and Manager",
+    );
   });
 
   it.each([

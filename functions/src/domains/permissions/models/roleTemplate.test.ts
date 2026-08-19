@@ -48,6 +48,14 @@ describe("createRoleTemplate", () => {
     );
   });
 
+  it("rejects staff.assignRole in any role's defaults, including owner (ENG-P2-004-CORR-002)", () => {
+    expect(() => createRoleTemplate("owner", ["staff.assignRole"])).toThrow(PermissionDomainError);
+    expect(() => createRoleTemplate("manager", ["staff.assignRole"])).toThrow(
+      PermissionDomainError,
+    );
+    expect(() => createRoleTemplate("staff", ["staff.assignRole"])).toThrow(PermissionDomainError);
+  });
+
   it("accepts an inheritable sensitive permission (customer.viewProtectedProfile) for owner/manager", () => {
     expect(() => createRoleTemplate("owner", ["customer.viewProtectedProfile"])).not.toThrow();
     expect(() => createRoleTemplate("manager", ["customer.viewProtectedProfile"])).not.toThrow();
@@ -100,6 +108,7 @@ describe("SENSITIVE_PERMISSION_ROLE_TEMPLATES", () => {
     const nonInheritable = [
       "staff.manage",
       "staff.assignPermissions",
+      "staff.assignRole",
       "business.transferOwnership",
       "business.configureFraudRules",
       "transaction.reverse",
@@ -109,6 +118,14 @@ describe("SENSITIVE_PERMISSION_ROLE_TEMPLATES", () => {
       for (const id of nonInheritable) {
         expect(SENSITIVE_PERMISSION_ROLE_TEMPLATES[role].defaultPermissions).not.toContain(id);
       }
+    }
+  });
+
+  it("gives no role staff.assignRole by default — Owner authority comes from the runtime owner-floor rule, never template inheritance (ENG-P2-004-CORR-002)", () => {
+    for (const role of ROLES) {
+      expect(SENSITIVE_PERMISSION_ROLE_TEMPLATES[role].defaultPermissions).not.toContain(
+        "staff.assignRole",
+      );
     }
   });
 
