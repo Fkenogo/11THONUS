@@ -274,6 +274,82 @@ Review and disposition the Phase H finding (§10/§27 row 14): decide whether a 
 
 ---
 
-## FINAL GATE
+## Correction/Reconciliation Addendum — 2026-08-20 — Reconcile with ENG-P2-003C-CORR-001
 
-**ENG-P2-003E READY FOR FOUNDER REVIEW — ENG-P2-003 CONCERN NOT YET COMPLETE**
+**The original Phase H finding above (§10) is preserved verbatim, not erased.** ENG-P2-003E empirically discovered — through real Firestore/evaluator testing, not assumption — that a Manager-only permission-override grant, demoted to Staff (denied, but left persisted in `permissions[]`), silently became effective again on a later promotion back to Manager, with no fresh authorization action. The Founder reviewed this and rejected it as unapproved silent privilege resurrection. `ENG-P2-003C-CORR-001` (PR #139, merged as `27399fb`, closure-sync `4e0b34e`) corrected it at the role-change transaction boundary: `permissions[]` is now reconciled against the membership's new role in the same transaction as the role mutation, removing any override no longer structurally valid, using `ENG-P2-004A`'s own `createPermissionOverride` (unmodified) as the sole validity authority. Zero evaluator or catalogue changes.
+
+This task reconciles PR #138 with that corrected `main`.
+
+### Entry verification
+
+`origin/main` confirmed at `4e0b34e` (matching Founder-reported state); `27399fb` and `4e0b34e` both confirmed ancestors via `git merge-base --is-ancestor`. CORR-001's own PR #139 merge CI: PASS (5m0s). Its closure-sync PR #140 merge CI initially showed a failure (`commandDispatcher.emulator.test.ts` timeout) — investigated directly rather than assumed: confirmed as a pre-existing, unrelated, non-reproducing flake (docs-only diff cannot cause a functional test timeout; this repo has 5+ prior documented instances of the same class of flake), re-run confirmed SUCCESS (4m44s). PR #138 reconfirmed OPEN/draft/unmerged at head `bf0a8c3`, unchanged since the original ENG-P2-003E task (same 4 commits, no new activity).
+
+### Reconciliation method
+
+`git rebase origin/main` from PR #138's exact head. One mechanical conflict in the programme tracking file (both branches independently prepended a dated entry at the same line) — resolved by nesting the newer (CORR-001-side) entries above the existing 003E entry as "Previously, same day," preserving both narratives in full, verified no text was lost via direct diff inspection before continuing the rebase. No other conflicts. Post-rebase `git merge-base origin/main HEAD` confirms exact alignment with `origin/main`.
+
+### Phase H test correction
+
+`SCENARIO 5 (Phase H)` in `staffMembershipIntegration.emulator.test.ts` rewritten to prove the corrected, governed behavior against the real emulator (no mocking of reconciliation): grant → allow → demote → **removed from `permissions[]`** (not merely denied) → deny → promote → **still denied, no resurrection, still zero records** → explicit regrant via unmodified `ENG-P2-003D` → allow. A companion test proves a persisted revoke override remains effective across the identical Manager→Staff→Manager round-trip (role-independent per the existing contract, unaffected by CORR-001) — covering Phase G matrix items A, B, and C. Item D (role-change concurrent with override grant/revoke) is already comprehensively covered by CORR-001's own merged emulator suite (6 concurrency scenarios) — confirmed present and passing as part of the full regression below, not duplicated.
+
+### Full re-validation on the reconciled branch
+
+- `staffMembershipIntegration.emulator.test.ts` alone: **19/19** (was 18; +1 revoke round-trip test). All thirteen prior journey categories (Staff, Manager, role-change, override, terminality, atomicity, identity authority, Owner protection, self-action, cross-business isolation, concurrency, idempotency) re-ran unchanged and green — none required rewriting beyond Phase H itself.
+- Full functions unit: **1247/1247**.
+- Full functions emulator suite: **553/553** (40 files — includes both the 003E integration file and CORR-001's own correction suite, now co-resident on the same branch).
+- Full web unit: **397/397**.
+- Typecheck, lint, format, build: clean.
+- Secret scan of the diff: clean.
+
+### CORR-001 integration verified directly, not assumed
+
+Confirmed by direct source inspection (not trusting CORR-001's own PR having passed): `writeMembershipRoleChangeWithOverrideReconciliation` commits role + reconciled `permissions[]` + `updatedAt` as one `.update()` call, called from `staffRoleChangeCommand.ts`'s `apply` phase; `git diff origin/main..HEAD --name-only` on this reconciliation's own changes shows zero touches to `evaluatePermission.ts`, either catalogue, `permissionOverride.ts`, or role templates; `firestore.rules` reconfirmed deny-by-default; `functions/src/index.ts` reconfirmed zero callable/HTTPS exposure for any Staff Membership command (unchanged from the original finding, still DEFERRED-BY-DESIGN per Founder direction).
+
+### Reconstructed acceptance matrix (post-CORR-001)
+
+| # | Requirement | Source | Package | Integration evidence | Status | Blocker? |
+|---|---|---|---|---|---|---|
+| 1 | Membership schema & lifecycle | §4–5 | 003A/B/C | 003E full-chain journey, 19/19 | PASS | No |
+| 2 | Invitation model & terminality | §6–9 | 003A/B | 003E terminality scenario | PASS | No |
+| 3 | `staff.manage` target-restriction matrix (FD-5-STAFF) | §11, §28 | 003C | 003E Manager journey | PASS | No |
+| 4 | `staff.assignRole` role-change (Owner-only, non-delegable) | §11 | 003C/004-CORR-002 | 003E role-change journey | PASS | No |
+| 5 | Permission-override grant/revoke administration | §14 | 003D | 003E override journey | PASS | No |
+| 6 | Owner protection across all actions | §12 | 003A/B/C/D | 003E Owner-protection scenario | PASS | No |
+| 7 | Self-action protection | §12 | 003C | 003E self-action scenario | PASS | No |
+| 8 | Cross-business isolation | §13 | 003A/B/C/D | 003E isolation scenario | PASS | No |
+| 9 | Identity authority / no forged userId / no enumeration | §11/App §3 | 003B | 003E adversarial scenario | PASS | No |
+| 10 | Concurrency safety | Programme convention | 003A-D | 003E + CORR-001 concurrency scenarios | PASS | No |
+| 11 | Idempotency via shared mechanism | Programme convention | 003A-D | 003E idempotency scenario | PASS | No |
+| 12 | Outbox/audit coherence | §17 | 003A-D/004 | 003E + CORR-001 secondary review; additive `overridesRemoved` field confirmed privacy-minimal | PASS | No |
+| 13 | Firestore Rules server-only boundary | Programme convention | n/a | Reconfirmed deny-by-default on corrected `main` | PASS | No |
+| **14** | **Role-change/override interaction (Phase H)** | Founder policy: "fresh elevated authority requires fresh authorization" | 003C-CORR-001 | **Rewritten Phase H test, real emulator: no resurrection, fresh regrant required — 19/19 passing** | **PASS (was UNRESOLVED)** | **No — independently re-proven, not merely flipped** |
+| 15 | Error-taxonomy consistency | Programme convention | 003C/D | Prior review found 2 minor inconsistencies (Owner-target category, terminal-invitation category); unfixed, informational only, unaffected by CORR-001 | Informational, not blocking | No |
+| 16 | Callable/HTTPS exposure | §22/§23, 003B §38 | n/a | Reconfirmed still absent on corrected `main` | DEFERRED-BY-DESIGN | No |
+| 17 | Frontend/UI | §3.2, §19 | n/a | n/a | DEFERRED-BY-DESIGN | No |
+| 18 | Subscription staff-count limits | `DEC-SUB-002` | n/a | n/a | DEFERRED-BY-DESIGN | No |
+| 19 | Shared-device auth | `DEC-SEC-003` | n/a | n/a | DEFERRED-BY-DESIGN | No |
+| 20 | Ownership transfer | FD-6-STAFF | n/a | n/a | OUT OF SCOPE (excluded by design) | No |
+
+Row 14 is independently re-proven PASS, not a flipped assumption — the rewritten test asserts the actual removal/no-resurrection/fresh-regrant sequence against the real Firestore emulator and the real evaluator, matching CORR-001's own mandatory round-trip proof.
+
+### Closure-readiness classification
+
+**B. COMPLETE WITH EXPLICIT DEFERRED DOWNSTREAM ITEMS.** Every ENG-P2-003-owned acceptance criterion (rows 1–14) is now PASS, independently re-proven. Every deferred item (rows 16–20) is correctly deferred-by-design with citations, not a gap. No remaining ENG-P2-003-owned blocker.
+
+**This report does not itself close ENG-P2-003 or merge PR #138** — that remains a separate, explicitly Founder-authorized action (independent final review in a clean worktree, then merge decision).
+
+### Files modified in this reconciliation
+
+`functions/src/domains/permissions/service/staffMembershipIntegration.emulator.test.ts` (Phase H rewrite + companion revoke round-trip test) and `docs/05-implementation/change-tracking/engineering-implementation-programme.md` (mechanical rebase-conflict resolution only, both prior entries preserved in full).
+
+### Updated status
+
+`ENG-P2-003A` = Complete. `ENG-P2-003B` = Complete. `ENG-P2-003C` = Complete / corrected. `ENG-P2-003C-CORR-001` = Complete. `ENG-P2-003D` = Complete. **`ENG-P2-003E` = Implemented / pending Founder final review.** **`ENG-P2-003` concern = Ready for closure / pending Founder review.** `ENG-P3-001/002/003` not begun, not authorized. **Capability 3 remains `Open — partially implemented; not closed`.**
+
+**PR #138 is NOT merged by this task.**
+
+---
+
+## FINAL GATE (superseded by the addendum above — see there for current status)
+
+**ENG-P2-003E READY FOR FOUNDER REVIEW — ENG-P2-003 CONCERN NOT YET COMPLETE** *(historical — the original Phase H finding this reflects has since been corrected by ENG-P2-003C-CORR-001; see the Correction/Reconciliation Addendum above for current status)*
