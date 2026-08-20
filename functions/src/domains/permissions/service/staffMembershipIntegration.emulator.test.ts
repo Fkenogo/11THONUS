@@ -282,9 +282,24 @@ async function inviteAndAccept(params: {
 
 // ---------------------------------------------------------------------------
 // SCENARIO 5 — Phase H: the flagged empirical finding. Highest priority.
+//
+// HISTORICAL NOTE (preserved, not erased — ENG-P2-003E's original finding):
+// this test originally proved that a Manager-only explicit grant, demoted to
+// Staff (denied, but the record left untouched in permissions[]) and then
+// promoted back to Manager, silently became effective again with no fresh
+// authorization action. The Founder rejected that as unapproved silent
+// privilege resurrection. `ENG-P2-003C-CORR-001` (PR #139, merged as
+// `27399fb`) corrected it: role change now reconciles `permissions[]`
+// against the NEW role in the same transaction as the role mutation,
+// removing any override no longer structurally valid for that role (reusing
+// `createPermissionOverride`, ENG-P2-004A's own validity authority,
+// unmodified — no evaluator or catalogue change). This test is updated,
+// after that correction landed on `main`, to prove the GOVERNED corrected
+// behavior below — real Firestore, real evaluator, no mocking of the
+// reconciliation.
 // ---------------------------------------------------------------------------
-describe("SCENARIO 5 (Phase H) — stale explicit-grant override across a demote/promote cycle", () => {
-  it("EMPIRICAL: grant while Manager -> demote to Staff (denied) -> promote back to Manager -> observe whether the stale grant becomes effective again", async () => {
+describe("SCENARIO 5 (Phase H) — role/override round-trip: no stale-grant resurrection (post-CORR-001)", () => {
+  it("grant while Manager -> demote to Staff (record REMOVED, denied) -> promote back to Manager (STILL denied, no resurrection) -> fresh regrant via unmodified 003D -> allow", async () => {
     const businessId = await seedActiveBusiness("owner_h1");
     const mgrMembershipId = await inviteAndAccept({
       businessId,
@@ -341,18 +356,19 @@ describe("SCENARIO 5 (Phase H) — stale explicit-grant override across a demote
     );
     expect(demote.outcome).toBe("executed");
 
-    // Confirm the override record itself was NOT touched/deleted by the role change.
+    // CORR-001: the now role-invalid grant is REMOVED from permissions[] by
+    // the same transaction as the role mutation — not merely ignored.
     const membershipAfterDemote = await getBusinessMembershipById(db, mgrMembershipId);
     if (membershipAfterDemote.kind !== "found") {
       throw new Error("expected membership to be found after demote");
     }
     expect(membershipAfterDemote.membership.role).toBe("staff");
     const rawDoc = await db.collection("businessMemberships").doc(mgrMembershipId).get();
-    const storedOverrides = rawDoc.data()?.["permissions"] as unknown[];
-    expect(storedOverrides).toHaveLength(1); // the grant record still persisted, untouched.
+    const storedOverridesAfterDemote = rawDoc.data()?.["permissions"] as unknown[];
+    expect(storedOverridesAfterDemote).toHaveLength(0); // removed, not merely stale.
 
-    // Evaluator now denies — the override's explicitGrantEligibleRole ("manager")
-    // no longer matches the live role ("staff").
+    // Evaluator denies — both because the record is gone, and because
+    // (independently) the evaluator's live-role re-check would also deny.
     const afterDemote = await evaluatePermission(db, {
       userId: "cust_h_mgr",
       businessId,
@@ -374,29 +390,104 @@ describe("SCENARIO 5 (Phase H) — stale explicit-grant override across a demote
     );
     expect(promote.outcome).toBe("executed");
 
-    // THE EMPIRICAL QUESTION: does the still-stored grant become effective
-    // again now that the live role matches its explicitGrantEligibleRole
-    // once more? Recorded factually, not assumed.
+    // THE mandatory proof: no silent resurrection. The removed record does
+    // not come back merely because the live role matches what it used to be
+    // eligible for — it is genuinely gone, not merely denied by a live check.
     const afterPromote = await evaluatePermission(db, {
       userId: "cust_h_mgr",
       businessId,
       permission: PERMISSION_ID,
     });
+    expect(afterPromote.allowed).toBe(false);
 
-    console.log(
-      `[PHASE H FINDING] afterPromote.allowed=${afterPromote.allowed} reasonCode=${afterPromote.reasonCode} permissionSource=${afterPromote.permissionSource ?? "n/a"}`,
+    const rawDocAfterPromote = await db
+      .collection("businessMemberships")
+      .doc(mgrMembershipId)
+      .get();
+    expect(rawDocAfterPromote.data()?.["permissions"]).toHaveLength(0);
+
+    // Fresh elevated authority requires fresh authorization: an explicit
+    // regrant through the normal, unmodified ENG-P2-003D administration path
+    // is the only thing that restores it.
+    const regrant = await administerStaffPermissionOverrideCommand(
+      db,
+      overrideParams({
+        userId: "owner_h1",
+        businessId,
+        targetMembershipId: mgrMembershipId,
+        permissionId: PERMISSION_ID,
+        direction: "grant",
+        idempotencyKey: nextId("override"),
+      }),
     );
+    expect(regrant.outcome).toBe("executed");
 
-    // The override document was never deleted throughout, and the evaluator
-    // re-checks role-eligibility against the *live* role on every call (per
-    // staffRoleChangeCommand.ts's own doc comment and evaluatePermission.ts
-    // Step 7). Empirically, the stale grant DOES become effective again:
-    // this assertion documents the observed runtime behavior.
-    expect(afterPromote.allowed).toBe(true);
-    expect(afterPromote.permissionSource).toBe("explicit-grant");
+    const afterRegrant = await evaluatePermission(db, {
+      userId: "cust_h_mgr",
+      businessId,
+      permission: PERMISSION_ID,
+    });
+    expect(afterRegrant.allowed).toBe(true);
+    expect(afterRegrant.permissionSource).toBe("explicit-grant");
+  });
+
+  it("a persisted revoke override remains effective across a Manager -> Staff -> Manager round-trip (role-independent per existing contract, unaffected by CORR-001)", async () => {
+    const businessId = await seedActiveBusiness("owner_h2");
+    const mgrMembershipId = await inviteAndAccept({
+      businessId,
+      inviterUserId: "owner_h2",
+      role: "manager",
+      recruitUserId: "cust_h_mgr2",
+      email: "h-mgr2@example.com",
+    });
+
+    // staff.manage: explicitRevocationSupported true, no role dependency in
+    // createPermissionOverride's revoke branch — retained across any role.
+    const REVOKE_PERMISSION_ID = "staff.manage";
+
+    const revokeOutcome = await administerStaffPermissionOverrideCommand(
+      db,
+      overrideParams({
+        userId: "owner_h2",
+        businessId,
+        targetMembershipId: mgrMembershipId,
+        permissionId: REVOKE_PERMISSION_ID,
+        direction: "revoke",
+        idempotencyKey: nextId("override"),
+      }),
+    );
+    expect(revokeOutcome.outcome).toBe("executed");
+
+    const demote = await changeStaffMembershipRoleCommand(
+      db,
+      roleChangeParams({
+        userId: "owner_h2",
+        businessId,
+        targetMembershipId: mgrMembershipId,
+        fromRole: "manager",
+        toRole: "staff",
+        idempotencyKey: nextId("rolechange"),
+      }),
+    );
+    expect(demote.outcome).toBe("executed");
+
+    const promote = await changeStaffMembershipRoleCommand(
+      db,
+      roleChangeParams({
+        userId: "owner_h2",
+        businessId,
+        targetMembershipId: mgrMembershipId,
+        fromRole: "staff",
+        toRole: "manager",
+        idempotencyKey: nextId("rolechange"),
+      }),
+    );
+    expect(promote.outcome).toBe("executed");
 
     const rawDocFinal = await db.collection("businessMemberships").doc(mgrMembershipId).get();
-    expect(rawDocFinal.data()?.["permissions"]).toHaveLength(1); // still the same single record — no cleanup ever occurred.
+    const permissionsFinal = rawDocFinal.data()?.["permissions"] as Array<{ direction: string }>;
+    expect(permissionsFinal).toHaveLength(1);
+    expect(permissionsFinal[0]?.direction).toBe("revoke");
   });
 });
 
