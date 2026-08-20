@@ -191,6 +191,26 @@ Review this correction's PR (§28, to be filled once opened) and PR #138 togethe
 
 ---
 
+## Closure Addendum — 2026-08-20 — Independent Final Security Review, Merge & Closure
+
+A separate Founder-authorized task performed an independent final review of PR #139, reconstructing the finding and every claim directly from source rather than trusting this report, before merging.
+
+**Root cause re-derived independently:** confirmed directly from `permissionOverride.ts` that `createPermissionOverride`'s revoke branch checks only the static `explicitRevocationSupported` catalogue flag — no role comparison exists anywhere for revoke, while grant is role-scoped via `explicitGrantEligibleRole`. Confirmed directly from `evaluatePermission.ts` Step 6 that the revoke branch structurally can only ever return `deny` — a retained revoke cannot grant authority by construction, not merely by convention.
+
+**Ownership/evaluator non-regression re-confirmed:** `git diff origin/main..bcdacae --name-only` grep-checked directly for `evaluatePermission.ts`/both catalogues/`permissionOverride.ts`/role templates — zero matches, independently re-verified.
+
+**Phase J (malformed existing state) — empirically proven, not merely reasoned:** the independent review found this was asserted but not tested, and added two adversarial emulator tests before merge: (1) a structurally corrupt override element (`direction: "bogus"`) causes `parseRawPermissionOverrideRecords` to fail the whole document closed, which `staffRoleChangeCommand.ts` maps to `AUTH_FORBIDDEN` — the role change is rejected outright, not silently repaired; (2) a pre-existing contradictory duplicate-permissionId state (unreachable via any governed command, but not excluded by the raw-record parser either) is neither fixed nor worsened by reconciliation — each record is judged independently against the new role, exactly as designed, with no dedup logic invented. Both tests pass against the real Firestore emulator. Committed as `3783057`, pushed to PR #139.
+
+**Full fresh validation on the final reviewed head:** correction + sibling 003C/003D emulator suites **69/69**; full functions unit **1247/1247**; full functions emulator **534/534** (39 files, +2 from the malformed-state additions); web **397/397**; typecheck/lint/format/build clean; secret scan of the diff clean; hosted CI on `3783057` **PASS** (run `32367789976`, 4m53s).
+
+**PR #138 isolation confirmed:** `gh pr view 138` re-checked immediately before and after merge — `headRefOid` unchanged at `bf0a8c3`, state OPEN/draft throughout. Not modified, not merged, by this task.
+
+**No material findings remained.** All Phase P merge-gate criteria satisfied.
+
+**Merged:** PR #139, merge commit `27399fbe9b0a6903b7d81218cae6380f887a478d`, confirmed an ancestor of `origin/main`. Post-merge CI on `main`: **PASS** (run `32368280038`, 5m0s).
+
+`ENG-P2-003C` = **Complete / corrected**. `ENG-P2-003C-CORR-001` = **Complete / merged**. `ENG-P2-003D` remains `Complete`. `ENG-P2-003E` = **Open / integration validation awaiting reconciliation with corrected main** — PR #138 will need, in a separate future task: (1) rebase onto corrected `main`, (2) revision of its Phase H test's expectation (it currently asserts the *old* stale-reactivation behavior as the empirically-observed finding; that behavior is now fixed, so the test's assertion must change to reflect no-resurrection), (3) a full ENG-P2-003E rerun, (4) its own independent closure review. **`ENG-P2-003` concern remains `Not complete`.** **Capability 3 remains `Open — partially implemented; not closed`.**
+
 ## FINAL GATE
 
-**ENG-P2-003C-CORR-001 READY FOR FOUNDER REVIEW/MERGE — ENG-P2-003E REMAINS OPEN**
+**ENG-P2-003C-CORR-001 MERGED AND CLOSED — ENG-P2-003E RECONCILIATION REQUIRED**
