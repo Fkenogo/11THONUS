@@ -221,15 +221,15 @@ All 6 fixes re-verified against the real Firestore/Auth emulator by me directly 
 
 ## 43. PR number
 
-Not yet opened — see §53/§55 for next action. Will be opened as a draft against `main` from `feat/eng-p2-003e-staff-integration-validation`.
+[#138](https://github.com/Fkenogo/11THONUS/pull/138), opened as **draft** against `main` from `feat/eng-p2-003e-staff-integration-validation`, per explicit Founder authorization to push and open the PR. Left in draft, unmerged — no merge authority exercised.
 
 ## 44. Final reviewed head
 
-`3af6fcb` on `feat/eng-p2-003e-staff-integration-validation` (fix commit, following `5c8e784` initial integration-suite commit).
+`97ced8a` on `feat/eng-p2-003e-staff-integration-validation` (docs/report + tracking-sync commit, following `3af6fcb` review-fix commit and `5c8e784` initial integration-suite commit). Confirmed pushed to `origin` and matching PR #138's head.
 
 ## 45. CI result
 
-Not yet run through hosted CI (no PR opened yet at report-authoring time). Local full-suite results reported in §33 are authoritative for now; hosted CI evidence to be added once the PR is opened, per repository convention.
+**PASS.** Hosted CI run [`32356861335`](https://github.com/Fkenogo/11THONUS/actions/runs/32356861335) ("Build, Lint, Test, Emulator Validation") on the pushed head, **4m27s**, confirmed via `gh pr checks 138` polled to completion (not assumed from local results alone).
 
 ## 46. ENG-P2-003E status
 
