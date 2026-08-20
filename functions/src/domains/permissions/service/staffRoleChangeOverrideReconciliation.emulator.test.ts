@@ -464,6 +464,111 @@ describe("ENG-P2-003C-CORR-001 — Owner protection / cross-business target (reg
   });
 });
 
+describe("ENG-P2-003C-CORR-001 — malformed existing permissions[] state fails closed", () => {
+  it("a structurally corrupt override element (unrecognized direction) rejects the role change rather than silently normalizing it", async () => {
+    await seedBusiness("biz-a");
+    await seedMembership({
+      membershipId: "mem-owner",
+      userId: "u-owner",
+      businessId: "biz-a",
+      role: "owner",
+    });
+    await seedMembership({
+      membershipId: "mem-mgr",
+      userId: "u-mgr",
+      businessId: "biz-a",
+      role: "manager",
+      permissions: [
+        // Not "grant" or "revoke" — parseRawPermissionOverrideRecords fails
+        // the whole document closed on this, per its existing documented
+        // contract (businessMembershipDocument.ts).
+        {
+          permissionId: GRANT_PERMISSION,
+          direction: "bogus",
+          grantedBy: "u-owner",
+          grantedAt: new Date(),
+        },
+      ],
+    });
+
+    await expect(
+      changeStaffMembershipRoleCommand(db, {
+        userId: "u-owner",
+        businessId: "biz-a",
+        targetMembershipId: "mem-mgr",
+        fromRole: "manager",
+        toRole: "staff",
+        now: new Date(),
+        newId: () => "evt-1",
+        ...newIds(),
+      }),
+    ).rejects.toMatchObject({ category: "AUTH_FORBIDDEN" });
+
+    // Role change did not proceed, and the malformed record was not
+    // silently repaired or dropped — the role-change command is not a
+    // data-repair mechanism.
+    const doc = await getMembership("mem-mgr");
+    expect(doc?.["role"]).toBe("manager");
+    expect(doc?.["permissions"]).toHaveLength(1);
+    expect((doc?.["permissions"] as Array<{ direction: string }>)[0]?.direction).toBe("bogus");
+  });
+
+  it("a document with two records for the same permissionId (pre-existing contradictory state) is not repaired or worsened by reconciliation", async () => {
+    await seedBusiness("biz-a");
+    await seedMembership({
+      membershipId: "mem-owner",
+      userId: "u-owner",
+      businessId: "biz-a",
+      role: "owner",
+    });
+    await seedMembership({
+      membershipId: "mem-mgr",
+      userId: "u-mgr",
+      businessId: "biz-a",
+      role: "manager",
+      // Two well-formed records for the same permission — not reachable via
+      // any governed command (003D's own write always replaces the array
+      // maintaining at-most-one-per-permission), but a role change must not
+      // be the thing that either fixes or corrupts this further.
+      permissions: [
+        {
+          permissionId: GRANT_PERMISSION,
+          direction: "grant",
+          grantedBy: "u-owner",
+          grantedAt: new Date(),
+        },
+        {
+          permissionId: GRANT_PERMISSION,
+          direction: "revoke",
+          grantedBy: "u-owner",
+          grantedAt: new Date(),
+        },
+      ],
+    });
+
+    const outcome = await changeStaffMembershipRoleCommand(db, {
+      userId: "u-owner",
+      businessId: "biz-a",
+      targetMembershipId: "mem-mgr",
+      fromRole: "manager",
+      toRole: "staff",
+      now: new Date(),
+      newId: () => "evt-1",
+      ...newIds(),
+    });
+    expect(outcome.outcome).toBe("executed");
+
+    // The grant (role-scoped, invalid for "staff") is independently removed;
+    // the revoke (role-independent) is independently retained — each
+    // record judged on its own terms, not as a pair. No new dedup logic
+    // was introduced to "fix" the pre-existing duplicate.
+    const doc = await getMembership("mem-mgr");
+    const permissions = doc?.["permissions"] as Array<{ direction: string }>;
+    expect(permissions).toHaveLength(1);
+    expect(permissions[0]?.direction).toBe("revoke");
+  });
+});
+
 describe("ENG-P2-003C-CORR-001 — concurrency", () => {
   it(
     "demotion vs a competing permission grant: no stale privilege resurrection, no lost update, well-formed final state",
