@@ -758,7 +758,10 @@ describe("SCENARIO 3 — role-change journey", () => {
       recruitUserId: "cust_r2_staff",
       email: "r2-staff@example.com",
     });
-    expect(() =>
+    // changeStaffMembershipRoleCommand is declared `async`, so its internal
+    // synchronous validation throw (createStaffRoleChangeRequest) surfaces
+    // as a rejected Promise, not a synchronous throw.
+    await expect(
       changeStaffMembershipRoleCommand(db, {
         ...roleChangeParams({
           userId: "owner_r2",
@@ -771,7 +774,7 @@ describe("SCENARIO 3 — role-change journey", () => {
         // @ts-expect-error deliberately supplying an out-of-contract role to prove it's structurally rejected.
         toRole: "owner",
       }),
-    ).not.toBe(undefined); // invoking synchronously to trigger the request-construction throw path below.
+    ).rejects.toMatchObject({ category: "VALIDATION_FAILED" });
   });
 });
 
@@ -933,6 +936,15 @@ describe("SCENARIO 4 — permission override journey", () => {
       ),
     ).rejects.toMatchObject({ category: "INVALID_STATE_TRANSITION" });
 
+    // Baseline membership count for this business before the pending invite
+    // below (the Owner's own bootstrap membership + the removed mgr
+    // membership — both already exist at this point).
+    const membershipsBeforePendingInvite = await db
+      .collection("businessMemberships")
+      .where("businessId", "==", businessId)
+      .get();
+    const countBefore = membershipsBeforePendingInvite.size;
+
     // Invited (pending, not yet a membership) — construct via a fresh invite, no accept.
     const pendingInvite = await createStaffInvitation(
       db,
@@ -948,7 +960,13 @@ describe("SCENARIO 4 — permission override journey", () => {
     // override requires a targetMembershipId, so this state is structurally
     // inadministrable (no membership document exists to target), confirming
     // "invited cannot administer overrides" by construction rather than by a
-    // runtime denial path.
+    // runtime denial path. Assert that construction claim directly: the
+    // pending invite added no new membership document under this business.
+    const membershipsAfterPendingInvite = await db
+      .collection("businessMemberships")
+      .where("businessId", "==", businessId)
+      .get();
+    expect(membershipsAfterPendingInvite.size).toBe(countBefore);
   });
 });
 
@@ -1058,7 +1076,7 @@ describe("SCENARIO 6 — invitation terminality", () => {
           now: farFuture,
         }),
       ),
-    ).rejects.toMatchObject({ category: expect.any(String) });
+    ).rejects.toMatchObject({ category: "RESOURCE_NOT_FOUND" });
     const expiredDoc = await getInvitationByReference(db, inv3.invitation.id);
     if (expiredDoc.kind === "found") {
       expect(expiredDoc.invitation.status).toBe("expired");
@@ -1123,7 +1141,7 @@ describe("SCENARIO 8 — identity authority adversarial tests", () => {
     expect(attackerMemberships.size).toBe(0);
   });
 
-  it("cross-business invitation reference cannot create membership in the wrong business", async () => {
+  it("accepting business A's invitation reference creates no membership document under business B", async () => {
     const businessA = await seedActiveBusiness("owner_advA");
     const businessB = await seedActiveBusiness("owner_advB");
     const invA = await createStaffInvitation(
@@ -1146,7 +1164,13 @@ describe("SCENARIO 8 — identity authority adversarial tests", () => {
       }),
     );
     expect(accepted.businessId).toBe(businessA);
-    expect(accepted.businessId).not.toBe(businessB);
+
+    const membershipsInB = await db
+      .collection("businessMemberships")
+      .where("businessId", "==", businessB)
+      .where("userId", "==", "cust_cross")
+      .get();
+    expect(membershipsInB.size).toBe(0);
   });
 });
 
@@ -1390,10 +1414,20 @@ describe("SCENARIO 12 — concurrency", () => {
         ),
       ]);
 
+      // Exactly one of the two racing operations wins — the loser must fail
+      // (accept-on-revoked or revoke-on-accepted are both illegal
+      // transitions), never both silently succeed.
+      const fulfilled = [acceptResult, revokeResult].filter((r) => r.status === "fulfilled");
+      expect(fulfilled.length).toBe(1);
+
       const finalInv = await getInvitationByReference(db, inv.invitation.id);
-      if (finalInv.kind === "found") {
-        expect(["accepted", "revoked"]).toContain(finalInv.invitation.status);
+      if (finalInv.kind !== "found") throw new Error("expected invitation to still exist");
+      if (acceptResult.status === "fulfilled") {
+        expect(finalInv.invitation.status).toBe("accepted");
+      } else {
+        expect(finalInv.invitation.status).toBe("revoked");
       }
+
       // No duplicate membership regardless of outcome ordering.
       const memberships = await db
         .collection("businessMemberships")
@@ -1401,8 +1435,6 @@ describe("SCENARIO 12 — concurrency", () => {
         .where("userId", "==", "cust_cc1")
         .get();
       expect(memberships.size).toBeLessThanOrEqual(1);
-      void acceptResult;
-      void revokeResult;
     },
   );
 
@@ -1462,7 +1494,7 @@ describe("SCENARIO 12 — concurrency", () => {
         email: "cc3@example.com",
       });
 
-      await Promise.allSettled([
+      const [suspendResult, roleChangeResult] = await Promise.allSettled([
         suspendStaffMembershipCommand(
           db,
           lifecycleParams({
@@ -1486,10 +1518,22 @@ describe("SCENARIO 12 — concurrency", () => {
       ]);
 
       const finalDoc = await getBusinessMembershipById(db, staffId);
-      if (finalDoc.kind === "found") {
-        expect(["active", "suspended"]).toContain(finalDoc.membership.status);
-        expect(["staff", "manager"]).toContain(finalDoc.membership.role);
+      if (finalDoc.kind !== "found") throw new Error("expected membership to still exist");
+
+      // No lost update: whichever command actually fulfilled must be
+      // reflected in the final stored state, not silently overwritten by
+      // the other racing write.
+      if (suspendResult.status === "fulfilled") {
+        expect(finalDoc.membership.status).toBe("suspended");
       }
+      if (roleChangeResult.status === "fulfilled") {
+        expect(finalDoc.membership.role).toBe("manager");
+      }
+      // At least one of the two racing commands must have succeeded — a
+      // race that silently drops both writes is itself a lost update.
+      expect(suspendResult.status === "fulfilled" || roleChangeResult.status === "fulfilled").toBe(
+        true,
+      );
     },
   );
 });
