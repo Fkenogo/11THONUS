@@ -287,3 +287,25 @@ Review the draft PR opened from `feat/eng-p2-003c-staff-membership-lifecycle` (S
 **ENG-P2-003C READY FOR FOUNDER REVIEW/MERGE**
 
 Every phase completed cleanly with real evidence: entry SHA verified against origin, all three prerequisite PRs confirmed merged with green CI, the design was unambiguous (no STOP condition triggered), all four commands (SUSPEND/REACTIVATE/REMOVE/role-change) implemented and consuming the existing `authorizeAndExecute`/evaluator/idempotency/outbox infrastructure without duplication, Owner protection and self-action protection verified adversarially, the Phase N/O PermissionOverride security review completed with no finding (verified by test, not merely asserted), cross-business isolation and concurrency verified against real Firestore, zero regression across 1240 unit + 397 web + 479 emulator tests, and full local validation (typecheck/lint/format/build) green. `staff.assignPermissions` was not implemented; `sensitivePermissionCatalogue.ts` was not modified; no Firestore Rules change was made or required; Capability 3 remains explicitly Open, not Complete; no self-merge occurred.
+
+---
+
+## Closure Addendum (2026-08-20)
+
+Founder-authorized "Final CI Confirmation, Independent Merge Gate & Closure" task, executed in an isolated worktree (`/Users/theo/11THONUS/.claude/worktrees/agent-a61bb7eab790c1c1f`; primary checkout `/Users/theo/11THONUS` untouched throughout).
+
+**Entry verification:** PR #135 confirmed `OPEN`/`draft`/`MERGEABLE`/`mergeStateStatus: CLEAN` at entry, head `2f66c3764a60516c8cd3de82798b16ea730eaaaf` (unchanged since the implementation report — no commits landed after it), merge-base against `origin/main` = `30860fd856651c0275c0c7aa6169b5ff90f05cb7` (exact match to `origin/main` HEAD at entry — no drift). `ENG-P2-003D`/`E` confirmed still not started (no matching files/branches/PRs).
+
+**CI gate:** hosted CI on the exact final head had already completed successfully before this task began — run `32296594689` ("Build, Lint, Test, Emulator Validation"), conclusion `success`, 15m42s, on commit `2f66c3764a60516c8cd3de82798b16ea730eaaaf`. No stall, no rerun needed.
+
+**Independent final review:** a fresh, non-report-trusting review re-derived findings directly from `ENG-P2-003-DESIGN-001` v1.1, `permissionOverride.ts`, `evaluatePermission.ts`, `authorizeAndExecute.ts`, `sensitivePermissionCatalogue.ts`, `staffMembershipLifecycle.ts`, both command files, both repositories, the event builders, and the real-Firestore emulator test suites. All eleven reviewed areas (lifecycle matrix; authorization separation; Owner/self protection; PermissionOverride demotion/promotion security; membership-history mutation-in-place; TOCTOU/transaction boundary; concurrency-test assertion strength; error-category mapping; cross-business isolation; event/privacy minimality; catalogue non-regression) returned **PASS** with file/line evidence. **No material finding.**
+
+**Full validation (re-run fresh, this task):** `pnpm install --frozen-lockfile` clean; `pnpm typecheck` clean (both workspaces); `pnpm lint` clean; `functions` unit tests **1240/1240** passed locally; manual secret-pattern scan of the PR's file-level diff (`git diff` against merge-base) clean, no dedicated secret-scan tool configured in CI (pre-existing, disclosed gap, not introduced here). Full `emulators:validate`/`web`/`build`/`format`/Playwright e2e coverage relied on the already-green hosted CI run above rather than a duplicate local run, per the task's CI-gate instruction.
+
+**Merge:** PR #135 marked ready for review (undrafted) and squash-merged. **Merge commit: `3828e9067195f8a34602a923dd01e2f07b951a88`.** Confirmed an ancestor of `origin/main` (`git merge-base --is-ancestor` = true) after `git fetch origin main` (`30860fd..3828e90`).
+
+**Post-merge CI:** run `32340579986` on `main`, headSha `3828e9067195f8a34602a923dd01e2f07b951a88` — `success`, 4m20s, all steps (Build/Lint/Format/Typecheck/Unit/Playwright e2e/Emulator Suite) passed.
+
+**Closure sync:** this addendum, plus a dated-supersession note appended to `CDR-001` §5 Capability 3 and the Engineering Implementation Programme header, record: `ENG-P2-003C` = **Complete/merged**. `ENG-P2-003D` = **Not started**. `ENG-P2-003E` = **Not started**. **Capability 3 = `Open — partially implemented; not closed`** (unchanged — not marked Complete). No `ENG-P2-003D` work begun; no new scope entered beyond this task's authorization.
+
+**FINAL GATE: `ENG-P2-003C MERGED AND CLOSED — ENG-P2-003D AWAITS FRESH FOUNDER AUTHORIZATION`**
