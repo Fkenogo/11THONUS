@@ -126,3 +126,33 @@ export function writeMembershipRoleChange(
     updatedAt,
   });
 }
+
+/**
+ * `ENG-P2-003D` — Permission Override Administration. Writes the complete,
+ * replaced `permissions[]` array — never a partial/append-only patch. The
+ * caller (`staffPermissionOverrideCommand.ts`) is responsible for
+ * constructing `permissions` as the correct at-most-one-per-permission
+ * result (FD-003D-1, `ENG-P2-003-DESIGN-001` §29); this function performs
+ * no override-domain validation itself, matching every other write function
+ * in this file (validation happens before the write phase, `prepare`, never
+ * in `apply`).
+ */
+export type PersistedPermissionOverrideRecordFields = {
+  permissionId: string;
+  direction: "grant" | "revoke";
+  grantedBy: string;
+  grantedAt: Date;
+};
+
+export function writeMembershipPermissionOverrides(
+  writer: MembershipUpdateWriter,
+  db: Firestore,
+  membershipId: string,
+  permissions: readonly PersistedPermissionOverrideRecordFields[],
+  updatedAt: Date,
+): void {
+  writer.update(businessMembershipRef(db, membershipId), {
+    permissions,
+    updatedAt,
+  });
+}
