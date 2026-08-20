@@ -391,3 +391,61 @@ export function roleChangeFromRoleMismatchError(): PermissionDomainError {
     "Target membership's current role no longer matches the role-change request's expected starting role.",
   );
 }
+
+/*
+ * `ENG-P2-003D` — Staff Permission Override Administration command errors.
+ * Same closed-taxonomy discipline as every error above — every category
+ * used below is one of the existing 14 categories
+ * (`functions/src/shared/errors/errorCategories.ts`), never a new one.
+ * Founder dispositions FD-003D-1/FD-003D-2 (`ENG-P2-003-DESIGN-001` §29)
+ * govern the conditions these errors represent.
+ */
+
+/**
+ * The target membership's current status (FD-003D-2, §29) does not permit
+ * the requested grant/revoke: `removed`/`invited` permit neither; `suspended`
+ * permits `revoke` only (authority may be reduced, never staged for later
+ * reactivation). Mapped to `INVALID_STATE_TRANSITION`, mirroring
+ * `invalidMembershipLifecycleTransitionError`'s existing status-gated-action
+ * pattern.
+ */
+export function overrideAdminTargetStatusNotPermittedError(
+  status: string,
+  direction: string,
+): PermissionDomainError {
+  return new PermissionDomainError(
+    "INVALID_STATE_TRANSITION",
+    `Cannot "${direction}" a permission override for a target membership currently in status "${status}" (ENG-P2-003-DESIGN-001 §29, FD-003D-2).`,
+  );
+}
+
+/**
+ * The target membership's `permissions[]` already contains more than one
+ * structurally-valid record for the requested `permissionId` — contradictory
+ * or duplicate persisted override state that `ENG-P2-003D` did not create
+ * (FD-003D-1 requires at most one current override per permission). This is
+ * a server data-integrity condition, not a normal validation failure — it
+ * fails closed rather than being silently repaired, mirroring the
+ * evaluator's own malformed-config-denies-closed discipline
+ * (`evaluatePermission.ts`'s `MEMBERSHIP_CONFIG_MALFORMED`/
+ * `MALFORMED_OVERRIDE_DIRECTION` handling), hence `AUTH_FORBIDDEN`.
+ */
+export function overrideAdminMalformedExistingOverrideStateError(): PermissionDomainError {
+  return new PermissionDomainError(
+    "AUTH_FORBIDDEN",
+    "Target membership's persisted permission overrides already contain more than one record for this permission — refusing to mutate malformed state (ENG-P2-003-DESIGN-001 §29, FD-003D-1).",
+  );
+}
+
+/**
+ * The target membership document itself failed structural parsing (the same
+ * fail-closed condition `evaluatePermission.ts` treats as
+ * `MEMBERSHIP_CONFIG_MALFORMED`) — distinct from `targetMembershipNotFoundError`,
+ * which means no document exists at all.
+ */
+export function targetMembershipConfigMalformedError(): PermissionDomainError {
+  return new PermissionDomainError(
+    "AUTH_FORBIDDEN",
+    "Target membership document failed structural validation.",
+  );
+}

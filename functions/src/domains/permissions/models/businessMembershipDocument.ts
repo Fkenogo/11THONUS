@@ -38,7 +38,7 @@
  */
 
 import { isRole } from "./role";
-import { isWellFormedPermissionId } from "./permissionId";
+import { isWellFormedPermissionId, type PermissionId } from "./permissionId";
 import {
   PERMISSION_OVERRIDE_DIRECTIONS,
   type PermissionOverrideDirection,
@@ -119,6 +119,68 @@ function parseOverrides(
     overrides.push(parsed);
   }
   return overrides;
+}
+
+/**
+ * The full persisted `permissions[]` element shape, including
+ * `grantedBy`/`grantedAt` (`ENG-P2-003D`, additive).
+ *
+ * `parseOverrideElement`/`EvaluationPermissionOverride` above deliberately
+ * drop `grantedBy`/`grantedAt` — the evaluator never needs them
+ * (`evaluatePermission.ts`'s precedence logic only consults
+ * `permissionId`/`direction`). `ENG-P2-003D`'s write-side override-admin
+ * command needs the full record: a read-modify-write that replaces the
+ * current override for one `permissionId` (FD-003D-1,
+ * `ENG-P2-003-DESIGN-001` §29) must not discard another, untouched
+ * permission's own original attribution/timestamp by reconstructing it from
+ * the evaluator-shaped type.
+ */
+export type RawPermissionOverrideRecord = {
+  readonly permissionId: PermissionId;
+  readonly direction: PermissionOverrideDirection;
+  readonly grantedBy: string;
+  readonly grantedAt: Date;
+};
+
+/**
+ * Parses `permissions[]` into `RawPermissionOverrideRecord[]` — same
+ * fail-closed contract as `parseOverrides` above (`undefined` -> `[]`, any
+ * structurally malformed element -> `null`, no partial acceptance), reusing
+ * the same element-level predicates so this can never accept an element
+ * `parseOverrides`/`fromBusinessMembershipDocument` would reject, or vice
+ * versa.
+ */
+export function parseRawPermissionOverrideRecords(
+  raw: unknown,
+): readonly RawPermissionOverrideRecord[] | null {
+  if (raw === undefined) return [];
+  if (!Array.isArray(raw)) return null;
+  if (raw.length === 0) return [];
+
+  const records: RawPermissionOverrideRecord[] = [];
+  for (const element of raw) {
+    if (typeof element !== "object" || element === null) return null;
+    const e = element as Partial<{
+      permissionId: unknown;
+      direction: unknown;
+      grantedBy: unknown;
+      grantedAt: unknown;
+    }>;
+    if (typeof e.permissionId !== "string" || !isWellFormedPermissionId(e.permissionId)) {
+      return null;
+    }
+    if (!isOverrideDirection(e.direction)) return null;
+    if (typeof e.grantedBy !== "string" || e.grantedBy.trim().length === 0) return null;
+    if (!isTimestampLike(e.grantedAt)) return null;
+
+    records.push({
+      permissionId: e.permissionId,
+      direction: e.direction,
+      grantedBy: e.grantedBy,
+      grantedAt: e.grantedAt.toDate(),
+    });
+  }
+  return records;
 }
 
 /**
