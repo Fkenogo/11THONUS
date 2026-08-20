@@ -368,6 +368,34 @@ Final head: `9f45e8a`. Hosted CI on that exact head: **PASS** (run [`32373867160
 
 ---
 
-## FINAL GATE (superseded by the addendum above — see there for current status)
+## Final Closure Addendum — 2026-08-20 — Independent Final Review, Merge & ENG-P2-003 Concern Closure
 
-**ENG-P2-003E READY FOR FOUNDER REVIEW — ENG-P2-003 CONCERN NOT YET COMPLETE** *(historical — the original Phase H finding this reflects has since been corrected by ENG-P2-003C-CORR-001; see the Correction/Reconciliation Addendum above for current status)*
+A separate Founder-authorized task performed one more independent review pass before merging, then closed the concern.
+
+**Entry re-verified:** `origin/main` unchanged at `4e0b34e`; both `27399fb`/`4e0b34e` re-confirmed ancestors; CORR-001's PR #139/#140 post-merge CI re-confirmed green (including the #140 rerun after its unrelated flake). PR #138 re-confirmed `OPEN`/`draft`/`MERGEABLE` at head `a2228f3` (8 commits, nothing landed since the reconciliation report — verified via `gh pr view --json commits`), CI **PASS** on that exact head (run `32374408456`, 5m10s).
+
+**PR scope independently re-verified:** `git diff origin/main..a2228f3 --stat` confirmed the PR's own content (isolated from CORR-001's changes, which arrived only via the rebase and are already in `origin/main`) touches exactly two files — the 003E integration test and the implementation report/tracking docs. Zero production code.
+
+**Phase H no-resurrection proof re-inspected directly, line by line**, not merely re-run: confirmed the test asserts on both the raw Firestore document (`storedOverridesAfterDemote`/`rawDocAfterPromote`, `toHaveLength(0)`) and the real evaluator outcome at every stage (baseline deny, post-grant allow, post-demote deny + removed record, post-promote still-deny + still-removed record, post-regrant allow) — none of these assertions can pass trivially.
+
+**Diff since the last independent review pass** (`6ed7bef`, reviewed in the prior reconciliation task) confirmed to be exactly the review's own follow-up fix (pinning `permissionId` in the revoke round-trip assertion) plus report updates — nothing unreviewed slipped in.
+
+**Fresh full validation, independently re-run in a new clean worktree:** 003E suite **19/19**; functions unit **1247/1247**; functions emulator **553/553** (40 files); web **397/397**; typecheck/lint/format/build clean; secret scan clean.
+
+**No material findings.** All Phase Y merge-gate criteria satisfied.
+
+**Merged:** PR #138, merge commit `7088b9f11f136c1e557130e81a22c3ddc8783347`, confirmed an ancestor of `origin/main`. Post-merge CI on `main`: **PASS** (run `32375910135`, 4m34s).
+
+### ENG-P2-003 concern closure decision
+
+Independently reconstructed acceptance matrix (20 rows, this report's own table above) shows all fourteen `ENG-P2-003`-owned rows PASS, including row 14 (the former Phase H blocker, now independently re-proven twice — once during reconciliation, once during this final review). Rows 15 is informational only (pre-existing minor error-taxonomy inconsistencies, not blocking). Rows 16–20 are correctly `DEFERRED-BY-DESIGN`/out-of-scope with citations to their own governing decisions (`DEC-SUB-002`, `DEC-SEC-003`, FD-6-STAFF, and the design doc's own frontend/callable-exposure boundary) — none is an unsatisfied `ENG-P2-003` requirement mislabeled as deferred.
+
+**Classification: B — COMPLETE WITH EXPLICIT DOWNSTREAM DEFERRALS.**
+
+**`ENG-P2-003` concern = Complete.** This closes the concern-level tracking entry only — it does **not** close Capability 3, which remains open pending `ENG-P3-001/002/003` (none begun, none authorized here).
+
+`ENG-P2-003A` = Complete. `ENG-P2-003B` = Complete. `ENG-P2-003C` = Complete / corrected. `ENG-P2-003C-CORR-001` = Complete. `ENG-P2-003D` = Complete. **`ENG-P2-003E` = Complete / merged.** **`ENG-P2-003` concern = Complete.** **Capability 3 = Open — partially implemented; not closed.** `ENG-P3-001/002/003` = Not started.
+
+## FINAL GATE
+
+**ENG-P2-003E MERGED AND CLOSED — ENG-P2-003 CONCERN COMPLETE; CAPABILITY 3 REMAINS OPEN**
