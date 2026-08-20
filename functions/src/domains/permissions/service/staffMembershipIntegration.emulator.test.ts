@@ -485,8 +485,12 @@ describe("SCENARIO 5 (Phase H) — role/override round-trip: no stale-grant resu
     expect(promote.outcome).toBe("executed");
 
     const rawDocFinal = await db.collection("businessMemberships").doc(mgrMembershipId).get();
-    const permissionsFinal = rawDocFinal.data()?.["permissions"] as Array<{ direction: string }>;
+    const permissionsFinal = rawDocFinal.data()?.["permissions"] as Array<{
+      permissionId: string;
+      direction: string;
+    }>;
     expect(permissionsFinal).toHaveLength(1);
+    expect(permissionsFinal[0]?.permissionId).toBe(REVOKE_PERMISSION_ID);
     expect(permissionsFinal[0]?.direction).toBe("revoke");
   });
 });
