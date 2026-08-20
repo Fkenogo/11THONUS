@@ -138,15 +138,15 @@ None outstanding. Two minor, pre-existing, unrelated observations noted by revie
 
 ## 28. Correction PR number
 
-To be recorded once opened — see §40.
+[#139](https://github.com/Fkenogo/11THONUS/pull/139), opened as **draft** against `main` from `fix/eng-p2-003c-corr-001-role-change-override-reconciliation`. Left in draft, unmerged.
 
 ## 29. Final reviewed head
 
-Recorded once the report/tracking commit lands — see §40.
+`94a1c72` on `fix/eng-p2-003c-corr-001-role-change-override-reconciliation`, pushed and matching PR #139's head at CI-run time.
 
 ## 30. CI result
 
-To be recorded once the PR's hosted CI run completes — see §40.
+**PASS.** Hosted CI run [`32365867570`](https://github.com/Fkenogo/11THONUS/actions/runs/32365867570) ("Build, Lint, Test, Emulator Validation") on the pushed head, **4m48s**, confirmed via `gh pr checks 139` polled to completion.
 
 ## 31. ENG-P2-003C-CORR-001 status
 
