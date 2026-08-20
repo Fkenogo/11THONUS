@@ -893,4 +893,33 @@ All seven Founder Decisions originally raised by this package's own §21 are now
 
 ---
 
+## 29. Founder Dispositions — ENG-P2-003D Permission Override Administration (Recorded 2026-08-20)
+
+**Authority:** Founder, via task "ENG-P2-003D — Record Founder Dispositions and Resume Permission Override Administration," 2026-08-20. Recorded here per this repository's established design-local disposition convention (§28's own precedent). **Not** a new Decision Register (`DEC-*`) entry, and **not** a reopening of §28's seven `FD-*-STAFF` dispositions or any `DEC-*` entry — `decision-register.md` is unmodified by this addendum.
+
+**Provenance.** ENG-P2-003D's independent implementation attempt (2026-08-20, pre-implementation) correctly halted at two genuine architecture gaps neither this document's §14 nor `ENG-P2-004A`'s contracts resolved: (1) replacement semantics when an override already exists for the same `(membership, permissionId)`; (2) which target-membership statuses (`active`/`suspended`/`removed`/`invited`) permit override administration. Both are resolved below.
+
+### FD-003D-1 — Permission override replacement semantics
+
+**Approved.** `businessMembership.permissions[]` is **current effective override configuration**, not a historical change log. For any one membership + `permissionId`, there is **at most one current `PermissionOverride`**. No existing override → insert the new one. Existing `grant` + a new valid `revoke` → the `revoke` atomically **replaces** the `grant`. Existing `revoke` + a new valid `grant` → the `grant` atomically **replaces** the `revoke`, provided the target's *current* role is eligible under the existing `ENG-P2-004A` contract (`createPermissionOverride`/`explicitGrantEligibleRole`). A repeated identical direction (grant-after-grant, revoke-after-revoke) must not create a second record — the current single record is retained/idempotently confirmed, not duplicated. Contradictory `grant`+`revoke` records for the same `permissionId` must never accumulate. Historical grant/revoke activity is preserved separately, through the existing outbox/event mechanism (§17), never by appending stale records to `permissions[]`. This does **not** change `ENG-P2-004B`'s evaluator precedence semantics (revoke-before-grant, §4.1.3/§4.1.5) — those remain unmodified; this disposition only governs what `ENG-P2-003D`'s write command persists, not how the evaluator reads it.
+
+### FD-003D-2 — Target membership status policy
+
+**Approved.** Override administration depends on the target membership's authoritative *current* status, read inside the same transaction as the mutation (never trusted from request-supplied data):
+
+| Status | Grant | Revoke |
+|---|---|---|
+| `active` | Allowed, subject to the existing `PermissionOverride`/catalogue role-eligibility contract | Allowed, subject to the existing contract's `explicitRevocationSupported` gate |
+| `suspended` | **Prohibited** — a suspended membership must never be used to stage new authority that becomes effective later upon reactivation | **Allowed** — suspension must permit authority to be *reduced* before reactivation |
+| `removed` | Prohibited | Prohibited — the relationship is historical/terminal under normal administration |
+| `invited` | Prohibited | Prohibited — `ENG-P2-003`'s invitation flow creates the `businessMembership` only after acceptance, so normal override administration never operates on a pre-active invited record |
+
+**Security principle (stated explicitly, binding on implementation):** suspension may reduce authority; suspension must never be used to stage new authority for later activation. This is the asymmetry between the `suspended` row's Grant/Revoke columns above, and it is deliberate, not an oversight.
+
+### Status after this disposition
+
+Both architecture gaps ENG-P2-003D's pre-implementation halt identified are resolved. `ENG-P2-004A`'s `createPermissionOverride` contract, `ENG-P2-004B`'s evaluator, `ENG-P2-004C`'s audit integration, and `sensitivePermissionCatalogue.ts` are unmodified by this disposition — it governs only `ENG-P2-003D`'s own write-command behavior, consuming those contracts exactly as before. No `DEC-*` Decision Register entry is reopened. This addendum itself does not perform implementation; `ENG-P2-003D`'s separate Founder implementation authorization (already granted) governs the resumed coding work.
+
+---
+
 **FINAL GATE: ENG-P2-003 DESIGN — FOUNDER DISPOSITIONS RECORDED (v1.1) — READY FOR FINAL FOUNDER MERGE REVIEW**
