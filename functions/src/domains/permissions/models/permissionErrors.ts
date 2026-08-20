@@ -307,3 +307,87 @@ export function membershipReadTransientFailureError(): PermissionDomainError {
     "Could not verify existing membership state; please retry.",
   );
 }
+
+/*
+ * ENG-P2-003C — Staff Membership Lifecycle & Role Management command
+ * errors. Same closed-taxonomy discipline as every error above — every
+ * category used below is one of the existing 14 categories
+ * (`functions/src/shared/errors/errorCategories.ts`), mapped per
+ * `ENG-P2-003-DESIGN-001` §16.3's addendum error-taxonomy table (never a
+ * new category).
+ */
+
+export function targetMembershipNotFoundError(): PermissionDomainError {
+  return new PermissionDomainError("RESOURCE_NOT_FOUND", "Target membership does not exist.");
+}
+
+/**
+ * Cross-business isolation (Phase V/§13): a target `membershipId` that
+ * exists but does not belong to the authorized Business context. Mapped to
+ * `AUTH_FORBIDDEN`, not `RESOURCE_NOT_FOUND` — the design's own boundary
+ * discipline (§13) is to never leak whether a given membership id exists at
+ * all to a caller unauthorized for a different Business.
+ */
+export function membershipCrossBusinessMismatchError(): PermissionDomainError {
+  return new PermissionDomainError(
+    "AUTH_FORBIDDEN",
+    "Target membership does not belong to the authorized Business context.",
+  );
+}
+
+/**
+ * `staffMembershipTargetPolicy.ts`'s `staff.manage` target matrix (§11.6.1)
+ * was violated — e.g. a Manager targeting another Manager, any actor
+ * targeting the Owner, or self-action. Deferred to `AUTH_FORBIDDEN` per the
+ * design's error-taxonomy table ("Unauthorized staff-management target").
+ */
+export function staffManagementTargetNotPermittedError(): PermissionDomainError {
+  return new PermissionDomainError(
+    "AUTH_FORBIDDEN",
+    "Actor is not permitted to administer this target membership (ENG-P2-003-DESIGN-001 §11.6.1).",
+  );
+}
+
+/**
+ * `staffMembershipTargetPolicy.ts`'s `staff.assignRole` target matrix
+ * (§11.6.2) was violated — e.g. a non-Owner actor, an Owner target, or
+ * self-role-change. Deferred to `AUTH_FORBIDDEN` per the design's
+ * error-taxonomy table ("Role-assignment denied").
+ */
+export function roleChangeTargetNotPermittedError(): PermissionDomainError {
+  return new PermissionDomainError(
+    "AUTH_FORBIDDEN",
+    "Actor is not permitted to change this target membership's role (ENG-P2-003-DESIGN-001 §11.6.2).",
+  );
+}
+
+/**
+ * The target membership's current status does not permit the requested
+ * lifecycle action (`staffMembershipLifecycle.ts`'s closed transition
+ * table) — e.g. suspending an already-suspended or removed membership,
+ * reactivating an active or removed membership, or removing an
+ * already-removed membership. Mapped to `INVALID_STATE_TRANSITION` per the
+ * design's error-taxonomy table ("Membership inactive").
+ */
+export function invalidMembershipLifecycleTransitionError(
+  currentStatus: string,
+  action: string,
+): PermissionDomainError {
+  return new PermissionDomainError(
+    "INVALID_STATE_TRANSITION",
+    `Cannot "${action}" a membership currently in status "${currentStatus}" (ENG-P2-003-DESIGN-001 §5.3).`,
+  );
+}
+
+/**
+ * The role-change request's `fromRole` does not match the target
+ * membership's live, currently-persisted role (TOCTOU-safe re-check inside
+ * the same transaction that reads it) — the requested role change is stale
+ * or was constructed against outdated data.
+ */
+export function roleChangeFromRoleMismatchError(): PermissionDomainError {
+  return new PermissionDomainError(
+    "INVALID_STATE_TRANSITION",
+    "Target membership's current role no longer matches the role-change request's expected starting role.",
+  );
+}
