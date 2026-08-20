@@ -110,19 +110,30 @@ export function writeMembershipRemoval(
 }
 
 /**
- * Role change: mutates `role` (and `updatedAt`) only. Never touches
- * `permissions` (the `PermissionOverride` array) — Phase N/O's explicit
- * boundary: role change must not rewrite permission-override history.
+ * `ENG-P2-003C-CORR-001` — role change + PermissionOverride reconciliation,
+ * committed as one `.update()` call. Firestore rejects a second `.update()`
+ * on the same document reference within one transaction, so this cannot be
+ * a plain role-only write followed by a separate
+ * `writeMembershipPermissionOverrides` call — both fields must be part of
+ * the same write. `permissions` here is always the caller's already-
+ * reconciled CURRENT configuration (FD-003D-1) for the NEW role, never a
+ * partial patch. This is the ONLY role-change write path — an earlier,
+ * role-only variant that never touched `permissions[]` was removed by this
+ * correction; that omission was the security defect `ENG-P2-003E`'s
+ * integration validation found, so no role-only write function is kept
+ * lying around for a future caller to reach for by mistake.
  */
-export function writeMembershipRoleChange(
+export function writeMembershipRoleChangeWithOverrideReconciliation(
   writer: MembershipUpdateWriter,
   db: Firestore,
   membershipId: string,
   role: "manager" | "staff",
+  permissions: readonly PersistedPermissionOverrideRecordFields[],
   updatedAt: Date,
 ): void {
   writer.update(businessMembershipRef(db, membershipId), {
     role,
+    permissions,
     updatedAt,
   });
 }

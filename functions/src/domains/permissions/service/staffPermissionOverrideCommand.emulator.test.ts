@@ -1307,8 +1307,14 @@ describe("administerStaffPermissionOverrideCommand — ROLE INTERACTION", () => 
     });
     expect(evalAfterDemote.allowed).toBe(false);
 
+    // ENG-P2-003C-CORR-001: the demotion itself already removed the
+    // now-invalid grant from permissions[] (Founder policy — fresh
+    // elevated authority requires fresh authorization).
+    const docAfterDemote = await getMembership("mem-mgr");
+    expect(docAfterDemote?.["permissions"]).toHaveLength(0);
+
     // A brand-new grant attempt against the now-Staff target is rejected
-    // (eligible role is Manager only) — 003D does not mutate stale history.
+    // (eligible role is Manager only) — 003D does not resurrect it either.
     await expect(
       administerStaffPermissionOverrideCommand(db, {
         userId: "u-owner",
@@ -1322,11 +1328,10 @@ describe("administerStaffPermissionOverrideCommand — ROLE INTERACTION", () => 
       }),
     ).rejects.toMatchObject({ category: "VALIDATION_FAILED" });
 
-    // The stale grant record itself is untouched by 003D's own operations.
+    // Still empty — the rejected 003D attempt made no change.
     const doc = await getMembership("mem-mgr");
     const permissions = doc?.["permissions"] as Array<{ direction: string }>;
-    expect(permissions).toHaveLength(1);
-    expect(permissions[0]?.direction).toBe("grant");
+    expect(permissions).toHaveLength(0);
   });
 });
 

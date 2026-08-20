@@ -131,6 +131,15 @@ export type StaffRoleChangedPayload = {
   fromRole: string;
   toRole: string;
   changedBy: string;
+  /**
+   * `ENG-P2-003C-CORR-001` — additive, optional. Permission ids only
+   * (privacy-minimal, no `grantedBy`/timestamp attribution) for any
+   * `PermissionOverride` removed from `permissions[]` by this same role
+   * change because it was no longer structurally valid for the new role.
+   * Omitted (not `[]`) when reconciliation removed nothing, so existing
+   * consumers of this event type see no shape change for the common case.
+   */
+  overridesRemoved?: readonly string[];
 };
 
 export function buildStaffRoleChangedEvent(
@@ -153,6 +162,9 @@ export function buildStaffRoleChangedEvent(
       fromRole: params.fromRole,
       toRole: params.toRole,
       changedBy: params.changedBy,
+      ...(params.overridesRemoved && params.overridesRemoved.length > 0
+        ? { overridesRemoved: params.overridesRemoved }
+        : {}),
     },
   };
 }
