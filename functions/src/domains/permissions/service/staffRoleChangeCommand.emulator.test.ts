@@ -445,13 +445,17 @@ describe("Role-change / PermissionOverride security review (Phase N/O, mandatory
     });
     expect(outcome.outcome).toBe("executed");
 
-    // The override record itself is untouched (Phase N: never rewritten).
+    // ENG-P2-003C-CORR-001: the now-invalid grant is removed from
+    // permissions[] by the same role-change transaction (Founder policy —
+    // fresh elevated authority requires fresh authorization; permissions[]
+    // is CURRENT configuration, not a history log, FD-003D-1).
     const doc = await getMembership("mem-mgr");
-    expect(doc?.["permissions"]).toHaveLength(1);
+    expect(doc?.["permissions"]).toHaveLength(0);
     expect(doc?.["role"]).toBe("staff");
 
-    // But it is no longer honored — the evaluator re-checks eligibility
-    // against the membership's *current* role on every evaluation.
+    // No longer honored — both because the record is gone, and because the
+    // evaluator re-checks eligibility against the membership's *current*
+    // role on every evaluation regardless.
     const after = await evaluatePermission(db, {
       userId: "u-mgr",
       businessId: "biz-a",

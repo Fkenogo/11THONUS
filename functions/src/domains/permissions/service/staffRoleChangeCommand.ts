@@ -25,32 +25,44 @@
  * `INVALID_STATE_TRANSITION`) rather than silently applying `toRole`
  * regardless of the membership's actual current role.
  *
- * **Permission overrides are never touched (Phase N/O).** This command
- * writes only the `role` field (`writeMembershipRoleChange`) — it never
- * reads, clears, or recalculates `permissions[]`. `ENG-P2-004`'s evaluator
- * already re-checks override role-eligibility (`explicitGrantEligibleRole
- * === role`) against the membership's *current, live* `role` on every
- * evaluation (`evaluatePermission.ts` Step 7) — so a stale override
- * granted while eligible for the old role is automatically no longer
- * honored the moment the role changes, with no cleanup required here. See
- * the implementation report's Phase N/O analysis for the full security
- * review this command's design relies on.
+ * **Permission-override reconciliation (`ENG-P2-003C-CORR-001`, Founder
+ * policy: "fresh elevated authority requires fresh authorization").** An
+ * earlier version of this command left `permissions[]` untouched, relying
+ * solely on `ENG-P2-004`'s evaluator re-checking role-eligibility live on
+ * every call. That left a stale, structurally-invalid override *persisted*
+ * in `permissions[]` after a demotion — inert only until a later promotion
+ * happened to restore the exact role the stale override was originally
+ * eligible for, at which point it silently became effective again with no
+ * fresh authorization action. `ENG-P2-003E`'s integration validation
+ * empirically confirmed this round-trip. This command now reconciles
+ * `permissions[]` against the NEW role in the same transaction as the role
+ * mutation (`reconcilePermissionOverridesForRoleChange`,
+ * `ENG-P2-004A`'s own `createPermissionOverride` reused unmodified as the
+ * sole validity authority — no new validity rule invented, no evaluator
+ * change). A grant is role-scoped and is removed if it no longer matches
+ * the new role; a revoke has no role dependency in the existing contract
+ * and is always retained. `permissions[]` remains CURRENT configuration
+ * only (FD-003D-1) — historical evidence of a removed override lives in
+ * this command's own `StaffRoleChanged` event (`overridesRemoved`, ids
+ * only), not in a stale current-config record.
  */
 
 import type { Firestore } from "firebase-admin/firestore";
 import { authorizeAndExecute, type AuthorizeAndExecuteResult } from "./authorizeAndExecute";
 import { writeOutboxEntry } from "../../../shared/outbox/outboxWriter";
 import type { EventActor } from "../../../shared/events/domainEvent";
-import { getBusinessMembershipById } from "../repositories/businessMembershipRepository";
-import { writeMembershipRoleChange } from "../repositories/businessMembershipWriteRepository";
+import { getBusinessMembershipWithRawOverridesById } from "../repositories/permissionOverrideAdminRepository";
+import { writeMembershipRoleChangeWithOverrideReconciliation } from "../repositories/businessMembershipWriteRepository";
 import { isPermittedRoleChangeTarget } from "../models/staffMembershipTargetPolicy";
 import { createStaffRoleChangeRequest } from "../models/staffRoleChangeRequest";
+import { reconcilePermissionOverridesForRoleChange } from "../models/staffRoleChangeOverrideReconciliation";
 import { buildStaffRoleChangedEvent } from "../events/staffMembershipLifecycleEvents";
 import {
   membershipCrossBusinessMismatchError,
   membershipReadTransientFailureError,
   roleChangeFromRoleMismatchError,
   roleChangeTargetNotPermittedError,
+  targetMembershipConfigMalformedError,
   targetMembershipNotFoundError,
 } from "../models/permissionErrors";
 
@@ -111,7 +123,17 @@ export async function changeStaffMembershipRoleCommand(
           throw roleChangeTargetNotPermittedError();
         }
 
-        const targetRead = await getBusinessMembershipById(db, request.membershipId, transaction);
+        // ENG-P2-003C-CORR-001: a single transaction read of the target
+        // resolves both the evaluator-shaped membership (for the target-
+        // policy/fromRole checks below, unchanged) and the FULL raw
+        // `permissions[]` records (grantedBy/grantedAt included) needed to
+        // reconcile and rewrite them — reusing 003D's existing repository
+        // function unmodified rather than a second read of the same doc.
+        const targetRead = await getBusinessMembershipWithRawOverridesById(
+          db,
+          request.membershipId,
+          transaction,
+        );
         if (targetRead.kind === "transient_failure") {
           // Distinct from not_found/malformed (Phase AB independent review
           // finding, same as staffMembershipLifecycleCommand.ts) — a
@@ -119,8 +141,15 @@ export async function changeStaffMembershipRoleCommand(
           // as "this membership doesn't exist."
           throw membershipReadTransientFailureError();
         }
-        if (targetRead.kind === "not_found" || targetRead.kind === "malformed") {
+        if (targetRead.kind === "not_found") {
           throw targetMembershipNotFoundError();
+        }
+        if (targetRead.kind === "malformed") {
+          // Matches the malformed-target mapping `staffPermissionOverrideCommand.ts`
+          // already uses for the same read shape (AUTH_FORBIDDEN) —
+          // deliberately not `targetMembershipNotFoundError`'s
+          // RESOURCE_NOT_FOUND, which is reserved for "no document exists."
+          throw targetMembershipConfigMalformedError();
         }
         const target = targetRead.membership;
 
@@ -137,11 +166,24 @@ export async function changeStaffMembershipRoleCommand(
           throw roleChangeFromRoleMismatchError();
         }
 
-        return target;
+        const reconciliation = reconcilePermissionOverridesForRoleChange(targetRead.rawOverrides, {
+          businessId: target.businessId,
+          membershipId: target.id,
+          newRole: request.toRole,
+        });
+
+        return { target, reconciliation };
       },
-      apply: (writer, target) => {
+      apply: (writer, { target, reconciliation }) => {
         const updatedAt = params.now;
-        writeMembershipRoleChange(writer, db, target.id, request.toRole, updatedAt);
+        writeMembershipRoleChangeWithOverrideReconciliation(
+          writer,
+          db,
+          target.id,
+          request.toRole,
+          reconciliation.retained,
+          updatedAt,
+        );
 
         writeOutboxEntry(
           writer,
@@ -157,6 +199,7 @@ export async function changeStaffMembershipRoleCommand(
             fromRole: request.fromRole,
             toRole: request.toRole,
             changedBy: params.userId,
+            overridesRemoved: reconciliation.removed.map((o) => o.permissionId),
           }),
         );
 
