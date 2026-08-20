@@ -338,9 +338,27 @@ Row 14 is independently re-proven PASS, not a flipped assumption — the rewritt
 
 **This report does not itself close ENG-P2-003 or merge PR #138** — that remains a separate, explicitly Founder-authorized action (independent final review in a clean worktree, then merge decision).
 
+### Independent final review (separate clean worktree)
+
+A separate review pass (`/Users/theo/11THONUS-eng-p2-003e-review`, detached at the pre-fix head `6ed7bef`) re-read the rewritten Phase H test, `permissionOverride.ts`, `staffRoleChangeOverrideReconciliation.ts`, `evaluatePermission.ts`, and the CORR-001 concurrency suite directly — not trusting this report's own claims. Findings:
+
+- **No stale resurrection — genuinely proven, not trivially passable.** The rewritten test reads the *raw Firestore document* after demotion and after promotion and asserts `permissions` has length 0 both times — record removal, independent of evaluator logic, not merely "currently denied."
+- **Fresh regrant is load-bearing**, not a no-op — asserted `outcome === "executed"` with a fresh idempotency key, only then re-evaluated.
+- **Real functions confirmed**, no mocks anywhere in the file.
+- **Concurrency non-duplication claim verified real**, not assumed — `staffRoleChangeOverrideReconciliation.emulator.test.ts:572-880` confirmed to contain the 6 real concurrency scenarios claimed.
+- **`staff.manage` role-independence confirmed at source** — `permissionOverride.ts`'s revoke branch checks only the static catalogue flag, never `targetRole`.
+- **Historical note confirmed genuinely preserved**, not erased.
+- **One low-severity finding, fixed**: the companion revoke round-trip test's final assertion checked only `direction`, not `permissionId` — it would have passed even if reconciliation substituted a different revoke record. Pinned `permissionId` too (zero cost). Re-verified 19/19 against the real emulator after the fix.
+
+No blocking findings. No material findings remain.
+
 ### Files modified in this reconciliation
 
-`functions/src/domains/permissions/service/staffMembershipIntegration.emulator.test.ts` (Phase H rewrite + companion revoke round-trip test) and `docs/05-implementation/change-tracking/engineering-implementation-programme.md` (mechanical rebase-conflict resolution only, both prior entries preserved in full).
+`functions/src/domains/permissions/service/staffMembershipIntegration.emulator.test.ts` (Phase H rewrite, companion revoke round-trip test, and the independent-review assertion strengthening) and `docs/05-implementation/change-tracking/engineering-implementation-programme.md` (mechanical rebase-conflict resolution only, both prior entries preserved in full).
+
+### PR #138 final head and CI
+
+Final head: `9f45e8a`. Hosted CI on that exact head: **PASS** (run [`32373867160`](https://github.com/Fkenogo/11THONUS/actions/runs/32373867160), 4m44s), confirmed via `gh pr checks 138` polled to completion. PR #138 confirmed `OPEN`/`draft`/`MERGEABLE` (conflict with `main` resolved by the rebase).
 
 ### Updated status
 
