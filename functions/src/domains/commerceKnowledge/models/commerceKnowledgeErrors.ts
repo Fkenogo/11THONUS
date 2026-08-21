@@ -362,6 +362,20 @@ export function knowledgeTranslationNotFoundError(id: string): CommerceKnowledge
   );
 }
 
+/**
+ * Review Phase L (`ENG-P3-001B` independent review): a `createKnowledgeTagPersisted`
+ * call targeted an id that already has a persisted `KnowledgeTag` document —
+ * fails closed rather than letting a same-id create race silently overwrite
+ * an already-committed tag (mirrors `duplicateKnowledgeNodeIdError`).
+ */
+export function duplicateKnowledgeTagIdError(id: string): CommerceKnowledgeDomainError {
+  return new CommerceKnowledgeDomainError(
+    "IDEMPOTENCY_CONFLICT",
+    `A KnowledgeTag already exists at id "${id}" — refusing to overwrite via create.`,
+    [{ field: "id", code: "duplicate_id", messageKey: "commerceKnowledge.tag.id.duplicate" }],
+  );
+}
+
 /** Design §G: a `KnowledgeTag` id that does not resolve to any persisted document. */
 export function knowledgeTagNotFoundError(id: string): CommerceKnowledgeDomainError {
   return new CommerceKnowledgeDomainError(

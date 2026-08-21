@@ -22,7 +22,10 @@ import {
   fromKnowledgeTagDocument,
   toKnowledgeTagDocumentFields,
 } from "../models/knowledgeTagDocument";
-import { knowledgeTagNotFoundError } from "../models/commerceKnowledgeErrors";
+import {
+  duplicateKnowledgeTagIdError,
+  knowledgeTagNotFoundError,
+} from "../models/commerceKnowledgeErrors";
 
 export const KNOWLEDGE_TAGS_COLLECTION = "knowledgeTags";
 
@@ -36,13 +39,28 @@ function stripUndefined<T extends Record<string, unknown>>(value: T): Partial<T>
   return result;
 }
 
+/**
+ * Review Phase L (`ENG-P3-001B` independent review): the previous
+ * implementation wrote via a plain, non-transactional `ref.set()` — two
+ * concurrent creators targeting the same `id` would both unconditionally
+ * succeed, the second silently overwriting the first (no fail-closed
+ * signal at all, not even last-writer-wins-with-error). Fixed to mirror
+ * `knowledgeNodeRepository.createKnowledgeNodePersisted`'s pattern: a
+ * transactional existence check before any write.
+ */
 export async function createKnowledgeTagPersisted(
   db: Firestore,
   params: CreateKnowledgeTagParams,
 ): Promise<KnowledgeTag> {
   const tag = createKnowledgeTag(params);
   const ref = db.collection(KNOWLEDGE_TAGS_COLLECTION).doc(tag.id);
-  await ref.set(stripUndefined(toKnowledgeTagDocumentFields(tag)));
+  await db.runTransaction(async (transaction) => {
+    const existing = await transaction.get(ref);
+    if (existing.exists) {
+      throw duplicateKnowledgeTagIdError(tag.id);
+    }
+    transaction.set(ref, stripUndefined(toKnowledgeTagDocumentFields(tag)));
+  });
   return tag;
 }
 

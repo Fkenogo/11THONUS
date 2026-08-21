@@ -6,6 +6,7 @@ import {
   createKnowledgeTagPersisted,
   getKnowledgeTagById,
 } from "./knowledgeTagRepository";
+import { CommerceKnowledgeDomainError } from "../models/commerceKnowledgeErrors";
 
 // Real Firestore round trip against the Firebase Emulator Suite. Not run as
 // part of `pnpm test` — see `pnpm test:emulator` / `pnpm emulators:validate`.
@@ -75,5 +76,48 @@ describe("knowledgeTagRepository — create/read (scenario 2)", () => {
       });
     const read = await getKnowledgeTagById(db, "legacy_tag");
     expect(read).toBeNull();
+  });
+});
+
+describe("knowledgeTagRepository — concurrency (Review Phase L)", () => {
+  it("two concurrent creations under the same fresh id race safely — exactly one succeeds, the other fails closed", async () => {
+    const attempt = (canonicalName: string) =>
+      createKnowledgeTagPersisted(db, {
+        id: "tag_race",
+        tagGroup: "business_attribute",
+        canonicalName,
+        slug: "race-tag",
+        createdAt: now,
+      });
+
+    const results = await Promise.allSettled([attempt("Race A"), attempt("Race B")]);
+    const fulfilled = results.filter((r) => r.status === "fulfilled");
+    const rejected = results.filter((r) => r.status === "rejected");
+
+    expect(fulfilled.length).toBe(1);
+    expect(rejected.length).toBe(1);
+  });
+
+  it("a create attempt against an id that already has a persisted tag fails closed rather than overwriting it", async () => {
+    await createKnowledgeTagPersisted(db, {
+      id: "tag_wifi",
+      tagGroup: "business_attribute",
+      canonicalName: "Wi-Fi",
+      slug: "wifi",
+      createdAt: now,
+    });
+
+    await expect(
+      createKnowledgeTagPersisted(db, {
+        id: "tag_wifi",
+        tagGroup: "business_attribute",
+        canonicalName: "Wi-Fi (overwrite attempt)",
+        slug: "wifi-overwrite",
+        createdAt: now,
+      }),
+    ).rejects.toBeInstanceOf(CommerceKnowledgeDomainError);
+
+    const stored = await getKnowledgeTagById(db, "tag_wifi");
+    expect(stored?.canonicalName).toBe("Wi-Fi");
   });
 });
