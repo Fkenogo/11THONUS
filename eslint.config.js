@@ -362,6 +362,40 @@ export default tseslint.config(
     },
   },
   {
+    // ENG-P3-001A: same machine-enforced boundary as the domain-contract
+    // blocks above, scoped to the new Commerce Knowledge domain (design
+    // §7/§20's `models/` layer is pure domain contracts — no Firestore
+    // repository, no seed-loader, exists in this package at all yet, so
+    // no subfolder needs to be exempted the way `repositories/` is
+    // elsewhere; a future `ENG-P3-001B` adding `repositories/` would add
+    // the same carve-out this block's precedent already establishes).
+    files: ["functions/src/domains/commerceKnowledge/**/*.ts"],
+    languageOptions: {
+      ecmaVersion: 2023,
+      globals: globals.node,
+    },
+    rules: {
+      "@typescript-eslint/no-unused-vars": "error",
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: [
+                "firebase-admin",
+                "firebase-admin/*",
+                "firebase-functions",
+                "firebase-functions/*",
+              ],
+              message:
+                "The Commerce Knowledge domain-contracts layer (ENG-P3-001A) is framework-independent — no Firebase SDK import is permitted here. Persistence/seed-loader implementation belongs to a future ENG-P3-001B module instead.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ["*.{js,ts}", "**/*.config.{js,ts}"],
     languageOptions: {
       ecmaVersion: 2023,
