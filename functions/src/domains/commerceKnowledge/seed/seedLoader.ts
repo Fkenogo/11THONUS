@@ -59,7 +59,16 @@ export type SeedLoaderOptions = {
 export type SeedLoaderResult = {
   manifestVersion: string;
   created: string[];
+  /** Entries whose persisted state already matched the governed seed end-state (`active`/`published`) — nothing was written. */
   unchanged: string[];
+  /**
+   * Entries that already existed with matching immutable identity but were
+   * healed to the governed end-state (`active` node / `published`
+   * translation) by this run — e.g. a prior run was interrupted partway
+   * through a lifecycle transition. Never reported as `unchanged`: real
+   * writes happened, even though no new document was created.
+   */
+  reconciled: string[];
 };
 
 function immutableIdentityMatches(
@@ -92,10 +101,12 @@ export async function runCommerceKnowledgeSeed(
 
   const created: string[] = [];
   const unchanged: string[] = [];
+  const reconciled: string[] = [];
 
   for (const entry of ordered) {
     const existing = await getKnowledgeNodeById(db, entry.id);
 
+    let nodeReconciled = false;
     if (existing) {
       if (
         !immutableIdentityMatches(entry, entry.parentId, {
@@ -107,7 +118,35 @@ export async function runCommerceKnowledgeSeed(
       ) {
         throw seedContentConflictError(entry.id);
       }
-      unchanged.push(entry.id);
+
+      // Terminal/incompatible lifecycle states are never silently
+      // resurrected by a seed rerun (design §9.4 "terminal states never
+      // return to active") — fail closed as a seed conflict instead. No
+      // governing source describes a retired/archived node bootstrapping
+      // back to active via the seed path.
+      if (existing.status === "retired" || existing.status === "archived") {
+        throw seedContentConflictError(entry.id);
+      }
+
+      // Reconcile any legal interrupted lifecycle state up to the
+      // governed seed end-state (`active`) — this is what makes an
+      // interrupted prior run (design §P) safely resumable by rerunning
+      // the loader, rather than requiring a separate manual repair path.
+      if (existing.status === "draft") {
+        await transitionKnowledgeNodeStatusPersisted(db, entry.id, "in_review", {
+          updatedAt: options.now,
+        });
+        await transitionKnowledgeNodeStatusPersisted(db, entry.id, "active", {
+          updatedAt: options.now,
+        });
+        nodeReconciled = true;
+      } else if (existing.status === "in_review") {
+        await transitionKnowledgeNodeStatusPersisted(db, entry.id, "active", {
+          updatedAt: options.now,
+        });
+        nodeReconciled = true;
+      }
+      // status === "active" is already the governed end-state: no-op.
     } else {
       await createKnowledgeNodePersisted(db, {
         id: entry.id,
@@ -129,23 +168,57 @@ export async function runCommerceKnowledgeSeed(
       created.push(entry.id);
     }
 
-    await ensureEnglishTranslation(db, entry, options.now);
+    const translationReconciled = await ensureEnglishTranslation(db, entry, options.now);
+
+    if (!existing) {
+      // Already recorded in `created` above — a brand-new node's
+      // translation being freshly created too is not a separate
+      // "reconciliation" event.
+      continue;
+    }
+    if (nodeReconciled || translationReconciled) {
+      reconciled.push(entry.id);
+    } else {
+      unchanged.push(entry.id);
+    }
   }
 
-  return { manifestVersion: manifest.manifestVersion, created, unchanged };
+  return { manifestVersion: manifest.manifestVersion, created, unchanged, reconciled };
 }
 
+/** Returns `true` if an already-existing translation needed a lifecycle transition to reach `published` (a reconciliation), `false` if it was freshly created or already at the governed end-state. */
 async function ensureEnglishTranslation(
   db: Firestore,
   entry: SeedNodeManifestEntry,
   now: Date,
-): Promise<void> {
+): Promise<boolean> {
   const existing = await getKnowledgeTranslationByTuple(db, "knowledge_node", entry.id, "en");
   if (existing) {
     if (existing.displayName !== entry.translations.en) {
       throw seedContentConflictError(existing.id);
     }
-    return;
+
+    // Reconcile any legal interrupted translation lifecycle state up to
+    // the governed seed end-state (`published`) — mirrors the node-level
+    // reconciliation above (design §F). There is no retired/archived
+    // state on the translation lifecycle (`translationLifecycle.ts`), so
+    // every non-`published` state here is a legitimately resumable one.
+    if (existing.status === "draft") {
+      await transitionKnowledgeTranslationStatusPersisted(db, existing.id, "reviewed", {
+        updatedAt: now,
+      });
+      await transitionKnowledgeTranslationStatusPersisted(db, existing.id, "published", {
+        updatedAt: now,
+      });
+      return true;
+    }
+    if (existing.status === "reviewed") {
+      await transitionKnowledgeTranslationStatusPersisted(db, existing.id, "published", {
+        updatedAt: now,
+      });
+      return true;
+    }
+    return false; // already "published" — governed end-state, true no-op.
   }
 
   const translation = await createKnowledgeTranslationPersisted(db, {
@@ -161,4 +234,5 @@ async function ensureEnglishTranslation(
   await transitionKnowledgeTranslationStatusPersisted(db, translation.id, "published", {
     updatedAt: now,
   });
+  return false;
 }

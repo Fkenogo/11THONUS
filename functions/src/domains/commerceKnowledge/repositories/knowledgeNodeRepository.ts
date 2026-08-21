@@ -26,6 +26,7 @@ import {
 import { assertValidParentNodeType, type KnowledgeNodeType } from "../models/knowledgeNodeType";
 import type { KnowledgeLifecycleStatus } from "../models/knowledgeLifecycle";
 import {
+  duplicateKnowledgeNodeIdError,
   excessiveHierarchyTraversalError,
   hierarchyCycleDetectedError,
   invalidReplacementNodeReferenceError,
@@ -141,13 +142,28 @@ export type CreateKnowledgeNodeRepositoryParams = {
  * authoritatively from persisted parent state (design §H) inside one
  * transaction. Fails closed (`RESOURCE_NOT_FOUND`) if `parentId` does not
  * resolve; fails closed (`VALIDATION_FAILED`) on a disallowed parent type
- * or a detected cycle in existing data.
+ * or a detected cycle in existing data; fails closed
+ * (`IDEMPOTENCY_CONFLICT`) if a document already exists at `params.id` —
+ * checked via a transactional read of the node's own id before any write,
+ * so two concurrent creators racing on the same id can never result in one
+ * silently overwriting the other (Review Phase L: `transaction.set` alone,
+ * without a prior `transaction.get` establishing a read precondition on
+ * that exact document, is last-writer-wins under Firestore's optimistic
+ * concurrency model — this explicit existence check is what makes the
+ * write itself race-safe, not just the hierarchy derivation around it).
  */
 export async function createKnowledgeNodePersisted(
   db: Firestore,
   params: CreateKnowledgeNodeRepositoryParams,
 ): Promise<KnowledgeNode> {
   return db.runTransaction(async (transaction) => {
+    const ownSnapshot = await transaction.get(
+      db.collection(KNOWLEDGE_NODES_COLLECTION).doc(params.id),
+    );
+    if (ownSnapshot.exists) {
+      throw duplicateKnowledgeNodeIdError(params.id);
+    }
+
     const placement = await resolveHierarchyPlacement(transaction, db, {
       nodeId: params.id,
       nodeType: params.nodeType,

@@ -62,6 +62,18 @@ export function validateSeedManifest(manifest: CommerceKnowledgeSeedManifest): v
     if (entry.id.trim().length === 0) {
       throw invalidSeedManifestError("a manifest entry has a blank id");
     }
+    // Review Phase N: a Firestore document id may not contain "/" — that
+    // is a path separator, not a valid id character. Without this check,
+    // an id like this would pass manifest validation and only fail later,
+    // at Firestore write time inside 001A's `createKnowledgeNode`
+    // (`requireNoPathSeparator`), after any earlier manifest entries had
+    // already been committed by the loader (design §N: "validate the full
+    // manifest before writes where practical" — this closes that gap).
+    if (entry.id.includes("/")) {
+      throw invalidSeedManifestError(
+        `entry "${entry.id}" has an id containing a Firestore path separator ("/")`,
+      );
+    }
     if (idsSeen.has(entry.id)) {
       throw invalidSeedManifestError(`duplicate manifest id "${entry.id}"`);
     }

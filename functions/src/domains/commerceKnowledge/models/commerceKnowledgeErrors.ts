@@ -276,6 +276,21 @@ export function malformedHierarchyAncestorError(ancestorId: string): CommerceKno
   );
 }
 
+/**
+ * Review Phase L (`ENG-P3-001B` independent review): a `createKnowledgeNodePersisted`
+ * call targeted an id that already has a persisted `KnowledgeNode` document —
+ * fails closed rather than letting a same-id create race silently overwrite
+ * an already-committed canonical node (last-writer-wins under Firestore's
+ * transaction semantics if this check were absent).
+ */
+export function duplicateKnowledgeNodeIdError(id: string): CommerceKnowledgeDomainError {
+  return new CommerceKnowledgeDomainError(
+    "IDEMPOTENCY_CONFLICT",
+    `A KnowledgeNode already exists at id "${id}" — refusing to overwrite via create.`,
+    [{ field: "id", code: "duplicate_id", messageKey: "commerceKnowledge.node.id.duplicate" }],
+  );
+}
+
 /** Design §F/§J: a `KnowledgeNode` id that does not resolve to any persisted document. */
 export function knowledgeNodeNotFoundError(nodeId: string): CommerceKnowledgeDomainError {
   return new CommerceKnowledgeDomainError(

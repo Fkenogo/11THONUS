@@ -130,4 +130,34 @@ describe("validateSeedManifest", () => {
       }),
     ).toThrow(/EN translation/);
   });
+
+  // Review Phase N: a manifest id containing a Firestore path separator
+  // would previously pass this referential-integrity check and only fail
+  // later, at Firestore write time, inside 001A's `createKnowledgeNode`
+  // (`requireNoPathSeparator`) — after any earlier manifest entries had
+  // already been committed. Closing that gap here.
+  it("rejects an id containing a Firestore path separator", () => {
+    expect(() =>
+      validateSeedManifest({
+        manifestVersion: "test-v1",
+        nodes: [entry({ id: "bad/id" })],
+      }),
+    ).toThrow(/path separator|"\/"/);
+  });
+
+  it("rejects a parentId containing a Firestore path separator", () => {
+    expect(() =>
+      validateSeedManifest({
+        manifestVersion: "test-v1",
+        nodes: [
+          entry({ id: "ind1" }),
+          entry({
+            id: "cat1",
+            nodeType: "business_category",
+            parentId: "bad/parent",
+          }),
+        ],
+      }),
+    ).toThrow();
+  });
 });

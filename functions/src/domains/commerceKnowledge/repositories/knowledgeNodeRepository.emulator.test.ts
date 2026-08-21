@@ -342,14 +342,40 @@ describe("knowledgeNodeRepository — concurrency", () => {
 
     const results = await Promise.allSettled([attempt(), attempt()]);
     const fulfilled = results.filter((r) => r.status === "fulfilled");
-    // Firestore `.set()` is last-writer-wins on the same doc id, not a
-    // create-if-absent guard, so both may fulfill — the invariant under
-    // test is that exactly one consistent document exists afterward, never
-    // a torn/partial write.
-    expect(fulfilled.length).toBeGreaterThan(0);
+    const rejected = results.filter((r) => r.status === "rejected");
+    // Review Phase L: a same-ID create race must never let the loser
+    // silently overwrite the winner's already-committed canonical node —
+    // exactly one attempt may succeed, the other must fail closed.
+    expect(fulfilled.length).toBe(1);
+    expect(rejected.length).toBe(1);
     const stored = await getKnowledgeNodeById(db, "cat_race");
     expect(stored).not.toBeNull();
     expect(stored?.depth).toBe(1);
     expect(stored?.path).toBe("/ind_food/cat_race");
+  });
+
+  it("a create attempt against an id that already has a persisted canonical node fails closed rather than overwriting it", async () => {
+    await createKnowledgeNodePersisted(db, {
+      id: "ind_food",
+      nodeType: "industry",
+      parentId: null,
+      canonicalName: "Food & Beverage",
+      slug: "food-beverage",
+      createdAt: now,
+    });
+
+    await expect(
+      createKnowledgeNodePersisted(db, {
+        id: "ind_food",
+        nodeType: "industry",
+        parentId: null,
+        canonicalName: "Food & Beverage (overwrite attempt)",
+        slug: "food-beverage-overwrite",
+        createdAt: now,
+      }),
+    ).rejects.toBeInstanceOf(CommerceKnowledgeDomainError);
+
+    const stored = await getKnowledgeNodeById(db, "ind_food");
+    expect(stored?.canonicalName).toBe("Food & Beverage");
   });
 });

@@ -4,9 +4,19 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { runCommerceKnowledgeSeed } from "./seedLoader";
 import { BURUNDI_PILOT_SEED_MANIFEST } from "./burundiPilotSeedManifest";
 import type { CommerceKnowledgeSeedManifest } from "./seedManifest";
-import { KNOWLEDGE_NODES_COLLECTION } from "../repositories/knowledgeNodeRepository";
-import { KNOWLEDGE_TRANSLATIONS_COLLECTION } from "../repositories/knowledgeTranslationRepository";
-import { getKnowledgeNodeById } from "../repositories/knowledgeNodeRepository";
+import {
+  KNOWLEDGE_NODES_COLLECTION,
+  retireKnowledgeNodePersisted,
+} from "../repositories/knowledgeNodeRepository";
+import {
+  KNOWLEDGE_TRANSLATIONS_COLLECTION,
+  getKnowledgeTranslationByTuple,
+  transitionKnowledgeTranslationStatusPersisted,
+} from "../repositories/knowledgeTranslationRepository";
+import {
+  getKnowledgeNodeById,
+  transitionKnowledgeNodeStatusPersisted,
+} from "../repositories/knowledgeNodeRepository";
 
 // Real Firestore round trip against the Firebase Emulator Suite. Not run as
 // part of `pnpm test` — see `pnpm test:emulator` / `pnpm emulators:validate`.
@@ -160,5 +170,140 @@ describe("runCommerceKnowledgeSeed — Burundi pilot manifest", () => {
     for (const doc of snapshot.docs) {
       expect(Object.keys(doc.data())).not.toContain("businessId");
     }
+  });
+
+  describe("partial-failure resumability (Phase D priority finding)", () => {
+    const singleNodeManifest: CommerceKnowledgeSeedManifest = {
+      manifestVersion: "resume-test-v1",
+      nodes: [
+        {
+          id: "ind_resume_test",
+          nodeType: "industry",
+          parentId: null,
+          canonicalName: "Resume Test Industry",
+          slug: "resume-test-industry",
+          translations: { en: "Resume Test Industry" },
+          sourceRef: "test",
+        },
+      ],
+    };
+
+    it("resumes a node stuck in in_review from a simulated partial failure (create + in_review succeeded, active transition failed)", async () => {
+      // Simulate the interrupted run directly: create the node and move it
+      // to in_review — exactly what the loader itself does — then stop
+      // short of the active transition, as if that call had thrown.
+      const { createKnowledgeNodePersisted } =
+        await import("../repositories/knowledgeNodeRepository");
+      await createKnowledgeNodePersisted(db, {
+        id: "ind_resume_test",
+        nodeType: "industry",
+        parentId: null,
+        canonicalName: "Resume Test Industry",
+        slug: "resume-test-industry",
+        createdAt: now,
+      });
+      await transitionKnowledgeNodeStatusPersisted(db, "ind_resume_test", "in_review", {
+        updatedAt: now,
+      });
+
+      const stuck = await getKnowledgeNodeById(db, "ind_resume_test");
+      expect(stuck?.status).toBe("in_review");
+
+      // Rerun the loader against the same manifest — this must heal the
+      // interrupted node to `active`, not silently call it "unchanged".
+      const result = await runCommerceKnowledgeSeed(db, singleNodeManifest, { now });
+
+      const healed = await getKnowledgeNodeById(db, "ind_resume_test");
+      expect(healed?.status).toBe("active");
+      expect(result.created).not.toContain("ind_resume_test");
+      expect(result.unchanged).not.toContain("ind_resume_test");
+      expect(result.reconciled).toContain("ind_resume_test");
+    });
+
+    it("resumes a translation stuck in reviewed from a simulated partial failure (translation create + reviewed succeeded, published transition failed)", async () => {
+      await runCommerceKnowledgeSeed(db, singleNodeManifest, { now });
+      // Force the already-active node's translation back to a mid-flight
+      // "reviewed" state to simulate the publish step having failed on a
+      // prior run and never completing.
+      const translation = await getKnowledgeTranslationByTuple(
+        db,
+        "knowledge_node",
+        "ind_resume_test",
+        "en",
+      );
+      if (!translation) throw new Error("expected translation to exist from setup run");
+      await transitionKnowledgeTranslationStatusPersisted(db, translation.id, "draft", {
+        updatedAt: now,
+      });
+      await transitionKnowledgeTranslationStatusPersisted(db, translation.id, "reviewed", {
+        updatedAt: now,
+      });
+
+      const stuck = await getKnowledgeTranslationByTuple(
+        db,
+        "knowledge_node",
+        "ind_resume_test",
+        "en",
+      );
+      expect(stuck?.status).toBe("reviewed");
+
+      const result = await runCommerceKnowledgeSeed(db, singleNodeManifest, { now });
+
+      const healed = await getKnowledgeTranslationByTuple(
+        db,
+        "knowledge_node",
+        "ind_resume_test",
+        "en",
+      );
+      expect(healed?.status).toBe("published");
+      expect(result.unchanged).not.toContain("ind_resume_test");
+      expect(result.reconciled).toContain("ind_resume_test");
+    });
+
+    it("a true no-op rerun (already active/published) reports unchanged, not reconciled", async () => {
+      await runCommerceKnowledgeSeed(db, singleNodeManifest, { now });
+      const result = await runCommerceKnowledgeSeed(db, singleNodeManifest, { now });
+
+      expect(result.unchanged).toContain("ind_resume_test");
+      expect(result.reconciled).not.toContain("ind_resume_test");
+      expect(result.created).not.toContain("ind_resume_test");
+    });
+
+    it("a retired canonical node is not silently resurrected by a seed rerun — fails closed", async () => {
+      await runCommerceKnowledgeSeed(db, singleNodeManifest, { now });
+      // Need a replacement target to legally retire the node per 001A's
+      // own transition matrix (retirement requires replacementNodeId).
+      const replacement: CommerceKnowledgeSeedManifest = {
+        manifestVersion: "resume-test-v1-replacement",
+        nodes: [
+          {
+            id: "ind_resume_test_replacement",
+            nodeType: "industry",
+            parentId: null,
+            canonicalName: "Resume Test Industry Replacement",
+            slug: "resume-test-industry-replacement",
+            translations: { en: "Resume Test Industry Replacement" },
+            sourceRef: "test",
+          },
+        ],
+      };
+      await runCommerceKnowledgeSeed(db, replacement, { now });
+      await retireKnowledgeNodePersisted(db, "ind_resume_test", {
+        updatedAt: now,
+        replacementNodeId: "ind_resume_test_replacement",
+      });
+
+      const retired = await getKnowledgeNodeById(db, "ind_resume_test");
+      expect(retired?.status).toBe("retired");
+
+      await expect(runCommerceKnowledgeSeed(db, singleNodeManifest, { now })).rejects.toMatchObject(
+        {
+          category: "IDEMPOTENCY_CONFLICT",
+        },
+      );
+
+      const stillRetired = await getKnowledgeNodeById(db, "ind_resume_test");
+      expect(stillRetired?.status).toBe("retired");
+    });
   });
 });

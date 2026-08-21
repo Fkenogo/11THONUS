@@ -100,3 +100,54 @@ describe("knowledgeTranslationRepository — create/read (scenario 3)", () => {
     expect(read).toBeNull();
   });
 });
+
+describe("knowledgeTranslationRepository — concurrency (Review Phase M)", () => {
+  it("two concurrent creates for the same (entityType, entityId, languageCode) tuple: exactly one succeeds, the other fails closed", async () => {
+    const attempt = (displayName: string) =>
+      createKnowledgeTranslationPersisted(db, {
+        entityType: "knowledge_node",
+        entityId: "ind_race",
+        languageCode: "en",
+        displayName,
+        createdAt: now,
+      });
+
+    const results = await Promise.allSettled([attempt("Race A"), attempt("Race B")]);
+    const fulfilled = results.filter((r) => r.status === "fulfilled");
+    const rejected = results.filter((r) => r.status === "rejected");
+
+    expect(fulfilled.length).toBe(1);
+    expect(rejected.length).toBe(1);
+
+    const stored = await getKnowledgeTranslationByTuple(db, "knowledge_node", "ind_race", "en");
+    expect(stored).not.toBeNull();
+    // Whichever attempt won, its content is the only content persisted —
+    // never a merge/torn write of both.
+    expect(["Race A", "Race B"]).toContain(stored?.displayName);
+  });
+
+  it("an unrelated tuple never collides with a concurrently-created one", async () => {
+    const results = await Promise.allSettled([
+      createKnowledgeTranslationPersisted(db, {
+        entityType: "knowledge_node",
+        entityId: "ind_race_a",
+        languageCode: "en",
+        displayName: "Race A",
+        createdAt: now,
+      }),
+      createKnowledgeTranslationPersisted(db, {
+        entityType: "knowledge_node",
+        entityId: "ind_race_b",
+        languageCode: "en",
+        displayName: "Race B",
+        createdAt: now,
+      }),
+    ]);
+
+    expect(results.every((r) => r.status === "fulfilled")).toBe(true);
+    const a = await getKnowledgeTranslationByTuple(db, "knowledge_node", "ind_race_a", "en");
+    const b = await getKnowledgeTranslationByTuple(db, "knowledge_node", "ind_race_b", "en");
+    expect(a?.displayName).toBe("Race A");
+    expect(b?.displayName).toBe("Race B");
+  });
+});
