@@ -20,6 +20,11 @@ import type { CreateBusinessRequest } from "../models/businessBootstrap";
 import type { BusinessCodeCandidateGenerator } from "../services/businessCodeGenerator";
 import { getBusinessMembershipByUserAndBusiness } from "../../permissions/repositories/businessMembershipRepository";
 import { evaluatePermission } from "../../permissions/service/evaluatePermissionService";
+import {
+  createKnowledgeNodePersisted,
+  getKnowledgeNodeById,
+  transitionKnowledgeNodeStatusPersisted,
+} from "../../commerceKnowledge/repositories/knowledgeNodeRepository";
 
 /**
  * `ENG-P2-002C` — the emulator test matrix interrupted mid-work by the
@@ -37,11 +42,39 @@ afterAll(async () => {
   await Promise.all(getApps().map((a) => deleteApp(a)));
 });
 
-beforeAll(() => {
+beforeAll(async () => {
   if (!process.env["FIRESTORE_EMULATOR_HOST"]) {
     throw new Error(
       "FIRESTORE_EMULATOR_HOST is not set — this test requires the Firebase Emulator Suite. Run via `pnpm emulators:validate` or `pnpm test:emulator` inside `firebase emulators:exec`.",
     );
+  }
+
+  // `ENG-P3-001C`: test-local Commerce Knowledge fixtures (Phase P — never
+  // the governed seed manifest), guarded against re-seeding across the
+  // shared-emulator, cross-file run (see `businessRepository.emulator.test.ts`).
+  if (!(await getKnowledgeNodeById(db, "cat_food"))) {
+    await createKnowledgeNodePersisted(db, {
+      id: "ind_test",
+      nodeType: "industry",
+      parentId: null,
+      canonicalName: "Test Industry",
+      slug: "test-industry",
+      createdAt: new Date("2026-08-17T00:00:00.000Z"),
+    });
+    await createKnowledgeNodePersisted(db, {
+      id: "cat_food",
+      nodeType: "business_category",
+      parentId: "ind_test",
+      canonicalName: "Food & Beverage",
+      slug: "food-beverage",
+      createdAt: new Date("2026-08-17T00:00:00.000Z"),
+    });
+    await transitionKnowledgeNodeStatusPersisted(db, "cat_food", "in_review", {
+      updatedAt: new Date("2026-08-17T00:00:00.000Z"),
+    });
+    await transitionKnowledgeNodeStatusPersisted(db, "cat_food", "active", {
+      updatedAt: new Date("2026-08-17T00:00:00.000Z"),
+    });
   }
 });
 
