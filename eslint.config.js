@@ -362,14 +362,25 @@ export default tseslint.config(
     },
   },
   {
-    // ENG-P3-001A: same machine-enforced boundary as the domain-contract
-    // blocks above, scoped to the new Commerce Knowledge domain (design
-    // §7/§20's `models/` layer is pure domain contracts — no Firestore
-    // repository, no seed-loader, exists in this package at all yet, so
-    // no subfolder needs to be exempted the way `repositories/` is
-    // elsewhere; a future `ENG-P3-001B` adding `repositories/` would add
-    // the same carve-out this block's precedent already establishes).
+    // ENG-P3-001A/001B: same machine-enforced boundary as the
+    // domain-contract blocks above, scoped to the Commerce Knowledge
+    // domain (design §7/§20's `models/` layer is pure domain contracts).
+    // `ENG-P3-001B` added the persistence layer this block's own comment
+    // predicted: `repositories/` (Firestore converters/hierarchy
+    // validation/cycle detection) and the one Firebase-touching seed file
+    // (`seed/seedLoader.ts`, which composes the repositories to run the
+    // idempotent seed load) — exempted for the same reason
+    // `business/repositories/**` is. `seed/seedManifest.ts` and
+    // `seed/burundiPilotSeedManifest.ts` remain covered by the
+    // restriction and stay framework-independent (pure manifest
+    // content/validation, design §10.3), matching this domain's own
+    // `models/` precedent.
     files: ["functions/src/domains/commerceKnowledge/**/*.ts"],
+    ignores: [
+      "functions/src/domains/commerceKnowledge/repositories/**",
+      "functions/src/domains/commerceKnowledge/seed/seedLoader.ts",
+      "functions/src/domains/commerceKnowledge/seed/seedLoader.emulator.test.ts",
+    ],
     languageOptions: {
       ecmaVersion: 2023,
       globals: globals.node,

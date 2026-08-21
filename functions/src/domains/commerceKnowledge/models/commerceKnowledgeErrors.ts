@@ -224,3 +224,182 @@ export function knowledgeNodeNotEligibleForReferenceError(
     ],
   );
 }
+
+/**
+ * `ENG-P3-001B` addendum (repository/hierarchy-persistence layer, design §H/§I).
+ * The error factories below are new to `001B` — they are additive, not a
+ * modification of any `001A` contract above.
+ */
+
+/** Design §H: a declared `parentId` that does not resolve to any persisted `KnowledgeNode` (or resolves to a structurally malformed one). */
+export function parentKnowledgeNodeNotFoundError(parentId: string): CommerceKnowledgeDomainError {
+  return new CommerceKnowledgeDomainError(
+    "RESOURCE_NOT_FOUND",
+    `Parent KnowledgeNode "${parentId}" does not exist or is malformed.`,
+    [
+      {
+        field: "parentId",
+        code: "not_found",
+        messageKey: "commerceKnowledge.node.parentId.notFound",
+      },
+    ],
+  );
+}
+
+/** Design §I: the parent-ancestor traversal (existing persisted data) exceeded the defensive technical bound — a malformed/runaway existing hierarchy, never a product-level depth limit. */
+export function excessiveHierarchyTraversalError(nodeId: string): CommerceKnowledgeDomainError {
+  return new CommerceKnowledgeDomainError(
+    "VALIDATION_FAILED",
+    `Hierarchy ancestor traversal for KnowledgeNode "${nodeId}" exceeded the defensive traversal bound — possible malformed or cyclic existing data.`,
+    [
+      {
+        field: "parentId",
+        code: "excessive_traversal",
+        messageKey: "commerceKnowledge.node.parentId.excessiveTraversal",
+      },
+    ],
+  );
+}
+
+/** Design §I: an ancestor referenced by `parentId` during traversal does not itself resolve to a valid persisted `KnowledgeNode` — malformed existing hierarchy, fails closed. */
+export function malformedHierarchyAncestorError(ancestorId: string): CommerceKnowledgeDomainError {
+  return new CommerceKnowledgeDomainError(
+    "VALIDATION_FAILED",
+    `Ancestor KnowledgeNode "${ancestorId}" is missing or malformed — cannot safely resolve hierarchy placement.`,
+    [
+      {
+        field: "parentId",
+        code: "malformed_ancestor",
+        messageKey: "commerceKnowledge.node.parentId.malformedAncestor",
+      },
+    ],
+  );
+}
+
+/**
+ * Review Phase L (`ENG-P3-001B` independent review): a `createKnowledgeNodePersisted`
+ * call targeted an id that already has a persisted `KnowledgeNode` document —
+ * fails closed rather than letting a same-id create race silently overwrite
+ * an already-committed canonical node (last-writer-wins under Firestore's
+ * transaction semantics if this check were absent).
+ */
+export function duplicateKnowledgeNodeIdError(id: string): CommerceKnowledgeDomainError {
+  return new CommerceKnowledgeDomainError(
+    "IDEMPOTENCY_CONFLICT",
+    `A KnowledgeNode already exists at id "${id}" — refusing to overwrite via create.`,
+    [{ field: "id", code: "duplicate_id", messageKey: "commerceKnowledge.node.id.duplicate" }],
+  );
+}
+
+/** Design §F/§J: a `KnowledgeNode` id that does not resolve to any persisted document. */
+export function knowledgeNodeNotFoundError(nodeId: string): CommerceKnowledgeDomainError {
+  return new CommerceKnowledgeDomainError(
+    "RESOURCE_NOT_FOUND",
+    `KnowledgeNode "${nodeId}" does not exist.`,
+    [{ field: "id", code: "not_found", messageKey: "commerceKnowledge.node.notFound" }],
+  );
+}
+
+/** Design §J: a `replacementNodeId` that does not resolve to any persisted `KnowledgeNode`, or that fails a governed replacement-eligibility check. */
+export function replacementKnowledgeNodeNotFoundError(
+  replacementNodeId: string,
+): CommerceKnowledgeDomainError {
+  return new CommerceKnowledgeDomainError(
+    "RESOURCE_NOT_FOUND",
+    `Replacement KnowledgeNode "${replacementNodeId}" does not exist or is malformed.`,
+    [
+      {
+        field: "replacementNodeId",
+        code: "not_found",
+        messageKey: "commerceKnowledge.node.replacementNodeId.notFound",
+      },
+    ],
+  );
+}
+
+/** Design §J: `replacementNodeId` resolves to a node whose `nodeType` differs from the retiring node's own — cross-type replacement is not governed and is rejected, never silently allowed. */
+export function replacementNodeTypeMismatchError(
+  nodeId: string,
+  replacementNodeId: string,
+): CommerceKnowledgeDomainError {
+  return new CommerceKnowledgeDomainError(
+    "VALIDATION_FAILED",
+    `Replacement KnowledgeNode "${replacementNodeId}" for "${nodeId}" has a different nodeType — cross-type replacement is not governed.`,
+    [
+      {
+        field: "replacementNodeId",
+        code: "type_mismatch",
+        messageKey: "commerceKnowledge.node.replacementNodeId.typeMismatch",
+      },
+    ],
+  );
+}
+
+/** Design §O: a seed-manifest entry whose stable id already has conflicting persisted immutable identity/hierarchy content — never silently overwritten. */
+export function seedContentConflictError(id: string): CommerceKnowledgeDomainError {
+  return new CommerceKnowledgeDomainError(
+    "IDEMPOTENCY_CONFLICT",
+    `Seed entry "${id}" conflicts with existing persisted content in an immutable field — refusing to overwrite.`,
+    [{ field: "id", code: "seed_conflict", messageKey: "commerceKnowledge.seed.conflict" }],
+  );
+}
+
+/** Design §N/§P: the seed manifest itself failed referential-integrity validation (dangling parent reference, duplicate slug within a nodeType, etc.) before any write was attempted. */
+export function invalidSeedManifestError(reason: string): CommerceKnowledgeDomainError {
+  return new CommerceKnowledgeDomainError(
+    "VALIDATION_FAILED",
+    `Seed manifest failed validation: ${reason}`,
+    [{ field: "manifest", code: "invalid", messageKey: "commerceKnowledge.seed.manifest.invalid" }],
+  );
+}
+
+/** Design §F: a `KnowledgeTranslation` id that does not resolve to any persisted document. */
+export function knowledgeTranslationNotFoundError(id: string): CommerceKnowledgeDomainError {
+  return new CommerceKnowledgeDomainError(
+    "RESOURCE_NOT_FOUND",
+    `KnowledgeTranslation "${id}" does not exist.`,
+    [{ field: "id", code: "not_found", messageKey: "commerceKnowledge.translation.notFound" }],
+  );
+}
+
+/**
+ * Review Phase L (`ENG-P3-001B` independent review): a `createKnowledgeTagPersisted`
+ * call targeted an id that already has a persisted `KnowledgeTag` document —
+ * fails closed rather than letting a same-id create race silently overwrite
+ * an already-committed tag (mirrors `duplicateKnowledgeNodeIdError`).
+ */
+export function duplicateKnowledgeTagIdError(id: string): CommerceKnowledgeDomainError {
+  return new CommerceKnowledgeDomainError(
+    "IDEMPOTENCY_CONFLICT",
+    `A KnowledgeTag already exists at id "${id}" — refusing to overwrite via create.`,
+    [{ field: "id", code: "duplicate_id", messageKey: "commerceKnowledge.tag.id.duplicate" }],
+  );
+}
+
+/** Design §G: a `KnowledgeTag` id that does not resolve to any persisted document. */
+export function knowledgeTagNotFoundError(id: string): CommerceKnowledgeDomainError {
+  return new CommerceKnowledgeDomainError(
+    "RESOURCE_NOT_FOUND",
+    `KnowledgeTag "${id}" does not exist.`,
+    [{ field: "id", code: "not_found", messageKey: "commerceKnowledge.tag.notFound" }],
+  );
+}
+
+/** Design §F: composite `(entityType, entityId, languageCode)` translation uniqueness violated at the persistence boundary (should be structurally prevented by the deterministic id, this is the fail-closed backstop). */
+export function duplicateTranslationTupleError(
+  entityType: string,
+  entityId: string,
+  languageCode: string,
+): CommerceKnowledgeDomainError {
+  return new CommerceKnowledgeDomainError(
+    "VALIDATION_FAILED",
+    `A KnowledgeTranslation already exists for (${entityType}, ${entityId}, ${languageCode}).`,
+    [
+      {
+        field: "languageCode",
+        code: "duplicate_tuple",
+        messageKey: "commerceKnowledge.translation.duplicateTuple",
+      },
+    ],
+  );
+}
