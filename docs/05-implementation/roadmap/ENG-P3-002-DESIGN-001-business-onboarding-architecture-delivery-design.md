@@ -331,7 +331,8 @@ Localization fallback (EN-required, FR-optional) happens in **one coherent layer
 | Branch details | `displayName`, `countryCode`, `city`, `address?` | Same pattern against `updateBusinessBranchProfile` |
 | Category/Type selection | `primaryCategoryId`, `businessTypeId?` | Options sourced from §13's read transport, not hardcoded; Type list re-fetches when Category changes |
 | Staff invitation (optional) | `role`, delivery target (phone or email) | Reuses `InvitationRole`/`InvitationDeliveryTarget`'s existing validation shape conceptually, not a new client-invented rule |
-| Review/submission | No new fields — read-only summary + a submit action | Calls `submitBusinessForVerification` |
+| Terms acceptance *(added v2.0, §37)* | Explicit affirmative checkbox (defaulting unchecked) — no free-form fields, `termsVersion` is never a client-supplied field | Calls `acceptBusinessTerms(businessId)` (§37.6); the server, not this form, is authoritative for which Terms version is being accepted and for who is accepting (§37.5/§37.8) |
+| Review/submission | No new fields — read-only summary + a submit action | Calls `submitBusinessForVerification`, which fails closed without a current-version Terms acceptance (§37.9) |
 
 - **Per-step validation:** each step's Zod schema validates before advancing, but the **server's own validation remains authoritative** — client validation is a UX convenience, never a substitute for the server rejecting an invalid `createBusiness`/`updateBusinessProfile` call.
 - **Server validation:** every step's data is only durably saved when the corresponding callable succeeds; a client-side "next" button never silently accepts data the server would reject.
