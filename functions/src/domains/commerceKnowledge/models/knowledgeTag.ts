@@ -69,8 +69,16 @@ function requireNonBlank(field: string, value: string): string {
   return value;
 }
 
+/** Review Phase I: see `knowledgeNode.ts`'s `requireNoPathSeparator` for the full rationale (matches `evaluatePermission.ts`'s established platform precedent). */
+function requireNoPathSeparator(field: string, value: string): string {
+  if (value.includes("/")) {
+    throw invalidKnowledgeTagFieldError(field, value);
+  }
+  return value;
+}
+
 export function createKnowledgeTag(params: CreateKnowledgeTagParams): KnowledgeTag {
-  const id = requireNonBlank("id", params.id);
+  const id = requireNoPathSeparator("id", requireNonBlank("id", params.id));
   const canonicalName = requireNonBlank("canonicalName", params.canonicalName);
   const slug = requireNonBlank("slug", params.slug);
 

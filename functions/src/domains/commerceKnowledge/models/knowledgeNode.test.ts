@@ -58,6 +58,14 @@ describe("createKnowledgeNode", () => {
     expect(() => createKnowledgeNode({ ...validRootParams(), slug: "" })).toThrow();
   });
 
+  it("rejects an id containing a Firestore path separator (review Phase I)", () => {
+    expect(() => createKnowledgeNode({ ...validRootParams(), id: "abc/def" })).toThrow();
+  });
+
+  it("rejects a parentId containing a Firestore path separator (review Phase I)", () => {
+    expect(() => createKnowledgeNode({ ...validChildParams(), parentId: "abc/def" })).toThrow();
+  });
+
   it("rejects an industry node with a non-null parentNodeType", () => {
     expect(() =>
       createKnowledgeNode({ ...validRootParams(), parentNodeType: "business_category" }),
@@ -68,6 +76,52 @@ describe("createKnowledgeNode", () => {
     expect(() =>
       createKnowledgeNode({ ...validChildParams(), parentNodeType: "business_type" }),
     ).toThrow();
+  });
+
+  it("rejects an industry (root) node given a non-null parentId, even though parentNodeType is null (structural parentId/parentNodeType consistency — review Phase D)", () => {
+    expect(() =>
+      createKnowledgeNode({
+        ...validRootParams(),
+        parentId: "some-other-node",
+        parentNodeType: null,
+      }),
+    ).toThrow();
+  });
+
+  it("rejects a business_category node given parentId=null while parentNodeType=industry (structural inconsistency — review Phase D)", () => {
+    expect(() =>
+      createKnowledgeNode({ ...validChildParams(), parentId: null, parentNodeType: "industry" }),
+    ).toThrow();
+  });
+
+  it("rejects a non-root child (business_type) given a parentId while parentNodeType is null (review Phase D)", () => {
+    expect(() =>
+      createKnowledgeNode({
+        id: "node-type-1",
+        nodeType: "business_type",
+        parentId: "node-category-1",
+        parentNodeType: null,
+        canonicalName: "Sit-down",
+        slug: "sit-down",
+        path: "/node-industry-1/node-category-1/node-type-1",
+        depth: 2,
+        createdAt: now,
+      }),
+    ).toThrow();
+  });
+
+  it("rejects a root child (industry) that supplies a parentId at all, regardless of parentNodeType (review Phase D)", () => {
+    expect(() =>
+      createKnowledgeNode({ ...validRootParams(), parentId: "some-other-node" }),
+    ).toThrow();
+  });
+
+  it("rejects a root (industry) node with a non-zero depth (review Phase E: root/depth invariant)", () => {
+    expect(() => createKnowledgeNode({ ...validRootParams(), depth: 1 })).toThrow();
+  });
+
+  it("rejects a non-root node with depth 0 (review Phase E: root/depth invariant)", () => {
+    expect(() => createKnowledgeNode({ ...validChildParams(), depth: 0 })).toThrow();
   });
 
   it("rejects a standard_product pointing directly at an industry", () => {
@@ -147,6 +201,20 @@ describe("transitionKnowledgeNodeStatus", () => {
     });
     expect(retired.status).toBe("retired");
     expect(retired.replacementNodeId).toBe("node-industry-2");
+  });
+
+  it("rejects a replacementNodeId containing a Firestore path separator (review Phase I)", () => {
+    const node = createKnowledgeNode(validRootParams());
+    const { node: inReview } = transitionKnowledgeNodeStatus(node, "in_review", {
+      updatedAt: now,
+    });
+    const { node: active } = transitionKnowledgeNodeStatus(inReview, "active", { updatedAt: now });
+    expect(() =>
+      transitionKnowledgeNodeStatus(active, "retired", {
+        updatedAt: now,
+        replacementNodeId: "abc/def",
+      }),
+    ).toThrow();
   });
 
   it("rejects a replacementNodeId equal to the node's own id (self-reference)", () => {

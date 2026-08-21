@@ -26,7 +26,11 @@ import {
   replacementNodeIdRequiredForRetirementError,
 } from "./commerceKnowledgeErrors";
 import { invalidReplacementNodeReferenceError } from "./commerceKnowledgeErrors";
-import { assertValidParentNodeType, type KnowledgeNodeType } from "./knowledgeNodeType";
+import {
+  assertConsistentParentReference,
+  assertValidParentNodeType,
+  type KnowledgeNodeType,
+} from "./knowledgeNodeType";
 import {
   isValidKnowledgeLifecycleTransition,
   type KnowledgeLifecycleStatus,
@@ -74,16 +78,51 @@ function requireNonBlank(field: string, value: string): string {
   return value;
 }
 
+/**
+ * Review Phase I: a `"/"` is a Firestore document-path separator, not a
+ * valid character in a single document id — a value containing one would
+ * either throw at the repository layer or silently resolve to an
+ * unintended nested path once `ENG-P3-001B` uses these ids directly as
+ * Firestore document keys. Matches the platform's own established
+ * precedent (`functions/src/domains/permissions/evaluator/evaluatePermission.ts`'s
+ * `businessId.includes("/")` rejection).
+ */
+function requireNoPathSeparator(field: string, value: string): string {
+  if (value.includes("/")) {
+    throw invalidKnowledgeNodeFieldError(field, value);
+  }
+  return value;
+}
+
 export function createKnowledgeNode(params: CreateKnowledgeNodeParams): KnowledgeNode {
-  const id = requireNonBlank("id", params.id);
+  const id = requireNoPathSeparator("id", requireNonBlank("id", params.id));
   const canonicalName = requireNonBlank("canonicalName", params.canonicalName);
   const slug = requireNonBlank("slug", params.slug);
   const path = requireNonBlank("path", params.path);
+  if (params.parentId !== null) {
+    requireNoPathSeparator("parentId", params.parentId);
+  }
 
-  if (params.depth < 0) {
+  if (!Number.isInteger(params.depth) || params.depth < 0) {
     throw invalidKnowledgeNodeFieldError("depth", String(params.depth));
   }
 
+  /**
+   * Review Phase E: a root node (`parentId === null`) must have `depth`
+   * exactly 0; a non-root node must have `depth > 0`. Enforcing the exact
+   * `childDepth === parentDepth + 1` relationship requires reading the
+   * actual parent's persisted `depth`, which is repository state deferred
+   * to `ENG-P3-001B` — this is the bound of what `001A` can determine
+   * purely from the supplied params themselves.
+   */
+  if (params.parentId === null && params.depth !== 0) {
+    throw invalidKnowledgeNodeFieldError("depth", String(params.depth));
+  }
+  if (params.parentId !== null && params.depth === 0) {
+    throw invalidKnowledgeNodeFieldError("depth", String(params.depth));
+  }
+
+  assertConsistentParentReference(params.parentId, params.parentNodeType);
   assertValidParentNodeType(params.nodeType, params.parentNodeType);
 
   return {
@@ -126,6 +165,7 @@ export function transitionKnowledgeNodeStatus(
     if (params.replacementNodeId === node.id) {
       throw invalidReplacementNodeReferenceError(node.id);
     }
+    requireNoPathSeparator("replacementNodeId", params.replacementNodeId);
   }
 
   return {

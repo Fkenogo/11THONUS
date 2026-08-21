@@ -3,6 +3,7 @@ import {
   KNOWLEDGE_NODE_TYPES,
   isKnowledgeNodeType,
   isValidParentNodeType,
+  isConsistentParentReference,
   wouldCreateHierarchyCycle,
 } from "./knowledgeNodeType";
 
@@ -67,6 +68,24 @@ describe("isValidParentNodeType — approved adjacency chain (design §7.1.1)", 
   it("fails closed: any node type paired with a completely unrelated parent type is invalid", () => {
     expect(isValidParentNodeType("business_category", "standard_product")).toBe(false);
     expect(isValidParentNodeType("standard_service", "standard_product")).toBe(false);
+  });
+});
+
+describe("isConsistentParentReference — review Phase D structural consistency", () => {
+  it("both null (root) is consistent", () => {
+    expect(isConsistentParentReference(null, null)).toBe(true);
+  });
+
+  it("both non-null is consistent", () => {
+    expect(isConsistentParentReference("node-1", "industry")).toBe(true);
+  });
+
+  it("non-null parentId with null parentNodeType is inconsistent", () => {
+    expect(isConsistentParentReference("node-1", null)).toBe(false);
+  });
+
+  it("null parentId with non-null parentNodeType is inconsistent", () => {
+    expect(isConsistentParentReference(null, "industry")).toBe(false);
   });
 });
 

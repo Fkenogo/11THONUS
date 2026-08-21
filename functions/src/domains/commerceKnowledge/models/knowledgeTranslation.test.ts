@@ -37,6 +37,47 @@ describe("createKnowledgeTranslation", () => {
     expect(translation.entityType).toBe("knowledge_tag");
   });
 
+  it("rejects an entityId containing a Firestore path separator (review Phase I)", () => {
+    expect(() => createKnowledgeTranslation({ ...validParams(), entityId: "abc/def" })).toThrow();
+  });
+
+  it("produces collision-free composite ids even when entityId itself contains underscores resembling entityType/languageCode tokens (review Phase I)", () => {
+    // entityType/languageCode are both fixed, non-prefixing, closed-set
+    // literals — an entityId containing "_en"/"_fr"-like substrings must
+    // not be able to produce the same id as an otherwise-different triple.
+    const a = createKnowledgeTranslation({
+      entityType: "knowledge_node",
+      entityId: "abc_en",
+      languageCode: "fr",
+      displayName: "A",
+      createdAt: now,
+    });
+    const b = createKnowledgeTranslation({
+      entityType: "knowledge_node",
+      entityId: "abc",
+      languageCode: "en",
+      displayName: "B",
+      createdAt: now,
+    });
+    expect(a.id).not.toBe(b.id);
+
+    const c = createKnowledgeTranslation({
+      entityType: "knowledge_tag",
+      entityId: "node_abc",
+      languageCode: "en",
+      displayName: "C",
+      createdAt: now,
+    });
+    const d = createKnowledgeTranslation({
+      entityType: "knowledge_node",
+      entityId: "abc",
+      languageCode: "en",
+      displayName: "D",
+      createdAt: now,
+    });
+    expect(c.id).not.toBe(d.id);
+  });
+
   it("rejects a blank displayName", () => {
     expect(() => createKnowledgeTranslation({ ...validParams(), displayName: " " })).toThrow();
   });
@@ -100,6 +141,14 @@ describe("transitionKnowledgeTranslationStatus", () => {
       updatedAt: now,
     });
     expect(backToDraft.status).toBe("draft");
+    // Review Phase J: no governing source (TRD10 §10.7.2, design §9.4/§M)
+    // states reviewedBy/reviewedAt must be cleared when status returns to
+    // draft — retained as a historical "when was this last reviewed"
+    // record (consistent with the platform's "Archive, Do Not Erase"
+    // retention posture elsewhere in this design) rather than invented
+    // clearing policy with no source basis.
+    expect(backToDraft.reviewedBy).toBe("editor-1");
+    expect(backToDraft.reviewedAt).toEqual(now);
   });
 
   it("rejects draft -> published directly (must pass through reviewed)", () => {

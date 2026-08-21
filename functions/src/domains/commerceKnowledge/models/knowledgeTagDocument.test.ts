@@ -25,16 +25,12 @@ describe("fromKnowledgeTagDocument", () => {
     expect(tag?.tagGroup).toBe("product_attribute");
   });
 
-  it("returns null for a legacy inline translations map — not part of the resolved shape", () => {
-    // Presence of a stray `translations` field must not resurrect the old
-    // TRD10-declared inline shape; the parser simply ignores unknown keys
-    // and still succeeds provided the governed fields are well-formed.
+  it("fails closed on a legacy inline translations field — review Phase H: no live Commerce Knowledge data exists requiring tolerance, so the obsolete dual-authority shape is rejected outright, not silently discarded", () => {
     const tag = fromKnowledgeTagDocument("tag-1", {
       ...validRawDocument(),
       translations: { en: "Organic" },
     });
-    expect(tag).not.toBeNull();
-    expect(tag).not.toHaveProperty("translations");
+    expect(tag).toBeNull();
   });
 
   it("returns null for an undocumented tagGroup", () => {
@@ -57,6 +53,14 @@ describe("fromKnowledgeTagDocument", () => {
     expect(
       fromKnowledgeTagDocument("tag-1", { ...validRawDocument(), schemaVersion: -1 }),
     ).toBeNull();
+  });
+
+  it("returns null for a NaN/Infinity/-Infinity/fractional schemaVersion (review Phase F)", () => {
+    for (const badValue of [NaN, Infinity, -Infinity, 1.5]) {
+      expect(
+        fromKnowledgeTagDocument("tag-1", { ...validRawDocument(), schemaVersion: badValue }),
+      ).toBeNull();
+    }
   });
 });
 

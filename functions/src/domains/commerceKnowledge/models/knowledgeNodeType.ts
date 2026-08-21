@@ -21,7 +21,10 @@
  * repository-backed check must satisfy.
  */
 
-import { invalidParentTypeError } from "./commerceKnowledgeErrors";
+import {
+  inconsistentParentReferenceError,
+  invalidParentTypeError,
+} from "./commerceKnowledgeErrors";
 
 export const KNOWLEDGE_NODE_TYPES = [
   "industry",
@@ -65,6 +68,32 @@ export function assertValidParentNodeType(
 ): void {
   if (!isValidParentNodeType(childType, parentNodeType)) {
     throw invalidParentTypeError(childType, parentNodeType);
+  }
+}
+
+/**
+ * Review Phase D (`ENG-P3-001A` independent review, `parentId`/
+ * `parentNodeType` structural-consistency finding): `assertValidParentNodeType`
+ * validates the *type* relationship only — it never sees `parentId` at
+ * all, so a caller could otherwise supply a non-null `parentId` with a
+ * `null` `parentNodeType` (or vice versa), describing a node that both
+ * has and does not have a parent. This is a distinct, prerequisite check
+ * — whether a parent reference exists at all — checked before the type-
+ * adjacency question.
+ */
+export function isConsistentParentReference(
+  parentId: string | null,
+  parentNodeType: KnowledgeNodeType | null,
+): boolean {
+  return (parentId === null) === (parentNodeType === null);
+}
+
+export function assertConsistentParentReference(
+  parentId: string | null,
+  parentNodeType: KnowledgeNodeType | null,
+): void {
+  if (!isConsistentParentReference(parentId, parentNodeType)) {
+    throw inconsistentParentReferenceError(parentId, parentNodeType);
   }
 }
 

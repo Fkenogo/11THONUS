@@ -58,9 +58,47 @@ describe("fromKnowledgeNodeDocument", () => {
     ).toBeNull();
   });
 
+  it("returns null for a NaN/Infinity/-Infinity/fractional schemaVersion (review Phase F)", () => {
+    for (const badValue of [NaN, Infinity, -Infinity, 1.5]) {
+      expect(
+        fromKnowledgeNodeDocument("node-1", { ...validRawDocument(), schemaVersion: badValue }),
+      ).toBeNull();
+    }
+  });
+
+  it("returns null for a NaN/Infinity/-Infinity/fractional/zero version (review Phase F)", () => {
+    for (const badValue of [NaN, Infinity, -Infinity, 1.5, 0]) {
+      expect(
+        fromKnowledgeNodeDocument("node-1", { ...validRawDocument(), version: badValue }),
+      ).toBeNull();
+    }
+  });
+
+  it("returns null for a NaN/Infinity/-Infinity/fractional depth (review Phase F)", () => {
+    for (const badValue of [NaN, Infinity, -Infinity, 1.5]) {
+      expect(
+        fromKnowledgeNodeDocument("node-1", { ...validRawDocument(), depth: badValue }),
+      ).toBeNull();
+    }
+  });
+
   it("returns null for malformed timestamps", () => {
     expect(
       fromKnowledgeNodeDocument("node-1", { ...validRawDocument(), createdAt: "not-a-timestamp" }),
+    ).toBeNull();
+  });
+
+  it("returns null for a root document (parentId null) with non-zero depth (review Phase E/F)", () => {
+    expect(fromKnowledgeNodeDocument("node-1", { ...validRawDocument(), depth: 1 })).toBeNull();
+  });
+
+  it("returns null for a non-root document (parentId non-null) with depth 0 (review Phase E/F)", () => {
+    expect(
+      fromKnowledgeNodeDocument("node-1", {
+        ...validRawDocument(),
+        parentId: "node-parent",
+        depth: 0,
+      }),
     ).toBeNull();
   });
 
@@ -68,6 +106,15 @@ describe("fromKnowledgeNodeDocument", () => {
     expect(
       fromKnowledgeNodeDocument("node-1", { ...validRawDocument(), canonicalName: "" }),
     ).toBeNull();
+  });
+
+  it("tolerates a harmless additive unknown field (forward-compatible schema evolution — review Phase O), distinct from a forbidden architectural field", () => {
+    const node = fromKnowledgeNodeDocument("node-1", {
+      ...validRawDocument(),
+      futureField: "reserved for a later schemaVersion",
+    });
+    expect(node).not.toBeNull();
+    expect(node).not.toHaveProperty("futureField");
   });
 
   it("accepts an explicit replacementNodeId and optional fields", () => {

@@ -25,6 +25,11 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
 
+/** Review Phase F: fail closed against NaN/Infinity/fractional — see `knowledgeNodeDocument.ts`'s `isValidInteger` for the full rationale (same platform precedent, `trustRecord.ts`/`trustRuleVersion.ts`). */
+function isValidInteger(value: unknown, minimum: number): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value >= minimum;
+}
+
 /** Returns `null` (never throws) for a structurally invalid document. */
 export function fromKnowledgeTranslationDocument(
   id: string,
@@ -62,7 +67,7 @@ export function fromKnowledgeTranslationDocument(
   if (data.reviewedAt !== undefined && !isTimestampLike(data.reviewedAt)) return null;
   if (!isTimestampLike(data.createdAt)) return null;
   if (!isTimestampLike(data.updatedAt)) return null;
-  if (typeof data.schemaVersion !== "number" || data.schemaVersion < 1) return null;
+  if (!isValidInteger(data.schemaVersion, 1)) return null;
 
   return {
     id,

@@ -100,6 +100,31 @@ export function invalidParentTypeError(
   );
 }
 
+/**
+ * Review Phase D (`ENG-P3-001A` independent review): `parentId` and
+ * `parentNodeType` must agree on whether a parent exists at all —
+ * `parentId === null` iff `parentNodeType === null`. A caller supplying
+ * a non-null `parentId` alongside `parentNodeType: null` (or vice versa)
+ * describes a structurally impossible node, distinct from — and checked
+ * before — the type-adjacency question `invalidParentTypeError` covers.
+ */
+export function inconsistentParentReferenceError(
+  parentId: string | null,
+  parentNodeType: string | null,
+): CommerceKnowledgeDomainError {
+  return new CommerceKnowledgeDomainError(
+    "VALIDATION_FAILED",
+    `parentId (${parentId === null ? "null" : `"${parentId}"`}) and parentNodeType (${parentNodeType === null ? "null" : `"${parentNodeType}"`}) must agree on whether a parent exists — both null (root) or both non-null.`,
+    [
+      {
+        field: "parentId",
+        code: "inconsistent_parent_reference",
+        messageKey: "commerceKnowledge.node.parentId.inconsistentReference",
+      },
+    ],
+  );
+}
+
 /** Design §7.1.1/§J: a hierarchy write whose ancestor chain would revisit itself. */
 export function hierarchyCycleDetectedError(nodeId: string): CommerceKnowledgeDomainError {
   return new CommerceKnowledgeDomainError(

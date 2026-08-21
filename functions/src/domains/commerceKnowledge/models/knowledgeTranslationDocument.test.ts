@@ -60,6 +60,14 @@ describe("fromKnowledgeTranslationDocument", () => {
       fromKnowledgeTranslationDocument("x", { ...validRawDocument(), displayName: "" }),
     ).toBeNull();
   });
+
+  it("returns null for a NaN/Infinity/-Infinity/fractional schemaVersion (review Phase F)", () => {
+    for (const badValue of [NaN, Infinity, -Infinity, 1.5]) {
+      expect(
+        fromKnowledgeTranslationDocument("x", { ...validRawDocument(), schemaVersion: badValue }),
+      ).toBeNull();
+    }
+  });
 });
 
 describe("toKnowledgeTranslationDocumentFields", () => {

@@ -80,6 +80,19 @@ export function createKnowledgeTranslation(
   if (entityId.length === 0) {
     throw invalidKnowledgeTranslationFieldError("entityId", params.entityId);
   }
+  /**
+   * Review Phase I: a `"/"` is a Firestore document-path separator — since
+   * `entityId` is embedded directly into this document's own deterministic
+   * composite id (`deterministicTranslationId` below), a slash here would
+   * either be silently mis-parsed as a nested path or throw at the
+   * repository layer once `ENG-P3-001B` uses this id as a Firestore
+   * document key (same rationale as `knowledgeNode.ts`'s
+   * `requireNoPathSeparator`, matching `evaluatePermission.ts`'s
+   * established platform precedent).
+   */
+  if (entityId.includes("/")) {
+    throw invalidKnowledgeTranslationFieldError("entityId", params.entityId);
+  }
   const displayName = params.displayName.trim();
   if (displayName.length === 0) {
     throw invalidKnowledgeTranslationFieldError("displayName", params.displayName);

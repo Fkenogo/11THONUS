@@ -30,6 +30,10 @@ describe("createKnowledgeTag", () => {
     expect(() => createKnowledgeTag({ ...validParams(), slug: "" })).toThrow();
   });
 
+  it("rejects an id containing a Firestore path separator (review Phase I)", () => {
+    expect(() => createKnowledgeTag({ ...validParams(), id: "abc/def" })).toThrow();
+  });
+
   it("rejects an undocumented tagGroup", () => {
     expect(() =>
       createKnowledgeTag({ ...validParams(), tagGroup: "unknown_group" as never }),

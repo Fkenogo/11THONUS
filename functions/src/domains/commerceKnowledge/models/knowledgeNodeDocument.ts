@@ -27,6 +27,19 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
 
+/**
+ * Review Phase F: `typeof value === "number" && value < bound` alone does
+ * not fail closed — `NaN < bound` and, for a `< 0` lower-bound check,
+ * `Infinity < bound` both evaluate `false`, silently admitting `NaN`/
+ * `Infinity`/fractional values. Matches the platform's own established
+ * precedent (`functions/src/domains/trust/models/trustRecord.ts`'s
+ * `requireValidVersion`, `functions/src/domains/trust/models/trustRuleVersion.ts`):
+ * `Number.isInteger` before the bound comparison.
+ */
+function isValidInteger(value: unknown, minimum: number): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value >= minimum;
+}
+
 /** Returns `null` (never throws) for a structurally invalid document. */
 export function fromKnowledgeNodeDocument(id: string, raw: unknown): KnowledgeNode | null {
   if (typeof raw !== "object" || raw === null) return null;
@@ -54,17 +67,19 @@ export function fromKnowledgeNodeDocument(id: string, raw: unknown): KnowledgeNo
   if (typeof data.canonicalName !== "string" || data.canonicalName.trim().length === 0) return null;
   if (typeof data.slug !== "string" || data.slug.trim().length === 0) return null;
   if (typeof data.path !== "string" || data.path.trim().length === 0) return null;
-  if (typeof data.depth !== "number" || data.depth < 0) return null;
+  if (!isValidInteger(data.depth, 0)) return null;
+  if (data.parentId === null && data.depth !== 0) return null;
+  if (data.parentId !== null && data.depth === 0) return null;
   if (data.description !== undefined && typeof data.description !== "string") return null;
   if (data.iconKey !== undefined && typeof data.iconKey !== "string") return null;
   if (typeof data.status !== "string" || !isKnowledgeLifecycleStatus(data.status)) return null;
-  if (typeof data.version !== "number" || data.version < 1) return null;
+  if (!isValidInteger(data.version, 1)) return null;
   if (data.replacementNodeId !== undefined && typeof data.replacementNodeId !== "string")
     return null;
   if (!isStringArray(data.searchTerms)) return null;
   if (!isTimestampLike(data.createdAt)) return null;
   if (!isTimestampLike(data.updatedAt)) return null;
-  if (typeof data.schemaVersion !== "number" || data.schemaVersion < 1) return null;
+  if (!isValidInteger(data.schemaVersion, 1)) return null;
 
   return {
     id,

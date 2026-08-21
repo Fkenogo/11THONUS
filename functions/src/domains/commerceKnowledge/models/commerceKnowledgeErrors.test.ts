@@ -7,6 +7,7 @@ import {
   invalidKnowledgeLifecycleTransitionError,
   invalidTranslationLifecycleTransitionError,
   invalidParentTypeError,
+  inconsistentParentReferenceError,
   hierarchyCycleDetectedError,
   invalidReplacementNodeReferenceError,
   invalidLanguageCodeError,
@@ -83,6 +84,11 @@ describe("hierarchy error factories", () => {
 
   it("hierarchyCycleDetectedError maps to VALIDATION_FAILED", () => {
     const error = hierarchyCycleDetectedError("node-1");
+    expect(error.category).toBe("VALIDATION_FAILED");
+  });
+
+  it("inconsistentParentReferenceError maps to VALIDATION_FAILED", () => {
+    const error = inconsistentParentReferenceError("node-1", null);
     expect(error.category).toBe("VALIDATION_FAILED");
   });
 });
