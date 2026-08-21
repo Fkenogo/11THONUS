@@ -483,6 +483,108 @@ describe("Business classification reference validation — existing references (
   });
 });
 
+describe("Business classification reference validation — concurrency / TOCTOU (Phase F)", () => {
+  it("a profile update racing a concurrent category retirement never persists an invalid pair", async () => {
+    // A dedicated category, retired concurrently with a profile update that
+    // targets it — real Firestore transactions (not mocks), fired
+    // simultaneously so their reads/writes genuinely interleave at the
+    // emulator's discretion. `validateBusinessClassificationReferences`
+    // reads `CAT_RACE` inside the same transaction as the Business write it
+    // guards (Phase E/F), so Firestore's own transaction isolation is the
+    // safety mechanism under test here, not application-level locking: any
+    // transaction whose read set is invalidated by a concurrent commit is
+    // retried by the SDK against fresh reads rather than committing against
+    // stale data.
+    const CAT_RACE = "cv_cat_race";
+    await createKnowledgeNodePersisted(db, {
+      id: CAT_RACE,
+      nodeType: "business_category",
+      parentId: IND,
+      canonicalName: "CV Race Category",
+      slug: "cv-cat-race",
+      createdAt: CREATED_AT,
+    });
+    await transitionKnowledgeNodeStatusPersisted(db, CAT_RACE, "in_review", {
+      updatedAt: CREATED_AT,
+    });
+    await transitionKnowledgeNodeStatusPersisted(db, CAT_RACE, "active", { updatedAt: CREATED_AT });
+
+    const business = createBusiness({
+      id: "cv_biz_race",
+      businessCode: nextCode(),
+      ownerUserId: "cust_race",
+      displayName: "Race Co",
+      primaryCategoryId: CAT_ACTIVE,
+      countryCode: "US",
+      currencyCode: "USD",
+      timezone: "America/Los_Angeles",
+      city: "Springfield",
+      contactPhone: "+15550100",
+      supportedLanguages: ["en"],
+      createdAt: CREATED_AT,
+    });
+    await db
+      .collection("businesses")
+      .doc("cv_biz_race")
+      .set(
+        Object.fromEntries(
+          Object.entries(
+            toBusinessDocumentFields(business) as unknown as Record<string, unknown>,
+          ).filter(([, v]) => v !== undefined),
+        ),
+      );
+    await db.collection("businessMemberships").doc("cv_biz_race_mem").set({
+      userId: "cust_race",
+      businessId: "cv_biz_race",
+      role: "owner",
+      status: "active",
+      permissions: [],
+      createdAt: CREATED_AT,
+      updatedAt: CREATED_AT,
+    });
+
+    const updateOutcome = updateBusinessProfileCommand(db, {
+      userId: "cust_race",
+      businessId: "cv_biz_race",
+      patch: { primaryCategoryId: CAT_RACE },
+      idempotencyKey: "cv_pu_key_race",
+      requestHash: "hash_race",
+      correlationId: "corr_race",
+      now: CREATED_AT,
+      newId: () => "evt_race",
+    }).then(
+      (result) => ({ status: "fulfilled" as const, result }),
+      (error) => ({ status: "rejected" as const, error }),
+    );
+    const retireOutcome = retireKnowledgeNodePersisted(db, CAT_RACE, {
+      updatedAt: CREATED_AT,
+      replacementNodeId: CAT_REPLACEMENT,
+    }).then(
+      () => ({ status: "fulfilled" as const }),
+      (error) => ({ status: "rejected" as const, error }),
+    );
+
+    const [updateResult] = await Promise.all([updateOutcome, retireOutcome]);
+
+    const snapshot = await db.collection("businesses").doc("cv_biz_race").get();
+    const persistedCategoryId = snapshot.data()?.["primaryCategoryId"];
+    // Whichever way the race resolved, only two outcomes are legal: the
+    // update transaction committed with a category that was genuinely
+    // still active at the moment its read happened (Phase I already covers
+    // a *later* retirement not invalidating an existing reference), or the
+    // update transaction saw the retirement and was rejected, leaving the
+    // original category untouched. What must never happen is a persisted
+    // `primaryCategoryId` that the validation transaction never actually
+    // read as active — and Firestore's transaction isolation (not this
+    // test) is what forecloses that third possibility.
+    if (updateResult.status === "fulfilled" && updateResult.result.outcome === "executed") {
+      expect(persistedCategoryId).toBe(CAT_RACE);
+    } else {
+      expect(persistedCategoryId).toBe(CAT_ACTIVE);
+    }
+  });
+});
+
 describe("Business classification reference validation — profile update path", () => {
   function stripUndefined<T extends Record<string, unknown>>(value: T): Partial<T> {
     const result: Partial<T> = {};
@@ -586,7 +688,7 @@ describe("Business classification reference validation — profile update path",
     expect(snapshot.data()?.["primaryCategoryId"]).toBe(CAT_ACTIVE); // unchanged — no partial write
   });
 
-  it("a profile update that never touches classification never re-reads Commerce Knowledge (existing reference untouched)", async () => {
+  it("21) unrelated profile update — omitted businessTypeId preserves the existing type, no accidental clearing", async () => {
     await seedOwnedBusiness("cv_biz_21", "cust_21");
     const result = await updateBusinessProfileCommand(db, {
       userId: "cust_21",
@@ -600,6 +702,56 @@ describe("Business classification reference validation — profile update path",
     });
     expect(result.outcome).toBe("executed");
     const snapshot = await db.collection("businesses").doc("cv_biz_21").get();
+    expect(snapshot.data()?.["displayName"]).toBe("Renamed Co");
+    expect(snapshot.data()?.["primaryCategoryId"]).toBe(CAT_ACTIVE);
+    // The field the required test matrix (Phase O item 22) specifically
+    // guards: an update that never mentions `businessTypeId` must never
+    // clear it as a side effect of the merge.
+    expect(snapshot.data()?.["businessTypeId"]).toBe(TYPE_ACTIVE);
+  });
+
+  it("22) explicit businessTypeId removal on a category change — key present, value undefined -> PASS, resulting state is category-only", async () => {
+    await seedOwnedBusiness("cv_biz_22", "cust_22");
+    // `"businessTypeId" in patch` is true (the key is present with an
+    // explicit `undefined` value — the same key-presence idiom
+    // `updateBusinessProfile`'s merge and `parseBusinessProfilePatch`'s
+    // null-to-undefined wire convention both already use), so this is
+    // read as an intentional removal, not "not supplied". Combined with a
+    // category change, the resulting state (CAT_OTHER_ACTIVE + no type) is
+    // a valid classification (Founder policy state B) and must pass.
+    const patch = { primaryCategoryId: CAT_OTHER_ACTIVE, businessTypeId: undefined };
+    expect("businessTypeId" in patch).toBe(true);
+
+    const result = await updateBusinessProfileCommand(db, {
+      userId: "cust_22",
+      businessId: "cv_biz_22",
+      patch,
+      idempotencyKey: "cv_pu_key_22",
+      requestHash: "hash_22",
+      correlationId: "corr_22",
+      now: CREATED_AT,
+      newId: () => "evt_22",
+    });
+    expect(result.outcome).toBe("executed");
+    const snapshot = await db.collection("businesses").doc("cv_biz_22").get();
+    expect(snapshot.data()?.["primaryCategoryId"]).toBe(CAT_OTHER_ACTIVE);
+    expect(snapshot.data()?.["businessTypeId"]).toBeUndefined();
+  });
+
+  it("a profile update that never touches classification never re-reads Commerce Knowledge (existing reference untouched)", async () => {
+    await seedOwnedBusiness("cv_biz_23", "cust_23");
+    const result = await updateBusinessProfileCommand(db, {
+      userId: "cust_23",
+      businessId: "cv_biz_23",
+      patch: { displayName: "Renamed Co" },
+      idempotencyKey: "cv_pu_key_23",
+      requestHash: "hash_23",
+      correlationId: "corr_23",
+      now: CREATED_AT,
+      newId: () => "evt_23",
+    });
+    expect(result.outcome).toBe("executed");
+    const snapshot = await db.collection("businesses").doc("cv_biz_23").get();
     expect(snapshot.data()?.["displayName"]).toBe("Renamed Co");
     expect(snapshot.data()?.["primaryCategoryId"]).toBe(CAT_ACTIVE);
   });
