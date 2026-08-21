@@ -142,3 +142,119 @@ export function businessBranchNotFoundError(branchId: string): BusinessDomainErr
     `Business branch "${branchId}" was not found.`,
   );
 }
+
+/**
+ * `ENG-P3-001C` addendum: Business-classification reference validation
+ * against the authoritative Commerce Knowledge repository (design
+ * `ENG-P3-001-DESIGN-001` §G/§H, `referenceEligibility.ts`). Every category
+ * below maps onto the same closed, pre-existing `ErrorCategory` taxonomy
+ * `businessErrors.ts` already uses — no new category is introduced (Phase K).
+ *
+ * `primaryCategoryId`/`businessTypeId` "not found" also covers a persisted
+ * `KnowledgeNode` document that exists but is structurally malformed —
+ * `getKnowledgeNodeInTransaction` (`commerceKnowledge/repositories
+ * /knowledgeNodeRepository.ts`) does not distinguish the two, matching that
+ * repository's own established fail-closed precedent
+ * (`resolveHierarchyPlacement`'s parent/ancestor resolution).
+ */
+export function primaryCategoryNotFoundError(categoryId: string): BusinessDomainError {
+  return new BusinessDomainError(
+    "RESOURCE_NOT_FOUND",
+    `primaryCategoryId "${categoryId}" does not resolve to an existing Commerce Knowledge node.`,
+    [
+      {
+        field: "primaryCategoryId",
+        code: "not_found",
+        messageKey: "business.primaryCategoryId.notFound",
+      },
+    ],
+  );
+}
+
+export function primaryCategoryInvalidTypeError(categoryId: string): BusinessDomainError {
+  return new BusinessDomainError(
+    "VALIDATION_FAILED",
+    `primaryCategoryId "${categoryId}" does not resolve to a Commerce Knowledge node of type "business_category".`,
+    [
+      {
+        field: "primaryCategoryId",
+        code: "invalid_node_type",
+        messageKey: "business.primaryCategoryId.invalidNodeType",
+      },
+    ],
+  );
+}
+
+export function primaryCategoryNotEligibleError(categoryId: string): BusinessDomainError {
+  return new BusinessDomainError(
+    "VALIDATION_FAILED",
+    `primaryCategoryId "${categoryId}" is not eligible for a new reference — only an "active" Commerce Knowledge node may be newly referenced.`,
+    [
+      {
+        field: "primaryCategoryId",
+        code: "not_eligible",
+        messageKey: "business.primaryCategoryId.notEligible",
+      },
+    ],
+  );
+}
+
+export function businessTypeNotFoundError(businessTypeId: string): BusinessDomainError {
+  return new BusinessDomainError(
+    "RESOURCE_NOT_FOUND",
+    `businessTypeId "${businessTypeId}" does not resolve to an existing Commerce Knowledge node.`,
+    [
+      {
+        field: "businessTypeId",
+        code: "not_found",
+        messageKey: "business.businessTypeId.notFound",
+      },
+    ],
+  );
+}
+
+export function businessTypeInvalidTypeError(businessTypeId: string): BusinessDomainError {
+  return new BusinessDomainError(
+    "VALIDATION_FAILED",
+    `businessTypeId "${businessTypeId}" does not resolve to a Commerce Knowledge node of type "business_type".`,
+    [
+      {
+        field: "businessTypeId",
+        code: "invalid_node_type",
+        messageKey: "business.businessTypeId.invalidNodeType",
+      },
+    ],
+  );
+}
+
+export function businessTypeNotEligibleError(businessTypeId: string): BusinessDomainError {
+  return new BusinessDomainError(
+    "VALIDATION_FAILED",
+    `businessTypeId "${businessTypeId}" is not eligible for a new reference — only an "active" Commerce Knowledge node may be newly referenced.`,
+    [
+      {
+        field: "businessTypeId",
+        code: "not_eligible",
+        messageKey: "business.businessTypeId.notEligible",
+      },
+    ],
+  );
+}
+
+/** Design §I/§J: the resolved `businessTypeId` node does not descend from (its persisted `parentId` does not equal) the selected `primaryCategoryId`. */
+export function businessTypeCategoryMismatchError(
+  businessTypeId: string,
+  primaryCategoryId: string,
+): BusinessDomainError {
+  return new BusinessDomainError(
+    "VALIDATION_FAILED",
+    `businessTypeId "${businessTypeId}" does not belong under primaryCategoryId "${primaryCategoryId}" in the authoritative Commerce Knowledge hierarchy.`,
+    [
+      {
+        field: "businessTypeId",
+        code: "category_mismatch",
+        messageKey: "business.businessTypeId.categoryMismatch",
+      },
+    ],
+  );
+}

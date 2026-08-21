@@ -335,6 +335,12 @@ export default tseslint.config(
       "functions/src/domains/business/services/businessLifecycleCommand.ts",
       "functions/src/domains/business/services/authenticatedBusinessActor.ts",
       "functions/src/domains/business/services/businessProfileLifecycle.emulator.test.ts",
+      // `ENG-P3-001C`: the Business-classification/Commerce-Knowledge
+      // integration module takes a caller-owned `Transaction` (the same
+      // reason `businessProfileCommand.ts` etc. above are exempted) and its
+      // own emulator test — same precedent, not a new exception category.
+      "functions/src/domains/business/services/businessClassificationValidation.ts",
+      "functions/src/domains/business/services/businessClassificationValidation.emulator.test.ts",
     ],
     languageOptions: {
       ecmaVersion: 2023,

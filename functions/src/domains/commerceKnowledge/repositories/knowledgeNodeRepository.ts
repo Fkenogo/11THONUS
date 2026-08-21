@@ -204,6 +204,32 @@ export async function getKnowledgeNodeById(
 }
 
 /**
+ * `ENG-P3-001C` addendum: the one transactional read a Business-classification
+ * validation caller needs — reads a single `knowledgeNodes/{id}` document
+ * inside a caller-owned transaction (so the read participates in the same
+ * atomic boundary as whatever write the caller is validating a reference
+ * for, e.g. the Business bootstrap/profile-update transaction — Phase O).
+ * Returns `null` for both "does not exist" and "exists but malformed"
+ * (`fromKnowledgeNodeDocument`'s own fail-closed contract), mirroring
+ * `resolveHierarchyPlacement`'s established precedent of not distinguishing
+ * the two at this layer — a caller cannot tell "missing" from "corrupted"
+ * from this function alone, which is the same fail-closed posture the rest
+ * of this repository already uses for parent/replacement resolution. Read-
+ * only: does not throw a Commerce Knowledge domain error itself, so a
+ * Business-domain caller can map the `null` result to its own Business-facing
+ * error taxonomy (Phase K/L: no new authority domain, no leaked CK errors).
+ */
+export async function getKnowledgeNodeInTransaction(
+  transaction: Transaction,
+  db: Firestore,
+  id: string,
+): Promise<KnowledgeNode | null> {
+  const snapshot = await transaction.get(db.collection(KNOWLEDGE_NODES_COLLECTION).doc(id));
+  if (!snapshot.exists) return null;
+  return fromKnowledgeNodeDocument(id, snapshot.data());
+}
+
+/**
  * Design §E: "list children by parent" — the one hierarchy-browse query
  * `001B` itself needs (seed-time duplicate checks, ancestry resolution
  * callers). Filters out documents that fail to parse (fail closed, never

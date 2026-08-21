@@ -63,6 +63,7 @@ import { RandomBusinessCodeCandidateGenerator } from "../services/randomBusiness
 import type { BusinessCodeCandidateGenerator } from "../services/businessCodeGenerator";
 import type { BusinessCodeUniquenessPort } from "../services/businessCodeUniquenessPort";
 import type { TransactionWriter } from "../../permissions/service/authorizeAndExecute";
+import { validateBusinessClassificationReferences } from "../services/businessClassificationValidation";
 
 const BUSINESSES_COLLECTION = "businesses";
 const BRANCHES_COLLECTION = "businessBranches";
@@ -156,6 +157,16 @@ export async function bootstrapBusiness(
       // Reads only, up to MAX_BUSINESS_CODE_GENERATION_ATTEMPTS — no write is
       // issued in this transaction until a free candidate is found.
       const { businessCode } = await reserveBusinessCode({ generator, uniquenessPort });
+
+      // `ENG-P3-001C` Phase G/O: authoritative Commerce Knowledge reads,
+      // still read-only, still before any write in this transaction — so a
+      // rejection here leaves no partial Business state, and the read
+      // participates in the same atomic boundary as the writes below (no
+      // evaluate-then-write TOCTOU gap: both commit or both abort together).
+      await validateBusinessClassificationReferences(transaction, db, {
+        primaryCategoryId: request.primaryCategoryId,
+        businessTypeId: request.businessTypeId,
+      });
 
       const input = buildBootstrapBusinessInput(request, {
         ownerUserId: params.ownerUserId,

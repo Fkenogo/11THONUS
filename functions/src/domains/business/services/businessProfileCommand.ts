@@ -28,6 +28,7 @@ import { updateBusinessProfile, type UpdateBusinessProfileParams } from "../mode
 import { businessNotFoundError } from "../models/businessErrors";
 import { buildBusinessProfileUpdatedEvent } from "../events/businessEvents";
 import { readBusinessById, writeBusinessUpdate } from "../repositories/businessRepository";
+import { validateBusinessClassificationReferences } from "./businessClassificationValidation";
 
 const PERMISSION = "business.updateProfile";
 
@@ -90,6 +91,33 @@ export async function updateBusinessProfileCommand(
         if (!business) {
           throw businessNotFoundError(params.businessId);
         }
+
+        // `ENG-P3-001C` Phase H: only re-validate against Commerce Knowledge
+        // when the patch actually touches classification — an update that
+        // leaves both fields untouched never re-reads Commerce Knowledge
+        // (Phase I: an existing reference is never invalidated merely
+        // because it later retires). When it does, the *merged* resulting
+        // pair is validated together — the same merge `updateBusinessProfile`
+        // performs for these two fields — so a category change that leaves a
+        // stale, now-incompatible `businessTypeId` in place is rejected
+        // rather than silently persisted or silently cleared (no ungoverned
+        // auto-clear policy is invented here).
+        if ("primaryCategoryId" in params.patch || "businessTypeId" in params.patch) {
+          const nextPrimaryCategoryId =
+            params.patch.primaryCategoryId !== undefined
+              ? params.patch.primaryCategoryId
+              : business.primaryCategoryId;
+          const nextBusinessTypeId =
+            "businessTypeId" in params.patch
+              ? params.patch.businessTypeId
+              : business.businessTypeId;
+
+          await validateBusinessClassificationReferences(transaction, db, {
+            primaryCategoryId: nextPrimaryCategoryId,
+            businessTypeId: nextBusinessTypeId,
+          });
+        }
+
         return business;
       },
       apply: (writer, business) => {
