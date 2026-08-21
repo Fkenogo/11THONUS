@@ -338,6 +338,24 @@ export function invalidSeedManifestError(reason: string): CommerceKnowledgeDomai
   );
 }
 
+/** Design §F: a `KnowledgeTranslation` id that does not resolve to any persisted document. */
+export function knowledgeTranslationNotFoundError(id: string): CommerceKnowledgeDomainError {
+  return new CommerceKnowledgeDomainError(
+    "RESOURCE_NOT_FOUND",
+    `KnowledgeTranslation "${id}" does not exist.`,
+    [{ field: "id", code: "not_found", messageKey: "commerceKnowledge.translation.notFound" }],
+  );
+}
+
+/** Design §G: a `KnowledgeTag` id that does not resolve to any persisted document. */
+export function knowledgeTagNotFoundError(id: string): CommerceKnowledgeDomainError {
+  return new CommerceKnowledgeDomainError(
+    "RESOURCE_NOT_FOUND",
+    `KnowledgeTag "${id}" does not exist.`,
+    [{ field: "id", code: "not_found", messageKey: "commerceKnowledge.tag.notFound" }],
+  );
+}
+
 /** Design §F: composite `(entityType, entityId, languageCode)` translation uniqueness violated at the persistence boundary (should be structurally prevented by the deterministic id, this is the fail-closed backstop). */
 export function duplicateTranslationTupleError(
   entityType: string,
