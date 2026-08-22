@@ -29,7 +29,7 @@ import {
 } from "../repositories/businessRepository";
 import { readBusinessTermsAcceptance } from "../repositories/businessTermsAcceptanceRepository";
 import { resolveAuthorizedBusinessForRead } from "./businessCallerAuthority";
-import { getCurrentlyRequiredBusinessTermsVersion } from "../../../config/businessTermsConfig";
+import { getCurrentlyRequiredBusinessTermsVersion } from "../repositories/businessTermsConfigRepository";
 import type { Business } from "../models/business";
 import type { BusinessBranch } from "../models/businessBranch";
 import type { BusinessStatus } from "../models/businessStatus";
@@ -99,8 +99,17 @@ export type BusinessContext = {
   termsAcceptance: BusinessContextTermsAcceptance;
 };
 
-function toBranchDto(branch: BusinessBranch | null): BusinessContextBranch | null {
-  if (!branch) return null;
+/**
+ * `ENG-P3-002A` independent review correction (Phase K/L):
+ * `readDefaultBranchForBusiness` no longer returns `null` for a Business
+ * that exists at all — zero Branch documents is structural corruption and
+ * throws (fails closed) rather than resolving here as "not yet built."
+ * `branch` on `BusinessContext` is therefore always populated on success;
+ * the type stays nullable only so a caller reading the DTO shape does not
+ * need to special-case a theoretical future relaxation, but no code path
+ * in this module ever actually produces `null` today.
+ */
+function toBranchDto(branch: BusinessBranch): BusinessContextBranch {
   return {
     branchId: branch.id,
     displayName: branch.displayName,
@@ -123,7 +132,7 @@ async function resolveTermsAcceptanceProjection(
   businessId: string,
   ownerUserId: string,
 ): Promise<BusinessContextTermsAcceptance> {
-  const currentVersion = getCurrentlyRequiredBusinessTermsVersion();
+  const currentVersion = await getCurrentlyRequiredBusinessTermsVersion(db);
   if (!currentVersion) {
     return { accepted: false };
   }

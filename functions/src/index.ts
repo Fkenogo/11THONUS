@@ -86,6 +86,12 @@ import {
   listStaffMembershipsForBusiness,
 } from "./domains/permissions/service/staffTransportReadService";
 import { acceptBusinessTermsCommand } from "./domains/business/services/acceptBusinessTermsCommand";
+import { isInvitationRole } from "./domains/permissions/models/invitationRole";
+import { isInvitationDeliveryType } from "./domains/permissions/models/invitationDeliveryTarget";
+import {
+  isInvitationStatus,
+  type InvitationStatus,
+} from "./domains/permissions/models/invitationStatus";
 
 setGlobalOptions({ region: PLATFORM_REGION, maxInstances: 10 });
 
@@ -711,6 +717,26 @@ export const getBusinessContext = onCall(async (request) => {
   }
 });
 
+/**
+ * `ENG-P3-002A` independent review correction (Phase P). Previously,
+ * `statusFilter` was passed through as an arbitrary non-empty string,
+ * which the repository's equality filter would then silently match
+ * nothing against for garbage input. This parser now validates it against
+ * the closed `InvitationStatus` vocabulary at the transport boundary — a
+ * transport-layer contract violation, even though a bad value cannot
+ * elevate authority, is still worth rejecting explicitly rather than
+ * silently returning an empty list.
+ */
+function parseOptionalInvitationStatusFilter(value: unknown): InvitationStatus | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== "string" || !isInvitationStatus(value)) {
+    throw new HttpsError("invalid-argument", "staff_invitation_read_failed", {
+      field: "statusFilter",
+    });
+  }
+  return value;
+}
+
 function parseOptionalLanguageCode(value: unknown): string | undefined {
   if (value === undefined) return undefined;
   if (typeof value !== "string" || value.trim().length === 0) {
@@ -771,14 +797,30 @@ export const listBusinessTypesForCategory = onCall(async (request) => {
  * `status`, `id`, or any other authority-bearing field through an
  * unanticipated key, mirroring `parseCreateBusinessCommand`'s established
  * structural guarantee.
+ *
+ * `ENG-P3-002A` independent review correction (Phase T): `role` and
+ * `deliveryTarget.type` are now validated against their closed
+ * `InvitationRole`/`InvitationDeliveryType` vocabularies at this transport
+ * boundary — mirroring `parseReferenceType`'s established convention for
+ * transport-level closed-enum validation — rather than passing an
+ * arbitrary string through and relying on a downstream domain exception to
+ * catch it.
  */
 export function parseCreateStaffInvitationRequest(
   value: Record<string, unknown>,
 ): CreateStaffInvitationRequest {
   const businessId = parseBusinessId(value.businessId);
   const role = parseNonEmptyString(value.role);
+  if (!isInvitationRole(role)) {
+    throw new HttpsError("invalid-argument", "staff_invitation_command_failed", { field: "role" });
+  }
   const deliveryTargetRaw = (value.deliveryTarget ?? {}) as Record<string, unknown>;
   const deliveryType = parseNonEmptyString(deliveryTargetRaw.type);
+  if (!isInvitationDeliveryType(deliveryType)) {
+    throw new HttpsError("invalid-argument", "staff_invitation_command_failed", {
+      field: "deliveryTarget.type",
+    });
+  }
   const deliveryValue = parseNonEmptyString(deliveryTargetRaw.value);
   return {
     businessId,
@@ -862,8 +904,7 @@ export const listStaffInvitations = onCall(async (request) => {
       verifier: firebaseAdminTokenVerifier(),
     });
     const businessId = parseBusinessId(value.businessId);
-    const statusFilter =
-      value.statusFilter === undefined ? undefined : parseNonEmptyString(value.statusFilter);
+    const statusFilter = parseOptionalInvitationStatusFilter(value.statusFilter);
     return await listStaffInvitationsForBusiness(db, userId, businessId, statusFilter);
   } catch (error) {
     throw toHttpsError(error);

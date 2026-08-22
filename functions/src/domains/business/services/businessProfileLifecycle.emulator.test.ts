@@ -25,7 +25,10 @@ import {
   getKnowledgeNodeById,
   transitionKnowledgeNodeStatusPersisted,
 } from "../../commerceKnowledge/repositories/knowledgeNodeRepository";
-import { BUSINESS_TERMS_CONFIG_ENV_VAR } from "../../../config/businessTermsConfig";
+import {
+  BUSINESS_TERMS_CONFIG_COLLECTION,
+  BUSINESS_TERMS_CONFIG_DOCUMENT_ID,
+} from "../repositories/businessTermsConfigRepository";
 import {
   createBusinessTermsAcceptance,
   toBusinessTermsAcceptanceDocumentFields,
@@ -77,19 +80,11 @@ async function seedBusinessTermsAcceptance(
 const app = initializeApp({ projectId: "demo-11thonus" }, "businessProfileLifecycleEmulatorTest");
 const db = getFirestore(app);
 
-const ORIGINAL_TERMS_CONFIG_ENV = process.env[BUSINESS_TERMS_CONFIG_ENV_VAR];
-
 afterAll(async () => {
   await Promise.all(getApps().map((a) => deleteApp(a)));
-  if (ORIGINAL_TERMS_CONFIG_ENV === undefined) {
-    delete process.env[BUSINESS_TERMS_CONFIG_ENV_VAR];
-  } else {
-    process.env[BUSINESS_TERMS_CONFIG_ENV_VAR] = ORIGINAL_TERMS_CONFIG_ENV;
-  }
 });
 
 beforeAll(async () => {
-  process.env[BUSINESS_TERMS_CONFIG_ENV_VAR] = TEST_ONLY_TERMS_VERSION;
   if (!process.env["FIRESTORE_EMULATOR_HOST"]) {
     throw new Error(
       "FIRESTORE_EMULATOR_HOST is not set — this test requires the Firebase Emulator Suite. Run via `pnpm emulators:validate` or `pnpm test:emulator` inside `firebase emulators:exec`.",
@@ -123,6 +118,11 @@ beforeAll(async () => {
       updatedAt: new Date("2026-08-17T00:00:00.000Z"),
     });
   }
+
+  await db
+    .collection(BUSINESS_TERMS_CONFIG_COLLECTION)
+    .doc(BUSINESS_TERMS_CONFIG_DOCUMENT_ID)
+    .set({ currentVersion: TEST_ONLY_TERMS_VERSION });
 });
 
 beforeEach(async () => {

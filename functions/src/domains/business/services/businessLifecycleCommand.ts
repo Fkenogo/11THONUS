@@ -71,7 +71,7 @@ import {
 import { buildBusinessLifecycleChangedEvent } from "../events/businessEvents";
 import { readBusinessById, writeBusinessUpdate } from "../repositories/businessRepository";
 import { readBusinessTermsAcceptanceInTransaction } from "../repositories/businessTermsAcceptanceRepository";
-import { getCurrentlyRequiredBusinessTermsVersion } from "../../../config/businessTermsConfig";
+import { getCurrentlyRequiredBusinessTermsVersionInTransaction } from "../repositories/businessTermsConfigRepository";
 
 /**
  * `ENG-P3-002A` (design §37.4/§37.9/§40/§Phase U): the additive
@@ -97,8 +97,13 @@ async function assertCurrentBusinessTermsAccepted(
   transaction: Transaction,
   db: Firestore,
   business: Business,
+  testOnlyAfterTermsVersionReadHook?: () => Promise<void>,
 ): Promise<void> {
-  const currentTermsVersion = getCurrentlyRequiredBusinessTermsVersion();
+  const currentTermsVersion = await getCurrentlyRequiredBusinessTermsVersionInTransaction(
+    transaction,
+    db,
+    testOnlyAfterTermsVersionReadHook,
+  );
   if (!currentTermsVersion) {
     throw businessTermsConfigurationUnavailableError();
   }
@@ -122,6 +127,11 @@ export type TransitionBusinessLifecycleCommandParams = {
   correlationId: string;
   now: Date;
   newId: () => string;
+  /**
+   * Test-only interleaving hook for the real TOCTOU proof — never supplied
+   * by `index.ts`'s transport layer. See `businessTermsConfigRepository.ts`.
+   */
+  testOnlyAfterTermsVersionReadHook?: () => Promise<void>;
 };
 
 export type TransitionBusinessLifecycleResult = {
@@ -152,7 +162,12 @@ async function transitionBusinessLifecycle(
           throw businessNotFoundError(params.businessId);
         }
         if (options?.requireCurrentBusinessTermsAccepted) {
-          await assertCurrentBusinessTermsAccepted(transaction, db, business);
+          await assertCurrentBusinessTermsAccepted(
+            transaction,
+            db,
+            business,
+            params.testOnlyAfterTermsVersionReadHook,
+          );
         }
         return business;
       },

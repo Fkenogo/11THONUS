@@ -278,10 +278,27 @@ export async function readBusinessBranchForBusiness(
  * in the same transaction, and nothing since diverges them). A single
  * equality-filter query — automatically indexed, no composite index
  * required (mirrors `getBusinessMembershipByUserAndBusiness`'s own
- * "equality-only queries need no manual index" precedent). Filters out any
- * document that fails to parse (fail closed, never surfaces a malformed
- * Business silently as if it were a well-formed one — mirrors
- * `listKnowledgeNodeChildren`'s established precedent).
+ * "equality-only queries need no manual index" precedent).
+ *
+ * ENG-P3-002A independent review correction, Phase M: the original
+ * implementation silently dropped any document that failed to parse,
+ * citing listKnowledgeNodeChildren's precedent -- that precedent does not
+ * transfer here. listKnowledgeNodeChildren backs a customer-facing
+ * selection list, where hiding one corrupt taxonomy option is genuinely
+ * fail-safe (the customer just does not see that option; no caller draws
+ * an "eligibility"-shaped conclusion from its absence). This function
+ * backs getOwnedBusinesses -- an authority/hydration query the onboarding
+ * frontend uses to decide "does this owner already have a Business."
+ * Silently omitting a malformed-but-real owned Business would make it
+ * invisible to that decision, and the frontend would incorrectly conclude
+ * the owner has none, offering "create a new Business" to an owner who
+ * already has one (corrupted, not absent). That is not a safe silent
+ * omission -- it actively produces an unsafe conclusion. This function now
+ * fails the whole read closed if any of the caller's own ownerUserId
+ * documents fails to parse, surfacing the corruption rather than hiding
+ * it -- matching the reasoning ENG-P3-001B's independent review already
+ * established for distinguishing "silent omission is fine" from "silent
+ * omission hides integrity-relevant state."
  */
 export async function listBusinessesByOwner(
   db: Firestore,
@@ -294,44 +311,79 @@ export async function listBusinessesByOwner(
   const businesses: Business[] = [];
   for (const doc of snapshot.docs) {
     const business = fromBusinessDocument(doc.id, doc.data());
-    if (business) businesses.push(business);
+    if (!business) {
+      throw new BusinessDomainError(
+        "VALIDATION_FAILED",
+        `Business document "${doc.id}" owned by "${ownerUserId}" is malformed -- cannot safely determine this owner's existing Business set.`,
+      );
+    }
+    businesses.push(business);
   }
   return businesses;
 }
 
 /**
- * `ENG-P3-002A` addendum (§9, §37.7): the governed single default Branch
- * for a Business, read outside a caller-owned transaction (for the
- * read-only `getBusinessContext` hydration path, which does not need
- * write-capable transaction access). Fails closed
- * (`multipleDefaultBranchesError`) if more than one `businessBranches`
- * document exists for this `businessId` — the MVP single-branch invariant
- * (`ENG-P2-002-DESIGN-001` FD-1) is a structural expectation this read
- * verifies rather than silently assumes. Returns `null` (not an error) if
- * zero Branch documents exist yet — a `draft` Business created through the
- * atomic bootstrap transaction always has exactly one Branch the instant
- * it exists, so "zero Branch" here would itself indicate a structurally
- * incomplete Business (surfaced by the caller, not this reader, per Phase G).
+ * `ENG-P3-002A` addendum (§9, §37.7), corrected by the `ENG-P3-002A`
+ * independent review (Phase K/L — priority integrity finding).
+ *
+ * **The invariant, read directly from the actual bootstrap code
+ * (`bootstrapBusiness` above):** `businesses/{id}` + `businessBranches/{id}`
+ * (+ the initial Owner membership + the code reservation) are all written
+ * inside exactly one Firestore transaction. There is no persisted
+ * intermediate state where a Business exists with zero Branch documents —
+ * a `draft` Business has exactly one Branch document the instant it
+ * exists, and nothing in this codebase ever deletes a Branch. Therefore a
+ * persisted Business with **zero** Branch documents is not a normal,
+ * resumable "Branch profile not yet completed" onboarding state — it can
+ * only mean structural corruption (a bug, a manual data mutation, a
+ * partial/failed migration). The legitimate "Branch profile incomplete"
+ * state is a Branch document that *exists*, with blank/default optional
+ * fields (`address`, etc.) — a different, non-corrupted case this function
+ * must not conflate with "no Branch document at all."
+ *
+ * **The original implementation's defect:** it returned `null` for zero
+ * Branch documents — structurally identical to "not yet built," which
+ * `getBusinessContext`/the frontend's resume logic could only read as
+ * "Branch profile not yet completed," silently masking real structural
+ * corruption as a normal mid-onboarding state.
+ *
+ * **The correction:** zero Branch documents now fails closed identically
+ * to the existing multi-Branch case (both are violations of the same
+ * governed single-Branch invariant, `ENG-P2-002-DESIGN-001` FD-1) — this
+ * function now always returns an actual `BusinessBranch` on success, never
+ * `null`, for a Business that exists at all. A malformed Branch document
+ * (fails `fromBusinessBranchDocument` parsing, or belongs to a different
+ * `businessId`) fails closed the same way.
  */
 export async function readDefaultBranchForBusiness(
   db: Firestore,
   businessId: string,
-): Promise<BusinessBranch | null> {
+): Promise<BusinessBranch> {
   const snapshot = await db
     .collection(BRANCHES_COLLECTION)
     .where("businessId", "==", businessId)
     .limit(2)
     .get();
-  if (snapshot.empty) return null;
+  if (snapshot.empty) {
+    throw new BusinessDomainError(
+      "VALIDATION_FAILED",
+      `Business "${businessId}" has no Branch document — the single-branch bootstrap invariant is violated (structural corruption, not an incomplete-profile state).`,
+    );
+  }
   if (snapshot.size > 1) {
     throw new BusinessDomainError(
       "VALIDATION_FAILED",
       `Business "${businessId}" has more than one Branch document — the single-branch MVP invariant is violated.`,
     );
   }
-  const doc = snapshot.docs[0];
+  const doc = snapshot.docs[0]!;
   const branch = fromBusinessBranchDocument(doc.id, doc.data());
-  if (!branch || branch.businessId !== businessId) return null;
+  if (!branch || branch.businessId !== businessId) {
+    throw new BusinessDomainError(
+      "VALIDATION_FAILED",
+      `Business "${businessId}"'s Branch document is malformed or does not belong to this Business.`,
+    );
+  }
   return branch;
 }
 

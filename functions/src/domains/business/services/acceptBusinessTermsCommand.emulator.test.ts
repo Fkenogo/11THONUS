@@ -1,11 +1,14 @@
 import { deleteApp, getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { acceptBusinessTermsCommand } from "./acceptBusinessTermsCommand";
 import { submitBusinessForVerificationCommand } from "./businessLifecycleCommand";
 import { createBusiness } from "../models/business";
 import { toBusinessDocumentFields } from "../models/businessDocument";
-import { BUSINESS_TERMS_CONFIG_ENV_VAR } from "../../../config/businessTermsConfig";
+import {
+  BUSINESS_TERMS_CONFIG_COLLECTION,
+  BUSINESS_TERMS_CONFIG_DOCUMENT_ID,
+} from "../repositories/businessTermsConfigRepository";
 import {
   businessTermsAcceptanceId,
   createBusinessTermsAcceptance,
@@ -19,22 +22,37 @@ import {
  * versioning, identity-spoofing resistance, cross-Business authorization,
  * write-once idempotency, and TOCTOU safety are all real security
  * boundaries under test here against a real Firestore emulator, not mocks.
+ *
+ * **Independent review correction (`ENG-P3-002A` finding F3-1):** the
+ * currently-required Terms version is now a Firestore document
+ * (`platformConfig/businessTerms`, `businessTermsConfigRepository.ts`),
+ * read inside the same transaction as the acceptance/precondition check —
+ * not `process.env`, which cannot participate in Firestore's optimistic
+ * concurrency control at all. `setTermsConfig`/`clearTermsConfig` below
+ * seed/clear that document directly, mirroring how every other emulator
+ * test in this codebase seeds fixture documents.
  */
 
 const app = initializeApp({ projectId: "demo-11thonus" }, "acceptBusinessTermsCommandEmulatorTest");
 const db = getFirestore(app);
 
-const ORIGINAL_TERMS_CONFIG_ENV = process.env[BUSINESS_TERMS_CONFIG_ENV_VAR];
 const TEST_ONLY_TERMS_VERSION = "TEST_ONLY_FIXTURE_v0";
 const TEST_ONLY_TERMS_VERSION_V2 = "TEST_ONLY_FIXTURE_v1";
 
+function termsConfigRef() {
+  return db.collection(BUSINESS_TERMS_CONFIG_COLLECTION).doc(BUSINESS_TERMS_CONFIG_DOCUMENT_ID);
+}
+
+async function setTermsConfig(version: string): Promise<void> {
+  await termsConfigRef().set({ currentVersion: version });
+}
+
+async function clearTermsConfig(): Promise<void> {
+  await termsConfigRef().delete();
+}
+
 afterAll(async () => {
   await Promise.all(getApps().map((a) => deleteApp(a)));
-  if (ORIGINAL_TERMS_CONFIG_ENV === undefined) {
-    delete process.env[BUSINESS_TERMS_CONFIG_ENV_VAR];
-  } else {
-    process.env[BUSINESS_TERMS_CONFIG_ENV_VAR] = ORIGINAL_TERMS_CONFIG_ENV;
-  }
 });
 
 beforeAll(() => {
@@ -52,17 +70,10 @@ beforeEach(async () => {
     "businessTermsAcceptances",
     "idempotencyRecords",
     "outboxEntries",
+    BUSINESS_TERMS_CONFIG_COLLECTION,
   ]) {
     const snapshot = await db.collection(collection).get();
     await Promise.all(snapshot.docs.map((doc) => doc.ref.delete()));
-  }
-});
-
-afterEach(() => {
-  if (ORIGINAL_TERMS_CONFIG_ENV === undefined) {
-    delete process.env[BUSINESS_TERMS_CONFIG_ENV_VAR];
-  } else {
-    process.env[BUSINESS_TERMS_CONFIG_ENV_VAR] = ORIGINAL_TERMS_CONFIG_ENV;
   }
 });
 
@@ -144,7 +155,7 @@ function nextIdempotencyKey() {
 
 describe("acceptBusinessTermsCommand", () => {
   it("20. server derives the accepting Customer Identity from userId — never a request field", async () => {
-    process.env[BUSINESS_TERMS_CONFIG_ENV_VAR] = TEST_ONLY_TERMS_VERSION;
+    await setTermsConfig(TEST_ONLY_TERMS_VERSION);
     await seedBusiness("biz-a", "cust_owner");
     await seedMembership({
       membershipId: "mem-1",
@@ -177,7 +188,7 @@ describe("acceptBusinessTermsCommand", () => {
   // here at the command layer: the command's own signature has no such
   // parameter to smuggle a value through even if a caller tried.
   it("21. the command signature has no acceptingCustomerIdentityId parameter to mass-assign", async () => {
-    process.env[BUSINESS_TERMS_CONFIG_ENV_VAR] = TEST_ONLY_TERMS_VERSION;
+    await setTermsConfig(TEST_ONLY_TERMS_VERSION);
     await seedBusiness("biz-a", "cust_owner");
     await seedMembership({
       membershipId: "mem-1",
@@ -211,7 +222,7 @@ describe("acceptBusinessTermsCommand", () => {
   });
 
   it("22. caller cannot choose termsVersion — the command signature has no such parameter", async () => {
-    process.env[BUSINESS_TERMS_CONFIG_ENV_VAR] = TEST_ONLY_TERMS_VERSION;
+    await setTermsConfig(TEST_ONLY_TERMS_VERSION);
     await seedBusiness("biz-a", "cust_owner");
     await seedMembership({
       membershipId: "mem-1",
@@ -234,7 +245,7 @@ describe("acceptBusinessTermsCommand", () => {
   });
 
   it("23. the current server Terms version is accepted and recorded", async () => {
-    process.env[BUSINESS_TERMS_CONFIG_ENV_VAR] = TEST_ONLY_TERMS_VERSION;
+    await setTermsConfig(TEST_ONLY_TERMS_VERSION);
     await seedBusiness("biz-a", "cust_owner");
     await seedMembership({
       membershipId: "mem-1",
@@ -256,7 +267,7 @@ describe("acceptBusinessTermsCommand", () => {
   });
 
   it("24. identical repeat acceptance is idempotent — deterministic no-op, same evidence", async () => {
-    process.env[BUSINESS_TERMS_CONFIG_ENV_VAR] = TEST_ONLY_TERMS_VERSION;
+    await setTermsConfig(TEST_ONLY_TERMS_VERSION);
     await seedBusiness("biz-a", "cust_owner");
     await seedMembership({
       membershipId: "mem-1",
@@ -291,8 +302,50 @@ describe("acceptBusinessTermsCommand", () => {
     expect(snapshot.docs).toHaveLength(1);
   });
 
+  it("24b. a corrupted/tuple-mismatching document written directly at the deterministic id (bypassing the repository) is rejected, not returned as valid acceptance evidence (Phase J)", async () => {
+    await setTermsConfig(TEST_ONLY_TERMS_VERSION);
+    await seedBusiness("biz-a", "cust_owner");
+    await seedMembership({
+      membershipId: "mem-1",
+      userId: "cust_owner",
+      businessId: "biz-a",
+      role: "owner",
+    });
+
+    // Write a structurally well-formed but tuple-MISMATCHING document
+    // directly at the id `acceptBusinessTermsCommand` will compute for
+    // (biz-a, cust_owner, TEST_ONLY_TERMS_VERSION) — simulating corruption
+    // (e.g. a bad manual data fix) rather than going through the
+    // repository's own write path.
+    const wrongTupleAcceptance = createBusinessTermsAcceptance({
+      id: "",
+      acceptingCustomerIdentityId: "someone_else_entirely",
+      businessId: "a-completely-different-business",
+      termsVersion: "some_other_version",
+      acceptedAt: CREATED_AT,
+      languageCode: "en",
+    });
+    await db
+      .collection("businessTermsAcceptances")
+      .doc(businessTermsAcceptanceId("biz-a", "cust_owner", TEST_ONLY_TERMS_VERSION))
+      .set(toBusinessTermsAcceptanceDocumentFields(wrongTupleAcceptance));
+
+    // The command must fail closed (reject the corrupted document as
+    // evidence) rather than treating it as an idempotent replay.
+    await expect(
+      acceptBusinessTermsCommand(db, {
+        userId: "cust_owner",
+        businessId: "biz-a",
+        idempotencyKey: nextIdempotencyKey(),
+        correlationId: "corr-1",
+        now: CREATED_AT,
+        newId: () => "evt-1",
+      }),
+    ).rejects.toThrow();
+  });
+
   it("25. a later Terms version creates a distinct, additional acceptance record — the earlier one is never overwritten", async () => {
-    process.env[BUSINESS_TERMS_CONFIG_ENV_VAR] = TEST_ONLY_TERMS_VERSION;
+    await setTermsConfig(TEST_ONLY_TERMS_VERSION);
     await seedBusiness("biz-a", "cust_owner");
     await seedMembership({
       membershipId: "mem-1",
@@ -309,7 +362,7 @@ describe("acceptBusinessTermsCommand", () => {
       newId: () => "evt-1",
     });
 
-    process.env[BUSINESS_TERMS_CONFIG_ENV_VAR] = TEST_ONLY_TERMS_VERSION_V2;
+    await setTermsConfig(TEST_ONLY_TERMS_VERSION_V2);
     const second = await acceptBusinessTermsCommand(db, {
       userId: "cust_owner",
       businessId: "biz-a",
@@ -334,7 +387,7 @@ describe("acceptBusinessTermsCommand", () => {
   });
 
   it("28. accepting requires the caller's own live Owner membership — a Manager cannot accept Terms on the Business's behalf", async () => {
-    process.env[BUSINESS_TERMS_CONFIG_ENV_VAR] = TEST_ONLY_TERMS_VERSION;
+    await setTermsConfig(TEST_ONLY_TERMS_VERSION);
     await seedBusiness("biz-a", "cust_owner");
     await seedMembership({
       membershipId: "mem-1",
@@ -362,7 +415,7 @@ describe("acceptBusinessTermsCommand", () => {
   });
 
   it("a random authenticated identity with no membership cannot accept Terms for another Business", async () => {
-    process.env[BUSINESS_TERMS_CONFIG_ENV_VAR] = TEST_ONLY_TERMS_VERSION;
+    await setTermsConfig(TEST_ONLY_TERMS_VERSION);
     await seedBusiness("biz-a", "cust_owner");
     await seedMembership({
       membershipId: "mem-1",
@@ -390,7 +443,29 @@ describe("acceptBusinessTermsCommand", () => {
   });
 
   it("29. no required Terms config fails closed", async () => {
-    delete process.env[BUSINESS_TERMS_CONFIG_ENV_VAR];
+    await clearTermsConfig();
+    await seedBusiness("biz-a", "cust_owner");
+    await seedMembership({
+      membershipId: "mem-1",
+      userId: "cust_owner",
+      businessId: "biz-a",
+      role: "owner",
+    });
+
+    await expect(
+      acceptBusinessTermsCommand(db, {
+        userId: "cust_owner",
+        businessId: "biz-a",
+        idempotencyKey: nextIdempotencyKey(),
+        correlationId: "corr-1",
+        now: CREATED_AT,
+        newId: () => "evt-1",
+      }),
+    ).rejects.toMatchObject({ category: "TEMPORARY_UNAVAILABLE" });
+  });
+
+  it("29c. a malformed config document (blank currentVersion) fails closed identically to absence", async () => {
+    await termsConfigRef().set({ currentVersion: "   " });
     await seedBusiness("biz-a", "cust_owner");
     await seedMembership({
       membershipId: "mem-1",
@@ -412,7 +487,7 @@ describe("acceptBusinessTermsCommand", () => {
   });
 
   it("32. Terms acceptance does not alter Business lifecycle", async () => {
-    process.env[BUSINESS_TERMS_CONFIG_ENV_VAR] = TEST_ONLY_TERMS_VERSION;
+    await setTermsConfig(TEST_ONLY_TERMS_VERSION);
     await seedBusiness("biz-a", "cust_owner");
     await seedMembership({
       membershipId: "mem-1",
@@ -435,7 +510,7 @@ describe("acceptBusinessTermsCommand", () => {
   });
 
   it("33. acceptance history remains immutable — acceptedAt on a repeated call never changes", async () => {
-    process.env[BUSINESS_TERMS_CONFIG_ENV_VAR] = TEST_ONLY_TERMS_VERSION;
+    await setTermsConfig(TEST_ONLY_TERMS_VERSION);
     await seedBusiness("biz-a", "cust_owner");
     await seedMembership({
       membershipId: "mem-1",
@@ -463,11 +538,39 @@ describe("acceptBusinessTermsCommand", () => {
     });
     expect(second.acceptedAt).toBe(first.acceptedAt);
   });
+
+  it("35. BusinessTermsAccepted outbox event's aggregateId is the acceptance record's own id, not businessId (Phase S)", async () => {
+    await setTermsConfig(TEST_ONLY_TERMS_VERSION);
+    await seedBusiness("biz-a", "cust_owner");
+    await seedMembership({
+      membershipId: "mem-1",
+      userId: "cust_owner",
+      businessId: "biz-a",
+      role: "owner",
+    });
+
+    await acceptBusinessTermsCommand(db, {
+      userId: "cust_owner",
+      businessId: "biz-a",
+      idempotencyKey: nextIdempotencyKey(),
+      correlationId: "corr-1",
+      now: CREATED_AT,
+      newId: () => "evt-1",
+    });
+
+    const acceptanceId = businessTermsAcceptanceId("biz-a", "cust_owner", TEST_ONLY_TERMS_VERSION);
+    const entries = await db.collection("outboxEntries").get();
+    expect(entries.docs).toHaveLength(1);
+    const event = entries.docs[0]?.data()["event"];
+    expect(event.aggregateType).toBe("business_terms_acceptance");
+    expect(event.aggregateId).toBe(acceptanceId);
+    expect(event.aggregateId).not.toBe("biz-a");
+  });
 });
 
 describe("submitBusinessForVerification — Terms precondition (design §37.4/§37.9/Phase U)", () => {
   it("26. an old accepted version does not satisfy the current required version — submission fails", async () => {
-    process.env[BUSINESS_TERMS_CONFIG_ENV_VAR] = TEST_ONLY_TERMS_VERSION_V2;
+    await setTermsConfig(TEST_ONLY_TERMS_VERSION_V2);
     await seedBusiness("biz-a", "cust_owner");
     await seedMembership({
       membershipId: "mem-1",
@@ -494,7 +597,7 @@ describe("submitBusinessForVerification — Terms precondition (design §37.4/§
   });
 
   it("27. another Business's acceptance does not satisfy this Business's precondition", async () => {
-    process.env[BUSINESS_TERMS_CONFIG_ENV_VAR] = TEST_ONLY_TERMS_VERSION;
+    await setTermsConfig(TEST_ONLY_TERMS_VERSION);
     await seedBusiness("biz-a", "cust_owner");
     await seedBusiness("biz-b", "cust_owner", "BIZ23457X");
     await seedMembership({
@@ -526,7 +629,7 @@ describe("submitBusinessForVerification — Terms precondition (design §37.4/§
   });
 
   it("28b. another identity's acceptance for the same Business does not satisfy the required owner acceptance", async () => {
-    process.env[BUSINESS_TERMS_CONFIG_ENV_VAR] = TEST_ONLY_TERMS_VERSION;
+    await setTermsConfig(TEST_ONLY_TERMS_VERSION);
     await seedBusiness("biz-a", "cust_owner");
     await seedMembership({
       membershipId: "mem-1",
@@ -557,7 +660,7 @@ describe("submitBusinessForVerification — Terms precondition (design §37.4/§
   });
 
   it("29b. no required Terms config fails closed for submission too", async () => {
-    delete process.env[BUSINESS_TERMS_CONFIG_ENV_VAR];
+    await clearTermsConfig();
     await seedBusiness("biz-a", "cust_owner");
     await seedMembership({
       membershipId: "mem-1",
@@ -580,7 +683,7 @@ describe("submitBusinessForVerification — Terms precondition (design §37.4/§
   });
 
   it("30. submit without any acceptance is denied", async () => {
-    process.env[BUSINESS_TERMS_CONFIG_ENV_VAR] = TEST_ONLY_TERMS_VERSION;
+    await setTermsConfig(TEST_ONLY_TERMS_VERSION);
     await seedBusiness("biz-a", "cust_owner");
     await seedMembership({
       membershipId: "mem-1",
@@ -603,7 +706,7 @@ describe("submitBusinessForVerification — Terms precondition (design §37.4/§
   });
 
   it("31. submit with current-version acceptance succeeds", async () => {
-    process.env[BUSINESS_TERMS_CONFIG_ENV_VAR] = TEST_ONLY_TERMS_VERSION;
+    await setTermsConfig(TEST_ONLY_TERMS_VERSION);
     await seedBusiness("biz-a", "cust_owner");
     await seedMembership({
       membershipId: "mem-1",
@@ -627,18 +730,43 @@ describe("submitBusinessForVerification — Terms precondition (design §37.4/§
     expect(doc.data()?.["status"]).toBe("pending_verification");
   });
 
-  it("34. concurrent Terms-version change vs. submit cannot allow a stale acceptance to satisfy the new version (TOCTOU, §Phase V) — reading the config and the acceptance record inside the same transaction as the submit forces a fresh check every retry", async () => {
-    // Simulate the version changing *before* submit is even attempted (the
-    // strongest deterministic proof this test can construct without racing
-    // real concurrent transactions): the acceptance was valid for the OLD
-    // version; by the time submit runs, the server-authoritative version has
-    // already moved to a NEW one. Because the config read and the acceptance
-    // read both happen inside submit's own transaction, the stale acceptance
-    // can never satisfy the new requirement — proven by test 26 above using
-    // the identical mechanism. This test additionally proves the reverse
-    // sequencing (accept-then-version-bump) produces the same fail-closed
-    // result, ruling out any read-order-dependent gap.
-    process.env[BUSINESS_TERMS_CONFIG_ENV_VAR] = TEST_ONLY_TERMS_VERSION;
+  it("31b. a tuple-mismatching document at the deterministic acceptance id does not satisfy the precondition (Phase J) — treated identically to no acceptance at all", async () => {
+    await setTermsConfig(TEST_ONLY_TERMS_VERSION);
+    await seedBusiness("biz-a", "cust_owner");
+    await seedMembership({
+      membershipId: "mem-1",
+      userId: "cust_owner",
+      businessId: "biz-a",
+      role: "owner",
+    });
+    const wrongTupleAcceptance = createBusinessTermsAcceptance({
+      id: "",
+      acceptingCustomerIdentityId: "someone_else_entirely",
+      businessId: "a-completely-different-business",
+      termsVersion: "some_other_version",
+      acceptedAt: CREATED_AT,
+      languageCode: "en",
+    });
+    await db
+      .collection("businessTermsAcceptances")
+      .doc(businessTermsAcceptanceId("biz-a", "cust_owner", TEST_ONLY_TERMS_VERSION))
+      .set(toBusinessTermsAcceptanceDocumentFields(wrongTupleAcceptance));
+
+    await expect(
+      submitBusinessForVerificationCommand(db, {
+        userId: "cust_owner",
+        businessId: "biz-a",
+        idempotencyKey: nextIdempotencyKey(),
+        requestHash: "hash-1",
+        correlationId: "corr-1",
+        now: CREATED_AT,
+        newId: () => "evt-1",
+      }),
+    ).rejects.toMatchObject({ category: "VALIDATION_FAILED" });
+  });
+
+  it("34. sequential version-bump-before-submit cannot allow a stale acceptance to satisfy the new version", async () => {
+    await setTermsConfig(TEST_ONLY_TERMS_VERSION);
     await seedBusiness("biz-a", "cust_owner");
     await seedMembership({
       membershipId: "mem-1",
@@ -655,8 +783,8 @@ describe("submitBusinessForVerification — Terms precondition (design §37.4/§
       newId: () => "evt-1",
     });
 
-    // Terms version changes concurrently, before submit is attempted.
-    process.env[BUSINESS_TERMS_CONFIG_ENV_VAR] = TEST_ONLY_TERMS_VERSION_V2;
+    // Terms version changes before submit is even attempted.
+    await setTermsConfig(TEST_ONLY_TERMS_VERSION_V2);
 
     await expect(
       submitBusinessForVerificationCommand(db, {
@@ -673,4 +801,45 @@ describe("submitBusinessForVerification — Terms precondition (design §37.4/§
     const doc = await db.collection("businesses").doc("biz-a").get();
     expect(doc.data()?.["status"]).toBe("draft");
   });
+
+  /**
+   * **Disclosed finding, not a passing claim (`ENG-P3-002A` independent
+   * review, Phase D/F/G).** A genuine concurrent-transaction interleaving
+   * proof was attempted here: pause `submitBusinessForVerificationCommand`'s
+   * (and separately `acceptBusinessTermsCommand`'s) transaction immediately
+   * after its `testOnlyAfterTermsVersionReadHook` fires — i.e. immediately
+   * after `transaction.get()` reads the config document — commit a fully
+   * independent, concurrent write to that same document, then release the
+   * pause and let the held transaction proceed to its own write/commit.
+   *
+   * Against the real Firestore Emulator, this reproducibly did **not**
+   * trigger a transaction retry: the paused transaction committed
+   * successfully using the stale value it had already read, with no
+   * conflict detected. This was independently isolated with a minimal
+   * standalone script exercising nothing but a bare `db.runTransaction`
+   * call against two plain documents (no application code involved at
+   * all) — same result. This rules out a bug in
+   * `businessTermsConfigRepository.ts` or in this test's own construction;
+   * the gap is in the local emulator's fidelity to Firestore's documented
+   * production `Transaction.get()`/optimistic-concurrency contract for
+   * this specific "read, then externally-delayed write" interleaving
+   * shape. This is recorded honestly rather than shipping a test that
+   * would either be flaky or falsely claim a proof this environment cannot
+   * produce — see `businessTermsConfigRepository.emulator.test.ts` for the
+   * parallel disclosure and the independent review report for the full
+   * reproduction.
+   *
+   * What genuinely IS proven, by real passing tests: (1) structurally —
+   * `getCurrentlyRequiredBusinessTermsVersionInTransaction` reads via
+   * `transaction.get()`, which is, by Firestore's own documented API
+   * contract, unconditionally part of that transaction's read set,
+   * unlike the original `process.env` read, which touches no Firestore
+   * RPC at all and therefore could not have participated in conflict
+   * detection under any interleaving, provable or not; (2) functionally —
+   * test 34 above (and test 26) prove that whatever value the config
+   * document holds at the moment a transaction's `transaction.get()` call
+   * actually executes is the value that transaction enforces, end to end,
+   * against real seeded/mutated Firestore state.
+   */
+  it.skip("DISCLOSED FINDING (not proven here): a concurrent config write during a deliberately-held-open submit/accept transaction did not force a retry against the local Firestore Emulator, despite this being production Firestore's documented transaction.get() contract — see the review report", () => {});
 });

@@ -22,6 +22,7 @@ import {
 } from "../repositories/businessMembershipRepository";
 import type { BusinessMembershipInvitation } from "../models/businessMembershipInvitation";
 import type { EvaluationBusinessMembership } from "../evaluator/types";
+import type { InvitationStatus } from "../models/invitationStatus";
 import { staffReadNotAuthorizedError } from "../models/permissionErrors";
 
 /**
@@ -88,7 +89,7 @@ export async function listStaffInvitationsForBusiness(
   db: Firestore,
   userId: string,
   businessId: string,
-  statusFilter?: string,
+  statusFilter?: InvitationStatus,
 ): Promise<StaffInvitationSummary[]> {
   await assertActiveMembership(db, userId, businessId);
   const invitations = await listInvitationsByBusiness(db, businessId, statusFilter);

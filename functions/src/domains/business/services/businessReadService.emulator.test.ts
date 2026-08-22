@@ -198,7 +198,7 @@ describe("getBusinessContext", () => {
     });
   });
 
-  it("4. default Branch read — a Business with no Branch yet returns branch: null (not an error)", async () => {
+  it("4. a Business with zero Branch documents fails closed as structural corruption (Phase K, ENG-P3-002A independent review correction) — the atomic ENG-P2-002B bootstrap always creates exactly one Branch, so zero Branch can only mean corruption, never 'not yet built'", async () => {
     await seedBusiness("biz-a", "cust_owner");
     await seedMembership({
       membershipId: "mem-1",
@@ -207,8 +207,43 @@ describe("getBusinessContext", () => {
       role: "owner",
     });
 
+    await expect(getBusinessContext(db, "cust_owner", "biz-a")).rejects.toMatchObject({
+      category: "VALIDATION_FAILED",
+    });
+  });
+
+  it("4b. a Branch document that EXISTS with blank/default optional fields is the legitimate 'profile incomplete' state — distinct from a missing Branch document, and must not fail closed", async () => {
+    await seedBusiness("biz-a", "cust_owner");
+    await seedBranch("biz-a", "branch-1"); // createBusinessBranch's own defaults leave `address` unset
+    await seedMembership({
+      membershipId: "mem-1",
+      userId: "cust_owner",
+      businessId: "biz-a",
+      role: "owner",
+    });
+
     const context = await getBusinessContext(db, "cust_owner", "biz-a");
-    expect(context.branch).toBeNull();
+    expect(context.branch).not.toBeNull();
+    expect(context.branch?.branchId).toBe("branch-1");
+    expect(context.branch?.address).toBeUndefined();
+  });
+
+  it("4c. a malformed Branch document (fails structural parsing) fails closed identically to a missing Branch", async () => {
+    await seedBusiness("biz-a", "cust_owner");
+    await db.collection("businessBranches").doc("branch-bad").set({
+      businessId: "biz-a",
+      // missing required fields (displayName/countryCode/city/createdAt/schemaVersion) — fails fromBusinessBranchDocument parsing
+    });
+    await seedMembership({
+      membershipId: "mem-1",
+      userId: "cust_owner",
+      businessId: "biz-a",
+      role: "owner",
+    });
+
+    await expect(getBusinessContext(db, "cust_owner", "biz-a")).rejects.toMatchObject({
+      category: "VALIDATION_FAILED",
+    });
   });
 
   it("5. multiple Branch documents for one Business fail closed", async () => {
@@ -235,6 +270,7 @@ describe("getBusinessContext", () => {
 
   it("a Manager/Staff member (not just the Owner) may also read the Business context — any active membership grants read authority (§21)", async () => {
     await seedBusiness("biz-a", "cust_owner");
+    await seedBranch("biz-a", "branch-1");
     await seedMembership({
       membershipId: "mem-1",
       userId: "cust_owner",

@@ -34,6 +34,52 @@ describe("businessTermsAcceptanceId", () => {
     const b = businessTermsAcceptanceId("biz_1", "cust_2", "TEST_v1");
     expect(a).not.toBe(b);
   });
+
+  /**
+   * `ENG-P3-002A` independent review, Phase I — adversarial collision
+   * proof. `termsVersion` in particular is ungoverned, operator-supplied
+   * free text (`businessTermsConfigRepository.ts` has no charset
+   * restriction on it) — an underscore, or any other character, can appear
+   * in any of the three components. Raw `"_"` concatenation would collide
+   * here; the length-prefixed encoding must not.
+   */
+  it("does not collide when a component boundary could be reinterpreted around an underscore — (a_b, c, d) vs (a, b_c, d)", () => {
+    const first = businessTermsAcceptanceId("a_b", "c", "d");
+    const second = businessTermsAcceptanceId("a", "b_c", "d");
+    expect(first).not.toBe(second);
+  });
+
+  it("does not collide across many adversarially-crafted underscore-shifted triples", () => {
+    const triples: Array<[string, string, string]> = [
+      ["biz", "cust_1", "v1"],
+      ["biz_cust", "1", "v1"],
+      ["biz", "cust", "1_v1"],
+      ["biz_cust_1", "v1", "x"],
+    ];
+    const ids = triples.map(([a, b, c]) => businessTermsAcceptanceId(a, b, c));
+    // Every distinct triple produced a distinct id.
+    expect(new Set(ids).size).toBe(triples.length);
+  });
+
+  it("rejects a component containing '/' — never silently corrupts the Firestore document path", () => {
+    expect(() => businessTermsAcceptanceId("biz/evil", "cust_1", "v1")).toThrow();
+    expect(() => businessTermsAcceptanceId("biz_1", "cust/evil", "v1")).toThrow();
+    expect(() => businessTermsAcceptanceId("biz_1", "cust_1", "v1/evil")).toThrow();
+  });
+
+  it("rejects an id that would exceed Firestore's 1500-byte document-id limit — fails closed, never silently truncates", () => {
+    const huge = "x".repeat(2000);
+    expect(() => businessTermsAcceptanceId("biz_1", "cust_1", huge)).toThrow();
+  });
+
+  it("a future Terms-version naming convention (e.g. containing digits, dots, or underscores) still cannot create an ambiguous composite id", () => {
+    const a = businessTermsAcceptanceId("biz_1", "cust_1", "2026.08.21_v1");
+    const b = businessTermsAcceptanceId("biz_1", "cust_1", "2026.08.21_v2");
+    expect(a).not.toBe(b);
+    const c = businessTermsAcceptanceId("biz_1", "cust_1", "10.value");
+    const d = businessTermsAcceptanceId("biz_1", "cust_1", "1");
+    expect(c).not.toBe(d);
+  });
 });
 
 describe("createBusinessTermsAcceptance", () => {

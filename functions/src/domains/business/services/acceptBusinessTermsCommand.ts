@@ -21,11 +21,16 @@
  * No lifecycle transition occurs here (§Phase T) — this command never
  * touches `Business.status`.
  *
- * TOCTOU (§37/Phase V): the current-Terms-version read and the acceptance
- * write happen inside the *same* Firestore transaction as the Owner-
- * authority re-derivation, so a concurrent Terms-version change cannot
- * race between "read the current version" and "write the acceptance" —
- * both commit or abort together.
+ * TOCTOU (§37/Phase V, `ENG-P3-002A` independent review correction): the
+ * current-Terms-version read is a `transaction.get()` against
+ * `platformConfig/businessTerms` (`businessTermsConfigRepository.ts`) —
+ * not a `process.env` read — so it is a real member of this transaction's
+ * Firestore read set. A concurrent write to that document before this
+ * transaction commits forces Firestore to retry the whole transaction body,
+ * which re-reads the new version. This is what actually makes "the
+ * current-Terms-version read and the acceptance write happen inside the
+ * same transaction" a TOCTOU guarantee rather than just true-but-irrelevant
+ * co-location.
  */
 
 import type { Firestore, Transaction } from "firebase-admin/firestore";
@@ -39,7 +44,7 @@ import type { EventActor } from "../../../shared/events/domainEvent";
 import { buildBusinessTermsAcceptedEvent } from "../events/businessEvents";
 import { resolveAuthorizedBusinessForOwnerAction } from "./businessCallerAuthority";
 import { getOrCreateBusinessTermsAcceptanceInTransaction } from "../repositories/businessTermsAcceptanceRepository";
-import { getCurrentlyRequiredBusinessTermsVersion } from "../../../config/businessTermsConfig";
+import { getCurrentlyRequiredBusinessTermsVersionInTransaction } from "../repositories/businessTermsConfigRepository";
 import {
   businessTermsConfigurationUnavailableError,
   businessTermsAcceptanceInProgressError,
@@ -64,6 +69,11 @@ export type AcceptBusinessTermsParams = {
   correlationId: string;
   now: Date;
   newId: () => string;
+  /**
+   * Test-only interleaving hook for the real TOCTOU proof — never supplied
+   * by `index.ts`'s transport layer. See `businessTermsConfigRepository.ts`.
+   */
+  testOnlyAfterTermsVersionReadHook?: () => Promise<void>;
 };
 
 export type AcceptBusinessTermsResult = {
@@ -128,7 +138,11 @@ export async function acceptBusinessTermsCommand(
         transaction,
       );
 
-      const currentTermsVersion = getCurrentlyRequiredBusinessTermsVersion();
+      const currentTermsVersion = await getCurrentlyRequiredBusinessTermsVersionInTransaction(
+        transaction,
+        db,
+        params.testOnlyAfterTermsVersionReadHook,
+      );
       if (!currentTermsVersion) {
         throw businessTermsConfigurationUnavailableError();
       }
@@ -154,6 +168,7 @@ export async function acceptBusinessTermsCommand(
           correlationId: params.correlationId,
           actor,
           occurredAt: params.now.toISOString(),
+          acceptanceId: acceptance.id,
           businessId: business.id,
           acceptingCustomerIdentityId: params.userId,
           termsVersion: acceptance.termsVersion,

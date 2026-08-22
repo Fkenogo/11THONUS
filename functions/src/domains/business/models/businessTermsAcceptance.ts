@@ -67,6 +67,9 @@ function requireNonBlank(field: string, value: string): string {
   return value;
 }
 
+/** Firestore's own hard limit on a document id's UTF-8 byte length. */
+const FIRESTORE_DOCUMENT_ID_MAX_BYTES = 1500;
+
 /**
  * Deterministic composite id — `(businessId, acceptingCustomerIdentityId,
  * termsVersion)` — this is the identity key idempotency (§37 Phase S/§39)
@@ -76,13 +79,58 @@ function requireNonBlank(field: string, value: string): string {
  * never a duplicate. A different `termsVersion` (a newer Terms release)
  * always produces a different id — a new, additional, immutable record —
  * never an overwrite of the prior one.
+ *
+ * **Collision-resistant encoding (`ENG-P3-002A` independent review
+ * correction, Phase I).** The original implementation joined the three
+ * components with a bare `"_"` — unsafe in general, because (unlike
+ * `KnowledgeTranslation`'s `entityType`/`languageCode`, both drawn from
+ * small closed enums, `ENG-P3-001A`) none of `businessId`,
+ * `acceptingCustomerIdentityId`, or — critically — `termsVersion` is
+ * restricted to an underscore-free charset anywhere in this codebase.
+ * `termsVersion` in particular is an operator-supplied, ungoverned string
+ * (`businessTermsConfigRepository.ts`) with no charset validation at all:
+ * two different triples such as `("a_b", "c", "d")` and `("a", "b_c",
+ * "d")` would collide under raw `"_"` concatenation into the identical
+ * string `"a_b_c_d"`. A `"/"` in any component would also silently
+ * corrupt the Firestore document path (a subcollection separator, not a
+ * literal character) rather than erroring.
+ *
+ * The fix: a length-prefixed ("netstring"-style) encoding —
+ * `${length}.${value}` per component, concatenated with no ambiguous
+ * shared delimiter. This is provably injective: the leading numeric
+ * length prefix (itself digits only, terminated by the first `.`)
+ * unambiguously determines exactly how many characters of `value` belong
+ * to this component, regardless of what characters `value` itself
+ * contains — including `_`, `.`, or even another length-prefix-shaped
+ * substring. Two different triples can never produce the same encoded
+ * string. `/` is rejected outright in any component (fails closed,
+ * `invalidBusinessFieldError`) rather than silently corrupting the
+ * document path, and the final id is rejected if it would exceed
+ * Firestore's 1500-byte document-id limit — both fail-closed, never a
+ * truncated or silently-accepted invalid id.
  */
+function encodeIdComponent(field: string, value: string): string {
+  if (value.includes("/")) {
+    throw invalidBusinessFieldError(field, value);
+  }
+  return `${value.length}.${value}`;
+}
+
 export function businessTermsAcceptanceId(
   businessId: string,
   acceptingCustomerIdentityId: string,
   termsVersion: string,
 ): string {
-  return `${businessId}_${acceptingCustomerIdentityId}_${termsVersion}`;
+  const id = [
+    encodeIdComponent("businessId", businessId),
+    encodeIdComponent("acceptingCustomerIdentityId", acceptingCustomerIdentityId),
+    encodeIdComponent("termsVersion", termsVersion),
+  ].join("_");
+
+  if (Buffer.byteLength(id, "utf8") > FIRESTORE_DOCUMENT_ID_MAX_BYTES) {
+    throw invalidBusinessFieldError("termsVersion", termsVersion);
+  }
+  return id;
 }
 
 export function createBusinessTermsAcceptance(

@@ -170,8 +170,20 @@ export type BusinessTermsAcceptedPayload = {
 
 const TERMS_ACCEPTANCE_AGGREGATE_TYPE = "business_terms_acceptance";
 
+/**
+ * `aggregateId` correction (`ENG-P3-002A` independent review, Phase S):
+ * `aggregateType` is `"business_terms_acceptance"`, so — matching every
+ * other builder in this file, where `aggregateId` is always the id of the
+ * entity named by `aggregateType` (`"business"` -> `businessId`,
+ * `"business_branch"` -> `branchId`) — `aggregateId` must be the
+ * `BusinessTermsAcceptance` record's own `id`, supplied by the caller as
+ * `acceptanceId`, not `businessId`. The original implementation stamped
+ * `businessId` here, making this the only event in the domain whose
+ * `aggregateId` did not identify an instance of its own `aggregateType`.
+ * `businessId` remains on the payload for any consumer that needs it.
+ */
 export function buildBusinessTermsAcceptedEvent(
-  params: EventEnvelopeParams & BusinessTermsAcceptedPayload,
+  params: EventEnvelopeParams & BusinessTermsAcceptedPayload & { acceptanceId: string },
 ): DomainEvent<BusinessTermsAcceptedPayload> {
   return {
     eventId: params.eventId,
@@ -179,7 +191,7 @@ export function buildBusinessTermsAcceptedEvent(
     eventVersion: 1,
     sourceDomain: SOURCE_DOMAIN,
     aggregateType: TERMS_ACCEPTANCE_AGGREGATE_TYPE,
-    aggregateId: params.businessId,
+    aggregateId: params.acceptanceId,
     correlationId: params.correlationId,
     actor: params.actor,
     occurredAt: params.occurredAt,
