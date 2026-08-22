@@ -13,6 +13,7 @@ import { Button, Select } from "../../../components/ui/formPrimitives";
 import { useBusinessCategoriesQuery, useBusinessTypesQuery } from "../../hooks/businessQueries";
 import { useUpdateBusinessProfileMutation } from "../../hooks/businessMutations";
 import type { BusinessContext } from "../../api/businessContext";
+import { MutationError } from "../MutationError";
 
 export function ClassificationStep({
   context,
@@ -80,6 +81,7 @@ export function ClassificationStep({
         <Button type="button" disabled={!categoryId || mutation.isPending} onClick={handleSave}>
           {t("actions.continue")}
         </Button>
+        <MutationError error={mutation.error} />
       </div>
     </section>
   );

@@ -5,6 +5,7 @@ import { useTranslation } from "../../../i18n";
 import { Button, TextField } from "../../../components/ui/formPrimitives";
 import { useUpdateBusinessBranchProfileMutation } from "../../hooks/businessMutations";
 import type { BusinessContext } from "../../api/businessContext";
+import { MutationError } from "../MutationError";
 
 export function BranchStep({
   context,
@@ -51,6 +52,7 @@ export function BranchStep({
         >
           {t("actions.continue")}
         </Button>
+        <MutationError error={mutation.error} />
       </div>
     </section>
   );
