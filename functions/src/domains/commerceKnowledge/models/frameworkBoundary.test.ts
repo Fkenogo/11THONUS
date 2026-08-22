@@ -6,11 +6,11 @@ import { fileURLToPath } from "node:url";
 const modelsDir = dirname(fileURLToPath(import.meta.url));
 const domainDir = join(modelsDir, "..");
 
-describe("Commerce Knowledge domain boundary (ENG-P3-001A models / ENG-P3-001B repositories+seed)", () => {
-  it("ENG-P3-001B has now added the repositories/seed layers this domain deferred at 001A — no `services`/`commands` layer exists yet (still deferred, ENG-P3-001C/003)", () => {
+describe("Commerce Knowledge domain boundary (ENG-P3-001A models / ENG-P3-001B repositories+seed / ENG-P3-002A services)", () => {
+  it("ENG-P3-001B added the repositories/seed layers this domain deferred at 001A; ENG-P3-002A now adds the read-transport `services/` layer (design §13) — no `commands` layer exists yet (still deferred, ENG-P3-003)", () => {
     expect(existsSync(join(domainDir, "repositories"))).toBe(true);
     expect(existsSync(join(domainDir, "seed"))).toBe(true);
-    expect(existsSync(join(domainDir, "services"))).toBe(false);
+    expect(existsSync(join(domainDir, "services"))).toBe(true);
     expect(existsSync(join(domainDir, "commands"))).toBe(false);
   });
 

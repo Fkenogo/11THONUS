@@ -17,7 +17,8 @@
 
 import type { Firestore, Transaction } from "firebase-admin/firestore";
 import { fromBusinessMembershipDocument } from "../models/businessMembershipDocument";
-import type { MembershipReadResult } from "../evaluator/types";
+import type { EvaluationBusinessMembership, MembershipReadResult } from "../evaluator/types";
+import { staffRosterCorruptedError } from "../models/permissionErrors";
 
 const COLLECTION = "businessMemberships";
 
@@ -65,6 +66,44 @@ export async function getBusinessMembershipByUserAndBusiness(
  * document, looked up directly. Always a live Firestore read — no caching,
  * matching the read-only repository's existing discipline above.
  */
+/**
+ * `ENG-P3-002A` addendum (design §39): the missing "list by business"
+ * membership query — a single equality filter on `businessId`, bounded
+ * (no pagination, no sort — a Business's roster at onboarding time is
+ * small, §39). Callers must independently re-verify the requesting
+ * caller's own authority over `businessId` (this function performs no
+ * authorization itself, matching every other read-only repository
+ * function in this file).
+ *
+ * `ENG-P3-002A` independent review correction (Phase N): the original
+ * implementation silently excluded any document that failed to parse and
+ * called this "fail closed" in its own comment — a mislabel. Silently
+ * continuing as though a malformed record does not exist is a different,
+ * riskier design choice than refusing to expose its contents: this
+ * function backs the Staff roster read (`staffTransportReadService.ts`),
+ * and a malformed *active* membership silently disappearing could cause an
+ * Owner/Manager to conclude "this person has no access" when they actually
+ * hold a corrupted-but-real membership record. This function now fails the
+ * whole read closed (throws `staffRosterCorruptedError`) if any document
+ * for this Business fails to parse, rather than silently thinning the
+ * roster.
+ */
+export async function listMembershipsByBusiness(
+  db: Firestore,
+  businessId: string,
+): Promise<EvaluationBusinessMembership[]> {
+  const snapshot = await db.collection(COLLECTION).where("businessId", "==", businessId).get();
+  const memberships: EvaluationBusinessMembership[] = [];
+  for (const doc of snapshot.docs) {
+    const membership = fromBusinessMembershipDocument(doc.id, doc.data());
+    if (!membership) {
+      throw staffRosterCorruptedError();
+    }
+    memberships.push(membership);
+  }
+  return memberships;
+}
+
 export async function getBusinessMembershipById(
   db: Firestore,
   membershipId: string,

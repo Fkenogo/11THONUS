@@ -301,6 +301,18 @@ export function invitationCrossBusinessMismatchError(): PermissionDomainError {
   );
 }
 
+/**
+ * `ENG-P3-002A` addendum (design §21/§25/§39): the caller has no active
+ * membership in the requested Business — used by the Staff list-query read
+ * transport (`staffTransportReadService.ts`). Deliberately
+ * indistinguishable, client-facing, from "this Business does not exist"
+ * (enumeration resistance, mirrors `businessReadNotAuthorizedError`'s
+ * identical posture in the Business domain).
+ */
+export function staffReadNotAuthorizedError(): PermissionDomainError {
+  return new PermissionDomainError("RESOURCE_NOT_FOUND", "Business was not found.");
+}
+
 export function membershipReadTransientFailureError(): PermissionDomainError {
   return new PermissionDomainError(
     "TEMPORARY_UNAVAILABLE",
@@ -447,5 +459,48 @@ export function targetMembershipConfigMalformedError(): PermissionDomainError {
   return new PermissionDomainError(
     "AUTH_FORBIDDEN",
     "Target membership document failed structural validation.",
+  );
+}
+
+/**
+ * `ENG-P3-002A` independent review correction (Phase N). Previously,
+ * `listMembershipsByBusiness` silently excluded any membership document
+ * that failed to parse, and its own comment called this "fail closed" —
+ * a mislabel. Silently continuing as though a malformed record does not
+ * exist is a different, riskier choice than refusing to expose its
+ * contents: a malformed *active* membership disappearing from the roster
+ * could lead an Owner/Manager to conclude "this person has no access" when
+ * they actually hold a corrupted-but-real membership — an unsafe
+ * administrative conclusion this list backs (`staffTransportReadService.ts`).
+ * The whole roster read now fails closed instead of silently thinning
+ * itself.
+ */
+export function staffRosterCorruptedError(): PermissionDomainError {
+  return new PermissionDomainError(
+    "VALIDATION_FAILED",
+    "This Business's Staff membership roster contains a malformed record — refusing to return a possibly-incomplete roster.",
+  );
+}
+
+/** Same correction and reasoning as `staffRosterCorruptedError`, applied to the invitation list. */
+export function staffInvitationListCorruptedError(): PermissionDomainError {
+  return new PermissionDomainError(
+    "VALIDATION_FAILED",
+    "This Business's Staff invitation list contains a malformed record — refusing to return a possibly-incomplete list.",
+  );
+}
+
+/**
+ * `ENG-P3-002A` independent review correction (Phase P): `listStaffInvitations`'s
+ * `statusFilter`, when supplied, must be a member of the closed
+ * `InvitationStatus` vocabulary — passing an arbitrary string through to
+ * the repository's equality filter (which then silently matches nothing
+ * for a garbage value) is a transport-layer contract violation, not merely
+ * "harmless because it can't elevate authority."
+ */
+export function invalidStaffInvitationStatusFilterError(value: string): PermissionDomainError {
+  return new PermissionDomainError(
+    "VALIDATION_FAILED",
+    `Invalid statusFilter: "${value}" is not a recognised invitation status (must be "pending", "accepted", "revoked", or "expired").`,
   );
 }

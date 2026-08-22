@@ -53,18 +53,71 @@
  * alone does not bypass the structural state machine.
  */
 
-import type { Firestore } from "firebase-admin/firestore";
+import type { Firestore, Transaction } from "firebase-admin/firestore";
 import {
   authorizeAndExecute,
   type AuthorizeAndExecuteResult,
 } from "../../permissions/service/authorizeAndExecute";
 import { writeOutboxEntry } from "../../../shared/outbox/outboxWriter";
 import type { EventActor } from "../../../shared/events/domainEvent";
+import type { Business } from "../models/business";
 import { transitionBusinessStatus } from "../models/business";
 import type { BusinessStatus } from "../models/businessStatus";
-import { businessNotFoundError } from "../models/businessErrors";
+import {
+  businessNotFoundError,
+  businessTermsConfigurationUnavailableError,
+  currentBusinessTermsNotAcceptedError,
+} from "../models/businessErrors";
 import { buildBusinessLifecycleChangedEvent } from "../events/businessEvents";
 import { readBusinessById, writeBusinessUpdate } from "../repositories/businessRepository";
+import { readBusinessTermsAcceptanceInTransaction } from "../repositories/businessTermsAcceptanceRepository";
+import { getCurrentlyRequiredBusinessTermsVersionInTransaction } from "../repositories/businessTermsConfigRepository";
+
+/**
+ * `ENG-P3-002A` (design §37.4/§37.9/§40/§Phase U): the additive
+ * `submitBusinessForVerification`-only precondition — "has this Business's
+ * current owner accepted the currently-required Terms version." Runs
+ * inside `mutation.prepare`, strictly *after* `authorizeAndExecute`'s own
+ * permission evaluation (so a caller lacking `business.submitForVerification`
+ * entirely is still denied first, never leaking Terms-acceptance state to
+ * an unauthorized caller) and strictly *before* `mutation.apply`'s write —
+ * both the current-Terms-version read and the acceptance-record read
+ * participate in the exact same Firestore transaction as the lifecycle
+ * write itself (§Phase V TOCTOU: a concurrent Terms-version change cannot
+ * race between "checked acceptance" and "wrote pending_verification" —
+ * both commit or abort together, or neither does).
+ *
+ * Fails closed (`businessTermsConfigurationUnavailableError`) if no
+ * current Terms version is configured at all — this task does not invent
+ * one (`DEC-LEGAL-002` remains open, Phase Q) — and
+ * (`currentBusinessTermsNotAcceptedError`) if the Business's owner has
+ * never accepted the current version, or only accepted an older one.
+ */
+async function assertCurrentBusinessTermsAccepted(
+  transaction: Transaction,
+  db: Firestore,
+  business: Business,
+  testOnlyAfterTermsVersionReadHook?: () => Promise<void>,
+): Promise<void> {
+  const currentTermsVersion = await getCurrentlyRequiredBusinessTermsVersionInTransaction(
+    transaction,
+    db,
+    testOnlyAfterTermsVersionReadHook,
+  );
+  if (!currentTermsVersion) {
+    throw businessTermsConfigurationUnavailableError();
+  }
+  const acceptance = await readBusinessTermsAcceptanceInTransaction(
+    transaction,
+    db,
+    business.id,
+    business.ownerUserId,
+    currentTermsVersion,
+  );
+  if (!acceptance) {
+    throw currentBusinessTermsNotAcceptedError();
+  }
+}
 
 export type TransitionBusinessLifecycleCommandParams = {
   userId: string;
@@ -74,6 +127,11 @@ export type TransitionBusinessLifecycleCommandParams = {
   correlationId: string;
   now: Date;
   newId: () => string;
+  /**
+   * Test-only interleaving hook for the real TOCTOU proof — never supplied
+   * by `index.ts`'s transport layer. See `businessTermsConfigRepository.ts`.
+   */
+  testOnlyAfterTermsVersionReadHook?: () => Promise<void>;
 };
 
 export type TransitionBusinessLifecycleResult = {
@@ -87,6 +145,7 @@ async function transitionBusinessLifecycle(
   permission: string,
   targetStatus: BusinessStatus,
   params: TransitionBusinessLifecycleCommandParams,
+  options?: { requireCurrentBusinessTermsAccepted?: boolean },
 ): Promise<AuthorizeAndExecuteResult<TransitionBusinessLifecycleResult>> {
   const actor: EventActor = { actorType: "user", actorId: params.userId };
 
@@ -101,6 +160,14 @@ async function transitionBusinessLifecycle(
         const business = await readBusinessById(transaction, db, params.businessId);
         if (!business) {
           throw businessNotFoundError(params.businessId);
+        }
+        if (options?.requireCurrentBusinessTermsAccepted) {
+          await assertCurrentBusinessTermsAccepted(
+            transaction,
+            db,
+            business,
+            params.testOnlyAfterTermsVersionReadHook,
+          );
         }
         return business;
       },
@@ -142,6 +209,7 @@ export async function submitBusinessForVerificationCommand(
     "business.submitForVerification",
     "pending_verification",
     params,
+    { requireCurrentBusinessTermsAccepted: true },
   );
 }
 

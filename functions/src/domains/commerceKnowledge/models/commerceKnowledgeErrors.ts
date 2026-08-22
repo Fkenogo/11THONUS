@@ -403,3 +403,27 @@ export function duplicateTranslationTupleError(
     ],
   );
 }
+
+/**
+ * `ENG-P3-002A` addendum (design §13/§I): `listBusinessTypesForCategory`
+ * was called with a `categoryId` that does not resolve to an existing,
+ * `active` `business_category` node — covers "does not exist," "exists but
+ * is not a Category," and "exists but is not currently active" uniformly
+ * (never distinguishing which, mirroring this domain's own established
+ * fail-closed-and-undifferentiated precedent).
+ */
+export function businessCategoryNotFoundForTypeListingError(
+  categoryId: string,
+): CommerceKnowledgeDomainError {
+  return new CommerceKnowledgeDomainError(
+    "RESOURCE_NOT_FOUND",
+    `Business Category "${categoryId}" does not resolve to an existing, active Commerce Knowledge category.`,
+    [
+      {
+        field: "categoryId",
+        code: "not_found",
+        messageKey: "commerceKnowledge.businessCategory.notFound",
+      },
+    ],
+  );
+}

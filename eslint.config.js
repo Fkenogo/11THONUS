@@ -341,6 +341,15 @@ export default tseslint.config(
       // own emulator test — same precedent, not a new exception category.
       "functions/src/domains/business/services/businessClassificationValidation.ts",
       "functions/src/domains/business/services/businessClassificationValidation.emulator.test.ts",
+      // `ENG-P3-002A`: the Business read-transport/Terms-acceptance modules
+      // take a caller-owned `Transaction` or open their own (mirrors
+      // `businessLifecycleCommand.ts`'s own exemption reasoning above) —
+      // same precedent, not a new exception category.
+      "functions/src/domains/business/services/businessCallerAuthority.ts",
+      "functions/src/domains/business/services/businessReadService.ts",
+      "functions/src/domains/business/services/businessReadService.emulator.test.ts",
+      "functions/src/domains/business/services/acceptBusinessTermsCommand.ts",
+      "functions/src/domains/business/services/acceptBusinessTermsCommand.emulator.test.ts",
     ],
     languageOptions: {
       ecmaVersion: 2023,
@@ -386,6 +395,11 @@ export default tseslint.config(
       "functions/src/domains/commerceKnowledge/repositories/**",
       "functions/src/domains/commerceKnowledge/seed/seedLoader.ts",
       "functions/src/domains/commerceKnowledge/seed/seedLoader.emulator.test.ts",
+      // `ENG-P3-002A`: the Category/Business-Type read-transport service
+      // composes the repositories above (already Firebase-adapter-capable)
+      // — same exemption reasoning, not a new exception category.
+      "functions/src/domains/commerceKnowledge/services/commerceKnowledgeReadService.ts",
+      "functions/src/domains/commerceKnowledge/services/commerceKnowledgeReadService.emulator.test.ts",
     ],
     languageOptions: {
       ecmaVersion: 2023,

@@ -31,7 +31,9 @@ import {
   fromBusinessMembershipInvitationDocument,
   type BusinessMembershipInvitation,
 } from "../models/businessMembershipInvitation";
+import type { InvitationStatus } from "../models/invitationStatus";
 import { toBusinessMembershipInvitationDocumentFields } from "./businessMembershipInvitationDocument";
+import { staffInvitationListCorruptedError } from "../models/permissionErrors";
 
 const COLLECTION = "businessMembershipInvitations";
 
@@ -96,6 +98,48 @@ export async function hasPendingInvitationForDeliveryTarget(
     .limit(1);
   const snapshot = await (transaction ? transaction.get(query) : query.get());
   return !snapshot.empty;
+}
+
+/**
+ * ENG-P3-002A addendum (design section 39): the missing "list by business"
+ * invitation query, optionally filtered to one status (e.g. "pending" for
+ * the onboarding review step's "who's still pending" view). Equality-only
+ * compound filter when status is supplied (mirrors
+ * hasPendingInvitationForDeliveryTarget's own two-equality-filter
+ * precedent) -- no pagination, no sort, bounded to one Business's small
+ * onboarding-time invitation set. Callers must independently re-verify
+ * authority over businessId -- this function performs no authorization
+ * itself. statusFilter is typed to the closed InvitationStatus vocabulary
+ * -- callers (the transport layer) must parse/validate an incoming request
+ * string against that vocabulary before calling this function (Phase P);
+ * this repository does not accept an arbitrary string.
+ *
+ * ENG-P3-002A independent review correction (Phase N): the original
+ * implementation silently excluded any document that failed to parse and
+ * called this "fail closed" -- a mislabel, matching the identical
+ * correction applied to listMembershipsByBusiness. This function now fails
+ * the whole read closed (throws staffInvitationListCorruptedError) if any
+ * document for this Business fails to parse.
+ */
+export async function listInvitationsByBusiness(
+  db: Firestore,
+  businessId: string,
+  statusFilter?: InvitationStatus,
+): Promise<BusinessMembershipInvitation[]> {
+  let query = db.collection(COLLECTION).where("businessId", "==", businessId);
+  if (statusFilter !== undefined) {
+    query = query.where("status", "==", statusFilter);
+  }
+  const snapshot = await query.get();
+  const invitations: BusinessMembershipInvitation[] = [];
+  for (const doc of snapshot.docs) {
+    const invitation = fromBusinessMembershipInvitationDocument(doc.id, doc.data());
+    if (!invitation) {
+      throw staffInvitationListCorruptedError();
+    }
+    invitations.push(invitation);
+  }
+  return invitations;
 }
 
 /** Write-only — for use inside `mutation.apply`'s `TransactionWriter`. */
