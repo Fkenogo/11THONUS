@@ -70,6 +70,7 @@ beforeEach(async () => {
   for (const collection of [
     "businesses",
     "businessBranches",
+    "businessCodeReservations",
     "businessMemberships",
     "businessMembershipInvitations",
     "businessTermsAcceptances",
@@ -105,7 +106,13 @@ function bootstrapParams(
     actor: { actorType: "user" as const, actorId: OWNER_USER_ID },
     now: CREATED_AT,
     newId: () => `evt_${overrides.idempotencyKey}_${Math.random().toString(36).slice(2)}`,
-    generator: new SequenceGenerator(["BIZ23456J"]),
+    generator: new SequenceGenerator([
+      "BIZ23456J",
+      "BIZ23457K",
+      "BIZ23458L",
+      "BIZ23459M",
+      "BIZ2345AN",
+    ]),
     ownerUserId: OWNER_USER_ID,
     ...overrides,
   };
