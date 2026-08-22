@@ -1,9 +1,21 @@
 /**
- * Terms-acceptance step (design §37.6). No real Terms content/version is
- * governed anywhere (`DEC-LEGAL-002` open) — this renders the state
- * plumbing only: an explicit, never-pre-checked affirmative checkbox, and a
- * neutral unavailable state when the backend reports Terms configuration is
- * unavailable. Never fakes acceptance, never bypasses the step.
+ * Terms-acceptance step (design §37.6).
+ *
+ * Content-authority finding (independent review, corrected from the
+ * original implementation): a server-authoritative *required Terms
+ * version* (`termsAcceptance.version`) is not the same thing as a
+ * user-*readable* Terms document/link. Grepping the full repository finds
+ * no `termsDocumentId`/`termsUrl`/readable-content source anywhere —
+ * `ENG-P3-002-DESIGN-001` §37.5 itself confirms "no in-repo legal-document
+ * CMS" and defers the actual content to the still-open `DEC-LEGAL-002`.
+ * A user must never be offered a consent control for content they cannot
+ * read. `TERMS_READABLE_CONTENT_AVAILABLE` is therefore hard-pinned to
+ * `false` — no checkbox, no accept button, Continue disabled — until a
+ * future package wires in a real governed content source and this flag
+ * (or its replacement) is deliberately flipped. The backend's own
+ * config-unavailable failure (`unavailable` error code) is handled as
+ * secondary defense for after that day, not as how this gate is
+ * discovered today.
  */
 
 import { useState } from "react";
@@ -20,6 +32,9 @@ export type TermsStepProps = {
   onContinue: () => void;
 };
 
+/** No governed, user-readable Terms document/link exists anywhere yet (`DEC-LEGAL-002` open). */
+const TERMS_READABLE_CONTENT_AVAILABLE = false;
+
 function isUnavailableError(error: unknown): boolean {
   return error instanceof BusinessApiError && error.code === "unavailable";
 }
@@ -34,18 +49,18 @@ export function TermsStep({
   const { t } = useTranslation("business");
   const [agreed, setAgreed] = useState(false);
 
-  const unavailable = isUnavailableError(acceptError);
+  const unavailable = !TERMS_READABLE_CONTENT_AVAILABLE || isUnavailableError(acceptError);
 
   return (
     <section>
       <h2 className="mb-4 text-lg font-semibold">{t("terms.title")}</h2>
 
-      {unavailable ? (
+      {termsAcceptance.accepted ? (
+        <p role="status">{t("terms.accepted")}</p>
+      ) : unavailable ? (
         <p role="status" className="text-[var(--color-muted-foreground)]">
           {t("terms.unavailable")}
         </p>
-      ) : termsAcceptance.accepted ? (
-        <p role="status">{t("terms.accepted")}</p>
       ) : (
         <div className="flex flex-col gap-4">
           <Checkbox

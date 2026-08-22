@@ -6,6 +6,12 @@ import type { Functions } from "firebase/functions";
 import App from "./App";
 
 const fakeAuth = { onAuthStateChanged: () => () => {} } as unknown as Auth;
+const fakeSignedOutAuth = {
+  onAuthStateChanged: (callback: (user: null) => void) => {
+    callback(null);
+    return () => {};
+  },
+} as unknown as Auth;
 const fakeFunctions = {} as Functions;
 
 describe("App shell", () => {
@@ -43,5 +49,15 @@ describe("App shell", () => {
     );
 
     expect(await screen.findByRole("heading", { name: /Sign-in preview/i })).toBeInTheDocument();
+  });
+
+  it("routes a signed-out visitor to /business to the sign-in-required fallback", async () => {
+    render(
+      <MemoryRouter initialEntries={["/business"]}>
+        <App auth={fakeSignedOutAuth} functions={fakeFunctions} />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Please sign in to continue.")).toBeInTheDocument();
   });
 });

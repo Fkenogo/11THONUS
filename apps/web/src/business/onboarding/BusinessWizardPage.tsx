@@ -43,7 +43,7 @@ export function BusinessWizardPage() {
     default:
       return (
         <main className="flex min-h-screen items-center justify-center p-8 text-center">
-          <p>Not available from onboarding.</p>
+          <p>{t("lifecycle.notAvailable")}</p>
         </main>
       );
   }

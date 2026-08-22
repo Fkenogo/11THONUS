@@ -132,6 +132,12 @@ export const fr = {
       title: "Un problème est survenu",
       body: "Nous n'avons pas pu charger votre entreprise comme prévu. Veuillez contacter le support.",
     },
+    lifecycle: {
+      notAvailable: "Ceci n'est pas disponible pour le moment.",
+    },
+    access: {
+      signInRequired: "Veuillez vous connecter pour continuer.",
+    },
     errors: {
       auth_required: "Veuillez vous reconnecter pour continuer.",
       auth_forbidden: "Vous n'avez pas la permission de faire cela.",

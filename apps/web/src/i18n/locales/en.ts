@@ -130,6 +130,12 @@ export const en = {
       title: "Something went wrong",
       body: "We couldn't load your business the way we expected. Please contact support.",
     },
+    lifecycle: {
+      notAvailable: "This isn't available right now.",
+    },
+    access: {
+      signInRequired: "Please sign in to continue.",
+    },
     errors: {
       auth_required: "Please sign in again to continue.",
       auth_forbidden: "You don't have permission to do that.",

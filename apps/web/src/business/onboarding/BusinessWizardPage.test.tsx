@@ -60,7 +60,7 @@ describe("BusinessWizardPage lifecycle routing", () => {
       data: { ...baseContext, status: "active" },
     });
     renderPage();
-    expect(await screen.findByText(/not available/i)).toBeInTheDocument();
+    expect(await screen.findByText("This isn't available right now.")).toBeInTheDocument();
     expect(screen.queryByText("onboarding wizard")).not.toBeInTheDocument();
     expect(screen.queryByText("submitted status page")).not.toBeInTheDocument();
   });

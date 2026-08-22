@@ -3,6 +3,7 @@ import { Route, Routes } from "react-router-dom";
 import { ShieldCheck } from "lucide-react";
 import type { Auth } from "firebase/auth";
 import type { Functions } from "firebase/functions";
+import { useTranslation } from "./i18n";
 import { RequireAuthenticatedUser } from "./authentication/RequireAuthenticatedUser";
 import { BusinessApiProvider } from "./business/BusinessApiContext";
 import { BusinessResolverPage } from "./business/onboarding/BusinessResolverPage";
@@ -52,9 +53,10 @@ function AppShell() {
 }
 
 function SignInRequired() {
+  const { t } = useTranslation("business");
   return (
     <main className="flex min-h-screen items-center justify-center p-8 text-center">
-      <p>Please sign in to continue.</p>
+      <p>{t("access.signInRequired")}</p>
     </main>
   );
 }
