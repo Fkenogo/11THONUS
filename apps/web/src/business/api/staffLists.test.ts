@@ -1,0 +1,49 @@
+import { describe, expect, it } from "vitest";
+import {
+  toCallListStaffInvitations,
+  toCallListStaffMemberships,
+  type StaffInvitationSummary,
+} from "./staffLists";
+
+describe("toCallListStaffInvitations", () => {
+  it("passes businessId and optional statusFilter through", async () => {
+    const invitations: StaffInvitationSummary[] = [
+      {
+        invitationId: "inv-1",
+        role: "staff",
+        status: "invited",
+        deliveryType: "email",
+        invitedAt: "t1",
+        expiresAt: "t2",
+      },
+    ];
+    const call = toCallListStaffInvitations(async (payload) => {
+      expect(payload).toMatchObject({ businessId: "b-1", statusFilter: "invited" });
+      return { data: invitations };
+    });
+
+    const result = await call(
+      { getIdToken: async () => "t", referenceType: "email" },
+      { businessId: "b-1", statusFilter: "invited" },
+    );
+
+    expect(result).toEqual(invitations);
+  });
+});
+
+describe("toCallListStaffMemberships", () => {
+  it("passes businessId through", async () => {
+    const memberships = [{ membershipId: "m-1", role: "owner", status: "active" }];
+    const call = toCallListStaffMemberships(async (payload) => {
+      expect(payload).toMatchObject({ businessId: "b-1" });
+      return { data: memberships };
+    });
+
+    const result = await call(
+      { getIdToken: async () => "t", referenceType: "email" },
+      { businessId: "b-1" },
+    );
+
+    expect(result).toEqual(memberships);
+  });
+});

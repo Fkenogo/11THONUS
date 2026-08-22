@@ -28,8 +28,8 @@ export const DEFAULT_LANGUAGE: SupportedLanguage = "en";
 export const LANGUAGE_STORAGE_KEY = "i18nextLng";
 
 export const resources = {
-  en: { common: en.common, auth: en.auth },
-  fr: { common: fr.common, auth: fr.auth },
+  en: { common: en.common, auth: en.auth, business: en.business },
+  fr: { common: fr.common, auth: fr.auth, business: fr.business },
 } as const;
 
 /** Base language code (`fr-FR` → `fr`), constrained to a supported language. */
@@ -63,7 +63,7 @@ if (!i18n.isInitialized) {
       // Resolve region variants (e.g. `fr-FR`) to the base language.
       nonExplicitSupportedLngs: true,
       load: "languageOnly",
-      ns: ["common", "auth"],
+      ns: ["common", "auth", "business"],
       defaultNS: "common",
       returnNull: false,
       // React escapes interpolated values already.

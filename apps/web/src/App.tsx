@@ -1,6 +1,13 @@
 import { lazy, Suspense } from "react";
 import { Route, Routes } from "react-router-dom";
 import { ShieldCheck } from "lucide-react";
+import type { Auth } from "firebase/auth";
+import type { Functions } from "firebase/functions";
+import { RequireAuthenticatedUser } from "./authentication/RequireAuthenticatedUser";
+import { BusinessApiProvider } from "./business/BusinessApiContext";
+import { BusinessResolverPage } from "./business/onboarding/BusinessResolverPage";
+import { NewBusinessPage } from "./business/onboarding/NewBusinessPage";
+import { BusinessWizardPage } from "./business/onboarding/BusinessWizardPage";
 
 // Guarded directly on the literal `import.meta.env.DEV` (not via an
 // intermediate function call) so Vite's production build statically
@@ -44,31 +51,67 @@ function AppShell() {
   );
 }
 
-function App() {
+function SignInRequired() {
   return (
-    <Routes>
-      <Route path="/" element={<AppShell />} />
-      {DevPhoneAuthHarnessRoute && (
+    <main className="flex min-h-screen items-center justify-center p-8 text-center">
+      <p>Please sign in to continue.</p>
+    </main>
+  );
+}
+
+export type AppProps = { auth: Auth; functions: Functions };
+
+function App({ auth, functions }: AppProps) {
+  return (
+    <BusinessApiProvider platform={{ auth, functions }}>
+      <Routes>
+        <Route path="/" element={<AppShell />} />
         <Route
-          path="/dev/phone-auth-harness"
+          path="/business"
           element={
-            <Suspense fallback={null}>
-              <DevPhoneAuthHarnessRoute />
-            </Suspense>
+            <RequireAuthenticatedUser auth={auth} renderUnauthenticated={() => <SignInRequired />}>
+              <BusinessResolverPage />
+            </RequireAuthenticatedUser>
           }
         />
-      )}
-      {DevSignInPreviewRoute && (
         <Route
-          path="/dev/sign-in-preview"
+          path="/business/new"
           element={
-            <Suspense fallback={null}>
-              <DevSignInPreviewRoute />
-            </Suspense>
+            <RequireAuthenticatedUser auth={auth} renderUnauthenticated={() => <SignInRequired />}>
+              <NewBusinessPage />
+            </RequireAuthenticatedUser>
           }
         />
-      )}
-    </Routes>
+        <Route
+          path="/business/:businessId"
+          element={
+            <RequireAuthenticatedUser auth={auth} renderUnauthenticated={() => <SignInRequired />}>
+              <BusinessWizardPage />
+            </RequireAuthenticatedUser>
+          }
+        />
+        {DevPhoneAuthHarnessRoute && (
+          <Route
+            path="/dev/phone-auth-harness"
+            element={
+              <Suspense fallback={null}>
+                <DevPhoneAuthHarnessRoute />
+              </Suspense>
+            }
+          />
+        )}
+        {DevSignInPreviewRoute && (
+          <Route
+            path="/dev/sign-in-preview"
+            element={
+              <Suspense fallback={null}>
+                <DevSignInPreviewRoute />
+              </Suspense>
+            }
+          />
+        )}
+      </Routes>
+    </BusinessApiProvider>
   );
 }
 
