@@ -1,5 +1,5 @@
 > **Title:** ENG-P3-002B — Business Onboarding Frontend Shell, Wizard & Backend Integration — Implementation Report
-> **Status:** Implemented / pending Founder review (draft PR, CI not yet exact-head-verified as of this report)
+> **Status:** Implemented / pending Founder review. Draft PR [#154](https://github.com/Fkenogo/11THONUS/pull/154); CI ("Build, Lint, Test, Emulator Validation" — build, lint, format check, typecheck, unit/component tests, Playwright e2e, Firebase Emulator Suite validation) verified green via `gh run watch` against the exact PR head SHA at the time of this update.
 > **Entry state:** `origin/main` at `06ea594` (verified to include `865a5ef` — ENG-P3-002A merge — and `06ea594` — its closure sync). `ENG-P3-002A` = Complete/merged. No overlapping open PR/branch for Business onboarding UI, dashboard, context, routes, or callable wrappers existed at entry (`gh pr list --state open` showed only #34, docs-only, unrelated). Primary worktree `/Users/theo/11THONUS` was dirty with unrelated loyalty-governance docs and was left untouched; work proceeded in a fresh linked worktree branched from `origin/main`.
 > **Branch:** `feat/eng-p3-002b-business-onboarding-frontend`
 
@@ -89,8 +89,8 @@ Errors surfaced through `BusinessApiError` (a domain-neutral subclass sharing `a
 - `npx eslint .` (apps/web) — 0 errors, 1 pre-existing-pattern warning (`react-refresh/only-export-components` on `BusinessApiContext.tsx`'s hook export alongside its provider component — same shape as other context files in the codebase).
 - `npx prettier --check` on every new/changed file — clean.
 - `npx tsc -b && npx vite build` (apps/web) — succeeds; one generic "chunk >500kB" advisory, pre-existing class of warning, not new.
-- Backend (`functions/`) — not re-run; `git status`/`git diff --stat` confirm zero files under `functions/` or `firestore.rules` changed, so ENG-P3-002A's own validated state is unaffected.
-- Emulator Suite integration tests and Playwright e2e — **not executed in this pass** (time-boxed); this is a known gap against Phase AE, flagged rather than silently skipped.
+- Backend (`functions/`) — not re-run locally; `git status`/`git diff --stat` confirm zero files under `functions/` or `firestore.rules` changed, so ENG-P3-002A's own validated state is unaffected.
+- Emulator Suite integration tests and Playwright e2e were **not run locally** in this pass, but the repository's CI pipeline (`gh pr checks`/`gh run watch` against PR #154, head `f650f7f`) runs both as part of its standard "Build, Lint, Test, Emulator Validation" job — **CI ran and passed all steps**, including "Install Playwright browsers" → "Playwright e2e" and "Firebase Emulator Suite validation", alongside Build/Lint/Format check/Typecheck/Unit-component tests. Confirmed via `gh run watch` on the exact PR head SHA. This resolves the emulator/e2e gap originally flagged below in an earlier draft of this report.
 
 ## 17. Independent self-review findings
 
@@ -122,7 +122,7 @@ Added (53): 2 in `apps/web/src/authentication/` (`RequireAuthenticatedUser.tsx` 
 
 ## 22. Risks
 
-- Emulator/e2e validation (Phase AE) was not executed in this pass — a real risk if a discrepancy exists between the mocked adapter tests and live callable behavior that unit tests alone cannot catch. Recommended as the first action of `ENG-P3-002C` or a follow-up validation pass before merge.
+- CI's Emulator Suite/Playwright e2e passing confirms the build integrates cleanly against a live emulator and that the existing e2e suite is not broken by this change; it does not by itself constitute a *new* end-to-end test walking the onboarding wizard itself against the emulator (no such test was added in this package — the existing Emulator/e2e suites are pre-existing coverage, not onboarding-specific). A dedicated onboarding-flow emulator/e2e test remains a reasonable addition for `ENG-P3-002C` to consider, not a defect in what shipped here.
 - The unauthenticated fallback (`SignInRequired` in `App.tsx`) is a minimal placeholder message, not a wired sign-in flow — the existing `SignInPanel`/`createSignInActions` composition is not yet mounted at any production route in `App.tsx` (a pre-existing gap, not introduced by this package, but one a Founder reviewer will notice when navigating to `/business` while signed out).
 - Terms remain genuinely unusable until `DEC-LEGAL-002` is resolved and `BUSINESS_TERMS_CURRENT_VERSION` is configured — by design, not a defect, but it means `ENG-P3-002`'s full journey cannot be manually completed end-to-end until that governance step happens.
 
@@ -132,4 +132,4 @@ Revert branch `feat/eng-p3-002b-business-onboarding-frontend` / close the PR wit
 
 ## 24. Next Founder action
 
-Review the draft PR; if Emulator/e2e validation is required before merge, request `ENG-P3-002C` (or a scoped follow-up) to run it before merge rather than as part of this package. Do not mark `ENG-P3-002`/Capability 3 complete — both remain open pending `ENG-P3-002C`.
+Review the draft PR (CI green on exact head — see §16). Do not mark `ENG-P3-002`/Capability 3 complete — both remain open pending `ENG-P3-002C` (hosted-preview validation and manual Founder QA of the actual onboarding journey).
