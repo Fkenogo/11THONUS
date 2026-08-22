@@ -21,6 +21,7 @@
 
 import type { PermissionId } from "./permissionId";
 import type { Role } from "./role";
+import type { BusinessLifecycleStatus } from "../evaluator/types";
 import { unrecognisedSensitivePermissionError } from "./permissionErrors";
 
 /**
@@ -69,6 +70,21 @@ export type SensitivePermissionCatalogueEntry = {
   /** Design §3.2 "Audit req." column — every entry is "Mandatory" per the approved catalogue. */
   readonly auditRequirement: "mandatory";
   readonly rationale: readonly SensitivePermissionRationaleCode[];
+  /**
+   * `ENG-P2-004-CORR-003` per-permission Sensitive lifecycle-eligibility
+   * override (Founder disposition). Mirrors
+   * `ordinaryPermissionCatalogue.ts`'s existing `eligibleBusinessStatuses`
+   * precedent (`ENG-P2-004-CORR-001`) rather than inventing a new shape.
+   *
+   * Optional and deliberately absent from every entry except
+   * `staff.manage`: absence MUST mean the legacy, unchanged Sensitive
+   * eligibility set — `{trial, active}`
+   * (`evaluatePermission.ts`'s `LEGACY_OPERATIONAL_SENSITIVE_STATUSES`).
+   * This keeps every other Sensitive permission's lifecycle behaviour
+   * byte-for-byte identical to before this correction (Phase G
+   * backward-compatibility proof).
+   */
+  readonly eligibleBusinessStatuses?: readonly BusinessLifecycleStatus[];
 };
 
 /**
@@ -87,6 +103,14 @@ export const SENSITIVE_PERMISSION_CATALOGUE: readonly SensitivePermissionCatalog
     explicitRevocationSupported: true,
     auditRequirement: "mandatory",
     rationale: ["a"],
+    // `ENG-P2-004-CORR-003` (Founder disposition, 2026-08-22): staff.manage
+    // is eligible pre-operationally too, so Staff/Manager invitation is not
+    // blocked while the Business is draft/pending_verification — the
+    // approved onboarding journey offers Staff invitation at that stage.
+    // Deliberately does NOT include suspended/expired/closed/archived
+    // (unchanged — still ineligible in every terminal/restricted state).
+    // No other catalogue entry receives this override (Phase G proof).
+    eligibleBusinessStatuses: ["draft", "pending_verification", "trial", "active"],
   },
   {
     id: "staff.assignPermissions",

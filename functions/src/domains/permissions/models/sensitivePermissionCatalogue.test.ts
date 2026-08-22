@@ -128,6 +128,24 @@ describe("SENSITIVE_PERMISSION_CATALOGUE", () => {
   );
 });
 
+describe("SENSITIVE_PERMISSION_CATALOGUE — eligibleBusinessStatuses (ENG-P2-004-CORR-003)", () => {
+  it("staff.manage carries exactly the Founder-approved pre-operational override: draft, pending_verification, trial, active", () => {
+    expect(getSensitivePermissionEntry("staff.manage").eligibleBusinessStatuses).toEqual([
+      "draft",
+      "pending_verification",
+      "trial",
+      "active",
+    ]);
+  });
+
+  it.each(EXPECTED_IDS.filter((id) => id !== "staff.manage"))(
+    "%s carries no eligibleBusinessStatuses override (legacy {trial, active} fallback applies)",
+    (id) => {
+      expect(getSensitivePermissionEntry(id).eligibleBusinessStatuses).toBeUndefined();
+    },
+  );
+});
+
 describe("SENSITIVE_PERMISSION_IDS", () => {
   it("matches the catalogue's own ids", () => {
     expect(SENSITIVE_PERMISSION_IDS).toEqual(SENSITIVE_PERMISSION_CATALOGUE.map((e) => e.id));
