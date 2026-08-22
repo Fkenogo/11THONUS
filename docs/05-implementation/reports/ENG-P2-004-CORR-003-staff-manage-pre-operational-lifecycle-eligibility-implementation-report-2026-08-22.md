@@ -255,15 +255,15 @@ None. `firestore.rules`, `storage.rules`, `firebase.json` — zero diff. No `fir
 
 ## 29. PR number
 
-To be recorded once opened (see §31 — this task opens a draft PR per Phase R; the number will be added here and to the tracking changelog in a same-session follow-up commit, or is available in the PR itself if this report is read after that step completes).
+**PR #157** — https://github.com/Fkenogo/11THONUS/pull/157 (draft, branch `feat/eng-p2-004-corr-003-staff-manage-pre-operational-lifecycle` → `main`).
 
 ## 30. Final reviewed head SHA
 
-The commit containing this report and all code/test changes described above, on branch `worktree-agent-a689a6540413e6a49` (pushed as `feat/eng-p2-004-corr-003-staff-manage-pre-operational-lifecycle` — see the PR for the exact head).
+`25401a36b4417cc8e436c3979b816829f4ec4338`.
 
 ## 31. CI result
 
-Pending — draft PR opened against `main`; hosted CI result to be polled and recorded.
+**PASS** — hosted CI (`Build, Lint, Test, Emulator Validation`, run `32577647918`) completed green in 5m50s on the exact final head `25401a36b4417cc8e436c3979b816829f4ec4338`, confirmed via `gh run watch --exit-status` (not merely polled/assumed). All steps green: Build, Lint, Format check, Typecheck, Unit/component tests, Playwright e2e, Firebase Emulator Suite validation. No stall, no rerun needed.
 
 ## 32. ENG-P2-004-CORR-003 status
 
