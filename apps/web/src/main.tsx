@@ -21,10 +21,10 @@ import {
 } from "./observability";
 
 // Firebase platform foundation (ENG-P1-001) — initialized once at boot,
-// before anything renders. No business logic depends on this yet; it
-// establishes the shared app/auth/firestore/storage/App Check instances
-// future domain services will reuse.
-const { auth } = initializeFirebasePlatform(getAppEnv());
+// before anything renders. Establishes the shared app/auth/firestore/
+// storage/App Check instances domain services reuse — `auth`/`functions`
+// are threaded into `App` for the Business onboarding routes (ENG-P3-002B).
+const { auth, functions } = initializeFirebasePlatform(getAppEnv());
 
 // Observability foundation (ENG-P1-003-IMP-01/02) — wired directly here,
 // not as a React effect, so registration happens exactly once per
@@ -44,7 +44,7 @@ createRoot(document.getElementById("root")!).render(
       <BrowserRouter>
         <ObservabilityErrorBoundary service={observability}>
           <RouteTracker service={observability} />
-          <App />
+          <App auth={auth} functions={functions} />
         </ObservabilityErrorBoundary>
       </BrowserRouter>
     </QueryClientProvider>
