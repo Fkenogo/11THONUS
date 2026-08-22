@@ -258,3 +258,63 @@ export function businessTypeCategoryMismatchError(
     ],
   );
 }
+
+/**
+ * `ENG-P3-002A` read-transport addendum (§21/§25): a caller has no
+ * verified relationship (owner or active membership) to the requested
+ * `businessId`. Deliberately identical, client-facing, to
+ * `businessNotFoundError` in every read path that uses it — a caller must
+ * not be able to distinguish "this Business does not exist" from "this
+ * Business exists but is not yours" (enumeration resistance, mirrors
+ * `businessBranchNotFoundError`'s established precedent).
+ */
+export function businessReadNotAuthorizedError(businessId: string): BusinessDomainError {
+  return new BusinessDomainError("RESOURCE_NOT_FOUND", `Business "${businessId}" was not found.`);
+}
+
+/**
+ * `ENG-P3-002A` (§37.9): the currently-required Business Terms version is
+ * not configured server-side (`businessTermsConfig.ts` returned `null`).
+ * Fails closed — never silently skips the Terms check, never falls back
+ * to a fabricated version. Mapped to `TEMPORARY_UNAVAILABLE` (a governance/
+ * configuration gap, not a caller mistake — the caller did nothing wrong
+ * and cannot self-correct by retrying with different input).
+ */
+export function businessTermsConfigurationUnavailableError(): BusinessDomainError {
+  return new BusinessDomainError(
+    "TEMPORARY_UNAVAILABLE",
+    "The currently-required Business Terms version is not configured. Terms acceptance is unavailable until governance configures one.",
+  );
+}
+
+/**
+ * `ENG-P3-002A` (§37.9/§40): `submitBusinessForVerification` was called
+ * without a `BusinessTermsAcceptance` record matching the current
+ * server-authoritative Terms version for this Business's current owner.
+ * Covers "never accepted," "accepted an old version," and "accepted by a
+ * different Business/identity" uniformly — the precondition is simply not
+ * satisfied, and the client-facing message never distinguishes which of
+ * those three actually occurred (no cross-Business/cross-identity
+ * enumeration signal).
+ */
+/** `ENG-P3-002A`: a same-`(userId, businessId)` Terms-acceptance call is already in flight under a different, not-yet-resolved idempotency key attempt. */
+export function businessTermsAcceptanceInProgressError(): BusinessDomainError {
+  return new BusinessDomainError(
+    "IDEMPOTENCY_CONFLICT",
+    "A Business Terms acceptance request for this Business is already in progress.",
+  );
+}
+
+export function currentBusinessTermsNotAcceptedError(): BusinessDomainError {
+  return new BusinessDomainError(
+    "VALIDATION_FAILED",
+    "The current Business Terms version has not been accepted by this Business's onboarding owner.",
+    [
+      {
+        field: "termsAcceptance",
+        code: "not_accepted",
+        messageKey: "business.terms.notAccepted",
+      },
+    ],
+  );
+}

@@ -301,6 +301,18 @@ export function invitationCrossBusinessMismatchError(): PermissionDomainError {
   );
 }
 
+/**
+ * `ENG-P3-002A` addendum (design §21/§25/§39): the caller has no active
+ * membership in the requested Business — used by the Staff list-query read
+ * transport (`staffTransportReadService.ts`). Deliberately
+ * indistinguishable, client-facing, from "this Business does not exist"
+ * (enumeration resistance, mirrors `businessReadNotAuthorizedError`'s
+ * identical posture in the Business domain).
+ */
+export function staffReadNotAuthorizedError(): PermissionDomainError {
+  return new PermissionDomainError("RESOURCE_NOT_FOUND", "Business was not found.");
+}
+
 export function membershipReadTransientFailureError(): PermissionDomainError {
   return new PermissionDomainError(
     "TEMPORARY_UNAVAILABLE",

@@ -151,3 +151,43 @@ export function buildBusinessBranchUpdatedEvent(
     },
   };
 }
+
+/**
+ * `ENG-P3-002A` (design §37). Privacy-minimal per this file's own
+ * established principle: no Terms *content* is carried (that lives
+ * outside this codebase entirely, §37.5), and no PII beyond the
+ * already-necessary identity/business references — `languageCode` is
+ * retained because it is operationally relevant (matches
+ * `BusinessTermsAcceptance`'s own persisted shape), not because it is
+ * sensitive.
+ */
+export type BusinessTermsAcceptedPayload = {
+  businessId: string;
+  acceptingCustomerIdentityId: string;
+  termsVersion: string;
+  languageCode: string;
+};
+
+const TERMS_ACCEPTANCE_AGGREGATE_TYPE = "business_terms_acceptance";
+
+export function buildBusinessTermsAcceptedEvent(
+  params: EventEnvelopeParams & BusinessTermsAcceptedPayload,
+): DomainEvent<BusinessTermsAcceptedPayload> {
+  return {
+    eventId: params.eventId,
+    eventType: buildEventType(SOURCE_DOMAIN, "business_terms_accepted", 1),
+    eventVersion: 1,
+    sourceDomain: SOURCE_DOMAIN,
+    aggregateType: TERMS_ACCEPTANCE_AGGREGATE_TYPE,
+    aggregateId: params.businessId,
+    correlationId: params.correlationId,
+    actor: params.actor,
+    occurredAt: params.occurredAt,
+    payload: {
+      businessId: params.businessId,
+      acceptingCustomerIdentityId: params.acceptingCustomerIdentityId,
+      termsVersion: params.termsVersion,
+      languageCode: params.languageCode,
+    },
+  };
+}

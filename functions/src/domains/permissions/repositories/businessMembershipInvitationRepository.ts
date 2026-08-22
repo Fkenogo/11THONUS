@@ -98,6 +98,35 @@ export async function hasPendingInvitationForDeliveryTarget(
   return !snapshot.empty;
 }
 
+/**
+ * `ENG-P3-002A` addendum (design §39): the missing "list by business"
+ * invitation query, optionally filtered to one `status` (e.g. `"pending"`
+ * for the onboarding review step's "who's still pending" view). Equality-
+ * only compound filter when `status` is supplied (mirrors
+ * `hasPendingInvitationForDeliveryTarget`'s own two-equality-filter
+ * precedent) — no pagination, no sort, bounded to one Business's small
+ * onboarding-time invitation set. Callers must independently re-verify
+ * authority over `businessId` — this function performs no authorization
+ * itself. Filters out any document that fails to parse (fail closed).
+ */
+export async function listInvitationsByBusiness(
+  db: Firestore,
+  businessId: string,
+  statusFilter?: string,
+): Promise<BusinessMembershipInvitation[]> {
+  let query = db.collection(COLLECTION).where("businessId", "==", businessId);
+  if (statusFilter !== undefined) {
+    query = query.where("status", "==", statusFilter);
+  }
+  const snapshot = await query.get();
+  const invitations: BusinessMembershipInvitation[] = [];
+  for (const doc of snapshot.docs) {
+    const invitation = fromBusinessMembershipInvitationDocument(doc.id, doc.data());
+    if (invitation) invitations.push(invitation);
+  }
+  return invitations;
+}
+
 /** Write-only — for use inside `mutation.apply`'s `TransactionWriter`. */
 export function writeInvitation(
   writer: { set: (ref: ReturnType<typeof invitationRef>, data: unknown) => unknown },

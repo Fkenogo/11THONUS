@@ -25,6 +25,45 @@ import {
   getKnowledgeNodeById,
   transitionKnowledgeNodeStatusPersisted,
 } from "../../commerceKnowledge/repositories/knowledgeNodeRepository";
+import { BUSINESS_TERMS_CONFIG_ENV_VAR } from "../../../config/businessTermsConfig";
+import {
+  createBusinessTermsAcceptance,
+  toBusinessTermsAcceptanceDocumentFields,
+  businessTermsAcceptanceId,
+} from "../models/businessTermsAcceptance";
+
+/**
+ * `ENG-P3-002A` (design §37, task Phase AD): `submitBusinessForVerificationCommand`
+ * now has an additive precondition — the current owner must have accepted
+ * the currently-required Business Terms version. This file's own
+ * "Owner + draft = executed" / end-to-end tests intend the submission to
+ * *succeed*, so — per Phase AD's explicit instruction — this test file's
+ * setup is updated with an explicit test-only current-Terms-version
+ * configuration and a matching acceptance record, never by weakening the
+ * new invariant itself. `TEST_ONLY_FIXTURE_v0` is unambiguously a test
+ * fixture value, never a real/legally-approved Terms version (Phase Q).
+ */
+const TEST_ONLY_TERMS_VERSION = "TEST_ONLY_FIXTURE_v0";
+
+async function seedBusinessTermsAcceptance(
+  businessId: string,
+  acceptingCustomerIdentityId: string,
+) {
+  const acceptance = createBusinessTermsAcceptance({
+    id: "",
+    acceptingCustomerIdentityId,
+    businessId,
+    termsVersion: TEST_ONLY_TERMS_VERSION,
+    acceptedAt: CREATED_AT,
+    languageCode: "en",
+  });
+  await db
+    .collection("businessTermsAcceptances")
+    .doc(
+      businessTermsAcceptanceId(businessId, acceptingCustomerIdentityId, TEST_ONLY_TERMS_VERSION),
+    )
+    .set(toBusinessTermsAcceptanceDocumentFields(acceptance));
+}
 
 /**
  * `ENG-P2-002C` — the emulator test matrix interrupted mid-work by the
@@ -38,11 +77,19 @@ import {
 const app = initializeApp({ projectId: "demo-11thonus" }, "businessProfileLifecycleEmulatorTest");
 const db = getFirestore(app);
 
+const ORIGINAL_TERMS_CONFIG_ENV = process.env[BUSINESS_TERMS_CONFIG_ENV_VAR];
+
 afterAll(async () => {
   await Promise.all(getApps().map((a) => deleteApp(a)));
+  if (ORIGINAL_TERMS_CONFIG_ENV === undefined) {
+    delete process.env[BUSINESS_TERMS_CONFIG_ENV_VAR];
+  } else {
+    process.env[BUSINESS_TERMS_CONFIG_ENV_VAR] = ORIGINAL_TERMS_CONFIG_ENV;
+  }
 });
 
 beforeAll(async () => {
+  process.env[BUSINESS_TERMS_CONFIG_ENV_VAR] = TEST_ONLY_TERMS_VERSION;
   if (!process.env["FIRESTORE_EMULATOR_HOST"]) {
     throw new Error(
       "FIRESTORE_EMULATOR_HOST is not set — this test requires the Firebase Emulator Suite. Run via `pnpm emulators:validate` or `pnpm test:emulator` inside `firebase emulators:exec`.",
@@ -84,6 +131,7 @@ beforeEach(async () => {
     "businessBranches",
     "businessMemberships",
     "businessCodeReservations",
+    "businessTermsAcceptances",
     "idempotencyRecords",
     "outboxEntries",
   ]) {
@@ -494,6 +542,7 @@ describe("submitBusinessForVerificationCommand — draft-only narrowness (real F
       businessId: "biz-a",
       role: "owner",
     });
+    await seedBusinessTermsAcceptance("biz-a", "cust_owner");
 
     const outcome = await submitBusinessForVerificationCommand(db, {
       userId: "cust_owner",
@@ -814,6 +863,8 @@ describe("End-to-end acceptance — real bootstrap through pending_verification 
       ...newIds(),
     });
     expect(branchOutcome.outcome).toBe("executed");
+
+    await seedBusinessTermsAcceptance(businessId, "cust_e2e_owner");
 
     const submitOutcome = await submitBusinessForVerificationCommand(db, {
       userId: "cust_e2e_owner",

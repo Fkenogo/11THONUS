@@ -17,7 +17,7 @@
 
 import type { Firestore, Transaction } from "firebase-admin/firestore";
 import { fromBusinessMembershipDocument } from "../models/businessMembershipDocument";
-import type { MembershipReadResult } from "../evaluator/types";
+import type { EvaluationBusinessMembership, MembershipReadResult } from "../evaluator/types";
 
 const COLLECTION = "businessMemberships";
 
@@ -65,6 +65,32 @@ export async function getBusinessMembershipByUserAndBusiness(
  * document, looked up directly. Always a live Firestore read — no caching,
  * matching the read-only repository's existing discipline above.
  */
+/**
+ * `ENG-P3-002A` addendum (design §39): the missing "list by business"
+ * membership query — a single equality filter on `businessId`, bounded
+ * (no pagination, no sort — a Business's roster at onboarding time is
+ * small, §39). Callers must independently re-verify the requesting
+ * caller's own authority over `businessId` (this function performs no
+ * authorization itself, matching every other read-only repository
+ * function in this file). Filters out any document that fails to parse
+ * (fail closed, mirrors `listKnowledgeNodeChildren`'s established
+ * precedent) — a malformed persisted membership is silently excluded
+ * from the roster, never surfaced as if it were a well-formed one, and
+ * never crashes the caller.
+ */
+export async function listMembershipsByBusiness(
+  db: Firestore,
+  businessId: string,
+): Promise<EvaluationBusinessMembership[]> {
+  const snapshot = await db.collection(COLLECTION).where("businessId", "==", businessId).get();
+  const memberships: EvaluationBusinessMembership[] = [];
+  for (const doc of snapshot.docs) {
+    const membership = fromBusinessMembershipDocument(doc.id, doc.data());
+    if (membership) memberships.push(membership);
+  }
+  return memberships;
+}
+
 export async function getBusinessMembershipById(
   db: Firestore,
   membershipId: string,

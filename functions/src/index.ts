@@ -63,6 +63,29 @@ import {
   closeBusinessCommand,
 } from "./domains/business/services/businessLifecycleCommand";
 import { AuthorizeAndExecuteError } from "./domains/permissions/service/authorizeAndExecute";
+import { PermissionDomainError } from "./domains/permissions/models/permissionErrors";
+import { CommerceKnowledgeDomainError } from "./domains/commerceKnowledge/models/commerceKnowledgeErrors";
+import {
+  getOwnedBusinesses as getOwnedBusinessesRead,
+  getBusinessContext as getBusinessContextRead,
+} from "./domains/business/services/businessReadService";
+import {
+  listBusinessCategories as listBusinessCategoriesRead,
+  listBusinessTypesForCategory as listBusinessTypesForCategoryRead,
+} from "./domains/commerceKnowledge/services/commerceKnowledgeReadService";
+import {
+  createStaffInvitation as createStaffInvitationCommand,
+  type CreateStaffInvitationRequest,
+} from "./domains/permissions/service/createStaffInvitationService";
+import {
+  revokeStaffInvitation as revokeStaffInvitationCommand,
+  type RevokeStaffInvitationRequest,
+} from "./domains/permissions/service/revokeStaffInvitationService";
+import {
+  listStaffInvitationsForBusiness,
+  listStaffMembershipsForBusiness,
+} from "./domains/permissions/service/staffTransportReadService";
+import { acceptBusinessTermsCommand } from "./domains/business/services/acceptBusinessTermsCommand";
 
 setGlobalOptions({ region: PLATFORM_REGION, maxInstances: 10 });
 
@@ -131,6 +154,17 @@ function toHttpsError(error: unknown): HttpsError {
     return new HttpsError(
       CATEGORY_TO_HTTPS[error.category as ErrorCategory] ?? "internal",
       "business_command_failed",
+    );
+  }
+  if (error instanceof PermissionDomainError) {
+    // Never echoes the domain message (Phase W) — a single stable client
+    // message per code, same posture as every other domain mapping above.
+    return new HttpsError(CATEGORY_TO_HTTPS[error.category] ?? "internal", "staff_command_failed");
+  }
+  if (error instanceof CommerceKnowledgeDomainError) {
+    return new HttpsError(
+      CATEGORY_TO_HTTPS[error.category] ?? "internal",
+      "commerce_knowledge_read_failed",
     );
   }
   return new HttpsError("internal", "authentication_failed");
@@ -621,6 +655,284 @@ export const closeBusiness = onCall(async (request) => {
       businessId,
       idempotencyKey: parseNonEmptyString(value.idempotencyKey),
       requestHash: `business.close:${businessId}`,
+      correlationId: randomUUID(),
+      now: new Date(),
+      newId: randomUUID,
+    });
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// `ENG-P3-002A` — Business Onboarding Backend Read, Transport & Terms
+// Foundation. Every callable below follows the exact same authenticated-
+// caller → whitelist-parse → domain-service pattern the callables above
+// already established; no new transport convention is introduced.
+// ---------------------------------------------------------------------------
+
+/**
+ * `getOwnedBusinesses` (`ENG-P3-002A`, design §9) — the resume-detection
+ * read. Server-derived exclusively from the authenticated caller's own
+ * `ownerUserId` — the request carries no Business-selecting field at all,
+ * so there is nothing for a caller to mass-assign.
+ */
+export const getOwnedBusinesses = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId } = await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    return await getOwnedBusinessesRead(db, userId);
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+/**
+ * `getBusinessContext` (`ENG-P3-002A`, design §9/§14/§37.7) — the bounded
+ * onboarding-hydration read (Business + default Branch + Terms-acceptance
+ * projection). `businessId` is caller-supplied per existing transport
+ * convention (§10), but authority over it is always re-derived server-side
+ * (`resolveAuthorizedBusinessForRead`) — the id alone never grants access.
+ */
+export const getBusinessContext = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId } = await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    const businessId = parseBusinessId(value.businessId);
+    return await getBusinessContextRead(db, userId, businessId);
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+function parseOptionalLanguageCode(value: unknown): string | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new HttpsError("invalid-argument", "commerce_knowledge_read_failed", {
+      field: "languageCode",
+    });
+  }
+  return value;
+}
+
+/**
+ * `listBusinessCategories` (`ENG-P3-002A`, design §13/§14/Phase H) —
+ * requires authentication (`ED-P3-002-3`) but is not Business-scoped;
+ * every currently-`active` `business_category` node is returned uniformly
+ * to any authenticated caller — no per-caller filtering is meaningful for
+ * platform-global, non-tenant data.
+ */
+export const listBusinessCategories = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    return await listBusinessCategoriesRead(db, parseOptionalLanguageCode(value.languageCode));
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+/**
+ * `listBusinessTypesForCategory` (`ENG-P3-002A`, design §13/§14/Phase I).
+ * `categoryId` is independently re-validated server-side (existing,
+ * `active`, actually a `business_category`) — never trusted merely because
+ * a caller supplied it.
+ */
+export const listBusinessTypesForCategory = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    const categoryId = parseNonEmptyString(value.categoryId);
+    return await listBusinessTypesForCategoryRead(
+      db,
+      categoryId,
+      parseOptionalLanguageCode(value.languageCode),
+    );
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+/**
+ * Whitelist parser (Phase X): only these exact `CreateStaffInvitationRequest`
+ * fields are read off `data` — a caller cannot smuggle `invitedBy`,
+ * `status`, `id`, or any other authority-bearing field through an
+ * unanticipated key, mirroring `parseCreateBusinessCommand`'s established
+ * structural guarantee.
+ */
+export function parseCreateStaffInvitationRequest(
+  value: Record<string, unknown>,
+): CreateStaffInvitationRequest {
+  const businessId = parseBusinessId(value.businessId);
+  const role = parseNonEmptyString(value.role);
+  const deliveryTargetRaw = (value.deliveryTarget ?? {}) as Record<string, unknown>;
+  const deliveryType = parseNonEmptyString(deliveryTargetRaw.type);
+  const deliveryValue = parseNonEmptyString(deliveryTargetRaw.value);
+  return {
+    businessId,
+    role,
+    deliveryTarget: { type: deliveryType, value: deliveryValue },
+  };
+}
+
+/**
+ * `createStaffInvitation` (`ENG-P3-002A`, design §11, Phase L) — transport
+ * exposure only; the already-complete `ENG-P2-003B` INVITE command remains
+ * sole authority (`staff.manage`-gated via `authorizeAndExecute`). This
+ * callable owns request parsing, the authentication boundary, transport-
+ * level error mapping, and dependency wiring only — no domain logic is
+ * duplicated here.
+ */
+export const createStaffInvitation = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId } = await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    const parsedRequest = parseCreateStaffInvitationRequest(value);
+    return await createStaffInvitationCommand(db, parsedRequest, {
+      actorUserId: userId,
+      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+      correlationId: randomUUID(),
+      actor: { actorType: "user", actorId: userId },
+      now: new Date(),
+      newId: randomUUID,
+    });
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+export function parseRevokeStaffInvitationRequest(
+  value: Record<string, unknown>,
+): RevokeStaffInvitationRequest {
+  return {
+    businessId: parseBusinessId(value.businessId),
+    invitationId: parseNonEmptyString(value.invitationId),
+  };
+}
+
+/** `revokeStaffInvitation` (`ENG-P3-002A`, design §11, Phase L) — same transport-only exposure pattern as `createStaffInvitation` above. */
+export const revokeStaffInvitation = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId } = await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    const parsedRequest = parseRevokeStaffInvitationRequest(value);
+    return await revokeStaffInvitationCommand(db, parsedRequest, {
+      actorUserId: userId,
+      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+      correlationId: randomUUID(),
+      actor: { actorType: "user", actorId: userId },
+      now: new Date(),
+      newId: randomUUID,
+    });
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+/**
+ * `listStaffInvitations` (`ENG-P3-002A`, design §39, Phase K/N) —
+ * Business-scoped, bounded (no pagination). `statusFilter`, when supplied,
+ * is passed through as a plain string to the repository's own equality
+ * filter — no client authority beyond narrowing their own already-
+ * authorized read.
+ */
+export const listStaffInvitations = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId } = await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    const businessId = parseBusinessId(value.businessId);
+    const statusFilter =
+      value.statusFilter === undefined ? undefined : parseNonEmptyString(value.statusFilter);
+    return await listStaffInvitationsForBusiness(db, userId, businessId, statusFilter);
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+/** `listStaffMemberships` (`ENG-P3-002A`, design §39, Phase K/N) — Business-scoped, bounded. */
+export const listStaffMemberships = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId } = await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    const businessId = parseBusinessId(value.businessId);
+    return await listStaffMembershipsForBusiness(db, userId, businessId);
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+/**
+ * Whitelist parser (Phase X, security-critical): only `businessId`,
+ * optional `languageCode`, optional `collectionMethod` are read off `data`
+ * — `acceptingCustomerIdentityId`, `termsVersion`, and `acceptedAt` are
+ * structurally absent from this parser's output type, so a caller cannot
+ * express them even by supplying an extra field. The accepting identity
+ * and the accepted Terms version are always server-resolved
+ * (`acceptBusinessTermsCommand.ts`, design §37.5/§37.8).
+ */
+export function parseAcceptBusinessTermsRequest(value: Record<string, unknown>): {
+  businessId: string;
+  languageCode?: string;
+  collectionMethod?: string;
+} {
+  return {
+    businessId: parseBusinessId(value.businessId),
+    languageCode: parseOptionalLanguageCode(value.languageCode),
+    collectionMethod:
+      value.collectionMethod === undefined
+        ? undefined
+        : parseNonEmptyString(value.collectionMethod),
+  };
+}
+
+/**
+ * `acceptBusinessTerms` (`ENG-P3-002A`, design §37.6/§37.8/§Phase T) — the
+ * security-critical Terms-acceptance transport. Server sequence: resolve
+ * the authenticated principal → derive the accepting Customer Identity
+ * (`userId`, never a request field) → `acceptBusinessTermsCommand`
+ * re-derives Owner authority over `businessId`, reads the current
+ * server-authoritative Terms version, and writes/reuses the immutable
+ * acceptance record inside one transaction. No lifecycle transition
+ * occurs here.
+ */
+export const acceptBusinessTerms = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId } = await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    const parsedRequest = parseAcceptBusinessTermsRequest(value);
+    return await acceptBusinessTermsCommand(db, {
+      userId,
+      businessId: parsedRequest.businessId,
+      languageCode: parsedRequest.languageCode,
+      collectionMethod: parsedRequest.collectionMethod,
+      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
       correlationId: randomUUID(),
       now: new Date(),
       newId: randomUUID,

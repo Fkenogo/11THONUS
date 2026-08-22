@@ -4,6 +4,9 @@ import {
   parseCreateBusinessCommand,
   parseBusinessProfilePatch,
   parseBusinessBranchProfilePatch,
+  parseCreateStaffInvitationRequest,
+  parseRevokeStaffInvitationRequest,
+  parseAcceptBusinessTermsRequest,
 } from "./index";
 
 /**
@@ -203,5 +206,85 @@ describe("parseBusinessBranchProfilePatch (mass-assignment boundary)", () => {
 
   it("rejects a non-string value for a legitimate field", () => {
     expect(() => parseBusinessBranchProfilePatch({ city: 12345 })).toThrow();
+  });
+});
+
+/**
+ * `ENG-P3-002A` Phase X — adversarial mass-assignment regression for the
+ * new Staff/Terms transport whitelist parsers, same discipline as
+ * `parseCreateBusinessCommand`/`parseBusinessProfilePatch` above.
+ */
+describe("parseCreateStaffInvitationRequest (mass-assignment boundary)", () => {
+  it("drops invitedBy/status/id even if present on the payload — only businessId/role/deliveryTarget survive", () => {
+    const malicious = {
+      businessId: "biz-a",
+      role: "staff",
+      deliveryTarget: { type: "email", value: "person@example.com" },
+      invitedBy: "attacker",
+      status: "accepted",
+      id: "attacker-id",
+    };
+    const parsed = parseCreateStaffInvitationRequest(malicious);
+    expect(parsed).toEqual({
+      businessId: "biz-a",
+      role: "staff",
+      deliveryTarget: { type: "email", value: "person@example.com" },
+    });
+  });
+
+  it("rejects a missing businessId/role/deliveryTarget", () => {
+    expect(() => parseCreateStaffInvitationRequest({})).toThrow();
+    expect(() => parseCreateStaffInvitationRequest({ businessId: "biz-a" })).toThrow();
+    expect(() =>
+      parseCreateStaffInvitationRequest({ businessId: "biz-a", role: "staff" }),
+    ).toThrow();
+  });
+});
+
+describe("parseRevokeStaffInvitationRequest (mass-assignment boundary)", () => {
+  it("only reads businessId/invitationId — extra fields are dropped", () => {
+    const malicious = {
+      businessId: "biz-a",
+      invitationId: "inv-1",
+      status: "revoked",
+      revokedBy: "attacker",
+    };
+    const parsed = parseRevokeStaffInvitationRequest(malicious);
+    expect(parsed).toEqual({ businessId: "biz-a", invitationId: "inv-1" });
+  });
+});
+
+describe("parseAcceptBusinessTermsRequest (mass-assignment boundary, security-critical)", () => {
+  it("only reads businessId/languageCode/collectionMethod — acceptingCustomerIdentityId/termsVersion/acceptedAt are structurally absent from the output even if present on the payload", () => {
+    const malicious = {
+      businessId: "biz-a",
+      languageCode: "en",
+      collectionMethod: "onboarding_wizard",
+      acceptingCustomerIdentityId: "cust_attacker",
+      termsVersion: "attacker_chosen_v99",
+      acceptedAt: "2020-01-01T00:00:00.000Z",
+    };
+    const parsed = parseAcceptBusinessTermsRequest(malicious);
+    expect(parsed).toEqual({
+      businessId: "biz-a",
+      languageCode: "en",
+      collectionMethod: "onboarding_wizard",
+    });
+    expect(Object.keys(parsed)).not.toContain("acceptingCustomerIdentityId");
+    expect(Object.keys(parsed)).not.toContain("termsVersion");
+    expect(Object.keys(parsed)).not.toContain("acceptedAt");
+  });
+
+  it("rejects a missing businessId", () => {
+    expect(() => parseAcceptBusinessTermsRequest({})).toThrow();
+  });
+
+  it("languageCode/collectionMethod are genuinely optional", () => {
+    const parsed = parseAcceptBusinessTermsRequest({ businessId: "biz-a" });
+    expect(parsed).toEqual({
+      businessId: "biz-a",
+      languageCode: undefined,
+      collectionMethod: undefined,
+    });
   });
 });

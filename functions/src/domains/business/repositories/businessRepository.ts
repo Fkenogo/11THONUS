@@ -266,6 +266,76 @@ export async function readBusinessBranchForBusiness(
 }
 
 /**
+ * `ENG-P3-002A` read transport addendum (§9, §40): lists every Business
+ * owned by `ownerUserId`, sourced from `Business.ownerUserId` directly —
+ * the field already set, once, at bootstrap (`bootstrapBusiness` above)
+ * and never mutated by any existing command (no ownership-transfer
+ * command exists in this codebase). This is deliberately **not** a second
+ * ownership model: it is the same `ownerUserId` field
+ * `evaluatePermission.ts`'s membership-derived `role: "owner"` is itself
+ * always consistent with at MVP (bootstrap sets both the Business's
+ * `ownerUserId` and the initial membership's `role: "owner"` atomically,
+ * in the same transaction, and nothing since diverges them). A single
+ * equality-filter query — automatically indexed, no composite index
+ * required (mirrors `getBusinessMembershipByUserAndBusiness`'s own
+ * "equality-only queries need no manual index" precedent). Filters out any
+ * document that fails to parse (fail closed, never surfaces a malformed
+ * Business silently as if it were a well-formed one — mirrors
+ * `listKnowledgeNodeChildren`'s established precedent).
+ */
+export async function listBusinessesByOwner(
+  db: Firestore,
+  ownerUserId: string,
+): Promise<Business[]> {
+  const snapshot = await db
+    .collection(BUSINESSES_COLLECTION)
+    .where("ownerUserId", "==", ownerUserId)
+    .get();
+  const businesses: Business[] = [];
+  for (const doc of snapshot.docs) {
+    const business = fromBusinessDocument(doc.id, doc.data());
+    if (business) businesses.push(business);
+  }
+  return businesses;
+}
+
+/**
+ * `ENG-P3-002A` addendum (§9, §37.7): the governed single default Branch
+ * for a Business, read outside a caller-owned transaction (for the
+ * read-only `getBusinessContext` hydration path, which does not need
+ * write-capable transaction access). Fails closed
+ * (`multipleDefaultBranchesError`) if more than one `businessBranches`
+ * document exists for this `businessId` — the MVP single-branch invariant
+ * (`ENG-P2-002-DESIGN-001` FD-1) is a structural expectation this read
+ * verifies rather than silently assumes. Returns `null` (not an error) if
+ * zero Branch documents exist yet — a `draft` Business created through the
+ * atomic bootstrap transaction always has exactly one Branch the instant
+ * it exists, so "zero Branch" here would itself indicate a structurally
+ * incomplete Business (surfaced by the caller, not this reader, per Phase G).
+ */
+export async function readDefaultBranchForBusiness(
+  db: Firestore,
+  businessId: string,
+): Promise<BusinessBranch | null> {
+  const snapshot = await db
+    .collection(BRANCHES_COLLECTION)
+    .where("businessId", "==", businessId)
+    .limit(2)
+    .get();
+  if (snapshot.empty) return null;
+  if (snapshot.size > 1) {
+    throw new BusinessDomainError(
+      "VALIDATION_FAILED",
+      `Business "${businessId}" has more than one Branch document — the single-branch MVP invariant is violated.`,
+    );
+  }
+  const doc = snapshot.docs[0];
+  const branch = fromBusinessBranchDocument(doc.id, doc.data());
+  if (!branch || branch.businessId !== businessId) return null;
+  return branch;
+}
+
+/**
  * `ENG-P2-002C` write helper — the `mutation.apply` phase only has a
  * write-only `TransactionWriter` (`authorizeAndExecute.ts`'s own
  * TOCTOU-safety boundary: no `.get` available after the audit write has

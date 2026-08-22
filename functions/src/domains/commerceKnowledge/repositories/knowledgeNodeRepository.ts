@@ -364,6 +364,38 @@ export async function transitionKnowledgeNodeStatusPersisted(
   });
 }
 
+/**
+ * `ENG-P3-002A` addendum (design §13/§H): the selectable-options read
+ * transport's one query — active nodes of a given `nodeType`, optionally
+ * scoped to a `parentId`. Equality-only compound filters (mirrors
+ * `getBusinessMembershipByUserAndBusiness`'s established precedent — no
+ * composite index required). Never exposes `draft`/`in_review`/`retired`/
+ * `archived` nodes — this is the one place in the repository where
+ * `status === "active"` is a hard filter, not caller-suppliable. Filters
+ * out any document that fails to parse (fail closed, mirrors
+ * `listKnowledgeNodeChildren`).
+ */
+export async function listActiveSelectableNodes(
+  db: Firestore,
+  nodeType: KnowledgeNodeType,
+  parentId?: string,
+): Promise<KnowledgeNode[]> {
+  let query = db
+    .collection(KNOWLEDGE_NODES_COLLECTION)
+    .where("nodeType", "==", nodeType)
+    .where("status", "==", "active");
+  if (parentId !== undefined) {
+    query = query.where("parentId", "==", parentId);
+  }
+  const snapshot = await query.get();
+  const nodes: KnowledgeNode[] = [];
+  for (const doc of snapshot.docs) {
+    const node = fromKnowledgeNodeDocument(doc.id, doc.data());
+    if (node) nodes.push(node);
+  }
+  return nodes;
+}
+
 function stripUndefined<T extends Record<string, unknown>>(value: T): Partial<T> {
   const result: Partial<T> = {};
   for (const key of Object.keys(value) as Array<keyof T>) {
