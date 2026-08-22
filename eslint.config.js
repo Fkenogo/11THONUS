@@ -350,6 +350,10 @@ export default tseslint.config(
       "functions/src/domains/business/services/businessReadService.emulator.test.ts",
       "functions/src/domains/business/services/acceptBusinessTermsCommand.ts",
       "functions/src/domains/business/services/acceptBusinessTermsCommand.emulator.test.ts",
+      // `ENG-P3-002C`: the chained real-onboarding-journey emulator test
+      // — same precedent as the emulator tests immediately above, an
+      // emulator test file, not a new exception category.
+      "functions/src/domains/business/services/businessOnboardingJourney.emulator.test.ts",
     ],
     languageOptions: {
       ecmaVersion: 2023,

@@ -13,6 +13,7 @@ import { useTranslation } from "../../i18n";
 import { Button, Select, TextField } from "../../components/ui/formPrimitives";
 import { useBusinessCategoriesQuery } from "../hooks/businessQueries";
 import { useCreateBusinessMutation } from "../hooks/businessMutations";
+import { MutationError } from "./MutationError";
 
 export function NewBusinessPage() {
   const { t, i18n } = useTranslation("business");
@@ -97,6 +98,7 @@ export function NewBusinessPage() {
         <Button type="button" disabled={!isComplete || mutation.isPending} onClick={handleSubmit}>
           {t("actions.continue")}
         </Button>
+        <MutationError error={mutation.error} />
       </div>
     </main>
   );

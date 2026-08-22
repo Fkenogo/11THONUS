@@ -9,6 +9,7 @@ import {
   useRevokeStaffInvitationMutation,
 } from "../../hooks/businessMutations";
 import type { BusinessContext } from "../../api/businessContext";
+import { MutationError } from "../MutationError";
 
 export function TeamStep({
   context,
@@ -68,6 +69,7 @@ export function TeamStep({
         >
           {t("team.invite")}
         </Button>
+        <MutationError error={createMutation.error} />
       </div>
 
       <ul className="mb-6 flex flex-col gap-2">
@@ -93,6 +95,7 @@ export function TeamStep({
           </li>
         ))}
       </ul>
+      <MutationError error={revokeMutation.error} />
 
       <div className="flex gap-2">
         <Button type="button" variant="secondary" onClick={onContinue}>
