@@ -1433,10 +1433,14 @@ describe("evaluateAuthorizationDecision — ordinary permission interaction case
     expect(decision.errorCategory).toBe("BUSINESS_INACTIVE");
   });
 
-  it("sensitive permission + draft → still denies BUSINESS_INACTIVE (non-regression: the per-permission gate did not loosen the sensitive gate)", () => {
+  it("sensitive permission (business.configureFraudRules, no CORR-003 override) + draft → still denies BUSINESS_INACTIVE (non-regression: the per-permission gate did not loosen the sensitive gate for permissions other than staff.manage — see sensitivePermissionCatalogue.corr003.test.ts for staff.manage's own, intentionally different, ENG-P2-004-CORR-003 lifecycle)", () => {
     const decision = evaluateAuthorizationDecision(
       baseInput({
-        request: { userId: "user-1", businessId: "biz-a", permission: "staff.manage" },
+        request: {
+          userId: "user-1",
+          businessId: "biz-a",
+          permission: "business.configureFraudRules",
+        },
         business: { kind: "found", business: { id: "biz-a", status: "draft" } },
         membership: { kind: "found", membership: membership({ role: "owner" }) },
       }),

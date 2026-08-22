@@ -57,6 +57,23 @@
  * grant/revoke in this correction), and every override-adjacent branch
  * below (steps 6-9) keeps operating exactly as it did before this
  * correction for every permission that reaches it.
+ *
+ * **`ENG-P2-004-CORR-003` per-permission Sensitive lifecycle gate
+ * (Founder-approved correction).** The single global Sensitive gate
+ * (`{trial, active}`) conflicted with the approved Business onboarding
+ * journey, which offers Staff invitation (`staff.manage`) while the
+ * Business is still `draft`/`pending_verification`. Mirroring
+ * `ENG-P2-004-CORR-001`'s own per-permission precedent for ordinary
+ * permissions, the Sensitive catalogue now supports an optional
+ * per-entry `eligibleBusinessStatuses` override
+ * (`sensitivePermissionCatalogue.ts`); the Sensitive branch below reads
+ * that override when present, and falls back to the legacy
+ * `{trial, active}` set (`LEGACY_OPERATIONAL_SENSITIVE_STATUSES`) when
+ * absent. Only `staff.manage`'s catalogue entry carries an override —
+ * every other Sensitive permission's lifecycle eligibility is unchanged,
+ * byte-for-byte (Phase G backward-compatibility proof). This is
+ * catalogue-configuration policy, not evaluator branching: no
+ * `permission === "staff.manage"` special case exists in this file.
  */
 
 import { isWellFormedPermissionId } from "../models/permissionId";
@@ -92,8 +109,13 @@ import type { ErrorCategory } from "../../../shared/errors/errorCategories";
  * four ordinary permissions each carry their own lifecycle-eligibility
  * set instead of this one (see the module header note and
  * `ordinaryPermissionCatalogue.ts`).
+ *
+ * `ENG-P2-004-CORR-003`: this is now the *legacy fallback* used only when
+ * a Sensitive catalogue entry has no explicit `eligibleBusinessStatuses`
+ * override — see the module header note. Every Sensitive permission
+ * except `staff.manage` still resolves through this exact set.
  */
-const OPERATIONAL_BUSINESS_STATUSES = new Set(["active", "trial"]);
+const LEGACY_OPERATIONAL_SENSITIVE_STATUSES = new Set(["active", "trial"]);
 
 type PermissionClass = "sensitive" | "ordinary" | "unknown";
 
@@ -192,7 +214,14 @@ export function evaluateAuthorizationDecision(input: EvaluationInput): Authoriza
   // must never be able to throw on untrusted input).
   const permissionClass = classifyPermission(request.permission);
   if (permissionClass === "sensitive") {
-    if (!OPERATIONAL_BUSINESS_STATUSES.has(business.business.status)) {
+    // `ENG-P2-004-CORR-003`: per-permission override when the catalogue
+    // entry names one (currently `staff.manage` only), else the
+    // unchanged legacy `{trial, active}` set — see module header note.
+    const sensitiveEntry = getSensitivePermissionEntry(request.permission);
+    const eligibleSensitiveStatuses: ReadonlySet<string> = sensitiveEntry.eligibleBusinessStatuses
+      ? new Set(sensitiveEntry.eligibleBusinessStatuses)
+      : LEGACY_OPERATIONAL_SENSITIVE_STATUSES;
+    if (!eligibleSensitiveStatuses.has(business.business.status)) {
       return deny(now, "BUSINESS_NOT_ACTIVE", "BUSINESS_INACTIVE");
     }
   } else if (permissionClass === "ordinary") {

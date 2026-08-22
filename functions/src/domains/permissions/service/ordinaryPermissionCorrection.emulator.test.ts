@@ -245,7 +245,14 @@ describe("ENG-P2-004-CORR-001 — 002C compatibility proof: business.close", () 
 });
 
 describe("ENG-P2-004-CORR-001 — 002C compatibility proof: sensitive-permission non-regression through the same boundary", () => {
-  it("a sensitive permission (staff.manage) on a draft Business still denies through authorizeAndExecute", async () => {
+  it("a sensitive permission (business.configureFraudRules — carries no ENG-P2-004-CORR-003 lifecycle override) on a draft Business still denies through authorizeAndExecute", async () => {
+    // Was `staff.manage` — ENG-P2-004-CORR-003 (Founder-approved) intentionally
+    // widened staff.manage's own lifecycle eligibility to include `draft`, so
+    // it is no longer a valid example of "the general sensitive gate is
+    // unchanged." Swapped to a permission with no lifecycle override, which
+    // still proves the general boundary behavior this test exists to cover.
+    // See `evaluatePermission.corr003.test.ts` for staff.manage's own,
+    // intentionally different, CORR-003 lifecycle proof.
     await seedBusiness("biz-a", "draft");
     await seedMembership({
       membershipId: "mem-1",
@@ -257,7 +264,7 @@ describe("ENG-P2-004-CORR-001 — 002C compatibility proof: sensitive-permission
     const outcome = await touchPermissionBoundaryFixture(db, {
       userId: "user-1",
       businessId: "biz-a",
-      permission: "staff.manage",
+      permission: "business.configureFraudRules",
       fixtureId: "fixture-1",
       ...newIds(),
     });
