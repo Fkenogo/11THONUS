@@ -2950,3 +2950,72 @@
 - **Rollback:** `git revert` the merge commit recorded in the closure report and PR — the entire change set is documentation-only and purely additive; no schema, no deployed resource, no data, no Firebase state changed.
 - **Report:** [`CAP-P2-G2-001-g2-evidence-ratification-and-capability-2-closure-2026-08-17.md`](../05-implementation/reports/CAP-P2-G2-001-g2-evidence-ratification-and-capability-2-closure-2026-08-17.md).
 - **Final gate:** **CAPABILITY 2 G2 PASSED — CAPABILITY 2 MERGED AND CLOSED; CAPABILITY 3 AWAITS FRESH FOUNDER AUTHORIZATION.**
+
+---
+
+## 2026-08-23 — ENG-P3-002C-PREVIEW-001 — Business Onboarding DEV Preview: Preview-Auth Code Readiness (No Deployment)
+
+- **Date:** 2026-08-23
+- **Task:** `ENG-P3-002C-PREVIEW-001`, Founder-scoped mid-task to code-only: implement and validate
+  the preview-only Founder-QA authentication mechanism, open a draft PR, and stop before any
+  Firebase deployment or DEV state mutation. Does not close `ENG-P3-002C`, `ENG-P3-002`, or
+  `DEC-LEGAL-002`; does not authorize production or DEV deployment.
+- **Entry verification:** `origin/main` confirmed at `aa122e3717caf288308d2a1637d98fc06745ead0`
+  (PR #159's merge SHA); PR #156/#159 both confirmed ancestors, CI green on both. Firebase MCP's
+  active/default project confirmed to be the bare `eleventh-on-us` alias, **not** `eleventh-on-us-dev`
+  — every verification read in this task explicitly targeted `eleventh-on-us-dev`.
+- **DEV state observed (read-only, unchanged):** only the `authenticate` callable deployed in DEV;
+  only the `live` Hosting channel exists; `platformConfig/businessTerms` confirmed absent
+  (expected/safe); no Commerce Knowledge collections yet. **No DEV data mutation performed.**
+- **Preview-gate architecture:** added a third, sibling hosted-preview mode
+  (`founder-qa-preview`) alongside the existing `AUTH-PREVIEW-READINESS-001` `test-harness`/
+  `sign-in-preview` pattern — but, unlike those two structurally-isolated builds, this one keeps
+  the ordinary module graph so the real `/business` onboarding routes stay reachable. New fail-closed
+  gate (`founderQaPreviewGate.ts`, exact-match flag + mode + project ID), new Vite mode constant and
+  `isTemporaryPreviewMode` helper (`viteBuildModes.ts`), and one new route
+  (`/dev/founder-qa-sign-in`) reusing the existing `SignInPreviewPage`/`createSignInActions`
+  composition unmodified — no authentication logic duplicated or weakened, backend authorization
+  untouched.
+- **TDD:** every new module written test-first (genuine RED confirmed — missing-module import
+  failures / a wrong default before implementation — then GREEN). Positive and fail-closed gate
+  cases covered (missing/empty/`"false"`/malformed flag, wrong project, wrong mode, ordinary
+  production and dev-server builds).
+- **Structural exclusion proof:** a real `pnpm build` (ordinary production build) followed by
+  `grep -rl` across `dist/` for every preview-route marker returned zero matches — confirmed
+  structurally absent from the production bundle, not merely runtime-gated (same guarantee the
+  pre-existing `test-harness`/`sign-in-preview` builds carry, independently re-confirmed identical
+  in the same build). A separate `pnpm run build:founder-qa-preview` (new script), built against a
+  local, gitignored, uncommitted `.env.founder-qa-preview.local` mirroring the existing
+  `.env.sign-in-preview.local` convention, produced a distinct preview-route chunk *and* confirmed
+  the `/business` route modules remained present in the main bundle, with the PWA service worker
+  correctly excluded for this temporary-preview mode and zero `TEST_ONLY` Terms fixture reaching
+  the bundle.
+- **Full validation:** web unit tests 503/503; functions unit tests 1563/1563 (untouched by this
+  change, run to confirm no incidental regression); typecheck clean (both packages); ordinary
+  build clean; `build:founder-qa-preview` clean. Repo-wide `lint`/`format:check` could not complete
+  — pre-existing, unrelated `.claude/worktrees/**` (~2M leftover files) is not excluded from either
+  tool's ignore list — ran both scoped to every file this task touched instead: lint clean, two
+  files needed formatting (fixed, re-verified, affected tests re-run 25/25 green). Emulator suite/
+  Playwright not run — this change makes zero modification to `functions/src/**`, Firestore Rules,
+  or any existing route's behavior; the build-output structural checks above are stronger evidence
+  for this specific, purely-additive claim.
+- **Secret scan:** zero matches across every added/modified file. The one local env file
+  containing a Firebase client API key (not a secret, by Firebase's own design) is gitignored
+  (`apps/web/.gitignore:13`), confirmed never staged or committed.
+- **Firebase/DEV state changes:** **none.** No `firebase.json`/Rules/`.firebaserc` change, no
+  Functions deployment, no Firestore write, no Hosting channel, no Auth user created.
+- **Status change:** `ENG-P3-002C` = unchanged (Integration validation merged; preview/Founder QA
+  still pending — this task did not stand up a preview). `ENG-P3-002` = unchanged (Open). Capability
+  3 = unchanged (Open — partially implemented). No capability/concern status changed by this task.
+- **Files:** `apps/web/package.json`, `apps/web/src/App.tsx`, `apps/web/src/App.test.tsx`,
+  `apps/web/viteBuildModes.ts` (modified); `apps/web/viteBuildModes.test.ts`,
+  `apps/web/src/dev/founderQaPreview/founderQaPreviewGate.ts`,
+  `apps/web/src/dev/founderQaPreview/founderQaPreviewGate.test.ts`,
+  `apps/web/src/dev/founderQaPreview/FounderQaPreviewSignInRoute.tsx`,
+  `apps/web/src/dev/founderQaPreview/FounderQaPreviewSignInRoute.test.tsx` (new); this entry and
+  the [`ENG-P3-002C-PREVIEW-001` code readiness report](../05-implementation/reports/ENG-P3-002C-PREVIEW-001-business-onboarding-dev-preview-code-readiness-report-2026-08-23.md).
+  **No dependency added. No Firebase/Rules/config/index change. No deployment performed.**
+- **Rollback:** entirely additive; `git revert` the merge commit once merged, or do not merge —
+  no schema, deployed resource, data, or Firebase state to unwind.
+- **Report:** [`ENG-P3-002C-PREVIEW-001-business-onboarding-dev-preview-code-readiness-report-2026-08-23.md`](../05-implementation/reports/ENG-P3-002C-PREVIEW-001-business-onboarding-dev-preview-code-readiness-report-2026-08-23.md).
+- **Final gate:** **ENG-P3-002C-PREVIEW-001 CODE READY FOR REVIEW — NO DEV DEPLOYMENT PERFORMED.**

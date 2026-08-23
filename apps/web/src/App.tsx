@@ -40,6 +40,30 @@ const DevSignInPreviewRoute = import.meta.env.DEV
     )
   : null;
 
+// ENG-P3-002C-PREVIEW-001: preview-only sign-in entry point for the Founder-QA
+// business-onboarding hosted preview. Unlike the two routes above, this one is
+// NOT gated on `import.meta.env.DEV` (a hosted preview is always a `vite build`,
+// never dev mode) — it needs its own explicit, fail-closed gate. Every
+// comparison below is a literal `import.meta.env.*` equality (not a function
+// call) so Vite's production build statically replaces the whole condition with
+// `false` and Rollup drops the `import()` call entirely from the production
+// dependency graph — the same build-time exclusion the two routes above rely
+// on. `founderQaPreviewGate.ts`'s `isFounderQaPreviewBuildEnabled` is the
+// separately unit-tested single source of truth for this same fail-closed
+// logic; this literal condition must stay in sync with it (see its test suite).
+const FOUNDER_QA_PREVIEW_ENABLED =
+  import.meta.env.VITE_ENABLE_DEV_AUTH_PREVIEW === "true" &&
+  import.meta.env.MODE === "founder-qa-preview" &&
+  import.meta.env.VITE_FIREBASE_PROJECT_ID === "eleventh-on-us-dev";
+
+const FounderQaPreviewSignInRoute = FOUNDER_QA_PREVIEW_ENABLED
+  ? lazy(() =>
+      import("./dev/founderQaPreview/FounderQaPreviewSignInRoute").then((m) => ({
+        default: () => <m.FounderQaPreviewSignInRoute previewBuild={FOUNDER_QA_PREVIEW_ENABLED} />,
+      })),
+    )
+  : null;
+
 function AppShell() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-3 p-8 text-center">
@@ -108,6 +132,16 @@ function App({ auth, functions }: AppProps) {
             element={
               <Suspense fallback={null}>
                 <DevSignInPreviewRoute />
+              </Suspense>
+            }
+          />
+        )}
+        {FounderQaPreviewSignInRoute && (
+          <Route
+            path="/dev/founder-qa-sign-in"
+            element={
+              <Suspense fallback={null}>
+                <FounderQaPreviewSignInRoute />
               </Suspense>
             }
           />
