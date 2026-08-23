@@ -3019,3 +3019,79 @@
   no schema, deployed resource, data, or Firebase state to unwind.
 - **Report:** [`ENG-P3-002C-PREVIEW-001-business-onboarding-dev-preview-code-readiness-report-2026-08-23.md`](../05-implementation/reports/ENG-P3-002C-PREVIEW-001-business-onboarding-dev-preview-code-readiness-report-2026-08-23.md).
 - **Final gate:** **ENG-P3-002C-PREVIEW-001 CODE READY FOR REVIEW — NO DEV DEPLOYMENT PERFORMED.**
+
+---
+
+## 2026-08-23 — ENG-P3-002C-PREVIEW-001 — Independent Final Preview-Gate Review, Merge & Deployment-Readiness Closure
+
+- **Date:** 2026-08-23
+- **Task:** `ENG-P3-002C-PREVIEW-001` independent review authorization — review PR #160 for
+  correctness, fix genuine source-grounded defects, merge if clean, minimal closure sync. Does not
+  authorize Functions deployment, Firestore seed loading, Hosting preview deployment, DEV Auth
+  user creation, Rules changes, or `DEC-LEGAL-002` work.
+- **Entry:** PR #160 reconfirmed `OPEN`, head `dc2a05323708eff89d198a05b652b62b83d6d913`, CI
+  `success` on that exact SHA. DEV Firebase state re-verified read-only, unchanged since the code
+  readiness report. Review performed in a fresh detached-HEAD `git worktree`, primary checkout
+  untouched throughout.
+- **Gate-duplication review (F2, fixed):** the literal `import.meta.env.*` condition in `App.tsx`
+  and `founderQaPreviewGate.ts`'s `isFounderQaPreviewBuildEnabled` confirmed exactly equivalent by
+  direct inspection. The prior "single source of truth" comment wording was inaccurate — the
+  helper is never called at the `App.tsx` site, so it cannot be what actually governs behavior
+  there. Corrected: the literal condition is now documented as what actually governs the gate; the
+  helper as a separately-tested reference representation; the silent-drift risk explicitly called
+  out (no shared runtime reference is safe without weakening Rollup's static elimination).
+- **Second finding (F1/F2, fixed):** `vite.config.ts`'s top comment ("two dedicated hosted builds
+  … every other build completely unaffected") went stale as a side effect of the prior task's
+  `viteBuildModes.ts` change — `founder-qa-preview` is a third mode that does affect PWA exclusion
+  even though it keeps the ordinary HTML entry. Corrected to describe all three modes accurately.
+  `vite.config.ts` itself was not otherwise touched.
+- **Drift-detection extension:** no new automated build-inspection machinery added (none exists for
+  the pre-existing `test-harness`/`sign-in-preview` builds either, and a runtime wrapper at the
+  `App.tsx` call site would defeat the static-elimination property being verified). Instead, the
+  manual build-matrix check was **extended to the full matrix directly against the literal `App.tsx`
+  expression**: `--mode founder-qa-preview` + correct project + `VITE_ENABLE_DEV_AUTH_PREVIEW=false`
+  → route absent; `--mode founder-qa-preview` + correct flag + wrong project
+  (`eleventh-on-us-staging`) → route absent; correct flag+mode+project (re-confirmed) → route
+  present; ordinary `pnpm build` → route absent, PWA present; `--mode sign-in-preview` rebuilt and
+  reconfirmed unaffected (79 modules, no `/business` code, no PWA). **Zero unresolved F3/F4
+  finding.**
+- **Re-validation:** web suite 503/503; typecheck (both packages) clean; scoped lint/format on the
+  two corrected files clean; ordinary + `founder-qa-preview` builds clean across the full matrix
+  above; secret scan clean (env file still gitignored, never staged). Functions suite not re-run —
+  zero `functions/` changes exist anywhere in this PR, confirmed again via `git diff --stat`.
+- **Scope audit:** review corrections touch exactly `apps/web/src/App.tsx` and
+  `apps/web/vite.config.ts` — comments only, zero logic changed. Zero changes to `functions/src`,
+  `firestore.rules`, `firebase.json`, `.firebaserc`, `storage.rules`, Commerce Knowledge, Terms
+  config, backend authorization, or production auth behavior. No deployment performed.
+- **CI:** final review commit `765abb6e49ae8b0639bcb5fca1ccc27fa1281555` — CI green (run
+  `32639114558`, 5m16s).
+- **Merge:** PR #160 marked ready for review, merged via `gh pr merge 160 --merge --delete-branch`
+  (regular merge commit, matching this repository's established convention) as
+  `5e37c76fa8b4e71ec0cf818f3271df4edcf341b1`. Remote branch `eng-p3-002c-preview-001-dev-preview`
+  deleted post-merge (deleted manually after `gh`'s post-merge local-checkout convenience step
+  failed on an unrelated pre-existing worktree conflict — the merge itself was unaffected). Post-merge
+  `origin/main` confirmed at `5e37c76`; `765abb6` confirmed an ancestor; post-merge CI (run
+  `32639385301`) confirmed green on `main`.
+- **Status change:** `ENG-P3-002C-PREVIEW-001` = **preview-auth code merged; DEV deployment not yet
+  performed.** `ENG-P3-002C` = unchanged — integration validation merged; DEV preview not yet
+  available; Founder QA pending. `ENG-P3-002` = unchanged — Open, blocked on DEV preview/Founder QA
+  and `DEC-LEGAL-002`. Capability 3 = unchanged — Open, partially implemented, not closed.
+- **Deployment package for the next Founder authorization** (unchanged in substance, restated as
+  the exact post-merge handoff, to run from merge SHA `5e37c76`): (1) deploy the 15 onboarding-only
+  Cloud Functions callables to `eleventh-on-us-dev`; (2) load the governed Burundi Commerce
+  Knowledge seed via a one-off local script invoking the existing `runCommerceKnowledgeSeed`, run
+  twice to prove idempotency; (3) create a DEV-only Firebase Auth test identity (mechanism
+  reported, never the credential); (4) deploy a `founder-qa-preview` Hosting preview channel; (5)
+  run the browser smoke journey against the resulting URL. No source change should be mixed into
+  that deployment unless a new defect is discovered during it. `platformConfig/businessTerms`
+  stays absent — no action.
+- **Files:** `apps/web/src/App.tsx`, `apps/web/vite.config.ts` (comment corrections only), this
+  entry, and §24 appended to the
+  [`ENG-P3-002C-PREVIEW-001` code readiness report](../05-implementation/reports/ENG-P3-002C-PREVIEW-001-business-onboarding-dev-preview-code-readiness-report-2026-08-23.md).
+  **No dependency added. No Firebase/Rules/config/index change. No deployment performed.**
+- **Rollback:** `git revert` the merge commit `5e37c76` — entirely additive/documentation-only; no
+  schema, deployed resource, data, or Firebase state to unwind.
+- **Report:** [`ENG-P3-002C-PREVIEW-001-business-onboarding-dev-preview-code-readiness-report-2026-08-23.md`](../05-implementation/reports/ENG-P3-002C-PREVIEW-001-business-onboarding-dev-preview-code-readiness-report-2026-08-23.md)
+  (§24).
+- **Final gate:** **ENG-P3-002C-PREVIEW-001 CODE MERGED AND CLOSED — DEV DEPLOYMENT AWAITS FRESH
+  FOUNDER AUTHORIZATION.**
