@@ -6,15 +6,23 @@ import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
 import { htmlEntryForMode, includePwaForMode } from "./viteBuildModes.js";
 
-// Two dedicated hosted builds (`vite build --mode test-harness` and
-// `--mode sign-in-preview`) each use their own single HTML entry instead of
-// the ordinary app's `index.html` — the mechanism that keeps every
-// customer/business/admin route, and the PWA service worker, structurally
-// out of that build's module graph, not merely gated at runtime. Every
+// Three dedicated hosted builds each get their own `vite build --mode …`
+// handling here, driven by the pure, unit-tested `viteBuildModes.ts` helper:
+// `test-harness` and `sign-in-preview` swap in their own single HTML entry
+// instead of the ordinary app's `index.html` — the mechanism that keeps
+// every customer/business/admin route structurally out of that build's
+// module graph, not merely gated at runtime. `founder-qa-preview`
+// (ENG-P3-002C-PREVIEW-001) is different: it deliberately keeps the
+// ordinary `index.html`/module graph — the real `/business` routes must
+// stay reachable — so `htmlEntryForMode` returns `undefined` for it, same
+// as an ordinary build; only its *preview sign-in route* is separately
+// gated in `App.tsx`. All three modes share one thing here: `includePwaForMode`
+// omits the PWA service worker for every one of them (a stray cached SW must
+// never outlive a torn-down preview), which is why it is driven by the wider
+// `isTemporaryPreviewMode` check, not the narrower HTML-entry one. Every
 // other build (`vite dev`, ordinary `vite build`) is completely unaffected:
-// `mode` is `"development"`/`"production"` in those cases, so both
-// conditionals below fall through to their original behaviour. The mode
-// decisions live in the pure, unit-tested `viteBuildModes.ts` helper.
+// `mode` is `"development"`/`"production"` in those cases, so every
+// conditional below falls through to its original behaviour.
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {

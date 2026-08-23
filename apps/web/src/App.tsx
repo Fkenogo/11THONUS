@@ -48,9 +48,17 @@ const DevSignInPreviewRoute = import.meta.env.DEV
 // call) so Vite's production build statically replaces the whole condition with
 // `false` and Rollup drops the `import()` call entirely from the production
 // dependency graph — the same build-time exclusion the two routes above rely
-// on. `founderQaPreviewGate.ts`'s `isFounderQaPreviewBuildEnabled` is the
-// separately unit-tested single source of truth for this same fail-closed
-// logic; this literal condition must stay in sync with it (see its test suite).
+// on. This literal condition is what actually governs the gate at build/run
+// time; `founderQaPreviewGate.ts`'s `isFounderQaPreviewBuildEnabled` is a
+// separately unit-tested reference representation of the identical
+// three-comparison logic, not itself called here (a function call at this
+// call site would defeat Rollup's static elimination). The two are not
+// wired together, so they can drift silently if one changes without the
+// other — kept in sync by hand and by review, not by a shared runtime
+// reference; independently re-verified byte-for-byte identical, and the
+// build itself re-checked with each combination of wrong/missing
+// flag/project in `founder-qa-preview` mode (see the ENG-P3-002C-PREVIEW-001
+// review report) as the practical drift check.
 const FOUNDER_QA_PREVIEW_ENABLED =
   import.meta.env.VITE_ENABLE_DEV_AUTH_PREVIEW === "true" &&
   import.meta.env.MODE === "founder-qa-preview" &&

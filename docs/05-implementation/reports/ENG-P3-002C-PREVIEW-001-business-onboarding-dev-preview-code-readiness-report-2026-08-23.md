@@ -289,6 +289,141 @@ elsewhere in `docs/changes/IMPLEMENTATION_CHANGES.md` (e.g. the `ITM-D`/`CAP-P2-
 change). Re-ran via `gh run rerun 32636542420 --failed`: **passed clean, 5m24s.** No code changed
 between the two runs. PR is `OPEN`/`MERGEABLE`.
 
+---
+
+## §24. Independent Final Review, Correction & Merge
+
+- **Date:** 2026-08-23. **Entry:** PR #160 reconfirmed `OPEN`/`DRAFT` (undrafted at merge, see
+  below), head `dc2a05323708eff89d198a05b652b62b83d6d913`, CI `success` on that exact SHA
+  (confirmed via `gh api …/commits/<sha>/check-runs`), no later unreviewed commits. DEV Firebase
+  state re-verified read-only and unchanged since §1–2: still only `authenticate` deployed, still
+  only the `live` Hosting channel. Review performed in a fresh detached-HEAD `git worktree` at the
+  exact head, separate from the primary checkout, which was left untouched throughout.
+- **Re-derivation:** `App.tsx`, `founderQaPreviewGate.ts`, `FounderQaPreviewSignInRoute.tsx`,
+  `viteBuildModes.ts`, `vite.config.ts`, `package.json`, and the full PR diff were read directly
+  from the clean worktree, not taken on the prior report's authority.
+- **Gate-duplication finding (F2, fixed):** the two expressions — `App.tsx`'s literal
+  `import.meta.env.*` ternary and `founderQaPreviewGate.ts`'s
+  `isFounderQaPreviewBuildEnabled` — were confirmed **exactly equivalent**: the same three
+  exact-string comparisons (`previewFlag === "true"`, `mode === "founder-qa-preview"`,
+  `projectId === "eleventh-on-us-dev"`), same order, same constants. The duplication is required —
+  collapsing them into one runtime function call at the `App.tsx` site would defeat Rollup's static
+  dead-code elimination (§7/§H below). The prior comment calling the helper the "single source of
+  truth" was inaccurate: the helper is never called at that site, so it cannot be the thing that
+  actually governs behavior there. **Fixed**: `App.tsx`'s comment now states the literal condition
+  is what actually governs the gate, and the helper is a separately-tested *reference
+  representation* of the identical logic — and explicitly documents that the two can drift silently
+  since nothing wires them together, mitigated by manual/review sync plus the extended build-matrix
+  check below.
+- **Drift-detection result:** per the task's own instruction, no new automated build-inspection
+  machinery was added (none exists for the pre-existing `test-harness`/`sign-in-preview` builds
+  either — the established repo convention is a manually-run, report-disclosed `pnpm build` +
+  `grep dist/` check, and adding a parameterized runtime wrapper around the `App.tsx` literal would
+  weaken the exact static-elimination property being verified). Instead, the practical drift check
+  was **extended to the full matrix at real build level**, directly against the literal `App.tsx`
+  expression (not merely the mirrored pure helper):
+  - `--mode founder-qa-preview`, correct project, **`VITE_ENABLE_DEV_AUTH_PREVIEW=false`** →
+    `grep dist/` for every preview marker: **zero matches** (route absent).
+  - `--mode founder-qa-preview`, correct flag, **`VITE_FIREBASE_PROJECT_ID=eleventh-on-us-staging`**
+    (wrong project) → **zero matches** (route absent).
+  - `--mode founder-qa-preview`, correct flag + project (positive case, re-confirmed) →
+    `dist/assets/FounderQaPreviewSignInRoute-*.js` chunk present.
+  - Ordinary `pnpm build` (no preview env involved at all) → **zero matches**, PWA
+    (`dist/sw.js`/`workbox-*.js`) present as expected.
+  - `--mode sign-in-preview` re-built and reconfirmed unaffected by the `viteBuildModes.ts` change:
+    `dist/sign-in-preview.html` present, 79 modules only, no `/business` route module, no PWA.
+- **Fail-closed matrix:** re-confirmed via the existing 9-case `founderQaPreviewGate.test.ts` suite
+  (missing/empty/`"false"`/malformed flag; wrong project incl. `eleventh-on-us`,
+  `eleventh-on-us-staging`, `demo-11thonus`; wrong mode incl. `production`, `development`,
+  `sign-in-preview`, `test-harness`) **plus** the two additional real-build cases above, which the
+  original report had not build-tested directly (it had build-tested only the "no flag at all"
+  and "fully correct" extremes). No coercive/truthy logic found anywhere in either expression.
+- **Build-mode review:** confirmed unchanged — `founder-qa-preview` uses the ordinary `index.html`
+  (`htmlEntryForMode` returns `undefined`), `/business` route modules remain in the main chunk, PWA
+  is excluded for all three preview modes via the (correctly) wider `isTemporaryPreviewMode` check,
+  `test-harness`/`sign-in-preview` behavior is unchanged, and the ordinary production build still
+  includes PWA as before. One additional finding (F1/F2, fixed): `vite.config.ts`'s top comment
+  still described only "two dedicated hosted builds" and claimed every other build is "completely
+  unaffected" — stale as of the `viteBuildModes.ts` change, since `founder-qa-preview` is a third
+  mode that *is* affected (PWA exclusion) even though it keeps the ordinary HTML entry. Corrected to
+  describe all three modes and the HTML-entry/PWA-exclusion distinction accurately. `vite.config.ts`
+  itself was otherwise untouched by PR #160 — this was a genuine, source-grounded documentation
+  defect introduced as a side effect of the `viteBuildModes.ts` change, not a hypothetical concern.
+- **Authentication composition:** `FounderQaPreviewSignInRoute` confirmed to reuse
+  `SignInPreviewPage`/`createSignInActions` unmodified, produce a real Firebase-authenticated
+  principal (no hardcoded `userId`/`customerIdentityId` anywhere in the component or its test),
+  navigate to `/business` only from the `onSignedIn` callback (which `SignInPanel` invokes only on
+  genuine successful sign-in), and perform no backend identity-resolution bypass. No finding.
+- **Production exposure — merge gate:** re-run and reconfirmed (see drift-detection bullets above).
+  **PASS.**
+- **Env/secret review:** re-confirmed no password, test-user credential, service-account secret, or
+  private key anywhere in source, this report, or `docs/changes/IMPLEMENTATION_CHANGES.md`. The one
+  local env file with a Firebase client API key (public config, not a secret, by Firebase's own
+  design) remains gitignored (`apps/web/.gitignore:13`) and was never staged (confirmed via
+  `git status --short` returning empty for that path throughout, including during the four
+  additional builds above).
+- **Normal build safety:** re-ran a real `pnpm build`/`npx vite build` with no Founder-QA env
+  present at all — succeeded, preview entry structurally absent (see above). Not relied on unit
+  tests alone.
+- **Test quality:** `FounderQaPreviewSignInRoute.test.tsx`'s positive case asserts
+  `screen.getByLabelText(en.auth.signIn.emailLabel)` — a real DOM element rendered by the actual
+  `SignInPanel` composition, not a stub — genuinely proving the real sign-in surface renders, not a
+  vacuous truthy check. `App.test.tsx`'s new fail-closed case asserts the absence of the "Sign-in
+  preview" heading at `/dev/founder-qa-sign-in` in the ordinary test environment (Vitest's `MODE`
+  is `"test"`, never `"founder-qa-preview"`), which is a genuine negative assertion, not a
+  tautology. `viteBuildModes.test.ts` asserts concrete return values per mode against the module's
+  documented contract (isolation, PWA exclusion), not a restatement of its own if-branches with no
+  independent expectation. No weak test found; none corrected.
+- **Repo-wide lint/format:** reconfirmed pre-existing and unrelated — `.claude/worktrees/**`
+  (~2M files, left over from prior agent runs, predating this task) is excluded from neither
+  ESLint's `ignores` nor `.prettierignore`. Not modified under this task, per instruction. Recorded
+  here again as hygiene debt, not fixed. Scoped `eslint`/`prettier --check` against every file
+  touched by the review corrections (`App.tsx`, `vite.config.ts`): clean.
+- **Scope audit:** `git diff --stat` for the review's own corrections touches exactly
+  `apps/web/src/App.tsx` and `apps/web/vite.config.ts` (comments only, zero logic changed — the
+  `FOUNDER_QA_PREVIEW_ENABLED` expression and `htmlEntryForMode`/`includePwaForMode` bodies are
+  byte-identical to before). Zero changes to `functions/src`, `firestore.rules`, `firebase.json`,
+  `.firebaserc`, `storage.rules`, Commerce Knowledge, Terms config, backend authorization, or
+  production auth behavior. No deployment performed.
+- **Full validation (re-run fresh after corrections):** focused preview-gate/route/build-mode tests
+  and the full web suite — **503/503 passed**, 78 files; typecheck (both packages) clean; scoped
+  lint/format on the corrected files clean; ordinary build clean; `founder-qa-preview` build clean
+  (all four matrix builds above); secret scan clean. Functions unit suite not re-run in this review
+  pass (zero `functions/` changes exist anywhere in this PR, already exhaustively confirmed in §10
+  of the original report and by this review's own `git diff --stat`).
+- **Findings classification:** two findings, both **F2 (maintainability/documentation
+  accuracy)** — the inaccurate "single source of truth" wording, and the stale `vite.config.ts`
+  "two dedicated builds" comment. Both are source-grounded (found by direct inspection, not
+  speculative) and both were fixed. **Zero F3 (architecture/integrity) or F4 (security) findings.**
+  No unresolved material finding of any severity.
+- **Merge:** PR marked ready for review (`gh pr ready 160`), then merged via
+  `gh pr merge 160 --merge --delete-branch` — a regular merge commit, matching this repository's
+  established convention (every prior merge on `main` is a "Merge pull request #N from …" merge
+  commit, confirmed via `git log --merges`, never a squash) — see the exact merge SHA and
+  post-merge verification recorded in the next commit to this report / `docs/changes/IMPLEMENTATION_CHANGES.md`.
+- **Deployment package definition for the next Founder authorization** (unchanged in substance from
+  §22, restated as the exact post-merge handoff): deploy, from the exact merged SHA, only (1) the
+  15 onboarding-only Cloud Functions callables to `eleventh-on-us-dev`; (2) the governed Burundi
+  Commerce Knowledge seed via a one-off local script invoking the existing
+  `runCommerceKnowledgeSeed`, run twice to prove idempotency; (3) a DEV-only Firebase Auth test
+  identity (mechanism reported, never the credential); (4) a `founder-qa-preview` Hosting preview
+  channel (`firebase hosting:channel:deploy eng-p3-002c-founder-qa --project eleventh-on-us-dev`);
+  (5) the browser smoke journey against the resulting URL. No source change should be mixed into
+  that deployment unless a new defect is discovered during it. `platformConfig/businessTerms`
+  stays absent — no action.
+- **Status (unchanged by this review):** `ENG-P3-002C-PREVIEW-001` = preview-auth code merged,
+  deployment not yet performed. `ENG-P3-002C` = integration validation merged; DEV preview not yet
+  available; Founder QA pending. `ENG-P3-002` = Open — blocked on DEV preview/Founder QA and
+  `DEC-LEGAL-002`. Capability 3 = Open — partially implemented; not closed.
+- **Primary worktree:** `/Users/theo/11THONUS` untouched throughout this review — all independent
+  verification performed in a separate `git worktree` at the exact PR head; the primary checkout's
+  own working branch received only the two corrected files, committed and pushed normally.
+- **Risks:** unchanged from §19, plus: the gate-duplication drift risk is now explicitly documented
+  rather than implicitly assumed; mitigation is manual/review sync (no shared runtime reference is
+  safe to introduce without weakening the static-elimination guarantee).
+- **Rollback:** unchanged — entirely additive; `git revert` the merge commit; no schema, data, or
+  deployed resource to unwind.
+
 ## Final gate
 
-**ENG-P3-002C-PREVIEW-001 CODE READY FOR REVIEW — NO DEV DEPLOYMENT PERFORMED**
+**ENG-P3-002C-PREVIEW-001 CODE MERGED AND CLOSED — DEV DEPLOYMENT AWAITS FRESH FOUNDER AUTHORIZATION**
