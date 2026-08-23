@@ -3095,3 +3095,81 @@
   (§24).
 - **Final gate:** **ENG-P3-002C-PREVIEW-001 CODE MERGED AND CLOSED — DEV DEPLOYMENT AWAITS FRESH
   FOUNDER AUTHORIZATION.**
+
+---
+
+## 2026-08-23 — ENG-P3-002C-PREVIEW-001-DEPLOY-001 — Business Onboarding DEV Deployment (BLOCKED at Hosted Preview Boot)
+
+- **Date:** 2026-08-23
+- **Task:** `ENG-P3-002C-PREVIEW-001-DEPLOY-001`, authorized to modify `eleventh-on-us-dev` only —
+  deploy onboarding Functions, load the governed Commerce Knowledge seed, deploy a Founder-QA
+  Hosting preview channel, prepare a DEV QA identity, and run a hosted browser smoke journey. Not
+  authorized to touch production/staging, resolve `DEC-LEGAL-002`, or begin `ENG-P3-003`.
+- **Entry:** `origin/main` confirmed at `948b0498b20a67921fa947aeac9f6cc979626d4c` (PR #160/#161
+  merge SHAs both confirmed ancestors, CI green). Deployment run from a fresh `git worktree` at that
+  exact SHA. Active/default Firebase project reconfirmed to be the bare `eleventh-on-us` — every
+  command explicitly passed `--project eleventh-on-us-dev`.
+- **Function inventory correction:** derived fresh from `functions/src/index.ts` cross-checked
+  against actual frontend `httpsCallable` call sites — the real onboarding-required set is **13
+  net-new deploys** (not the historical "15" figure): `createBusiness`, `updateBusinessProfile`,
+  `updateBusinessBranchProfile`, `submitBusinessForVerification`, `getOwnedBusinesses`,
+  `getBusinessContext`, `listBusinessCategories`, `listBusinessTypesForCategory`,
+  `createStaffInvitation`, `revokeStaffInvitation`, `listStaffInvitations`,
+  `listStaffMemberships`, `acceptBusinessTerms`, plus the already-deployed `authenticate` = 14
+  total. `closeBusiness` deliberately excluded (unconsumed by the frontend).
+- **Pre-deploy validation (from exact deployment SHA):** web 503/503; functions 1563/1563;
+  emulator 683/685 passed (2 skipped, 0 failed, no flake this run); typecheck/lint/format clean;
+  ordinary + founder-qa-preview builds clean; Playwright 1/1; secret scan clean.
+- **Commerce Knowledge seed:** ran the existing `runCommerceKnowledgeSeed` against
+  `eleventh-on-us-dev` via a temporary, never-committed script (deleted immediately after use).
+  First run: 27 created, 0 unchanged/reconciled (full governed Burundi pilot manifest). Second run:
+  0 created, 27 unchanged, 0 reconciled — idempotency proven.
+- **Functions deployment:** first batch attempt halted (not a code issue) on a routine first-time
+  2nd-gen-deploy condition — no Artifact Registry cleanup policy existed yet for `europe-west1`.
+  Set one via `firebase functions:artifacts:setpolicy` (one-time, DEV-project-only housekeeping),
+  then deployed the remaining functions across two more batches. **All 14 expected functions
+  confirmed live**, correct region/runtime, zero unrelated function deployed, production untouched.
+- **Hosting preview channel:** deployed successfully —
+  `eng-p3-002c-founder-qa` at `https://eleventh-on-us-dev--eng-p3-002c-founder-qa-8lho2gn4.web.app`,
+  expires 2026-08-30, built from SHA `948b049`. `live` channel confirmed unaffected. URL confirmed
+  to resolve (200s, correct SPA rewrite for `/dev/founder-qa-sign-in`).
+- **BLOCKING FINDING — real browser smoke test caught a defect the code review's build-output
+  inspection could not:** the entire app fails to boot on the hosted preview. Root cause traced
+  precisely: `main.tsx`'s `initializeFirebasePlatform` initializes Firebase App Check, which throws
+  when no site key is configured and `import.meta.env.DEV` is false — true for every real `vite
+  build`, including `founder-qa-preview`. No `europe-west1` App Check site key has ever been
+  provisioned for `eleventh-on-us-dev` (provisioning one is a Founder-authorized infrastructure
+  action per the code's own documented boundary). The pre-existing `sign-in-preview.html` build this
+  workstream's architecture was modeled on deliberately avoids `initializeFirebasePlatform`
+  entirely for exactly this reason; `FounderQaPreviewSignInRoute` reused the *ordinary* bootstrap
+  instead (specifically so `/business` routes would be reachable), which pulled in the App-Check
+  gate the isolated build was built to avoid. **Genuine architectural gap, not a Terms/legal issue,
+  not a deployment-process failure.** Per this task's own governance, no source fix was attempted —
+  stopped and reported for a separate, source-changing correction task.
+- **Downstream phases correctly withheld:** no DEV Auth QA identity created (preview connectivity
+  never succeeded — nothing to roll back); hosted smoke journey not performed (blocked at step 1);
+  `platformConfig/businessTerms` untouched throughout (still absent, correct).
+- **DEV data changes:** 27 Commerce Knowledge documents created (governed, idempotent, left in
+  place). 14 Functions deployed (left in place — correct and harmless). 1 Hosting preview channel
+  created (left in place — isolated, auto-expires). 1 Artifact Registry cleanup policy set
+  (housekeeping). No Firestore Rules change. No Auth user created. Nothing touched in
+  production/staging.
+- **Status change:** `ENG-P3-002C-PREVIEW-001` = DEV deployment attempted — functions/seed live,
+  Hosting preview live but non-functional; Founder QA cannot begin. `ENG-P3-002C` = integration
+  validation merged; DEV preview deployed but blocked; Founder QA pending. `ENG-P3-002` = unchanged
+  — Open, now further blocked on the App Check defect in addition to Founder QA and
+  `DEC-LEGAL-002`. `ENG-P3-003` = Not started. Capability 3 = unchanged — Open, partially
+  implemented, not closed. **`ENG-P3-002` explicitly not closed by this task.**
+- **Files:** `docs/05-implementation/reports/ENG-P3-002C-founder-qa-checklist-2026-08-22.md`
+  (updated — real preview URL/channel/SHA recorded, explicit "do not attempt yet" notice added, no
+  credentials, Founder QA still marked PENDING), this entry, and the new
+  [deployment report](../05-implementation/reports/ENG-P3-002C-PREVIEW-001-business-onboarding-dev-preview-deployment-report-2026-08-23.md).
+  **No runtime source code changed.**
+- **Rollback/cleanup:** Hosting preview channel left in place (auto-expires 2026-08-30; delete
+  early with `firebase hosting:channel:delete eng-p3-002c-founder-qa --project eleventh-on-us-dev`
+  if ever needed). The 14 deployed functions and 27 seed documents left in place — correct, safe,
+  reusable once the App Check defect is fixed; not destructively removed merely to "undo" this
+  attempt.
+- **Report:** [`ENG-P3-002C-PREVIEW-001-business-onboarding-dev-preview-deployment-report-2026-08-23.md`](../05-implementation/reports/ENG-P3-002C-PREVIEW-001-business-onboarding-dev-preview-deployment-report-2026-08-23.md).
+- **Final gate:** **ENG-P3-002C PREVIEW DEPLOYMENT BLOCKED — DEV/AUTH/SEED/INTEGRATION ISSUE
+  REQUIRES REVIEW.**

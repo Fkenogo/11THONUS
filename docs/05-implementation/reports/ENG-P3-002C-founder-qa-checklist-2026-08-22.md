@@ -1,6 +1,20 @@
 > **Title:** ENG-P3-002C — Founder QA Checklist (Business Onboarding)
 > **Status:** Not yet executed. This is a checklist to run, not a record of a run.
-> **Prerequisite:** no hosted preview currently exists (see the closure report §19) — this must be run against a local `pnpm dev` + `firebase emulators:start` session, or against a real hosted preview once one is authorized and stood up. It cannot yet be run against a live production/dev URL, since only the `authenticate` callable is deployed anywhere.
+> **2026-08-23 (`ENG-P3-002C-PREVIEW-001-DEPLOY-001`) — hosted preview deployed but currently BLOCKED, do not attempt yet:**
+> a real DEV Hosting preview channel now exists —
+> `https://eleventh-on-us-dev--eng-p3-002c-founder-qa-8lho2gn4.web.app`
+> (channel `eng-p3-002c-founder-qa`, project `eleventh-on-us-dev`, expires 2026-08-30, built from
+> reviewed `origin/main` `948b0498b20a67921fa947aeac9f6cc979626d4c`) — but the whole app currently
+> fails to boot on it: Firebase App Check initialization throws
+> (`App Check site key is required outside development`) before React ever renders, because no
+> `europe-west1` App Check site key is configured for `eleventh-on-us-dev` and the
+> `founder-qa-preview` build mode reuses the ordinary `main.tsx` bootstrap (which requires App
+> Check outside dev), unlike the isolated `sign-in-preview.html` build which deliberately avoids
+> it. See the
+> [deployment report](ENG-P3-002C-PREVIEW-001-business-onboarding-dev-preview-deployment-report-2026-08-23.md)
+> for full detail. **Do not attempt this checklist against that URL until a correction is reviewed
+> and redeployed** — the page will be blank.
+> **Prerequisite (pre-existing, still true for now):** run this checklist against a local `pnpm dev` + `firebase emulators:start` session until the hosted preview is unblocked.
 > **Reconciled 2026-08-23** (`ENG-P2-004-CORR-003`): item (1) below is corrected — Owner Staff invitation during `draft`/`pending_verification` onboarding now succeeds (checklist item 10 updated accordingly). Items (2) and (3) are unaffected and still apply.
 > **Known, already-disclosed limitations** (do not re-report these as new findings — they are recorded in the closure report): ~~(1) Team → Invite will always fail with a visible "you don't have permission" message for any Business still in `draft` — this is real, reported, not yet fixed.~~ (1) Team → Invite now succeeds for the Owner while the Business is still `draft`/`pending_verification` (`ENG-P2-004-CORR-003`) — a Manager still cannot be newly granted `staff.manage` in those statuses, since `staff.assignPermissions` still requires `trial`/`active`; this is an accepted, documented consequence, not a bug to report. (2) There is no production sign-in route yet — reach `/business` via the dev-only sign-in harness or by signing in through the emulator directly. (3) Terms acceptance will always show "currently unavailable" — this is correct, designed behavior, not a bug to report.
 
