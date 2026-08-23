@@ -1,6 +1,55 @@
-> **Title:** ENG-P3-002C — Business Onboarding Integration, Hosted Preview & Founder QA Closure — Report
+> **Title:** ENG-P3-002C — Business Onboarding Integration Validation & Closure Readiness — Report
 > **Entry state:** `origin/main` at `289b190a4bf9456793611b7620fbb53cc0348872`. Verified: `849a942` (ENG-P3-002B) and `289b190` (its closure sync) both ancestors; post-merge CI `success` on both. No `ENG-P3-002C`/`ENG-P3-003` branch or open PR existed at entry (`gh pr list --state open` showed only #34, docs-only, unrelated).
 > **Worktree/branch:** fresh linked worktree at `.../scratchpad/eng-p3-002c`, branch `feat/eng-p3-002c-onboarding-integration-preview`, from `origin/main`. Primary worktree `/Users/theo/11THONUS` untouched throughout (verified identical commit/untracked-file state before and after).
+
+---
+
+## INDEPENDENT REVIEW & MERGE-CLOSURE ADDENDUM (2026-08-23) — PR #156
+
+**Scope of this addendum:** a Founder-authorized independent final-integration review of PR #156, conducted from a fresh, separate worktree, re-deriving every claim from source rather than trusting the prior reconciliation pass recorded above. This addendum records that review's findings and this task's merge action. It does **not** mark `ENG-P3-002` complete, does **not** claim a hosted preview exists, does **not** claim Founder QA passed, does **not** resolve `DEC-LEGAL-002`, and did not deploy anything or begin `ENG-P3-003`.
+
+**Entry gate (re-verified independently):** PR #156 was OPEN/DRAFT/unmerged at head `57e357ed6b85fdc241938655529c426965f7084f` (confirmed identical to the PR's last commit — no unreviewed later commits existed). `origin/main` was at `f38dc041bc32f7a7e2dfe0fe0c16bf01b1c122e4`; both `5285e053e50e1112b5d04443a991ed5951ff2d8b` (PR #157) and `f38dc041bc32f7a7e2dfe0fe0c16bf01b1c122e4` (PR #158) were confirmed ancestors of `origin/main` via `git merge-base --is-ancestor`. CI on the exact head was `SUCCESS`. All matched the prior reconciliation's reported state.
+
+**PR title correction:** the PR title still read "ENG-P3-002C: Business Onboarding Integration, Hosted Preview & Founder QA Closure," overstating delivered scope (no preview was created, Founder QA was not performed). Corrected via `gh pr edit 156 --title` to **"ENG-P3-002C: Business Onboarding Integration Validation & Closure Readiness."** The PR description was independently checked against the task's required statements (integration evidence complete; Staff/CORR-003 reconciliation complete; no preview deployed; Founder QA pending; `DEC-LEGAL-002` blocks real customer completion; `ENG-P3-002` remains Open) and found already compliant — no description edit was needed.
+
+**Independent source-level verification performed (not re-trusting the prior agent's summary):**
+- Read `ENG-P3-002-DESIGN-001` §37 (Terms-of-Service acceptance architecture) directly — confirmed the four-level Terms boundary (engineering/preview/real-onboarding/legal-launch) this PR's report uses traces to the design document's own decomposition, not an invented framing.
+- Read `functions/src/domains/permissions/models/sensitivePermissionCatalogue.ts` directly (not the prior report's description of it): confirmed `staff.manage`'s entry alone carries `eligibleBusinessStatuses: ["draft", "pending_verification", "trial", "active"]`; `staff.assignPermissions` carries no such field and falls back to the legacy `{trial, active}` gate. Matches every claim made about it.
+- Read the full 407-line `businessOnboardingJourney.emulator.test.ts` line-by-line: confirmed it chains bootstrap → resume-detection → hydration → profile update → real seeded Category/Type reads → Branch update → Owner Staff invite while `draft` (via the unmodified `createStaffInvitation` domain command, not a stub) → persisted-invitation/list assertions while still `draft` → submission-blocked-pre-Terms assertion → real `acceptBusinessTermsCommand` call (`TEST_ONLY_FIXTURE_journey_v0`) → submission → final hydration asserting `pending_verification` and the persisted display-name edit → a second Owner Staff invite while `pending_verification`, with persisted-list and status-unchanged assertions. Every material boundary asserts actual persisted/hydrated state, not just a command's return value — no vacuous assertions found; no test change was needed.
+- **Ran the test for real** against a live Firestore emulator (`firebase emulators:exec ... vitest run --config vitest.emulator.config.ts businessOnboardingJourney.emulator.test.ts`): **1/1 passed.**
+- Read `MutationError.tsx`, `MutationError.test.tsx`, and every wiring site (`NewBusinessPage.tsx`, `BranchStep.tsx`, `ClassificationStep.tsx`, `ReviewStep.tsx`, `TeamStep.tsx`): confirmed the component only renders for a `BusinessApiError` instance (never a raw `Error`/Firebase message), maps a closed, finite set of 8 error codes, and that both `en.ts`/`fr.ts` `business.errors.*` catalogs cover all 8 codes. Confirmed `TermsStep`/`TermsStepContainer` retain their own distinct `unavailable`-code handling, unmerged into the generic `MutationError` path, preserving the "Terms-unavailable stays distinct" requirement. No mutation site found silently swallowing an error. No genuine defect found; no fix required.
+- `grep -rn "TEST_ONLY" apps/web/src` — **zero matches.** No TEST_ONLY fixture value is imported or rendered anywhere under `apps/web`.
+- Re-verified the production sign-in-route gap directly from `apps/web/src/App.tsx`: `SignInPanel`/`createSignInActions` is reachable only via `/dev/sign-in-preview`, gated behind `import.meta.env.DEV` — no production route mounts it. Confirms the prior report's Phase-I finding; not a small integration defect this task should invent a fix for; classified (per the report's existing §7/§50) as a preview-entry/production-UX gap for a future Founder decision, not redesigned here.
+- Confirmed via `gh pr diff 156 --name-only` and `git diff --stat` that the PR touches only: two new `apps/web/src/business/onboarding` files (`MutationError.tsx`/test), five one-line wiring edits, one new emulator test file, a 4-line additive `eslint.config.js` allowlist entry, and two report/checklist docs. No Rules changes, no deployment config, no new permission ids, no permission widening beyond the already-merged `CORR-003`, no subscription/Reward Program/`ENG-P3-003` work, no unrelated refactoring.
+
+**Full validation re-run independently (fresh worktree, fresh `pnpm install`), all green, matching the PR's claimed numbers exactly:**
+- `businessOnboardingJourney.emulator.test.ts` alone: 1/1 passed.
+- `pnpm --filter web test`: 75 files, 482/482 passed.
+- `pnpm --filter functions test`: 143 files, 1563/1563 passed.
+- `pnpm emulators:validate` (full Firebase Emulator Suite): 52 files, 683 passed, 2 pre-existing skips.
+- `pnpm --filter web exec tsc --noEmit` / `pnpm --filter functions exec tsc --noEmit`: both clean.
+- `eslint .`: 0 errors, 1 pre-existing unrelated warning (`BusinessApiContext.tsx`).
+- `prettier --check .`: clean.
+- `pnpm --filter web build`: succeeds.
+- `pnpm exec playwright test tests/e2e/app-shell.spec.ts`: 1/1 passed.
+- No secret-scan script exists in this repository at any level — genuinely absent, not skipped.
+
+**Finding gate:** no unresolved F3 (integration/integrity) or F4 (security) findings. No fixes were required — the prior reconciliation pass's work held up under independent re-verification. Merge authorized.
+
+**Merge record:** PR #156 marked ready (`gh pr ready 156`) and merged via `gh pr merge 156 --merge` (matching this repository's established convention — PR #157/#158 were both non-fast-forward merge commits, not squashes). Merge SHA, post-merge `origin/main`, and post-merge CI status are recorded in the Engineering Implementation Programme tracking sync that accompanies this merge. This merge records integration validation evidence only — it does **not** close `ENG-P3-002`, does **not** claim a hosted preview exists, and does **not** claim Founder QA passed.
+
+### Next bounded task definition: `ENG-P3-002C-PREVIEW-001` (definition only — no work performed here)
+
+This task is authorized to **define**, not execute, the next bounded package. `ENG-P3-002C-PREVIEW-001` should be scoped to:
+1. Preflight a dev Firebase project (confirm/select the target project; confirm billing/quotas suffice for Functions + Firestore + Hosting).
+2. Deploy **only** the onboarding-relevant callables (bootstrap/resolve/hydrate, profile/branch update, classification reads, Staff invite/list/revoke, Terms accept, submit-for-verification) to that DEV project — not a full production deployment, and not any callable outside this set.
+3. Load the governed Burundi Commerce Knowledge seed data (the real, active Category/Type nodes this PR's test seeds ad hoc) into that DEV project's Firestore.
+4. Create a Firebase Hosting preview channel serving `apps/web`'s built output against the DEV project's callables.
+5. Keep Terms real-content unavailable — the preview must continue to refuse consent without readable Terms (per the Terms boundary established in this PR); do not fabricate or insert placeholder legal content to make the preview "look complete."
+6. Provide a Founder-usable QA URL pointing at the preview channel.
+7. Perform no production deployment of any kind.
+
+**Authentication-entry dependency for that preview (identified from source, not designed here):** yes — a wiring gap exists. `apps/web/src/App.tsx` mounts the real, tested `SignInPanel`/`createSignInActions` composition only behind `/dev/sign-in-preview`, gated by `import.meta.env.DEV`. A Hosting preview channel build is a production-mode Vite build (`import.meta.env.DEV` is `false`), so that dev-only route would not be reachable in the preview channel as currently wired. `ENG-P3-002C-PREVIEW-001` will need to resolve, at minimum, how a Founder reaches sign-in on the preview channel (e.g., a preview-specific env flag equivalent to `DEV` that mounts the same harness route, without deciding the separate, larger question of permanent production sign-in-route architecture — that remains a distinct future Founder decision, not invented or resolved here).
 
 ---
 
