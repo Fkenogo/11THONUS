@@ -2,6 +2,54 @@
 > **Entry state:** `origin/main` at `289b190a4bf9456793611b7620fbb53cc0348872`. Verified: `849a942` (ENG-P3-002B) and `289b190` (its closure sync) both ancestors; post-merge CI `success` on both. No `ENG-P3-002C`/`ENG-P3-003` branch or open PR existed at entry (`gh pr list --state open` showed only #34, docs-only, unrelated).
 > **Worktree/branch:** fresh linked worktree at `.../scratchpad/eng-p3-002c`, branch `feat/eng-p3-002c-onboarding-integration-preview`, from `origin/main`. Primary worktree `/Users/theo/11THONUS` untouched throughout (verified identical commit/untracked-file state before and after).
 
+---
+
+## RECONCILIATION ADDENDUM (2026-08-23) — `ENG-P2-004-CORR-003` reconciliation of PR #156
+
+**Arc:** this report's original body (below, unchanged except for inline `[RECONCILED]` markers at the specific superseded claims) recorded a genuine finding on 2026-08-22: `staff.manage` was gated to the single global `OPERATIONAL_BUSINESS_STATUSES = {trial, active}` set, making Owner Staff invitation during `draft`/`pending_verification` onboarding architecturally impossible. That finding was correct at the time and is preserved below as historical evidence — it is what motivated the Founder-approved `ENG-P2-004-CORR-003` correction, which merged to `main` via PR #157 (merge `5285e053e50e1112b5d04443a991ed5951ff2d8b`) and its closure-sync PR #158 (merge `f38dc041bc32f7a7e2dfe0fe0c16bf01b1c122e4`) — **after** this report and PR #156 were opened, and independently of them.
+
+**What CORR-003 actually established** (verified directly from `functions/src/domains/permissions/models/sensitivePermissionCatalogue.ts` and `functions/src/domains/permissions/evaluator/evaluatePermission.ts` during this reconciliation, not assumed): the Sensitive-permission catalogue now supports an optional per-entry `eligibleBusinessStatuses` override. Only `staff.manage`'s entry carries one — `["draft", "pending_verification", "trial", "active"]`. Every other Sensitive permission (`staff.assignPermissions`, `staff.assignRole`, `business.transferOwnership`, and the rest) has no override and still falls back to the legacy `{trial, active}` set, byte-for-byte unchanged.
+
+**This reconciliation (PR #156, this branch):**
+1. Rebased PR #156 cleanly onto current `origin/main` (`f38dc041b...`) — zero conflicts.
+2. Re-ran `businessOnboardingJourney.emulator.test.ts` unmodified first: it failed for the **correct** reason (RED) — the `staff.manage` invite call, now authorized, reached real mutation logic for the first time and hit a real test-code gap (`params.now` was never supplied, because the old test never expected `prepare()` to run at all).
+3. Fixed the test — supplied `now`, changed the expected outcome from `denied` to `created`, added persistence/list assertions, and added a second invitation while `pending_verification` (Phase F proof point) — then re-ran to GREEN.
+4. Full validation re-run on the rebased branch (§ "Reconciliation full validation" below).
+
+**Corrected classification:** `ENG-P3-002` is **NOT** "Complete with explicit deferrals." See the corrected §32-35 below. The Staff-invitation-during-draft gap recorded in §6/§12/§25/§27/§31/§46 below is **resolved**, not merely disclosed. The Terms/`DEC-LEGAL-002` blocker, the missing production sign-in route, and the never-deployed backend are **unaffected by CORR-003** and remain exactly as this report originally found them — re-verified, not re-argued, during this reconciliation.
+
+**Accepted CORR-003 consequence, recorded here per the reconciliation task's Phase G (no further Founder decision needed for MVP on this specific point):** during `draft`/`pending_verification`, the Owner can exercise `staff.manage` (invite/list/revoke Staff). A Manager cannot be newly granted `staff.manage` through the normal product flow during those statuses, because `staff.assignPermissions` (the permission that would grant it) carries no eligibility override and still requires `trial`/`active`. This reconciliation does not widen `staff.assignPermissions` and does not add any alternate Manager-delegation mechanism — both are explicitly out of this reconciliation's scope.
+
+### Reconciliation full validation (2026-08-23, on the rebased branch)
+
+- `pnpm emulators:validate` (Firebase Emulator Suite, all functions emulator tests): **52 files, 683 passed, 2 pre-existing skips** — clean, no regressions.
+- `pnpm --filter functions test` (unit): **143 files, 1563 passed.**
+- `pnpm --filter web test` (unit): **75 files, 482 passed.**
+- `pnpm -r typecheck`: clean, both packages.
+- `pnpm lint` (root `eslint .`): 0 errors, 1 pre-existing warning (`BusinessApiContext.tsx`, unrelated to this task).
+- `prettier --check .`: clean (one file — the reconciled test — needed `prettier --write`, applied).
+- `pnpm -r build`: succeeds, both packages.
+- `pnpm test:e2e` (Playwright, `tests/e2e/app-shell.spec.ts`): **1 passed.**
+- No secret-scan script exists in this repository (checked `package.json` at every level) — not skipped, genuinely absent.
+
+### Corrected acceptance-matrix row (supersedes §27 row 9 below)
+
+| # | Requirement | Status |
+|---|---|---|
+| 9 | Staff invitation creation during onboarding (Owner, `draft`/`pending_verification`) | **PASS** — `ENG-P2-004-CORR-003` resolved the lifecycle gate; proven directly against a live emulator in both statuses, through the unmodified `createStaffInvitation` command (§ addendum above). |
+
+### Corrected closure classification (supersedes §32-35 below)
+
+- **`ENG-P3-002C`** (this integration-validation package): **Integration validation ready / not closed.** The Staff-invitation gap is resolved and proven; the remaining items (Terms real content, production sign-in route, hosted preview, Founder QA) are unchanged from the original report and still block closure.
+- **`ENG-P3-002`** (the parent onboarding capability): **Open** — NOT Complete, with or without deferrals. Backend engineering: complete. Frontend engineering: complete. Integration engineering: substantially complete/validated (this reconciliation). Real customer onboarding journey: **blocked** — no governed, readable Terms content exists, so a real customer cannot complete Terms acceptance or reach `pending_verification` through the actual product. Legal launch readiness: **blocked on `DEC-LEGAL-002`.** Terms is a legal-content blocker, never "deferred by design" — the design correctly refuses to fabricate consent for unread content, but that refusal is itself evidence the capability isn't done, not a closed deferral.
+- **Capability 3**: remains **Open — partially implemented; not closed.** This reconciliation does not close it.
+- **Preview status**: **NOT CREATED.** Unaffected by this reconciliation — no deployment was performed, per this task's hard scope limits.
+- **Founder QA status**: **PENDING / NOT EXECUTED.** Unaffected by this reconciliation. The companion checklist (`ENG-P3-002C-founder-qa-checklist-2026-08-22.md`) has been updated to expect "Owner can invite Staff during draft onboarding" as a passing step rather than a known-denied one — no other step changed.
+
+---
+
+## Original report body (2026-08-22) — preserved; superseded claims marked inline `[RECONCILED 2026-08-23]`
+
 ## 1. Sources inspected
 
 `ENG-P3-002-DESIGN-001` v2.0 (already fully read in prior sessions); `ENG-P3-002A`/`ENG-P3-002B` implementation and closure reports; `functions/src/index.ts` (current callable exports, unchanged since 002A); `apps/web/src/business/**` (current routes/API/hooks, unchanged since 002B's correction); `firebase.json`/`.firebaserc` (Hosting/emulator/preview configuration); `playwright.config.ts` and `.github/workflows/ci.yml` (e2e/emulator sequencing); `DEC-LEGAL-002` (Decision Register); `CDR-001`/`engineering-implementation-programme.md` Capability-3 entries; `ENG-P2-004-CORR-001`'s implementation report (directly relevant — see §6); live `firebase functions:list --project eleventh-on-us-dev` and `firebase projects:list`.
@@ -34,7 +82,7 @@ Distinguishing the four levels explicitly, as instructed:
 
 **PASS**, unchanged from `ENG-P3-002B`'s own correction (`TermsStep.test.tsx`, 6 tests): no checkbox, no accept button, Continue disabled, neutral unavailable copy, whenever `TERMS_READABLE_CONTENT_AVAILABLE` is false — never discovered by attempting acceptance. No `TEST_ONLY` content was ever injected into any customer-facing component.
 
-**Genuine integration defect found and reported (not silently patched):** the real onboarding journey test (§3) proved that `staff.manage` (Sensitive permission, `createStaffInvitation`'s gate) is denied for **any** Business in `draft` status — `evaluatePermission.ts`'s `OPERATIONAL_BUSINESS_STATUSES = {"active", "trial"}` applies uniformly to all 8 Sensitive permissions, and a Business never reaches `trial`/`active` during onboarding (only `draft → pending_verification`). This is not new architecture and not a regression from `ENG-P3-002A`/`B` — `ENG-P2-004-CORR-001`'s own implementation report (2026-08-19, two days *before* `ENG-P3-002-DESIGN-001` v2.0 was authored) explicitly records `staff.manage + draft → still BUSINESS_INACTIVE` as a deliberate, tested non-regression case. `ENG-P3-002-DESIGN-001` §11-§12 designed "owner invites staff during onboarding, while still draft" without reconciling this already-known, already-tested gate. **Consequence: the "optional Staff invitation" feature inside the onboarding wizard cannot function for any real user today** — every invite attempt during onboarding is denied. Team remains legitimately skippable (onboarding completion never depends on it), so this does not block `ENG-P3-002`'s core completion boundary, but it is a real, customer-visible defect in the shipped feature. **Not fixed here** — widening the Sensitive-permission lifecycle gate is a security-relevant change affecting all 8 Sensitive permissions platform-wide, a Founder/architecture disposition, not a coding-agent unilateral correction (the same reasoning `ENG-P3-002B`'s own Terms-content finding used).
+**Genuine integration defect found and reported (not silently patched) — `[RECONCILED 2026-08-23: resolved by `ENG-P2-004-CORR-003`, see the addendum at the top of this report. Preserved below as the original, accurate-at-the-time finding.]`:** the real onboarding journey test (§3) proved that `staff.manage` (Sensitive permission, `createStaffInvitation`'s gate) is denied for **any** Business in `draft` status — `evaluatePermission.ts`'s `OPERATIONAL_BUSINESS_STATUSES = {"active", "trial"}` applies uniformly to all 8 Sensitive permissions, and a Business never reaches `trial`/`active` during onboarding (only `draft → pending_verification`). This is not new architecture and not a regression from `ENG-P3-002A`/`B` — `ENG-P2-004-CORR-001`'s own implementation report (2026-08-19, two days *before* `ENG-P3-002-DESIGN-001` v2.0 was authored) explicitly records `staff.manage + draft → still BUSINESS_INACTIVE` as a deliberate, tested non-regression case. `ENG-P3-002-DESIGN-001` §11-§12 designed "owner invites staff during onboarding, while still draft" without reconciling this already-known, already-tested gate. **Consequence: the "optional Staff invitation" feature inside the onboarding wizard cannot function for any real user today** — every invite attempt during onboarding is denied. Team remains legitimately skippable (onboarding completion never depends on it), so this does not block `ENG-P3-002`'s core completion boundary, but it is a real, customer-visible defect in the shipped feature. **Not fixed here** — widening the Sensitive-permission lifecycle gate is a security-relevant change affecting all 8 Sensitive permissions platform-wide, a Founder/architecture disposition, not a coding-agent unilateral correction (the same reasoning `ENG-P3-002B`'s own Terms-content finding used).
 
 **Second defect found and fixed:** every mutation step *except* Terms silently swallowed failures — `createMutation.error`/`mutation.error` was read nowhere in `ClassificationStep`/`BranchStep`/`TeamStep`/`NewBusinessPage`/`ReviewStep`. A real user hitting the Staff-invite denial above (or any validation/network failure anywhere else in the wizard) saw the button simply stop spinning, with zero explanation. Fixed with a new shared `MutationError` component (`business/onboarding/MutationError.tsx`, 4 tests, TDD) mapping `BusinessApiError.code` onto the existing `business.errors.*` i18n catalog — never a raw server message — wired into all five previously-silent mutation sites, each verified against the existing/updated test suite (`TeamStep.test.tsx` — new, 3 tests, TDD, proves the denied-invite error now surfaces and Skip still works regardless).
 
@@ -60,7 +108,7 @@ Re-verified: `context.branch === null` renders the generic integrity-error state
 
 ## 12. Staff result (Phase M)
 
-See §6 — the create-invitation path is denied during onboarding (a real, reported defect, not fixed). List/revoke/skip are otherwise correctly wired (existing 002B tests unchanged) and never expose `membership`/permission-override/`AuthenticationReference`/protected-identity fields in the DTOs or UI copy (re-verified: `StaffInvitationSummary`/`StaffMembershipSummary` carry only `invitationId`/`role`/`status`/`deliveryType`/timestamps or `membershipId`/`role`/`status` — no raw identity field).
+`[RECONCILED 2026-08-23: the create-invitation denial below was resolved by `ENG-P2-004-CORR-003` — see the addendum at the top of this report. Preserved as the original, accurate-at-the-time finding.]` See §6 — the create-invitation path is denied during onboarding (a real, reported defect, not fixed). List/revoke/skip are otherwise correctly wired (existing 002B tests unchanged) and never expose `membership`/permission-override/`AuthenticationReference`/protected-identity fields in the DTOs or UI copy (re-verified: `StaffInvitationSummary`/`StaffMembershipSummary` carry only `invitationId`/`role`/`status`/`deliveryType`/timestamps or `membershipId`/`role`/`status` — no raw identity field).
 
 ## 13. Idempotency result (Phase N)
 
@@ -96,9 +144,11 @@ See `docs/05-implementation/reports/ENG-P3-002C-founder-qa-checklist-2026-08-22.
 
 ## 25. Defects found / 26. Defects fixed
 
-Found: (1) `staff.manage` denied for any `draft` Business — real, reported, **not fixed** (architecture/Founder disposition, §6). (2) Every mutation except Terms silently swallowed errors — **fixed** (§6, `MutationError`, TDD). (3) No production sign-in route exists — real, reported, **not fixed** (§7, out of this task's scope as a "small integration defect"). (4) No backend ever deployed to any live environment — real, reported, **not fixed** (§19, infrastructure decision beyond this task's authorization).
+`[RECONCILED 2026-08-23: item (1) is now fixed — see the addendum at the top of this report.]` Found: (1) `staff.manage` denied for any `draft` Business — real, reported, **not fixed** (architecture/Founder disposition, §6) — **now resolved by `ENG-P2-004-CORR-003`, proven in this reconciliation.** (2) Every mutation except Terms silently swallowed errors — **fixed** (§6, `MutationError`, TDD). (3) No production sign-in route exists — real, reported, **not fixed** (§7, out of this task's scope as a "small integration defect") — re-verified still accurate as of this reconciliation. (4) No backend ever deployed to any live environment — real, reported, **not fixed** (§19, infrastructure decision beyond this task's authorization) — unaffected by this reconciliation.
 
 ## 27. Acceptance matrix (Phase V)
+
+`[RECONCILED 2026-08-23: row 9 below is superseded — see the corrected acceptance-matrix table in the addendum at the top of this report.]`
 
 | # | Requirement | Status |
 |---|---|---|
@@ -144,15 +194,21 @@ New: `functions/src/domains/business/services/businessOnboardingJourney.emulator
 
 ## 31. Remaining blockers
 
-(1) `DEC-LEGAL-002` (Terms content) — real onboarding completion (level C) blocked, engineering (level A) is not. (2) Staff invitation during onboarding is denied by an existing, deliberate, but unreconciled permission gate — Founder/architecture disposition needed on whether to widen `OPERATIONAL_BUSINESS_STATUSES` for `staff.manage`, scope Team invitation to post-submission instead, or accept it as a known limitation. (3) No production sign-in route exists — a real routing/product decision needed before any real visitor reaches onboarding. (4) No onboarding backend has ever been deployed to any live environment — a deployment decision, not an engineering defect.
+`[RECONCILED 2026-08-23: item (2) below is resolved — see the addendum at the top of this report. (1), (3), (4) are unaffected and remain accurate.]`
+
+(1) `DEC-LEGAL-002` (Terms content) — real onboarding completion (level C) blocked, engineering (level A) is not. (2) ~~Staff invitation during onboarding is denied by an existing, deliberate, but unreconciled permission gate — Founder/architecture disposition needed on whether to widen `OPERATIONAL_BUSINESS_STATUSES` for `staff.manage`, scope Team invitation to post-submission instead, or accept it as a known limitation.~~ **Resolved by `ENG-P2-004-CORR-003`** (Founder-approved correction, merged to `main` after this report was written): the Sensitive-permission catalogue now carries a per-entry `eligibleBusinessStatuses` override, populated for `staff.manage` only, permitting Owner Staff invitation during `draft`/`pending_verification`. (3) No production sign-in route exists — a real routing/product decision needed before any real visitor reaches onboarding. (4) No onboarding backend has ever been deployed to any live environment — a deployment decision, not an engineering defect.
 
 ## 32. Closure classification (Phase W)
+
+`[RECONCILED 2026-08-23 — see the corrected classification in the addendum at the top of this report. Preserved below as the original, now-superseded classification.]`
 
 **B — COMPLETE WITH EXPLICIT DEFERRALS**, for the *engineering implementation* scope this task can assess (level A in §4's framework) — with two newly-identified, explicitly-reported, non-blocking-to-core-completion defects (§6, #1 and #3/#4 above) that a Founder should weigh before treating the feature as ready for real users, even though they do not prevent `Business.status` from reaching `pending_verification` through the code paths that do work. Founder QA (levels B/C/D) remains genuinely pending — not performed, not claimed passed, consistent with programme precedent (no prior `ENG-P*` package in this programme has self-certified manual QA).
 
 ## 33-35. Status
 
-`ENG-P3-002` overall: **Complete with explicit deferrals** (Terms content, the staff-invite-during-draft gap, and no production auth entry — all disclosed, none silently hidden). `ENG-P3-003`: unaffected, **Not started**. Capability 3: **Open — partially implemented; not closed** — this task does not close it, consistent with every prior `ENG-P3-*` closure in this programme.
+`[RECONCILED 2026-08-23 — superseded. `ENG-P3-002` is Open, not Complete. See the corrected classification in the addendum at the top of this report.]`
+
+`ENG-P3-002` overall: ~~**Complete with explicit deferrals** (Terms content, the staff-invite-during-draft gap, and no production auth entry — all disclosed, none silently hidden).~~ **Open — blocked on `DEC-LEGAL-002` for real customer completion, plus preview/Founder QA still pending.** `ENG-P3-003`: unaffected, **Not started**. Capability 3: **Open — partially implemented; not closed** — this task does not close it, consistent with every prior `ENG-P3-*` closure in this programme.
 
 ## 36. Files modified
 
@@ -184,7 +240,7 @@ PR to be opened as draft against this branch (see final report to user for numbe
 
 ## 46. Risks
 
-Shipping the current wizard to real users today would let them reach the Team step, attempt an invite, and receive a denial — now at least with a visible error (§6 fix) rather than silence, but still a dead-end feature. No live preview exists, so this cannot be demonstrated to the Founder without either a local emulator run or a genuine (separately-authorized) backend deployment.
+`[RECONCILED 2026-08-23: the Staff-invite dead-end below is resolved — see the addendum at the top of this report.]` ~~Shipping the current wizard to real users today would let them reach the Team step, attempt an invite, and receive a denial — now at least with a visible error (§6 fix) rather than silence, but still a dead-end feature.~~ Staff invitation during onboarding now succeeds for the Owner (`ENG-P2-004-CORR-003`). The remaining risk: no live preview exists, so this cannot be demonstrated to the Founder without either a local emulator run or a genuine (separately-authorized) backend deployment — unchanged.
 
 ## 47. Rollback
 
@@ -200,4 +256,8 @@ Programme/CDR-001 tracking update deferred to a minimal closure-sync commit afte
 
 ## 50. Exact next Founder action
 
-Review the draft PR. Decide: (a) whether to widen the Sensitive-permission lifecycle gate for `staff.manage` during onboarding, defer Team invitation to post-submission, or accept the current limitation; (b) when/how a production sign-in route gets built; (c) whether to authorize a first-ever backend deployment (and to which environment) so a real hosted preview and Founder QA become possible; (d) `DEC-LEGAL-002` remains a separate, already-tracked, unaffected decision.
+`[RECONCILED 2026-08-23: item (a) below is resolved — CORR-003 already made that decision and it's implemented and proven. Superseded by the corrected next-action list below.]`
+
+~~Review the draft PR. Decide: (a) whether to widen the Sensitive-permission lifecycle gate for `staff.manage` during onboarding, defer Team invitation to post-submission, or accept the current limitation; (b) when/how a production sign-in route gets built; (c) whether to authorize a first-ever backend deployment (and to which environment) so a real hosted preview and Founder QA become possible; (d) `DEC-LEGAL-002` remains a separate, already-tracked, unaffected decision.~~
+
+**Corrected next Founder action (2026-08-23):** Review the reconciled draft PR #156. Decide: (a) when/how a production sign-in route gets built; (b) whether to authorize a first-ever backend deployment (and to which environment) so a real hosted preview and Founder QA become possible; (c) `DEC-LEGAL-002` (Terms content) remains a separate, already-tracked, unaffected decision — real customer onboarding completion stays blocked until it resolves. No decision is needed on Staff invitation during onboarding — `ENG-P2-004-CORR-003` already resolved it, and this reconciliation proved the resolution end-to-end.

@@ -35,14 +35,31 @@ import {
  * frontend actually drives, exercised against a live Firestore emulator:
  * bootstrap → resume-detection read → hydration read → profile update →
  * Category/Type reads (real Commerce Knowledge fixtures, not hardcoded) →
- * Branch update → Staff invite/list/revoke → Terms accept (real command,
- * `TEST_ONLY_FIXTURE_*` version — never a production label) → submission →
- * final hydration confirming `pending_verification`. Every one of these
- * service functions is exactly what `functions/src/index.ts`'s `onCall`
- * handlers wire together — this test proves the domain-service chain the
- * frontend's `business/api` adapters depend on actually composes, closing
- * a real pre-existing gap (no prior test chained more than two or three of
- * these calls together against one live Business).
+ * Branch update → Owner Staff invite while still `draft` → Terms accept
+ * (real command, `TEST_ONLY_FIXTURE_*` version — never a production
+ * label) → submission → final hydration confirming `pending_verification`
+ * → a second Owner Staff invite while `pending_verification`. Every one of
+ * these service functions is exactly what `functions/src/index.ts`'s
+ * `onCall` handlers wire together — this test proves the domain-service
+ * chain the frontend's `business/api` adapters depend on actually
+ * composes, closing a real pre-existing gap (no prior test chained more
+ * than two or three of these calls together against one live Business).
+ *
+ * Reconciled (`ENG-P2-004-CORR-003`, merged to `main` via PR #157/#158
+ * ahead of this branch's rebase onto it): this test's original version
+ * (2026-08-22) recorded a genuine finding — `staff.manage` was gated to
+ * the global `{trial, active}` set, making Owner Staff invitation during
+ * `draft` onboarding architecturally impossible, and asserted that denial
+ * as the expected outcome. CORR-003 resolved the underlying gap by adding
+ * a per-permission `eligibleBusinessStatuses` override to the Sensitive
+ * permission catalogue, populated for `staff.manage` only with
+ * `["draft", "pending_verification", "trial", "active"]`. This test now
+ * asserts the corrected, real behavior — Owner Staff invitation succeeds
+ * in both `draft` and `pending_verification` — through the unmodified
+ * `createStaffInvitation` domain command; the Business is never forced to
+ * `trial`/`active` to make it pass. See the inline comment at the first
+ * invitation call below for the full arc, and the ENG-P3-002C closure
+ * report for the reconciliation record.
  */
 
 const app = initializeApp({ projectId: "demo-11thonus" }, "businessOnboardingJourneyEmulatorTest");
@@ -241,26 +258,26 @@ describe("ENG-P3-002C — real onboarding journey (bootstrap through pending_ver
     });
     expect(branchOutcome.outcome).toBe("executed");
 
-    // 9. GENUINE INTEGRATION FINDING (ENG-P3-002C, priority): `staff.manage`
-    // is a Sensitive permission gated to `OPERATIONAL_BUSINESS_STATUSES =
-    // {trial, active}` (`evaluatePermission.ts`) — a gate `ENG-P2-004-CORR-001`
-    // deliberately kept in place, with its own report explicitly recording
-    // "staff.manage + draft → still BUSINESS_INACTIVE" as a tested
-    // non-regression case (2026-08-19, two days before
-    // `ENG-P3-002-DESIGN-001` v2.0 was authored). A Business never reaches
-    // `trial`/`active` during onboarding — only `draft` → `pending_verification`
-    // — so PRD3 §5 Step 7 / design §11-§12's "owner invites staff during
-    // onboarding, while still draft" is architecturally impossible today.
-    // This is not a guess or a flake: it is proven here, directly, against a
-    // real Firestore emulator. It is a design/architecture gap predating
-    // this task, not a defect introduced by ENG-P3-002A/B, and not
-    // something this task fixes (widening the Sensitive-permission
-    // lifecycle gate is a security-relevant change affecting all 8
-    // Sensitive permissions platform-wide, not just staff.manage during
-    // onboarding — a Founder/architecture disposition, not a coding-agent
-    // unilateral correction). List/revoke are proven separately not to
-    // require this gate is bypassed — they legitimately return empty/deny
-    // consistently for a Business with no invitation ever created.
+    // 9. RECONCILED (ENG-P2-004-CORR-003, Founder-approved, merged to `main`
+    // ahead of this branch's rebase — PR #157/#158). The original finding
+    // recorded here (2026-08-22, this test's first version) was genuine at
+    // the time: `staff.manage` was gated to the single global
+    // `OPERATIONAL_BUSINESS_STATUSES = {trial, active}` set, making Owner
+    // Staff invitation during `draft` onboarding architecturally
+    // impossible, contradicting PRD3 §5 Step 7 / design §11-§12. CORR-003
+    // resolved that by giving the Sensitive-permission catalogue an
+    // optional per-entry `eligibleBusinessStatuses` override
+    // (`sensitivePermissionCatalogue.ts`) and populating it, for
+    // `staff.manage` only, with `["draft", "pending_verification", "trial",
+    // "active"]` (`evaluatePermission.ts` step 2's per-class gate) — every
+    // other Sensitive permission's lifecycle eligibility is unchanged,
+    // byte-for-byte. An Owner therefore now clears the business-status gate
+    // for `staff.manage` while `draft`, then satisfies the Owner floor
+    // (`evaluatePermission.ts` step 5, `OWNER_FLOOR`) exactly as it would
+    // for any other Sensitive permission on an operational Business. This
+    // is proven here directly, against a real Firestore emulator, through
+    // the same `createStaffInvitation` domain command the frontend calls —
+    // the Business is never forced to `trial`/`active` to make this pass.
     const inviteOutcome = await createStaffInvitation(
       db,
       {
@@ -271,17 +288,44 @@ describe("ENG-P3-002C — real onboarding journey (bootstrap through pending_ver
       {
         actorUserId: OWNER_USER_ID,
         idempotencyKey: "journey-invite",
+        now: CREATED_AT,
         ...newIds(),
         actor: { actorType: "user", actorId: OWNER_USER_ID },
       },
     );
-    expect(inviteOutcome.outcome).toBe("denied");
+    expect(inviteOutcome.outcome).toBe("created");
+    if (inviteOutcome.outcome === "created") {
+      expect(inviteOutcome.invitation.role).toBe("manager");
+      expect(inviteOutcome.invitation.businessId).toBe(businessId);
+    }
 
+    // 9a. the invitation persists and is listable while the Business
+    // remains `draft` — proving Staff invitation does not require (and
+    // does not cause) lifecycle advancement.
     const invitations = await listStaffInvitationsForBusiness(db, OWNER_USER_ID, businessId);
-    expect(invitations).toHaveLength(0);
+    expect(invitations).toHaveLength(1);
+    expect(invitations[0]?.role).toBe("manager");
+
+    const contextAfterInvite = await getBusinessContext(db, OWNER_USER_ID, businessId);
+    expect(contextAfterInvite.status).toBe("draft");
 
     const memberships = await listStaffMembershipsForBusiness(db, OWNER_USER_ID, businessId);
     expect(memberships.some((m) => m.role === "owner")).toBe(true);
+    expect(memberships).toHaveLength(1);
+
+    // 9b. non-regression (Phase H): `staff.assignPermissions` carries no
+    // `eligibleBusinessStatuses` override in `sensitivePermissionCatalogue.ts`
+    // (confirmed by source read during this reconciliation), so it still
+    // falls back to the legacy `{trial, active}` set — the accepted
+    // CORR-003 consequence (Phase G): Owner can exercise `staff.manage` in
+    // `draft`, but `staff.assignPermissions` (and therefore any Manager
+    // delegation of it) still requires an operational Business. This
+    // journey never calls a `staff.assignPermissions`-gated command, so it
+    // never accidentally obtains that (or any other out-of-scope Sensitive)
+    // permission; the full per-permission matrix, including
+    // `staff.assignPermissions`, `staff.assignRole`, and
+    // `business.transferOwnership`, remains covered by
+    // `evaluatePermission.corr003.test.ts` and is not duplicated here.
 
     // 10. submission is blocked before Terms acceptance — the precondition
     // fails inside authorizeAndExecute's `prepare` phase and throws a
@@ -323,5 +367,41 @@ describe("ENG-P3-002C — real onboarding journey (bootstrap through pending_ver
     const finalContext = await getBusinessContext(db, OWNER_USER_ID, businessId);
     expect(finalContext.status).toBe("pending_verification");
     expect(finalContext.displayName).toBe("Journey Salon Co (Updated)");
+
+    // 14. (Phase F — additional proof point, not a workflow change): Owner
+    // + `pending_verification` Business + `staff.manage` also succeeds —
+    // `staff.manage`'s CORR-003 override names `pending_verification`
+    // explicitly, not only `draft`. This does not alter, and is not used
+    // to alter, onboarding completion behavior; it only confirms the
+    // governed Staff-management action stays available across both
+    // pre-operational statuses the onboarding journey passes through.
+    const secondInviteOutcome = await createStaffInvitation(
+      db,
+      {
+        businessId,
+        role: "staff",
+        deliveryTarget: { type: "email", value: "second-staff@example.com" },
+      },
+      {
+        actorUserId: OWNER_USER_ID,
+        idempotencyKey: "journey-invite-pending-verification",
+        now: CREATED_AT,
+        ...newIds(),
+        actor: { actorType: "user", actorId: OWNER_USER_ID },
+      },
+    );
+    expect(secondInviteOutcome.outcome).toBe("created");
+
+    const invitationsAfterSubmit = await listStaffInvitationsForBusiness(
+      db,
+      OWNER_USER_ID,
+      businessId,
+    );
+    expect(invitationsAfterSubmit).toHaveLength(2);
+
+    // Business status is unaffected by the second invitation — Staff
+    // invitation never causes lifecycle advancement, in either direction.
+    const contextAfterSecondInvite = await getBusinessContext(db, OWNER_USER_ID, businessId);
+    expect(contextAfterSecondInvite.status).toBe("pending_verification");
   });
 });
