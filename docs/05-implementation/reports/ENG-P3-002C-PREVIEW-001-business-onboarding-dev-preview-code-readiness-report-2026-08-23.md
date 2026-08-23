@@ -275,6 +275,20 @@ Unchanged from the original Phase B plan, still pending explicit Founder go-ahea
 6. Run the browser smoke journey against the hosted preview URL; update the Founder QA checklist
    with the real URL/channel/SHA; write the deployment report.
 
+## 23. CI result
+
+Draft PR [#160](https://github.com/Fkenogo/11THONUS/pull/160), head `f23f95d`. First CI run
+(`32636542420`) failed on a single, unrelated test:
+`functions/src/domains/business/repositories/businessRepository.emulator.test.ts` ›
+`bootstrapBusiness — idempotency` › "handles concurrent same-key, same-request calls without
+creating duplicate side effects" — `Error: Test timed out in 5000ms`. This PR makes **zero**
+changes under `functions/` (confirmed via `git diff origin/main HEAD -- functions/` — 0 lines),
+and this failure matches the same disclosed class of environmental/timing flake already recorded
+elsewhere in `docs/changes/IMPLEMENTATION_CHANGES.md` (e.g. the `ITM-D`/`CAP-P2-G2-001` entries'
+`idempotencyService.emulator.test.ts` timeout, reproduced as clean on immediate rerun with no code
+change). Re-ran via `gh run rerun 32636542420 --failed`: **passed clean, 5m24s.** No code changed
+between the two runs. PR is `OPEN`/`MERGEABLE`.
+
 ## Final gate
 
 **ENG-P3-002C-PREVIEW-001 CODE READY FOR REVIEW — NO DEV DEPLOYMENT PERFORMED**
