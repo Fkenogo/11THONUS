@@ -51,6 +51,20 @@ describe("App shell", () => {
     expect(await screen.findByRole("heading", { name: /Sign-in preview/i })).toBeInTheDocument();
   });
 
+  it("fails closed for the Founder-QA preview sign-in route in an ordinary build (no founder-qa-preview mode, no flag): route renders nothing, no crash", async () => {
+    render(
+      <MemoryRouter initialEntries={["/dev/founder-qa-sign-in"]}>
+        <App auth={fakeAuth} functions={fakeFunctions} />
+      </MemoryRouter>,
+    );
+
+    // The whole point of the literal `import.meta.env.*` gate is that this
+    // route is structurally absent from an ordinary build/test run (Vitest's
+    // MODE is "test", never "founder-qa-preview") — so nothing matches this
+    // path and the Routes tree renders empty, not the sign-in composition.
+    expect(screen.queryByRole("heading", { name: /Sign-in preview/i })).not.toBeInTheDocument();
+  });
+
   it("routes a signed-out visitor to /business to the sign-in-required fallback", async () => {
     render(
       <MemoryRouter initialEntries={["/business"]}>
