@@ -356,3 +356,96 @@ redeploy and the remaining Phases L–T need to be repeated).
 ## Final gate
 
 **ENG-P3-002C PREVIEW DEPLOYMENT BLOCKED — DEV/AUTH/SEED/INTEGRATION ISSUE REQUIRES REVIEW**
+
+---
+
+## Addendum — 2026-08-23 (`ENG-P3-002C-PREVIEW-001-APPCHECK-001`): App Check Recovery Investigation — STILL BLOCKED, Founder/infrastructure action required
+
+**Original failure preserved above, unmodified.** This addendum records what was investigated to
+recover the boot failure, and why it remains blocked — this is not a claim that the preview now
+works.
+
+- **PR #162 disposition:** confirmed docs-only, accurate, mergeable — marked ready and merged as
+  `ab19344940a8ca219446e3a7d3de05cdcf006d46`. `origin/main` advanced only through that docs merge;
+  runtime tree (`functions/src`, `apps/web/src`, `firebase.json`, `.firebaserc`, `firestore.rules`)
+  confirmed byte-identical to the previously reviewed `948b049` via `git diff` (0 lines) — the
+  reviewed deployment SHA and the current `origin/main` are runtime-equivalent.
+- **App Check architecture re-confirmed from source, not from memory:** `appCheck.ts` uses
+  `ReCaptchaV3Provider`, keyed on `VITE_APP_CHECK_SITE_KEY`, and throws whenever no site key is
+  present and `isDev` is false. Critically re-derived precisely this time: `isDev` here is
+  `env.useEmulator` (from `initializeFirebasePlatform`'s call site), not `import.meta.env.DEV`
+  directly — and `useEmulator` itself defaults to `import.meta.env.DEV` only when
+  `VITE_USE_FIREBASE_EMULATOR` is unset. For the `founder-qa-preview` build (a real `vite build`,
+  `DEV=false`, no emulator flag set), this resolves to `isDev=false`, so a site key is mandatory.
+  No behavior contradicts the original report's conclusion.
+- **Backend enforcement re-confirmed:** `functions/src/index.ts` sets no `enforceAppCheck` option on
+  any `onCall`. Independently confirmed via the App Check Admin API's `services` list for this
+  project — `firestore.googleapis.com`, `identitytoolkit.googleapis.com`, and
+  `firebasestorage.googleapis.com` are all `UNENFORCED`. App Check is therefore purely a
+  client-side initialization requirement here, not a server-side gate — Phase M's callable-traffic
+  proof reduces to "client-side token acquisition succeeds," since nothing server-side would ever
+  reject a request for missing/invalid attestation in the current configuration.
+- **Comment staleness (Phase C, not fixed — recorded only):** `appCheck.ts`'s comment still says
+  "No `europe-west1` project exists yet" and frames the missing key as a Cloud-Functions-region
+  concern. Both are now inaccurate: the DEV project has existed for weeks, and App Check/reCAPTCHA
+  configuration is project/web-app/domain-scoped, not Cloud Functions-region-scoped. Classified as
+  **F1/F2 documentation debt**, deliberately not touched under this infrastructure-only task.
+- **DEV Web App re-confirmed fresh:** `11thONUS Web`, `1:709450867178:web:191ba4b9b50be870a99293`,
+  project `eleventh-on-us-dev` — identical to every prior verification, re-fetched via
+  `firebase apps:sdkconfig`, not trusted from memory.
+- **Existing App Check state — the actual blocker, precisely determined:** queried the Firebase App
+  Check Admin API directly (`GET .../apps/{appId}/recaptchaV3Config`, authenticated via local
+  Application Default Credentials with an explicit `x-goog-user-project` quota header). The
+  resource **exists** but reports no `siteSecretSet` field in its response — per the API's own
+  schema documentation, `siteSecretSet` is an output-only boolean that is the *only* way to
+  determine whether a site secret was ever set (the secret itself is never returned). Its absence
+  from the JSON response means it defaults to `false`: **no reCAPTCHA v3 site secret has ever been
+  registered for this app.** The `tokenTtl`/`minValidScore` values returned (`86400s`/`0.5`) are
+  the API's own documented defaults, not evidence of prior configuration — Firebase returns a
+  default-valued config object on GET even for a never-configured resource. This conclusively
+  confirms: **the missing piece is not a frontend build-config oversight — no DEV reCAPTCHA v3 site
+  key/secret pair exists anywhere yet.**
+- **Why this cannot be provisioned by this task's tooling:** the App Check Admin API's
+  `recaptchaV3Config.siteSecret` field is documented as "Required. Input only" — the API only lets
+  you *register* an already-obtained secret; it has no method to *generate* a new reCAPTCHA v3
+  site key/secret pair. Classic (non-Enterprise) reCAPTCHA v3 site keys are created exclusively
+  through Google's interactive reCAPTCHA admin console
+  (`https://www.google.com/recaptcha/admin/create`), tied to a signed-in Google account — there is
+  no REST/CLI/MCP-automatable path to create one. This is precisely the condition this task's own
+  Phase F anticipated: **STOP and give the Founder the exact console click-path and fields.**
+- **Hostname requirement determined in advance (Phase G), for the Founder to use directly:** the
+  reCAPTCHA v3 site must authorize **both**
+  `eleventh-on-us-dev--eng-p3-002c-founder-qa-8lho2gn4.web.app` (the exact current preview channel
+  host — not covered by authorizing the live host, they are different hosts) **and**
+  `eleventh-on-us-dev.web.app` (the live DEV host, in case it is ever used for App Check-protected
+  testing later). Do not add production/staging domains — none are governed or required here. Note:
+  the preview channel's subdomain suffix (`8lho2gn4`) is tied to *this* channel instance; if the
+  channel is ever deleted and recreated under the same name, Firebase may assign a different
+  suffix, which would require re-adding the new host to the reCAPTCHA site's domain list.
+- **Exact Founder action required (two steps, ~5 minutes):**
+  1. Go to `https://www.google.com/recaptcha/admin/create`, sign in with the Google account that
+     administers the `eleventh-on-us-dev` Firebase project. Create a key with: **Label** — e.g.
+     `11thONUS DEV App Check`; **reCAPTCHA type** — **reCAPTCHA v3** (not v2, not Enterprise);
+     **Domains** — add both hostnames listed above. Submit. This produces a **Site Key** (public)
+     and a **Secret Key** (sensitive — never share this with an AI agent or commit it anywhere).
+  2. Go to the Firebase Console → `eleventh-on-us-dev` project → **Build → App Check** → find the
+     `11thONUS Web` app → **Register** (or **Manage**) → provider **reCAPTCHA v3** → paste the
+     **Secret Key** from step 1 into Firebase Console directly (Firebase's own UI performs the
+     `siteSecret` registration server-side; the secret never needs to leave the Founder's browser).
+     Save.
+  3. Hand the resulting **public Site Key only** back for the next deployment task to place in
+     `VITE_APP_CHECK_SITE_KEY` inside the gitignored `.env.founder-qa-preview.local` — this value
+     is safe to share; it is embedded in the public JS bundle by design.
+- **No further phases attempted:** per Phase Q's explicit stop rule, no application source was
+  patched to work around the missing key (e.g. no debug-token shortcut, no bypass, no dev-mode
+  switch for the hosted preview — all correctly avoided per Phase H). No rebuild, no redeploy, no
+  QA identity, no smoke journey. `platformConfig/businessTerms` reconfirmed absent, unchanged.
+  Functions (14) and the Hosting preview channel (`eng-p3-002c-founder-qa`, last release still
+  2026-08-23 15:34:46, unchanged by this task) both reconfirmed live and untouched by this
+  investigation. Zero source code changed. Zero DEV data
+  changed.
+
+## Final gate (addendum)
+
+**ENG-P3-002C PREVIEW BLOCKED — DEV APP CHECK CONFIGURATION REQUIRES FOUNDER/INFRASTRUCTURE
+ACTION**

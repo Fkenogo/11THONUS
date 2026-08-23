@@ -3173,3 +3173,57 @@
 - **Report:** [`ENG-P3-002C-PREVIEW-001-business-onboarding-dev-preview-deployment-report-2026-08-23.md`](../05-implementation/reports/ENG-P3-002C-PREVIEW-001-business-onboarding-dev-preview-deployment-report-2026-08-23.md).
 - **Final gate:** **ENG-P3-002C PREVIEW DEPLOYMENT BLOCKED — DEV/AUTH/SEED/INTEGRATION ISSUE
   REQUIRES REVIEW.**
+
+---
+
+## 2026-08-23 — ENG-P3-002C-PREVIEW-001-APPCHECK-001 — App Check Recovery Investigation (Still Blocked — Founder/Infrastructure Action Required)
+
+- **Date:** 2026-08-23
+- **Task:** `ENG-P3-002C-PREVIEW-001-APPCHECK-001`, bounded DEV infrastructure/configuration
+  correction — make the existing preview boot with App Check intact, without bypassing App Check,
+  redesigning Authentication, or touching production/staging.
+- **PR #162:** confirmed docs-only and accurate; merged as `ab19344940a8ca219446e3a7d3de05cdcf006d46`
+  as the historical deployment record. `origin/main` advanced only through that merge — runtime
+  tree confirmed byte-identical to the previously reviewed `948b049` (`git diff` — 0 lines).
+- **Architecture re-derivation:** `appCheck.ts` confirmed unchanged — `ReCaptchaV3Provider`,
+  `VITE_APP_CHECK_SITE_KEY`, throws when absent and `isDev` (`env.useEmulator`, defaulting to
+  `import.meta.env.DEV` only when `VITE_USE_FIREBASE_EMULATOR` is unset) is false — true for the
+  `founder-qa-preview` build. Backend enforcement independently reconfirmed **UNENFORCED** for
+  Firestore/Storage/Identity Toolkit via the App Check Admin API's `services` list — App Check is a
+  client-side-only gate in the current configuration, not a server-side one.
+- **Root cause conclusively determined via the App Check Admin API** (not assumed): queried
+  `recaptchaV3Config` for the DEV web app directly. The response's `siteSecretSet` field — the
+  *only* way this API exposes whether a secret was ever registered (the secret itself is never
+  returned) — was absent, meaning `false`: **no reCAPTCHA v3 site key/secret pair has ever been
+  created for this app.** The `tokenTtl`/`minValidScore` values returned are the API's documented
+  defaults for an unconfigured resource, not evidence of prior setup.
+- **Why this cannot be automated:** the Admin API's `siteSecret` field is "Required. Input only" —
+  it only *registers* an already-obtained secret, it cannot *generate* one. Classic reCAPTCHA v3
+  site keys are created exclusively through Google's interactive reCAPTCHA admin console, tied to a
+  signed-in Google account — no REST/CLI/MCP path exists to automate this. This is exactly the
+  condition this task's own governance anticipated: stop and hand the Founder the exact console
+  click-path rather than attempt a workaround.
+- **Hostname requirement determined for the Founder's use:** the reCAPTCHA v3 site must authorize
+  both `eleventh-on-us-dev--eng-p3-002c-founder-qa-8lho2gn4.web.app` (the exact current preview
+  channel host) and `eleventh-on-us-dev.web.app` (the live DEV host) — not production/staging.
+- **Exact Founder action** (recorded in full in the deployment report's addendum): (1) create a
+  reCAPTCHA v3 key at `google.com/recaptcha/admin/create` with both DEV hostnames; (2) register its
+  Secret Key directly in Firebase Console → App Check → `11thONUS Web` → reCAPTCHA v3 (the secret
+  never needs to reach this agent); (3) hand back only the public Site Key for the next deployment
+  task to place in the gitignored preview env file.
+- **No workaround attempted:** per this task's explicit stop rule, no debug-token shortcut, no App
+  Check bypass, and no dev-mode switch were used for the hosted preview. No source code changed. No
+  rebuild, redeploy, QA identity, or smoke journey attempted. `platformConfig/businessTerms`
+  reconfirmed absent. Functions (14) and the Hosting preview channel reconfirmed live and unchanged
+  by this investigation. Zero DEV data changed beyond the read-only queries themselves.
+- **Status change:** none of `ENG-P3-002C-PREVIEW-001`, `ENG-P3-002C`, `ENG-P3-002`, or Capability 3
+  changed by this task — all remain exactly as recorded after the prior blocked deployment attempt.
+- **Files:** addendum appended to the existing
+  [deployment report](../05-implementation/reports/ENG-P3-002C-PREVIEW-001-business-onboarding-dev-preview-deployment-report-2026-08-23.md),
+  this entry. No source file touched.
+- **Rollback:** nothing to roll back — this task performed only read-only API queries and merged an
+  already-accurate docs PR.
+- **Report:** [`ENG-P3-002C-PREVIEW-001-business-onboarding-dev-preview-deployment-report-2026-08-23.md`](../05-implementation/reports/ENG-P3-002C-PREVIEW-001-business-onboarding-dev-preview-deployment-report-2026-08-23.md)
+  (addendum).
+- **Final gate:** **ENG-P3-002C PREVIEW BLOCKED — DEV APP CHECK CONFIGURATION REQUIRES
+  FOUNDER/INFRASTRUCTURE ACTION.**
