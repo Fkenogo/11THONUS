@@ -11,6 +11,7 @@ import { useStaffInvitationsQuery } from "../../hooks/businessQueries";
 import { useSubmitBusinessForVerificationMutation } from "../../hooks/businessMutations";
 import { isReadyToSubmit } from "../completeness";
 import type { BusinessContext } from "../../api/businessContext";
+import { MutationError } from "../MutationError";
 
 export function ReviewStep({ context }: { context: BusinessContext }) {
   const { t } = useTranslation("business");
@@ -53,6 +54,7 @@ export function ReviewStep({ context }: { context: BusinessContext }) {
       >
         {t("actions.submit")}
       </Button>
+      <MutationError error={mutation.error} />
     </section>
   );
 }
