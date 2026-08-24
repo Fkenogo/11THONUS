@@ -22,6 +22,17 @@ export type CreateBusinessRequest = {
   address?: string;
   contactPhone: string;
   contactEmail?: string;
+  /**
+   * Required by the backend (TRD10 §10.6.3 types it `string[]`, present —
+   * `parseSupportedLanguages` rejects a missing/non-array value). `[]` is
+   * confirmed valid — ENG-P2-002A's independent review found and fixed this
+   * exact acceptance case for this exact field. No document states an
+   * explicit "supportedLanguages defaults to []" policy; `[]` is this
+   * correction's own reasoned choice (no onboarding step collects the value
+   * today, and it stays editable later via `updateBusinessProfile`), not a
+   * discovered product rule.
+   */
+  supportedLanguages: string[];
   idempotencyKey: string;
 };
 

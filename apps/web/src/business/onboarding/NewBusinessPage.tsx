@@ -40,7 +40,19 @@ export function NewBusinessPage() {
 
   function handleSubmit() {
     mutation.mutate(
-      { displayName, primaryCategoryId, countryCode, city, contactPhone, currencyCode, timezone },
+      {
+        displayName,
+        primaryCategoryId,
+        countryCode,
+        city,
+        contactPhone,
+        currencyCode,
+        timezone,
+        // [] is a valid value for this required field (ENG-P3-002B-CORR-SUPPORTEDLANGUAGES-001)
+        // — no repository source mandates this default explicitly, but no onboarding step
+        // collects it either; refined later via profile update if ever needed.
+        supportedLanguages: [],
+      },
       {
         onSuccess: (result) => {
           if (result) navigate(`/business/${result.businessId}`, { replace: true });

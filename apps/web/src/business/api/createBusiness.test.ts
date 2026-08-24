@@ -12,6 +12,7 @@ describe("toCallCreateBusiness", () => {
         timezone: "Africa/Bujumbura",
         city: "Bujumbura",
         contactPhone: "+25761234567",
+        supportedLanguages: [],
         idempotencyKey: "key-1",
       });
       return {
@@ -29,6 +30,7 @@ describe("toCallCreateBusiness", () => {
         timezone: "Africa/Bujumbura",
         city: "Bujumbura",
         contactPhone: "+25761234567",
+        supportedLanguages: [],
         idempotencyKey: "key-1",
       },
     );

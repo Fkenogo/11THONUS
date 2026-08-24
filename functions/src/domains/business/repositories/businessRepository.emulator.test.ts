@@ -162,6 +162,30 @@ describe("bootstrapBusiness — atomic bootstrap", () => {
     expect(outboxEvent.payload.contactPhone).toBeUndefined();
     expect(outboxEvent.payload.contactEmail).toBeUndefined();
   });
+
+  it("persists an empty supportedLanguages array exactly as sent, with every other field unaffected (ENG-P3-002B-CORR-SUPPORTEDLANGUAGES-001 — the governed creation-time default now sent by NewBusinessPage)", async () => {
+    const result = await bootstrapBusiness(
+      db,
+      { ...baseRequest, supportedLanguages: [] },
+      buildParams({
+        ownerUserId: "cust_1",
+        idempotencyKey: "key_supported_languages_empty",
+        generator: new SequenceGenerator(["BIZ234568"]),
+      }),
+    );
+
+    const business = await db.collection("businesses").doc(result.businessId).get();
+    expect(business.data()?.["supportedLanguages"]).toEqual([]);
+    // Nothing else about the persisted Business is affected by this field.
+    expect(business.data()?.["displayName"]).toBe(baseRequest.displayName);
+    expect(business.data()?.["countryCode"]).toBe(baseRequest.countryCode);
+    expect(business.data()?.["currencyCode"]).toBe(baseRequest.currencyCode);
+    expect(business.data()?.["status"]).toBe("draft");
+
+    const branch = await db.collection("businessBranches").doc(result.branchId).get();
+    expect(branch.exists).toBe(true);
+    expect(branch.data()?.["businessId"]).toBe(result.businessId);
+  });
 });
 
 describe("bootstrapBusiness — idempotency", () => {
