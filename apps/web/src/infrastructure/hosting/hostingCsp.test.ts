@@ -42,6 +42,16 @@ const RECAPTCHA_ORIGINS = [
   "https://identitytoolkit.googleapis.com",
   "https://securetoken.googleapis.com",
 ];
+// App Check's `ReCaptchaV3Provider` exchanges a reCAPTCHA token for an App
+// Check token via a `fetch()` to the App Check REST API — the SDK actually
+// calls the `content-` prefixed routing variant, not the bare hostname
+// (ENG-P3-002C-PREVIEW-001-APPCHECK-002: confirmed by reproducing the exact
+// blocked request in a real browser against the hosted DEV preview). Both
+// forms must be permitted in `connect-src`.
+const APP_CHECK_ORIGINS = [
+  "https://firebaseappcheck.googleapis.com",
+  "https://content-firebaseappcheck.googleapis.com",
+];
 
 interface CspHeader {
   key: string;
@@ -109,6 +119,15 @@ describe("Hosting CSP — authentication callable origin (P-2)", () => {
     for (const { value } of cspValues()) {
       for (const origin of RECAPTCHA_ORIGINS) {
         expect(value).toContain(origin);
+      }
+    }
+  });
+
+  it("permits the App Check token-exchange origins in connect-src on every document route (ENG-P3-002C-PREVIEW-001-CSP-001)", () => {
+    for (const { value } of cspValues()) {
+      const cs = connectSrc(value);
+      for (const origin of APP_CHECK_ORIGINS) {
+        expect(cs).toContain(origin);
       }
     }
   });
