@@ -3549,3 +3549,41 @@
 - **Report:** [`ENG-P3-002-CORR-LANGSWITCH-001-business-onboarding-language-accessibility-correction-2026-08-24.md`](../05-implementation/reports/ENG-P3-002-CORR-LANGSWITCH-001-business-onboarding-language-accessibility-correction-2026-08-24.md).
 - **Final gate:** **ENG-P3-002-CORR-LANGSWITCH-001 IMPLEMENTED, TDD-VERIFIED — READY FOR FOUNDER
   REVIEW; NOT DEPLOYED; NOTHING CLOSED.**
+
+## `ENG-P3-002-CORR-LANGSWITCH-001-REVIEW` — Independent Review, Merge & Closure Sync (2026-08-24)
+
+- **Independent review of PR #170** — re-derived every claim from source/diff/test execution
+  rather than trusting the implementation report. Reconstructed the localisation architecture
+  fresh, confirmed `LanguageSwitcher`/`config.ts` genuinely unmodified (0-line diff), confirmed all
+  three placements (`NewBusinessPage.tsx`, `OnboardingWizard.tsx`, `SubmittedStatusPage.tsx`)
+  cover their claimed surfaces by reading the full render tree, confirmed structurally (not just
+  observationally) that route/step/Business-context preservation and non-sign-out are architectural
+  guarantees of `LanguageSwitcher`'s design (it touches only `i18n.changeLanguage()`, no router, no
+  auth, and `useBusinessContextQuery`'s cache key is not language-parameterized).
+- **Test-quality independently proven non-vacuous:** reverted all three production changes in a
+  scratch state (tests left untouched), re-ran the three affected test files — all three new
+  language-accessibility tests failed for the correct reason (missing control), all eight
+  pre-existing tests in those files still passed. Working tree restored and confirmed
+  byte-identical to the reviewed commit before continuing.
+- **One non-blocking observation, not previously flagged:** `OnboardingWizard`'s integrity-error
+  branch and `BusinessWizardPage`'s loading/error/`lifecycle.notAvailable` states (all pre-existing,
+  untouched) do not carry a switcher — outside the normal reachable onboarding journey this
+  correction's own scope covers; not a regression, no fix required.
+- **Full validation re-run fresh, independently:** web 509/509; functions 1563/1563
+  (byte-identical to pre-PR `main`); typecheck/lint/format clean; ordinary build clean
+  (Founder-QA markers confirmed absent); `founder-qa-preview` build clean; secret scan clean on
+  both builds.
+- **No fix required** — merged the reviewed head unmodified.
+- **Merge:** PR #170 merged via `gh pr merge 170 --merge --delete-branch` as
+  `2a2af4a2575e4dec0ab987e0cdd72507f3283543`. Remote branch deleted manually (the recurring
+  local-checkout side-effect noted in every prior task in this workstream prevented `gh`'s own
+  auto-delete). Post-merge CI: **pass** (`32744178514`, 5m51s).
+- **Status change:** `ENG-P3-002-CORR-LANGSWITCH-001` = merged and closed.
+  `ENG-P3-002C`/`ENG-P3-002`/Capability 3 all unchanged — `ENG-P3-002C` remains hosted
+  engineering/integration validated, Founder QA pending hosted language-switch revalidation.
+- **Files:** this entry only (the reviewed source/test changes were already committed to PR #170
+  before this closure sync).
+- **Rollback:** `git revert 2a2af4a` — entirely additive/corrective, no schema/data impact.
+- **Report:** [`ENG-P3-002-CORR-LANGSWITCH-001-REVIEW-independent-review-merge-closure-2026-08-24.md`](../05-implementation/reports/ENG-P3-002-CORR-LANGSWITCH-001-REVIEW-independent-review-merge-closure-2026-08-24.md).
+- **Final gate:** **ENG-P3-002-CORR-LANGSWITCH-001 MERGED AND CLOSED — HOSTED LANGUAGE
+  REVALIDATION AWAITS FRESH AUTHORIZATION.**
