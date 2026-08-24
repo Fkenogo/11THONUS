@@ -3227,3 +3227,60 @@
   (addendum).
 - **Final gate:** **ENG-P3-002C PREVIEW BLOCKED — DEV APP CHECK CONFIGURATION REQUIRES
   FOUNDER/INFRASTRUCTURE ACTION.**
+
+---
+
+## 2026-08-24 — ENG-P3-002C-PREVIEW-001-APPCHECK-002 — Preview Recovery Attempt: Boot Fixed, App Check Token Exchange Still Fails
+
+- **Date:** 2026-08-24
+- **Task:** `ENG-P3-002C-PREVIEW-001-APPCHECK-002`, resuming after the Founder registered a
+  reCAPTCHA v3 key ("11thONUS DEV App Check") and its secret in Firebase Console App Check for the
+  `11thONUS Web` DEV app, supplying the public Site Key
+  `6Lef_pUtAAAAAHjqQlM45JU420ImjOXpz3j-Q6pb`.
+- **Registration independently verified:** App Check Admin API now reports `siteSecretSet: true`
+  for the DEV web app (previously false) — confirmed, not taken on trust. Enforcement reconfirmed
+  **UNENFORCED** across all services — no change made or requested.
+- **Site key configured** in a fresh gitignored `.env.founder-qa-preview.local`; never staged, no
+  secret ever handled. Founder-QA preview rebuilt and redeployed to the same existing Hosting
+  channel/hostname (`eng-p3-002c-founder-qa`) — no new hostname-authorization question introduced.
+  All relevant tests (22/22) and build-content checks passed; ordinary production build reconfirmed
+  unaffected.
+- **Boot defect resolved:** the real hosted preview now boots successfully — the original
+  page-blocking App Check throw is gone, sign-in UI renders, reCAPTCHA script loads (confirmed via
+  direct JS introspection), zero console errors at boot.
+- **New, narrower finding — App Check token exchange still fails:** attempting the product's real
+  "Create account" flow triggered an actual App Check token fetch that returned **403 on the first
+  attempt** and is now client-side throttled for ~24h. Enforcement being unenforced meant this did
+  not block the underlying product flow — a real DEV Auth user was created via the normal
+  registration path and the app reached the New Business form — but per this task's explicit
+  governance ("if App Check still fails: STOP, do not patch around it"), this is **not** reported
+  as a clean recovery. Most likely cause: the reCAPTCHA v3 site's domain allowlist very likely still
+  covers only `eleventh-on-us-dev.web.app`, not the distinct preview-channel hostname
+  `eleventh-on-us-dev--eng-p3-002c-founder-qa-8lho2gn4.web.app` actually serving this preview —
+  exactly the risk flagged in advance in the prior task's addendum. Not programmatically
+  verifiable/fixable (classic reCAPTCHA v3 domain lists are only editable via the interactive
+  Google-account-bound console).
+- **Stopped as governed:** did not proceed through the full onboarding smoke journey as an
+  authorized pass; no further QA identities created; no App Check bypass/debug-token/enforcement
+  change attempted. Founder QA checklist left unchanged ("do not attempt yet") — App Check is not
+  yet fully working.
+- **Side-effect disclosure:** one real DEV Auth QA identity was created during diagnosis
+  (`founder-qa-appcheck002@11thonus-dev-preview.test`) — password never recorded anywhere
+  persistent. No Business document was created (form reached, not submitted).
+- **Tooling note:** the Firebase MCP's `auth_get_users` tool was found to query only the
+  active/default `eleventh-on-us` project regardless of intent (no project-override parameter) —
+  a REST call with an explicit project was used instead. Flagged for future tasks, not a DEV/prod
+  mix-up (no user was created in `eleventh-on-us`).
+- **Security/environment audit:** clean — no secret committed/exposed, only the public site key
+  browser-visible, no enforcement change, Firestore Rules unchanged, no production/staging command
+  issued, `platformConfig/businessTerms` reconfirmed absent throughout.
+- **Status change:** none — `ENG-P3-002C-PREVIEW-001`, `ENG-P3-002C`, `ENG-P3-002`, Capability 3 all
+  remain exactly as previously recorded.
+- **Files:** addendum 2 appended to the existing deployment report, this entry. No source code
+  changed.
+- **Rollback:** nothing to roll back — read-only verification plus one incidental, harmless DEV Auth
+  user creation (left in place, disclosed).
+- **Report:** [`ENG-P3-002C-PREVIEW-001-business-onboarding-dev-preview-deployment-report-2026-08-23.md`](../05-implementation/reports/ENG-P3-002C-PREVIEW-001-business-onboarding-dev-preview-deployment-report-2026-08-23.md)
+  (addendum 2).
+- **Final gate:** **ENG-P3-002C PREVIEW BLOCKED — DEV APP CHECK CONFIGURATION REQUIRES
+  FOUNDER/INFRASTRUCTURE ACTION.**

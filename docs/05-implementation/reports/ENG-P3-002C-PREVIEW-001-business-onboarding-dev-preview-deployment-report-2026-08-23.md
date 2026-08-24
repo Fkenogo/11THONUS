@@ -449,3 +449,109 @@ works.
 
 **ENG-P3-002C PREVIEW BLOCKED — DEV APP CHECK CONFIGURATION REQUIRES FOUNDER/INFRASTRUCTURE
 ACTION**
+
+---
+
+## Addendum 2 — 2026-08-24 (`ENG-P3-002C-PREVIEW-001-APPCHECK-002`): Preview Recovery Attempt — Boot Fixed, App Check Token Exchange Still Fails (New, Narrower Finding)
+
+**Original failures preserved above, unmodified.** The Founder completed the reCAPTCHA v3
+registration described in Addendum 1 (site named "11thONUS DEV App Check", secret registered in
+Firebase Console → App Check → `11thONUS Web`; public Site Key
+`6Lef_pUtAAAAAHjqQlM45JU420ImjOXpz3j-Q6pb` supplied). This addendum records what was verified,
+what improved, and a new, narrower, still-unresolved App Check finding.
+
+- **Entry:** `origin/main` confirmed at `5783aaa40b225c8495baa70e41e6b78a371310aa`; PR #160/#162/#163
+  merges all confirmed ancestors; CI green. Work performed in a fresh, now-removed `git worktree`.
+- **App Check registration independently confirmed via the Admin API** (not taken on the Founder's
+  word alone): `GET .../recaptchaV3Config` for the DEV web app now returns `"siteSecretSet": true`
+  (previously absent/false in Addendum 1). `GET .../services` reconfirms **enforcement remains
+  UNENFORCED** for Firestore/Storage/Identity Toolkit — no enforcement change made or requested,
+  matching this task's explicit constraint.
+- **Site key configured** in a fresh, gitignored `.env.founder-qa-preview.local`
+  (`VITE_APP_CHECK_SITE_KEY=6Lef_pUtAAAAAHjqQlM45JU420ImjOXpz3j-Q6pb`) alongside the real DEV SDK
+  config, re-fetched fresh via `firebase apps:sdkconfig`. Confirmed gitignored and never staged
+  throughout (`git check-ignore -v` / empty `git status --short`). Only the public site key was
+  used — the secret was never requested, seen, or handled by this task.
+- **Build validation:** relevant existing tests (`founderQaPreview`, `App.test.tsx`, `appCheck.test.ts`)
+  — 22/22 passed. `pnpm run build:founder-qa-preview` — clean; preview-auth chunk present,
+  `/business` routes present, `ReCaptchaV3Provider` present, DEV project ID embedded, the new site
+  key embedded, zero `TEST_ONLY` markers, zero secret patterns, zero PWA artifacts (as governed for
+  this mode). Ordinary `pnpm build` re-confirmed unaffected — zero preview markers, zero site key,
+  PWA present as before. Deterministic rebuild re-verified identical output before deploying.
+- **Hosting redeploy:** `firebase hosting:channel:deploy eng-p3-002c-founder-qa --project eleventh-on-us-dev --expires 7d`.
+  **Same channel, same hostname** (`https://eleventh-on-us-dev--eng-p3-002c-founder-qa-8lho2gn4.web.app`)
+  — the hostname did not change, so no new hostname-authorization question arises. New expiry
+  2026-08-31. `live` channel confirmed unaffected (unchanged release time).
+- **Real browser boot test — the original defect is fixed:** opened the preview URL in a real
+  browser. The application now boots successfully and the Founder-QA sign-in UI renders (Google +
+  Email/Password options, EN/FR switcher) — the hard, page-blocking App Check throw from the
+  original deployment report is **resolved**. Direct JS introspection confirmed the reCAPTCHA
+  script loaded successfully (`www.google.com/recaptcha/api.js` and
+  `www.gstatic.com/recaptcha/releases/…`, `window.grecaptcha` defined as an object) with zero
+  console errors at boot.
+- **New, narrower finding — App Check token exchange itself fails:** attempting the product's
+  normal "Create account" flow (email/password) triggered a real App Check token fetch, which
+  failed:
+  ```
+  [error] Failed to load resource: the server responded with a status of 403 ()
+  [warn] @firebase/app-check: AppCheck: 403 error. Attempts allowed again after 01d:00m:00s (appCheck/initial-throttle).
+  [warn] @firebase/app-check: AppCheck: Requests throttled due to previous 403 error. …
+  [warn] @firebase/auth: Auth (12.16.0): Error while retrieving App Check token: FirebaseError: AppCheck: Requests throttled …
+  ```
+  This is a genuine rejection from the token-exchange backend on the **first** attempt (before any
+  throttling existed), not a transient network blip — and the client-side SDK has now
+  self-throttled this exact site key for **~24 hours**, so no further retry against it is possible
+  from this browser context today regardless of any config fix made in the meantime.
+- **Most likely, source-grounded cause:** exactly the risk this task's own Addendum 1 flagged in
+  advance — reCAPTCHA v3 domain authorization is almost certainly still scoped to
+  `eleventh-on-us-dev.web.app` only, **not** the distinct Hosting-preview hostname
+  `eleventh-on-us-dev--eng-p3-002c-founder-qa-8lho2gn4.web.app` actually serving this preview. A
+  403 on the very first token-exchange attempt is the textbook symptom of a domain the reCAPTCHA
+  site key was never authorized for. This cannot be confirmed or fixed programmatically — the
+  classic (non-Enterprise) reCAPTCHA v3 domain allowlist is only editable through the interactive
+  `google.com/recaptcha/admin` console for the site's owning Google account; there is no
+  service-account-queryable API for it.
+- **Because App Check enforcement remains UNENFORCED (by design, unchanged — confirmed above),
+  this token-exchange failure did not block the product flow itself:** the "Create account" action
+  still succeeded end-to-end — a real DEV Firebase Auth user was created
+  (`founder-qa-appcheck002@11thonus-dev-preview.test`, confirmed via a direct, explicit-project
+  Identity Toolkit query, not the Firebase MCP's `auth_get_users` tool, which was found to only
+  ever query the active/default `eleventh-on-us` project regardless of intent — a tooling
+  limitation noted for future tasks, not a DEV/prod mix-up), and the app navigated to `/business` →
+  the New Business ("Tell us about your business") form. **This is real, useful evidence that the
+  onboarding backend itself works end-to-end** — but it is not evidence that App Check is fixed,
+  and per this task's explicit governance ("if App Check still fails: STOP… do not patch around App
+  Check"), this is not reported as a clean recovery. No Business document was created (the form was
+  reached but not submitted) — confirmed via `firestore_list_collections` showing no new
+  `businesses` collection.
+- **Stopped here, as governed.** Did not proceed through the full Phase H hosted onboarding smoke
+  journey as an "authorized/complete" pass — reaching `/business` happened incidentally while
+  diagnosing the App Check token failure, not as a declared, clean Phase F pass. No further QA
+  identities created. No workaround, bypass, debug token, or enforcement change attempted.
+- **QA identity created (as a side effect, disclosed transparently):** email
+  `founder-qa-appcheck002@11thonus-dev-preview.test`, UID `xbI8n0WeKdSlfUc4NtxQohYOPzX2`, created
+  via the product's own normal email/password registration flow (real `authenticate` callable, real
+  Identity Toolkit user) — not fabricated, no direct Firestore/UID injection. **Password never
+  recorded here or anywhere persistent** — it was generated for this session only and is not
+  reusable from this report.
+- **Security/environment audit:** no secret committed or exposed (confirmed via source + bundle
+  scan); only the public site key is browser-visible; no App Check bypass/debug token/enforcement
+  change; Firestore Rules unchanged (`git diff --stat` against the deployment worktree shows zero
+  changes); no production/staging command issued by this task (every Firebase CLI/MCP/REST call
+  explicitly targeted `eleventh-on-us-dev`); no unrelated function/data mutation; no fake Terms
+  content — `platformConfig/businessTerms` reconfirmed absent both before and after this task.
+- **Files:** this addendum and a matching `IMPLEMENTATION_CHANGES.md` entry. No source code
+  changed. The Founder QA checklist was **not** updated to "ready" — App Check token acquisition is
+  still broken, so the checklist correctly continues to say do not attempt yet.
+- **Exact next Founder action:** verify, in the `google.com/recaptcha/admin` console, that the
+  reCAPTCHA v3 key "11thONUS DEV App Check" lists **both**
+  `eleventh-on-us-dev--eng-p3-002c-founder-qa-8lho2gn4.web.app` **and**
+  `eleventh-on-us-dev.web.app` under Domains — add the preview hostname if it is missing. Because
+  of the ~24h client-side throttle already triggered against this exact site key, re-verification
+  should be attempted with a fresh browser session (private/incognito window, or simply waiting out
+  the throttle) rather than the same session used here.
+
+## Final gate (addendum 2)
+
+**ENG-P3-002C PREVIEW BLOCKED — DEV APP CHECK CONFIGURATION REQUIRES FOUNDER/INFRASTRUCTURE
+ACTION**
