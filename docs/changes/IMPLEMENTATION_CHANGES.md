@@ -3227,3 +3227,38 @@
   (addendum).
 - **Final gate:** **ENG-P3-002C PREVIEW BLOCKED — DEV APP CHECK CONFIGURATION REQUIRES
   FOUNDER/INFRASTRUCTURE ACTION.**
+
+---
+
+## 2026-08-24 — ENG-P3-002C-PREVIEW-001-CSP-001 — App Check CSP Correction (Source Fix, Draft PR, Not Deployed)
+
+- **Date:** 2026-08-24
+- **Task:** `ENG-P3-002C-PREVIEW-001-CSP-001`, implementing the narrowly scoped correction
+  identified by the `ENG-P3-002C-PREVIEW-001-APPCHECK-002` diagnostic — the hosted Founder-QA
+  preview's App Check token exchange is blocked by the site's own CSP, not by reCAPTCHA/App Check
+  configuration.
+- **Confirmed before modification:** both existing `connect-src` directives in `firebase.json`
+  omit `firebaseappcheck.googleapis.com` and its `content-` prefixed routing variant.
+- **Fix:** added exactly those two origins to `connect-src` in both CSP header blocks
+  (`/index.html` and `/`) — no other directive touched, no wildcard, no `script-src` weakening, no
+  App Check/reCAPTCHA/Rules change.
+- **TDD:** extended the existing `hostingCsp.test.ts` config-validation test (reads `firebase.json`
+  directly) with one new assertion. RED confirmed against the unmodified config; GREEN (8/8) after
+  the fix.
+- **Validation:** web suite 504/504 (one unrelated pre-existing timing flake, clean on rerun);
+  functions suite 1563/1563 (untouched); typecheck/lint/format clean; ordinary and
+  `founder-qa-preview` builds clean. Security diff of `firebase.json` shows exactly the two
+  intended one-line additions, nothing else changed.
+- **No Firebase deployment performed.** Draft PR opened for Founder review; not self-merged, per
+  task instruction.
+- **Status change:** none — `ENG-P3-002C-PREVIEW-001` moves to "source correction ready for
+  review, not yet deployed"; `ENG-P3-002C`, `ENG-P3-002`, Capability 3 all otherwise unchanged.
+  `ENG-P3-002` remains Open, separately blocked on `DEC-LEGAL-002` regardless of this correction.
+- **Files:** `firebase.json`, `apps/web/src/infrastructure/hosting/hostingCsp.test.ts`, an
+  addendum to the deployment report, this entry.
+- **Rollback:** `git revert` the merge commit once merged, or do not merge — a two-origin CSP
+  allowlist addition with no data/schema/deployed-resource impact.
+- **Report:** [`ENG-P3-002C-PREVIEW-001-business-onboarding-dev-preview-deployment-report-2026-08-23.md`](../05-implementation/reports/ENG-P3-002C-PREVIEW-001-business-onboarding-dev-preview-deployment-report-2026-08-23.md)
+  (addendum).
+- **Final gate:** **ENG-P3-002C-PREVIEW-001-CSP-001 READY FOR FOUNDER REVIEW — NO DEPLOYMENT
+  PERFORMED.**

@@ -449,3 +449,64 @@ works.
 
 **ENG-P3-002C PREVIEW BLOCKED — DEV APP CHECK CONFIGURATION REQUIRES FOUNDER/INFRASTRUCTURE
 ACTION**
+
+---
+
+## Addendum — 2026-08-24 (`ENG-P3-002C-PREVIEW-001-CSP-001`): App Check CSP Correction — Source Fix, Not Yet Deployed
+
+This addendum records the narrowly scoped source correction for the App Check CSP defect
+conclusively identified by the separate `ENG-P3-002C-PREVIEW-001-APPCHECK-002` diagnostic (recorded
+on the still-open, still-unmerged draft PR #164 at the time this task started — not yet part of
+this document's base `origin/main` history, so referenced here by task ID rather than addendum
+number to avoid a numbering collision once both land).
+
+- **Entry:** `origin/main` confirmed at `5783aaa40b225c8495baa70e41e6b78a371310aa`; PR #160/#163
+  ancestry reconfirmed. Work performed in a fresh, isolated `git worktree`.
+- **Confirmed defect before modification:** both existing CSP `connect-src` directives in
+  `firebase.json` (for `source: "/index.html"` and `source: "/"`) omit
+  `https://firebaseappcheck.googleapis.com` and `https://content-firebaseappcheck.googleapis.com` —
+  independently re-verified by direct inspection, not assumed from the prior diagnostic's word.
+- **Why two CSP blocks, and whether both needed correction:** Firebase Hosting's header `source`
+  glob matches the *original* requested path, not the SPA rewrite's destination — confirmed via
+  live `curl` against the deployed preview that a direct/cold request to a client-side route (e.g.
+  `/dev/founder-qa-sign-in`) returns **no** CSP header at all, while `/` and `/index.html` both do.
+  In practice this doesn't undermine the fix: a browser's document CSP is fixed at whichever
+  response was actually navigated to and persists across client-side (`history.pushState`)
+  navigation for the rest of that session — and `/`/`/index.html` are the realistic entry points for
+  this preview. Both blocks were therefore genuinely in scope and both were corrected identically.
+  The separate observation that most SPA sub-routes carry no CSP header at all on a direct/cold
+  request is disclosed as an out-of-scope, pre-existing finding — not fixed here, since widening
+  the header `source` patterns is a broader change than this task's narrow authorization.
+- **Fix strategy:** extend `connect-src` on both blocks with exactly the two required origins.
+  Nothing else touched — no `*`, no bare `https:`, no directive removed, no `unsafe-eval`, no
+  `script-src` change, no reCAPTCHA/App-Check/Rules change.
+- **TDD:** an existing config-validation test module,
+  `apps/web/src/infrastructure/hosting/hostingCsp.test.ts` (reads `firebase.json` directly, no
+  mocking), already covered this exact class of regression for a different origin
+  (`AUTH-PREVIEW-READINESS-001`). Extended it with one new assertion requiring both App Check
+  origins in `connect-src` on every declared document route. **RED:** failed against the
+  unmodified config (`AssertionError: expected … to contain 'https://firebaseappcheck.googleapis.c…'`),
+  all 7 pre-existing assertions still passing. **GREEN:** all 8 pass after the fix.
+- **Validation:** web suite 504/504 (one unrelated, pre-existing timing-sensitive perf assertion
+  flaked once, reproduced clean on immediate rerun — not caused by this change, confirmed by its
+  total unrelatedness to CSP/hosting code); functions suite 1563/1563 (untouched, confirmed no
+  regression); typecheck clean; lint clean (0 errors, 1 pre-existing unrelated warning); format
+  clean; ordinary `pnpm build` clean; `build:founder-qa-preview` clean. CSP is a Hosting-config
+  header, not bundled into the JS output, so the builds themselves are structurally unaffected by
+  this change — validated for completeness regardless.
+- **Security/non-regression diff:** `git diff firebase.json` shows exactly two one-line additions
+  (`https://firebaseappcheck.googleapis.com https://content-firebaseappcheck.googleapis.com`
+  appended to `connect-src` in both blocks) — no other character changed. Total change scope:
+  `firebase.json` and its regression test only.
+- **No Firebase deployment performed.** No Firestore Rules, App Check registration, reCAPTCHA
+  configuration, Cloud Functions, Commerce Knowledge seed, or QA identity touched. Production and
+  staging untouched — no command in this task referenced either project.
+- **Status (unchanged by this task):** `ENG-P3-002C-PREVIEW-001` = source correction ready for
+  review, not yet deployed. `ENG-P3-002C`, `ENG-P3-002`, Capability 3 all unchanged — `ENG-P3-002`
+  remains Open, still separately blocked on `DEC-LEGAL-002` regardless of this correction's outcome.
+- **Rollback:** `git revert` the merge commit once merged, or simply do not merge — the change is a
+  two-origin CSP allowlist addition with no data/schema/deployed-resource impact.
+
+## Final gate (`ENG-P3-002C-PREVIEW-001-CSP-001`)
+
+**ENG-P3-002C-PREVIEW-001-CSP-001 READY FOR FOUNDER REVIEW — NO DEPLOYMENT PERFORMED**
