@@ -40,7 +40,18 @@ export function NewBusinessPage() {
 
   function handleSubmit() {
     mutation.mutate(
-      { displayName, primaryCategoryId, countryCode, city, contactPhone, currencyCode, timezone },
+      {
+        displayName,
+        primaryCategoryId,
+        countryCode,
+        city,
+        contactPhone,
+        currencyCode,
+        timezone,
+        // Governed default at creation (ENG-P3-002B-CORR-SUPPORTEDLANGUAGES-001) — no
+        // onboarding step collects this yet; refined later via profile update.
+        supportedLanguages: [],
+      },
       {
         onSuccess: (result) => {
           if (result) navigate(`/business/${result.businessId}`, { replace: true });

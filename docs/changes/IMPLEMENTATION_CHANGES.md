@@ -3397,3 +3397,60 @@
 - **Final gate:** **ENG-P3-002C DEV PREVIEW RECOVERED — APP CHECK VALIDATED; FOUNDER QA MAY BEGIN**
   (with the separate `ENG-P3-002B-CORR-SUPPORTEDLANGUAGES-001` Business-creation defect limiting
   full checklist completion until corrected).
+
+---
+
+## 2026-08-24 — ENG-P3-002B-CORR-SUPPORTEDLANGUAGES-001 — Business Creation `supportedLanguages` Contract Reconciliation
+
+- **Date:** 2026-08-24
+- **Task:** resolve the `createBusiness` rejection discovered during preview recovery — the backend
+  requires `supportedLanguages`, the frontend never sent it. Re-derived the intended contract from
+  authoritative sources before touching code.
+- **Governance research:** TRD10 §10.6.3 types `supportedLanguages: string[]` (required, present,
+  no minimum length). No document defines its semantic meaning or any onboarding-UI intent for it —
+  PRD3 Business Registration never mentions "language"; `ENG-P3-002-DESIGN-001` discusses "language"
+  only for platform UI/Terms, never this field; the onboarding wizard's own step list has no
+  language step. **Empty-array policy is explicitly governed, not invented**: `ENG-P2-002A`'s
+  independent review already found and TDD-fixed this exact question for this exact field, citing
+  `customerProfile.ts`'s "governed reference lists, default empty" precedent — both
+  `business.ts`/`businessDocument.ts` already accept `[]`, with existing test coverage.
+- **Root cause:** two independently hand-maintained `CreateBusinessRequest` types (frontend,
+  backend) drifted — the frontend's simply never gained the field. No cross-package compile-time
+  contract enforcement exists for Firebase Callable Functions (the wire payload is untyped on the
+  server), so nothing could have caught this until runtime.
+- **Correction chosen: Option A (governed default).** Backend **not changed** — it was already
+  correct. `CreateBusinessRequest` (frontend) widened to require `supportedLanguages: string[]`,
+  matching backend truth exactly; `NewBusinessPage.tsx` now sends `supportedLanguages: []`
+  unconditionally at creation (editable later via `updateBusinessProfile`, unaffected by this
+  correction).
+- **RED→GREEN:** a new `NewBusinessPage.test.tsx` case failed before the fix, passed after.
+  Widening the type also immediately broke `createBusiness.test.ts`'s pre-existing fixture at
+  `tsc -b` — direct proof the contract gap is now compile-time enforced — fixed by adding the field
+  to that fixture.
+- **Integration proof:** new real-emulator test in `businessRepository.emulator.test.ts` — an
+  authenticated bootstrap with `supportedLanguages: []` persists the Business with that exact value,
+  every other field (`displayName`/`countryCode`/`currencyCode`/`status: draft`) unaffected, default
+  Branch persisted correctly.
+- **Full validation:** web 505/505; functions 1563/1563; emulator 684/686 passed (2 pre-existing
+  skips, 0 failed — one more pass than before, the new test); Playwright 1/1; typecheck/lint/format
+  clean; ordinary + `founder-qa-preview` builds clean; secret scan clean.
+- **Contract-duplication finding, disclosed not fixed:** frontend/backend Business request types
+  are intentionally independent (matches this repository's existing architecture for every other
+  Business mutation) — not refactored, per this task's own constraint against broad refactoring.
+  The same silent-drift risk could recur for any future backend field addition; flagged for a
+  possible future shared-types/contract-equality task, not addressed here.
+- **No Firebase/Rules/deployment change of any kind** — App Check, CSP, Commerce Knowledge, Staff
+  permissions, and Terms are all untouched.
+- **Status change:** `ENG-P3-002B-CORR-SUPPORTEDLANGUAGES-001` = code ready for review, not
+  deployed. `ENG-P3-002C`/`ENG-P3-002`/Capability 3 all unchanged.
+- **Files:** `apps/web/src/business/api/createBusiness.ts`,
+  `apps/web/src/business/api/createBusiness.test.ts`,
+  `apps/web/src/business/onboarding/NewBusinessPage.tsx`,
+  `apps/web/src/business/onboarding/NewBusinessPage.test.tsx`,
+  `functions/src/domains/business/repositories/businessRepository.emulator.test.ts`, this entry,
+  and the new
+  [implementation report](../05-implementation/reports/ENG-P3-002B-CORR-SUPPORTEDLANGUAGES-001-business-creation-contract-reconciliation-2026-08-24.md).
+- **Rollback:** `git revert` the merge commit — entirely additive/corrective, no schema/data impact.
+- **Report:** [`ENG-P3-002B-CORR-SUPPORTEDLANGUAGES-001-business-creation-contract-reconciliation-2026-08-24.md`](../05-implementation/reports/ENG-P3-002B-CORR-SUPPORTEDLANGUAGES-001-business-creation-contract-reconciliation-2026-08-24.md).
+- **Final gate:** **ENG-P3-002B-CORR-SUPPORTEDLANGUAGES-001 READY FOR FOUNDER REVIEW — NO
+  DEPLOYMENT PERFORMED.**

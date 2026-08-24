@@ -22,6 +22,15 @@ export type CreateBusinessRequest = {
   address?: string;
   contactPhone: string;
   contactEmail?: string;
+  /**
+   * Required by the backend (TRD10 §10.6.3 types it `string[]`, present —
+   * `parseSupportedLanguages` rejects a missing/non-array value). ENG-P2-002A's
+   * independent review established `[]` as the legitimate governed value at
+   * creation (mirrors `customerProfile.ts`'s "governed reference lists,
+   * default empty" precedent) — no onboarding step collects this today, and
+   * it remains editable later via `updateBusinessProfile`.
+   */
+  supportedLanguages: string[];
   idempotencyKey: string;
 };
 
