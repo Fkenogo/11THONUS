@@ -9,7 +9,7 @@
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useTranslation } from "../../i18n";
+import { LanguageSwitcher, useTranslation } from "../../i18n";
 import { Button, Select, TextField } from "../../components/ui/formPrimitives";
 import { useBusinessCategoriesQuery } from "../hooks/businessQueries";
 import { useCreateBusinessMutation } from "../hooks/businessMutations";
@@ -63,6 +63,7 @@ export function NewBusinessPage() {
 
   return (
     <main className="mx-auto max-w-lg p-6">
+      <LanguageSwitcher />
       <h1 className="mb-4 text-xl font-semibold">{t("details.title")}</h1>
       <div className="flex flex-col gap-4">
         <TextField
