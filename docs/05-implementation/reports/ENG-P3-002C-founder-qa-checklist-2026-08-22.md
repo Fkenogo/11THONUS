@@ -1,6 +1,33 @@
 > **Title:** ENG-P3-002C — Founder QA Checklist (Business Onboarding)
 > **Status:** Not yet executed. This is a checklist to run, not a record of a run.
-> **2026-08-23 (`ENG-P3-002C-PREVIEW-001-DEPLOY-001`) — hosted preview deployed but currently BLOCKED, do not attempt yet:**
+> **2026-08-24 (`ENG-P3-002C-PREVIEW-001-RECOVERY-001`) — hosted preview is now up and App Check is
+> validated; a NEW, separate blocker limits what you can currently test:**
+> **Preview URL:** `https://eleventh-on-us-dev--eng-p3-002c-founder-qa-8lho2gn4.web.app`
+> **Sign-in entry:** `/dev/founder-qa-sign-in` on that URL.
+> **Channel:** `eng-p3-002c-founder-qa` · **Project:** `eleventh-on-us-dev` · **Expires:**
+> 2026-08-31 11:15 · **Deployed source SHA:** `c582ae9e535e68620fdaedbd0d2f4f6a43e1d158`.
+> **App Check:** validated working — the app boots, reCAPTCHA loads, and a valid App Check token is
+> obtained, confirmed under a genuinely fresh browser session with the actual CSP enforced (not
+> merely its absence). The original boot failure and the subsequent CSP block are both resolved.
+> **Login:** email `founder-qa-appcheck002@11thonus-dev-preview.test` — ask the engineering session
+> for the current password separately; it is never written in this or any persistent document.
+> **NEW blocker found during verification — Business creation is currently broken for everyone,
+> unrelated to App Check:** submitting the "Tell us about your business" form always fails with
+> "Something about that wasn't valid" (the governed error banner works correctly; this is not a raw
+> error). Root cause: the backend's `createBusiness` callable requires a `supportedLanguages` field
+> the frontend never sends. **This blocks checklist items 2 onward** (everything that needs an
+> existing Business) until a separate correction lands — provisionally tracked as
+> `ENG-P3-002B-CORR-SUPPORTEDLANGUAGES-001`. You can still exercise: sign-in (item 1), the `/business`
+> resolver redirecting to the New Business form, the Business Category list populating from the
+> seeded Commerce Knowledge data, and EN/FR/mobile rendering on that one page.
+> **Known, separate, non-blocking finding:** direct visits to `/dev/founder-qa-sign-in` (the URL
+> above) currently receive no Content-Security-Policy header at all from Hosting — harmless (nothing
+> is blocked either way) but tracked as `ENG-HOSTING-CSP-COVERAGE-001` for a future hardening pass.
+> Full detail in the
+> [deployment report](ENG-P3-002C-PREVIEW-001-business-onboarding-dev-preview-deployment-report-2026-08-23.md).
+>
+> ---
+> **2026-08-23 (`ENG-P3-002C-PREVIEW-001-DEPLOY-001`) — hosted preview deployed but currently BLOCKED, do not attempt yet (superseded above):**
 > a real DEV Hosting preview channel now exists —
 > `https://eleventh-on-us-dev--eng-p3-002c-founder-qa-8lho2gn4.web.app`
 > (channel `eng-p3-002c-founder-qa`, project `eleventh-on-us-dev`, expires 2026-08-30, built from

@@ -3336,3 +3336,64 @@
 - **Report:** [`ENG-P3-002C-PREVIEW-001-business-onboarding-dev-preview-deployment-report-2026-08-23.md`](../05-implementation/reports/ENG-P3-002C-PREVIEW-001-business-onboarding-dev-preview-deployment-report-2026-08-23.md).
 - **Final gate:** **ENG-P3-002C-PREVIEW-001-CSP-001 MERGED AND CLOSED — HOSTING PREVIEW RECOVERY
   AWAITS FRESH FOUNDER AUTHORIZATION.**
+
+---
+
+## 2026-08-24 — ENG-P3-002C-PREVIEW-001-RECOVERY-001 — Hosting Preview Redeploy & App Check Runtime Verification
+
+- **Date:** 2026-08-24
+- **Task:** redeploy the existing Founder-QA Hosting preview channel from the merged CSP fix
+  (`c582ae9`) and run the App Check runtime verification. No Functions redeploy, no reseed, no new
+  QA identity, no App Check/reCAPTCHA/Rules/Terms change, no production/staging action.
+- **Entry:** `origin/main` confirmed at `c582ae9e535e68620fdaedbd0d2f4f6a43e1d158`; PR #165/#166
+  ancestry confirmed; CI green. Read-only Phase B re-confirmation: all 14 functions, the 27-node
+  Commerce Knowledge seed, the existing QA identity, App Check registration, and Terms absence all
+  reconfirmed unchanged — nothing redeployed unnecessarily.
+- **Redeploy:** same channel (`eng-p3-002c-founder-qa`), same hostname — no new reCAPTCHA-domain
+  question. New expiry 2026-08-31. `live` channel unaffected. Served CSP confirmed via `curl` to now
+  include both App Check origins.
+- **App Check runtime proof — PASSED, validated twice for rigor:** a first pass on a genuinely
+  fresh browser context (throttle IndexedDB explicitly cleared) showed a clean boot with zero
+  errors — but since a direct request to the sign-in URL itself carries no CSP header at all (a
+  separate, pre-existing gap, below), that alone couldn't prove the origin fix specifically. A
+  second pass entered via `/` (which does carry the fixed CSP) and client-side-routed to the sign-in
+  page via `history.pushState` (no reload, so the governing CSP stayed `/`'s) — reCAPTCHA loaded,
+  zero errors, proving the fix works under actual CSP enforcement.
+- **Sign-in and `/business` resolution:** the existing QA identity's password was reset via the
+  Identity Toolkit Admin API (same UID/email, not a new identity — the prior session's password was
+  correctly never persisted and was unrecoverable) and used to sign in through the real product
+  flow. Succeeded cleanly; `/business` correctly resolved to the New Business form; Commerce
+  Knowledge categories loaded correctly (all 14 seeded categories present).
+- **NEW, SEPARATE, PRE-EXISTING DEFECT FOUND — Business creation is currently broken for everyone,
+  unrelated to App Check:** the `createBusiness` callable's `parseSupportedLanguages` unconditionally
+  requires a real array, but `NewBusinessPage.tsx`'s submit payload never includes
+  `supportedLanguages` at all — traced precisely via an injected `fetch` interceptor reading the
+  actual rejected response body. Governed, localized error handling itself works correctly (not a
+  raw Firebase error). Not fixed here, per this task's explicit stop rule. No partial data left
+  behind (transactional write, confirmed no `businesses` collection exists). Provisionally tracked
+  as `ENG-P3-002B-CORR-SUPPORTEDLANGUAGES-001`.
+- **EN/FR/mobile:** all confirmed working on the one reachable page (New Business form) — FR UI
+  chrome fully localized (category *labels* remain English, expected — seed only publishes EN
+  translations); mobile (375×812) renders cleanly, no overflow.
+- **SPA direct-route CSP-coverage finding, reconfirmed and shown to directly affect this preview's
+  real usage pattern:** the Founder QA checklist's own instructed entry URL
+  (`/dev/founder-qa-sign-in`) still serves no CSP header at all on a direct/cold request — harmless
+  (nothing to block), but means the realistic entry path doesn't exercise the CSP protection.
+  Recorded under the existing `ENG-HOSTING-CSP-COVERAGE-001` identifier — not implemented.
+- **Security/environment audit:** clean — no secret exposure, no enforcement/bypass change, no Rules
+  change, no unnecessary redeploy/reseed/identity creation, no production/staging command issued.
+- **Status change:** `ENG-P3-002C-PREVIEW-001` = DEV preview operational, App Check validated.
+  `ENG-P3-002C` = integration validation merged; DEV preview operational; Founder QA ready/pending —
+  with the newly disclosed Business-creation blocker limiting what can currently be tested.
+  `ENG-P3-002` = unchanged — Open, blocked on Founder QA and `DEC-LEGAL-002`. Capability 3 =
+  unchanged — Open, partially implemented, not closed. **`ENG-P3-002` explicitly not closed.**
+- **Files:** the deployment report (new addendum), the Founder QA checklist (updated with the real
+  URL/expiry/SHA/App Check result/login instructions/known blockers, Founder QA still marked
+  PENDING), this entry. No source code changed.
+- **Rollback:** nothing structural to roll back — same-channel Hosting release (prior releases
+  retained by Firebase); the QA identity's password reset is reversible by resetting it again.
+- **Report:** [`ENG-P3-002C-PREVIEW-001-business-onboarding-dev-preview-deployment-report-2026-08-23.md`](../05-implementation/reports/ENG-P3-002C-PREVIEW-001-business-onboarding-dev-preview-deployment-report-2026-08-23.md)
+  (addendum).
+- **Final gate:** **ENG-P3-002C DEV PREVIEW RECOVERED — APP CHECK VALIDATED; FOUNDER QA MAY BEGIN**
+  (with the separate `ENG-P3-002B-CORR-SUPPORTEDLANGUAGES-001` Business-creation defect limiting
+  full checklist completion until corrected).
