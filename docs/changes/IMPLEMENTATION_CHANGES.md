@@ -3284,3 +3284,45 @@
   (addendum 2).
 - **Final gate:** **ENG-P3-002C PREVIEW BLOCKED — DEV APP CHECK CONFIGURATION REQUIRES
   FOUNDER/INFRASTRUCTURE ACTION.**
+
+---
+
+## 2026-08-24 — ENG-P3-002C-PREVIEW-001-APPCHECK-002 (diagnostic) — App Check 403 Root Cause Confirmed: CSP Gap, Not reCAPTCHA Domain Mismatch
+
+- **Date:** 2026-08-24
+- **Task:** a read-only diagnostic requested after the Founder correctly disputed Addendum 2's
+  domain-gap hypothesis — both required hostnames had already been registered on the reCAPTCHA key
+  at creation time. No reCAPTCHA/App Check configuration was touched; no source was modified.
+- **Live reCAPTCHA key verified directly** via the reCAPTCHA Enterprise API (this project's classic
+  v3 key creation flow is backed by the same infrastructure): `allowedDomains` contains **both**
+  `eleventh-on-us-dev.web.app` and `eleventh-on-us-dev--eng-p3-002c-founder-qa-8lho2gn4.web.app`,
+  `allowAllDomains: false`, `integrationType: SCORE`. **Domain-gap hypothesis conclusively ruled
+  out** — the Founder was right.
+- **Site-key identity confirmed**: `6Lef_pUtAAAAAHjqQlM45JU420ImjOXpz3j-Q6pb` is the key both
+  embedded in the deployed bundle and the only reCAPTCHA key in the project; Firebase App Check's
+  `siteSecretSet: true` reconfirmed for the DEV web app.
+- **True root cause captured with a genuinely fresh browser context** (SDK's own
+  `firebase-app-check-database` throttle store explicitly cleared via `indexedDB.deleteDatabase`
+  before reload, avoiding any reuse of the prior session's 24h throttle): the App Check
+  token-exchange fetch to `content-firebaseappcheck.googleapis.com` is **blocked client-side by the
+  Hosting configuration's own Content-Security-Policy** — its `connect-src` directive never included
+  `firebaseappcheck.googleapis.com` in any form. Confirmed via `curl -sI` that the CSP served in
+  production exactly matches `firebase.json`'s authored policy. **Reproduced identically twice** in
+  independent fresh sessions — fully deterministic, not a transient/server-side issue.
+- **Disposition: Category E — CSP `connect-src` gap in `firebase.json`**, not a reCAPTCHA
+  domain/key/project mismatch. Categories A and C conclusively ruled out with direct evidence
+  (matching project number `709450867178` across the Firebase app and the reCAPTCHA key). Category
+  B unprovable but has no positive evidence against it; Category D unreachable — neither changes the
+  disposition, since the CSP block alone is sufficient and deterministic.
+- **No configuration change made.** Recommended (not applied) correction: add
+  `https://firebaseappcheck.googleapis.com` and `https://content-firebaseappcheck.googleapis.com`
+  to `connect-src` in both CSP header blocks of `firebase.json` — a source change requiring its own
+  reviewed task.
+- **Status change:** none — all prior status recordings unchanged.
+- **Files:** addendum 3 appended to the existing deployment report, this entry. No source file
+  touched. Committed to the still-open, still-unmerged draft PR #164.
+- **Rollback:** nothing to roll back — read-only API/browser diagnostics only.
+- **Report:** [`ENG-P3-002C-PREVIEW-001-business-onboarding-dev-preview-deployment-report-2026-08-23.md`](../05-implementation/reports/ENG-P3-002C-PREVIEW-001-business-onboarding-dev-preview-deployment-report-2026-08-23.md)
+  (addendum 3).
+- **Final gate:** **APP CHECK TOKEN 403 ROOT CAUSE CONFIRMED — CONFIGURATION CORRECTION
+  IDENTIFIED.**

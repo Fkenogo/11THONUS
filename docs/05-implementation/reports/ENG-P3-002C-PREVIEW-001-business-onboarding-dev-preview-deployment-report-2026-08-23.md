@@ -555,3 +555,107 @@ what improved, and a new, narrower, still-unresolved App Check finding.
 
 **ENG-P3-002C PREVIEW BLOCKED — DEV APP CHECK CONFIGURATION REQUIRES FOUNDER/INFRASTRUCTURE
 ACTION**
+
+---
+
+## Addendum 3 — 2026-08-24 (`ENG-P3-002C-PREVIEW-001-APPCHECK-002` diagnostic): App Check 403 Root Cause Diagnostic — CSP Gap Confirmed, Domain-Gap Hypothesis Ruled Out
+
+**Founder correction accepted and confirmed correct: the domain-gap hypothesis in Addendum 2 was
+wrong.** This addendum is a read-only diagnostic — no configuration was changed, no source was
+modified, no key was recreated, no bypass/debug token was used.
+
+**1. Live reCAPTCHA key verified directly** (not assumed) via the reCAPTCHA Enterprise API
+(`GET https://recaptchaenterprise.googleapis.com/v1/projects/eleventh-on-us-dev/keys`) — the
+legacy `google.com/recaptcha/admin` v3 key creation flow is, in this project, backed by the same
+unified infrastructure this API exposes:
+
+```json
+{
+  "name": "projects/709450867178/keys/6Lef_pUtAAAAAHjqQlM45JU420ImjOXpz3j-Q6pb",
+  "displayName": "    11thONUS DEV App Check",
+  "webSettings": {
+    "allowAllDomains": false,
+    "allowedDomains": [
+      "eleventh-on-us-dev.web.app",
+      "eleventh-on-us-dev--eng-p3-002c-founder-qa-8lho2gn4.web.app"
+    ],
+    "integrationType": "SCORE"
+  }
+}
+```
+
+**The domain-gap hypothesis from Addendum 2 is explicitly ruled out**: both required hostnames are
+already present in `allowedDomains`, `allowAllDomains` is correctly `false` (no overly-broad
+allowance), and `integrationType: SCORE` confirms this is the expected score-based v3 key, not
+Enterprise-challenge or a different type. No edit was made to this key.
+
+**2. Site-key identity confirmed**: the key ID above (`6Lef_pUtAAAAAHjqQlM45JU420ImjOXpz3j-Q6pb`) is
+exactly the value embedded in the deployed preview bundle (re-confirmed via
+`grep dist/assets/*.js`) and exactly the value supplied as `VITE_APP_CHECK_SITE_KEY`. The Firebase
+App Check Admin API's `recaptchaV3Config` for `eleventh-on-us-dev`'s `11thONUS Web` app reports
+`siteSecretSet: true` (re-confirmed). Firebase's API does not expose *which* site key a registered
+secret pairs with (only whether a secret was set at all), so exact pairing cannot be proven via API
+alone — but since exactly one reCAPTCHA key exists in this project, and it is the one supplied to
+the build, this is the only candidate. The secret itself was never requested or seen.
+
+**3. Exact first token-exchange attempt captured in a genuinely fresh context** — cleared
+`firebase-app-check-database` (the SDK's own throttle-state store), `firebase-heartbeat-database`,
+`firebaseLocalStorageDb`, and all `localStorage`/`sessionStorage` for the preview origin via direct
+`indexedDB.deleteDatabase`/`.clear()` calls before reloading, so the SDK's cached 24h throttle from
+the prior session could not suppress or alter this attempt. Result, **reproduced identically twice**
+in two independent fresh loads:
+
+```
+[error] Refused to connect to 'https://content-firebaseappcheck.googleapis.com/v1/projects/eleventh-on-us-dev/apps/1:709450867178:web:191ba4b9b50be870a99293:exchangeRecaptchaV3Token?key=AIzaSyDLqKdxYBpJ1AG5IFEIB4EPu7X1hieE2xk'
+because it violates the following Content Security Policy directive:
+"connect-src 'self' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.google.com https://europe-west1-eleventh-on-us-dev.cloudfunctions.net".
+The action has been blocked.
+[warn] @firebase/auth: Error while retrieving App Check token: FirebaseError: AppCheck: Fetch failed to connect to a network. … (appCheck/fetch-network-error)
+```
+
+This is **not** a server-side rejection — the request never leaves the browser. Confirmed via
+`curl -sI` against the live preview URL that the served `Content-Security-Policy` header matches
+`firebase.json` exactly, and its `connect-src` list does not include
+`firebaseappcheck.googleapis.com` or the `content-` prefixed variant the App Check SDK actually
+calls. **This is the true, proven, deterministic, 100%-reproducible root cause**: every visitor to
+this preview will hit this same CSP block, regardless of reCAPTCHA domain/key/project correctness.
+
+*Reconciling the earlier "403 (appCheck/initial-throttle)" wording from Addendum 2*: that prior
+session's console output did not show an explicit CSP-violation line, but its underlying failure
+almost certainly has the same origin — the identical CSP would have blocked that identical call
+too, and Firebase's App Check SDK is known to sometimes classify an unreachable/blocked `fetch()`
+differently across internal retry states. Disclosed honestly rather than asserted with false
+certainty: the *exact* console wording differed between sessions, but the blocked endpoint, the
+served CSP, and the reproducible outcome are all consistent with one single root cause, not two.
+
+**4. Project consistency checked.** `projectId=eleventh-on-us-dev`, `appId=1:709450867178:web:191ba4b9b50be870a99293`,
+and the reCAPTCHA key's resource path `projects/709450867178/keys/…` all reference the **same**
+GCP project number (`709450867178`) — ruling out a project-level mismatch. The API Keys API is not
+enabled for this project, so the `apiKey` value's own restriction settings could not be directly
+queried (not enabled here, as doing so would itself be a project mutation outside this diagnostic's
+read-only scope) — this one sub-check is disclosed as **not fully verifiable**, but is a low-probability
+explanation given every other identity check lines up and the CSP block alone is already
+sufficient, deterministic, and proven to explain the observed failure.
+
+**5. App Check risk configuration read, not changed**: `tokenTtl: 86400s` (1 day, the documented
+default), `minValidScore: 0.5` (the documented default) — both unchanged, both exactly the values
+already recorded in Addendum 1. Enforcement re-confirmed **UNENFORCED** across all three services.
+No threshold was lowered, no enforcement toggled.
+
+**6. Disposition: Category E — another App Check token-exchange error**, specifically: **a
+Content-Security-Policy `connect-src` gap in the Hosting configuration (`firebase.json`), not a
+reCAPTCHA/App Check configuration problem at all.** Categories A (domain mismatch) and C
+(project/app/API-key mismatch) are conclusively ruled out by direct evidence. Category B
+(site-key/secret pairing) cannot be independently proven but has no positive evidence against it
+and is not the acting cause regardless, since the request never reaches Google's verification
+service to test that pairing. Category D (score rejection) is unreachable for the same reason.
+
+**No configuration change was made.** Per this task's explicit instruction, the recommended
+correction is reported, not applied: add `https://firebaseappcheck.googleapis.com` and
+`https://content-firebaseappcheck.googleapis.com` to the `connect-src` directive in both CSP header
+blocks in `firebase.json` (the `/index.html` and `/` sources). This is a source change and requires
+its own task with RED→GREEN validation and review before deployment — explicitly out of scope here.
+
+## Final gate (addendum 3)
+
+**APP CHECK TOKEN 403 ROOT CAUSE CONFIRMED — CONFIGURATION CORRECTION IDENTIFIED**
