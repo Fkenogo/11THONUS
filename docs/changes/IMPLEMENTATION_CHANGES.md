@@ -3262,3 +3262,77 @@
   (addendum).
 - **Final gate:** **ENG-P3-002C-PREVIEW-001-CSP-001 READY FOR FOUNDER REVIEW — NO DEPLOYMENT
   PERFORMED.**
+
+---
+
+## 2026-08-24 — ENG-P3-002C-PREVIEW-001-CSP-001-REVIEW — Independent Review, Merge & Preview-Recovery Authorization
+
+- **Date:** 2026-08-24
+- **Task:** independent review of PR #165 (the App Check CSP correction) — re-derive facts from
+  source and executable evidence rather than trusting the implementation report, merge if clean,
+  define the bounded next deployment step. Does not itself perform any deployment.
+- **Entry:** PR #165 confirmed `OPEN`/`MERGEABLE`, head `65d6c3fdc2c416b38e0179d0148ccc3091ffd4eb`,
+  no later unreviewed commits, CI green on that exact SHA. `origin/main` confirmed unchanged at
+  `5783aaa` at review start. Diff scope reconfirmed limited to `firebase.json`, its regression test,
+  and documentation.
+- **Independent CSP correctness — SDK-source-grounded, not assumed:** inspected the actual
+  installed `@firebase/app-check@0.12.0` package directly
+  (`node_modules/.pnpm/@firebase+app-check@0.12.0.../dist/index.cjs.js`). Its `BASE_ENDPOINT`
+  constant is hardcoded to `https://content-firebaseappcheck.googleapis.com/v1` — every
+  token-exchange method (`exchangeRecaptchaV3Token`, `exchangeRecaptchaEnterpriseToken`,
+  `exchangeDebugToken`) is built from that one constant; **the bare
+  `firebaseappcheck.googleapis.com` (no `content-` prefix) does not appear anywhere in this SDK
+  version.** So the `content-` origin is proven strictly required by source; the bare origin is not
+  currently exercised by any code path in the pinned SDK — recorded as a non-blocking observation
+  (a conservative, non-weakening, first-party-`googleapis.com` inclusion consistent with Firebase's
+  own defense-in-depth CSP guidance across SDK versions), not a defect requiring correction.
+- **Both blocks changed consistently; no unrelated directive touched:** direct `git diff` shows
+  `connect-src` in both header blocks (`/index.html` and `/`) received the identical two-origin
+  addition; every other directive (`script-src`, `default-src`, `frame-src`, `style-src`, `img-src`,
+  `object-src`, `base-uri`, `form-action`) is byte-identical to before. No wildcard, no bare
+  `https:`, no App Check/reCAPTCHA/Rules/Functions/Terms/authentication semantics touched anywhere
+  in the diff.
+- **Test-quality review, independently proven, not merely inspected:** confirmed the new assertion
+  in `hostingCsp.test.ts` reads the real `firebase.json` (no mock). Deliberately reintroduced three
+  regressions one at a time — removing only the `content-` origin, removing both origins, and
+  removing the origins from only one of the two blocks (an inconsistency case) — and confirmed the
+  test failed in every case, then restored the file to an exact 0-line diff and reconfirmed 8/8
+  green. Not vacuous, not a self-referential duplicate of the constant under test.
+- **Full independent validation re-run:** typecheck clean (both packages); web suite 504/504 (clean
+  this run, no flake); functions suite 1563/1563; lint clean (0 errors, 1 pre-existing unrelated
+  warning); format clean; ordinary build clean; `founder-qa-preview` build clean.
+- **SPA direct-route CSP-coverage finding, independently reconfirmed:** live `curl` (cache-busted)
+  against the still-unfixed-at-review-time deployed preview confirms a direct/cold request to
+  `/dev/founder-qa-sign-in` carries **no** CSP header at all, while `/` and `/index.html` do.
+  **Classification: real, pre-existing, moderate-significance Hosting-configuration hardening gap —
+  not specific to Founder-QA preview, affects every deep-linkable route across the whole
+  application (any environment, not just DEV).** Not a blocker for PR #165, not fixed under this
+  review (would be a broader change than the narrow App Check correction authorized). A dedicated,
+  separately governed correction package is warranted — provisionally referenced as
+  `ENG-HOSTING-CSP-COVERAGE-001` pending the Founder's own identifier assignment. Not implemented.
+- **Findings and corrections:** zero material defects found in PR #165. One non-blocking
+  observation (unused-but-conservative origin, above) and one out-of-scope finding (SPA route CSP
+  coverage, above) — neither required a change to the reviewed PR.
+- **Merge:** PR #165 marked ready for review, merged via `gh pr merge 165 --merge --delete-branch`
+  as `c03f6f6dbe412dd1bac49d84cfb927b6f5f5b8ec`. Remote branch deleted automatically. Post-merge
+  `origin/main` confirmed at `c03f6f6`; `65d6c3f` confirmed an ancestor; post-merge CI (run
+  `32708222095`) confirmed green.
+- **Firebase/deployment changes:** none — this review performed zero `firebase deploy` command.
+- **Status change:** none of `ENG-P3-002C-PREVIEW-001`, `ENG-P3-002C`, `ENG-P3-002`, or Capability 3
+  changed by this task. `ENG-P3-002` remains Open, separately blocked on `DEC-LEGAL-002`.
+- **Exact bounded preview-recovery scope for the next Founder authorization** (from merge SHA
+  `c03f6f6`): (1) build `founder-qa-preview` from merged `origin/main`; (2) supply the existing
+  public DEV App Check site key via the existing gitignored preview env mechanism; (3) redeploy only
+  the existing `eng-p3-002c-founder-qa` Hosting preview channel — no Functions redeploy, no
+  Commerce Knowledge reseed, no new QA identity, no App Check/reCAPTCHA/Terms/Rules change, no
+  production/staging action; (4) verify from a clean browser context: boot succeeds, reCAPTCHA
+  loads, App Check token exchange is no longer CSP-blocked, a valid token is actually obtained, zero
+  App Check console/network errors, the existing DEV QA identity can sign in, and `/business`
+  resolves — only then continue the onboarding Founder-QA journey.
+- **Files:** this entry only (docs-only review task; no source changed by the review itself — the
+  reviewed source change was already committed to PR #165 before this task began).
+- **Rollback:** `git revert c03f6f6` — the merged change is a two-origin CSP allowlist addition with
+  no data/schema/deployed-resource impact.
+- **Report:** [`ENG-P3-002C-PREVIEW-001-business-onboarding-dev-preview-deployment-report-2026-08-23.md`](../05-implementation/reports/ENG-P3-002C-PREVIEW-001-business-onboarding-dev-preview-deployment-report-2026-08-23.md).
+- **Final gate:** **ENG-P3-002C-PREVIEW-001-CSP-001 MERGED AND CLOSED — HOSTING PREVIEW RECOVERY
+  AWAITS FRESH FOUNDER AUTHORIZATION.**
