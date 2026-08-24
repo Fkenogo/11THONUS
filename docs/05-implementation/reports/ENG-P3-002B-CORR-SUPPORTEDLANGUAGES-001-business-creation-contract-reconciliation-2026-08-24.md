@@ -57,29 +57,44 @@ confirmed consumed by `updateBusinessProfile`; the frontend's own `apps/web/src/
 already includes `supportedLanguages: string[]` in `BusinessProfilePatch` — the creation-side
 contract was the only place omitting it.
 
-## 7. Empty-array policy
+## 7. Empty-array policy — precise disposition (revised by independent review, `ENG-P3-002B-CORR-SUPPORTEDLANGUAGES-001-REVIEW`)
 
-**Explicitly governed, not silently invented.** `ENG-P2-002A`'s independent review
-(`docs/05-implementation/reports/ENG-P2-002A-business-branch-domain-contracts-implementation-report-2026-08-17.md`,
-§Findings) found and TDD-fixed exactly this question for this exact field: "TRD10 §10.6.3 types
-the field `string[]` (required, present) with no stated minimum length… the platform's own
-precedent for required array fields (`customerProfile.ts`'s `interests`/`preferredCategories`:
-'governed reference lists, default empty') confirms zero-length is legitimate." Both `business.ts`
-and `businessDocument.ts` were updated at that time to accept `[]`, with direct unit-test coverage
-(`business.test.ts`: "accepts an empty supportedLanguages array…") already present and unmodified
-by this task.
+**The original wording here overstated the evidence and has been corrected — no implementation
+change resulted, only the characterization.** Three distinct claims must not be conflated:
 
-## 8. Default-policy finding
+1. **`[]` is valid/allowed** — directly, strongly evidenced. `ENG-P2-002A`'s independent review
+   (`docs/05-implementation/reports/ENG-P2-002A-business-branch-domain-contracts-implementation-report-2026-08-17.md`,
+   §Findings) found and TDD-fixed exactly this question for this exact field: TRD10 §10.6.3 types
+   `supportedLanguages: string[]` with no stated minimum length, and both `business.ts`/
+   `businessDocument.ts` were updated at that time to accept `[]`, validating only element-level
+   well-formedness. Direct unit-test coverage (`business.test.ts`: "accepts an empty
+   supportedLanguages array…") already exists, unmodified by this task. **This claim is fully
+   supported.**
+2. **`[]` is a governed *initial value* under the established required-reference-list precedent**
+   — also evidenced, but by analogy, not by a rule written for this field. `ENG-P2-002A`'s own text
+   quotes `customerProfile.ts`'s comment describing *that other field* as "governed reference
+   lists, default empty" — cited there only to argue zero-length is *legitimate* for
+   `supportedLanguages`, not to assert that `supportedLanguages` itself carries an identical
+   "default empty" designation anywhere in its own governing text (TRD10 §10.6.3 never uses the
+   word "default"). Treating the two fields as carrying the *same* governed-default status is an
+   extrapolation this review narrows to: **`[]` is the best-supported value consistent with
+   precedent, not an independently governed default for this specific field.**
+3. **An explicit product policy stating "the default `supportedLanguages` for every Business is
+   `[]`"** — **does not exist anywhere in the repository.** No design document, TRD, PRD, or prior
+   implementation report makes this statement for `supportedLanguages` specifically.
 
-Given items 6–7, `[]` is the correct, already-governed value to send at creation — not a value this
-task chose freely. No document states "supportedLanguages defaults to `[]` at creation" in those
-exact words, but the domain-model-level governance (item 7) combined with the complete absence of
-any onboarding-UI plan for this field (item 5) makes `[]` the only defensible reading: nothing in
-the repository asks the user to select this at creation, and the platform's own established
-precedent for exactly this class of field is to default it empty. **Classified as Phase D Option A
-(governed default exists) — not Option D (STOP)**, because a specific, on-point governance
-precedent exists and was cited, not inferred generically from "the platform supports EN/FR" (which
-this task's own instruction correctly warns against).
+## 8. Default-value disposition (reasoned choice, not a discovered policy)
+
+Given item 7, this correction sends `[]` at creation because: (a) it is unconditionally valid per
+item 7.1; (b) no onboarding step, wizard stage, or design section collects this field from the user
+today (item 5's absence-of-alternative finding, independently reconfirmed by this review against
+`OnboardingWizard.tsx`'s step list); and (c) it remains freely editable later via
+`updateBusinessProfile` (item 4), so nothing is foreclosed by this choice. **This is this
+correction's own reasoned disposition, presented as such — not a claim that repository governance
+already mandated `[]` specifically.** Classified as Phase D Option A ("governed default exists")
+in the sense that a real, on-point *legitimacy* precedent was cited and no value was invented
+without support — but the Founder should read this as "the only value consistent with existing
+governance and current product surface," not as "governance already decided this."
 
 ## 9. Existing frontend contract mismatch
 
@@ -288,3 +303,98 @@ remainder of the Founder QA checklist.
 ## Final gate
 
 **ENG-P3-002B-CORR-SUPPORTEDLANGUAGES-001 READY FOR FOUNDER REVIEW — NO DEPLOYMENT PERFORMED**
+
+---
+
+## Independent review addendum (2026-08-24, `ENG-P3-002B-CORR-SUPPORTEDLANGUAGES-001-REVIEW`)
+
+Independent review re-derived every schema/governance claim directly from source rather than
+trusting this report.
+
+**Backend contract, re-derived independently:** confirmed exactly as originally reported — TRD10
+`supportedLanguages: string[]` (no `?`); `parseSupportedLanguages` (`index.ts`) requires
+`Array.isArray` + non-blank entries, never `length > 0`; domain model's `requireSupportedLanguages`
+loops entries only (vacuously satisfied by `[]`). No discrepancy found.
+
+**One genuine wording defect found and fixed (no implementation change):** the original §7/§8
+blurred "`[]` is valid" (strongly evidenced), "`[]` is a governed initial value under precedent"
+(evidenced by analogy, not a rule written for this field), and "an explicit policy states the
+default is `[]`" (does not exist) into a single "governed default" characterization. Corrected —
+see revised §7/§8 above and the two source-comment corrections in `createBusiness.ts` and
+`NewBusinessPage.tsx`. No test, type, or runtime behavior changed by this correction.
+
+**Onboarding-selection finding:** independently reconfirmed — `OnboardingWizard.tsx`'s
+`STEP_ORDER` is `["classification", "branch", "terms", "team", "review"]`; no language-selection
+step exists anywhere in the wizard, `NewBusinessPage`, or any design document. No source requires
+Business owners to select supported languages during onboarding.
+
+**Update/editability finding:** independently reconfirmed — `functions/src/domains/business/models/business.ts`'s
+`BusinessProfilePatch.supportedLanguages?: string[]` and `apps/web/src/business/api/businessProfile.ts`'s
+`BusinessProfilePatch.supportedLanguages: string[]` both already model this as a later-editable
+field via `updateBusinessProfile`. Sending `[]` at creation does not foreclose future
+configuration.
+
+**Backend-not-relaxed verification:** confirmed — the diff touches zero backend production files;
+`parseSupportedLanguages`/`requireSupportedLanguages` are byte-identical to before this correction
+and before `ENG-P2-002A`. The backend was never weakened to accommodate the frontend fix.
+
+**Frontend/backend field-by-field comparison (Priority items 6–7), performed fresh:**
+
+| Field | Backend | Frontend (post-fix) | Match |
+|---|---|---|---|
+| `displayName` | required | required | ✓ |
+| `primaryCategoryId` | required | required | ✓ |
+| `countryCode` | required | required | ✓ |
+| `currencyCode` | required | required | ✓ |
+| `timezone` | required | required | ✓ |
+| `city` | required | required | ✓ |
+| `contactPhone` | required | required | ✓ |
+| `supportedLanguages` | required | required (this fix) | ✓ |
+| `idempotencyKey` | required (separately parsed) | required | ✓ |
+| `legalName` | optional | optional | ✓ |
+| `businessTypeId` | optional | optional | ✓ |
+| `address` | optional | optional | ✓ |
+| `contactEmail` | optional | optional | ✓ |
+| `logoUrl` | optional | **absent from frontend type** | drift (harmless) |
+| `subscriptionId` | optional | **absent from frontend type** | drift (harmless) |
+
+**Result: every backend-required, client-supplied field now matches exactly — no other required
+field is drifting.** `rawToken`/`referenceType` are intentionally supplied out-of-band via the
+`AuthenticatedActor`/`toCallWithActor` mechanism, not part of `CreateBusinessRequest` — correct,
+existing architecture, not a gap.
+
+**New, minor, non-blocking finding:** `logoUrl` and `subscriptionId` are both backend-*optional*
+fields absent from the frontend's `CreateBusinessRequest` type. Because they are optional on the
+backend, this causes no rejection today — functionally harmless. It is, however, the same
+underlying pattern (hand-maintained frontend type silently omitting a backend field) that caused
+the `supportedLanguages` defect, just currently non-load-bearing. **Not fixed under this review**
+(would exceed the bounded field-by-field comparison this task authorized, and the task explicitly
+prohibits expanding into a shared-contract refactor) — recorded as a disclosed, low-priority
+recurrence-risk observation alongside the existing contract-duplication finding (§14 above).
+
+**Contract-duplication architecture:** independently reconfirmed intentional (every other Business
+mutation request type in `apps/web/src/business/api/*.ts` is similarly hand-declared) — not
+refactored, no shared-types package introduced, per this review's own explicit constraint.
+
+**Test-quality verification, performed by deliberate reversion:** removed the `supportedLanguages: []`
+line from `NewBusinessPage.tsx`'s submit payload and re-ran `NewBusinessPage.test.tsx` — the new
+test failed with the exact same shape as the original RED evidence, confirming the test is genuine
+and not vacuous. Restored the fix; reconfirmed 3/3 green. The emulator persistence test
+(`businessRepository.emulator.test.ts`) was independently re-read: it asserts
+`toEqual([])` (not a truthy/vacuous check), plus `displayName`/`countryCode`/`currencyCode`/`status`
+unaffected and the default Branch document exists — a real, specific, non-trivial assertion set.
+
+**No unrelated change found:** Firestore Rules, App Check, CSP, Commerce Knowledge, Staff
+permissions, Terms configuration, Cloud Functions deployment config, and production/staging are all
+confirmed untouched by this correction (diff scope limited to the 5 originally-listed files plus
+this review's 2 wording-only edits).
+
+**Full validation, re-run fresh by this review:** web suite — pass; functions suite — pass;
+emulator validation — pass (new integration test reconfirmed); Playwright — pass; typecheck — pass;
+lint — pass (0 errors, 1 pre-existing unrelated warning); format — pass; ordinary build — pass;
+`founder-qa-preview` build — pass; secret scan — clean. (Full counts recorded in the completion
+report's item 13.)
+
+**Findings classification:** one F2 (wording precision, fixed, no implementation impact). One new
+F1/F2 observation (`logoUrl`/`subscriptionId` drift, disclosed, not fixed — non-blocking). Zero
+F3/F4. **No unresolved material finding.**

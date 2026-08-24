@@ -48,8 +48,9 @@ export function NewBusinessPage() {
         contactPhone,
         currencyCode,
         timezone,
-        // Governed default at creation (ENG-P3-002B-CORR-SUPPORTEDLANGUAGES-001) — no
-        // onboarding step collects this yet; refined later via profile update.
+        // [] is a valid value for this required field (ENG-P3-002B-CORR-SUPPORTEDLANGUAGES-001)
+        // — no repository source mandates this default explicitly, but no onboarding step
+        // collects it either; refined later via profile update if ever needed.
         supportedLanguages: [],
       },
       {
