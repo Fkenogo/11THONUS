@@ -3454,3 +3454,63 @@
 - **Report:** [`ENG-P3-002B-CORR-SUPPORTEDLANGUAGES-001-business-creation-contract-reconciliation-2026-08-24.md`](../05-implementation/reports/ENG-P3-002B-CORR-SUPPORTEDLANGUAGES-001-business-creation-contract-reconciliation-2026-08-24.md).
 - **Final gate:** **ENG-P3-002B-CORR-SUPPORTEDLANGUAGES-001 READY FOR FOUNDER REVIEW — NO
   DEPLOYMENT PERFORMED.**
+
+---
+
+## 2026-08-24 — ENG-P3-002B-CORR-SUPPORTEDLANGUAGES-001-REVIEW — Independent Review, Correction & Merge
+
+- **Date:** 2026-08-24
+- **Task:** independent review of PR #168, re-deriving the backend contract and the `ENG-P2-002A`
+  empty-array disposition directly from source rather than trusting the implementation report.
+- **Entry:** PR #168 confirmed `OPEN`, head `6c380463e0fb49e7c554c45ff3f54bd2a10baeb7`, CI green.
+- **Backend contract, re-derived independently:** confirmed exactly as originally reported — no
+  discrepancy. `parseSupportedLanguages` requires an array of non-blank strings, never
+  `length > 0`; the domain model's `requireSupportedLanguages` is vacuously satisfied by `[]`.
+- **One genuine finding, F2 (wording), fixed — no implementation impact:** the original report and
+  two source comments conflated three distinct claims — "`[]` is valid" (strongly evidenced),
+  "`[]` is a governed initial value under precedent" (evidenced only by analogy to a different
+  field, `customerProfile.ts`), and "an explicit policy states `[]` is the default" (does not exist
+  anywhere in the repository) — into a single overstated "governed default" characterization.
+  Corrected in the report and in `createBusiness.ts`/`NewBusinessPage.tsx`'s comments; zero test,
+  type, or runtime behavior changed.
+- **Onboarding-selection and editability findings, independently reconfirmed:** no wizard step,
+  design section, or other source requires language selection during onboarding
+  (`OnboardingWizard.tsx`'s `STEP_ORDER` has no such step); `supportedLanguages` remains editable
+  later via `updateBusinessProfile` on both frontend and backend, so sending `[]` forecloses
+  nothing.
+- **Backend-not-relaxed verification:** confirmed — the diff touches zero backend production files;
+  the parser/model are byte-identical to before this correction.
+- **Field-by-field comparison (frontend vs. backend `CreateBusinessRequest`), performed fresh:**
+  every backend-required field now matches exactly — no other required field is drifting. One new,
+  non-blocking, harmless drift found: `logoUrl`/`subscriptionId` (both backend-*optional*) remain
+  absent from the frontend type — disclosed, not fixed, per this review's own scope constraint
+  against broad contract refactoring.
+- **Contract-duplication architecture:** independently reconfirmed intentional, matching every
+  other Business mutation type in the repository — not refactored, no shared-types package
+  introduced.
+- **Test-quality verification, performed by deliberate reversion:** removed the fix's
+  `supportedLanguages: []` line and re-ran the new test — it failed with the exact same shape as
+  the original RED evidence, confirming genuineness. Restored; reconfirmed green. The emulator
+  persistence test was independently re-read and confirmed non-vacuous (`toEqual([])`, plus
+  unrelated-field and Branch-persistence assertions).
+- **Full validation, re-run fresh:** web 505/505; functions 1563/1563; emulator validation
+  684/686 passed (2 pre-existing skips, 0 failed); Playwright 1/1; typecheck/lint/format clean;
+  ordinary + `founder-qa-preview` builds clean; secret scan clean.
+- **CI note:** the first CI run on the final reviewed head (`f4613eb`) failed on an unrelated
+  `commandDispatcher.emulator.test.ts` concurrent-worker timeout — confirmed via `git diff` that
+  this PR makes zero changes to that file, matching the same class of environmental flake
+  documented repeatedly elsewhere in this workstream. Re-ran with no code change: passed clean.
+- **No unrelated change found:** Firestore Rules, App Check, CSP, Commerce Knowledge, Staff
+  permissions, Terms configuration, and production/staging all confirmed untouched.
+- **Merge:** PR #168 marked ready, merged via `gh pr merge 168 --merge --delete-branch` as
+  `096faed984840a5793853f9630435dd218ec064f`. Remote branch deleted manually (the local-checkout
+  side-effect that has recurred throughout this workstream prevented `gh`'s own auto-delete).
+  Post-merge `origin/main` confirmed at `096faed`.
+- **Status change:** `ENG-P3-002B-CORR-SUPPORTEDLANGUAGES-001` = merged and closed.
+  `ENG-P3-002C`/`ENG-P3-002`/Capability 3 all unchanged.
+- **Files:** this entry only (the reviewed source/wording changes were already committed to PR
+  #168 before this closure sync).
+- **Rollback:** `git revert 096faed` — entirely additive/corrective, no schema/data impact.
+- **Report:** [`ENG-P3-002B-CORR-SUPPORTEDLANGUAGES-001-business-creation-contract-reconciliation-2026-08-24.md`](../05-implementation/reports/ENG-P3-002B-CORR-SUPPORTEDLANGUAGES-001-business-creation-contract-reconciliation-2026-08-24.md).
+- **Final gate:** **ENG-P3-002B-CORR-SUPPORTEDLANGUAGES-001 MERGED AND CLOSED — HOSTED
+  BUSINESS-CREATION REVALIDATION AWAITS FRESH AUTHORIZATION.**
