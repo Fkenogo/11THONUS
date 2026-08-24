@@ -3514,3 +3514,38 @@
 - **Report:** [`ENG-P3-002B-CORR-SUPPORTEDLANGUAGES-001-business-creation-contract-reconciliation-2026-08-24.md`](../05-implementation/reports/ENG-P3-002B-CORR-SUPPORTEDLANGUAGES-001-business-creation-contract-reconciliation-2026-08-24.md).
 - **Final gate:** **ENG-P3-002B-CORR-SUPPORTEDLANGUAGES-001 MERGED AND CLOSED — HOSTED
   BUSINESS-CREATION REVALIDATION AWAITS FRESH AUTHORIZATION.**
+
+## `ENG-P3-002-CORR-LANGSWITCH-001` — Business Onboarding Language Accessibility Correction (2026-08-24)
+
+- **Authorization:** the bounded correction identifier the prior Founder-QA evidence-recording
+  task named as a candidate, now authorized and implemented. Scope: language accessibility only —
+  explicitly excludes mobile navigation, visual refinement, invitation-identity display, and any
+  backend contract change.
+- **Root cause reconfirmed:** `LanguageSwitcher` (existing, unmodified, I18N-001) had zero
+  references under `apps/web/src/business/` before this task; `/business*` routes have no shared
+  layout/shell in `App.tsx` (three independent leaf routes).
+- **Fix (TDD, RED→GREEN):** added the existing `<LanguageSwitcher />` unmodified, as the first
+  child, to three existing components — `NewBusinessPage.tsx` (`/business/new`),
+  `OnboardingWizard.tsx` (covers all five in-wizard steps in one place, since it already wraps
+  them), and `SubmittedStatusPage.tsx` (post-submission landing). Two-line diff per file (import +
+  JSX). No shared layout invented, no routing change, no backend contract change (`functions/`
+  untouched, confirmed by unchanged 1563/1563 functions test count).
+- **Tests:** 4 new tests (one per changed component, `SubmittedStatusPage.test.tsx` created fresh)
+  prove: the control is reachable, EN→FR switches visible copy, FR→EN restores it, the current
+  onboarding step/route is unaffected by the switch (aria-current preserved throughout), and
+  entered form data survives the switch. All watched RED (failed for the correct reason — missing
+  control) before the fix, GREEN after.
+- **Validation:** web 509/509 (+4 from entry); functions 1563/1563 (byte-identical, untouched);
+  typecheck/lint/format clean; ordinary build clean (Founder-QA markers/site-key confirmed absent —
+  0 matches); `founder-qa-preview` build clean (language-switcher strings + prior
+  `supportedLanguages` fix both present; secret scan clean).
+- **No deployment performed** — per this task's explicit scope; a separate deployment/revalidation
+  task is required after merge to prove this in the hosted DEV preview.
+- **Status:** `ENG-P3-002C` = hosted engineering/integration validated, Founder QA pending
+  (unchanged — not advanced without hosted re-validation). `ENG-P3-002` = still Open, blocked on
+  Founder QA + `DEC-LEGAL-002` — unchanged. Capability 3 = still Open, unchanged. Nothing closed.
+- **Files:** `NewBusinessPage.tsx`/`.test.tsx`, `OnboardingWizard.tsx`/`.test.tsx`,
+  `SubmittedStatusPage.tsx`/`.test.tsx` (new), this entry, the dedicated implementation report.
+- **Report:** [`ENG-P3-002-CORR-LANGSWITCH-001-business-onboarding-language-accessibility-correction-2026-08-24.md`](../05-implementation/reports/ENG-P3-002-CORR-LANGSWITCH-001-business-onboarding-language-accessibility-correction-2026-08-24.md).
+- **Final gate:** **ENG-P3-002-CORR-LANGSWITCH-001 IMPLEMENTED, TDD-VERIFIED — READY FOR FOUNDER
+  REVIEW; NOT DEPLOYED; NOTHING CLOSED.**

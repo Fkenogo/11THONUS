@@ -9,7 +9,7 @@
  */
 
 import { useState } from "react";
-import { useTranslation } from "../../i18n";
+import { LanguageSwitcher, useTranslation } from "../../i18n";
 import type { BusinessContext } from "../api/businessContext";
 import { isBranchComplete, isClassificationComplete, isTermsComplete } from "./completeness";
 import { ClassificationStep } from "./steps/ClassificationStep";
@@ -43,6 +43,7 @@ export function OnboardingWizard({ context }: { context: BusinessContext }) {
 
   return (
     <main className="mx-auto max-w-lg p-6">
+      <LanguageSwitcher />
       <nav aria-label={t("steps.review")} className="mb-6 flex flex-wrap gap-2 text-sm">
         {STEP_ORDER.map((candidate) => (
           <button

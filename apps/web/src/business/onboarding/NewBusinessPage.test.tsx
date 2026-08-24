@@ -1,7 +1,8 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { i18n } from "../../i18n";
 import { NewBusinessPage } from "./NewBusinessPage";
 
 const mockMutate = vi.fn();
@@ -77,5 +78,27 @@ describe("NewBusinessPage", () => {
       expect.objectContaining({ supportedLanguages: [] }),
       expect.anything(),
     );
+  });
+
+  describe("language accessibility (ENG-P3-002-CORR-LANGSWITCH-001)", () => {
+    afterEach(async () => {
+      await i18n.changeLanguage("en");
+    });
+
+    it("exposes a reachable control that switches onboarding copy to French and back, without losing entered data", async () => {
+      const user = userEvent.setup();
+      renderPage();
+
+      await user.type(screen.getByLabelText("Business name"), "Acme Salon");
+      expect(screen.getByText("Tell us about your business")).toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: "Français" }));
+      expect(await screen.findByText("Parlez-nous de votre entreprise")).toBeInTheDocument();
+      expect(screen.getByLabelText("Nom de l'entreprise")).toHaveValue("Acme Salon");
+
+      await user.click(screen.getByRole("button", { name: "English" }));
+      expect(await screen.findByText("Tell us about your business")).toBeInTheDocument();
+      expect(screen.getByLabelText("Business name")).toHaveValue("Acme Salon");
+    });
   });
 });
