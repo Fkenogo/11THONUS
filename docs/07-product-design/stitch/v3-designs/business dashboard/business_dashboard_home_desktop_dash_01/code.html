@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>DASH-01 Business Dashboard</title>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@600;700&amp;family=Inter:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Config -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-primary": "#ffffff",
+                    "error-container": "#ffdad6",
+                    "error": "#ba1a1a",
+                    "surface-dim": "#dadadb",
+                    "tertiary": "#000000",
+                    "on-background": "#1a1c1d",
+                    "surface": "#f9f9fa",
+                    "on-tertiary-fixed-variant": "#5e4200",
+                    "on-tertiary-container": "#ab7b00",
+                    "on-primary-container": "#858383",
+                    "on-primary-fixed": "#1c1b1b",
+                    "inverse-surface": "#2f3132",
+                    "secondary-container": "#d63c00",
+                    "surface-container-high": "#e8e8e9",
+                    "on-secondary-fixed": "#3b0a00",
+                    "on-tertiary-fixed": "#271900",
+                    "primary-fixed-dim": "#c8c6c5",
+                    "on-tertiary": "#ffffff",
+                    "on-secondary-fixed-variant": "#862200",
+                    "inverse-on-surface": "#f0f1f2",
+                    "on-secondary": "#ffffff",
+                    "outline-variant": "#c4c7c7",
+                    "primary-container": "#1c1b1b",
+                    "tertiary-fixed-dim": "#fcbc2f",
+                    "tertiary-fixed": "#ffdea6",
+                    "on-error": "#ffffff",
+                    "inverse-primary": "#c8c6c5",
+                    "surface-bright": "#f9f9fa",
+                    "primary": "#000000",
+                    "on-surface-variant": "#444748",
+                    "secondary-fixed": "#ffdbd1",
+                    "surface-container": "#eeeeef",
+                    "surface-container-low": "#f3f3f4",
+                    "on-error-container": "#93000a",
+                    "on-primary-fixed-variant": "#474646",
+                    "surface-tint": "#5f5e5e",
+                    "tertiary-container": "#271900",
+                    "outline": "#747878",
+                    "secondary": "#ab2e00",
+                    "secondary-fixed-dim": "#ffb59f",
+                    "surface-container-lowest": "#ffffff",
+                    "on-surface": "#1a1c1d",
+                    "on-secondary-container": "#fffbff",
+                    "primary-fixed": "#e5e2e1",
+                    "surface-container-highest": "#e2e2e3",
+                    "surface-variant": "#e2e2e3",
+                    "background": "#f9f9fa",
+                    
+                    // Brand specific overrides based on style guidance
+                    "brand-orange": "#FF4F11",
+                    "brand-black": "#121212",
+                    "brand-gray-light": "#F7F7F8",
+                    "brand-border": "#E5E5E7",
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "container-padding-mobile": "20px",
+                    "gutter": "16px",
+                    "container-padding-desktop": "40px",
+                    "stack-sm": "8px",
+                    "space-unit": "8px",
+                    "stack-lg": "48px",
+                    "stack-md": "24px"
+            },
+            "fontFamily": {
+                    "body-lg": [
+                            "Inter"
+                    ],
+                    "body-sm": [
+                            "Inter"
+                    ],
+                    "body-md": [
+                            "Inter"
+                    ],
+                    "headline-sm": [
+                            "Hanken Grotesk"
+                    ],
+                    "label-md": [
+                            "Inter"
+                    ],
+                    "headline-md": [
+                            "Hanken Grotesk"
+                    ],
+                    "headline-lg-mobile": [
+                            "Hanken Grotesk"
+                    ],
+                    "headline-xl": [
+                            "Hanken Grotesk"
+                    ],
+                    "headline-lg": [
+                            "Hanken Grotesk"
+                    ]
+            },
+            "fontSize": {
+                    "body-lg": [
+                            "18px",
+                            {
+                                    "lineHeight": "28px",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "body-sm": [
+                            "14px",
+                            {
+                                    "lineHeight": "20px",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "body-md": [
+                            "16px",
+                            {
+                                    "lineHeight": "24px",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "headline-sm": [
+                            "20px",
+                            {
+                                    "lineHeight": "28px",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "label-md": [
+                            "12px",
+                            {
+                                    "lineHeight": "16px",
+                                    "letterSpacing": "0.05em",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "headline-md": [
+                            "24px",
+                            {
+                                    "lineHeight": "32px",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "headline-lg-mobile": [
+                            "28px",
+                            {
+                                    "lineHeight": "34px",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "headline-xl": [
+                            "48px",
+                            {
+                                    "lineHeight": "56px",
+                                    "letterSpacing": "-0.02em",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "headline-lg": [
+                            "32px",
+                            {
+                                    "lineHeight": "40px",
+                                    "letterSpacing": "-0.01em",
+                                    "fontWeight": "700"
+                            }
+                    ]
+            }
+    },
+        },
+      }
+    </script>
+<style>
+        .micro-shadow {
+            box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.04);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md min-h-screen flex">
+<!-- Sidebar Navigation -->
+<aside class="w-64 bg-surface-container-lowest border-r border-brand-border hidden md:flex flex-col flex-shrink-0 sticky top-0 h-screen overflow-y-auto">
+<div class="p-6">
+<span class="font-headline-md text-headline-md font-bold text-primary dark:text-on-primary">11thONUS</span>
+</div>
+<div class="px-6 pb-4">
+<p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest mb-1">Context</p>
+<p class="font-body-md text-body-md text-primary font-bold">Safi Glow Salon</p>
+</div>
+<nav class="flex-grow flex flex-col gap-2 px-4 py-4">
+<a class="flex items-center gap-3 bg-brand-orange bg-opacity-10 text-brand-orange hover:bg-opacity-20 transition-colors duration-200 px-4 py-3 rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-label-md text-label-md font-bold">Overview</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant hover:bg-surface-container-lowest hover:text-primary transition-colors duration-200 px-4 py-3 rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="storefront">storefront</span>
+<span class="font-label-md text-label-md">Business profile</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant hover:bg-surface-container-lowest hover:text-primary transition-colors duration-200 px-4 py-3 rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="location_on">location_on</span>
+<span class="font-label-md text-label-md">Locations</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant hover:bg-surface-container-lowest hover:text-primary transition-colors duration-200 px-4 py-3 rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+<span class="font-label-md text-label-md">Team</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant hover:bg-surface-container-lowest hover:text-primary transition-colors duration-200 px-4 py-3 rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="description">description</span>
+<span class="font-label-md text-label-md">Business Terms</span>
+</a>
+</nav>
+</aside>
+<!-- Main Area -->
+<div class="flex-grow flex flex-col min-w-0">
+<!-- Top Header -->
+<header class="bg-surface dark:bg-on-background flex justify-between md:justify-end items-center px-container-padding-desktop w-full h-16 sticky top-0 z-50 border-b border-brand-border">
+<div class="flex items-center gap-4 md:hidden">
+<span class="material-symbols-outlined text-primary dark:text-on-primary cursor-pointer hover:bg-surface-container-low p-2 rounded-full transition-colors duration-200" data-icon="menu">menu</span>
+<span class="font-headline-md text-headline-md font-bold text-primary dark:text-on-primary">11thONUS</span>
+</div>
+<div class="flex items-center gap-4">
+<button class="font-label-md text-label-md text-primary dark:text-on-primary hover:bg-surface-container-low px-4 py-2 rounded-full transition-colors duration-200">
+                EN|FR
+            </button>
+<div class="w-8 h-8 rounded-full bg-brand-gray-light flex items-center justify-center text-primary cursor-pointer">
+<span class="material-symbols-outlined text-sm" data-icon="person">person</span>
+</div>
+</div>
+</header>
+<!-- Main Content Container -->
+<main class="flex-grow w-full max-w-[1200px] mx-auto px-container-padding-desktop py-12 flex flex-col gap-stack-lg">
+<!-- 1. Welcome Area -->
+<section class="flex flex-col gap-2">
+<h1 class="font-headline-lg text-headline-lg text-primary">Overview</h1>
+<div class="flex items-center gap-2 mt-2">
+<div class="w-3 h-3 rounded-full bg-brand-orange"></div>
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest">Setup complete</span>
+</div>
+<p class="font-headline-md text-headline-md text-primary mt-1">Good morning, Safi Glow Salon</p>
+</section>
+<!-- 2. Attention Module -->
+<section class="bg-brand-orange text-on-primary rounded-xl p-8 micro-shadow flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+<div class="flex flex-col gap-2 max-w-2xl">
+<h2 class="font-headline-sm text-headline-sm flex items-center gap-2">
+<span class="material-symbols-outlined" data-icon="error" style="font-variation-settings: 'FILL' 1;">error</span>
+                    One step left
+                </h2>
+<p class="font-body-md text-body-md opacity-90">
+                    Please review and accept the final Business Terms to fully activate your merchant account and begin accepting appointments.
+                </p>
+</div>
+<button class="bg-surface-container-lowest text-brand-orange font-label-md text-label-md px-6 py-4 rounded-lg hover:bg-surface transition-colors whitespace-nowrap w-full md:w-auto shadow-sm">
+                Review Business Terms
+            </button>
+</section>
+<div class="flex flex-col lg:flex-row gap-8">
+<!-- 3. Grid/Layout for Management -->
+<section class="flex-grow">
+<h3 class="font-headline-sm text-headline-sm text-primary mb-6">Manage your business</h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<!-- Profile Card -->
+<a class="group bg-surface-container-lowest rounded-xl border border-brand-border p-6 hover:micro-shadow transition-shadow flex flex-col h-full" href="#">
+<div class="w-12 h-12 rounded-full bg-brand-gray-light flex items-center justify-center mb-4 text-primary group-hover:text-brand-orange transition-colors">
+<span class="material-symbols-outlined" data-icon="storefront">storefront</span>
+</div>
+<h4 class="font-headline-sm text-headline-sm text-primary mb-2">Business Profile</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant flex-grow">
+                            Update your salon's description, opening hours, and contact information.
+                        </p>
+</a>
+<!-- Locations Card -->
+<a class="group bg-surface-container-lowest rounded-xl border border-brand-border p-6 hover:micro-shadow transition-shadow flex flex-col h-full" href="#">
+<div class="w-12 h-12 rounded-full bg-brand-gray-light flex items-center justify-center mb-4 text-primary group-hover:text-brand-orange transition-colors">
+<span class="material-symbols-outlined" data-icon="location_on">location_on</span>
+</div>
+<h4 class="font-headline-sm text-headline-sm text-primary mb-2">Locations</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant flex-grow">
+                            Manage multiple branches, addresses, and specific location settings.
+                        </p>
+</a>
+<!-- Team Card -->
+<a class="group bg-surface-container-lowest rounded-xl border border-brand-border p-6 hover:micro-shadow transition-shadow flex flex-col h-full" href="#">
+<div class="w-12 h-12 rounded-full bg-brand-gray-light flex items-center justify-center mb-4 text-primary group-hover:text-brand-orange transition-colors">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+</div>
+<h4 class="font-headline-sm text-headline-sm text-primary mb-2">Team Members</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant flex-grow">
+                            Add staff, set permissions, and manage individual schedules.
+                        </p>
+</a>
+<!-- Terms Card -->
+<a class="group bg-surface-container-lowest rounded-xl border border-brand-border p-6 hover:micro-shadow transition-shadow flex flex-col h-full" href="#">
+<div class="w-12 h-12 rounded-full bg-brand-gray-light flex items-center justify-center mb-4 text-primary group-hover:text-brand-orange transition-colors">
+<span class="material-symbols-outlined" data-icon="description">description</span>
+</div>
+<h4 class="font-headline-sm text-headline-sm text-primary mb-2">Legal &amp; Terms</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant flex-grow">
+                            Review agreements, privacy policies, and compliance documents.
+                        </p>
+</a>
+</div>
+</section>
+<!-- 4. Business Identity -->
+<aside class="w-full lg:w-80 flex-shrink-0">
+<div class="bg-surface-container-lowest rounded-xl border border-brand-border p-6 sticky top-24">
+<div class="w-full h-48 rounded-lg mb-6 overflow-hidden bg-surface-dim relative">
+<img class="w-full h-full object-cover" data-alt="A clean, modern, well-lit interior of a high-end salon workspace. The space features minimalist white styling stations with large mirrors, subtle warm accent lighting, and a few sleek black salon chairs. The aesthetic is professional, pristine, and inviting, adhering to a light-mode color palette." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDmE1Tjgx838vIr1fZ4KR5VVO1BBAbR8mpwNU258ZHX5GCW4pLe0EMy5tRe-mJA8cg-cC1sstLJvJ_r4-pCPAHi6t2dDRuOfsxw9CTsnErAUNAWcUHBC9zlf0yrWiNUAJtmF1yixiItdhbiyK_2SQYGS98Ue0B1bUu2S2bHaMW3_oMnGP18gv0zBJctnL8XakucqxRlKaLD0id5oCIcalRb0u3h59ZYf4_9y_hsZPsMRzQfT7Mss9BF"/>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-primary mb-1">Safi Glow Salon</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-6">Premium Hair &amp; Beauty</p>
+<div class="border-t border-brand-border pt-6">
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest block mb-2">Business Code</span>
+<div class="bg-surface border border-brand-border rounded-lg p-3 flex justify-between items-center cursor-pointer hover:bg-surface-container-low transition-colors" onclick="alert('Code copied!')">
+<span class="font-body-md text-body-md text-primary font-bold tracking-wider">BIZ7X2PYN</span>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="content_copy">content_copy</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-2 text-xs">
+                            Share this code with partners for quick integration.
+                        </p>
+</div>
+</div>
+</aside>
+</div>
+</main>
+</div>
+<!-- BottomNavBar (Hidden on Desktop) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center bg-surface dark:bg-on-background py-2 border-t border-outline-variant dark:border-on-surface-variant">
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-md text-label-md mt-1">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-secondary dark:text-secondary-fixed font-bold scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="business_center" style="font-variation-settings: 'FILL' 1;">business_center</span>
+<span class="font-label-md text-label-md mt-1">Business</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="groups">groups</span>
+<span class="font-label-md text-label-md mt-1">Team</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-md text-label-md mt-1">Account</span>
+</a>
+</nav>
+</body></html>

@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>11thONUS - Main Location &amp; Operating Details</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@600;700;900&amp;family=Inter:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary-fixed": "#1c1b1b",
+                        "on-tertiary": "#ffffff",
+                        "inverse-on-surface": "#f0f1f2",
+                        "surface-container-low": "#f3f3f4",
+                        "on-primary-container": "#858383",
+                        "on-tertiary-fixed": "#271900",
+                        "surface-container-highest": "#e2e2e3",
+                        "surface-dim": "#dadadb",
+                        "surface-bright": "#f9f9fa",
+                        "surface-container-high": "#e8e8e9",
+                        "on-primary": "#ffffff",
+                        "on-secondary-fixed": "#3b0a00",
+                        "inverse-surface": "#2f3132",
+                        "on-surface": "#1a1c1d",
+                        "on-background": "#1a1c1d",
+                        "tertiary-fixed-dim": "#fcbc2f",
+                        "on-secondary-fixed-variant": "#862200",
+                        "primary": "#000000",
+                        "on-tertiary-fixed-variant": "#5e4200",
+                        "primary-fixed": "#e5e2e1",
+                        "on-primary-fixed-variant": "#474646",
+                        "surface-tint": "#5f5e5e",
+                        "outline-variant": "#c4c7c7",
+                        "surface-variant": "#e2e2e3",
+                        "primary-fixed-dim": "#c8c6c5",
+                        "tertiary-container": "#271900",
+                        "surface": "#f9f9fa",
+                        "on-tertiary-container": "#ab7b00",
+                        "error": "#ba1a1a",
+                        "tertiary-fixed": "#ffdea6",
+                        "on-secondary": "#ffffff",
+                        "secondary-fixed": "#ffdbd1",
+                        "error-container": "#ffdad6",
+                        "secondary-container": "#d63c00",
+                        "on-error-container": "#93000a",
+                        "outline": "#747878",
+                        "tertiary": "#000000",
+                        "on-secondary-container": "#fffbff",
+                        "secondary": "#ab2e00",
+                        "background": "#f9f9fa",
+                        "primary-container": "#1c1b1b",
+                        "on-error": "#ffffff",
+                        "surface-container": "#eeeeef",
+                        "inverse-primary": "#c8c6c5",
+                        "secondary-fixed-dim": "#ffb59f",
+                        "on-surface-variant": "#444748"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "16px",
+                        "space-unit": "8px",
+                        "stack-md": "24px",
+                        "stack-sm": "8px",
+                        "container-padding-desktop": "40px",
+                        "stack-lg": "48px",
+                        "container-padding-mobile": "20px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Hanken Grotesk"],
+                        "headline-sm": ["Hanken Grotesk"],
+                        "body-md": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "headline-lg-mobile": ["Hanken Grotesk"],
+                        "body-sm": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-xl": ["Hanken Grotesk"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "34px", "fontWeight": "700" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "headline-xl": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        /* Custom input styles for the minimalist Stripe-like feel */
+        .min-input {
+            @apply w-full bg-surface-container-lowest border-outline-variant text-on-surface font-body-md text-body-md rounded transition-colors duration-200 focus:border-primary focus:ring-0;
+        }
+        .min-label {
+            @apply block font-label-md text-label-md text-on-surface-variant mb-space-unit;
+        }
+        .min-select {
+            @apply w-full bg-surface-container-lowest border-outline-variant text-on-surface font-body-md text-body-md rounded transition-colors duration-200 focus:border-primary focus:ring-0 appearance-none bg-no-repeat;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 0.5rem center;
+            background-size: 1.5em 1.5em;
+            padding-right: 2.5rem;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface-container-lowest h-full flex flex-col antialiased selection:bg-secondary selection:text-on-secondary">
+<!-- TopAppBar -->
+<header class="w-full top-0 sticky bg-surface-container-lowest border-b border-outline-variant z-50">
+<div class="flex justify-between items-center px-container-mobile md:px-container-desktop h-16 w-full">
+<div class="flex items-center gap-gutter cursor-pointer active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-primary" data-icon="menu">menu</span>
+<span class="font-headline-lg text-headline-lg font-black text-primary">11thONUS</span>
+</div>
+<div class="cursor-pointer active:scale-95 transition-transform hover:opacity-80 transition-opacity">
+<span class="font-label-md text-label-md text-primary font-bold">EN | FR</span>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-grow flex flex-col md:flex-row max-w-7xl mx-auto w-full px-container-mobile md:px-container-desktop py-stack-lg gap-stack-lg md:gap-24">
+<!-- Left Column: Context & Imagery (High-End Asymmetric Layout) -->
+<div class="w-full md:w-5/12 flex flex-col gap-stack-md hidden md:flex">
+<!-- Progress Indicator -->
+<div class="flex flex-col gap-space-unit w-full max-w-xs">
+<span class="font-label-md text-label-md text-on-surface-variant uppercase">Step 2 of 3</span>
+<div class="flex gap-2 w-full h-1">
+<div class="flex-1 bg-secondary rounded-full"></div>
+<div class="flex-1 bg-secondary rounded-full"></div>
+<div class="flex-1 bg-surface-variant rounded-full"></div>
+</div>
+</div>
+<div class="mt-stack-lg">
+<h1 class="font-headline-xl text-headline-xl text-primary mb-stack-sm">Your main location.</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Tell us where your business is based to help us tailor your experience and compliance requirements.</p>
+</div>
+<!-- Stylized Image Placeholder -->
+<div class="mt-auto relative rounded-xl overflow-hidden bg-surface h-64 border border-outline-variant" data-alt="A minimalist architectural photograph of a modern office building exterior during golden hour, emphasizing clean geometric lines and premium materials like glass and concrete. The lighting is warm and clear, creating high-contrast shadows. The aesthetic is high-end, uncluttered, and professional, perfectly aligning with a pristine light-mode corporate design system." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBrBQWSIdkJ0xQ034MjpbvqfwneFQPldR40jnkoVdGskPJhVqxMnv3KYZ6XJDauzgRgSFjuHac0t-atMPh4BxLHJhsi6bBjItKf2eTgeQOXtSiGzc13WCDqZ0PS01n4lHtnV_YXL4I5QD6HEjit-KiS9mNKY_yKWC-iPwsB8iJ4Q504j5voVDeRYZ_zII6hEistmA7H77pXpJP2SejfczGIJo4b8VsWIQVlYIWalHIQ-bMbcAWIeneT')">
+<!-- Image goes here via pipeline -->
+<div class="absolute inset-0 bg-gradient-to-t from-surface/50 to-transparent"></div>
+</div>
+</div>
+<!-- Right Column: Form Area -->
+<div class="w-full md:w-7/12 flex flex-col max-w-2xl">
+<!-- Mobile Header Context (Visible only on small screens) -->
+<div class="md:hidden flex flex-col gap-stack-md mb-stack-lg">
+<div class="flex flex-col gap-space-unit w-full">
+<span class="font-label-md text-label-md text-on-surface-variant uppercase">Step 2 of 3</span>
+<div class="flex gap-2 w-full h-1">
+<div class="flex-1 bg-secondary rounded-full"></div>
+<div class="flex-1 bg-secondary rounded-full"></div>
+<div class="flex-1 bg-surface-variant rounded-full"></div>
+</div>
+</div>
+<div>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-primary mb-stack-sm">Your main location.</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">Tell us where your business is based.</p>
+</div>
+</div>
+<!-- Section 1: Where is your business? -->
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant p-stack-md mb-stack-lg shadow-[0px_4px_20px_rgba(0,0,0,0.04)]">
+<h2 class="font-headline-sm text-headline-sm text-primary mb-stack-md border-b border-outline-variant pb-space-unit">Where is your business?</h2>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-x-gutter gap-y-stack-md">
+<!-- Country -->
+<div class="col-span-1 md:col-span-2">
+<label class="min-label" for="country">Country</label>
+<select class="min-select" id="country" name="country">
+<option selected="" value="Burundi">Burundi</option>
+<option value="Rwanda">Rwanda</option>
+<option value="Kenya">Kenya</option>
+</select>
+</div>
+<!-- City -->
+<div class="col-span-1">
+<label class="min-label" for="city">City</label>
+<input class="min-input" id="city" name="city" type="text" value="Bujumbura"/>
+</div>
+<!-- Location Name -->
+<div class="col-span-1">
+<label class="min-label" for="location_name">Location name</label>
+<input class="min-input" id="location_name" name="location_name" type="text" value="Main Branch"/>
+</div>
+<!-- Address -->
+<div class="col-span-1 md:col-span-2">
+<label class="min-label" for="address">Address (optional)</label>
+<input class="min-input" id="address" name="address" placeholder="123 Maple St" type="text"/>
+</div>
+</div>
+</div>
+<!-- Section 2: Operating details -->
+<div class="bg-surface rounded-xl border border-surface-variant p-stack-md mb-[100px] md:mb-0">
+<div class="flex items-center gap-space-unit mb-stack-md pb-space-unit border-b border-surface-variant">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]" data-icon="settings">settings</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface-variant">Operating details</h2>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-x-gutter gap-y-stack-md">
+<!-- Currency -->
+<div class="col-span-1">
+<label class="min-label" for="currency">Currency</label>
+<select class="min-select bg-surface" id="currency" name="currency">
+<option selected="" value="BIF">BIF — Burundian Franc</option>
+<option value="USD">USD — US Dollar</option>
+</select>
+</div>
+<!-- Timezone -->
+<div class="col-span-1">
+<label class="min-label" for="timezone">Timezone</label>
+<select class="min-select bg-surface" id="timezone" name="timezone">
+<option selected="" value="Africa/Bujumbura">Africa/Bujumbura</option>
+<option value="UTC">UTC</option>
+</select>
+</div>
+</div>
+</div>
+<!-- Desktop Actions (Hidden on mobile, uses BottomNavBar instead) -->
+<div class="hidden md:flex justify-end items-center gap-stack-md mt-stack-lg pt-stack-md border-t border-outline-variant">
+<button class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors cursor-pointer active:scale-95 transition-transform bg-transparent border-none">
+                    Back
+                </button>
+<button class="font-label-md text-label-md bg-secondary text-on-secondary px-8 py-3 rounded-lg font-bold hover:bg-secondary-container transition-colors cursor-pointer active:scale-95 transition-transform flex items-center gap-2 shadow-sm">
+                    Continue
+                    <span class="material-symbols-outlined text-[16px]" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Mobile Only for transactional flow) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full flex items-center justify-between px-container-mobile pb-safe bg-surface-container-lowest border-t border-outline-variant shadow-sm z-50">
+<!-- Back (Inactive semantic representation) -->
+<button class="flex flex-1 justify-center items-center py-4 text-on-surface-variant font-medium hover:bg-secondary-container transition-colors active:scale-[0.98] transition-all duration-200">
+<span class="material-symbols-outlined mr-2" data-icon="arrow_back">arrow_back</span>
+<span class="font-label-md text-label-md">Back</span>
+</button>
+<!-- Continue (Active semantic representation for progress) -->
+<button class="flex flex-1 justify-center items-center py-4 bg-secondary text-on-secondary rounded-lg mx-2 my-2 font-bold hover:bg-secondary-container transition-colors active:scale-[0.98] transition-all duration-200">
+<span class="font-label-md text-label-md">Continue</span>
+<span class="material-symbols-outlined ml-2" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</nav>
+</body></html>

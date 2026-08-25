@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>11thONUS - Business Terms</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@600;700&amp;family=Inter:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-tint": "#5f5e5e",
+                        "background": "#f9f9fa",
+                        "on-secondary": "#ffffff",
+                        "on-surface": "#1a1c1d",
+                        "on-surface-variant": "#444748",
+                        "on-primary-container": "#858383",
+                        "primary-container": "#1c1b1b",
+                        "surface-bright": "#f9f9fa",
+                        "secondary-fixed-dim": "#ffb59f",
+                        "inverse-surface": "#2f3132",
+                        "secondary-fixed": "#ffdbd1",
+                        "on-primary": "#ffffff",
+                        "on-tertiary-fixed-variant": "#5e4200",
+                        "inverse-primary": "#c8c6c5",
+                        "surface-dim": "#dadadb",
+                        "outline": "#747878",
+                        "on-error": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "surface-container-highest": "#e2e2e3",
+                        "surface-variant": "#e2e2e3",
+                        "tertiary": "#000000",
+                        "primary-fixed": "#e5e2e1",
+                        "on-primary-fixed": "#1c1b1b",
+                        "surface-container-high": "#e8e8e9",
+                        "surface-container": "#eeeeef",
+                        "primary": "#000000",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "secondary-container": "#d63c00",
+                        "tertiary-container": "#271900",
+                        "on-tertiary-fixed": "#271900",
+                        "inverse-on-surface": "#f0f1f2",
+                        "surface": "#f9f9fa",
+                        "on-secondary-container": "#fffbff",
+                        "outline-variant": "#c4c7c7",
+                        "secondary": "#ab2e00",
+                        "tertiary-fixed-dim": "#fcbc2f",
+                        "primary-fixed-dim": "#c8c6c5",
+                        "surface-container-low": "#f3f3f4",
+                        "on-tertiary-container": "#ab7b00",
+                        "on-secondary-fixed": "#3b0a00",
+                        "error": "#ba1a1a",
+                        "on-secondary-fixed-variant": "#862200",
+                        "on-primary-fixed-variant": "#474646",
+                        "tertiary-fixed": "#ffdea6",
+                        "error-container": "#ffdad6",
+                        "on-background": "#1a1c1d"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-md": "24px",
+                        "container-padding-desktop": "40px",
+                        "container-padding-mobile": "20px",
+                        "stack-sm": "8px",
+                        "stack-lg": "48px",
+                        "gutter": "16px",
+                        "space-unit": "8px"
+                    },
+                    "fontFamily": {
+                        "label-md": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-xl": ["Hanken Grotesk"],
+                        "headline-lg": ["Hanken Grotesk"],
+                        "body-lg": ["Inter"],
+                        "headline-lg-mobile": ["Hanken Grotesk"],
+                        "headline-sm": ["Hanken Grotesk"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "body-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-xl": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "34px", "fontWeight": "700" }],
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background text-on-surface font-body-md antialiased flex flex-col md:flex-row min-h-screen">
+<!-- NavigationDrawer (Web) -->
+<nav class="bg-surface-container-lowest dark:bg-inverse-surface border-r border-outline-variant dark:border-outline shadow-sm dark:shadow-none h-full w-72 fixed left-0 top-0 hidden md:flex flex-col gap-stack-sm p-4 z-20">
+<div class="mb-8">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full overflow-hidden border border-outline-variant shrink-0 bg-surface-container-low">
+<img class="w-full h-full object-cover" data-alt="A minimalist, high-end salon logo featuring elegant typography and soft geometric shapes. The logo uses a monochromatic palette with subtle gold accents, reflecting a premium light-mode UI aesthetic. It conveys a sense of modern luxury and clean, professional branding suitable for an exclusive beauty business." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBNFz65IsAgpDRTeT3TdB6OrxFLFRhjRHzsrAmEujVdn3tIBfSnH9E-YOiIn5fDbr5vGXNOshBAdstxhu4XM0F0wCUugDYhtziPqQoX2_oRCk0U90jy92vRE_JUcZRg7aJ8MO2AcmXIi79U5qGoHp4d1bvzKNGDzHTd_oe7JsTd6QjbCK8YYRT25vs1R99EXRS_PnNOonwCq0xihQdXQdVc0uuXW8hJ7GoM7slJ_uN7NlUsrhkGfVxA"/>
+</div>
+<div>
+<h2 class="font-headline-sm text-headline-sm font-bold text-primary dark:text-primary-fixed">Safi Glow Salon</h2>
+<p class="font-label-md text-label-md text-on-surface-variant">Admin Console</p>
+</div>
+</div>
+</div>
+<ul class="flex flex-col gap-2 flex-grow">
+<li><a class="flex items-center gap-4 px-4 py-3 text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-variant transition-all rounded-lg" href="#"><span class="material-symbols-outlined" data-icon="dashboard">dashboard</span> <span class="font-label-md text-label-md">Overview</span></a></li>
+<li><a class="flex items-center gap-4 px-4 py-3 text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-variant transition-all rounded-lg" href="#"><span class="material-symbols-outlined" data-icon="storefront">storefront</span> <span class="font-label-md text-label-md">Business Profile</span></a></li>
+<li><a class="flex items-center gap-4 px-4 py-3 text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-variant transition-all rounded-lg" href="#"><span class="material-symbols-outlined" data-icon="location_on">location_on</span> <span class="font-label-md text-label-md">Locations</span></a></li>
+<li><a class="flex items-center gap-4 px-4 py-3 text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-variant transition-all rounded-lg" href="#"><span class="material-symbols-outlined" data-icon="group">group</span> <span class="font-label-md text-label-md">Team</span></a></li>
+<li><a class="flex items-center gap-4 px-4 py-3 bg-secondary-container dark:bg-secondary text-on-secondary-container dark:text-on-secondary rounded-lg translate-x-1 duration-200" href="#"><span class="material-symbols-outlined" data-icon="description">description</span> <span class="font-label-md text-label-md font-bold">Business Terms</span></a></li>
+</ul>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col md:ml-72 min-h-screen">
+<!-- TopAppBar (Mobile) / Header (Web) -->
+<header class="bg-surface dark:bg-surface-dim flex justify-between items-center px-container-padding-mobile md:px-container-padding-desktop h-16 w-full sticky top-0 z-10 md:static border-b border-outline-variant md:border-none shadow-sm md:shadow-none">
+<div class="flex items-center gap-4 md:hidden">
+<button class="text-primary hover:bg-surface-container p-2 rounded-full transition-colors active:scale-95">
+<span class="material-symbols-outlined" data-icon="menu">menu</span>
+</button>
+</div>
+<div class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed-dim">
+                11thONUS
+            </div>
+<div class="flex items-center gap-4">
+<button class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors">
+                    EN|FR
+                </button>
+</div>
+</header>
+<!-- Canvas -->
+<main class="flex-1 p-container-padding-mobile md:p-container-padding-desktop flex justify-center items-start pt-8 md:pt-12">
+<div class="w-full max-w-3xl">
+<!-- Status & Title -->
+<div class="mb-stack-lg flex flex-col gap-stack-sm">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Action required</span>
+</div>
+<h1 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary">Business Terms</h1>
+</div>
+<!-- Terms Document Container -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-6 md:p-10 shadow-[0px_4px_20px_rgba(0,0,0,0.04)] mb-stack-lg">
+<!-- Metadata -->
+<div class="flex flex-col md:flex-row justify-between border-b border-surface-variant pb-6 mb-8 gap-4">
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant mb-1">Version</p>
+<p class="font-body-md text-body-md text-on-surface">1.0</p>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant mb-1">Effective Date</p>
+<p class="font-body-md text-body-md text-on-surface">25 August 2026</p>
+</div>
+</div>
+<!-- Document Content -->
+<div class="prose max-w-none text-on-surface font-body-sm space-y-8">
+<section>
+<h3 class="font-headline-sm text-headline-sm text-primary mb-4">1. Introduction</h3>
+<p class="text-on-surface-variant leading-relaxed">
+                                [Terms content provided by 11thONUS will appear here.]
+                            </p>
+</section>
+<section>
+<h3 class="font-headline-sm text-headline-sm text-primary mb-4">2. Using 11thONUS</h3>
+<p class="text-on-surface-variant leading-relaxed">
+                                [Terms content provided by 11thONUS will appear here.]
+                            </p>
+</section>
+<section>
+<h3 class="font-headline-sm text-headline-sm text-primary mb-4">3. Business responsibilities</h3>
+<p class="text-on-surface-variant leading-relaxed">
+                                [Terms content provided by 11thONUS will appear here.]
+                            </p>
+</section>
+<section>
+<h3 class="font-headline-sm text-headline-sm text-primary mb-4">4. Platform responsibilities</h3>
+<p class="text-on-surface-variant leading-relaxed">
+                                [Terms content provided by 11thONUS will appear here.]
+                            </p>
+</section>
+<section>
+<h3 class="font-headline-sm text-headline-sm text-primary mb-4">5. Acceptance</h3>
+<p class="text-on-surface-variant leading-relaxed">
+                                [Terms content provided by 11thONUS will appear here.]
+                            </p>
+</section>
+</div>
+</div>
+<!-- Acceptance Actions -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-6 shadow-sm mb-12">
+<label class="flex items-start gap-4 cursor-pointer group">
+<div class="relative flex items-start mt-1">
+<input class="peer h-5 w-5 rounded border-outline-variant bg-surface-container-lowest text-secondary focus:ring-secondary focus:ring-offset-0 transition-colors" id="terms-checkbox" type="checkbox"/>
+</div>
+<span class="font-body-md text-body-md text-on-surface group-hover:text-primary transition-colors">
+                            I have read and agree to the Business Terms.
+                        </span>
+</label>
+<div class="mt-8 flex justify-end">
+<button class="bg-secondary text-on-secondary font-label-md text-label-md px-8 py-4 rounded-full opacity-50 cursor-not-allowed transition-all w-full md:w-auto text-center" disabled="" id="accept-btn">
+                            Accept Business Terms
+                        </button>
+</div>
+</div>
+</div>
+</main>
+</div>
+<script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const checkbox = document.getElementById('terms-checkbox');
+            const acceptBtn = document.getElementById('accept-btn');
+
+            checkbox.addEventListener('change', (e) => {
+                if(e.target.checked) {
+                    acceptBtn.disabled = false;
+                    acceptBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    acceptBtn.classList.add('hover:opacity-90', 'active:scale-95', 'shadow-md');
+                } else {
+                    acceptBtn.disabled = true;
+                    acceptBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                    acceptBtn.classList.remove('hover:opacity-90', 'active:scale-95', 'shadow-md');
+                }
+            });
+        });
+    </script>
+</body></html>

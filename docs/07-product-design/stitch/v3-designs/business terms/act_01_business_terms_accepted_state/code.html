@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Business Terms</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@600;700&amp;family=Inter:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-tint": "#5f5e5e",
+                        "background": "#f9f9fa",
+                        "on-secondary": "#ffffff",
+                        "on-surface": "#1a1c1d",
+                        "on-surface-variant": "#444748",
+                        "on-primary-container": "#858383",
+                        "primary-container": "#1c1b1b",
+                        "surface-bright": "#f9f9fa",
+                        "secondary-fixed-dim": "#ffb59f",
+                        "inverse-surface": "#2f3132",
+                        "secondary-fixed": "#ffdbd1",
+                        "on-primary": "#ffffff",
+                        "on-tertiary-fixed-variant": "#5e4200",
+                        "inverse-primary": "#c8c6c5",
+                        "surface-dim": "#dadadb",
+                        "outline": "#747878",
+                        "on-error": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "surface-container-highest": "#e2e2e3",
+                        "surface-variant": "#e2e2e3",
+                        "tertiary": "#000000",
+                        "primary-fixed": "#e5e2e1",
+                        "on-primary-fixed": "#1c1b1b",
+                        "surface-container-high": "#e8e8e9",
+                        "surface-container": "#eeeeef",
+                        "primary": "#000000",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "secondary-container": "#d63c00",
+                        "tertiary-container": "#271900",
+                        "on-tertiary-fixed": "#271900",
+                        "inverse-on-surface": "#f0f1f2",
+                        "surface": "#f9f9fa",
+                        "on-secondary-container": "#fffbff",
+                        "outline-variant": "#c4c7c7",
+                        "secondary": "#ab2e00",
+                        "tertiary-fixed-dim": "#fcbc2f",
+                        "primary-fixed-dim": "#c8c6c5",
+                        "surface-container-low": "#f3f3f4",
+                        "on-tertiary-container": "#ab7b00",
+                        "on-secondary-fixed": "#3b0a00",
+                        "error": "#ba1a1a",
+                        "on-secondary-fixed-variant": "#862200",
+                        "on-primary-fixed-variant": "#474646",
+                        "tertiary-fixed": "#ffdea6",
+                        "error-container": "#ffdad6",
+                        "on-background": "#1a1c1d"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-md": "24px",
+                        "container-padding-desktop": "40px",
+                        "container-padding-mobile": "20px",
+                        "stack-sm": "8px",
+                        "stack-lg": "48px",
+                        "gutter": "16px",
+                        "space-unit": "8px"
+                    },
+                    "fontFamily": {
+                        "label-md": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-xl": ["Hanken Grotesk"],
+                        "headline-lg": ["Hanken Grotesk"],
+                        "body-lg": ["Inter"],
+                        "headline-lg-mobile": ["Hanken Grotesk"],
+                        "headline-sm": ["Hanken Grotesk"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "body-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-xl": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "34px", "fontWeight": "700" }],
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md min-h-screen flex flex-col md:flex-row">
+<!-- NavigationDrawer (Hidden on Mobile) -->
+<nav class="bg-surface-container-lowest dark:bg-inverse-surface border-r border-outline-variant dark:border-outline shadow-sm dark:shadow-none h-full w-72 fixed left-0 top-0 hidden md:flex flex-col gap-stack-sm p-4 z-50">
+<!-- Profile Header -->
+<div class="flex items-center gap-4 mb-stack-md">
+<div class="w-12 h-12 rounded-full overflow-hidden bg-surface-container-high flex-shrink-0">
+<img alt="Safi Glow Salon Logo" class="w-full h-full object-cover" data-alt="A clean, minimalist logo for 'Safi Glow Salon', high contrast, white background, black abstract geometric shapes, high-end editorial aesthetic, sharp and precise." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAoqclUeUfjBZHRU_nA_9B3te3IQiNF6uHwJr6xLE7_OqGW5srD9slxnx9eJciK33xRcfwOOMSHNVvlcwgqtJ62BNXXzGPmbJled_b0FmWj6OOLt-x-t7Vg-7oBX2GeBUSxshD-CiyVF3IMivB2O0cXKVunP0xWZTnurDcThovfejyn8PA0bpWEeHwOPhEQETOroqGxTVhi74o5qFQr7L5cOgnezxMjDgABjSndOMfCl4_homNo3Mr1"/>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-sm text-headline-sm font-bold text-primary dark:text-primary-fixed">Safi Glow Salon</span>
+<span class="font-label-md text-label-md text-on-surface-variant">Admin Console</span>
+</div>
+</div>
+<!-- Navigation Links -->
+<div class="flex flex-col gap-2 flex-grow">
+<a class="flex items-center gap-4 px-4 py-3 text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-variant transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-label-md text-label-md">Overview</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-variant transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="storefront">storefront</span>
+<span class="font-label-md text-label-md">Business Profile</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-variant transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="location_on">location_on</span>
+<span class="font-label-md text-label-md">Locations</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-variant transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+<span class="font-label-md text-label-md">Team</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 bg-secondary-container dark:bg-secondary text-on-secondary-container dark:text-on-secondary rounded-lg transition-all opacity-80 scale-95 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="description" style="font-variation-settings: 'FILL' 1;">description</span>
+<span class="font-label-md text-label-md text-secondary dark:text-secondary-fixed font-bold">Business Terms</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-grow flex flex-col md:ml-72 w-full min-h-screen">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-surface-dim docked full-width top-0 flat no shadows flex justify-between items-center px-container-padding-mobile md:px-container-padding-desktop h-16 w-full z-40 sticky">
+<div class="flex items-center gap-4 md:hidden">
+<button class="text-primary dark:text-primary-fixed hover:bg-surface-container dark:hover:bg-surface-container-high transition-colors p-2 rounded-full">
+<span class="material-symbols-outlined" data-icon="menu">menu</span>
+</button>
+</div>
+<div class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed-dim tracking-tight">
+                11thONUS
+            </div>
+<div>
+<button class="font-label-md text-label-md text-primary dark:text-primary-fixed hover:bg-surface-container dark:hover:bg-surface-container-high transition-colors px-3 py-2 rounded-md font-bold">
+                    EN|FR
+                </button>
+</div>
+</header>
+<!-- Canvas -->
+<main class="flex-grow px-container-padding-mobile md:px-container-padding-desktop py-stack-lg flex flex-col items-center justify-center relative overflow-hidden">
+<div class="w-full max-w-md flex flex-col gap-stack-lg z-10 relative">
+<!-- Status & Heading -->
+<div class="flex flex-col items-center text-center gap-stack-sm">
+<div class="bg-surface-container-low border border-outline-variant rounded-full px-4 py-1 mb-4 inline-flex items-center gap-2 shadow-sm">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="font-label-md text-label-md text-on-surface">Accepted</span>
+</div>
+<h1 class="font-headline-lg-mobile md:font-headline-lg text-primary">Business Terms</h1>
+</div>
+<!-- Success Card -->
+<div class="bg-surface-container-lowest border border-surface-variant rounded-xl p-8 flex flex-col items-center text-center gap-stack-md relative" style="box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.04);">
+<div class="w-16 h-16 rounded-full bg-surface-container flex items-center justify-center text-secondary mb-2">
+<span class="material-symbols-outlined text-4xl" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<p class="font-body-lg text-on-surface-variant max-w-[280px]">
+                        You're up to date with the current Business Terms.
+                    </p>
+<div class="flex flex-col gap-1 mt-4">
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Version 1.0</span>
+<span class="font-body-sm text-on-surface-variant">Effective 25 August 2026</span>
+</div>
+<div class="w-full h-px bg-surface-variant my-4"></div>
+<a class="font-label-md text-label-md text-primary hover:text-secondary transition-colors flex items-center gap-2 group" href="#">
+                        View Business Terms
+                        <span class="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform" data-icon="arrow_forward">arrow_forward</span>
+</a>
+</div>
+<!-- Primary Action -->
+<button class="w-full bg-secondary hover:bg-secondary-container text-on-secondary font-label-md text-label-md py-4 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-sm">
+                    Back to Dashboard
+                </button>
+</div>
+</main>
+</div>
+</body></html>

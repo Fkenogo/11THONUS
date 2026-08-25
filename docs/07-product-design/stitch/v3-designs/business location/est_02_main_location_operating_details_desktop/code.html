@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Setup - Main Location</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700;900&amp;family=Inter:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-container-lowest": "#ffffff",
+                      "on-primary-fixed": "#1c1b1b",
+                      "on-tertiary": "#ffffff",
+                      "inverse-on-surface": "#f0f1f2",
+                      "surface-container-low": "#f3f3f4",
+                      "on-primary-container": "#858383",
+                      "on-tertiary-fixed": "#271900",
+                      "surface-container-highest": "#e2e2e3",
+                      "surface-dim": "#dadadb",
+                      "surface-bright": "#f9f9fa",
+                      "surface-container-high": "#e8e8e9",
+                      "on-primary": "#ffffff",
+                      "on-secondary-fixed": "#3b0a00",
+                      "inverse-surface": "#2f3132",
+                      "on-surface": "#1a1c1d",
+                      "on-background": "#1a1c1d",
+                      "tertiary-fixed-dim": "#fcbc2f",
+                      "on-secondary-fixed-variant": "#862200",
+                      "primary": "#000000",
+                      "on-tertiary-fixed-variant": "#5e4200",
+                      "primary-fixed": "#e5e2e1",
+                      "on-primary-fixed-variant": "#474646",
+                      "surface-tint": "#5f5e5e",
+                      "outline-variant": "#c4c7c7",
+                      "surface-variant": "#e2e2e3",
+                      "primary-fixed-dim": "#c8c6c5",
+                      "tertiary-container": "#271900",
+                      "surface": "#f9f9fa",
+                      "on-tertiary-container": "#ab7b00",
+                      "error": "#ba1a1a",
+                      "tertiary-fixed": "#ffdea6",
+                      "on-secondary": "#ffffff",
+                      "secondary-fixed": "#ffdbd1",
+                      "error-container": "#ffdad6",
+                      "secondary-container": "#d63c00",
+                      "on-error-container": "#93000a",
+                      "outline": "#747878",
+                      "tertiary": "#000000",
+                      "on-secondary-container": "#fffbff",
+                      "secondary": "#ab2e00",
+                      "background": "#f9f9fa",
+                      "primary-container": "#1c1b1b",
+                      "on-error": "#ffffff",
+                      "surface-container": "#eeeeef",
+                      "inverse-primary": "#c8c6c5",
+                      "secondary-fixed-dim": "#ffb59f",
+                      "on-surface-variant": "#444748"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "gutter": "16px",
+                      "space-unit": "8px",
+                      "stack-md": "24px",
+                      "stack-sm": "8px",
+                      "container-padding-desktop": "40px",
+                      "stack-lg": "48px",
+                      "container-padding-mobile": "20px"
+              },
+              "fontFamily": {
+                      "headline-lg": [
+                              "Hanken Grotesk"
+                      ],
+                      "headline-sm": [
+                              "Hanken Grotesk"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "label-md": [
+                              "Inter"
+                      ],
+                      "headline-md": [
+                              "Hanken Grotesk"
+                      ],
+                      "headline-lg-mobile": [
+                              "Hanken Grotesk"
+                      ],
+                      "body-sm": [
+                              "Inter"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "headline-xl": [
+                              "Hanken Grotesk"
+                      ]
+              },
+              "fontSize": {
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-sm": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-md": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "28px",
+                              {
+                                      "lineHeight": "34px",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-sm": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-xl": [
+                              "48px",
+                              {
+                                      "lineHeight": "56px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        /* Custom Input Styles to match Stripe-like minimalism */
+        .minimal-input {
+            border: 1px solid #E5E5E7;
+            border-radius: 0.25rem;
+            background-color: transparent;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .minimal-input:focus {
+            outline: none;
+            border-color: #1a1c1d;
+            box-shadow: 0 0 0 1px #1a1c1d;
+        }
+        .minimal-input::placeholder {
+            color: #858383;
+        }
+        .custom-select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/200.0/svg' fill='none' viewBox='0 0 24 24' stroke='%23858383'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            background-size: 1.25rem 1.25rem;
+        }
+        
+        /* Soft shadow for elevated card */
+        .card-shadow {
+            box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.04);
+        }
+    </style>
+</head>
+<body class="bg-surface-container-low text-on-surface min-h-screen flex flex-col font-body-md antialiased selection:bg-secondary selection:text-on-secondary">
+<!-- Header / Nav Shell -->
+<header class="bg-surface-container-lowest dark:bg-surface-dim w-full top-0 sticky border-b border-outline-variant dark:border-outline z-50">
+<div class="flex justify-between items-center px-container-mobile md:px-container-desktop h-16 w-full max-w-7xl mx-auto">
+<div class="flex items-center gap-space-unit text-primary dark:text-primary-fixed cursor-pointer active:scale-95 transition-transform hover:opacity-80">
+<span class="material-symbols-outlined font-headline-sm" style="font-variation-settings: 'FILL' 0;">menu</span>
+</div>
+<div class="font-headline-lg text-headline-lg font-black text-primary dark:text-primary-fixed">
+                11thONUS
+            </div>
+<div class="flex items-center gap-space-unit">
+<span class="font-label-md text-label-md text-on-surface-variant dark:text-on-surface-variant cursor-pointer hover:opacity-80 transition-opacity uppercase tracking-wider">EN | FR</span>
+</div>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="flex-grow flex items-center justify-center py-stack-lg px-container-mobile md:px-container-desktop">
+<!-- Setup Container (Card) -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg w-full max-w-3xl card-shadow flex flex-col overflow-hidden">
+<!-- Progress Indicator -->
+<div class="w-full bg-surface-container-highest h-2 flex">
+<div class="w-1/2 bg-surface-container-highest"></div>
+<div class="w-1/2 bg-secondary h-full relative">
+<!-- Step Indicator overlay could go here, but keeping it minimal -->
+</div>
+</div>
+<div class="p-container-desktop flex flex-col gap-stack-lg">
+<!-- Header -->
+<div class="flex flex-col gap-stack-sm text-center md:text-left">
+<h1 class="font-headline-lg text-headline-lg text-primary">Main Location</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Step 2 of 3: Define your primary operating details.</p>
+</div>
+<!-- Form Fields -->
+<form class="flex flex-col gap-stack-md">
+<!-- Location Name & Address -->
+<div class="flex flex-col gap-stack-sm">
+<label class="font-label-md text-label-md text-on-surface uppercase" for="location_name">Location Name</label>
+<input class="minimal-input w-full p-3 font-body-md text-body-md text-on-surface focus:ring-0" id="location_name" placeholder="e.g. Headquarters" type="text"/>
+</div>
+<div class="flex flex-col gap-stack-sm">
+<label class="font-label-md text-label-md text-on-surface uppercase" for="address">Address</label>
+<input class="minimal-input w-full p-3 font-body-md text-body-md text-on-surface focus:ring-0" id="address" placeholder="Street Address" type="text"/>
+</div>
+<!-- Country & City Side-by-Side -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-stack-md">
+<div class="flex flex-col gap-stack-sm">
+<label class="font-label-md text-label-md text-on-surface uppercase" for="country">Country</label>
+<select class="minimal-input custom-select w-full p-3 pr-10 font-body-md text-body-md text-on-surface focus:ring-0" id="country">
+<option disabled="" selected="" value="">Select Country</option>
+<option value="US">United States</option>
+<option value="UK">United Kingdom</option>
+<option value="CA">Canada</option>
+<option value="FR">France</option>
+</select>
+</div>
+<div class="flex flex-col gap-stack-sm">
+<label class="font-label-md text-label-md text-on-surface uppercase" for="city">City</label>
+<input class="minimal-input w-full p-3 font-body-md text-body-md text-on-surface focus:ring-0" id="city" placeholder="City Name" type="text"/>
+</div>
+</div>
+<!-- Separator -->
+<hr class="border-outline-variant w-full my-space-unit"/>
+<!-- Operating Details Section -->
+<div class="flex flex-col gap-stack-md">
+<h2 class="font-headline-sm text-headline-sm text-primary">Operating details</h2>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-stack-md">
+<div class="flex flex-col gap-stack-sm">
+<label class="font-label-md text-label-md text-on-surface uppercase" for="currency">Primary Currency</label>
+<select class="minimal-input custom-select w-full p-3 pr-10 font-body-md text-body-md text-on-surface focus:ring-0" id="currency">
+<option disabled="" selected="" value="">Select Currency</option>
+<option value="USD">USD ($)</option>
+<option value="EUR">EUR (€)</option>
+<option value="GBP">GBP (£)</option>
+</select>
+</div>
+<div class="flex flex-col gap-stack-sm">
+<label class="font-label-md text-label-md text-on-surface uppercase" for="timezone">Timezone</label>
+<select class="minimal-input custom-select w-full p-3 pr-10 font-body-md text-body-md text-on-surface focus:ring-0" id="timezone">
+<option disabled="" selected="" value="">Select Timezone</option>
+<option value="EST">Eastern Time (ET)</option>
+<option value="CST">Central Time (CT)</option>
+<option value="PST">Pacific Time (PT)</option>
+</select>
+</div>
+</div>
+</div>
+</form>
+</div>
+<!-- Footer / Actions -->
+<div class="bg-surface border-t border-outline-variant p-container-desktop flex justify-between items-center">
+<button class="flex items-center gap-space-unit font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors py-3 px-4 uppercase tracking-wider" type="button">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">arrow_back</span>
+                    Back
+                </button>
+<button class="bg-secondary text-on-secondary font-label-md text-label-md py-3 px-8 rounded flex items-center gap-space-unit hover:bg-secondary-container hover:text-on-secondary-container transition-colors shadow-sm uppercase tracking-wider" type="button">
+                    Continue
+                    <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">arrow_forward</span>
+</button>
+</div>
+</div>
+</main>
+</body></html>

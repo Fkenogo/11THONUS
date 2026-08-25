@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Team Management - 11thONUS</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@600;700&amp;family=Inter:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-error": "#ffffff",
+                      "primary": "#000000",
+                      "tertiary-container": "#271900",
+                      "on-surface": "#1a1c1d",
+                      "surface-container-lowest": "#ffffff",
+                      "error": "#ba1a1a",
+                      "tertiary": "#000000",
+                      "primary-fixed": "#e5e2e1",
+                      "background": "#f9f9fa",
+                      "on-secondary-container": "#fffbff",
+                      "on-error-container": "#93000a",
+                      "surface-variant": "#e2e2e3",
+                      "primary-fixed-dim": "#c8c6c5",
+                      "surface-container": "#eeeeef",
+                      "on-primary-container": "#858383",
+                      "surface-container-highest": "#e2e2e3",
+                      "on-secondary-fixed": "#3b0a00",
+                      "on-tertiary-fixed": "#271900",
+                      "inverse-surface": "#2f3132",
+                      "outline-variant": "#c4c7c7",
+                      "on-primary-fixed-variant": "#474646",
+                      "surface-dim": "#dadadb",
+                      "on-tertiary": "#ffffff",
+                      "on-primary-fixed": "#1c1b1b",
+                      "secondary-fixed": "#ffdbd1",
+                      "on-primary": "#ffffff",
+                      "surface-container-low": "#f3f3f4",
+                      "on-background": "#1a1c1d",
+                      "on-secondary-fixed-variant": "#862200",
+                      "on-tertiary-fixed-variant": "#5e4200",
+                      "surface-tint": "#5f5e5e",
+                      "secondary-fixed-dim": "#ffb59f",
+                      "surface-bright": "#f9f9fa",
+                      "surface": "#f9f9fa",
+                      "inverse-primary": "#c8c6c5",
+                      "outline": "#747878",
+                      "secondary-container": "#d63c00",
+                      "primary-container": "#1c1b1b",
+                      "secondary": "#ab2e00",
+                      "on-tertiary-container": "#ab7b00",
+                      "on-surface-variant": "#444748",
+                      "on-secondary": "#ffffff",
+                      "tertiary-fixed": "#ffdea6",
+                      "inverse-on-surface": "#f0f1f2",
+                      "error-container": "#ffdad6",
+                      "surface-container-high": "#e8e8e9",
+                      "tertiary-fixed-dim": "#fcbc2f"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "gutter": "16px",
+                      "stack-sm": "8px",
+                      "stack-lg": "48px",
+                      "space-unit": "8px",
+                      "container-padding-mobile": "20px",
+                      "stack-md": "24px",
+                      "container-padding-desktop": "40px"
+              },
+              "fontFamily": {
+                      "body-sm": [
+                              "Inter"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "label-md": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "headline-lg": [
+                              "Hanken Grotesk"
+                      ],
+                      "headline-sm": [
+                              "Hanken Grotesk"
+                      ],
+                      "headline-xl": [
+                              "Hanken Grotesk"
+                      ],
+                      "headline-lg-mobile": [
+                              "Hanken Grotesk"
+                      ],
+                      "headline-md": [
+                              "Hanken Grotesk"
+                      ]
+              },
+              "fontSize": {
+                      "body-sm": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-md": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-sm": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-xl": [
+                              "48px",
+                              {
+                                      "lineHeight": "56px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "28px",
+                              {
+                                      "lineHeight": "34px",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        body {
+            background-color: #f9f9fa; /* background */
+            color: #1a1c1d; /* on-background */
+        }
+        .micro-shadow {
+            box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.04);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col font-body-md text-body-md antialiased md:flex-row">
+<!-- NavigationDrawer (Desktop) -->
+<nav class="hidden md:flex flex-col gap-stack-sm p-gutter h-full w-72 bg-surface dark:bg-on-background border-r border-outline-variant dark:border-on-primary-fixed-variant fixed left-0 top-0 z-40">
+<div class="mb-stack-lg">
+<span class="font-headline-sm text-headline-sm font-bold text-primary">PROGRES</span>
+</div>
+<div class="mb-stack-md px-2">
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Management</span>
+</div>
+<ul class="flex flex-col gap-space-unit">
+<li>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant dark:text-surface-variant hover:text-primary hover:bg-surface-container-lowest dark:hover:bg-surface-variant transition-all rounded-lg scale-98 active:scale-95 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span>Overview</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant dark:text-surface-variant hover:text-primary hover:bg-surface-container-lowest dark:hover:bg-surface-variant transition-all rounded-lg scale-98 active:scale-95 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="domain">domain</span>
+<span>Business Profile</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant dark:text-surface-variant hover:text-primary hover:bg-surface-container-lowest dark:hover:bg-surface-variant transition-all rounded-lg scale-98 active:scale-95 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="location_on">location_on</span>
+<span>Locations</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2 bg-surface-container dark:bg-primary-container text-primary dark:text-primary-fixed-dim rounded-lg font-semibold hover:bg-surface-container-lowest dark:hover:bg-surface-variant transition-all scale-98 active:scale-95 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="group" style="font-variation-settings: 'FILL' 1;">group</span>
+<span>Team</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant dark:text-surface-variant hover:text-primary hover:bg-surface-container-lowest dark:hover:bg-surface-variant transition-all rounded-lg scale-98 active:scale-95 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="description">description</span>
+<span>Business Terms</span>
+</a>
+</li>
+</ul>
+</nav>
+<!-- Main Content Wrapper -->
+<div class="flex-1 flex flex-col md:ml-72">
+<!-- TopAppBar (Mobile & Desktop Header) -->
+<header class="flex justify-between items-center px-container-padding-mobile md:px-container-padding-desktop h-16 w-full fixed top-0 z-50 bg-surface dark:bg-on-background border-b border-outline-variant dark:border-on-primary-fixed-variant md:hidden">
+<div class="flex items-center gap-3">
+<button class="text-primary dark:text-primary-fixed cursor-pointer active:opacity-80 p-2 rounded-full hover:bg-surface-container-low dark:hover:bg-primary-container transition-colors md:hidden">
+<span class="material-symbols-outlined" data-icon="menu">menu</span>
+</button>
+<span class="font-headline-sm text-headline-sm font-bold tracking-tight text-primary dark:text-primary-fixed">PROGRES</span>
+</div>
+<button class="text-on-surface-variant dark:text-surface-variant font-label-md text-label-md cursor-pointer active:opacity-80 px-3 py-1.5 rounded hover:bg-surface-container-low dark:hover:bg-primary-container transition-colors">
+                EN|FR
+            </button>
+</header>
+<!-- Main Canvas -->
+<main class="flex-1 px-container-padding-mobile md:px-container-padding-desktop pt-24 pb-32 md:py-stack-lg max-w-4xl mx-auto w-full">
+<!-- Page Header -->
+<div class="mb-stack-lg">
+<p class="font-label-md text-label-md text-on-surface-variant mb-2">Safi Glow Salon</p>
+<h1 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary mb-2">Team</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">Manage the people who can access this business.</p>
+<button class="mt-6 w-full md:w-auto bg-[#FF4F11] text-white px-6 py-3 rounded-lg font-label-md text-label-md tracking-wide hover:opacity-90 transition-opacity flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[18px]" data-icon="add">add</span>
+                    Invite team member
+                </button>
+</div>
+<!-- Team Members Section -->
+<section class="mb-stack-lg">
+<h2 class="font-headline-sm text-headline-sm text-primary mb-stack-md">Team members</h2>
+<div class="flex flex-col gap-stack-sm">
+<!-- Member Card 1 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-4 flex items-center justify-between micro-shadow">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center text-primary font-headline-sm text-headline-sm">
+                                S
+                            </div>
+<div>
+<p class="font-body-md text-body-md text-primary font-semibold">Safi</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Owner</p>
+</div>
+</div>
+<button class="p-2 text-on-surface-variant hover:text-primary rounded-full hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+<!-- Member Card 2 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-4 flex items-center justify-between micro-shadow">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center text-primary font-headline-sm text-headline-sm">
+                                J
+                            </div>
+<div>
+<p class="font-body-md text-body-md text-primary font-semibold">Jean-Claude</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Manager</p>
+</div>
+</div>
+<button class="p-2 text-on-surface-variant hover:text-primary rounded-full hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined" data-icon="more_vert">more_vert</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Pending Invitations Section -->
+<section>
+<h2 class="font-headline-sm text-headline-sm text-primary mb-stack-md">Pending invitations</h2>
+<div class="flex flex-col gap-stack-sm">
+<!-- Pending Card -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-4 flex items-center justify-between micro-shadow opacity-75">
+<div class="flex flex-col gap-1">
+<p class="font-body-md text-body-md text-primary truncate max-w-[200px] md:max-w-none">elise.m@example.com</p>
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 bg-surface-container-high rounded text-[10px] font-semibold tracking-wider text-on-surface-variant uppercase">Pending</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Staff</span>
+</div>
+</div>
+<button class="text-on-surface-variant hover:text-primary font-label-md text-label-md underline underline-offset-2">
+                            Resend
+                        </button>
+</div>
+</div>
+</section>
+</main>
+</div>
+</body></html>

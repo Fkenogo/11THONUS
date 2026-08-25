@@ -638,3 +638,454 @@ independently disputed and disproven). That CSP gap was fixed and independently 
 (with the newly disclosed, separate `ENG-P3-002B-CORR-SUPPORTEDLANGUAGES-001` Business-creation
 defect blocking full completion of the checklist until corrected — see the Founder QA checklist
 update for the exact disclosure)
+
+---
+
+## Addendum — 2026-08-24 (`ENG-P3-002C-PREVIEW-001-BUSINESS-CREATE-REVALIDATION-001`): Hosted Business-Creation Revalidation — PASSED, Founder QA May Continue
+
+This addendum records the revalidation task authorized to prove, in the real hosted DEV
+environment, that the merged `supportedLanguages` correction (`ENG-P3-002B-CORR-SUPPORTEDLANGUAGES-001`,
+PR #168 merge `096faed984840a5793853f9630435dd218ec064f`, closure sync PR #169 merge
+`8bbdaa942a499c68cf2edddd895e8aa5e198bbc0`) actually fixes hosted Business creation. Prior
+failure history above is preserved unmodified.
+
+**1. Entry origin/main SHA:** `8bbdaa942a499c68cf2edddd895e8aa5e198bbc0`, confirmed via
+`git fetch origin` + `git rev-parse origin/main`.
+
+**2. Deployment worktree:**
+`/private/tmp/claude-501/-Users-theo-11THONUS/d7d0a4fc-3331-4893-a70a-6b83d9d18b88/scratchpad/deploy-eng-p3-002c-revalidation`,
+created via `git worktree add … origin/main`, `git status --short` clean throughout, HEAD pinned
+at `8bbdaa9` for the entire task.
+
+**3. Merged correction verification:** PR #168 (`fix/eng-p3-002b-corr-supportedlanguages-001`,
+merged `096faed9`) and PR #169 (closure sync, merged `8bbdaa94`) both confirmed `MERGED` with
+`baseRefName: main` via `gh pr view`, both ancestors of `origin/main`. CI (`Build, Lint, Test,
+Emulator Validation`) confirmed `pass` on PR #169. Source-level re-confirmation (not trusted from
+the prior report alone): [`apps/web/src/business/api/createBusiness.ts:35`](../../../apps/web/src/business/api/createBusiness.ts)
+now types `supportedLanguages: string[]` on `CreateBusinessRequest`, and
+[`functions/src/domains/business/models/businessBootstrap.ts:99`](../../../functions/src/domains/business/models/businessBootstrap.ts)
+persists `request.supportedLanguages` — the frontend now always sends the field, closing the
+contract mismatch. No later runtime commit supersedes this correction (PR #169 is docs-only,
+byte-identical runtime tree confirmed via the CI diff).
+
+**4. DEV Functions verification:** `functions_list_functions` (MCP, `--project eleventh-on-us-dev`
+equivalent) returned exactly the same 14 onboarding-required functions as every prior
+verification (`acceptBusinessTerms`, `authenticate`, `createBusiness`, `createStaffInvitation`,
+`getBusinessContext`, `getOwnedBusinesses`, `listBusinessCategories`,
+`listBusinessTypesForCategory`, `listStaffInvitations`, `listStaffMemberships`,
+`revokeStaffInvitation`, `submitBusinessForVerification`, `updateBusinessBranchProfile`,
+`updateBusinessProfile`), all `v2`/`europe-west1`/`nodejs20`/256MB. Nothing redeployed.
+
+**5. Commerce Knowledge verification:** `firestore_list_collections` on the database root
+confirmed `knowledgeNodes`/`knowledgeTranslations` still present, alongside the newly-created
+`businesses`/`businessBranches`/`businessCodeReservations`/`businessMemberships` collections
+(created by this task's own Business-creation proof, not pre-existing). Not reseeded.
+
+**6. Existing QA identity verification:** `auth_get_users` confirmed
+`founder-qa-appcheck002@11thonus-dev-preview.test` (UID `xbI8n0WeKdSlfUc4NtxQohYOPzX2`) still
+exists, unchanged. **Not a new identity.** Per explicit Founder authorization in this session, its
+password was reset via the Identity Toolkit Admin API (`accounts:update`, same UID/email) so it
+could be signed in with — the new password was generated locally, used only in-session, and is
+**not recorded anywhere in this report, the repository, or any persistent file** (the temporary
+file it was briefly held in was deleted at the end of the task). The prior session's password was
+equally unrecoverable and is superseded.
+
+**7. Terms-config verification:** `firestore_get_document` on `platformConfig/businessTerms`
+returned "not found" both before and after this task — still absent, untouched.
+
+**8. App Check verification:** direct `GET` on the App Check Admin API's
+`recaptchaV3Config` resource for the DEV web app (via local user ADC + `x-goog-user-project`)
+returned `siteSecretSet: true`, unchanged from the prior recovery task. The public reCAPTCHA site
+key was sourced by extracting it from the JS bundle already live on the existing preview channel
+(`6Lef_pUtAAAAAHjqQlM45JU420ImjOXpz3j-Q6pb`) — it is a public, browser-embedded value by design,
+not a secret, and no new value was fabricated or guessed.
+
+**9. Preview build result:** `pnpm --filter web run build:founder-qa-preview` — clean. Verified in
+`dist/assets/*.js`: `supportedLanguages` string present; DEV project ID (`eleventh-on-us-dev`)
+embedded; `/business/new`, `/business/:businessId` route strings present; the App Check site key
+embedded; zero `TEST_ONLY` markers; zero PWA artifacts (`sw.js`/`registerSW.js`/`manifest.webmanifest`
+all absent); zero private-key/service-account/`siteSecret` string matches (secret scan clean).
+
+**10. Ordinary build result:** `pnpm --filter web run build` — clean, PWA service worker
+generated as expected (`sw.js`, `workbox-*.js`, `registerSW.js`, `manifest.webmanifest` all
+present). Confirmed the Founder-QA sign-in entry (`FounderQaPreviewSignInRoute`,
+`founder-qa-sign-in`, `VITE_ENABLE_DEV_AUTH_PREVIEW`) is **absent** from this build's output (0
+matches) — structurally excluded, as designed. Founder-qa-preview was then rebuilt fresh
+(deterministic, identical output hashes) before the Hosting deploy, since the ordinary build
+overwrote `dist/`.
+
+**11. Hosting deploy command:**
+```
+firebase hosting:channel:deploy eng-p3-002c-founder-qa --project eleventh-on-us-dev --expires 7d --non-interactive
+```
+
+**12. Preview URL:** `https://eleventh-on-us-dev--eng-p3-002c-founder-qa-8lho2gn4.web.app`
+(same hostname as every prior deploy — no new reCAPTCHA-domain question).
+
+**13. Preview expiry:** 2026-08-31 13:22:49.
+
+**14. Deployed SHA:** `8bbdaa942a499c68cf2edddd895e8aa5e198bbc0`.
+
+**15. Browser boot result:** PASSED. Fresh browser context, navigated to
+`/dev/founder-qa-sign-in`. App booted, sign-in UI rendered, zero console errors.
+
+**16. App Check result:** PASSED. reCAPTCHA loaded (`presentation "reCAPTCHA"` node present in
+the accessibility tree), zero App Check console/network errors at any point in the session.
+
+**17. Sign-in result:** PASSED. Signed in as `founder-qa-appcheck002@11thonus-dev-preview.test`
+via "Sign in with email" on the first attempt — redirected straight through to the New Business
+form (zero-owned-Business state), zero console errors.
+
+**18. `/business` resolver result:** PASSED — resolved to `/business/new` on first sign-in, and to
+`/business/xkLYdH17O2zy8ruDjtln` after creation, confirmed via `window.location.href` and via a
+completely fresh navigation later in the session (session persistence across reloads correct).
+
+**19. Hosted `createBusiness` request proof:** PASSED. Filled every New Business field
+("Founder QA Revalidation Business", category Salon, country `BI`, city Bujumbura, phone
+`+25779000000`, currency `BIF`, timezone `Africa/Bujumbura`) and submitted through the real
+product UI — no raw error, no governed-error banner, redirected to `/business/xkLYdH17O2zy8ruDjtln`
+and the wizard opened at the Terms step (past Classification).
+
+**20. `supportedLanguages` request result:** PASSED — confirmed by reading the persisted document
+directly (`firestore_get_document`), not by re-parsing client network traffic: `supportedLanguages`
+is a real empty array (`"supportedLanguages":{"arrayValue":{}}`), exactly `[]`, matching the
+frontend's default.
+
+**21. Business creation result:** PASSED. Document `businesses/xkLYdH17O2zy8ruDjtln` created,
+`createdAt`/`updatedAt` timestamped 2026-08-24T11:30:00.840Z.
+
+**22. Persisted `supportedLanguages` result:** `[]` — see item 20.
+
+**23. Business status result:** `draft`.
+
+**24. Owner result:** `ownerUserId: d1943784-9f27-4ed4-9716-02e39c7d29c5` — confirmed
+server-derived, not client-supplied: `users/d1943784-9f27-4ed4-9716-02e39c7d29c5` carries a
+`linked` `authenticationReferences` entry with `referenceId: xbI8n0WeKdSlfUc4NtxQohYOPzX2` — the
+exact Firebase Auth UID of the identity that was actually signed in.
+
+**25. Business Code result:** `BIZ7X2PYN` — assigned.
+
+**26. Default Branch result:** PASSED. `businessBranches/aN4RpKJoVk8DUlo2T4z1` created with
+`businessId: xkLYdH17O2zy8ruDjtln`, `displayName`/`countryCode`/`city` matching the submitted
+form, same-millisecond `createdAt` as the Business.
+
+**27. Context hydration result:** PASSED. Re-navigating to `/business/xkLYdH17O2zy8ruDjtln`
+resolved via `getBusinessContext` to the same wizard state (Terms step, same disabled-Submit
+Review data) with zero console errors — no re-creation, no duplicate offered.
+
+**28. Refresh/resume result:** PASSED — confirmed twice (once directly after creation, once after
+a completely fresh navigation later in the session): same step, same data, no reset to step 1, no
+lost progress after editing the Branch and adding a Staff invitation.
+
+**29. Category result:** PASSED. All 14 seeded categories (Bakery, Barber, Burger, Car Wash,
+Coffee Shop, Gym, Juice Bar, Laundry, Pizza, Restaurant, Retail, Salon, Spa, Vehicle Service)
+present in the selector; `Salon` (`cat_salon`) persisted and shown pre-selected on return to that
+step; `primaryCategoryId: cat_salon` confirmed in the persisted document.
+
+**30. Business Type result:** **Not independently re-exercised this round** — the reachable
+onboarding-wizard UI at this step only surfaces Business Category selection, not a separate
+Business Type control; no Business Type field was present to test on the Classification step in
+this build. Not a regression from any prior finding (none of the prior passing addenda reached a
+Business Type selector either). Recorded as not-yet-observed rather than asserted PASS/FAIL.
+
+**31. Branch update result:** PASSED. Edited "Location name" on the Main location step to
+`Founder QA Revalidation Business - Main Branch`, clicked Continue; `businessBranches/aN4RpKJoVk8DUlo2T4z1`
+re-fetched directly from Firestore shows `displayName` updated and `updatedAt` advanced to
+2026-08-24T11:31:53 — confirmed to survive a subsequent full page refresh.
+
+**32. Staff invitation result:** PASSED (after one self-corrected input error — see below). As the
+Owner, on the still-`draft` Business, submitted a Staff invitation
+(`founder-qa-staff-invite@11thonus-dev-preview.test`, role `staff`) — appeared in the list as
+"staff — pending"; Business `status` reconfirmed `draft` afterward (unchanged). **Process note, not
+a product defect:** the first attempt used role value `"Staff"` (capitalized, overwriting the
+form's correctly-defaulted lowercase `"staff"`) and was correctly rejected
+(`staff_invitation_command_failed`, field `role`) by the transport-level closed-enum validation in
+`functions/src/index.ts`'s `parseCreateStaffInvitationRequest` — this is the validation working as
+designed against a tester input error, not a runtime defect; the retry with the correct value
+succeeded immediately.
+
+**33. Terms unavailable result:** PASSED. No checkbox, no accept button, plain "The Business Terms
+are currently unavailable…" message; the Review step's "Submit for verification" button confirmed
+`disabled: true` via direct DOM inspection — no submit bypass exists.
+
+**34. EN result:** PASSED — confirmed on the reachable wizard (Business category, Main location,
+Terms, Team, Review tabs; all field labels and messages in English).
+
+**35. FR result:** PASSED — switched `i18next` language to `fr` via `localStorage`, reloaded: all
+UI chrome correctly localized ("Catégorie d'entreprise", "Emplacement principal", "Conditions",
+"Équipe", "Vérification", "Conditions de l'entreprise…", "Continuer") — matches the prior
+recovery task's finding that Commerce Knowledge category *labels* remain English (expected, no
+governed FR seed yet — not re-disclosed as new).
+
+**36. Mobile result:** PASSED. Resized to 375×812: `document.body.scrollWidth === window.innerWidth`
+(375px, zero horizontal overflow); the step-tab row wraps to two lines cleanly; all labels/controls
+remain legible and usably sized.
+
+**37. SPA CSP finding impact:** `ENG-HOSTING-CSP-COVERAGE-001` reconfirmed still present — a fresh
+`curl -I` against `/dev/founder-qa-sign-in` directly still returns no `Content-Security-Policy`
+header at all (only `/` and `/index.html` carry it, per the existing Hosting `headers` config).
+Does not materially affect this journey: the actual QA session in this task navigated through `/`
+first (which does carry the corrected CSP, including both App Check origins), then client-routed
+internally, so the governing document CSP was the enforced one throughout. Not fixed here, per
+this task's explicit non-scope.
+
+**38. Security/environment audit:** clean. No secret committed or exposed (only the public
+reCAPTCHA site key, browser-visible by design, and it was already public in the previously-live
+bundle); no App Check bypass/debug-token/enforcement change; no Rules change (`git diff
+firestore.rules` in the worktree: 0 lines); no Functions redeploy; no reseed; no second QA identity
+created (existing one reused, only its password reset via the standard Admin mechanism, at your
+explicit authorization); no production/staging command issued by any step of this task.
+
+**39. Production/staging non-impact proof:** every Firebase CLI/MCP command in this task
+explicitly targeted `eleventh-on-us-dev` (`--project eleventh-on-us-dev` or the MCP active-project
+set to the same); `firebase_get_environment` reconfirmed the CLI's bare default project is
+`eleventh-on-us` (not dev, not staging, not production) and was never relied upon implicitly. The
+`live` Hosting channel's last-release timestamp is confirmed unchanged by the redeploy (only the
+named preview channel's timestamp advanced).
+
+**40. Files modified:** this addendum (deployment report) and the Founder QA checklist update
+(see below) only. No runtime source code changed by this task.
+
+**41. Code diff summary:** none — this was a deployment/revalidation task; the `supportedLanguages`
+fix itself was already merged by the prior `ENG-P3-002B-CORR-SUPPORTEDLANGUAGES-001` task (see
+that task's own report/PR).
+
+**42. Commands executed:** `git fetch origin`, `git rev-parse origin/main`, `gh pr view 168/169`,
+`gh pr checks 169`, `git worktree add`, `pnpm install --frozen-lockfile`, `pnpm run typecheck`,
+`pnpm --filter web run test`, `pnpm --filter functions run test`, `pnpm run lint`,
+`pnpm --filter web run build:founder-qa-preview` (×2), `pnpm --filter web run build`,
+`firebase hosting:channel:list --project eleventh-on-us-dev`,
+`firebase hosting:channel:deploy eng-p3-002c-founder-qa --project eleventh-on-us-dev --expires 7d`,
+`curl` (CSP header checks, live bundle extraction), Identity Toolkit Admin API
+`accounts:update` (password reset, explicitly authorized), App Check Admin API `recaptchaV3Config`
+GET, Firestore MCP reads (`firestore_get_document`/`firestore_list_collections`/`runQuery`),
+browser navigation/console/network/DOM inspection against the deployed preview URL.
+
+**43. Dependencies/config changes:** none.
+
+**44. Firebase deployment changes:** one Hosting release to the existing
+`eng-p3-002c-founder-qa` preview channel on `eleventh-on-us-dev` (same hostname, new expiry, new
+SHA). No Functions, Rules, or `live`-channel changes.
+
+**45. DEV data changes:** one real Business (`businesses/xkLYdH17O2zy8ruDjtln`), one Branch
+(`businessBranches/aN4RpKJoVk8DUlo2T4z1`), one Staff invitation, and one Business Code reservation
+(`BIZ7X2PYN`) — all created through the real hosted UI/callables as the QA-journey proof this
+task exists to produce, not incidental. The QA identity's password was reset (see item 6). No
+other DEV state changed.
+
+**46. Tests/validation executed:** web unit 505/505; functions unit 1563/1563; typecheck clean
+(both packages); lint clean (0 errors, 1 pre-existing unrelated warning); both builds clean;
+hosted end-to-end Business-creation journey (this addendum, items 15–36).
+
+**47. Findings:**
+- (Informational, not a defect) Business Type selection was not reachable/observed on this pass —
+  item 30.
+- (Confirmed pre-existing, non-blocking, not fixed here) `ENG-HOSTING-CSP-COVERAGE-001` — item 37.
+- (Tester error, not a defect) capitalized `"Staff"` role value correctly rejected by existing
+  closed-enum validation — item 32.
+- No new runtime defect was discovered. The `supportedLanguages` correction is proven to work end
+  to end in the real hosted DEV environment.
+
+**48. Remaining blockers:** `DEC-LEGAL-002` (Terms content) still blocks reaching
+`pending_verification` through the real UI — unchanged, out of this task's scope. Business Type
+selector reachability unconfirmed (item 30) — worth a future, separately-scoped look, not a
+blocker to Founder QA continuing.
+
+**49. Founder QA checklist status:** updated (see below) with this revalidation's result. **Still
+not marked complete** — a full Founder-run pass through the checklist itself has not been executed
+by this task (this task proves the blocker is cleared and exercises most items directly, but the
+checklist's own "run it yourself" instruction stands).
+
+**50. `ENG-P3-002C` status:** **DEV preview operational and materially QA-ready.**
+
+**51. `ENG-P3-002` status:** **Open** — blocked only on `DEC-LEGAL-002` and the Founder's own
+completion of the QA checklist. Not closed by this task.
+
+**52. Capability 3 status:** **Open** — partially implemented, not closed.
+
+**53. Risks:** none newly introduced. The QA identity's password was changed (item 6) — anyone
+relying on the previous password will need it reset again; this is expected and low-impact for a
+disposable DEV QA fixture. The Hosting preview channel expires 2026-08-31 — re-deploy before then
+if QA continues past that date.
+
+**54. Rollback:** nothing to roll back structurally — the Hosting redeploy is a same-channel
+release (Firebase retains prior releases; console rollback available if ever needed); the QA
+identity's password reset is reversible by resetting it again; the created Business/Branch/
+invitation are real, correct, reusable QA fixtures — not cleaned up, since they are the intended
+proof artifact and harmless to leave in DEV.
+
+**55. Persistent deployment report path:** this document.
+
+**56. Exact next Founder action:** Continue (or delegate) a full run of the
+[Founder QA checklist](ENG-P3-002C-founder-qa-checklist-2026-08-22.md) against the same preview URL
+using the QA identity (request current credentials from the engineering session that reset them —
+never persisted in any document). `DEC-LEGAL-002` remains the only structural blocker to reaching
+`pending_verification` through the real UI.
+
+## Final gate (`ENG-P3-002C-PREVIEW-001-BUSINESS-CREATE-REVALIDATION-001`)
+
+**ENG-P3-002C HOSTED ONBOARDING REVALIDATED — BUSINESS CREATION WORKS; FOUNDER QA MAY CONTINUE**
+
+---
+
+## Addendum — 2026-08-24 (`ENG-P3-002-CORR-LANGSWITCH-001-REVALIDATION`): Hosted Language-Switch Revalidation — PASSED, EN/FR Founder QA Finding Resolved
+
+This addendum records the hosted revalidation of the merged `ENG-P3-002-CORR-LANGSWITCH-001`
+correction (PR #170, merge `2a2af4a2575e4dec0ab987e0cdd72507f3283543`; independent review/closure
+PR #171, merge `0cd7d059bb390ccb7c6750311b1c1ffa9adcadd8`) — the fix for the Founder QA FAIL finding
+that no language-switching control was reachable anywhere inside the Business onboarding journey.
+**Not authorized to change source; none was changed.**
+
+**1. Entry:** `origin/main` confirmed at `0cd7d059bb390ccb7c6750311b1c1ffa9adcadd8`, exactly as
+expected. PR #170/#171 ancestry and CI green reconfirmed via `gh pr view`/`gh run list`. Fresh,
+clean `git worktree` at that exact SHA. `.firebaserc`: `dev → eleventh-on-us-dev` confirmed. Active
+Firebase project explicitly `eleventh-on-us-dev` throughout — every command passed
+`--project eleventh-on-us-dev` explicitly.
+
+**2. Phase B re-confirmation (source, not the implementation report):** `LanguageSwitcher` present
+and functioning at all three claimed placements (`NewBusinessPage.tsx`, `OnboardingWizard.tsx`,
+`SubmittedStatusPage.tsx`); `LanguageSwitcher.tsx`/`i18n/config.ts` confirmed byte-identical to the
+pre-correction baseline (0-line diff); `BusinessResolverPage.tsx`/`BusinessWizardPage.tsx` edge
+states confirmed to still carry zero switcher references (unchanged, as designed); no
+backend/Firebase/config file touched by the correction.
+
+**3. DEV preflight (read-only, nothing redeployed):** all 14 onboarding functions unchanged;
+Commerce Knowledge seed unchanged; `platformConfig/businessTerms` still absent; existing QA
+identity (`founder-qa-appcheck002@11thonus-dev-preview.test`) still exists, still usable with its
+existing session-only credential — not reset; existing DEV Business
+(`xkLYdH17O2zy8ruDjtln`, "Founder QA Revalidation Business", status `draft`) still exists; App
+Check registration still active (`siteSecretSet: true`). Nothing redeployed, reseeded, or
+recreated.
+
+**4. Preview env / builds:** `.env.founder-qa-preview.local` recreated in the worktree only
+(gitignored, never staged), real DEV SDK config and the existing public App Check Site Key reused.
+`founder-qa-preview` build: `/business/new` and `/business/:businessId` route strings, the
+`Français` switcher string, and both EN ("Tell us about your business") and FR ("Parlez-nous de
+votre entreprise") resource strings all confirmed present in the built bundle; zero `TEST_ONLY`,
+zero secrets, zero PWA artifacts. Ordinary `pnpm build` reconfirmed the Founder-QA sign-in entry
+remains structurally excluded (0 matches) and correctly includes PWA artifacts.
+
+**5. Hosting redeploy:** `firebase hosting:channel:deploy eng-p3-002c-founder-qa --project eleventh-on-us-dev --expires 7d`.
+**Same channel, same hostname** (`https://eleventh-on-us-dev--eng-p3-002c-founder-qa-8lho2gn4.web.app`)
+— no new hostname, so no reCAPTCHA-domain question. New expiry 2026-08-31 17:58:06. Deployed SHA
+`0cd7d059bb390ccb7c6750311b1c1ffa9adcadd8`. `live` channel confirmed unaffected.
+
+**6. Browser boot / App Check / sign-in — PASSED.** Genuinely fresh browser context, navigated
+directly to `/dev/founder-qa-sign-in`. App booted, sign-in UI rendered. One recurring, unexplained
+console message (`Failed to load resource: the server responded with a status of 400/403 ()`) was
+observed on every page load throughout this session, with no corresponding request ever captured
+by the browser tool's network log (the tool does not appear to capture cross-origin
+reCAPTCHA/App-Check/Identity-Toolkit XHR/fetch traffic at all — confirmed by the total absence of
+any `identitytoolkit`/`cloudfunctions` entries in the network log even for calls that demonstrably
+succeeded). **Disclosed transparently rather than suppressed:** functional behavior was unaffected
+at every step this session — sign-in succeeded on the first attempt, the existing Business resolved
+correctly, Branch data loaded correctly, and no user-facing error of any kind appeared — so this is
+recorded as an unexplained, non-blocking console artifact, not a regression. Signed in as the
+existing QA identity via "Sign in with email" — succeeded, redirected to
+`/business/xkLYdH17O2zy8ruDjtln`.
+
+**7. Existing Business/context result:** the existing DEV Business resolved correctly — no
+duplicate offered, no re-creation, wizard opened directly at the "Terms" step (matching its actual
+completeness state), Review step showing the exact same data as before this task
+("Founder QA Revalidation Business", `cat_salon`, "SQ- Main Branch, Bujumbura" — the Founder's own
+prior manual edit — 2 pending team invitations) — conclusive proof the Business/context is the
+same persisted record, not reset.
+
+**8. PRIORITY — language access proof, hosted, visual (not inferred from unit tests):**
+   - **Route/step recorded before switching:** `/business/xkLYdH17O2zy8ruDjtln`, step "Terms"
+     (`aria-current="step"` on the Terms button).
+   - **EN → FR:** clicking "Français" changed all step-nav labels ("Catégorie d'entreprise",
+     "Emplacement principal", **Conditions**, "Équipe", "Vérification") and the Terms-unavailable
+     body text to French, confirmed via live page text extraction.
+   - **Route preserved:** URL unchanged (`/business/xkLYdH17O2zy8ruDjtln`).
+   - **Step preserved:** `aria-current="step"` moved to the same step, now labelled "Conditions"
+     (the French label for Terms) — the step itself did not change, only its rendered label.
+   - **Business/context preserved:** navigated to the Review tab in French — showed the identical
+     Business name, category, Branch, and team-invitation count as before the switch.
+   - **Refresh/persistence:** hard-navigated (fresh page load) to the same URL — locale remained
+     French (per the existing `LanguageDetector` localStorage architecture), session remained
+     signed in, wizard resumed at the same "Terms" step — confirming both locale persistence and
+     session/context persistence survive a full reload.
+   - **FR → EN:** clicked "English" — all copy reverted exactly, route and step (`aria-current`)
+     unchanged throughout.
+   - **`/business/new` placement, separately verified:** navigated directly (no new Business
+     created) — switcher visible, typed "Hosted Revalidation Probe" into the Business name field,
+     switched to French — title changed to "Parlez-nous de votre entreprise", the entered value
+     survived unchanged under its new French label ("Nom de l'entreprise"). Form never submitted;
+     no DEV data created by this check.
+   - **`SubmittedStatusPage` placement:** **not independently re-exercised hosted** — the existing
+     Business remains `draft` (not `pending_verification`), and per this task's own instruction not
+     to fabricate data solely to reach a state, this state was not forced. Source-level
+     confirmation from Phase B (§2 above) stands in its place — the switcher's presence there was
+     verified by direct inspection of the merged, unmodified code, consistent with the same pattern
+     already proven working in the other two placements.
+
+**9. French visible-content observations (Phase H, bounded, no fix):** every UI-chrome string
+observed (page titles, field labels, step-nav labels, Terms-unavailable message, Review-step
+labels, Continue/Submit button text) translates correctly to French. **Confirmed, unchanged,
+already-disclosed limitation:** the 14 seeded Commerce Knowledge category labels (Bakery, Barber,
+Burger, Car Wash, Coffee Shop, Gym, Juice Bar, Laundry, Pizza, Restaurant, Retail, Salon, Spa,
+Vehicle Service) remain in English under the French UI — expected, since the seed loader only
+publishes EN translations currently; not a defect, not new, not fixed here. No hardcoded
+English-only UI-chrome string was found that should have been localized but wasn't.
+
+**10. Terms EN/FR boundary — PASSED, both languages.** English: "The Business Terms are currently
+unavailable. Please check back soon before submitting your business." French: "Les Conditions de
+l'entreprise sont actuellement indisponibles. Veuillez revenir bientôt avant de soumettre votre
+entreprise." No checkbox, no accept button, in either language. The Review step's
+"Submit for verification"/"Soumettre pour vérification" button reconfirmed structurally disabled
+(`disabled: true`, matching the prior revalidation task's own DOM-level check) in both languages —
+no submission bypass in either language. `platformConfig/businessTerms` reconfirmed absent both
+before and after this task. `DEC-LEGAL-002` unaffected, still `OPEN_LEGAL`.
+
+**11. Mobile language access — PASSED.** Resized to 375×812 on `/business/new`: the "English /
+Français" switcher renders at the top, fully legible, no overflow, no collapse. Switching language
+at this width functions identically to desktop (confirmed by direct interaction). **The known,
+separate mobile-navigation Founder FAIL finding is explicitly unchanged and not addressed by this
+task** — the step-navigation tab row still presents as a desktop-style tab bar at this width; no
+navigation redesign was attempted, per this task's explicit scope boundary.
+
+**12. Loading/error edge-state observation (unchanged, non-blocking, already disclosed in the
+correction's own report):** `OnboardingWizard`'s integrity-error branch and `BusinessWizardPage`'s
+loading/error/`lifecycle.notAvailable` states still carry no language switcher — not reached in
+this session's real journey (the existing Business never entered those states), consistent with
+the correction's own disclosed, intentionally out-of-scope boundary.
+
+**13. Design-handoff observation capture (Phase L, observation only — no Stitch work performed):**
+routes encountered this session: `/dev/founder-qa-sign-in` (sign-in preview shell, EN/FR toggle,
+Google + email/password, reCAPTCHA-protected), `/business/new` (single-column form: Business name,
+category select from a live 14-item Commerce Knowledge list, country/city/phone/currency/timezone
+free-text fields, disabled-until-complete Continue button), `/business/:businessId` (five-tab
+step nav — Business category / Main location / Terms / Team / Review — rendered as a wrapping pill
+row; each tab is independently navigable at any time, not gated sequentially). States observed:
+"Loading your business…" (transient resolver spinner state), Terms step (plain unavailable message,
+no interactive Terms content), Team step (email/phone delivery-type selector, role free-text field
+defaulting to `staff`, a flat pending-invitation list showing only role+status — no invitee
+identity, matching the separately-tracked invitation-identity finding), Review step (read-only
+summary of name/category/location, per-step "please finish this step" warnings for incomplete
+steps, disabled Submit). Mobile behaviour: the step-nav row wraps to two lines at 375px; form
+fields stack single-column with no overflow at every screen visited. Language behaviour: switcher
+renders identically (top-of-page, two autonym-labelled buttons, `aria-pressed` on the active one)
+at all three placements and at both viewport widths tested.
+
+**14. Security/environment audit:** clean — no secret committed or exposed; no App Check
+bypass/enforcement change; no Rules change; no Functions redeploy; no reseed; no new/reset QA
+identity (existing credential reused as-is, since it remained valid); no production/staging
+command issued.
+
+**15. Files:** this addendum, the Founder QA checklist update, `IMPLEMENTATION_CHANGES.md`. No
+source code changed.
+
+**16. Status:** `ENG-P3-002C` = hosted engineering/integration validated; **the EN/FR visible-usability
+Founder QA finding is now RESOLVED**, re-proven in the real hosted environment — Founder QA remains
+otherwise pending (mobile navigation still FAIL, unaddressed by design; invitation-identity finding
+still open, non-blocking). `ENG-P3-002` = unchanged, Open, blocked on Founder QA completion and
+`DEC-LEGAL-002`. Capability 3 = unchanged, Open, not closed.
+
+**17. Rollback:** nothing to roll back structurally — the Hosting redeploy is a same-channel
+release (Firebase retains prior releases); no DEV data was created or altered by this task.
+
+## Final gate (`ENG-P3-002-CORR-LANGSWITCH-001-REVALIDATION`)
+
+**ENG-P3-002 LANGUAGE ACCESSIBILITY REVALIDATED — EN/FR FOUNDER QA FINDING RESOLVED; UI DESIGN
+HANDOFF MAY BEGIN**
