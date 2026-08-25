@@ -7,12 +7,13 @@ import { NewBusinessPage } from "./NewBusinessPage";
 
 const mockMutate = vi.fn();
 vi.mock("../hooks/businessMutations", () => ({
-  useCreateBusinessMutation: () => ({ mutate: mockMutate, isPending: false }),
+  useCreateBusinessMutation: () => ({ mutate: mockMutate, isPending: false, error: undefined }),
 }));
 vi.mock("../hooks/businessQueries", () => ({
   useBusinessCategoriesQuery: () => ({
     data: [{ id: "cat-1", displayLabel: "Salon", nodeType: "business_category" }],
   }),
+  useBusinessTypesQuery: () => ({ data: [], status: "pending" }),
 }));
 
 function renderPage() {
@@ -26,58 +27,87 @@ function renderPage() {
   );
 }
 
+async function completeEst01(user: ReturnType<typeof userEvent.setup>) {
+  await user.type(screen.getByLabelText("Business name"), "Acme Salon");
+  await user.selectOptions(screen.getByLabelText("Business category"), "cat-1");
+  await user.type(screen.getByLabelText("Phone number"), "+25761234567");
+  await user.click(screen.getByRole("button", { name: "Continue" }));
+}
+
+async function completeEst02(user: ReturnType<typeof userEvent.setup>) {
+  await user.type(screen.getByLabelText("Country"), "BI");
+  await user.type(screen.getByLabelText("City"), "Bujumbura");
+  await user.type(screen.getByLabelText("Location name"), "Main Branch");
+  await user.type(screen.getByLabelText("Currency"), "BIF");
+  await user.type(screen.getByLabelText("Timezone"), "Africa/Bujumbura");
+}
+
 describe("NewBusinessPage", () => {
-  it("keeps Continue disabled until every required field is filled", () => {
+  afterEach(() => {
+    mockMutate.mockClear();
+  });
+
+  it("opens on EST-01 (identity/category/phone) with Continue disabled until valid", () => {
     renderPage();
+    expect(screen.getByText("Tell us about your business")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
   });
 
-  it("submits the required fields via createBusiness once the form is complete", async () => {
+  it("advances to EST-02 (location/operating details) after EST-01 is completed, without creating a Business yet", async () => {
     const user = userEvent.setup();
     renderPage();
+    await completeEst01(user);
 
-    await user.type(screen.getByLabelText("Business name"), "Acme Salon");
-    await user.selectOptions(screen.getByLabelText("Business category"), "cat-1");
-    await user.type(screen.getByLabelText("Country"), "BI");
-    await user.type(screen.getByLabelText("City"), "Bujumbura");
-    await user.type(screen.getByLabelText("Phone number"), "+25761234567");
-    await user.type(screen.getByLabelText("Currency"), "BIF");
-    await user.type(screen.getByLabelText("Timezone"), "Africa/Bujumbura");
+    expect(screen.getByText("Your main location")).toBeInTheDocument();
+    expect(mockMutate).not.toHaveBeenCalled();
+  });
 
-    expect(screen.getByRole("button", { name: "Continue" })).toBeEnabled();
+  it("fires createBusiness with the combined EST-01+EST-02 payload exactly once, at EST-02's Continue — the governed creation boundary", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await completeEst01(user);
+    await completeEst02(user);
     await user.click(screen.getByRole("button", { name: "Continue" }));
 
+    expect(mockMutate).toHaveBeenCalledTimes(1);
     expect(mockMutate).toHaveBeenCalledWith(
       expect.objectContaining({
         displayName: "Acme Salon",
         primaryCategoryId: "cat-1",
+        contactPhone: "+25761234567",
         countryCode: "BI",
         city: "Bujumbura",
-        contactPhone: "+25761234567",
         currencyCode: "BIF",
         timezone: "Africa/Bujumbura",
+        supportedLanguages: [],
       }),
       expect.anything(),
     );
   });
 
-  it("sends the governed default empty supportedLanguages array createBusiness requires (ENG-P3-002B-CORR-SUPPORTEDLANGUAGES-001 — the backend's parseSupportedLanguages rejects a missing/non-array value; TRD10 §10.6.3 types the field required but ENG-P2-002A's independent review established [] as the legitimate governed value for this kind of required reference-list field, matching customerProfile.ts's own 'default empty' precedent)", async () => {
+  it("navigates to /business/:businessId only after createBusiness actually succeeds", async () => {
+    mockMutate.mockImplementation((_payload, { onSuccess }) => {
+      onSuccess({ businessId: "biz-123", businessCode: "BIZ1", branchId: "br-1", status: "draft" });
+    });
     const user = userEvent.setup();
     renderPage();
-
-    await user.type(screen.getByLabelText("Business name"), "Acme Salon");
-    await user.selectOptions(screen.getByLabelText("Business category"), "cat-1");
-    await user.type(screen.getByLabelText("Country"), "BI");
-    await user.type(screen.getByLabelText("City"), "Bujumbura");
-    await user.type(screen.getByLabelText("Phone number"), "+25761234567");
-    await user.type(screen.getByLabelText("Currency"), "BIF");
-    await user.type(screen.getByLabelText("Timezone"), "Africa/Bujumbura");
+    await completeEst01(user);
+    await completeEst02(user);
     await user.click(screen.getByRole("button", { name: "Continue" }));
 
-    expect(mockMutate).toHaveBeenCalledWith(
-      expect.objectContaining({ supportedLanguages: [] }),
-      expect.anything(),
-    );
+    expect(await screen.findByText("business context screen")).toBeInTheDocument();
+  });
+
+  it("Back from EST-02 returns to EST-01 with the entered values preserved (bounded, in-memory state — not persisted)", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await completeEst01(user);
+    await user.type(screen.getByLabelText("Country"), "BI");
+    await user.click(screen.getByRole("button", { name: "Back" }));
+
+    expect(screen.getByText("Tell us about your business")).toBeInTheDocument();
+    expect(screen.getByLabelText("Business name")).toHaveValue("Acme Salon");
+    expect(screen.getByLabelText("Phone number")).toHaveValue("+25761234567");
   });
 
   describe("language accessibility (ENG-P3-002-CORR-LANGSWITCH-001)", () => {
@@ -85,7 +115,7 @@ describe("NewBusinessPage", () => {
       await i18n.changeLanguage("en");
     });
 
-    it("exposes a reachable control that switches onboarding copy to French and back, without losing entered data", async () => {
+    it("exposes a reachable control that switches EST-01 copy to French and back, without losing entered data", async () => {
       const user = userEvent.setup();
       renderPage();
 

@@ -64,6 +64,8 @@ export const en = {
       skip: "Skip for now",
       submit: "Submit for verification",
       retry: "Try again",
+      edit: "Edit",
+      finishSetup: "Finish setup",
     },
     details: {
       title: "Tell us about your business",
@@ -114,6 +116,8 @@ export const en = {
     },
     review: {
       title: "Review your business",
+      businessSectionTitle: "Business",
+      locationSectionTitle: "Main location",
       businessNameLabel: "Business name",
       categoryLabel: "Category",
       typeLabel: "Type",
@@ -125,6 +129,9 @@ export const en = {
     submitted: {
       title: "Submitted — pending verification",
       body: "Your business has been submitted and is now pending verification. We'll let you know once it's reviewed.",
+    },
+    dashboardPlaceholder: {
+      title: "Your business is set up",
     },
     integrityError: {
       title: "Something went wrong",

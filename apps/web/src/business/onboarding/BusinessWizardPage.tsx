@@ -1,14 +1,18 @@
 /**
  * `/business/:businessId` — lifecycle-routed shell (design §18, Founder
- * correction #5): `draft` opens the onboarding wizard; `pending_verification`
- * shows the submitted/pending state; every other status renders a bounded
- * generic safe state — never re-opens the wizard, never a dashboard.
+ * correction #5, updated `ENG-P3-002-UI-IMP-A`): `draft` opens EST-03 (the
+ * Establishment Review & Finish Setup page — every persisted `draft` Business is always
+ * establishment-complete by construction, since `createBusiness` enforces every establishment
+ * field atomically; there is no partial-establishment persisted state to resume into);
+ * `pending_verification` shows the submitted/pending state; every other status renders a bounded
+ * generic safe state — never re-opens establishment, never the Dashboard shell (Package B, not
+ * built here).
  */
 
 import { useParams } from "react-router-dom";
 import { useTranslation } from "../../i18n";
 import { useBusinessContextQuery } from "../hooks/businessQueries";
-import { OnboardingWizard } from "./OnboardingWizard";
+import { EstablishmentReviewPage } from "./establishment/EstablishmentReviewPage";
 import { SubmittedStatusPage } from "./SubmittedStatusPage";
 
 export function BusinessWizardPage() {
@@ -37,7 +41,7 @@ export function BusinessWizardPage() {
 
   switch (context.status) {
     case "draft":
-      return <OnboardingWizard context={context} />;
+      return <EstablishmentReviewPage context={context} />;
     case "pending_verification":
       return <SubmittedStatusPage context={context} />;
     default:

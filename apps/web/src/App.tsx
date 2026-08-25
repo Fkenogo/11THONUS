@@ -9,6 +9,7 @@ import { BusinessApiProvider } from "./business/BusinessApiContext";
 import { BusinessResolverPage } from "./business/onboarding/BusinessResolverPage";
 import { NewBusinessPage } from "./business/onboarding/NewBusinessPage";
 import { BusinessWizardPage } from "./business/onboarding/BusinessWizardPage";
+import { BusinessDashboardBoundaryPage } from "./business/dashboard/BusinessDashboardBoundaryPage";
 
 // Guarded directly on the literal `import.meta.env.DEV` (not via an
 // intermediate function call) so Vite's production build statically
@@ -121,6 +122,14 @@ function App({ auth, functions }: AppProps) {
           element={
             <RequireAuthenticatedUser auth={auth} renderUnauthenticated={() => <SignInRequired />}>
               <BusinessWizardPage />
+            </RequireAuthenticatedUser>
+          }
+        />
+        <Route
+          path="/business/:businessId/dashboard"
+          element={
+            <RequireAuthenticatedUser auth={auth} renderUnauthenticated={() => <SignInRequired />}>
+              <BusinessDashboardBoundaryPage />
             </RequireAuthenticatedUser>
           }
         />

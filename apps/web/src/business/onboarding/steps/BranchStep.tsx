@@ -1,4 +1,8 @@
-/** Main-location (default Branch) profile editing (design §L). A missing branch is handled upstream by `OnboardingWizard`'s integrity check, not here. */
+/**
+ * Main-location (default Branch) profile editing (design §L). Reused as-is by
+ * `EstablishmentReviewPage`'s (EST-03) "Edit" action (`ENG-P3-002-UI-IMP-A`) — same
+ * `updateBusinessBranchProfile` mutation, no duplicated backend semantics.
+ */
 
 import { useState } from "react";
 import { useTranslation } from "../../../i18n";

@@ -64,6 +64,8 @@ export const fr = {
       skip: "Ignorer pour l'instant",
       submit: "Soumettre pour vérification",
       retry: "Réessayer",
+      edit: "Modifier",
+      finishSetup: "Terminer la configuration",
     },
     details: {
       title: "Parlez-nous de votre entreprise",
@@ -116,6 +118,8 @@ export const fr = {
     },
     review: {
       title: "Vérifiez votre entreprise",
+      businessSectionTitle: "Entreprise",
+      locationSectionTitle: "Emplacement principal",
       businessNameLabel: "Nom de l'entreprise",
       categoryLabel: "Catégorie",
       typeLabel: "Type",
@@ -127,6 +131,9 @@ export const fr = {
     submitted: {
       title: "Soumis — en attente de vérification",
       body: "Votre entreprise a été soumise et est en attente de vérification. Nous vous informerons une fois l'examen terminé.",
+    },
+    dashboardPlaceholder: {
+      title: "Votre entreprise est configurée",
     },
     integrityError: {
       title: "Un problème est survenu",
