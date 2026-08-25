@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>Review your business</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@600;700&amp;family=Inter:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-primary": "#ffffff",
+                      "primary-fixed": "#e5e2e1",
+                      "surface-tint": "#5f5e5e",
+                      "on-secondary": "#ffffff",
+                      "secondary": "#ab2e00",
+                      "on-background": "#1a1c1d",
+                      "surface-container-highest": "#e2e2e3",
+                      "error": "#ba1a1a",
+                      "on-error": "#ffffff",
+                      "on-surface": "#1a1c1d",
+                      "on-tertiary-fixed-variant": "#5e4200",
+                      "surface-dim": "#dadadb",
+                      "tertiary-container": "#271900",
+                      "tertiary": "#000000",
+                      "secondary-fixed-dim": "#ffb59f",
+                      "on-secondary-container": "#fffbff",
+                      "on-error-container": "#93000a",
+                      "on-tertiary-container": "#ab7b00",
+                      "tertiary-fixed-dim": "#fcbc2f",
+                      "outline-variant": "#c4c7c7",
+                      "on-tertiary": "#ffffff",
+                      "surface-container": "#eeeeef",
+                      "error-container": "#ffdad6",
+                      "outline": "#747878",
+                      "primary-container": "#1c1b1b",
+                      "on-primary-fixed-variant": "#474646",
+                      "surface-container-lowest": "#ffffff",
+                      "secondary-fixed": "#ffdbd1",
+                      "surface-container-high": "#e8e8e9",
+                      "inverse-on-surface": "#f0f1f2",
+                      "on-secondary-fixed": "#3b0a00",
+                      "tertiary-fixed": "#ffdea6",
+                      "inverse-primary": "#c8c6c5",
+                      "on-surface-variant": "#444748",
+                      "primary": "#000000",
+                      "surface-variant": "#e2e2e3",
+                      "secondary-container": "#d63c00",
+                      "inverse-surface": "#2f3132",
+                      "on-tertiary-fixed": "#271900",
+                      "primary-fixed-dim": "#c8c6c5",
+                      "on-secondary-fixed-variant": "#862200",
+                      "surface-container-low": "#f3f3f4",
+                      "on-primary-fixed": "#1c1b1b",
+                      "on-primary-container": "#858383",
+                      "background": "#f9f9fa",
+                      "surface": "#f9f9fa",
+                      "surface-bright": "#f9f9fa",
+                      "brand-orange": "#FF4F11"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "stack-sm": "8px",
+                      "container-padding-desktop": "40px",
+                      "space-unit": "8px",
+                      "gutter": "16px",
+                      "stack-lg": "48px",
+                      "container-padding-mobile": "20px",
+                      "stack-md": "24px"
+              },
+              "fontFamily": {
+                      "body-lg": ["Inter"],
+                      "body-sm": ["Inter"],
+                      "headline-lg-mobile": ["Hanken Grotesk"],
+                      "headline-sm": ["Hanken Grotesk"],
+                      "headline-md": ["Hanken Grotesk"],
+                      "body-md": ["Inter"],
+                      "label-md": ["Inter"],
+                      "headline-lg": ["Hanken Grotesk"],
+                      "headline-xl": ["Hanken Grotesk"]
+              },
+              "fontSize": {
+                      "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                      "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                      "headline-lg-mobile": ["28px", {"lineHeight": "34px", "fontWeight": "700"}],
+                      "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                      "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                      "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                      "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                      "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+              }
+            }
+          }
+        }
+    </script>
+<style>
+        body {
+            -webkit-tap-highlight-color: transparent;
+        }
+        .progress-bar-fill {
+            transition: width 0.4s ease-out;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex flex-col font-body-md antialiased md:hidden">
+<!-- TopAppBar (From JSON) -->
+<header class="w-full sticky top-0 bg-surface border-b border-outline-variant flex justify-between items-center px-container-padding-mobile h-16 w-full z-10">
+<div class="flex items-center gap-2 cursor-pointer active:scale-95 transition-opacity hover:opacity-80">
+<span class="material-symbols-outlined text-primary text-2xl" style="font-variation-settings: 'FILL' 0;">language</span>
+</div>
+<div class="font-headline-md text-headline-md font-bold text-primary">
+            11thONUS
+        </div>
+<div class="font-label-md text-label-md text-primary cursor-pointer active:scale-95 transition-opacity hover:opacity-80">
+            EN|FR
+        </div>
+</header>
+<main class="flex-1 px-container-padding-mobile pt-6 pb-24 flex flex-col">
+<!-- Progress Indicator -->
+<div class="mb-8">
+<div class="flex justify-between items-end mb-2">
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Step 3 of 3</span>
+<span class="font-label-md text-label-md text-primary">Review</span>
+</div>
+<div class="h-1.5 w-full bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-brand-orange w-full progress-bar-fill rounded-full"></div>
+</div>
+</div>
+<div class="mb-stack-lg">
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-primary mb-2">Review your business</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">Please confirm your details before we finalize your setup.</p>
+</div>
+<!-- Section 1: Business -->
+<div class="mb-stack-lg bg-surface-container-lowest rounded-lg border border-outline-variant p-6 shadow-[0px_4px_20px_rgba(0,0,0,0.04)]">
+<div class="flex justify-between items-center mb-4 border-b border-surface-container-highest pb-3">
+<h2 class="font-headline-sm text-headline-sm text-primary">Business</h2>
+<button class="font-label-md text-label-md text-secondary hover:opacity-80 transition-opacity uppercase tracking-wider">Edit</button>
+</div>
+<dl class="space-y-4">
+<div>
+<dt class="font-label-md text-label-md text-on-surface-variant mb-1">Business name</dt>
+<dd class="font-body-md text-body-md text-primary">Safi Glow Salon</dd>
+</div>
+<div>
+<dt class="font-label-md text-label-md text-on-surface-variant mb-1">Business category</dt>
+<dd class="font-body-md text-body-md text-primary">Salon</dd>
+</div>
+<div>
+<dt class="font-label-md text-label-md text-on-surface-variant mb-1">Business type</dt>
+<dd class="font-body-md text-body-md text-primary">Family Salon</dd>
+</div>
+<div>
+<dt class="font-label-md text-label-md text-on-surface-variant mb-1">Contact phone</dt>
+<dd class="font-body-md text-body-md text-primary">+257 79 123 456</dd>
+</div>
+</dl>
+</div>
+<!-- Section 2: Main location -->
+<div class="mb-stack-lg bg-surface-container-lowest rounded-lg border border-outline-variant p-6 shadow-[0px_4px_20px_rgba(0,0,0,0.04)]">
+<div class="flex justify-between items-center mb-4 border-b border-surface-container-highest pb-3">
+<h2 class="font-headline-sm text-headline-sm text-primary">Main location</h2>
+<button class="font-label-md text-label-md text-secondary hover:opacity-80 transition-opacity uppercase tracking-wider">Edit</button>
+</div>
+<dl class="space-y-4">
+<div>
+<dt class="font-label-md text-label-md text-on-surface-variant mb-1">Location name</dt>
+<dd class="font-body-md text-body-md text-primary">Safi Glow — Main Branch</dd>
+</div>
+<div>
+<dt class="font-label-md text-label-md text-on-surface-variant mb-1">Address</dt>
+<dd class="font-body-md text-body-md text-primary">
+                        Rohero, Avenue de France<br/>
+                        Bujumbura<br/>
+                        Burundi
+                    </dd>
+</div>
+</dl>
+</div>
+<!-- Section 3: Operating details -->
+<div class="mb-stack-lg bg-surface-container-lowest rounded-lg border border-outline-variant p-6 shadow-[0px_4px_20px_rgba(0,0,0,0.04)]">
+<div class="flex justify-between items-center mb-4 border-b border-surface-container-highest pb-3">
+<h2 class="font-headline-sm text-headline-sm text-primary">Operating details</h2>
+<button class="font-label-md text-label-md text-secondary hover:opacity-80 transition-opacity uppercase tracking-wider">Edit</button>
+</div>
+<dl class="space-y-4">
+<div>
+<dt class="font-label-md text-label-md text-on-surface-variant mb-1">Currency</dt>
+<dd class="font-body-md text-body-md text-primary">BIF — Burundian Franc</dd>
+</div>
+<div>
+<dt class="font-label-md text-label-md text-on-surface-variant mb-1">Timezone</dt>
+<dd class="font-body-md text-body-md text-primary">Bujumbura (GMT+2)</dd>
+</div>
+</dl>
+</div>
+</main>
+<!-- Bottom Action Bar -->
+<div class="fixed bottom-0 left-0 w-full bg-surface border-t border-surface-container-highest px-container-padding-mobile py-4 z-20">
+<div class="flex gap-4">
+<button class="flex-1 py-3 px-6 rounded-lg font-label-md text-label-md text-primary bg-surface-container-highest hover:bg-surface-container-high transition-colors active:scale-95 uppercase tracking-wider" type="button">
+                Back
+            </button>
+<button class="flex-[2] py-3 px-6 rounded-lg font-label-md text-label-md text-on-primary bg-brand-orange hover:opacity-90 transition-opacity active:scale-95 uppercase tracking-wider flex items-center justify-center gap-2 shadow-sm" type="button">
+                Finish setup
+                <span class="material-symbols-outlined text-lg">check</span>
+</button>
+</div>
+</div>
+</body></html>

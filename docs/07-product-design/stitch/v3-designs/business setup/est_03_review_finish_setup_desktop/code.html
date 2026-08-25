@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Review Your Business - 11thONUS</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:ital,wght@0,100..900;1,100..900&amp;family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-primary": "#ffffff",
+                      "primary-fixed": "#e5e2e1",
+                      "surface-tint": "#5f5e5e",
+                      "on-secondary": "#ffffff",
+                      "secondary": "#ab2e00",
+                      "on-background": "#1a1c1d",
+                      "surface-container-highest": "#e2e2e3",
+                      "error": "#ba1a1a",
+                      "on-error": "#ffffff",
+                      "on-surface": "#1a1c1d",
+                      "on-tertiary-fixed-variant": "#5e4200",
+                      "surface-dim": "#dadadb",
+                      "tertiary-container": "#271900",
+                      "tertiary": "#000000",
+                      "secondary-fixed-dim": "#ffb59f",
+                      "on-secondary-container": "#fffbff",
+                      "on-error-container": "#93000a",
+                      "on-tertiary-container": "#ab7b00",
+                      "tertiary-fixed-dim": "#fcbc2f",
+                      "outline-variant": "#c4c7c7",
+                      "on-tertiary": "#ffffff",
+                      "surface-container": "#eeeeef",
+                      "error-container": "#ffdad6",
+                      "outline": "#747878",
+                      "primary-container": "#1c1b1b",
+                      "on-primary-fixed-variant": "#474646",
+                      "surface-container-lowest": "#ffffff",
+                      "secondary-fixed": "#ffdbd1",
+                      "surface-container-high": "#e8e8e9",
+                      "inverse-on-surface": "#f0f1f2",
+                      "on-secondary-fixed": "#3b0a00",
+                      "tertiary-fixed": "#ffdea6",
+                      "inverse-primary": "#c8c6c5",
+                      "on-surface-variant": "#444748",
+                      "primary": "#000000",
+                      "surface-variant": "#e2e2e3",
+                      "secondary-container": "#d63c00",
+                      "inverse-surface": "#2f3132",
+                      "on-tertiary-fixed": "#271900",
+                      "primary-fixed-dim": "#c8c6c5",
+                      "on-secondary-fixed-variant": "#862200",
+                      "surface-container-low": "#f3f3f4",
+                      "on-primary-fixed": "#1c1b1b",
+                      "on-primary-container": "#858383",
+                      "background": "#f9f9fa",
+                      "surface": "#f9f9fa",
+                      "surface-bright": "#f9f9fa"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "stack-sm": "8px",
+                      "container-padding-desktop": "40px",
+                      "space-unit": "8px",
+                      "gutter": "16px",
+                      "stack-lg": "48px",
+                      "container-padding-mobile": "20px",
+                      "stack-md": "24px"
+              },
+              "fontFamily": {
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "body-sm": [
+                              "Inter"
+                      ],
+                      "headline-lg-mobile": [
+                              "Hanken Grotesk"
+                      ],
+                      "headline-sm": [
+                              "Hanken Grotesk"
+                      ],
+                      "headline-md": [
+                              "Hanken Grotesk"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "label-md": [
+                              "Inter"
+                      ],
+                      "headline-lg": [
+                              "Hanken Grotesk"
+                      ],
+                      "headline-xl": [
+                              "Hanken Grotesk"
+                      ]
+              },
+              "fontSize": {
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-sm": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "28px",
+                              {
+                                      "lineHeight": "34px",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-sm": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-md": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-xl": [
+                              "48px",
+                              {
+                                      "lineHeight": "56px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .icon-fill {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex flex-col antialiased">
+<!-- TopAppBar -->
+<header class="w-full sticky top-0 border-b border-outline-variant bg-surface flex justify-between items-center px-container-padding-mobile md:px-container-padding-desktop h-16 z-50">
+<div class="flex items-center gap-2 text-primary cursor-pointer active:scale-95 hover:opacity-80 transition-opacity">
+<span class="material-symbols-outlined">language</span>
+</div>
+<div class="font-headline-md text-headline-md font-bold text-primary flex-1 text-center">
+            11thONUS
+        </div>
+<div class="flex items-center gap-2 text-on-surface-variant cursor-pointer active:scale-95 hover:opacity-80 transition-opacity font-label-md text-label-md">
+<span>EN|FR</span>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-grow flex justify-center items-start pt-12 pb-24 px-container-padding-mobile md:px-container-padding-desktop">
+<div class="w-full max-w-3xl flex flex-col gap-stack-lg">
+<!-- Header Section -->
+<div class="flex flex-col gap-stack-sm">
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Step 3 of 3</span>
+<h1 class="font-headline-xl text-headline-xl text-primary">Review your business</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl">
+                    Please review the details below. This information will be used to configure your primary workspace.
+                </p>
+</div>
+<!-- Bento Grid Content -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-gutter">
+<!-- Section 1: Business -->
+<div class="bg-surface-container-lowest border border-surface-variant rounded-lg p-stack-md flex flex-col justify-between h-full hover:border-outline transition-colors relative group">
+<div class="flex flex-col gap-stack-sm">
+<div class="flex justify-between items-start mb-2">
+<h2 class="font-headline-sm text-headline-sm text-primary">Business</h2>
+<button aria-label="Edit Business" class="text-secondary hover:text-secondary-container transition-colors p-1">
+<span class="material-symbols-outlined text-[20px]">edit</span>
+</button>
+</div>
+<div class="flex flex-col gap-2">
+<div class="flex justify-between border-b border-surface-variant pb-2">
+<span class="text-on-surface-variant">Name</span>
+<span class="font-medium text-primary">Safi Glow Salon</span>
+</div>
+<div class="flex justify-between border-b border-surface-variant pb-2">
+<span class="text-on-surface-variant">Type</span>
+<span class="font-medium text-primary">Salon</span>
+</div>
+<div class="flex justify-between border-b border-surface-variant pb-2">
+<span class="text-on-surface-variant">Category</span>
+<span class="font-medium text-primary">Family Salon</span>
+</div>
+<div class="flex justify-between">
+<span class="text-on-surface-variant">Contact</span>
+<span class="font-medium text-primary">+257 79 123 456</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Section 2: Main Location -->
+<div class="bg-surface-container-lowest border border-surface-variant rounded-lg p-stack-md flex flex-col justify-between h-full hover:border-outline transition-colors relative group">
+<div class="flex flex-col gap-stack-sm">
+<div class="flex justify-between items-start mb-2">
+<h2 class="font-headline-sm text-headline-sm text-primary">Main location</h2>
+<button aria-label="Edit Main Location" class="text-secondary hover:text-secondary-container transition-colors p-1">
+<span class="material-symbols-outlined text-[20px]">edit</span>
+</button>
+</div>
+<div class="flex flex-col gap-2">
+<div class="flex justify-between border-b border-surface-variant pb-2">
+<span class="text-on-surface-variant">Branch</span>
+<span class="font-medium text-primary">Safi Glow — Main Branch</span>
+</div>
+<div class="flex justify-between border-b border-surface-variant pb-2">
+<span class="text-on-surface-variant">City</span>
+<span class="font-medium text-primary">Bujumbura</span>
+</div>
+<div class="flex justify-between border-b border-surface-variant pb-2">
+<span class="text-on-surface-variant">Country</span>
+<span class="font-medium text-primary">Burundi</span>
+</div>
+<div class="flex flex-col gap-1 pt-1">
+<span class="text-on-surface-variant">Address</span>
+<span class="font-medium text-primary text-right md:text-left">Rohero, Avenue de France</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Section 3: Operating Details -->
+<div class="bg-surface-container-lowest border border-surface-variant rounded-lg p-stack-md flex flex-col justify-between h-full hover:border-outline transition-colors relative group md:col-span-2">
+<div class="flex flex-col gap-stack-sm">
+<div class="flex justify-between items-start mb-2">
+<h2 class="font-headline-sm text-headline-sm text-primary">Operating details</h2>
+<button aria-label="Edit Operating Details" class="text-secondary hover:text-secondary-container transition-colors p-1">
+<span class="material-symbols-outlined text-[20px]">edit</span>
+</button>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div class="flex flex-col gap-1 bg-surface-container-low p-4 rounded border border-surface-variant">
+<span class="font-label-md text-label-md text-on-surface-variant uppercase">Primary Currency</span>
+<span class="font-headline-sm text-headline-sm text-primary mt-1">BIF — Burundian Franc</span>
+</div>
+<div class="flex flex-col gap-1 bg-surface-container-low p-4 rounded border border-surface-variant">
+<span class="font-label-md text-label-md text-on-surface-variant uppercase">Timezone</span>
+<span class="font-headline-sm text-headline-sm text-primary mt-1">Bujumbura (GMT+2)</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Action Area -->
+<div class="flex flex-col-reverse sm:flex-row justify-end items-center gap-4 mt-8 pt-8 border-t border-surface-variant">
+<button class="w-full sm:w-auto px-6 py-3 font-label-md text-label-md text-primary hover:bg-surface-container-low rounded-lg transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[18px]">arrow_back</span>
+                    Back
+                </button>
+<button class="w-full sm:w-auto px-8 py-3 bg-secondary text-on-secondary font-label-md text-label-md rounded-lg hover:bg-secondary-container transition-colors shadow-[0px_4px_20px_rgba(0,0,0,0.04)] active:scale-[0.98] flex items-center justify-center gap-2">
+                    Finish setup
+                    <span class="material-symbols-outlined text-[18px]">check</span>
+</button>
+</div>
+</div>
+</main>
+</body></html>

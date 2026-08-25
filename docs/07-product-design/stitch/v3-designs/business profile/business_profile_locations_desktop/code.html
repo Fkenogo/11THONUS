@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Business Profile - PROGRES</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700&amp;family=Inter:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "inverse-primary": "#c8c6c5",
+                      "secondary-fixed-dim": "#ffb59f",
+                      "tertiary-fixed": "#ffdea6",
+                      "inverse-on-surface": "#f0f1f2",
+                      "surface-container-high": "#e8e8e9",
+                      "on-surface-variant": "#444748",
+                      "surface": "#f9f9fa",
+                      "on-surface": "#1a1c1d",
+                      "on-secondary-container": "#fffbff",
+                      "on-tertiary-fixed-variant": "#5e4200",
+                      "surface-tint": "#5f5e5e",
+                      "tertiary-container": "#271900",
+                      "on-primary-container": "#858383",
+                      "tertiary-fixed-dim": "#fcbc2f",
+                      "on-error": "#ffffff",
+                      "on-background": "#1a1c1d",
+                      "error-container": "#ffdad6",
+                      "on-secondary": "#ffffff",
+                      "primary": "#000000",
+                      "on-primary": "#ffffff",
+                      "error": "#ba1a1a",
+                      "primary-fixed": "#e5e2e1",
+                      "surface-container-lowest": "#ffffff",
+                      "tertiary": "#000000",
+                      "secondary": "#ab2e00",
+                      "on-secondary-fixed": "#3b0a00",
+                      "inverse-surface": "#2f3132",
+                      "secondary-fixed": "#ffdbd1",
+                      "surface-container-highest": "#e2e2e3",
+                      "outline": "#747878",
+                      "surface-dim": "#dadadb",
+                      "primary-container": "#1c1b1b",
+                      "on-primary-fixed": "#1c1b1b",
+                      "background": "#f9f9fa",
+                      "surface-container": "#eeeeef",
+                      "on-tertiary-fixed": "#271900",
+                      "primary-fixed-dim": "#c8c6c5",
+                      "on-tertiary": "#ffffff",
+                      "surface-container-low": "#f3f3f4",
+                      "surface-variant": "#e2e2e3",
+                      "surface-bright": "#f9f9fa",
+                      "outline-variant": "#c4c7c7",
+                      "on-error-container": "#93000a",
+                      "secondary-container": "#d63c00",
+                      "on-tertiary-container": "#ab7b00",
+                      "on-primary-fixed-variant": "#474646",
+                      "on-secondary-fixed-variant": "#862200"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "gutter": "16px",
+                      "stack-sm": "8px",
+                      "container-padding-desktop": "40px",
+                      "stack-md": "24px",
+                      "stack-lg": "48px",
+                      "space-unit": "8px",
+                      "container-padding-mobile": "20px"
+              },
+              "fontFamily": {
+                      "headline-lg-mobile": [
+                              "Hanken Grotesk"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "headline-xl": [
+                              "Hanken Grotesk"
+                      ],
+                      "label-md": [
+                              "Inter"
+                      ],
+                      "body-sm": [
+                              "Inter"
+                      ],
+                      "headline-md": [
+                              "Hanken Grotesk"
+                      ],
+                      "headline-lg": [
+                              "Hanken Grotesk"
+                      ],
+                      "headline-sm": [
+                              "Hanken Grotesk"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "headline-lg-mobile": [
+                              "28px",
+                              {
+                                      "lineHeight": "34px",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-xl": [
+                              "48px",
+                              {
+                                      "lineHeight": "56px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "label-md": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-sm": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-sm": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "400"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+</head>
+<body class="bg-background text-on-background h-full font-body-md text-body-md antialiased overflow-hidden flex flex-col selection:bg-secondary selection:text-on-secondary">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface dark:bg-on-background border-b border-outline-variant dark:border-on-primary-fixed-variant flat no shadows flex justify-between items-center px-container-padding-mobile md:px-container-padding-desktop h-16 w-full">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-primary dark:text-primary-fixed cursor-pointer active:opacity-80 md:hidden" data-icon="menu">menu</span>
+<span class="font-headline-sm text-headline-sm font-bold tracking-tight text-primary dark:text-primary-fixed">PROGRES</span>
+</div>
+<div>
+<span class="font-label-md text-label-md font-semibold text-primary dark:text-primary-fixed cursor-pointer hover:opacity-80 transition-opacity">EN|FR</span>
+</div>
+</header>
+<div class="flex flex-1 pt-16 overflow-hidden">
+<!-- NavigationDrawer (Sidebar) -->
+<aside class="hidden md:flex h-full w-72 bg-surface dark:bg-on-background border-r border-outline-variant dark:border-on-primary-fixed-variant flex-col gap-stack-sm p-gutter flex-shrink-0 z-40 overflow-y-auto">
+<div class="px-3 py-2 mb-4">
+<h2 class="font-label-md text-label-md uppercase tracking-wider text-on-surface-variant dark:text-surface-variant">Management</h2>
+</div>
+<nav class="flex flex-col gap-2">
+<!-- Overview -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant dark:text-surface-variant hover:text-primary hover:bg-surface-container-lowest dark:hover:bg-surface-variant transition-all scale-98 active:scale-95 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-body-md text-body-md">Overview</span>
+</a>
+<!-- Business Profile (ACTIVE) -->
+<a class="flex items-center gap-3 px-3 py-2 bg-surface-container dark:bg-primary-container text-primary dark:text-primary-fixed-dim rounded-lg font-semibold scale-98 active:scale-95 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="domain" style="font-variation-settings: 'FILL' 1;">domain</span>
+<span class="font-body-md text-body-md">Business Profile</span>
+</a>
+<!-- Locations -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant dark:text-surface-variant hover:text-primary hover:bg-surface-container-lowest dark:hover:bg-surface-variant transition-all scale-98 active:scale-95 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="location_on">location_on</span>
+<span class="font-body-md text-body-md">Locations</span>
+</a>
+<!-- Team -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant dark:text-surface-variant hover:text-primary hover:bg-surface-container-lowest dark:hover:bg-surface-variant transition-all scale-98 active:scale-95 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+<span class="font-body-md text-body-md">Team</span>
+</a>
+<!-- Business Terms -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant dark:text-surface-variant hover:text-primary hover:bg-surface-container-lowest dark:hover:bg-surface-variant transition-all scale-98 active:scale-95 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="description">description</span>
+<span class="font-body-md text-body-md">Business Terms</span>
+</a>
+</nav>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 overflow-y-auto bg-background p-container-padding-desktop">
+<div class="max-w-5xl mx-auto flex flex-col gap-stack-lg">
+<!-- Page Header -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-stack-md border-b border-outline-variant pb-6">
+<div class="flex flex-col gap-2">
+<h1 class="font-headline-xl text-headline-xl text-on-surface">Business Profile</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl">Manage your core business identity, contact information, and operating details visible across the PROGRES platform.</p>
+</div>
+<div class="flex gap-4">
+<button class="px-6 py-3 rounded-lg border border-outline-variant font-label-md text-label-md text-on-surface hover:bg-surface-container transition-colors">Discard Changes</button>
+<button class="px-6 py-3 rounded-lg bg-primary text-on-primary font-label-md text-label-md hover:bg-inverse-surface transition-colors">Save Profile</button>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-stack-lg">
+<!-- Left Column: Core Info & Identity -->
+<div class="lg:col-span-2 flex flex-col gap-stack-md">
+<!-- Identity Card -->
+<section class="bg-surface-container-lowest rounded-xl border border-surface-variant p-8 shadow-[0px_4px_20px_rgba(0,0,0,0.04)]">
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary" data-icon="storefront">storefront</span>
+                                Brand Identity
+                            </h3>
+<div class="flex flex-col sm:flex-row gap-8 items-start">
+<!-- Logo Upload Area -->
+<div class="flex flex-col gap-4">
+<div class="w-32 h-32 rounded-xl bg-surface-container border border-dashed border-outline-variant flex flex-col items-center justify-center cursor-pointer hover:bg-surface-container-high transition-colors group relative overflow-hidden">
+<div class="absolute inset-0 bg-cover bg-center w-full h-full opacity-0 group-hover:opacity-20 transition-opacity" data-alt="A high-end, minimalist logo placeholder image representing a modern corporate brand. The logo should be a sleek, geometric abstract shape in stark black against a pure white background, reflecting a sophisticated, light-mode design system aesthetic with crisp lines and subtle gradients." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBOhdYjd24SefBgehX5b_K6T32XNbMjd7XCiKQZYWuuOcI9DpMIOoQruKOVSya0Vw19_zdt5uH7ue_BGdAWgJROt6dL0q_kTiErzkEqiGHdj3MSci0Q9qliTRgPLdMRDGqNRsJT25ocxxSKbJ-O257IREMCo51Eb2IBle6YEzbZrPcu_sPxXVykmqxriHGbybxosHG7jsHhB9MzOL3RXARGo2VYfE0ByEWp4XJml9F6BYMmZ8p6v4UJ')"></div>
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors mb-2" data-icon="add_photo_alternate" style="font-size: 32px;">add_photo_alternate</span>
+<span class="font-label-md text-label-md text-outline group-hover:text-primary transition-colors">Upload Logo</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant text-center max-w-[128px]">Min. 400x400px</p>
+</div>
+<div class="flex-1 flex flex-col gap-6 w-full">
+<div class="flex flex-col gap-2">
+<label class="font-label-md text-label-md text-on-surface-variant">Legal Business Name</label>
+<input class="w-full px-4 py-3 rounded-lg border border-surface-variant bg-surface-container-lowest focus:border-primary focus:ring-0 font-body-md text-body-md text-on-surface outline-none transition-colors" type="text" value="Apex Dynamics Ltd."/>
+</div>
+<div class="flex flex-col gap-2">
+<label class="font-label-md text-label-md text-on-surface-variant">Display Name (Platform visible)</label>
+<input class="w-full px-4 py-3 rounded-lg border border-surface-variant bg-surface-container-lowest focus:border-primary focus:ring-0 font-body-md text-body-md text-on-surface outline-none transition-colors" type="text" value="Apex Dynamics"/>
+</div>
+<div class="flex flex-col gap-2">
+<label class="font-label-md text-label-md text-on-surface-variant">Business Description</label>
+<textarea class="w-full px-4 py-3 rounded-lg border border-surface-variant bg-surface-container-lowest focus:border-primary focus:ring-0 font-body-md text-body-md text-on-surface outline-none transition-colors resize-none" rows="4">Providing high-end industrial solutions and strategic logistics operations across North America. Specializing in advanced supply chain mechanics.</textarea>
+</div>
+</div>
+</div>
+</section>
+<!-- Contact Information -->
+<section class="bg-surface-container-lowest rounded-xl border border-surface-variant p-8 shadow-[0px_4px_20px_rgba(0,0,0,0.04)]">
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary" data-icon="contact_page">contact_page</span>
+                                Primary Contact
+                            </h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="flex flex-col gap-2">
+<label class="font-label-md text-label-md text-on-surface-variant">Support Email</label>
+<input class="w-full px-4 py-3 rounded-lg border border-surface-variant bg-surface-container-lowest focus:border-primary focus:ring-0 font-body-md text-body-md text-on-surface outline-none transition-colors" type="email" value="operations@apexdynamics.com"/>
+</div>
+<div class="flex flex-col gap-2">
+<label class="font-label-md text-label-md text-on-surface-variant">Support Phone</label>
+<input class="w-full px-4 py-3 rounded-lg border border-surface-variant bg-surface-container-lowest focus:border-primary focus:ring-0 font-body-md text-body-md text-on-surface outline-none transition-colors" type="tel" value="+1 (555) 019-2834"/>
+</div>
+<div class="flex flex-col gap-2 md:col-span-2">
+<label class="font-label-md text-label-md text-on-surface-variant">Website URL</label>
+<div class="flex">
+<span class="inline-flex items-center px-4 rounded-l-lg border border-r-0 border-surface-variant bg-surface-container font-body-md text-body-md text-on-surface-variant">https://</span>
+<input class="flex-1 px-4 py-3 rounded-r-lg border border-surface-variant bg-surface-container-lowest focus:border-primary focus:ring-0 font-body-md text-body-md text-on-surface outline-none transition-colors" type="url" value="apexdynamics.com"/>
+</div>
+</div>
+</div>
+</section>
+</div>
+<!-- Right Column: Meta Info & Status -->
+<div class="flex flex-col gap-stack-md">
+<!-- Status Panel -->
+<section class="bg-surface rounded-xl border border-surface-variant p-6 flex flex-col gap-6 relative overflow-hidden">
+<!-- Background Accent -->
+<div class="absolute top-0 right-0 w-32 h-32 bg-secondary opacity-5 rounded-bl-full -mr-16 -mt-16 pointer-events-none"></div>
+<div class="flex items-start justify-between">
+<div class="flex flex-col gap-1">
+<h4 class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Account Status</h4>
+<div class="flex items-center gap-2 mt-1">
+<span class="w-2.5 h-2.5 rounded-full bg-secondary"></span>
+<span class="font-headline-sm text-headline-sm text-on-surface">Verified Partner</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-secondary" data-icon="verified" style="font-size: 32px; font-variation-settings: 'FILL' 1;">verified</span>
+</div>
+<div class="h-[1px] w-full bg-outline-variant opacity-50"></div>
+<div class="flex flex-col gap-4">
+<div class="flex justify-between items-center">
+<span class="font-body-md text-body-md text-on-surface-variant">Member Since</span>
+<span class="font-body-md text-body-md font-semibold text-on-surface">Oct 2023</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="font-body-md text-body-md text-on-surface-variant">Tier</span>
+<span class="font-body-md text-body-md font-semibold text-on-surface">Enterprise</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="font-body-md text-body-md text-on-surface-variant">Base Currency</span>
+<span class="font-body-md text-body-md font-semibold text-on-surface">USD ($)</span>
+</div>
+</div>
+</section>
+<!-- Social Links -->
+<section class="bg-surface-container-lowest rounded-xl border border-surface-variant p-6 shadow-[0px_4px_20px_rgba(0,0,0,0.04)]">
+<h3 class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-4">Connected Platforms</h3>
+<div class="flex flex-col gap-4">
+<div class="flex items-center justify-between p-3 rounded-lg border border-surface-variant hover:border-primary transition-colors cursor-pointer group">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary" data-icon="public">public</span>
+<span class="font-body-md text-body-md text-on-surface">LinkedIn</span>
+</div>
+<span class="font-label-md text-label-md text-secondary">Connected</span>
+</div>
+<div class="flex items-center justify-between p-3 rounded-lg border border-dashed border-outline-variant hover:bg-surface-container-low transition-colors cursor-pointer">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-outline" data-icon="add">add</span>
+<span class="font-body-md text-body-md text-on-surface-variant">Add Twitter/X</span>
+</div>
+</div>
+</div>
+</section>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Safi Glow Salon - Business Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@600;700&amp;family=Inter:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "error": "#ba1a1a",
+                        "surface-dim": "#dadadb",
+                        "tertiary": "#000000",
+                        "on-background": "#1a1c1d",
+                        "surface": "#f9f9fa",
+                        "on-tertiary-fixed-variant": "#5e4200",
+                        "on-tertiary-container": "#ab7b00",
+                        "on-primary-container": "#858383",
+                        "on-primary-fixed": "#1c1b1b",
+                        "inverse-surface": "#2f3132",
+                        "secondary-container": "#d63c00",
+                        "surface-container-high": "#e8e8e9",
+                        "on-secondary-fixed": "#3b0a00",
+                        "on-tertiary-fixed": "#271900",
+                        "primary-fixed-dim": "#c8c6c5",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary-fixed-variant": "#862200",
+                        "inverse-on-surface": "#f0f1f2",
+                        "on-secondary": "#ffffff",
+                        "outline-variant": "#c4c7c7",
+                        "primary-container": "#1c1b1b",
+                        "tertiary-fixed-dim": "#fcbc2f",
+                        "tertiary-fixed": "#ffdea6",
+                        "on-error": "#ffffff",
+                        "inverse-primary": "#c8c6c5",
+                        "surface-bright": "#f9f9fa",
+                        "primary": "#000000",
+                        "on-surface-variant": "#444748",
+                        "secondary-fixed": "#ffdbd1",
+                        "surface-container": "#eeeeef",
+                        "surface-container-low": "#f3f3f4",
+                        "on-error-container": "#93000a",
+                        "on-primary-fixed-variant": "#474646",
+                        "surface-tint": "#5f5e5e",
+                        "tertiary-container": "#271900",
+                        "outline": "#747878",
+                        "secondary": "#ab2e00",
+                        "secondary-fixed-dim": "#ffb59f",
+                        "surface-container-lowest": "#ffffff",
+                        "on-surface": "#1a1c1d",
+                        "on-secondary-container": "#fffbff",
+                        "primary-fixed": "#e5e2e1",
+                        "surface-container-highest": "#e2e2e3",
+                        "surface-variant": "#e2e2e3",
+                        "background": "#f9f9fa",
+                        "brand-orange": "#FF4F11"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-padding-mobile": "20px",
+                        "gutter": "16px",
+                        "container-padding-desktop": "40px",
+                        "stack-sm": "8px",
+                        "space-unit": "8px",
+                        "stack-lg": "48px",
+                        "stack-md": "24px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-sm": ["Hanken Grotesk"],
+                        "label-md": ["Inter"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "headline-lg-mobile": ["Hanken Grotesk"],
+                        "headline-xl": ["Hanken Grotesk"],
+                        "headline-lg": ["Hanken Grotesk"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "34px", "fontWeight": "700" }],
+                        "headline-xl": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { background-color: theme('colors.background'); color: theme('colors.on-background'); }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="font-body-md min-h-screen">
+<!-- TopAppBar -->
+<header class="bg-surface text-primary font-headline-md text-headline-md docked full-width top-0 border-b border-outline-variant transition-colors duration-200 flex justify-between items-center px-container-padding-mobile w-full h-16 sticky z-40">
+<div class="flex items-center gap-gutter">
+<button class="hover:bg-surface-container-low p-2 rounded-full flex items-center justify-center lg:hidden">
+<span class="material-symbols-outlined text-[24px]">menu</span>
+</button>
+<div class="flex items-center gap-3">
+<span class="font-headline-md text-headline-md font-bold text-primary tracking-tight">11thONUS</span>
+<div class="hidden md:block w-px h-6 bg-outline-variant mx-1"></div>
+<span class="hidden md:block font-body-md font-semibold text-on-surface-variant">Safi Glow Salon</span>
+</div>
+</div>
+<div class="flex items-center">
+<button class="font-label-md text-label-md text-primary hover:bg-surface-container-low px-3 py-1 rounded-full">EN|FR</button>
+</div>
+</header>
+<!-- App Container -->
+<div class="flex w-full">
+<!-- Side Navigation -->
+<aside class="hidden lg:flex flex-col w-64 border-r border-outline-variant h-[calc(100vh-4rem)] sticky top-16 bg-surface py-stack-md px-4 gap-2">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg bg-surface-container-highest text-primary font-semibold transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+<span class="font-body-md text-body-md">Overview</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-surface-container-low text-on-surface-variant transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">store</span>
+<span class="font-body-md text-body-md">Business profile</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-surface-container-low text-on-surface-variant transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">map</span>
+<span class="font-body-md text-body-md">Locations</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-surface-container-low text-on-surface-variant transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">group</span>
+<span class="font-body-md text-body-md">Team</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-surface-container-low text-brand-orange transition-colors mt-auto" href="#">
+<span class="material-symbols-outlined text-[20px]">gavel</span>
+<span class="font-body-md text-body-md font-medium">Business Terms</span>
+</a>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 max-w-3xl mx-auto px-container-padding-mobile md:px-container-padding-desktop pt-stack-md pb-stack-lg flex flex-col gap-stack-lg w-full">
+<!-- Welcome Section -->
+<section class="flex flex-col gap-stack-sm">
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile md:font-headline-lg md:text-headline-lg text-primary">Overview</h1>
+</section>
+<!-- Attention Card -->
+<section class="bg-surface-container-lowest border border-outline-variant rounded-lg p-stack-md shadow-[0px_4px_20px_rgba(0,0,0,0.04)] relative overflow-hidden group">
+<div class="absolute top-0 left-0 w-1 h-full bg-brand-orange"></div>
+<div class="flex flex-col gap-stack-sm">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-brand-orange">error_outline</span>
+<h2 class="font-headline-sm text-headline-sm text-primary">One step left</h2>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">Review and accept the Business Terms to continue.</p>
+<div class="pt-stack-sm">
+<button class="bg-brand-orange hover:bg-[#e6470f] text-on-primary font-label-md text-label-md px-6 py-3 rounded-full transition-colors inline-flex items-center gap-2 w-fit">
+                            Review Business Terms
+                            <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Business Identity Card -->
+<section class="bg-surface-container border border-outline-variant rounded-lg p-stack-md flex flex-col gap-stack-sm">
+<div class="flex justify-between items-start">
+<div>
+<h3 class="font-headline-sm text-headline-sm text-primary">Safi Glow Salon</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant uppercase tracking-wider mt-1">Salon</p>
+</div>
+<div class="bg-surface-container-low px-3 py-1 rounded-full border border-outline-variant">
+<span class="font-label-md text-label-md text-on-surface-variant">Active</span>
+</div>
+</div>
+<div class="h-px bg-outline-variant w-full my-stack-sm"></div>
+<div class="flex flex-col gap-3">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant">location_on</span>
+<span class="font-body-md text-body-md text-primary">Bujumbura, Burundi</span>
+</div>
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant">tag</span>
+<span class="font-body-md text-body-md text-primary font-mono bg-surface-container-lowest px-2 py-1 rounded border border-outline-variant text-sm">Business Code: BIZ7X2PYN</span>
+</div>
+</div>
+</section>
+<!-- Manage Your Business Section -->
+<section class="flex flex-col gap-stack-md">
+<h2 class="font-headline-sm text-headline-sm text-primary">Manage Your Business</h2>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-gutter">
+<!-- Profile -->
+<a class="bg-surface-container-lowest border border-outline-variant rounded-lg p-gutter flex items-center justify-between hover:bg-surface-container transition-colors group" href="#">
+<div class="flex items-center gap-gutter">
+<div class="bg-surface-container w-10 h-10 rounded-full flex items-center justify-center group-hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant">store</span>
+</div>
+<div class="flex flex-col">
+<span class="font-body-md text-body-md font-semibold text-primary">Business profile</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Business details and category</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors">chevron_right</span>
+</a>
+<!-- Locations -->
+<a class="bg-surface-container-lowest border border-outline-variant rounded-lg p-gutter flex items-center justify-between hover:bg-surface-container transition-colors group" href="#">
+<div class="flex items-center gap-gutter">
+<div class="bg-surface-container w-10 h-10 rounded-full flex items-center justify-center group-hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant">map</span>
+</div>
+<div class="flex flex-col">
+<span class="font-body-md text-body-md font-semibold text-primary">Locations</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Manage your business locations</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors">chevron_right</span>
+</a>
+<!-- Team -->
+<a class="bg-surface-container-lowest border border-outline-variant rounded-lg p-gutter flex items-center justify-between hover:bg-surface-container transition-colors group" href="#">
+<div class="flex items-center gap-gutter">
+<div class="bg-surface-container w-10 h-10 rounded-full flex items-center justify-center group-hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant">group</span>
+</div>
+<div class="flex flex-col">
+<span class="font-body-md text-body-md font-semibold text-primary">Team</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Invite and manage your team</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors">chevron_right</span>
+</a>
+<!-- Business Terms (Attention) -->
+<a class="bg-surface-container-lowest border border-brand-orange rounded-lg p-gutter flex items-center justify-between hover:bg-surface-container transition-colors group relative overflow-hidden" href="#">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-brand-orange"></div>
+<div class="flex items-center gap-gutter pl-2">
+<div class="bg-surface-container w-10 h-10 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-brand-orange">gavel</span>
+</div>
+<div class="flex flex-col">
+<span class="font-body-md text-body-md font-semibold text-primary flex items-center gap-2">
+                                    Business Terms
+                                    <span class="w-2 h-2 rounded-full bg-brand-orange"></span>
+</span>
+<span class="font-body-sm text-body-sm text-brand-orange">Review required</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-brand-orange">chevron_right</span>
+</a>
+</div>
+</section>
+</main>
+</div>
+</body></html>

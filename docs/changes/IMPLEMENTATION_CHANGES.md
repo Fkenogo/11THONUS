@@ -3514,3 +3514,290 @@
 - **Report:** [`ENG-P3-002B-CORR-SUPPORTEDLANGUAGES-001-business-creation-contract-reconciliation-2026-08-24.md`](../05-implementation/reports/ENG-P3-002B-CORR-SUPPORTEDLANGUAGES-001-business-creation-contract-reconciliation-2026-08-24.md).
 - **Final gate:** **ENG-P3-002B-CORR-SUPPORTEDLANGUAGES-001 MERGED AND CLOSED — HOSTED
   BUSINESS-CREATION REVALIDATION AWAITS FRESH AUTHORIZATION.**
+
+## `ENG-P3-002C-PREVIEW-001-BUSINESS-CREATE-REVALIDATION-001` — Hosted Business-Creation Revalidation (2026-08-24)
+
+- **Authorization:** the fresh authorization the prior entry awaited. Bounded to DEV Hosting
+  preview redeployment and hosted functional revalidation only — no source changes authorized.
+- **Entry:** `origin/main` confirmed at `8bbdaa942a499c68cf2edddd895e8aa5e198bbc0`; PR #168/#169
+  ancestry and CI green reconfirmed. Fresh, clean `git worktree`.
+- **Redeployed** the existing `eng-p3-002c-founder-qa` Hosting preview channel on
+  `eleventh-on-us-dev` from the newly reviewed SHA — same hostname, new expiry 2026-08-31 13:22:49.
+  No Functions/Rules/Commerce-Knowledge/App-Check/CSP change; `live` channel unaffected.
+- **Result: PASSED.** Signed in as the existing DEV QA identity (password reset at explicit
+  Founder authorization, never persisted), submitted the real hosted "Tell us about your business"
+  form, and confirmed via direct Firestore read that `businesses/xkLYdH17O2zy8ruDjtln` was created
+  with `supportedLanguages: []` (a real empty array, not missing/invalid), `status: draft`,
+  server-derived `ownerUserId`, an assigned Business Code (`BIZ7X2PYN`), a persisted
+  `primaryCategoryId: cat_salon`, and an auto-created default Branch. Also verified: context
+  hydration/resume on refresh, Branch profile editing through the real callable, an Owner Staff
+  invitation while still `draft`, the Terms-unavailable boundary correctly disabling final submit,
+  and EN/FR/mobile rendering — all against the real hosted DEV environment, not emulator tests.
+- **No new runtime defect found.** One tester input error (capitalized Staff-invitation role,
+  correctly rejected by existing closed-enum validation, self-corrected) — not a defect.
+- **Status:** `ENG-P3-002C` = DEV preview operational and materially QA-ready. `ENG-P3-002` =
+  still Open, blocked only on `DEC-LEGAL-002` and the Founder's own full checklist run — not
+  closed by this task. Capability 3 = still Open.
+- **Files:** deployment report addendum, Founder QA checklist banner update, this entry. No
+  runtime source code changed.
+- **Report:** [`ENG-P3-002C-PREVIEW-001-business-onboarding-dev-preview-deployment-report-2026-08-23.md`](../05-implementation/reports/ENG-P3-002C-PREVIEW-001-business-onboarding-dev-preview-deployment-report-2026-08-23.md#addendum--2026-08-24-eng-p3-002c-preview-001-business-create-revalidation-001-hosted-business-creation-revalidation--passed-founder-qa-may-continue).
+- **Final gate:** **ENG-P3-002C HOSTED ONBOARDING REVALIDATED — BUSINESS CREATION WORKS; FOUNDER
+  QA MAY CONTINUE.**
+
+## `ENG-P3-002C-FOUNDER-QA-001` — Founder QA Evidence Recording & Finding Classification (2026-08-24)
+
+- **Task type:** evidence/classification only. No source, Firebase config, Firestore data,
+  Hosting, App Check, or Rules changed; no deployment performed.
+- **Recorded the Founder's manual QA pass** against the existing hosted `eng-p3-002c-founder-qa`
+  preview, reusing the existing DEV Business (`xkLYdH17O2zy8ruDjtln`) and existing QA identity —
+  no new Business or identity created.
+- **Results:** 11 of 18 checklist items directly PASS (sign-in, Business creation/reuse, resume,
+  category, Business Type — first direct confirmation of this item, incl. Salon sub-types and "No
+  specific type" — branch, Terms-unavailable boundary, Team functional flow, staff invitation,
+  review, submission boundary). 2 FAIL: French (no language-switching control reachable from
+  inside the onboarding wizard — confirmed by source inspection, `LanguageSwitcher` wired only into
+  the sign-in screen, never `apps/web/src/business/`) and Mobile (step navigation reads as
+  desktop-style tabs on a phone viewport — functionally usable, rejected by the Founder as an
+  unacceptable pattern; no documented pattern requirement exists either way). 2 correctly NOT
+  TESTED (`pending_verification`, blocked by `DEC-LEGAL-002`; cross-Business isolation, needs a
+  second identity). 2 NOT SEPARATELY TESTED (items 4, 11 — not itemized in the Founder's report).
+- **Governing-document research performed for each finding** (localisation spec, mobile/responsive
+  TRD/PRD sections — both still draft/pre-freeze, Stitch design-reference governance, staff-
+  invitation transport DTO design, `DEC-LEGAL-002` decision-register entry) — see the dedicated
+  report for full citations. Key conclusions: the language-switcher gap is genuine, not a Founder
+  oversight of an existing control. No Stitch concept exists yet for Business onboarding at all,
+  so the visual-refinement/mobile-pattern findings are deferred pending one being commissioned, not
+  deferred to an already-scheduled stage. The pending-invitation-identity observation is a genuine
+  backend DTO gap (deliberately minimal by design), not a frontend display omission, and is
+  non-blocking.
+- **No correction implemented** — per this task's explicit scope, documentation/evidence only. Two
+  candidate future correction-identifier names suggested (not created, not authorized):
+  `ENG-P3-002-CORR-LANGSWITCH-001`, `ENG-P3-002-CORR-INVITEIDENTITY-001`.
+- **Status:** `ENG-P3-002C` = hosted engineering/integration validated; Founder QA pending
+  (unchanged — the checklist cannot be marked complete with two open FAIL items). `ENG-P3-002` =
+  still Open, blocked on Founder QA completion and `DEC-LEGAL-002` — unchanged, not closed by this
+  task. Capability 3 = still Open, unchanged.
+- **Files:** the Founder QA checklist (banner + Outcome section updated with the actual per-item
+  results), this entry, and the new dedicated evidence/classification report.
+- **QA password:** not written anywhere in this task's output, consistent with standing
+  instruction — the session-only credential from the prior task remains the Founder's to use.
+- **Report:** [`ENG-P3-002C-FOUNDER-QA-001-founder-qa-evidence-and-classification-2026-08-24.md`](../05-implementation/reports/ENG-P3-002C-FOUNDER-QA-001-founder-qa-evidence-and-classification-2026-08-24.md).
+- **Final gate:** **FOUNDER QA EVIDENCE RECORDED — TWO GENUINE FINDINGS CLASSIFIED (EN/FR
+  ACCESS-PATH, MOBILE NAVIGATION PATTERN); NO CORRECTION PERFORMED; NOTHING CLOSED.**
+
+## `ENG-P3-002-CORR-LANGSWITCH-001-REVALIDATION` — Hosted Language-Switch Revalidation (2026-08-24)
+
+- **Bounded DEV Hosting redeployment and hosted functional verification only** — no source change
+  authorized or made.
+- **Entry:** `origin/main` confirmed at `0cd7d059bb390ccb7c6750311b1c1ffa9adcadd8`; PR #170/#171
+  ancestry and CI green reconfirmed. Fresh clean worktree.
+- **Redeployed** the existing `eng-p3-002c-founder-qa` Hosting preview channel from the newly
+  reviewed SHA — same hostname, new expiry 2026-08-31 17:58:06. No Functions/Rules/Commerce
+  Knowledge/App Check/CSP change; `live` channel unaffected; existing QA identity and existing DEV
+  Business (`xkLYdH17O2zy8ruDjtln`) both reused, neither reset nor recreated.
+- **Result: PASSED — the EN/FR visible-usability Founder QA finding is RESOLVED.** Signed in
+  hosted, resolved the existing Business, and proved live: the language switcher is reachable on
+  `/business/new` and throughout the onboarding wizard; EN↔FR both directions work; the current
+  route and wizard step are unaffected by switching (`aria-current` proven to persist across the
+  switch); the existing Business's Review data is unaffected; the chosen language and the signed-in
+  session/wizard step both survive a full page refresh; Terms-unavailable behaviour and the
+  disabled Submit button are correct in both languages; the switcher remains reachable and
+  functional at 375×812 with no overflow.
+- **Unchanged, explicitly not addressed by this task:** the separate mobile-navigation FAIL finding
+  (step-nav still reads as desktop-style tabs on a phone viewport) — out of scope, not fixed.
+  Commerce Knowledge category labels remain English under the French UI — known, pre-existing, not
+  a defect.
+- **No new runtime defect found.** One recurring, unexplained console message
+  (`400`/`403`, no corresponding network request ever captured) observed on every page load but
+  with zero observed functional impact across the whole session — disclosed transparently as a
+  non-blocking artifact, not treated as a regression.
+- **Status:** `ENG-P3-002C` = hosted engineering/integration validated; EN/FR finding resolved,
+  Founder QA still pending (mobile nav FAIL open, invitation-identity finding open). `ENG-P3-002` =
+  still Open, blocked on Founder QA completion + `DEC-LEGAL-002` — unchanged, not closed. Capability
+  3 = still Open, unchanged.
+- **Files:** deployment report addendum, Founder QA checklist banner update, this entry. No source
+  code changed.
+- **Report:** [`ENG-P3-002C-PREVIEW-001-business-onboarding-dev-preview-deployment-report-2026-08-23.md`](../05-implementation/reports/ENG-P3-002C-PREVIEW-001-business-onboarding-dev-preview-deployment-report-2026-08-23.md#addendum--2026-08-24-eng-p3-002-corr-langswitch-001-revalidation-hosted-language-switch-revalidation--passed-enfr-founder-qa-finding-resolved).
+- **Final gate:** **ENG-P3-002 LANGUAGE ACCESSIBILITY REVALIDATED — EN/FR FOUNDER QA FINDING
+  RESOLVED; UI DESIGN HANDOFF MAY BEGIN.**
+
+## `ENG-P3-002-ONBOARDING-JOURNEY-RECON-001` — Onboarding vs Post-Onboarding Management Reconciliation (2026-08-24)
+
+- **Analysis/documentation only** — no source, Functions, Firestore, Rules, Firebase config, or
+  deployment touched; no lifecycle state changed; no UI designed; no Stitch prompts produced.
+- **Assessed the Founder's proposed split** of Business onboarding (establishment) from
+  post-onboarding Business Dashboard management (Team/Staff, Terms), grounded in direct source
+  inspection (`completeness.ts`, `businessLifecycleCommand.ts`, `businessStatus.ts`,
+  `businessTermsAcceptance.ts`) and governing docs (PRD3, `ENG-P3-002-DESIGN-001`,
+  `DEC-LEGAL-002`, `ENG-P2-003-DESIGN-001`), not assumption.
+- **Key findings:** Team/Staff invitation has **zero technical dependency** anywhere — absent from
+  `isReadyToSubmit` at both frontend and backend, confirmed safe to relocate to a Dashboard.
+  "Business Terms" is confirmed to be a **platform-authored, server-enforced, versioned legal
+  acceptance gate** (not a business-configurable programme-terms feature) — it must **not** move,
+  and `DEC-LEGAL-002` is unaffected either way. A genuine, previously-undisclosed PRD/implementation
+  drift was found: PRD3 lists "Business Address" and "Subscription Plan" as mandatory fields that
+  the current implementation neither collects nor requires (Subscription Plan's omission was
+  already a disclosed, Founder-approved deferral; Business Address was not previously flagged).
+- **Delivered:** a full evidence-grounded recommended target journey (establishment /
+  activation-compliance / post-onboarding management), a Phase-I change-impact classification
+  (documentation/frontend/backend/data-model/test/legal), and a pre-classification of screens for
+  `ENG-P3-002-UI-HANDOFF-001` (onboarding vs. compliance vs. Dashboard vs. Team vs. Terms screens)
+  — explicitly for Founder disposition, not self-approved.
+- **Seven open Founder decisions consolidated** (adopt/reject the split; Business Address/
+  Subscription Plan reconciliation; whether a new "configured" lifecycle state is needed; Dashboard
+  reachability during `draft`; Terms re-acceptance policy on future version changes; TRD16 §16.34
+  mobile-first freeze timing; Dashboard Stitch commissioning) — none decided by this task.
+- **Status:** `ENG-P3-002C`/`ENG-P3-002`/Capability 3 all unchanged by this task — no
+  implementation, no closure claim.
+- **Files:** this entry and the dedicated analysis report. No other file touched.
+- **Report:** [`ENG-P3-002-ONBOARDING-JOURNEY-RECON-001-onboarding-vs-management-reconciliation-2026-08-24.md`](../05-implementation/reports/ENG-P3-002-ONBOARDING-JOURNEY-RECON-001-onboarding-vs-management-reconciliation-2026-08-24.md).
+- **Final gate:** **ENG-P3-002-ONBOARDING-JOURNEY-RECON-001 READY FOR FOUNDER DISPOSITION —
+  ONBOARDING / ACTIVATION / MANAGEMENT BOUNDARIES RECONCILED.**
+
+## `ENG-P3-002-ONBOARDING-JOURNEY-RECON-001-FOUNDER-DISPOSITION` — Founder Dispositions Recorded & Business Address Reconciliation (2026-08-24)
+
+- **Governance/documentation only** — no source, Functions, Firestore, Rules, Firebase config, or
+  deployment touched; no lifecycle state changed; no Stitch work begun.
+- **Recorded all seven Founder dispositions** from the prior reconciliation's §22: FD-1 (onboarding/
+  Dashboard split ADOPTED, Team excluded from establishment), FD-2 (Subscription Plan stays
+  OUT-OF-SCOPE; Business Address reconciled — see below), FD-3 (no new `BusinessStatus`, `draft`
+  retained, "setup complete" stays UI-only), FD-4 (Dashboard reachable once establishment is
+  complete, without requiring `pending_verification`, with lifecycle/authorization/Terms gates
+  explicitly unweakened), FD-5 (Terms re-acceptance policy DEFERRED, current enforcement
+  unchanged), FD-6 (mobile-first ADOPTED as governing UI direction, subject to normal TRD-freeze
+  governance, not performed here), FD-7 (Stitch commission AUTHORIZED for a separate, subsequent
+  `UI-HANDOFF-001` task covering the full Establishment → Dashboard → Activation → Management
+  experience).
+- **Business Address reconciliation (bounded, evidence-only):** traced precisely through source —
+  `Business.address` (TRD10 §10.6.3-governed, on the `Business` aggregate) and
+  `BusinessBranch.address` (on the `BusinessBranch` aggregate, already collected optionally on the
+  existing Main Location step, `BranchStep.tsx`) are **two separate, unsynced fields**. This
+  **corrects a factual error in the prior reconciliation report**, which stated Business Address
+  was "neither collected nor required anywhere" — true only for the Business-level field; the
+  Branch-level field is already implemented and already the source of the Founder QA screenshot's
+  "Address (optional)" field. PRD3 itself does not disambiguate which field its "Business Address"
+  refers to. The Founder's stated direction (address belongs to Main Location) resolves the
+  *screen-level* design question for `UI-HANDOFF-001` purposes; the narrower *data-model*
+  question (whether to retire/populate/sync `Business.address`) remains explicitly open,
+  non-blocking, deferred until practically relevant.
+- **No lifecycle, backend, or Terms-enforcement change** — confirmed unaffected by every
+  disposition recorded.
+- **Status:** `ENG-P3-002C`/`ENG-P3-002`/Capability 3 all unchanged — no implementation, no
+  closure claim.
+- **Files:** this entry and the dedicated disposition report. No other file touched.
+- **Report:** [`ENG-P3-002-ONBOARDING-JOURNEY-RECON-001-FOUNDER-DISPOSITION-2026-08-24.md`](../05-implementation/reports/ENG-P3-002-ONBOARDING-JOURNEY-RECON-001-FOUNDER-DISPOSITION-2026-08-24.md).
+- **Final gate:** **ENG-P3-002 ONBOARDING JOURNEY FOUNDER DISPOSITION RECORDED — READY FOR
+  UI-HANDOFF-001.**
+
+## `ENG-P3-002-UI-HANDOFF-001` — Business Establishment, Dashboard & Activation Design Handoff (2026-08-24)
+
+- **Design-handoff/documentation only** — no source, Functions, Firestore, Rules, Firebase config,
+  or deployment touched; no Stitch concept generated.
+- **Re-audited current implementation directly from source** (`NewBusinessPage.tsx`,
+  `OnboardingWizard.tsx`, `BranchStep.tsx`, `TermsStepContainer.tsx`, `TeamStep.tsx`,
+  `ReviewStep.tsx`, `SubmittedStatusPage.tsx`, route table) and **extracted the full existing,
+  Founder-approved visual direction** from `docs/07-product-design/` — the complete design-token
+  specification (`premium_verification_system/DESIGN.md`: colors, typography, spacing, shape,
+  elevation, component character) plus the one existing business-facing Stitch concept
+  (`concept_6_business_dashboard`, Version-1-only, cited as navigation-pattern reference, not
+  binding).
+- **Built an authoritative 9-row screen/state inventory** (8 requiring a dedicated Stitch concept:
+  Business Identity & Category, Main Location, Establishment Review & Finish Setup, Dashboard Home,
+  Business Profile & Locations, Team/Staff Management, Activation/Compliance; 1 consolidated
+  cross-cutting loading/empty/error/blocked state family with no dedicated concept), validated
+  against actual architecture rather than accepted from the Founder's conceptual list blindly (e.g.
+  Business identity and Category kept as two focused steps, not one, given current form density and
+  mobile-first design).
+- **Produced 7 fully detailed, constrained Stitch briefs** (Part X), each with explicit "must
+  preserve"/"must not introduce" constraints traced to a specific FD, Design Anti-Pattern, or real
+  backend behavior — no vague prompts.
+- **One architecture-affecting question flagged, not resolved:** whether "Review → Finish setup"
+  implies reviewing already-created (today's atomic-`createBusiness` architecture, the conservative
+  reading this handoff assumes throughout) or not-yet-created Business data (a genuine backend
+  creation-timing change) — recorded for Founder disposition, not silently decided.
+- **Design Acceptance Criteria (Part XIII)** — a concrete 13-item checklist the Founder can apply
+  to reject any Stitch concept that reintroduces Team/Terms into establishment, requires
+  verification before Dashboard access, invents a lifecycle state, weakens Terms enforcement,
+  treats desktop as primary, reproduces the failed five-tab mobile nav, degrades French, exposes
+  backend terminology, invents unsupported functionality, introduces Subscription Plan, silently
+  resolves the `Business.address` question, or departs from the established visual direction.
+- **Status:** `ENG-P3-002C`/`ENG-P3-002`/Capability 3 all unchanged — no implementation, no
+  closure claim.
+- **Files:** this entry and the dedicated handoff document (under
+  `docs/07-product-design/`, the repository's established location for this document class). No
+  other file touched.
+- **Report:** [`ENG-P3-002-UI-HANDOFF-001-business-establishment-dashboard-activation-design-handoff-2026-08-24.md`](../07-product-design/ENG-P3-002-UI-HANDOFF-001-business-establishment-dashboard-activation-design-handoff-2026-08-24.md).
+- **Final gate:** **ENG-P3-002-UI-HANDOFF-001 READY FOR FOUNDER DESIGN REVIEW — STITCH BRIEFING
+  PACKAGE PREPARED; NO IMPLEMENTATION PERFORMED.**
+
+## `ENG-P3-002-UI-HANDOFF-001-FOUNDER-DISPOSITION` — Journey Timing Resolved, Handoff Finalized (2026-08-24)
+
+- **Documentation only** — no source, Functions, Firestore, Rules, Firebase config, or deployment
+  touched; no Stitch call made.
+- **Recorded the Founder's `REVIEW-AFTER-CREATE` disposition** on the one architecture-affecting
+  question the base handoff had flagged: a real Business record is created early in establishment
+  (at the end of EST-02, once every backend-required field is collected), stays `draft`, and Review
+  (EST-03) summarizes already-persisted, backend-authoritative data — never client-only unsaved
+  state. No new lifecycle status, no client-only temporary Business object, no additional
+  backend/data-model requirement.
+- **Reconciled the handoff document in place** (Part III, IV, V, Briefs 1–3, Part XI) to state this
+  timing definitively; the original Report section's now-superseded lines are marked, not silently
+  rewritten, preserving document history.
+- **Found and closed a real gap while reconciling, not just a wording fix:** re-verifying exactly
+  what `createBusiness` requires (`displayName`, `primaryCategoryId`, `countryCode`, `city`,
+  `contactPhone`, `currencyCode`, `timezone`) showed the original EST-01/EST-02 field split had
+  silently dropped four of the seven required fields with no assigned screen. Corrected: contact
+  phone moved to EST-01; country/currency/timezone assigned to EST-02.
+- **Re-confirmed Dashboard Home's brief already excludes all speculative analytics** (revenue,
+  transactions, loyalty metrics, customer counts) and already covers exactly the governed
+  capabilities — no correction needed there.
+- **Final generation sequence:** 4 batches, 7 briefs, unchanged screen/brief count from the base
+  handoff — Batch 1 (Establishment, Briefs 1-3, in order) → Batch 2 (Dashboard Home, Brief 4) →
+  Batch 3 (Activation/Terms, Brief 7) → Batch 4 (Management, Briefs 5-6).
+- **Status:** `ENG-P3-002C`/`ENG-P3-002`/Capability 3 all unchanged — no implementation, no
+  closure claim.
+- **Files:** the base handoff document (updated in place + addendum) and this entry. No other
+  file touched.
+- **Report:** [`ENG-P3-002-UI-HANDOFF-001-business-establishment-dashboard-activation-design-handoff-2026-08-24.md`](../07-product-design/ENG-P3-002-UI-HANDOFF-001-business-establishment-dashboard-activation-design-handoff-2026-08-24.md#addendum--2026-08-24-eng-p3-002-ui-handoff-001-founder-disposition-journey-timing-resolved-package-finalized).
+- **Final gate:** **ENG-P3-002-UI-HANDOFF-001 FINALIZED — STITCH SCREEN GENERATION MAY BEGIN.**
+
+## `ENG-P3-002-UI-RECON-001` — Business Experience Design-to-Implementation Reconciliation (2026-08-25)
+
+- **Read-only analysis only** — no source, Functions, Firestore, Rules, Firebase config, or
+  deployment touched; no implementation package authorized to begin.
+- **Inspected all 20 files across the 7 approved `docs/07-product-design/stitch/v3-designs/`
+  categories directly** (image + HTML content, not filenames), treating Stitch as visual/layout
+  authority only, checked against real backend contracts before any functional claim was accepted.
+- **Confirmed strong validation, not conflict:** the approved v3 designs' EST-01/EST-02/EST-03
+  field split independently matches, field-for-field, the correction already made in
+  `ENG-P3-002-UI-HANDOFF-001-FOUNDER-DISPOSITION` (contact phone on EST-01; country/currency/
+  timezone on EST-02) — confirming that fix was correct.
+- **Found two material governance-level conflicts, reported rather than resolved:** (1) the
+  approved Business Code copy on the Dashboard desktop screen ("share this code with partners for
+  quick integration") **directly contradicts** the Founder-approved `businessCode.ts` FD-3 §24
+  policy ("never... a commerce key... internal/support-use only") — the mobile screen's own
+  correct framing ("official 11thONUS communications") should prevail, per mobile-primary
+  direction. (2) The approved Team Management design requires displaying active-member and
+  pending-invitation identity that **no current transport DTO provides at all**
+  (`StaffMembershipSummary = { membershipId, role, status }` — no name field whatsoever) — a
+  broader gap than the previously-disclosed pending-invitation-only finding.
+- **Full Stitch-invention audit performed** (Part IX/X of the report): "Active" status badge on a
+  `draft` Business, "merchant account"/"appointments" terminology, multi-branch management
+  ("Add new location," per-location status/ID), "Tier" (contradicts the approved Subscription-Plan
+  out-of-scope disposition), "Connected Platforms," location/business photography, Website URL, a
+  "PROGRES" brand-name inconsistency across several screens — all classified D (must not implement
+  as designed), each cited against real code/governance evidence, not assumed.
+- **Delivered an 8-package implementation decomposition** (A: Establishment restructure; B:
+  Dashboard shell + Home; C: Profile+Locations; D: Terms; E: copy/terminology corrections folded
+  into B-D; F: Team frontend, interim fidelity; G: the Staff-transport identity backend
+  correction, its own separate authorization boundary given its privacy weight; H: hosted
+  Founder-QA revalidation) with an explicit safe order and parallelization assessment (C/D/F can
+  run in parallel once B lands; G is independent but must not be silently bundled into F's
+  authorization) and a full test matrix — none implemented.
+- **Status:** `ENG-P3-002C`/`ENG-P3-002`/Capability 3 all unchanged — no implementation-status
+  advancement recorded.
+- **Files:** this entry and the dedicated reconciliation document (under
+  `docs/07-product-design/`, alongside `ENG-P3-002-UI-HANDOFF-001`). No other file touched.
+- **Report:** [`ENG-P3-002-UI-RECON-001-business-experience-design-to-implementation-reconciliation-2026-08-25.md`](../07-product-design/ENG-P3-002-UI-RECON-001-business-experience-design-to-implementation-reconciliation-2026-08-25.md).
+- **Final gate:** **ENG-P3-002-UI-RECON-001 READY FOR FOUNDER REVIEW — BUSINESS EXPERIENCE
+  IMPLEMENTATION PLAN RECONCILED; NO SOURCE CHANGES.**
