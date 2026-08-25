@@ -1,5 +1,7 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { i18n } from "../../i18n";
 import { OnboardingWizard } from "./OnboardingWizard";
 import type { BusinessContext } from "../api/businessContext";
 
@@ -55,5 +57,38 @@ describe("OnboardingWizard", () => {
     expect(screen.getByText(/something went wrong/i)).toBeInTheDocument();
     expect(screen.queryByText("branch step")).not.toBeInTheDocument();
     expect(screen.queryByText("terms step")).not.toBeInTheDocument();
+  });
+
+  describe("language accessibility (ENG-P3-002-CORR-LANGSWITCH-001)", () => {
+    afterEach(async () => {
+      await i18n.changeLanguage("en");
+    });
+
+    it("exposes a reachable control that switches step-navigation copy to French without changing the current step", async () => {
+      const user = userEvent.setup();
+      render(
+        <OnboardingWizard
+          context={{ ...baseContext, primaryCategoryId: "cat-1" }} // opens on "terms"
+        />,
+      );
+
+      expect(screen.getByText("terms step")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Terms" })).toHaveAttribute("aria-current", "step");
+
+      await user.click(screen.getByRole("button", { name: "Français" }));
+
+      expect(await screen.findByRole("button", { name: "Conditions" })).toHaveAttribute(
+        "aria-current",
+        "step",
+      );
+      // Still the terms step's content — switching language did not navigate.
+      expect(screen.getByText("terms step")).toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: "English" }));
+      expect(await screen.findByRole("button", { name: "Terms" })).toHaveAttribute(
+        "aria-current",
+        "step",
+      );
+    });
   });
 });

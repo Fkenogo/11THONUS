@@ -3515,6 +3515,78 @@
 - **Final gate:** **ENG-P3-002B-CORR-SUPPORTEDLANGUAGES-001 MERGED AND CLOSED — HOSTED
   BUSINESS-CREATION REVALIDATION AWAITS FRESH AUTHORIZATION.**
 
+## `ENG-P3-002-CORR-LANGSWITCH-001` — Business Onboarding Language Accessibility Correction (2026-08-24)
+
+- **Authorization:** the bounded correction identifier the prior Founder-QA evidence-recording
+  task named as a candidate, now authorized and implemented. Scope: language accessibility only —
+  explicitly excludes mobile navigation, visual refinement, invitation-identity display, and any
+  backend contract change.
+- **Root cause reconfirmed:** `LanguageSwitcher` (existing, unmodified, I18N-001) had zero
+  references under `apps/web/src/business/` before this task; `/business*` routes have no shared
+  layout/shell in `App.tsx` (three independent leaf routes).
+- **Fix (TDD, RED→GREEN):** added the existing `<LanguageSwitcher />` unmodified, as the first
+  child, to three existing components — `NewBusinessPage.tsx` (`/business/new`),
+  `OnboardingWizard.tsx` (covers all five in-wizard steps in one place, since it already wraps
+  them), and `SubmittedStatusPage.tsx` (post-submission landing). Two-line diff per file (import +
+  JSX). No shared layout invented, no routing change, no backend contract change (`functions/`
+  untouched, confirmed by unchanged 1563/1563 functions test count).
+- **Tests:** 4 new tests (one per changed component, `SubmittedStatusPage.test.tsx` created fresh)
+  prove: the control is reachable, EN→FR switches visible copy, FR→EN restores it, the current
+  onboarding step/route is unaffected by the switch (aria-current preserved throughout), and
+  entered form data survives the switch. All watched RED (failed for the correct reason — missing
+  control) before the fix, GREEN after.
+- **Validation:** web 509/509 (+4 from entry); functions 1563/1563 (byte-identical, untouched);
+  typecheck/lint/format clean; ordinary build clean (Founder-QA markers/site-key confirmed absent —
+  0 matches); `founder-qa-preview` build clean (language-switcher strings + prior
+  `supportedLanguages` fix both present; secret scan clean).
+- **No deployment performed** — per this task's explicit scope; a separate deployment/revalidation
+  task is required after merge to prove this in the hosted DEV preview.
+- **Status:** `ENG-P3-002C` = hosted engineering/integration validated, Founder QA pending
+  (unchanged — not advanced without hosted re-validation). `ENG-P3-002` = still Open, blocked on
+  Founder QA + `DEC-LEGAL-002` — unchanged. Capability 3 = still Open, unchanged. Nothing closed.
+- **Files:** `NewBusinessPage.tsx`/`.test.tsx`, `OnboardingWizard.tsx`/`.test.tsx`,
+  `SubmittedStatusPage.tsx`/`.test.tsx` (new), this entry, the dedicated implementation report.
+- **Report:** [`ENG-P3-002-CORR-LANGSWITCH-001-business-onboarding-language-accessibility-correction-2026-08-24.md`](../05-implementation/reports/ENG-P3-002-CORR-LANGSWITCH-001-business-onboarding-language-accessibility-correction-2026-08-24.md).
+- **Final gate:** **ENG-P3-002-CORR-LANGSWITCH-001 IMPLEMENTED, TDD-VERIFIED — READY FOR FOUNDER
+  REVIEW; NOT DEPLOYED; NOTHING CLOSED.**
+
+## `ENG-P3-002-CORR-LANGSWITCH-001-REVIEW` — Independent Review, Merge & Closure Sync (2026-08-24)
+
+- **Independent review of PR #170** — re-derived every claim from source/diff/test execution
+  rather than trusting the implementation report. Reconstructed the localisation architecture
+  fresh, confirmed `LanguageSwitcher`/`config.ts` genuinely unmodified (0-line diff), confirmed all
+  three placements (`NewBusinessPage.tsx`, `OnboardingWizard.tsx`, `SubmittedStatusPage.tsx`)
+  cover their claimed surfaces by reading the full render tree, confirmed structurally (not just
+  observationally) that route/step/Business-context preservation and non-sign-out are architectural
+  guarantees of `LanguageSwitcher`'s design (it touches only `i18n.changeLanguage()`, no router, no
+  auth, and `useBusinessContextQuery`'s cache key is not language-parameterized).
+- **Test-quality independently proven non-vacuous:** reverted all three production changes in a
+  scratch state (tests left untouched), re-ran the three affected test files — all three new
+  language-accessibility tests failed for the correct reason (missing control), all eight
+  pre-existing tests in those files still passed. Working tree restored and confirmed
+  byte-identical to the reviewed commit before continuing.
+- **One non-blocking observation, not previously flagged:** `OnboardingWizard`'s integrity-error
+  branch and `BusinessWizardPage`'s loading/error/`lifecycle.notAvailable` states (all pre-existing,
+  untouched) do not carry a switcher — outside the normal reachable onboarding journey this
+  correction's own scope covers; not a regression, no fix required.
+- **Full validation re-run fresh, independently:** web 509/509; functions 1563/1563
+  (byte-identical to pre-PR `main`); typecheck/lint/format clean; ordinary build clean
+  (Founder-QA markers confirmed absent); `founder-qa-preview` build clean; secret scan clean on
+  both builds.
+- **No fix required** — merged the reviewed head unmodified.
+- **Merge:** PR #170 merged via `gh pr merge 170 --merge --delete-branch` as
+  `2a2af4a2575e4dec0ab987e0cdd72507f3283543`. Remote branch deleted manually (the recurring
+  local-checkout side-effect noted in every prior task in this workstream prevented `gh`'s own
+  auto-delete). Post-merge CI: **pass** (`32744178514`, 5m51s).
+- **Status change:** `ENG-P3-002-CORR-LANGSWITCH-001` = merged and closed.
+  `ENG-P3-002C`/`ENG-P3-002`/Capability 3 all unchanged — `ENG-P3-002C` remains hosted
+  engineering/integration validated, Founder QA pending hosted language-switch revalidation.
+- **Files:** this entry only (the reviewed source/test changes were already committed to PR #170
+  before this closure sync).
+- **Rollback:** `git revert 2a2af4a` — entirely additive/corrective, no schema/data impact.
+- **Report:** [`ENG-P3-002-CORR-LANGSWITCH-001-REVIEW-independent-review-merge-closure-2026-08-24.md`](../05-implementation/reports/ENG-P3-002-CORR-LANGSWITCH-001-REVIEW-independent-review-merge-closure-2026-08-24.md).
+- **Final gate:** **ENG-P3-002-CORR-LANGSWITCH-001 MERGED AND CLOSED — HOSTED LANGUAGE
+  REVALIDATION AWAITS FRESH AUTHORIZATION.**
 ## `ENG-P3-002C-PREVIEW-001-BUSINESS-CREATE-REVALIDATION-001` — Hosted Business-Creation Revalidation (2026-08-24)
 
 - **Authorization:** the fresh authorization the prior entry awaited. Bounded to DEV Hosting
