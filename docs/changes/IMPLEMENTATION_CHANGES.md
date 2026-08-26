@@ -4129,3 +4129,52 @@
 - **Report:** [`ENG-P3-002-UI-IMP-C-business-profile-locations-implementation-report-2026-08-26.md`](../05-implementation/reports/ENG-P3-002-UI-IMP-C-business-profile-locations-implementation-report-2026-08-26.md).
 - **Final gate:** **ENG-P3-002-UI PACKAGE C READY FOR FOUNDER REVIEW — BUSINESS PROFILE + LOCATIONS
   (MGMT-02/03, MAIN LOCATION ONLY) IMPLEMENTED; LATER PACKAGES NOT STARTED.**
+
+## `ENG-P3-002-UI-IMP-C-REVIEW` — Independent Review, Correction, Merge & Closure (2026-08-26)
+
+- **Independent review of draft PR #179 in a fresh isolated worktree at the exact PR head — the
+  implementation report was not trusted, every claim was independently re-derived.** One
+  test-quality finding (F1), bounded and corrected; no architecture/scope finding.
+- **Package C scope re-verified directly from `ENG-P3-002-UI-RECON-001` Part XV** (not from the
+  implementation report): Business Profile + Locations (MGMT-02/03), Main Location only, no "Add
+  new location," no per-location status/photo/ID, no new backend contract, no `Business.address`
+  reconciliation — all independently confirmed true of the actual diff.
+- **Field contract independently reconstructed from current source**, confirming the reported
+  `legalName`/`logoUrl`/`supportedLanguages` read/write gap is real: writable via
+  `updateBusinessProfile`'s patch type, absent from `getBusinessContext`'s `BusinessContext`
+  projection, and not exposed by any other governed read surface (Firestore Rules deny all direct
+  client reads on `businesses`). **Classified as B — not required by Package C, separate/
+  non-blocking** (not A: no governance names these as required Profile content; not C: no
+  alternate read surface exists).
+- **FD-3 §24 re-derived from its actual source** (`ENG-P2-002-DESIGN-001` §24, not a downstream
+  reference) and confirmed the implemented Business Code caption matches it exactly.
+- **Stitch-audit gap found and closed (documentation only, not a functional defect):** the original
+  audit trail never explicitly cited `business_profile_locations_desktop/code.html`, which
+  contains substantially more invented content than the mobile mockup (Logo Upload, Business
+  Description, Website URL, a "Verified Partner"/Tier/Base-Currency status panel, a "Connected
+  Platforms" social-integration panel). Grepped the implementation and both locale files for every
+  one of these terms — confirmed zero leaked into the actual UI.
+- **F1 (test-coverage gap, corrected via RED→GREEN).** Neither Profile nor Locations tests
+  exercised a failed mutation, even though the implementation already handled it correctly. Added
+  a per-test `mockError` control and one new test per screen proving the mapped error renders and
+  the screen stays on the edit form (no false success). `vitest run`: 585/585 → 587/587.
+- **Test-quality independently verified by 3 deliberate mutations** (Cancel-saves-instead-of-
+  discards; commerce/integration language reintroduced into the Business Code caption; "Add new
+  location" button reintroduced) — all three caught by the existing suite without modification,
+  then fully reverted (`git diff` confirmed clean).
+- **Full validation, including the one step the original implementation flagged as
+  Founder-executed and deferred:** Firebase Emulator Suite run fresh by this review — 688/690 (2
+  pre-existing skips, matching Package B's own precedent count). Also: web 587/587; functions
+  1563/1563 unaffected; typecheck/lint clean (1 pre-existing unrelated warning); format clean;
+  Playwright 16/16 across both projects (re-verified twice); secret scan clean.
+- **Merged:** PR #179 → `main` via genuine merge commit (matching every prior PR in this chain
+  except the disclosed #177 squash deviation) — see this report's own closure addendum for the
+  exact SHA and post-merge CI result.
+- **No overlapping Package D/F/G/H work started** — confirmed before and after this review.
+- **Status:** Package C complete/merged by this review. `ENG-P3-002`/Capability 3 remain Open —
+  unchanged, not edited by this review.
+- **Files:** `apps/web/src/business/dashboard/{BusinessProfilePage,LocationsPage}.test.tsx` (test
+  coverage only), this entry, and the dedicated review report. No implementation file was touched.
+- **Report:** [`eng-p3-002-ui-imp-c-review-report-2026-08-26.md`](../05-implementation/reports/eng-p3-002-ui-imp-c-review-report-2026-08-26.md).
+- **Final gate:** **ENG-P3-002-UI PACKAGE C MERGED AND CLOSED — NEXT PACKAGE AWAITS FRESH FOUNDER
+  AUTHORIZATION.**

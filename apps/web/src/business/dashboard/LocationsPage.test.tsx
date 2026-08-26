@@ -3,14 +3,16 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { LocationsPage } from "./LocationsPage";
+import { BusinessApiError } from "../api/businessCallableClient";
 import type { BusinessContext } from "../api/businessContext";
 
 const mockUpdateBranch = vi.fn();
+let mockError: unknown;
 vi.mock("../hooks/businessMutations", () => ({
   useUpdateBusinessBranchProfileMutation: () => ({
     mutate: mockUpdateBranch,
     isPending: false,
-    error: undefined,
+    error: mockError,
   }),
 }));
 
@@ -46,6 +48,7 @@ function renderPage(ctx: BusinessContext = context) {
 describe("LocationsPage (Package C, MGMT-03)", () => {
   afterEach(() => {
     mockUpdateBranch.mockClear();
+    mockError = undefined;
   });
 
   it("renders the persisted Main Location", () => {
@@ -107,6 +110,19 @@ describe("LocationsPage (Package C, MGMT-03)", () => {
     expect(mockUpdateBranch).not.toHaveBeenCalled();
     expect(screen.getByRole("heading", { name: "Locations" })).toBeInTheDocument();
     expect(screen.getByText("Bujumbura")).toBeInTheDocument();
+  });
+
+  it("shows the mutation error message on a failed save, and does not falsely advance to the read view (no false success)", async () => {
+    mockError = new BusinessApiError("conflict");
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "That's already being processed. Please wait a moment and try again.",
+    );
+    expect(screen.getByRole("heading", { name: "Edit Location" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Locations" })).not.toBeInTheDocument();
   });
 
   it("does not offer to edit the country (matches BranchStep's existing precedent; no new mutability invented)", async () => {
