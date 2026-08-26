@@ -169,6 +169,133 @@ describe("getBusinessContext", () => {
     expect(context.termsAcceptance.accepted).toBe(false);
   });
 
+  it("6. returns the exact persisted currencyCode and timezone (ENG-P3-002-UI-IMP-A-CORR-001) — a real backend-authoritative projection, not a default or inference", async () => {
+    await seedBusiness("biz-a", "cust_owner");
+    await seedBranch("biz-a", "branch-1");
+    await seedMembership({
+      membershipId: "mem-1",
+      userId: "cust_owner",
+      businessId: "biz-a",
+      role: "owner",
+    });
+
+    const context = await getBusinessContext(db, "cust_owner", "biz-a");
+    expect(context.currencyCode).toBe("USD");
+    expect(context.timezone).toBe("America/Los_Angeles");
+  });
+
+  it("7. currencyCode/timezone are scoped to the correct Business — two Businesses with different persisted values never cross-contaminate", async () => {
+    const businessA = createBusiness({
+      id: "biz-a",
+      businessCode: "BIZ23456X",
+      ownerUserId: "cust_owner",
+      displayName: "Cafe A",
+      primaryCategoryId: "cat_food",
+      countryCode: "US",
+      currencyCode: "USD",
+      timezone: "America/Los_Angeles",
+      city: "Springfield",
+      contactPhone: "+15550100",
+      supportedLanguages: ["en"],
+      createdAt: CREATED_AT,
+    });
+    await db
+      .collection("businesses")
+      .doc("biz-a")
+      .set(stripUndefined(toBusinessDocumentFields({ ...businessA, status: "draft" })));
+    await seedBranch("biz-a", "branch-1");
+    await seedMembership({
+      membershipId: "mem-1",
+      userId: "cust_owner",
+      businessId: "biz-a",
+      role: "owner",
+    });
+
+    const businessB = createBusiness({
+      id: "biz-b",
+      businessCode: "BIZ23457X",
+      ownerUserId: "cust_owner",
+      displayName: "Boutique B",
+      primaryCategoryId: "cat_food",
+      countryCode: "FR",
+      currencyCode: "EUR",
+      timezone: "Europe/Paris",
+      city: "Paris",
+      contactPhone: "+33100000000",
+      supportedLanguages: ["fr"],
+      createdAt: CREATED_AT,
+    });
+    await db
+      .collection("businesses")
+      .doc("biz-b")
+      .set(stripUndefined(toBusinessDocumentFields({ ...businessB, status: "draft" })));
+    await seedBranch("biz-b", "branch-2");
+    await seedMembership({
+      membershipId: "mem-2",
+      userId: "cust_owner",
+      businessId: "biz-b",
+      role: "owner",
+    });
+
+    const contextA = await getBusinessContext(db, "cust_owner", "biz-a");
+    const contextB = await getBusinessContext(db, "cust_owner", "biz-b");
+    expect(contextA.currencyCode).toBe("USD");
+    expect(contextA.timezone).toBe("America/Los_Angeles");
+    expect(contextB.currencyCode).toBe("EUR");
+    expect(contextB.timezone).toBe("Europe/Paris");
+  });
+
+  it("8. a non-owner cannot read another Business's currencyCode/timezone — cross-Business reads still denied identically to before this correction", async () => {
+    await seedBusiness("biz-a", "cust_owner");
+    await seedMembership({
+      membershipId: "mem-1",
+      userId: "cust_owner",
+      businessId: "biz-a",
+      role: "owner",
+    });
+
+    await expect(getBusinessContext(db, "cust_intruder", "biz-a")).rejects.toMatchObject({
+      category: "RESOURCE_NOT_FOUND",
+    });
+  });
+
+  it("9. regression: every pre-existing BusinessContext field is still present and unchanged alongside the new currencyCode/timezone projection", async () => {
+    await seedBusiness("biz-a", "cust_owner");
+    await seedBranch("biz-a", "branch-1");
+    await seedMembership({
+      membershipId: "mem-1",
+      userId: "cust_owner",
+      businessId: "biz-a",
+      role: "owner",
+    });
+
+    const context = await getBusinessContext(db, "cust_owner", "biz-a");
+    expect(context).toMatchObject({
+      businessId: "biz-a",
+      businessCode: "BIZ23456X",
+      displayName: "Read Test Cafe",
+      status: "draft",
+      primaryCategoryId: "cat_food",
+      countryCode: "US",
+      city: "Springfield",
+      contactPhone: "+15550100",
+      currencyCode: "USD",
+      timezone: "America/Los_Angeles",
+      branch: {
+        branchId: "branch-1",
+        displayName: "Main Branch",
+        countryCode: "US",
+        city: "Springfield",
+      },
+      termsAcceptance: { accepted: false },
+    });
+    // Bounded DTO — still never leaks internal/audit fields (§14).
+    const dto = context as unknown as Record<string, unknown>;
+    expect(dto["ownerUserId"]).toBeUndefined();
+    expect(dto["schemaVersion"]).toBeUndefined();
+    expect(dto["subscriptionId"]).toBeUndefined();
+  });
+
   it("2. cannot read another owner's Business — fails identically to not-found (enumeration resistance)", async () => {
     await seedBusiness("biz-a", "cust_owner");
     await seedMembership({

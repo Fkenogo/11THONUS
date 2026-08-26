@@ -53,6 +53,11 @@ describe("NewBusinessPage", () => {
     expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
   });
 
+  it("shows a Step 1 of 3 progress indicator on EST-01 (ENG-P3-002-UI-IMP-A-CORR-001 Finding 3)", () => {
+    renderPage();
+    expect(screen.getByText("Step 1 of 3")).toBeInTheDocument();
+  });
+
   it("advances to EST-02 (location/operating details) after EST-01 is completed, without creating a Business yet", async () => {
     const user = userEvent.setup();
     renderPage();
@@ -60,6 +65,14 @@ describe("NewBusinessPage", () => {
 
     expect(screen.getByText("Your main location")).toBeInTheDocument();
     expect(mockMutate).not.toHaveBeenCalled();
+  });
+
+  it("shows a Step 2 of 3 progress indicator on EST-02", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await completeEst01(user);
+
+    expect(screen.getByText("Step 2 of 3")).toBeInTheDocument();
   });
 
   it("fires createBusiness with the combined EST-01+EST-02 payload exactly once, at EST-02's Continue — the governed creation boundary", async () => {

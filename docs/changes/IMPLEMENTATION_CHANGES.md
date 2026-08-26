@@ -3913,3 +3913,57 @@
 - **Report:** [`ENG-P3-002-UI-IMP-A-business-establishment-experience-implementation-report-2026-08-25.md`](../05-implementation/reports/ENG-P3-002-UI-IMP-A-business-establishment-experience-implementation-report-2026-08-25.md).
 - **Final gate:** **ENG-P3-002-UI PACKAGE A READY FOR FOUNDER REVIEW — BUSINESS ESTABLISHMENT
   EXPERIENCE IMPLEMENTED; DASHBOARD PACKAGE NOT STARTED.**
+
+## `ENG-P3-002-UI-IMP-A-CORR-001` — Establishment Review Completeness & Operating Details Read Contract (2026-08-26)
+
+- **Bounded correction package, draft PR — not self-merged.** Fixes exactly the 3 non-blocking
+  gaps found by the independent review of PR #173
+  ([`eng-p3-002-ui-imp-a-review-report-2026-08-26.md`](../05-implementation/reports/eng-p3-002-ui-imp-a-review-report-2026-08-26.md),
+  findings F2-1/F1-1/§8). Entry gate verified independently: PR #173 merge SHA `84995e6` and PR
+  #174 merge SHA `72b6c6b1` both confirmed ancestors of `origin/main`; post-merge CI green on
+  `origin/main`'s head at branch-creation time; no overlapping branch/PR for this correction or
+  for Package B found in flight.
+- **Finding 1 — `getBusinessContext` read-contract gap (backend):** `currencyCode`/`timezone` are
+  required and persisted on `Business` since `ENG-P3-002A`'s `createBusiness`, but
+  `businessReadService.ts`'s `BusinessContext` DTO never projected them. Fixed with a same-file,
+  additive, read-only projection — both fields added to the `BusinessContext` type and returned
+  verbatim from `business.currencyCode`/`business.timezone`. No field renamed/removed/relocated;
+  no default, inference from `countryCode`/`city`, or hardcoding introduced; tenant isolation,
+  authorization, DTO privacy, and fail-closed malformed-document behavior all unchanged and
+  re-verified by test.
+- **Finding 2 — EST-03 review completeness (frontend):** `EstablishmentReviewPage` now renders
+  `branch.countryCode` (via `Intl.DisplayNames`, a standard platform API — not an invented lookup
+  table) and `branch.address` (with a restrained "No address provided" treatment when absent,
+  never an error state), plus a new "Operating details" section for `currencyCode` (customer-facing
+  name via `Intl.DisplayNames`) and `timezone` (rendered exactly as persisted — no detection, no
+  conversion). `Business.address` (the separate, deliberately unresolved field) is untouched.
+  Existing edit routes (`ClassificationStep`/`BranchStep`) are unchanged — no new edit path was
+  added for the newly-displayed fields, since none existed before this correction.
+- **Finding 3 — progress indicator (frontend):** new `EstablishmentProgress` component renders
+  "Step 1 of 3" / "Step 2 of 3" / "Step 3 of 3" on EST-01/EST-02/EST-03. Presentation only — no
+  persisted step model, no URL-derived lifecycle semantics beyond existing routing, no tab nav,
+  does not resurrect the retired wizard, no new Business status.
+- **RED→GREEN evidence:** 3 new backend Firebase Emulator Suite tests
+  (`businessReadService.emulator.test.ts`) and 6 new frontend tests
+  (`EstablishmentReviewPage.test.tsx`) confirmed failing (via `git stash` of the source-only
+  change) before their implementation, then confirmed passing after. 4 new
+  `EstablishmentProgress.test.tsx` tests and 2 new `NewBusinessPage.test.tsx` progress-indicator
+  tests follow the same pattern.
+- **Full validation:** functions unit 1563/1563; web unit 539/539 (+27 net); Firebase Emulator
+  Suite 688/690 (2 pre-existing skips, unrelated to this diff); typecheck/lint/format clean; both
+  builds clean; Playwright 1/1; secret scan (manual grep, no dedicated tool available in this
+  environment, same method as the prior review) clean. Zero `firestore.rules`/`storage.rules`/
+  `firebase.json`/`package.json`/`pnpm-lock.yaml` diff.
+- **Status:** `ENG-P3-002-UI`/`ENG-P3-002`/Capability 3 all unchanged — one bounded correction
+  package, pending Founder review, nothing closed. Package B (Dashboard) not started.
+- **Files:** `functions/src/domains/business/services/businessReadService.ts` +
+  `.emulator.test.ts`; `apps/web/src/business/api/businessContext.ts`; `apps/web/src/business/
+  onboarding/establishment/{EstablishmentReviewPage,EstablishmentProgress}.{tsx,test.tsx}`;
+  `apps/web/src/business/onboarding/NewBusinessPage.{tsx,test.tsx}`; 6 other pre-existing test
+  fixtures updated for the additive `BusinessContext` fields (`businessContextCallable.test.ts`,
+  `DashboardPlaceholder.test.tsx`, `BusinessWizardPage.test.tsx`, `completeness.test.ts`,
+  `establishmentCompleteness.test.ts`, `TeamStep.test.tsx`); `apps/web/src/i18n/locales/{en,fr}.ts`;
+  this entry; the dedicated report.
+- **Report:** [`eng-p3-002-ui-imp-a-corr-001-implementation-report-2026-08-26.md`](../05-implementation/reports/eng-p3-002-ui-imp-a-corr-001-implementation-report-2026-08-26.md).
+- **Final gate:** **ENG-P3-002-UI PACKAGE A CORRECTION READY FOR FOUNDER REVIEW — ESTABLISHMENT
+  REVIEW CONTRACT COMPLETE; PACKAGE B NOT STARTED.**

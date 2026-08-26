@@ -23,6 +23,7 @@ import {
   EstablishmentLocationStep,
   type EstablishmentLocationValues,
 } from "./establishment/EstablishmentLocationStep";
+import { EstablishmentProgress } from "./establishment/EstablishmentProgress";
 
 const emptyIdentity: EstablishmentIdentityValues = {
   displayName: "",
@@ -49,6 +50,7 @@ export function NewBusinessPage() {
   return (
     <main className="mx-auto max-w-lg p-6">
       <LanguageSwitcher />
+      <EstablishmentProgress current={step === "identity" ? 1 : 2} total={3} />
       {step === "identity" && (
         <EstablishmentIdentityStep
           initialValues={identityValues}
