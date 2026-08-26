@@ -353,16 +353,17 @@ New entry appended to `docs/changes/IMPLEMENTATION_CHANGES.md` (see diff in this
 
 ## 42. PR number
 
-See PR opened by this task (draft) — linked in the changes-tracking entry once created.
+[#177](https://github.com/Fkenogo/11THONUS/pull/177) (draft, not self-merged).
 
 ## 43. Final head SHA
 
-Recorded in the PR description at open time (this branch's HEAD after the commit accompanying this
-report).
+`ed8afc60d3ee1a2de7fd83165d0db8ffd435379b` (branch
+`feat/eng-p3-002-ui-imp-b-business-dashboard-shell-home`).
 
 ## 44. CI result
 
-Pending — PR opened as draft; CI will run on push per repository convention. Not self-merged.
+Pending at report time — PR #177 opened as draft; CI runs on push per repository convention. Not
+self-merged.
 
 ## 45. Package B status
 
