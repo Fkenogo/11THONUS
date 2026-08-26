@@ -83,7 +83,14 @@ export type BusinessContextTermsAcceptance = {
   acceptedAt?: string;
 };
 
-/** §14's bounded onboarding-hydration DTO, extended with §37.7's `termsAcceptance` projection. */
+/**
+ * §14's bounded onboarding-hydration DTO, extended with §37.7's `termsAcceptance` projection and,
+ * `ENG-P3-002-UI-IMP-A-CORR-001`, `currencyCode`/`timezone` — both already required and persisted
+ * on `Business` since `ENG-P3-002A`'s `createBusiness`, but never previously projected here. This
+ * is a same-file, additive, read-only projection change: no new field is invented, inferred from
+ * `countryCode`/`city`, or defaulted — the values returned are exactly `business.currencyCode`/
+ * `business.timezone` as persisted. No existing field is removed, renamed, or relocated.
+ */
 export type BusinessContext = {
   businessId: string;
   businessCode: string;
@@ -95,6 +102,8 @@ export type BusinessContext = {
   city: string;
   contactPhone: string;
   contactEmail?: string;
+  currencyCode: string;
+  timezone: string;
   branch: BusinessContextBranch | null;
   termsAcceptance: BusinessContextTermsAcceptance;
 };
@@ -180,6 +189,8 @@ export async function getBusinessContext(
     city: business.city,
     contactPhone: business.contactPhone,
     contactEmail: business.contactEmail,
+    currencyCode: business.currencyCode,
+    timezone: business.timezone,
     branch: toBranchDto(branch),
     termsAcceptance,
   };

@@ -12,6 +12,8 @@ const context: BusinessContext = {
   countryCode: "BI",
   city: "Bujumbura",
   contactPhone: "+25761234567",
+  currencyCode: "BIF",
+  timezone: "Africa/Bujumbura",
   branch: { branchId: "br-1", displayName: "Main Branch", countryCode: "BI", city: "Bujumbura" },
   termsAcceptance: { accepted: false },
 };

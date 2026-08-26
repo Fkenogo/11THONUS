@@ -40,6 +40,8 @@ export type BusinessContext = {
   city: string;
   contactPhone: string;
   contactEmail?: string;
+  currencyCode: string;
+  timezone: string;
   branch: BusinessContextBranch | null;
   termsAcceptance: BusinessContextTermsAcceptance;
 };
