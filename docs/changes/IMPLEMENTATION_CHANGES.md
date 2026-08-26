@@ -4280,9 +4280,13 @@
   688/690 (2 pre-existing skips, matching precedent, clean first run); typecheck/lint clean (1
   pre-existing unrelated warning); format clean; both Playwright projects green (1/1 production
   build, 22/22 dashboard-harness — 21 pre-existing + 1 new); secret scan clean.
-- **Merged:** PR #181 → `main`, a genuine merge commit (matching every prior PR in this chain
-  except the disclosed #177 squash deviation) — see this report's own closure addendum for the
-  exact SHA and post-merge CI result.
+- **Merged:** PR #181 → `main` at `533549cd903b22631b2487d28f7e4372f2aed125`, a genuine merge
+  commit (two parents, matching every prior PR in this chain except the disclosed #177 squash
+  deviation). **Process note (disclosed, not silently absorbed):** the `push`-triggered post-merge
+  CI check never registered on `main` within a reasonable window (recurring GitHub Actions runner
+  backlog, same class disclosed earlier this session) — a manual `gh workflow run CI --ref main`
+  run directly against this merge commit (`32989980464`) completed success, confirming the merged
+  state green.
 - **No overlapping Package E/F/G/H work started** — confirmed before and after this review.
 - **Status:** Package D complete/merged by this review. `ENG-P3-002`/Capability 3 remain Open —
   unchanged, not edited by this review.

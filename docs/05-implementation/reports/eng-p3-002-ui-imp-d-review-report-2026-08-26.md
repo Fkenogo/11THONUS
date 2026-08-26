@@ -365,12 +365,23 @@ None, by this review or by the original PR. Zero `package.json`, Firebase projec
 
 ## 30–32. Merge SHA, closure-sync SHA, post-merge CI
 
-Recorded after merge — see the closure addendum appended to this report post-merge (this section is
-completed as the final step of this same review task, not a separate task).
+- **Merge SHA:** `533549cd903b22631b2487d28f7e4372f2aed125` — PR #181 merged into `main` via
+  `gh pr merge --merge` (genuine merge commit, two parents: `ff0390d` and `9f47a3d` — verified by
+  `git log -1 --format="%P"`; matches this repository's convention, no repeat of the disclosed
+  PR #177 squash deviation).
+- **Post-merge CI:** the `push`-triggered check for this merge never registered on `main`'s own
+  check list within a reasonable window — the same GitHub Actions runner backlog disclosed
+  throughout this review (§1/§2). A manual `gh workflow run CI --ref main` (run `32989980464`)
+  ran directly against the merge commit (`head_sha: 533549c...`) and completed **success**,
+  independently confirming the merged `main` state is green.
+- **Closure-sync SHA:** recorded once this closure-sync commit is created (this same commit, on
+  branch `docs/eng-p3-002-ui-imp-d-review-closure-sync`).
 
 ## 33–36. Package/Capability status
 
-- **Package D status:** merged and closed by this review (pending §30's merge confirmation).
+- **Package D status:** merged and closed by this review. Confirmed: `main` at `533549c` contains
+  the real `DashboardTermsPage` behind `BusinessDashboardRoutes`, post-merge CI green (via manual
+  dispatch, per the disclosed CI-registration anomaly).
 - **Packages E/F/G/H status:** not started; no overlapping work exists in this diff.
 - **`ENG-P3-002` status:** unchanged — Open.
 - **Capability 3 status:** unchanged — Open.
