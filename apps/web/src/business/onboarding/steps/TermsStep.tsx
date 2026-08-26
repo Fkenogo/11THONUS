@@ -27,6 +27,13 @@ export type TermsStepProps = {
   acceptError: unknown;
   onAccept: () => void;
   onContinue: () => void;
+  /**
+   * `ENG-P3-002-UI-IMP-D`: omits the wizard-only "Continue" footer for
+   * non-wizard hosts (the Dashboard Activation screen has no next step to
+   * continue to). Defaults to `false` — every existing caller/test is
+   * unaffected.
+   */
+  hideContinue?: boolean;
 };
 
 function isUnavailableError(error: unknown): boolean {
@@ -39,6 +46,7 @@ export function TermsStep({
   acceptError,
   onAccept,
   onContinue,
+  hideContinue = false,
 }: TermsStepProps) {
   const { t } = useTranslation("business");
   const [agreed, setAgreed] = useState(false);
@@ -74,11 +82,13 @@ export function TermsStep({
         </div>
       )}
 
-      <div className="mt-6">
-        <Button type="button" onClick={onContinue} disabled={!termsAcceptance.accepted}>
-          {t("actions.continue")}
-        </Button>
-      </div>
+      {!hideContinue && (
+        <div className="mt-6">
+          <Button type="button" onClick={onContinue} disabled={!termsAcceptance.accepted}>
+            {t("actions.continue")}
+          </Button>
+        </div>
+      )}
     </section>
   );
 }
