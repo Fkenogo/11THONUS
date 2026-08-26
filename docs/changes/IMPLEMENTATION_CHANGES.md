@@ -4076,3 +4076,56 @@
 - **Report:** [`eng-p3-002-ui-imp-b-review-report-2026-08-26.md`](../05-implementation/reports/eng-p3-002-ui-imp-b-review-report-2026-08-26.md).
 - **Final gate:** **ENG-P3-002-UI PACKAGE B MERGED AND CLOSED — NEXT IMPLEMENTATION PACKAGE AWAITS
   FRESH FOUNDER AUTHORIZATION.**
+
+## `ENG-P3-002-UI-IMP-C` — Business Profile + Locations (MGMT-02/03) Implementation (2026-08-26)
+
+- **Frontend structural implementation, TDD, draft PR — not self-merged.** Package C of
+  `ENG-P3-002-UI-RECON-001`'s decomposition. Zero `functions/`/Rules/Firebase-config diff, zero new
+  dependencies.
+- **Entry gate:** fresh linked worktree created from `origin/main` (`78a5fc9`, confirming PRs
+  #173–#178 — Packages A/A-correction/B — all merged and CI green) before any research or
+  implementation.
+- **Package C authority reconstructed before coding, not assumed from the task title:**
+  `ENG-P3-002-UI-RECON-001` Part XV defines Package C as "Business Profile + Locations (MGMT-02/03)"
+  — a governed superset of "Business Profile Management" (Locations explicitly included, bounded to
+  the Main Location only, no "Add new location," no per-location status/photo/ID, no new backend
+  contract). Confirmed with the Founder before proceeding rather than silently reinterpreted.
+- **Two new screens** (`BusinessProfilePage.tsx`, `LocationsPage.tsx`) mounted directly into Package
+  B's existing `BusinessDashboardRoutes`/`BusinessDashboardShell`, replacing two
+  `DashboardComingSoon` placeholders — no second shell, no duplicated nav, no new Business context
+  store, no new auth mechanism. Both screens use the existing, unchanged
+  `updateBusinessProfile`/`updateBusinessBranchProfile` callables via the existing mutation hooks.
+- **Field-by-field contract matrix built before implementation** (full table in the dedicated
+  report): `legalName`, `Business.address`, `logoUrl`, and `supportedLanguages` are writable via
+  `updateBusinessProfile`'s patch type but **never projected onto `BusinessContext`** by
+  `getBusinessContext` — an edit control for any of them could never first load a persisted value.
+  Rather than extend that read contract without separate authorization, this package excludes all
+  four from the Profile screen and records the gap as a finding. `Business.address` is additionally,
+  separately, the already-deferred Founder disposition and stays untouched either way.
+- **Business Code** shown read-only on Profile with FD-3 §24's actual governed caption ("an
+  internal reference for 11thONUS support — not a code for sharing") — the source text of FD-3 §24
+  was traced to `ENG-P2-002-DESIGN-001` §24, not merely re-quoted from a downstream reference.
+- **Locations bounded exactly to Package C's acceptance criteria:** Main Location only; no "Add new
+  location," per-location status badge, photo, or ID, despite all four appearing in the v3 Stitch
+  mockup (`locations_mobile/code.html`) — verified absent by tests. `countryCode` renders read-only,
+  matching `BranchStep`'s own existing precedent of never editing it (no new mutability invented).
+- **Real-browser regression added:** `tests/e2e/dashboard-profile-locations-harness.spec.ts` (8
+  tests) against the existing dev-only `/dev/dashboard-harness` route Package B already built (no
+  Firebase/Auth dependency). Found and fixed one genuine issue live: the Edit trigger's rendered
+  touch target measured 20–36px in a real browser; corrected via a hit-area expansion
+  (`-m-3 p-3`, no visual size change) to the same ≥44px minimum Package B's own review established.
+- **Full validation:** web 585/585 (+20 net); functions unaffected (no backend files touched);
+  typecheck/lint clean (1 pre-existing unrelated warning, confirmed present before this package
+  too); format clean after 1 whitespace-only fix; both Playwright projects green (1/1 production
+  build, 15/15 dashboard-harness project — 7 pre-existing Package B + 8 new Package C); secret scan
+  clean. Firebase Emulator Suite and hosted Founder-QA preview not executed — Founder-executed step
+  per established precedent for prior UI packages, flagged not skipped.
+- **Status:** `ENG-P3-002`/Capability 3 unchanged — one UI implementation package, pending Founder
+  review, nothing closed. Packages D/F/G/H not started.
+- **Files:** confined to `apps/web/src/business/dashboard/` (2 new components + 2 new test files,
+  `BusinessDashboardRoutes.tsx`/`.test.tsx` updated), `apps/web/src/i18n/locales/{en,fr}.ts`,
+  `playwright.config.ts` (harness `testMatch` regex widened), 1 new e2e spec, this entry, and the
+  dedicated report.
+- **Report:** [`ENG-P3-002-UI-IMP-C-business-profile-locations-implementation-report-2026-08-26.md`](../05-implementation/reports/ENG-P3-002-UI-IMP-C-business-profile-locations-implementation-report-2026-08-26.md).
+- **Final gate:** **ENG-P3-002-UI PACKAGE C READY FOR FOUNDER REVIEW — BUSINESS PROFILE + LOCATIONS
+  (MGMT-02/03, MAIN LOCATION ONLY) IMPLEMENTED; LATER PACKAGES NOT STARTED.**
