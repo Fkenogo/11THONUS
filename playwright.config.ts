@@ -14,7 +14,7 @@ export default defineConfig({
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
-      testIgnore: /dashboard-shell-harness\.spec\.ts/,
+      testIgnore: /dashboard-.*-harness\.spec\.ts/,
     },
     {
       // `ENG-P3-002-UI-IMP-B-REVIEW`: the Dashboard harness route
@@ -22,10 +22,11 @@ export default defineConfig({
       // check the same way the phone-auth/sign-in-preview harnesses are — Vite's
       // production build (the `chromium` project's server, above) statically
       // excludes it, so real-browser verification of it needs its own dev-mode
-      // server/baseURL instead.
+      // server/baseURL instead. `ENG-P3-002-UI-IMP-C` adds its own Profile/
+      // Locations harness spec alongside the existing shell one, same pattern.
       name: "chromium-dashboard-harness",
       use: { ...devices["Desktop Chrome"], baseURL: "http://localhost:5183" },
-      testMatch: /dashboard-shell-harness\.spec\.ts/,
+      testMatch: /dashboard-.*-harness\.spec\.ts/,
     },
   ],
   webServer: [

@@ -66,6 +66,8 @@ export const fr = {
       retry: "Réessayer",
       edit: "Modifier",
       finishSetup: "Terminer la configuration",
+      save: "Enregistrer les modifications",
+      cancel: "Annuler",
     },
     progress: {
       step: "Étape {{current}} sur {{total}}",
@@ -174,6 +176,26 @@ export const fr = {
         body: "Cette section n'est pas encore disponible.",
         backAction: "Retour à l'aperçu",
       },
+    },
+    profile: {
+      title: "Profil de l'entreprise",
+      subtitle: "Consultez et mettez à jour les informations de votre entreprise.",
+      editTitle: "Modifier le profil de l'entreprise",
+      informationSectionTitle: "Informations sur l'entreprise",
+      identitySectionTitle: "Identité",
+      nameLabel: "Nom de l'entreprise",
+      categoryLabel: "Catégorie",
+      typeLabel: "Type",
+      typeNone: "Aucun type spécifique",
+      emailNotProvided: "Aucun e-mail fourni",
+      businessCodeLabel: "Code entreprise",
+      businessCodeHint:
+        "Une référence interne destinée au support 11thONUS — pas un code à partager.",
+    },
+    locations: {
+      title: "Emplacements",
+      subtitle: "Consultez et mettez à jour votre emplacement principal.",
+      editTitle: "Modifier l'emplacement",
     },
     integrityError: {
       title: "Un problème est survenu",

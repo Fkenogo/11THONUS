@@ -6,6 +6,15 @@ import type { BusinessContext } from "../api/businessContext";
 
 vi.mock("../hooks/businessQueries", () => ({
   useBusinessCategoriesQuery: () => ({ data: [{ id: "cat-1", displayLabel: "Hair salon" }] }),
+  useBusinessTypesQuery: () => ({ data: [], status: "success" }),
+}));
+vi.mock("../hooks/businessMutations", () => ({
+  useUpdateBusinessProfileMutation: () => ({ mutate: vi.fn(), isPending: false, error: undefined }),
+  useUpdateBusinessBranchProfileMutation: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+    error: undefined,
+  }),
 }));
 
 const context: BusinessContext = {
@@ -53,8 +62,20 @@ describe("BusinessDashboardRoutes", () => {
     expect(screen.getByRole("heading", { name: "Team" })).toBeInTheDocument();
   });
 
-  it("renders the not-yet-implemented treatment for Profile/Locations/Terms without fabricating functionality", () => {
-    renderAt("/business/biz-123/dashboard/profile");
+  it("renders the not-yet-implemented treatment for Terms without fabricating functionality", () => {
+    renderAt("/business/biz-123/dashboard/terms");
     expect(screen.getByText("This section isn't available yet.")).toBeInTheDocument();
+  });
+
+  it("renders the real Business Profile screen (Package C) at the profile route", () => {
+    renderAt("/business/biz-123/dashboard/profile");
+    expect(screen.getByRole("heading", { name: "Business Profile" })).toBeInTheDocument();
+    expect(screen.getAllByText("Acme Salon").length).toBeGreaterThan(0);
+  });
+
+  it("renders the real Locations screen (Package C) at the locations route", () => {
+    renderAt("/business/biz-123/dashboard/locations");
+    expect(screen.getByRole("heading", { name: "Locations" })).toBeInTheDocument();
+    expect(screen.getByText("Main Branch")).toBeInTheDocument();
   });
 });
