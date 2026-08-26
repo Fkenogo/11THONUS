@@ -1,14 +1,15 @@
 /**
- * `/business/:businessId/dashboard` — route wrapper for the Package A Dashboard boundary
- * placeholder (`ENG-P3-002-UI-IMP-A`). Reads real `getBusinessContext` data — the same governed
- * pattern `BusinessWizardPage.tsx` already uses — never trusting the route param alone as
- * identity/display truth.
+ * `/business/:businessId/dashboard/*` — route wrapper for the Business Dashboard
+ * (`ENG-P3-002-UI-IMP-B`, superseding Package A's `DashboardPlaceholder`). Reads real
+ * `getBusinessContext` data — the same governed pattern `BusinessWizardPage.tsx` already uses —
+ * never trusting the route param alone as identity/display truth, then hands it to
+ * `BusinessDashboardRoutes` for the shell + nested Dashboard destinations.
  */
 
 import { useParams } from "react-router-dom";
 import { useTranslation } from "../../i18n";
 import { useBusinessContextQuery } from "../hooks/businessQueries";
-import { DashboardPlaceholder } from "./DashboardPlaceholder";
+import { BusinessDashboardRoutes } from "./BusinessDashboardRoutes";
 
 export function BusinessDashboardBoundaryPage() {
   const { businessId } = useParams<{ businessId: string }>();
@@ -32,5 +33,5 @@ export function BusinessDashboardBoundaryPage() {
     );
   }
 
-  return <DashboardPlaceholder context={query.data} />;
+  return <BusinessDashboardRoutes context={query.data} />;
 }

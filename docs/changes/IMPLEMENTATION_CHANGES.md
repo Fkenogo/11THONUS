@@ -3967,3 +3967,50 @@
 - **Report:** [`eng-p3-002-ui-imp-a-corr-001-implementation-report-2026-08-26.md`](../05-implementation/reports/eng-p3-002-ui-imp-a-corr-001-implementation-report-2026-08-26.md).
 - **Final gate:** **ENG-P3-002-UI PACKAGE A CORRECTION READY FOR FOUNDER REVIEW — ESTABLISHMENT
   REVIEW CONTRACT COMPLETE; PACKAGE B NOT STARTED.**
+
+## `ENG-P3-002-UI-IMP-B` — Business Dashboard Shell & Dashboard Home (DASH-01) Implementation (2026-08-26)
+
+- **Frontend structural implementation, TDD, draft PR — not self-merged.** Package B of
+  `ENG-P3-002-UI-RECON-001`'s decomposition. Zero `functions/`/Rules/Firebase-config diff, zero new
+  dependencies.
+- **Entry-gate correction:** the primary checkout was 10 commits behind `origin/main` (missing
+  Package A's own merge). A fresh worktree was created from `origin/main` (`2c94735`, confirming
+  PRs #175/#176 present and CI green) before any research or implementation, per the task's own
+  entry-gate requirement — an initial research pass against the stale checkout was caught and
+  redone against the correct one before coding began.
+- **Converted Package A's `DashboardPlaceholder` boundary into the real Dashboard shell:** one new
+  `BusinessDashboardShell` (mobile hamburger-menu / persistent desktop sidebar around a nested
+  `<Outlet />` — never a bottom bar) plus `BusinessDashboardRoutes`, a nested route table under
+  `/business/:businessId/dashboard/*` (index → `DashboardHome`/DASH-01;
+  `profile`/`locations`/`team`/`terms` → restrained `DashboardComingSoon` placeholders, since
+  Packages C/D/F are not authorized here). `App.tsx`'s one Dashboard route path gained a trailing
+  `/*`; nothing else in the route table changed.
+- **DASH-01 implements only the Founder-governed minimum** extracted from `UI-RECON-001` Part
+  VI/Brief 4 before coding: Business identity (name, category), a readiness state sourced strictly
+  from real `termsAcceptance.accepted` (never a fabricated "% complete" or lifecycle badge), and
+  the four governed management entry points. Every D-classified Stitch invention (Active badge,
+  merchant-account/appointments copy, revenue/loyalty/tier/subscription content) is verified absent
+  by explicit negative-assertion tests.
+- **Business Code deliberately excluded from Dashboard Home** — not part of the governed minimum,
+  and the three v3 Stitch mockups disagree with each other on its caption (one FD-3-§24-violating,
+  one correct, one absent); rather than pick one, it is omitted here and left to Package C's
+  Business Profile screen, where the correct caption belongs.
+- **No new UI dependency added** — the mobile menu is hand-rolled (Tailwind + local state), matching
+  `formPrimitives.tsx`'s already-established "no new design-system dependency" precedent; the
+  pre-configured-but-unused shadcn `components.json` scaffold remains untouched.
+- **RED→GREEN evidence:** all four new components/tests were written before any implementation
+  existed; `vitest run src/business/dashboard` confirmed genuine `Failed to resolve import` RED (4
+  files) before implementation, then 8 files / 27 tests GREEN after (one test-harness routing bug
+  in the shell's own test, not the implementation, fixed along the way).
+- **Full validation:** web 561/561 (+22 net, +9 files); functions 1563/1563 unaffected (no backend
+  files touched); typecheck/lint clean; format clean after 2 whitespace-only `--write` fixes;
+  both builds clean; Playwright 1/1 (pre-existing spec, unaffected); secret scan (manual grep)
+  clean. Firebase Emulator Suite and hosted Founder-QA preview not executed — Founder-executed step
+  per established precedent, flagged not skipped.
+- **Status:** `ENG-P3-002`/Capability 3 unchanged — one UI implementation package, pending Founder
+  review, nothing closed. Packages C/D/F not started.
+- **Files:** confined to `apps/web/src/business/dashboard/`, `apps/web/src/App.tsx` (1 line),
+  `apps/web/src/i18n/locales/{en,fr}.ts`, plus tests, this entry, and the dedicated report.
+- **Report:** [`ENG-P3-002-UI-IMP-B-business-dashboard-shell-home-implementation-report-2026-08-26.md`](../05-implementation/reports/ENG-P3-002-UI-IMP-B-business-dashboard-shell-home-implementation-report-2026-08-26.md).
+- **Final gate:** **ENG-P3-002-UI PACKAGE B READY FOR FOUNDER REVIEW — BUSINESS DASHBOARD SHELL AND
+  DASHBOARD HOME IMPLEMENTED; LATER MANAGEMENT PACKAGES NOT STARTED.**

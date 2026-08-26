@@ -126,7 +126,7 @@ function App({ auth, functions }: AppProps) {
           }
         />
         <Route
-          path="/business/:businessId/dashboard"
+          path="/business/:businessId/dashboard/*"
           element={
             <RequireAuthenticatedUser auth={auth} renderUnauthenticated={() => <SignInRequired />}>
               <BusinessDashboardBoundaryPage />
