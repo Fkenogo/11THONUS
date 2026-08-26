@@ -41,6 +41,18 @@ const DevSignInPreviewRoute = import.meta.env.DEV
     )
   : null;
 
+// ENG-P3-002-UI-IMP-B-REVIEW: development-only Founder-QA harness for real-browser/responsive
+// verification of the Dashboard shell against a fixed local BusinessContext fixture — no
+// Firebase Auth, no network call. Same literal `import.meta.env.DEV` build-time exclusion as the
+// two routes above.
+const DevDashboardHarnessRoute = import.meta.env.DEV
+  ? lazy(() =>
+      import("./dev/dashboardHarness/DashboardHarnessPage").then((m) => ({
+        default: m.DashboardHarnessPage,
+      })),
+    )
+  : null;
+
 // ENG-P3-002C-PREVIEW-001: preview-only sign-in entry point for the Founder-QA
 // business-onboarding hosted preview. Unlike the two routes above, this one is
 // NOT gated on `import.meta.env.DEV` (a hosted preview is always a `vite build`,
@@ -126,7 +138,7 @@ function App({ auth, functions }: AppProps) {
           }
         />
         <Route
-          path="/business/:businessId/dashboard"
+          path="/business/:businessId/dashboard/*"
           element={
             <RequireAuthenticatedUser auth={auth} renderUnauthenticated={() => <SignInRequired />}>
               <BusinessDashboardBoundaryPage />
@@ -149,6 +161,16 @@ function App({ auth, functions }: AppProps) {
             element={
               <Suspense fallback={null}>
                 <DevSignInPreviewRoute />
+              </Suspense>
+            }
+          />
+        )}
+        {DevDashboardHarnessRoute && (
+          <Route
+            path="/dev/dashboard-harness/*"
+            element={
+              <Suspense fallback={null}>
+                <DevDashboardHarnessRoute />
               </Suspense>
             }
           />

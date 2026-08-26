@@ -141,8 +141,39 @@ export const fr = {
       title: "Soumis — en attente de vérification",
       body: "Votre entreprise a été soumise et est en attente de vérification. Nous vous informerons une fois l'examen terminé.",
     },
-    dashboardPlaceholder: {
-      title: "Votre entreprise est configurée",
+    dashboard: {
+      nav: {
+        label: "Navigation du tableau de bord de l'entreprise",
+        home: "Aperçu",
+        profile: "Profil de l'entreprise",
+        locations: "Emplacements",
+        team: "Équipe",
+        terms: "Conditions de l'entreprise",
+        openMenu: "Ouvrir la navigation",
+        closeMenu: "Fermer la navigation",
+      },
+      home: {
+        title: "Aperçu",
+        termsOutstandingTitle: "Une dernière étape",
+        termsOutstandingBody:
+          "Consultez et acceptez les Conditions de l'entreprise pour terminer votre configuration.",
+        reviewTermsAction: "Consulter les Conditions de l'entreprise",
+        termsUnavailableTitle: "Les Conditions de l'entreprise ne sont pas encore disponibles",
+        termsUnavailableBody:
+          "Nous vous informerons dès que les Conditions de l'entreprise seront prêtes à être consultées.",
+        readyBody:
+          "Votre entreprise est configurée. Utilisez les sections ci-dessous pour la gérer.",
+      },
+      entryPoints: {
+        profile: "Profil de l'entreprise",
+        locations: "Emplacements",
+        team: "Équipe",
+        terms: "Conditions de l'entreprise",
+      },
+      comingSoon: {
+        body: "Cette section n'est pas encore disponible.",
+        backAction: "Retour à l'aperçu",
+      },
     },
     integrityError: {
       title: "Un problème est survenu",

@@ -3967,3 +3967,105 @@
 - **Report:** [`eng-p3-002-ui-imp-a-corr-001-implementation-report-2026-08-26.md`](../05-implementation/reports/eng-p3-002-ui-imp-a-corr-001-implementation-report-2026-08-26.md).
 - **Final gate:** **ENG-P3-002-UI PACKAGE A CORRECTION READY FOR FOUNDER REVIEW — ESTABLISHMENT
   REVIEW CONTRACT COMPLETE; PACKAGE B NOT STARTED.**
+
+## `ENG-P3-002-UI-IMP-B` — Business Dashboard Shell & Dashboard Home (DASH-01) Implementation (2026-08-26)
+
+- **Frontend structural implementation, TDD, draft PR — not self-merged.** Package B of
+  `ENG-P3-002-UI-RECON-001`'s decomposition. Zero `functions/`/Rules/Firebase-config diff, zero new
+  dependencies.
+- **Entry-gate correction:** the primary checkout was 10 commits behind `origin/main` (missing
+  Package A's own merge). A fresh worktree was created from `origin/main` (`2c94735`, confirming
+  PRs #175/#176 present and CI green) before any research or implementation, per the task's own
+  entry-gate requirement — an initial research pass against the stale checkout was caught and
+  redone against the correct one before coding began.
+- **Converted Package A's `DashboardPlaceholder` boundary into the real Dashboard shell:** one new
+  `BusinessDashboardShell` (mobile hamburger-menu / persistent desktop sidebar around a nested
+  `<Outlet />` — never a bottom bar) plus `BusinessDashboardRoutes`, a nested route table under
+  `/business/:businessId/dashboard/*` (index → `DashboardHome`/DASH-01;
+  `profile`/`locations`/`team`/`terms` → restrained `DashboardComingSoon` placeholders, since
+  Packages C/D/F are not authorized here). `App.tsx`'s one Dashboard route path gained a trailing
+  `/*`; nothing else in the route table changed.
+- **DASH-01 implements only the Founder-governed minimum** extracted from `UI-RECON-001` Part
+  VI/Brief 4 before coding: Business identity (name, category), a readiness state sourced strictly
+  from real `termsAcceptance.accepted` (never a fabricated "% complete" or lifecycle badge), and
+  the four governed management entry points. Every D-classified Stitch invention (Active badge,
+  merchant-account/appointments copy, revenue/loyalty/tier/subscription content) is verified absent
+  by explicit negative-assertion tests.
+- **Business Code deliberately excluded from Dashboard Home** — not part of the governed minimum,
+  and the three v3 Stitch mockups disagree with each other on its caption (one FD-3-§24-violating,
+  one correct, one absent); rather than pick one, it is omitted here and left to Package C's
+  Business Profile screen, where the correct caption belongs.
+- **No new UI dependency added** — the mobile menu is hand-rolled (Tailwind + local state), matching
+  `formPrimitives.tsx`'s already-established "no new design-system dependency" precedent; the
+  pre-configured-but-unused shadcn `components.json` scaffold remains untouched.
+- **RED→GREEN evidence:** all four new components/tests were written before any implementation
+  existed; `vitest run src/business/dashboard` confirmed genuine `Failed to resolve import` RED (4
+  files) before implementation, then 8 files / 27 tests GREEN after (one test-harness routing bug
+  in the shell's own test, not the implementation, fixed along the way).
+- **Full validation:** web 561/561 (+22 net, +9 files); functions 1563/1563 unaffected (no backend
+  files touched); typecheck/lint clean; format clean after 2 whitespace-only `--write` fixes;
+  both builds clean; Playwright 1/1 (pre-existing spec, unaffected); secret scan (manual grep)
+  clean. Firebase Emulator Suite and hosted Founder-QA preview not executed — Founder-executed step
+  per established precedent, flagged not skipped.
+- **Status:** `ENG-P3-002`/Capability 3 unchanged — one UI implementation package, pending Founder
+  review, nothing closed. Packages C/D/F not started.
+- **Files:** confined to `apps/web/src/business/dashboard/`, `apps/web/src/App.tsx` (1 line),
+  `apps/web/src/i18n/locales/{en,fr}.ts`, plus tests, this entry, and the dedicated report.
+- **Report:** [`ENG-P3-002-UI-IMP-B-business-dashboard-shell-home-implementation-report-2026-08-26.md`](../05-implementation/reports/ENG-P3-002-UI-IMP-B-business-dashboard-shell-home-implementation-report-2026-08-26.md).
+- **Final gate:** **ENG-P3-002-UI PACKAGE B READY FOR FOUNDER REVIEW — BUSINESS DASHBOARD SHELL AND
+  DASHBOARD HOME IMPLEMENTED; LATER MANAGEMENT PACKAGES NOT STARTED.**
+
+## `ENG-P3-002-UI-IMP-B-REVIEW` — Independent Review, Correction, Merge & Closure (2026-08-26)
+
+- **Independent review of PR #177 in a fresh isolated worktree — the implementation report was not
+  trusted, every claim was independently re-derived.** One material finding (F3), one
+  implementation-quality finding (F2), both bounded and corrected within Package B's own scope.
+- **F3 (architecture/governance) — Terms-state collapse, corrected.** `getBusinessContext`'s
+  `resolveTermsAcceptanceProjection` returns the identical `{ accepted: false }` both when no
+  current Terms version is configured at all *and* when a version exists but is simply unaccepted
+  — two different real states the original Dashboard Home collapsed into one "One step left /
+  Review Business Terms" banner, falsely implying a functional Terms-review action exists. The
+  already-governed `TERMS_READABLE_CONTENT_AVAILABLE` flag (hard-pinned `false` — no readable Terms
+  content anywhere, `DEC-LEGAL-002` open) is the single existing signal for which state is real
+  today. Extracted it out of `TermsStep.tsx` into a shared `termsAvailability.ts` (no behavior
+  change to `TermsStep` itself, its 6 tests unchanged and still passing) and made `DashboardHome`
+  branch three ways: accepted → ready; unaccepted + unavailable → new "Business Terms aren't
+  available yet" state (today's actual, correct state, no functional CTA); unaccepted + available
+  → the original outstanding banner, retained and tested for the day that flag is deliberately
+  flipped by a future package.
+- **F2 (implementation quality) — mobile nav touch targets, corrected.** A new real-browser
+  Playwright regression (jsdom cannot measure real layout) measured the mobile nav's rendered link
+  height at 36px, below the ~44px accessibility guideline explicitly required by this review.
+  Fixed via `BusinessDashboardShell`'s `NavLink` className (`flex min-h-11 items-center px-3
+  py-2.5`); re-measured ≥44px.
+- **New permanent real-browser coverage added, not just a one-off check:** a development-only
+  harness route (`/dev/dashboard-harness`, gated identically to the three existing dev harnesses,
+  confirmed excluded from the production `dist/` bundle) plus `tests/e2e/dashboard-shell-harness.spec.ts`
+  (7 tests: mobile/tablet/desktop overflow and breakpoint checks, hamburger open/close + focus
+  management via real `KeyboardEvent`, touch-target sizing, EN/FR switching preserving route and
+  Business identity). Runs in Playwright's second `webServer`/project (dev mode, since the harness
+  is excluded from the production preview build by design).
+- **Firebase Emulator Suite run fresh during this review** — the implementation report's own
+  disclosed gap. 52 files / 688 tests passed, 2 pre-existing unrelated skips, exit code 0.
+- **Test-quality re-verified by mutation, not merely trusted:** 4 real mutations (reintroducing the
+  Terms-state bug; injecting a direct Firestore import; swapping the ready-state copy for the
+  literal word "Active"; shrinking the touch target back down) each confirmed the relevant test(s)
+  fail, then were reverted exactly. Mutation C surfaced a genuine minor coverage gap (no test
+  previously asserted "Active" absence specifically in the accepted-Terms branch) — closed with a
+  new test before reverting.
+- **Full validation:** web 565/565 (+4 net); functions 1563/1563 unaffected; Firebase Emulator
+  Suite 688/690 (2 pre-existing skips); typecheck/lint clean (1 pre-existing unrelated warning,
+  confirmed present on the unmodified head too); format clean after 1 whitespace-only fix; default
+  and `founder-qa-preview` builds both clean, dev harness confirmed excluded from `dist/`;
+  Playwright 8/8 (7 new); secret scan clean.
+- **No overlapping Package C/D/E/F/G/H work started** — confirmed before and after this review.
+  Package C is not begun by this review.
+- **Status:** Package B complete/merged by this review. `ENG-P3-002`/Capability 3 remain Open —
+  unchanged, not edited by this review.
+- **Files:** confined to `apps/web/src/business/` (including the new `termsAvailability.ts` and two
+  new Dashboard test files), `apps/web/src/App.tsx` (dev-harness route), `apps/web/src/dev/
+  dashboardHarness/` (new, dev-only), `apps/web/src/i18n/locales/{en,fr}.ts`, `playwright.config.ts`,
+  `tests/e2e/dashboard-shell-harness.spec.ts` (new), this entry, and the dedicated review report.
+- **Report:** [`eng-p3-002-ui-imp-b-review-report-2026-08-26.md`](../05-implementation/reports/eng-p3-002-ui-imp-b-review-report-2026-08-26.md).
+- **Final gate:** **ENG-P3-002-UI PACKAGE B MERGED AND CLOSED — NEXT IMPLEMENTATION PACKAGE AWAITS
+  FRESH FOUNDER AUTHORIZATION.**

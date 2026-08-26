@@ -139,8 +139,37 @@ export const en = {
       title: "Submitted — pending verification",
       body: "Your business has been submitted and is now pending verification. We'll let you know once it's reviewed.",
     },
-    dashboardPlaceholder: {
-      title: "Your business is set up",
+    dashboard: {
+      nav: {
+        label: "Business Dashboard navigation",
+        home: "Overview",
+        profile: "Business Profile",
+        locations: "Locations",
+        team: "Team",
+        terms: "Business Terms",
+        openMenu: "Open navigation",
+        closeMenu: "Close navigation",
+      },
+      home: {
+        title: "Overview",
+        termsOutstandingTitle: "One step left",
+        termsOutstandingBody: "Review and accept the Business Terms to complete your setup.",
+        reviewTermsAction: "Review Business Terms",
+        termsUnavailableTitle: "Business Terms aren't available yet",
+        termsUnavailableBody:
+          "We'll let you know as soon as the Business Terms are ready to review.",
+        readyBody: "Your business is set up. Use the sections below to manage it.",
+      },
+      entryPoints: {
+        profile: "Business Profile",
+        locations: "Locations",
+        team: "Team",
+        terms: "Business Terms",
+      },
+      comingSoon: {
+        body: "This section isn't available yet.",
+        backAction: "Back to Overview",
+      },
     },
     integrityError: {
       title: "Something went wrong",
