@@ -83,7 +83,7 @@ export function BusinessDashboardShell({ context }: { context: BusinessContext }
                 onClick={() => setMenuOpen(false)}
                 className={({ isActive }) =>
                   cn(
-                    "block rounded-md px-3 py-2 text-sm",
+                    "flex min-h-11 items-center rounded-md px-3 py-2.5 text-sm leading-normal",
                     isActive
                       ? "bg-[var(--color-primary)] text-[var(--color-primary-foreground)]"
                       : "text-[var(--color-foreground)]",

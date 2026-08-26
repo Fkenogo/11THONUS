@@ -4,24 +4,21 @@
  * Content-authority finding (independent review, corrected from the
  * original implementation): a server-authoritative *required Terms
  * version* (`termsAcceptance.version`) is not the same thing as a
- * user-*readable* Terms document/link. Grepping the full repository finds
- * no `termsDocumentId`/`termsUrl`/readable-content source anywhere —
- * `ENG-P3-002-DESIGN-001` §37.5 itself confirms "no in-repo legal-document
- * CMS" and defers the actual content to the still-open `DEC-LEGAL-002`.
- * A user must never be offered a consent control for content they cannot
- * read. `TERMS_READABLE_CONTENT_AVAILABLE` is therefore hard-pinned to
- * `false` — no checkbox, no accept button, Continue disabled — until a
- * future package wires in a real governed content source and this flag
- * (or its replacement) is deliberately flipped. The backend's own
- * config-unavailable failure (`unavailable` error code) is handled as
- * secondary defense for after that day, not as how this gate is
- * discovered today.
+ * user-*readable* Terms document/link. See `../../termsAvailability.ts`
+ * (`TERMS_READABLE_CONTENT_AVAILABLE`, the single source of truth for this
+ * question, also reused by Dashboard Home) for the full rationale — no
+ * checkbox, no accept button, Continue disabled — until a future package
+ * wires in a real governed content source and that flag is deliberately
+ * flipped. The backend's own config-unavailable failure (`unavailable`
+ * error code) is handled as secondary defense for after that day, not as
+ * how this gate is discovered today.
  */
 
 import { useState } from "react";
 import { useTranslation } from "../../../i18n";
 import { Button, Checkbox } from "../../../components/ui/formPrimitives";
 import { BusinessApiError } from "../../api/businessCallableClient";
+import { TERMS_READABLE_CONTENT_AVAILABLE } from "../../termsAvailability";
 import type { BusinessContextTermsAcceptance } from "../../api/businessContext";
 
 export type TermsStepProps = {
@@ -31,9 +28,6 @@ export type TermsStepProps = {
   onAccept: () => void;
   onContinue: () => void;
 };
-
-/** No governed, user-readable Terms document/link exists anywhere yet (`DEC-LEGAL-002` open). */
-const TERMS_READABLE_CONTENT_AVAILABLE = false;
 
 function isUnavailableError(error: unknown): boolean {
   return error instanceof BusinessApiError && error.code === "unavailable";

@@ -4014,3 +4014,58 @@
 - **Report:** [`ENG-P3-002-UI-IMP-B-business-dashboard-shell-home-implementation-report-2026-08-26.md`](../05-implementation/reports/ENG-P3-002-UI-IMP-B-business-dashboard-shell-home-implementation-report-2026-08-26.md).
 - **Final gate:** **ENG-P3-002-UI PACKAGE B READY FOR FOUNDER REVIEW — BUSINESS DASHBOARD SHELL AND
   DASHBOARD HOME IMPLEMENTED; LATER MANAGEMENT PACKAGES NOT STARTED.**
+
+## `ENG-P3-002-UI-IMP-B-REVIEW` — Independent Review, Correction, Merge & Closure (2026-08-26)
+
+- **Independent review of PR #177 in a fresh isolated worktree — the implementation report was not
+  trusted, every claim was independently re-derived.** One material finding (F3), one
+  implementation-quality finding (F2), both bounded and corrected within Package B's own scope.
+- **F3 (architecture/governance) — Terms-state collapse, corrected.** `getBusinessContext`'s
+  `resolveTermsAcceptanceProjection` returns the identical `{ accepted: false }` both when no
+  current Terms version is configured at all *and* when a version exists but is simply unaccepted
+  — two different real states the original Dashboard Home collapsed into one "One step left /
+  Review Business Terms" banner, falsely implying a functional Terms-review action exists. The
+  already-governed `TERMS_READABLE_CONTENT_AVAILABLE` flag (hard-pinned `false` — no readable Terms
+  content anywhere, `DEC-LEGAL-002` open) is the single existing signal for which state is real
+  today. Extracted it out of `TermsStep.tsx` into a shared `termsAvailability.ts` (no behavior
+  change to `TermsStep` itself, its 6 tests unchanged and still passing) and made `DashboardHome`
+  branch three ways: accepted → ready; unaccepted + unavailable → new "Business Terms aren't
+  available yet" state (today's actual, correct state, no functional CTA); unaccepted + available
+  → the original outstanding banner, retained and tested for the day that flag is deliberately
+  flipped by a future package.
+- **F2 (implementation quality) — mobile nav touch targets, corrected.** A new real-browser
+  Playwright regression (jsdom cannot measure real layout) measured the mobile nav's rendered link
+  height at 36px, below the ~44px accessibility guideline explicitly required by this review.
+  Fixed via `BusinessDashboardShell`'s `NavLink` className (`flex min-h-11 items-center px-3
+  py-2.5`); re-measured ≥44px.
+- **New permanent real-browser coverage added, not just a one-off check:** a development-only
+  harness route (`/dev/dashboard-harness`, gated identically to the three existing dev harnesses,
+  confirmed excluded from the production `dist/` bundle) plus `tests/e2e/dashboard-shell-harness.spec.ts`
+  (7 tests: mobile/tablet/desktop overflow and breakpoint checks, hamburger open/close + focus
+  management via real `KeyboardEvent`, touch-target sizing, EN/FR switching preserving route and
+  Business identity). Runs in Playwright's second `webServer`/project (dev mode, since the harness
+  is excluded from the production preview build by design).
+- **Firebase Emulator Suite run fresh during this review** — the implementation report's own
+  disclosed gap. 52 files / 688 tests passed, 2 pre-existing unrelated skips, exit code 0.
+- **Test-quality re-verified by mutation, not merely trusted:** 4 real mutations (reintroducing the
+  Terms-state bug; injecting a direct Firestore import; swapping the ready-state copy for the
+  literal word "Active"; shrinking the touch target back down) each confirmed the relevant test(s)
+  fail, then were reverted exactly. Mutation C surfaced a genuine minor coverage gap (no test
+  previously asserted "Active" absence specifically in the accepted-Terms branch) — closed with a
+  new test before reverting.
+- **Full validation:** web 565/565 (+4 net); functions 1563/1563 unaffected; Firebase Emulator
+  Suite 688/690 (2 pre-existing skips); typecheck/lint clean (1 pre-existing unrelated warning,
+  confirmed present on the unmodified head too); format clean after 1 whitespace-only fix; default
+  and `founder-qa-preview` builds both clean, dev harness confirmed excluded from `dist/`;
+  Playwright 8/8 (7 new); secret scan clean.
+- **No overlapping Package C/D/E/F/G/H work started** — confirmed before and after this review.
+  Package C is not begun by this review.
+- **Status:** Package B complete/merged by this review. `ENG-P3-002`/Capability 3 remain Open —
+  unchanged, not edited by this review.
+- **Files:** confined to `apps/web/src/business/` (including the new `termsAvailability.ts` and two
+  new Dashboard test files), `apps/web/src/App.tsx` (dev-harness route), `apps/web/src/dev/
+  dashboardHarness/` (new, dev-only), `apps/web/src/i18n/locales/{en,fr}.ts`, `playwright.config.ts`,
+  `tests/e2e/dashboard-shell-harness.spec.ts` (new), this entry, and the dedicated review report.
+- **Report:** [`eng-p3-002-ui-imp-b-review-report-2026-08-26.md`](../05-implementation/reports/eng-p3-002-ui-imp-b-review-report-2026-08-26.md).
+- **Final gate:** **ENG-P3-002-UI PACKAGE B MERGED AND CLOSED — NEXT IMPLEMENTATION PACKAGE AWAITS
+  FRESH FOUNDER AUTHORIZATION.**

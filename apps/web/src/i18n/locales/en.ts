@@ -155,6 +155,9 @@ export const en = {
         termsOutstandingTitle: "One step left",
         termsOutstandingBody: "Review and accept the Business Terms to complete your setup.",
         reviewTermsAction: "Review Business Terms",
+        termsUnavailableTitle: "Business Terms aren't available yet",
+        termsUnavailableBody:
+          "We'll let you know as soon as the Business Terms are ready to review.",
         readyBody: "Your business is set up. Use the sections below to manage it.",
       },
       entryPoints: {

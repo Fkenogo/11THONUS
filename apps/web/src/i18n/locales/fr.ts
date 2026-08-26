@@ -158,6 +158,9 @@ export const fr = {
         termsOutstandingBody:
           "Consultez et acceptez les Conditions de l'entreprise pour terminer votre configuration.",
         reviewTermsAction: "Consulter les Conditions de l'entreprise",
+        termsUnavailableTitle: "Les Conditions de l'entreprise ne sont pas encore disponibles",
+        termsUnavailableBody:
+          "Nous vous informerons dès que les Conditions de l'entreprise seront prêtes à être consultées.",
         readyBody:
           "Votre entreprise est configurée. Utilisez les sections ci-dessous pour la gérer.",
       },

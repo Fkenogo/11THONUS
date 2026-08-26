@@ -40,21 +40,37 @@ describe("DashboardHome (DASH-01)", () => {
     expect(screen.getByText("Hair salon", { exact: false })).toBeInTheDocument();
   });
 
-  it("surfaces outstanding Terms as the readiness state when Terms are not yet accepted, sourced from real termsAcceptance", () => {
+  it("shows Terms as unavailable (not outstanding) when the platform-wide readable-content flag is off — today's actual governed state (DEC-LEGAL-002 open)", () => {
     renderHome(draftContext);
-    expect(screen.getByText("One step left")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Review Business Terms" })).toHaveAttribute(
-      "href",
-      "/business/biz-123/dashboard/terms",
-    );
+    expect(screen.getByText("Business Terms aren't available yet")).toBeInTheDocument();
+    expect(screen.queryByText("One step left")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Review Business Terms" })).not.toBeInTheDocument();
   });
 
-  it("shows the everything-in-order state once Terms are accepted", () => {
+  it("never offers a functional Terms-review action while Terms content is unavailable", () => {
+    renderHome(draftContext);
+    expect(screen.queryByRole("button", { name: /terms/i })).not.toBeInTheDocument();
+  });
+
+  it("shows the everything-in-order state once Terms are accepted, and does not also claim they're unavailable or outstanding", () => {
     renderHome({ ...draftContext, termsAcceptance: { accepted: true, version: "v1" } });
     expect(screen.queryByText("One step left")).not.toBeInTheDocument();
+    expect(screen.queryByText("Business Terms aren't available yet")).not.toBeInTheDocument();
     expect(
       screen.getByText("Your business is set up. Use the sections below to manage it."),
     ).toBeInTheDocument();
+  });
+
+  it("never presents a draft Business as Active even once Terms are accepted (establishment != activation)", () => {
+    renderHome({ ...draftContext, termsAcceptance: { accepted: true, version: "v1" } });
+    expect(screen.queryByText(/\bActive\b/)).not.toBeInTheDocument();
+  });
+
+  it("never claims establishment completion equals activation — the ready state is scoped to Terms only, no activation/verification language", () => {
+    renderHome({ ...draftContext, termsAcceptance: { accepted: true, version: "v1" } });
+    expect(screen.queryByText(/activated?/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/verified/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/\d+%/)).not.toBeInTheDocument();
   });
 
   it("provides the four governed management entry points", () => {

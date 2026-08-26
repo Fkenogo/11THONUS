@@ -1,16 +1,29 @@
 /**
  * DASH-01 — Business Dashboard Home (`ENG-P3-002-UI-IMP-B`, per `ENG-P3-002-UI-RECON-001` Part
  * VI/Brief 4). Renders only the Founder-governed minimum: Business identity (name, category), a
- * readiness state sourced exclusively from real `termsAcceptance.accepted` (never a fabricated
- * "% complete"), and the four governed management entry points. Deliberately excludes Business
+ * readiness state, and the four governed management entry points. Deliberately excludes Business
  * Code (not part of the governed minimum; its correct treatment belongs to Package C's Business
  * Profile screen, not Home) and every D-classified Stitch invention (Active badge, merchant
  * account/appointments copy, revenue/loyalty/tier/subscription content) per Part IX/X.
+ *
+ * `ENG-P3-002-UI-IMP-B-REVIEW` Phase D correction: `termsAcceptance.accepted === false` is
+ * ambiguous on its own — `getBusinessContext`'s `resolveTermsAcceptanceProjection`
+ * (`businessReadService.ts`) returns exactly that value both when no current Terms version is
+ * configured at all *and* when a current version exists but this owner hasn't accepted it yet.
+ * The original Package B implementation collapsed both into one "One step left / Review Business
+ * Terms" banner, which falsely implies a functional Terms-review action exists. The
+ * already-governed `TERMS_READABLE_CONTENT_AVAILABLE` flag (`../termsAvailability.ts`, shared
+ * with the establishment `TermsStep`) is the single existing signal for whether that's actually
+ * true today — it is hard-pinned `false` (no readable legal content anywhere, `DEC-LEGAL-002`
+ * open), so the correct current state is "Terms unavailable," not "outstanding." The outstanding
+ * branch is retained, not deleted, for the day that flag is deliberately flipped by a future
+ * package — see `DashboardHome.termsAvailable.test.tsx` for its coverage.
  */
 
 import { Link } from "react-router-dom";
 import { useTranslation } from "../../i18n";
 import { useBusinessCategoriesQuery } from "../hooks/businessQueries";
+import { TERMS_READABLE_CONTENT_AVAILABLE } from "../termsAvailability";
 import type { BusinessContext } from "../api/businessContext";
 
 export function DashboardHome({ context }: { context: BusinessContext }) {
@@ -39,13 +52,18 @@ export function DashboardHome({ context }: { context: BusinessContext }) {
         <div className="mb-6 rounded-md border border-[var(--color-border)] p-4">
           <p className="text-sm">{t("dashboard.home.readyBody")}</p>
         </div>
-      ) : (
+      ) : TERMS_READABLE_CONTENT_AVAILABLE ? (
         <div className="mb-6 rounded-md border border-[var(--color-border)] p-4">
           <h2 className="mb-1 font-semibold">{t("dashboard.home.termsOutstandingTitle")}</h2>
           <p className="mb-3 text-sm">{t("dashboard.home.termsOutstandingBody")}</p>
           <Link to={`${base}/terms`} className="text-sm underline">
             {t("dashboard.home.reviewTermsAction")}
           </Link>
+        </div>
+      ) : (
+        <div className="mb-6 rounded-md border border-[var(--color-border)] p-4">
+          <h2 className="mb-1 font-semibold">{t("dashboard.home.termsUnavailableTitle")}</h2>
+          <p className="text-sm">{t("dashboard.home.termsUnavailableBody")}</p>
         </div>
       )}
 
