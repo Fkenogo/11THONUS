@@ -4167,9 +4167,13 @@
   pre-existing skips, matching Package B's own precedent count). Also: web 587/587; functions
   1563/1563 unaffected; typecheck/lint clean (1 pre-existing unrelated warning); format clean;
   Playwright 16/16 across both projects (re-verified twice); secret scan clean.
-- **Merged:** PR #179 → `main` via genuine merge commit (matching every prior PR in this chain
-  except the disclosed #177 squash deviation) — see this report's own closure addendum for the
-  exact SHA and post-merge CI result.
+- **Merged:** PR #179 → `main` at `9d0a5e434f1855f59088c5a9a644d131aec0e88a`, a genuine merge
+  commit (two parents, matching every prior PR in this chain except the disclosed #177 squash
+  deviation). Post-merge CI (`32982493234`) green on the first attempt. **Process note (disclosed,
+  not silently absorbed):** the pushed review-correction commit's own CI run
+  (`32980815541`, pre-merge) failed once on `knowledgeNodeRepository.emulator.test.ts`'s
+  pre-existing concurrency-timeout flake class (Commerce Knowledge domain, zero `functions/` diff
+  in this PR) — confirmed unrelated, rerun green, merged only after that.
 - **No overlapping Package D/F/G/H work started** — confirmed before and after this review.
 - **Status:** Package C complete/merged by this review. `ENG-P3-002`/Capability 3 remain Open —
   unchanged, not edited by this review.
