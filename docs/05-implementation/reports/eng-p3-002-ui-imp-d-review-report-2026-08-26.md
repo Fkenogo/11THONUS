@@ -32,9 +32,19 @@ security, or scope-boundary finding.
 
 ## 2. Final reviewed head
 
-`5f...` (see §30 for the exact merge SHA) — one correction commit added on top of `e34302c` during
-this review (§21: one new 390×844 responsive test, plus this report's own audit-completeness
-note), pushed to the same PR branch before merge.
+`84a881ec3b3578f0f62efe40b117ccbebd813e31` — one correction commit added on top of `e34302c`
+during this review (§21: one new 390×844 responsive test, plus this report's own
+audit-completeness note), pushed to the same PR branch before merge.
+
+**CI infrastructure note (continued, transparently disclosed):** after pushing `84a881e`, the
+`pull_request`-triggered check never registered on PR #181 itself (`gh pr checks 181` reported "no
+checks reported" repeatedly over several minutes), the same GitHub Actions backlog symptom as §1.
+A manual `gh workflow run CI --ref feat/eng-p3-002-ui-imp-d` against this exact head (run
+`32988318960`) completed **success**, independently proving this commit's code passes the full CI
+pipeline (build, lint, test, emulator validation) even though the PR's own check status never
+populated. `mergeStateStatus` remained `CLEAN`/`MERGEABLE` throughout (no branch-protection status
+check is configured to block on this). Proceeded to merge on that evidence rather than waiting
+indefinitely on a GitHub-side registration issue unrelated to this PR's content.
 
 ## 3. Package D scope verification
 
