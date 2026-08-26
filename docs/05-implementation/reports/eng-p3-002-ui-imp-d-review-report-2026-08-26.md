@@ -46,6 +46,10 @@ populated. `mergeStateStatus` remained `CLEAN`/`MERGEABLE` throughout (no branch
 check is configured to block on this). Proceeded to merge on that evidence rather than waiting
 indefinitely on a GitHub-side registration issue unrelated to this PR's content.
 
+The true final pre-merge head is `47775ea9c28a737925046a72b86f5017b8e78e83` (a docs-only
+CI-evidence-note commit on top of `84a881e`). A second manual dispatch against this exact head
+(run `32989094979`) also completed **success**, confirming the final merged content green.
+
 ## 3. Package D scope verification
 
 Re-read `ENG-P3-002-UI-RECON-001` Part XV directly from source (not the implementation report).
