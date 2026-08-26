@@ -7,7 +7,9 @@ const mockUseBusinessContextQuery = vi.fn();
 vi.mock("../hooks/businessQueries", () => ({
   useBusinessContextQuery: (businessId: string) => mockUseBusinessContextQuery(businessId),
 }));
-vi.mock("./OnboardingWizard", () => ({ OnboardingWizard: () => <div>onboarding wizard</div> }));
+vi.mock("./establishment/EstablishmentReviewPage", () => ({
+  EstablishmentReviewPage: () => <div>establishment review page</div>,
+}));
 vi.mock("./SubmittedStatusPage", () => ({
   SubmittedStatusPage: () => <div>submitted status page</div>,
 }));
@@ -35,13 +37,13 @@ const baseContext = {
 };
 
 describe("BusinessWizardPage lifecycle routing", () => {
-  it("renders the onboarding wizard when status is draft", async () => {
+  it("renders the establishment review page when status is draft", async () => {
     mockUseBusinessContextQuery.mockReturnValue({
       status: "success",
       data: { ...baseContext, status: "draft" },
     });
     renderPage();
-    expect(await screen.findByText("onboarding wizard")).toBeInTheDocument();
+    expect(await screen.findByText("establishment review page")).toBeInTheDocument();
   });
 
   it("renders the submitted/pending state when status is pending_verification — never re-opens the wizard", async () => {
@@ -51,7 +53,7 @@ describe("BusinessWizardPage lifecycle routing", () => {
     });
     renderPage();
     expect(await screen.findByText("submitted status page")).toBeInTheDocument();
-    expect(screen.queryByText("onboarding wizard")).not.toBeInTheDocument();
+    expect(screen.queryByText("establishment review page")).not.toBeInTheDocument();
   });
 
   it("renders a bounded generic safe state for any other status — never the wizard, never a dashboard", async () => {
@@ -61,7 +63,7 @@ describe("BusinessWizardPage lifecycle routing", () => {
     });
     renderPage();
     expect(await screen.findByText("This isn't available right now.")).toBeInTheDocument();
-    expect(screen.queryByText("onboarding wizard")).not.toBeInTheDocument();
+    expect(screen.queryByText("establishment review page")).not.toBeInTheDocument();
     expect(screen.queryByText("submitted status page")).not.toBeInTheDocument();
   });
 

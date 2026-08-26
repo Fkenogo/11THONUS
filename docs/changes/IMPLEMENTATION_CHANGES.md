@@ -3873,3 +3873,43 @@
 - **Report:** [`ENG-P3-002-UI-RECON-001-business-experience-design-to-implementation-reconciliation-2026-08-25.md`](../07-product-design/ENG-P3-002-UI-RECON-001-business-experience-design-to-implementation-reconciliation-2026-08-25.md).
 - **Final gate:** **ENG-P3-002-UI-RECON-001 READY FOR FOUNDER REVIEW — BUSINESS EXPERIENCE
   IMPLEMENTATION PLAN RECONCILED; NO SOURCE CHANGES.**
+
+## `ENG-P3-002-UI-IMP-A` — Business Establishment Experience (EST-01/02/03) Implementation (2026-08-25)
+
+- **Frontend structural implementation, TDD, draft PR — not self-merged.** Package A of
+  `ENG-P3-002-UI-RECON-001`'s decomposition, confirmed as the recommended first package before
+  starting. Zero `functions/`/Rules/Firebase-config diff.
+- **Entry-gate discrepancy found and resolved first:** the governing chain (`UI-RECON-001`,
+  `UI-HANDOFF-001` + disposition, `ONBOARDING-JOURNEY-RECON-001` + disposition, the approved
+  `v3-designs/` assets) existed only uncommitted locally, never merged to `origin/main`. Committed
+  as its own bounded docs/assets PR ([#172](https://github.com/Fkenogo/11THONUS/pull/172), merged
+  `26e4c1e`) before the implementation worktree was created from it.
+- **Retired the five-tab `OnboardingWizard.tsx`** (Business category | Main location | Terms |
+  Team | Review), replacing establishment with a linear EST-01 (identity/category/type/phone) →
+  EST-02 (location/operating details — **the real `createBusiness` call fires here, exactly once**,
+  proven by test) → EST-03 (review of the now-persisted Business, reusing the existing, unmodified
+  `ClassificationStep`/`BranchStep` for in-place editing) sequence, per the Founder's
+  `REVIEW-AFTER-CREATE` disposition. Terms/Team remain fully functional, untouched, simply no
+  longer part of establishment (reserved for Packages D/F).
+- **A minimal Package A→B boundary** (`DashboardPlaceholder` + `/business/:businessId/dashboard`
+  route) is the only Dashboard-adjacent code — explicitly not the real shell (Package B).
+- **Genuine backend gap found and disclosed, not absorbed:** `getBusinessContext` never projects
+  `currencyCode`/`timezone` into `BusinessContext`, even though `createBusiness` requires and
+  persists both — EST-03 therefore omits an "Operating details" review section rather than
+  fabricate the values, flagged as a future, separately-scoped backend correction candidate
+  (`ENG-P3-002-CORR-BUSINESSCONTEXT-OPERATINGDETAILS-001`).
+- **Language-switcher gap** on the two net-new screens caught during this task's own validation
+  and fixed within scope (the same existing `LanguageSwitcher`, now on every new/restructured
+  screen).
+- **Full validation:** web 527/527 (+22 net); functions 1563/1563 byte-identical; typecheck/lint/
+  format clean; both builds clean, secret scan clean; Playwright 1/1; Firebase Emulator Suite
+  683/683 clean on immediate rerun after one disclosed, unrelated concurrent-worker timing flake
+  (a domain this diff never touches — the same recurring class of flake documented elsewhere in
+  this repository).
+- **Status:** `ENG-P3-002C`/`ENG-P3-002`/Capability 3 all unchanged — one UI implementation
+  package, pending Founder review, nothing closed.
+- **Files:** confined to `apps/web/src/business/`, `apps/web/src/App.tsx`,
+  `apps/web/src/i18n/locales/{en,fr}.ts`, plus tests, this entry, and the dedicated report.
+- **Report:** [`ENG-P3-002-UI-IMP-A-business-establishment-experience-implementation-report-2026-08-25.md`](../05-implementation/reports/ENG-P3-002-UI-IMP-A-business-establishment-experience-implementation-report-2026-08-25.md).
+- **Final gate:** **ENG-P3-002-UI PACKAGE A READY FOR FOUNDER REVIEW — BUSINESS ESTABLISHMENT
+  EXPERIENCE IMPLEMENTED; DASHBOARD PACKAGE NOT STARTED.**
