@@ -23,8 +23,21 @@ Package C's own scope. No architecture or scope-boundary finding.
 
 ## 2. Final reviewed head
 
-`c8...` (see §23 below for the exact merge SHA) — one correction commit added on top of `2253413`
-during this review (§16), pushed to the same PR branch before merge.
+`5d3998c69e3395bbbd3d708477ad5666370a1fc4` — one correction commit (F1, §16) added on top of
+`2253413` during this review, pushed to the same PR branch before merge.
+
+**Post-push CI flake (unrelated), disclosed transparently:** CI run `32980815541` on `5d3998c`
+initially failed on one test —
+`knowledgeNodeRepository.emulator.test.ts > knowledgeNodeRepository — concurrency > two concurrent
+creations under the same fresh id race safely`, `Error: Test timed out in 5000ms` — a Commerce
+Knowledge repository concurrency-timeout test in a domain this PR's diff never touches
+(`git diff --stat origin/main..HEAD -- functions/` confirmed empty). This matches this
+repository's own, extensively pre-documented class of environment-sensitive emulator
+concurrency-timeout flakes (`IMPLEMENTATION_CHANGES.md` records this exact failure mode recurring
+15+ times across unrelated prior packages). Confirmed `functions/` byte-identical to the
+already-independently-verified-clean state before rerunning (no code change).
+`gh run rerun 32980815541 --failed` → green (`688/690` again, same 2 pre-existing skips). Not a
+regression from this PR.
 
 ## 3. Package C scope verification
 
@@ -276,12 +289,20 @@ None, by this review or by the original PR. Zero `package.json`, Firebase projec
 
 ## 23–25. Merge SHA, closure-sync SHA, post-merge CI
 
-Recorded after merge — see the closure addendum appended to this report post-merge (this section is
-completed as the final step of this same review task, not a separate task).
+- **Merge SHA:** `9d0a5e434f1855f59088c5a9a644d131aec0e88a` — PR #179 merged into `main` via
+  `gh pr merge --merge` (genuine merge commit, two parents: `78a5fc9` and `5d3998c` — verified by
+  `git log -1 --format="%P"`; matches this repository's convention, no repeat of the disclosed
+  PR #177 squash deviation).
+- **Post-merge CI:** run `32982493234` on `main` at `9d0a5e4` — **success** (green on first
+  attempt, no flake this time).
+- **Closure-sync SHA:** recorded once this closure-sync commit is created (this same commit, on
+  branch `docs/eng-p3-002-ui-imp-c-review-closure-sync`).
 
 ## 26–28. Package/Capability status
 
-- **Package C status:** merged and closed by this review (pending §23's merge confirmation).
+- **Package C status:** merged and closed by this review. Confirmed: `main` at `9d0a5e4` contains
+  the real `BusinessProfilePage`/`LocationsPage` behind `BusinessDashboardRoutes`, post-merge CI
+  green.
 - **`ENG-P3-002` status:** unchanged — Open.
 - **Capability 3 status:** unchanged — Open.
 
