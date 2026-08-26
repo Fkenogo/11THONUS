@@ -1,10 +1,10 @@
 /**
  * Nested route table mounted under `/business/:businessId/dashboard/*` by
  * `BusinessDashboardBoundaryPage`. Wraps every destination in the shared `BusinessDashboardShell`
- * so future packages (D/F) add a `<Route>` here without rebuilding the shell. The index route
- * (DASH-01, Package B) and `profile`/`locations` (MGMT-02/03, Package C) are real content; `team`
- * and `terms` remain a restrained `DashboardComingSoon` placeholder until their own packages are
- * authorized.
+ * so future packages (F) add a `<Route>` here without rebuilding the shell. The index route
+ * (DASH-01, Package B), `profile`/`locations` (MGMT-02/03, Package C), and `terms` (ACT-01,
+ * Package D) are real content; `team` remains a restrained `DashboardComingSoon` placeholder
+ * until its own package is authorized.
  */
 
 import { Route, Routes } from "react-router-dom";
@@ -14,6 +14,7 @@ import { DashboardHome } from "./DashboardHome";
 import { DashboardComingSoon } from "./DashboardComingSoon";
 import { BusinessProfilePage } from "./BusinessProfilePage";
 import { LocationsPage } from "./LocationsPage";
+import { DashboardTermsPage } from "./DashboardTermsPage";
 
 export function BusinessDashboardRoutes({ context }: { context: BusinessContext }) {
   return (
@@ -26,10 +27,7 @@ export function BusinessDashboardRoutes({ context }: { context: BusinessContext 
           path="team"
           element={<DashboardComingSoon section="team" businessId={context.businessId} />}
         />
-        <Route
-          path="terms"
-          element={<DashboardComingSoon section="terms" businessId={context.businessId} />}
-        />
+        <Route path="terms" element={<DashboardTermsPage context={context} />} />
       </Route>
     </Routes>
   );

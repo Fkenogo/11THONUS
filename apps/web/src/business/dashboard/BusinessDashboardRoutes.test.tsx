@@ -15,6 +15,12 @@ vi.mock("../hooks/businessMutations", () => ({
     isPending: false,
     error: undefined,
   }),
+  useAcceptBusinessTermsMutation: () => ({ mutate: vi.fn(), isPending: false, error: undefined }),
+  useSubmitBusinessForVerificationMutation: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+    error: undefined,
+  }),
 }));
 
 const context: BusinessContext = {
@@ -62,9 +68,10 @@ describe("BusinessDashboardRoutes", () => {
     expect(screen.getByRole("heading", { name: "Team" })).toBeInTheDocument();
   });
 
-  it("renders the not-yet-implemented treatment for Terms without fabricating functionality", () => {
+  it("renders the real Business Terms screen (Package D) at the terms route", () => {
     renderAt("/business/biz-123/dashboard/terms");
-    expect(screen.getByText("This section isn't available yet.")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Business Terms", level: 2 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Submit for verification" })).toBeInTheDocument();
   });
 
   it("renders the real Business Profile screen (Package C) at the profile route", () => {

@@ -4182,3 +4182,58 @@
 - **Report:** [`eng-p3-002-ui-imp-c-review-report-2026-08-26.md`](../05-implementation/reports/eng-p3-002-ui-imp-c-review-report-2026-08-26.md).
 - **Final gate:** **ENG-P3-002-UI PACKAGE C MERGED AND CLOSED — NEXT PACKAGE AWAITS FRESH FOUNDER
   AUTHORIZATION.**
+
+## `ENG-P3-002-UI-IMP-D` — Business Terms / Activation (ACT-01) Implementation (2026-08-26)
+
+- **Frontend structural implementation, TDD, draft PR — not self-merged.** Package D of
+  `ENG-P3-002-UI-RECON-001`'s decomposition. Zero `functions/`/Rules/Firebase-config/i18n-locale
+  diff, zero new dependencies.
+- **Entry gate:** fresh linked worktree created from `origin/main` (`ff0390d`, confirming Packages
+  A/B/C — PRs #173–#180 — all merged and CI green) before any research or implementation. The
+  GitHub Actions runner anomaly from Package C's docs-only closure sync was treated as historical
+  information only, not reopened.
+- **Package D scope reconstructed before coding, not assumed from the task title:**
+  `ENG-P3-002-UI-RECON-001` Part XV defines Package D as "Business Terms (ACT-01)" — relocate
+  Terms into a standalone Dashboard-reachable surface, wrapping the existing `TermsStep`. Cross-
+  referenced against `ENG-P3-002-UI-HANDOFF-001`'s wider ACT-01 brief, which bundles
+  Submit-for-Verification into the same screen concept — confirmed in scope by RECON-001's own
+  acceptance criterion ("Submit remains genuinely disabled per real `isReadyToSubmit`"), not
+  inferred from the brief alone.
+- **One new component** (`DashboardTermsPage.tsx`) mounted directly into Package B's existing
+  `BusinessDashboardRoutes`/`BusinessDashboardShell`, replacing the `DashboardComingSoon`
+  placeholder at `terms` — no second shell, no duplicated nav, no new Business context store, no
+  new auth mechanism. Uses the existing, unchanged `acceptBusinessTerms`/
+  `submitBusinessForVerification` callables via the existing mutation hooks and the existing,
+  unmodified `isReadyToSubmit` predicate.
+- **One small, additive, backward-compatible change to shared code:** `TermsStep.tsx` gained an
+  optional `hideContinue` prop (default `false`, zero diff to `TermsStep.test.tsx`) so the
+  wizard-only "Continue" footer can be omitted on this standalone Dashboard screen, which has no
+  next step to continue to.
+- **Effective-Date field omitted, not fabricated:** RECON-001 makes it contingent on a separate,
+  unauthorized backend PR; no such field exists on `Business`/`BusinessContext`, so it is left out
+  entirely rather than invented from the Stitch mockup's fabricated "Version 1.0 / Effective 25
+  August 2026" metadata.
+- **`pending_verification` handled inside the Dashboard screen itself**, not only by the separate
+  pre-Dashboard `SubmittedStatusPage` boundary — confirmed via `BusinessDashboardBoundaryPage.tsx`
+  that the Dashboard is never status-gated (FD-4), so a submitted Business can reach
+  `/dashboard/terms` directly and must see the submitted state there too.
+- **Stitch invention audit:** all three Business Terms v3 mockups read in full; ignored a
+  multi-section placeholder legal document body, fabricated version/Effective-Date metadata, and a
+  "View Business Terms" link (all contradicting the hard-pinned `TERMS_READABLE_CONTENT_AVAILABLE
+  = false`, `DEC-LEGAL-002` open) — verified absent by test.
+- **Genuine defect caught during TDD, not asserted away:** the first draft duplicated
+  `TermsStep`'s own "Business Terms" heading with a second page-level `<h1>`, causing an ambiguous
+  multi-element test failure; fixed by removing the redundant heading.
+- **Full validation:** web 595/595 (+8 net); functions 1563/1563 unaffected; Firebase Emulator
+  Suite 688/690 (2 pre-existing skips, matching precedent, clean first run, no flake); typecheck/
+  lint clean (1 pre-existing unrelated warning); format clean after 1 whitespace-only fix; both
+  Playwright projects green (1/1 production build, 21/21 dashboard-harness — 15 pre-existing +
+  6 new Package D); secret scan clean.
+- **Status:** `ENG-P3-002`/Capability 3 unchanged — one UI implementation package, pending Founder
+  review, nothing closed. Packages E/F/G/H not started, no overlapping work.
+- **Files:** confined to `apps/web/src/business/dashboard/` (1 new component + 1 new test file,
+  `BusinessDashboardRoutes.tsx`/`.test.tsx` updated), `apps/web/src/business/onboarding/steps/
+  TermsStep.tsx` (additive prop only), 1 new e2e spec, this entry, and the dedicated report.
+- **Report:** [`ENG-P3-002-UI-IMP-D-business-terms-activation-implementation-report-2026-08-26.md`](../05-implementation/reports/ENG-P3-002-UI-IMP-D-business-terms-activation-implementation-report-2026-08-26.md).
+- **Final gate:** **ENG-P3-002-UI PACKAGE D READY FOR FOUNDER REVIEW — BUSINESS TERMS/ACTIVATION
+  (ACT-01) IMPLEMENTED; LATER PACKAGES NOT STARTED.**
