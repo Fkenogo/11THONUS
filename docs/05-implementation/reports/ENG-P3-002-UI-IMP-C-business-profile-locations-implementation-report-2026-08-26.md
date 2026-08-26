@@ -284,9 +284,10 @@ placeholder, matching the pre-package state exactly.
 - **Persistent report path:** this file.
 - **Changes-tracking:** a matching entry was added to `docs/changes/IMPLEMENTATION_CHANGES.md`
   under `## ENG-P3-002-UI-IMP-C`.
-- **PR:** opened as a draft from `feat/eng-p3-002-ui-imp-c` against `main` (see PR link in the
-  session's final summary — not self-merged).
-- **Final head SHA / CI:** recorded once the PR's CI run completes; not fabricated here.
+- **PR:** [#179](https://github.com/Fkenogo/11THONUS/pull/179) — draft, from
+  `feat/eng-p3-002-ui-imp-c` against `main`. Not self-merged.
+- **Final head SHA:** `c6aa8f912c49f8079eb6bb3e45f544157f05bf1c`.
+- **CI:** pending at the time of this report — see the PR's own Checks tab for current status.
 
 ## 45–47. Package/Capability status
 
