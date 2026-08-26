@@ -4237,3 +4237,57 @@
 - **Report:** [`ENG-P3-002-UI-IMP-D-business-terms-activation-implementation-report-2026-08-26.md`](../05-implementation/reports/ENG-P3-002-UI-IMP-D-business-terms-activation-implementation-report-2026-08-26.md).
 - **Final gate:** **ENG-P3-002-UI PACKAGE D READY FOR FOUNDER REVIEW — BUSINESS TERMS/ACTIVATION
   (ACT-01) IMPLEMENTED; LATER PACKAGES NOT STARTED.**
+
+## `ENG-P3-002-UI-IMP-D-REVIEW` — Independent Review, Correction, Merge & Closure (2026-08-26)
+
+- **Independent review of draft PR #181 in a fresh isolated worktree at the exact PR head — the
+  implementation report was not trusted, every claim was independently re-derived.** One
+  test-coverage finding (F1) and one Stitch-audit documentation finding (F2), both bounded and
+  corrected; no architecture/security/scope finding.
+- **Package D scope re-verified directly from `ENG-P3-002-UI-RECON-001`** (not from
+  `UI-HANDOFF-001` or Stitch alone): confirmed via RECON-001's own separate "ACT-01 — Business
+  Terms" per-screen analysis section (distinct from the Part XV package table) that
+  `submitBusinessForVerification` is independently named as this screen's backend dependency —
+  Package D genuinely includes both Terms acceptance and Submit-for-Verification.
+- **`TermsStep`'s `hideContinue` addition independently confirmed genuinely additive:** zero diff
+  to `TermsStep.test.tsx`, all 6 of its tests unmodified and passing, default preserves byte-
+  identical rendering to the pre-Package-D component.
+- **`isReadyToSubmit`/`submitBusinessForVerification` traced end-to-end from source** (not
+  trusted): confirmed the predicate is reused unmodified (no local weakening), Team/profile fields
+  have no bearing on readiness, and the backend command enforces authorization, `draft`-only
+  eligibility, TOCTOU-safe server-side Terms re-verification, and idempotent duplicate-submission
+  protection via the shared `authorizeAndExecute` mechanism every command in this codebase already
+  relies on.
+- **`DEC-LEGAL-002` re-confirmed OPEN_LEGAL directly from the Decision Register** (not a downstream
+  reference) — genuinely unresolved; Package D invents no legal body, Effective Date, version
+  presentation, or consent mechanics beyond the existing governed contract.
+- **Stitch-audit gap found and closed (documentation only, not a functional defect):** the desktop
+  ACT-01 mockup — never explicitly quoted in the original audit trail — fabricates a full
+  five-section real-sounding legal document, a different version number ("2.1" vs. mobile's "1.0"),
+  elaborate consent wording, and ungoverned Settings/Sign-Out nav items. Grepped the implementation
+  — confirmed zero leaked in.
+- **F1 (test-coverage gap, corrected).** The 390×844 mobile breakpoint (already covered for
+  Packages B/C) was untested for Package D. Closed with one new real-browser test.
+- **Test-quality independently verified by 5 deliberate mutations** (readiness predicate weakened;
+  unavailable Terms treated as merely outstanding; Submit exposed after `pending_verification`;
+  failed submission treated as success; `hideContinue` default flipped) — all five caught by the
+  existing suite without modification, then fully reverted (`git diff` confirmed clean).
+- **CI infrastructure note (historical/transient, not a code defect):** at review start, PR #181
+  had zero registered CI runs — the same GitHub Actions backlog symptom disclosed after Package
+  C's closure sync. A manual `gh workflow run` dispatch cleared it; PR #181's own check then
+  registered and passed cleanly.
+- **Full validation:** web 595/595; functions 1563/1563 unaffected; Firebase Emulator Suite
+  688/690 (2 pre-existing skips, matching precedent, clean first run); typecheck/lint clean (1
+  pre-existing unrelated warning); format clean; both Playwright projects green (1/1 production
+  build, 22/22 dashboard-harness — 21 pre-existing + 1 new); secret scan clean.
+- **Merged:** PR #181 → `main`, a genuine merge commit (matching every prior PR in this chain
+  except the disclosed #177 squash deviation) — see this report's own closure addendum for the
+  exact SHA and post-merge CI result.
+- **No overlapping Package E/F/G/H work started** — confirmed before and after this review.
+- **Status:** Package D complete/merged by this review. `ENG-P3-002`/Capability 3 remain Open —
+  unchanged, not edited by this review.
+- **Files:** `tests/e2e/dashboard-terms-harness.spec.ts` (one new responsive test), this entry, and
+  the dedicated review report. No implementation file was touched.
+- **Report:** [`eng-p3-002-ui-imp-d-review-report-2026-08-26.md`](../05-implementation/reports/eng-p3-002-ui-imp-d-review-report-2026-08-26.md).
+- **Final gate:** **ENG-P3-002-UI PACKAGE D MERGED AND CLOSED — NEXT PACKAGE AWAITS FRESH FOUNDER
+  AUTHORIZATION.**

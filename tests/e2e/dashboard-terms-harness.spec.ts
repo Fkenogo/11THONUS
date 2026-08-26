@@ -41,6 +41,20 @@ test.describe("Business Terms screen — mobile", () => {
   });
 });
 
+test.describe("Business Terms screen — mobile (390x844)", () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test("no horizontal overflow at the 390x844 breakpoint", async ({ page }) => {
+    await page.goto(TERMS_PATH);
+    const overflow = await page.evaluate(() => ({
+      scrollWidth: document.documentElement.scrollWidth,
+      clientWidth: document.documentElement.clientWidth,
+    }));
+    expect(overflow.scrollWidth).toBe(overflow.clientWidth);
+    await expect(page.getByRole("heading", { name: "Business Terms" })).toBeVisible();
+  });
+});
+
 test.describe("Business Terms screen — desktop", () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
