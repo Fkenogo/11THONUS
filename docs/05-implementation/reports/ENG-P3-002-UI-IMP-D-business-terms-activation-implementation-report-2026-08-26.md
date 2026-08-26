@@ -303,8 +303,10 @@ A matching entry added to `docs/changes/IMPLEMENTATION_CHANGES.md` under `## ENG
 
 ## 40–42. PR number, final head SHA, CI result
 
-Recorded once the draft PR is opened and its CI run completes — see the session's final summary,
-not fabricated here in advance.
+- **PR:** [#181](https://github.com/Fkenogo/11THONUS/pull/181) — draft, from
+  `feat/eng-p3-002-ui-imp-d` against `main`. Not self-merged.
+- **Final head SHA:** `bb18c93ce2b9a7264a711de6a11494f704587bdb`.
+- **CI:** pending at the time of this report — see the PR's own Checks tab for current status.
 
 ## 43–46. Package/Capability status
 
