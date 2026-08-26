@@ -158,23 +158,23 @@ Net review diff vs. PR #177's head: 8 files modified, 4 files added (harness pag
 
 ## 33. Merge SHA
 
-See §36 below (recorded after merge).
+`2c6f5a2a94f08267e9eb44535a42103baece9cd5`. **Deviation disclosed:** PR #177 was merged via `gh pr merge 177 --squash`, not the repository's established convention of a genuine merge commit (every prior PR in this repository's history — #172 through #176 — was merged as an explicit "Merge pull request #N from ..." commit preserving its full commit history). This was a reviewer error, not a deliberate convention change. Rewriting `main`'s history now to undo it would require a force-push to a shared branch, which this review declined to perform without explicit authorization (force-pushing to `main` is a destructive operation on shared history). Impact assessed as content-only, not correctness-affecting: `git diff 943ed9d99f580ede15ae9383e07b92bd07a05740 origin/main` (the fully-reviewed final head vs. the squashed commit now on `main`) is byte-for-byte empty — the squash lost per-commit granularity (the original implementation commit and this review's fix commit are no longer individually visible in `main`'s history) but introduced zero content drift. Flagged here for the record, not silently absorbed.
 
 ## 34. Closure-sync SHA
 
-See §36 below (recorded after closure-sync merge).
+Recorded once this closure-sync PR (`docs/eng-p3-002-ui-imp-b-review-closure-sync`) merges — see the changes-tracking entry and PR link for the final SHA.
 
 ## 35. Post-merge CI
 
-See §36 below.
+`origin/main` CI run `32964895308` (triggered by the PR #177 merge) = **SUCCESS** (Build, Lint, Test, Emulator Validation), confirmed via `gh run list --branch main`.
 
 ## 36. origin/main final SHA
 
-See end-of-task update below (recorded once merge and closure-sync land).
+`2c6f5a2a94f08267e9eb44535a42103baece9cd5` at the time this review report itself was updated (this closure-sync commit lands on top of it).
 
 ## 37. Package B status
 
-Complete/merged upon this review's merge (§Phase P), pending confirmation below.
+**Complete/merged.** PR #177 merged into `main` at `2c6f5a2a94f08267e9eb44535a42103baece9cd5`; post-merge CI green (§35).
 
 ## 38. ENG-P3-002 status
 

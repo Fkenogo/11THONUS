@@ -4060,6 +4060,13 @@
   Playwright 8/8 (7 new); secret scan clean.
 - **No overlapping Package C/D/E/F/G/H work started** — confirmed before and after this review.
   Package C is not begun by this review.
+- **Merged:** PR #177 → `main` at `2c6f5a2a94f08267e9eb44535a42103baece9cd5`; post-merge CI green
+  (run `32964895308`). **Process deviation disclosed:** merged via `gh pr merge --squash` in error —
+  every prior PR in this repository (#172–#176) was merged as a genuine merge commit preserving its
+  full history; this one collapsed the implementation and review-fix commits into one. Not
+  corrected via a `main` force-push (a destructive operation on shared history, not performed
+  without explicit authorization) — confirmed content-only, zero-drift via `git diff` against the
+  fully-reviewed final head. Flagged for the record, not silently absorbed.
 - **Status:** Package B complete/merged by this review. `ENG-P3-002`/Capability 3 remain Open —
   unchanged, not edited by this review.
 - **Files:** confined to `apps/web/src/business/` (including the new `termsAvailability.ts` and two
