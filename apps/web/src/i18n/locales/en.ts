@@ -213,4 +213,35 @@ export const en = {
       failed: "Something didn't work. Please try again.",
     },
   },
+  identity: {
+    profile: {
+      title: "Your profile",
+      subtitle: "This is how you may appear in appropriate 11thONUS experiences.",
+      displayNameLabel: "Display name",
+      displayNameHelp:
+        "Not a legal name or verified identity, and not a unique username — just a label others may see.",
+      missing: "You haven't added a display name yet.",
+      save: "Save",
+      cancel: "Cancel",
+      editAction: "Edit display name",
+      saved: "Saved.",
+      saving: "Saving…",
+      loading: "Loading your profile…",
+      retry: "Try again",
+    },
+    validation: {
+      required: "Enter a display name.",
+      tooLong: "Display name must be 50 characters or fewer.",
+    },
+    errors: {
+      auth_required: "Please sign in again to continue.",
+      auth_forbidden: "You don't have permission to do that.",
+      not_found: "We couldn't find your profile.",
+      validation_failed: "That display name isn't valid. Please check and try again.",
+      conflict: "That's already being processed. Please wait a moment and try again.",
+      unavailable: "This is temporarily unavailable. Please try again shortly.",
+      timeout: "That took longer than expected. Please try again.",
+      failed: "We couldn't save that. Please try again.",
+    },
+  },
 } as const;

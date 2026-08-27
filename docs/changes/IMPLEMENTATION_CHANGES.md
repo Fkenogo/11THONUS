@@ -4555,3 +4555,48 @@
 - **Report:** [`identity-profile-a-review-report-2026-08-27.md`](../05-implementation/reports/identity-profile-a-review-report-2026-08-27.md).
 - **Final gate:** **IDENTITY-PROFILE-A MERGED AND CLOSED — PLATFORM DISPLAY NAME FOUNDATION
   AVAILABLE FOR SEPARATELY AUTHORIZED CONSUMERS.**
+
+## `IDENTITY-PROFILE-B` — Platform Display Name Profile-Completion UI (2026-08-27)
+
+- **Frontend-only consumer of the merged `IDENTITY-PROFILE-A` backend.** New `apps/web/src/identity/`
+  module: a self-contained API adapter layer (`getMyDisplayName`/`setDisplayName` httpsCallable
+  wrappers, disclosed-duplicated actor/idempotency-key plumbing per the backend's own Identity/
+  Business boundary convention), React Query hooks, and one reusable component,
+  `DisplayNameProfile`, covering Incomplete/Complete/Edit states from a single read — no separate
+  implementation for completion vs. later editing.
+- **New authenticated route:** `/profile`, guarded by the existing, unchanged
+  `RequireAuthenticatedUser` — no route parameter, no second auth mechanism, no way to target
+  another user's Display Name (structurally proven by an adapter arity test).
+- **Lazy completion preserved:** no existing route, `RequireAuthenticatedUser`, or sign-in flow was
+  touched — `DEC-IDENTITY-001`'s Standard Participation Principle is unaffected; nothing gates
+  registration or participation on completing a Display Name.
+- **Client-side validation mirrors, never replaces, the backend:** trim, empty/whitespace-only
+  rejected, 51+ chars rejected with a field-associated error, no uniqueness check, Unicode
+  unrestricted — the backend's own `normalizeDisplayName` remains authoritative.
+- **Backend-authoritative rehydration:** a successful save invalidates the read query; the UI
+  renders from the refetched value, never the local draft.
+- **i18n:** new `identity` namespace (EN/FR), key-driven throughout; the existing structural EN/FR
+  parity test automatically covers it.
+- **Security review:** no `CustomerProfile`/Firebase Auth/telephone/photo field anywhere in the new
+  code; no directory/search/lookup capability; no direct Firestore access (proven by a dedicated
+  structural test); errors mapped through a stable `identity.errors.*` catalog, never a raw
+  message.
+- **Full validation:** web unit suite 96/96 files (619 tests, +24 new); functions unit suite
+  unchanged (145/145 files, 1583 tests — no `functions/` file touched); typecheck (`tsc --noEmit`
+  and build-mode `tsc -b`) clean after one test-file-only fix; lint clean; format clean after one
+  `prettier --write` pass; `pnpm run build` succeeded; secret scan clean.
+- **Genuine finding, not fixed:** real-browser responsive/accessibility verification at
+  375×812/390×844/tablet/desktop was not performed — no authenticated Founder-QA/emulator session
+  was available in this environment, and building a new mocked dev-only harness to work around that
+  was judged out of this package's small, bounded scope. DOM-level accessibility (labels, ARIA,
+  focus, disabled states) is proven by RTL tests; pixel-level layout is not independently confirmed.
+  Flagged as a Founder-executed hosted-preview step, matching the AUTH packages' own precedent.
+- **Status:** `IDENTITY-PROFILE-B` implemented, tested, submitted as a **draft PR**, not merged, not
+  self-merged. Package G active-member completion, Package F, Package H unchanged/not started.
+  `ENG-P3-002`/Capability 3 remain Open — not closed by this task.
+- **Files:** 13 new files under `apps/web/src/identity/`; `apps/web/src/App.tsx`/`App.test.tsx`
+  (one new route, one new test); `apps/web/src/i18n/config.ts`/`locales/en.ts`/`locales/fr.ts` (new
+  `identity` namespace); this entry; the dedicated implementation report.
+- **Report:** [`IDENTITY-PROFILE-B-display-name-profile-completion-ui-implementation-report-2026-08-27.md`](../05-implementation/reports/IDENTITY-PROFILE-B-display-name-profile-completion-ui-implementation-report-2026-08-27.md).
+- **Final gate:** **IDENTITY-PROFILE-B READY FOR FOUNDER REVIEW — DISPLAY NAME PROFILE-COMPLETION UI
+  IMPLEMENTED; TEAM INTEGRATION NOT STARTED.**

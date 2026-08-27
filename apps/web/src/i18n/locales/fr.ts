@@ -218,4 +218,35 @@ export const fr = {
       failed: "Quelque chose n'a pas fonctionné. Veuillez réessayer.",
     },
   },
+  identity: {
+    profile: {
+      title: "Votre profil",
+      subtitle: "C'est ainsi que vous pourriez apparaître dans certaines expériences 11thONUS.",
+      displayNameLabel: "Nom d'affichage",
+      displayNameHelp:
+        "Ni un nom légal, ni une identité vérifiée, ni un nom d'utilisateur unique — juste un nom que d'autres personnes peuvent voir.",
+      missing: "Vous n'avez pas encore ajouté de nom d'affichage.",
+      save: "Enregistrer",
+      cancel: "Annuler",
+      editAction: "Modifier le nom d'affichage",
+      saved: "Enregistré.",
+      saving: "Enregistrement…",
+      loading: "Chargement de votre profil…",
+      retry: "Réessayer",
+    },
+    validation: {
+      required: "Saisissez un nom d'affichage.",
+      tooLong: "Le nom d'affichage doit comporter au maximum 50 caractères.",
+    },
+    errors: {
+      auth_required: "Veuillez vous reconnecter pour continuer.",
+      auth_forbidden: "Vous n'avez pas la permission de faire cela.",
+      not_found: "Nous n'avons pas trouvé votre profil.",
+      validation_failed: "Ce nom d'affichage n'est pas valide. Veuillez vérifier et réessayer.",
+      conflict: "C'est déjà en cours de traitement. Veuillez patienter un instant et réessayer.",
+      unavailable: "Ceci est temporairement indisponible. Veuillez réessayer sous peu.",
+      timeout: "Cela a pris plus de temps que prévu. Veuillez réessayer.",
+      failed: "Nous n'avons pas pu enregistrer cela. Veuillez réessayer.",
+    },
+  },
 } as const;
