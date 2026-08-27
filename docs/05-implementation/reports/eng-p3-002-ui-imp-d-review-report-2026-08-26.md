@@ -374,14 +374,32 @@ None, by this review or by the original PR. Zero `package.json`, Firebase projec
   throughout this review (§1/§2). A manual `gh workflow run CI --ref main` (run `32989980464`)
   ran directly against the merge commit (`head_sha: 533549c...`) and completed **success**,
   independently confirming the merged `main` state is green.
-- **Closure-sync SHA:** recorded once this closure-sync commit is created (this same commit, on
-  branch `docs/eng-p3-002-ui-imp-d-review-closure-sync`).
+- **Closure-sync SHA:** `cd87192f431d85120e9429f703444ba617f19090` — PR #182 (docs-only) merged
+  into `main` via `gh pr merge --merge` (genuine merge commit, two parents: `533549c` and
+  `87121bc`).
+- **Post-merge CI — correction (post-merge-of-#182 finding, disclosed for accuracy):** once the
+  GitHub Actions backlog cleared, the real `push`-triggered check for `cd87192` **did** register
+  (run `33045167343`) but **failed**, 3/3 attempts including 2 reruns, on
+  `staffMembershipIntegration.emulator.test.ts`'s "concurrent accept vs revoke of the same
+  invitation" test — `AssertionError: expected 'expired' to be 'revoked'`. **Root-caused, not
+  merely reproduced:** that test's `inviteParams` helper hardcodes invitation-creation
+  `now: new Date("2026-08-20T01:00:00.000Z")`, but the racing revoke call in the same test passes
+  live `now: new Date()` — a time-bomb that only breaks once real wall-clock time crosses the
+  invitation's hardcoded expiry window, which happened as this review crossed the 2026-08-27
+  calendar boundary. **Confirmed unrelated to Package D or this closure-sync PR:**
+  `git diff --stat` shows zero `functions/` diff across both #181 and #182's entire merge history
+  — this defect is pre-existing and would reproduce identically on `ff0390d` (the pre-Package-D
+  `main` tip) if built today. Not fixed here (outside Package D's authorization, a different
+  domain's test suite); flagged as a separate follow-up task rather than absorbed into this
+  review. The Package D code itself was independently verified green multiple times before the
+  date rollover (§1, §2, §23) and is not implicated by this failure.
 
 ## 33–36. Package/Capability status
 
 - **Package D status:** merged and closed by this review. Confirmed: `main` at `533549c` contains
-  the real `DashboardTermsPage` behind `BusinessDashboardRoutes`, post-merge CI green (via manual
-  dispatch, per the disclosed CI-registration anomaly).
+  the real `DashboardTermsPage` behind `BusinessDashboardRoutes`. Package D's own code was
+  verified green by CI multiple times pre-date-rollover; the post-#182 CI failure is a confirmed
+  pre-existing, unrelated Staff Membership test defect (see above), not a Package D regression.
 - **Packages E/F/G/H status:** not started; no overlapping work exists in this diff.
 - **`ENG-P3-002` status:** unchanged — Open.
 - **Capability 3 status:** unchanged — Open.
