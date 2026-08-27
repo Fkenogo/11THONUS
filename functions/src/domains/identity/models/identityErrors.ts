@@ -163,6 +163,30 @@ export function identityRepositoryUnavailableError(
 }
 
 /**
+ * Display Name errors (`IDENTITY-PROFILE-A`, `FD-IDENTITY-DISPLAY-001`).
+ */
+export function invalidDisplayNameError(): IdentityDomainError {
+  return new IdentityDomainError(
+    "VALIDATION_FAILED",
+    "Invalid display name: must be 1-50 characters after trimming surrounding whitespace.",
+  );
+}
+
+/**
+ * Mirrors `invalidCustomerIdentityForOwnerError`'s `AUTH_REQUIRED` category
+ * (`authenticatedBusinessActor.ts`) — this domain's own equivalent for a
+ * verified credential that does not resolve to an eligible Customer
+ * Identity, deliberately duplicated per this repository's established
+ * per-domain actor-resolution convention rather than cross-imported.
+ */
+export function identityActorNotEligibleError(customerIdentityId: string): IdentityDomainError {
+  return new IdentityDomainError(
+    "AUTH_REQUIRED",
+    `No eligible Customer Identity resolves for authenticated principal "${customerIdentityId}".`,
+  );
+}
+
+/**
  * Lifecycle-boundary errors (ENG-P2-001-06).
  *
  * Reuses this same `IdentityDomainError` class for lifecycle-service and

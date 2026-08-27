@@ -40,6 +40,11 @@ import {
   emitCustomerAuthenticated,
 } from "./domains/authentication/services/authenticationEventEmitter";
 import type { AuthenticationReferenceType } from "./domains/identity/models/authenticationReference";
+import { resolveAuthenticatedIdentityActor } from "./domains/identity/repositories/authenticatedIdentityActor";
+import {
+  setDisplayName as setDisplayNameCommand,
+  readDisplayName as getMyDisplayNameCommand,
+} from "./domains/identity/repositories/displayNameRepository";
 import { BusinessDomainError } from "./domains/business/models/businessErrors";
 import {
   handleCreateBusiness,
@@ -353,6 +358,86 @@ export const recoverAuthenticatedIdentity = onCall(async (request) => {
       idempotencyKey: parsed.idempotencyKey,
     });
     return result;
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+function parseSetDisplayNameRequest(data: unknown): {
+  rawToken: string;
+  referenceType: AuthenticationReferenceType;
+  displayName: string;
+  idempotencyKey: string;
+} {
+  const value = (data ?? {}) as Record<string, unknown>;
+  const { displayName } = value;
+  if (typeof displayName !== "string") {
+    throw new HttpsError("invalid-argument", "display_name_invalid");
+  }
+  return {
+    rawToken: parseRawToken(value.rawToken),
+    referenceType: parseReferenceType(value.referenceType),
+    displayName,
+    idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+  };
+}
+
+/**
+ * `setDisplayName` (`IDENTITY-PROFILE-A`, per `FD-IDENTITY-DISPLAY-001`) —
+ * creates/updates the caller's own `users/{userId}.displayName`. Resolves
+ * the caller's identity from a verified provider credential exactly like
+ * `authenticate`/`linkAuthenticationProvider` (never a client-supplied
+ * target id) — the target of the write is always the resolved caller's own
+ * record. Admin-SDK callable — no client Firestore write path is opened.
+ */
+export const setDisplayName = onCall(async (request) => {
+  const parsed = parseSetDisplayNameRequest(request.data);
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId } = await resolveAuthenticatedIdentityActor(
+      db,
+      { rawToken: parsed.rawToken, referenceType: parsed.referenceType },
+      { verifier: firebaseAdminTokenVerifier() },
+    );
+    return await setDisplayNameCommand(db, {
+      customerIdentityId: userId,
+      displayName: parsed.displayName,
+      idempotencyKey: parsed.idempotencyKey,
+      correlationId: randomUUID(),
+    });
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+function parseGetMyDisplayNameRequest(data: unknown): {
+  rawToken: string;
+  referenceType: AuthenticationReferenceType;
+} {
+  const value = (data ?? {}) as Record<string, unknown>;
+  return {
+    rawToken: parseRawToken(value.rawToken),
+    referenceType: parseReferenceType(value.referenceType),
+  };
+}
+
+/**
+ * `getMyDisplayName` (`IDENTITY-PROFILE-A`) — reads the caller's own
+ * `users/{userId}.displayName`. Returns `{ displayName: undefined }` when
+ * unset (never a fabricated placeholder, per `FD-IDENTITY-DISPLAY-001`
+ * §10/§14) — no other identity's Display Name is ever reachable through
+ * this callable.
+ */
+export const getMyDisplayName = onCall(async (request) => {
+  const parsed = parseGetMyDisplayNameRequest(request.data);
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId } = await resolveAuthenticatedIdentityActor(
+      db,
+      { rawToken: parsed.rawToken, referenceType: parsed.referenceType },
+      { verifier: firebaseAdminTokenVerifier() },
+    );
+    return await getMyDisplayNameCommand(db, userId);
   } catch (error) {
     throw toHttpsError(error);
   }
