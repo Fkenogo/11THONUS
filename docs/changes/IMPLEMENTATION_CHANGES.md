@@ -4600,3 +4600,43 @@
 - **Report:** [`IDENTITY-PROFILE-B-display-name-profile-completion-ui-implementation-report-2026-08-27.md`](../05-implementation/reports/IDENTITY-PROFILE-B-display-name-profile-completion-ui-implementation-report-2026-08-27.md).
 - **Final gate:** **IDENTITY-PROFILE-B READY FOR FOUNDER REVIEW — DISPLAY NAME PROFILE-COMPLETION UI
   IMPLEMENTED; TEAM INTEGRATION NOT STARTED.**
+
+## `IDENTITY-PROFILE-B-REVIEW` — Independent Review, Responsive Verification, Merge & Closure (2026-08-27)
+
+- **Independent review of draft PR #191, in a fresh isolated worktree at the exact PR head —
+  the implementation report was not trusted as proof.** Three genuine defects found and corrected:
+  (1) no keyboard Enter-to-submit (the field had no wrapping `<form>` and Save was `type="button"`);
+  (2) no focus management after returning to the read view (focus fell back to `<body>`); (3) no
+  on-page `LanguageSwitcher` at all, unlike every other standalone top-level page in this codebase.
+- **Real-browser responsive verification performed locally, closing the gap the implementation
+  report left open** — no hosted DEV deployment used. Started the Firebase Emulator Suite
+  (`pnpm emulators`) plus the Vite dev server, signed in via the existing `/dev/sign-in-preview`
+  dev route (which reuses the same default-named Firebase App singleton as the production
+  composition root, confirmed by reading `signInPreviewPlatform.ts`), and drove the real,
+  unmocked `DisplayNameProfile` against real `getMyDisplayName`/`setDisplayName` calls at
+  375×812, 390×844, 768×1024, and 1440×900 — no horizontal overflow at any size, 44px touch
+  targets confirmed via `getBoundingClientRect()`, real Enter-key submission and post-save focus
+  management both confirmed working after correction, and a real EN→FR language switch confirmed
+  preserving route/session/saved value.
+- **One genuine test-coverage gap closed** (not a production defect): the existing error test only
+  exercised a save failure from the Incomplete state, where the fallback behavior coincidentally
+  still showed the form regardless of correct `onSuccess` gating. A new test exercising the same
+  failure from the Edit-an-existing-value path closes this gap (RED→GREEN via a targeted, reverted
+  mutation).
+- **Mutation testing performed and fully reverted** (confirmed byte-identical via `diff` after
+  each): removing the auth guard from `/profile` → existing `App.test.tsx` test failed; raising
+  `MAX_LENGTH` to 5000 → existing 51-char test failed; stripping non-ASCII input → Unicode test
+  failed (after correcting a flawed first mutation attempt); reintroducing a `firebase/firestore`
+  import → `noDirectFirestore.test.ts` failed, naming the exact file.
+- **Full validation re-run on the corrected head:** web unit suite 96/96 files (628 tests, +9 from
+  the correction); functions unit suite unchanged (145/145 files, 1583 tests — no `functions/` file
+  touched); typecheck/lint/format clean; `pnpm run build` succeeded; secret scan clean.
+- **Scope audit:** the correction touches exactly 2 files beyond the original PR's 20-file diff —
+  no photo/phone/legal-name/Staff/Package-G/F/CustomerProfile/Rules/deployment content anywhere.
+- **Status:** `IDENTITY-PROFILE-B` merged and closed; Package G active-member completion, Package
+  F, Package H all unchanged/not started; `ENG-P3-002`/Capability 3 remain Open.
+- **Files:** `apps/web/src/identity/DisplayNameProfile.tsx`/`DisplayNameProfile.test.tsx` (the
+  correction only), this entry, and the dedicated review report.
+- **Report:** [`identity-profile-b-review-report-2026-08-27.md`](../05-implementation/reports/identity-profile-b-review-report-2026-08-27.md).
+- **Final gate:** **IDENTITY-PROFILE-B MERGED AND CLOSED — DISPLAY NAME PROFILE-COMPLETION
+  CAPABILITY AVAILABLE FOR SEPARATELY AUTHORIZED INTEGRATION.**

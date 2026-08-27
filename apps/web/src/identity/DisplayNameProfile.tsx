@@ -12,12 +12,26 @@
  * (Phase M). Local form state is never treated as authoritative: a
  * successful save invalidates the read query and the UI re-renders from
  * the refetched, backend-authoritative value (Phase H).
+ *
+ * The field/actions are wrapped in a real `<form>` so Enter submits like
+ * any other form (`IDENTITY-PROFILE-B-REVIEW` finding — a bare `<input>`
+ * with a `type="button"` Save control never receives a native submit
+ * event). Returning from the form to the read view (on save success or
+ * cancel) moves focus to the "Edit display name" action rather than
+ * letting it fall back to `<body>`, since the previously-focused control
+ * unmounts (`IDENTITY-PROFILE-B-REVIEW` finding). Renders its own
+ * `LanguageSwitcher` in every state, matching the established convention
+ * every other standalone top-level page follows (`NewBusinessPage`,
+ * `SubmittedStatusPage`, `EstablishmentReviewPage`) — `/profile` is not
+ * nested inside any shell that already provides one, so without its own
+ * switcher a direct visit had no on-page way to change language
+ * (`IDENTITY-PROFILE-B-REVIEW` finding).
  */
 
-import { useState } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { Auth } from "firebase/auth";
 import type { Functions } from "firebase/functions";
-import { useTranslation } from "../i18n";
+import { LanguageSwitcher, useTranslation } from "../i18n";
 import { Button, FieldError } from "../components/ui/formPrimitives";
 import { cn } from "../lib/utils";
 import { useMyDisplayNameQuery } from "./hooks/displayNameQueries";
@@ -35,10 +49,27 @@ export function DisplayNameProfile({ auth, functions }: DisplayNameProfileProps)
   const mutation = useSetDisplayNameMutation(platform);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
+  const editButtonRef = useRef<HTMLButtonElement>(null);
+  const wasShowingFormRef = useRef(false);
+
+  const displayName = query.status === "success" ? query.data.displayName : undefined;
+  const showForm = query.status !== "success" || !displayName || editing;
+
+  // Focus the "Edit display name" action once the read view (re)appears
+  // after the form was showing — the control the user just used (Save or
+  // Cancel) has just unmounted, so focus would otherwise fall back to
+  // `<body>` (Phase H — "focus behaviour after save/error").
+  useEffect(() => {
+    if (wasShowingFormRef.current && !showForm) {
+      editButtonRef.current?.focus();
+    }
+    wasShowingFormRef.current = showForm;
+  }, [showForm]);
 
   if (query.status === "pending") {
     return (
       <section>
+        <LanguageSwitcher />
         <p>{t("profile.loading")}</p>
       </section>
     );
@@ -47,6 +78,7 @@ export function DisplayNameProfile({ auth, functions }: DisplayNameProfileProps)
   if (query.status === "error") {
     return (
       <section>
+        <LanguageSwitcher />
         <h1 className="mb-1 text-xl font-semibold">{t("profile.title")}</h1>
         <p role="alert" className="mt-2 text-sm text-red-600">
           {t("errors.failed")}
@@ -58,9 +90,6 @@ export function DisplayNameProfile({ auth, functions }: DisplayNameProfileProps)
     );
   }
 
-  const displayName = query.data.displayName;
-  const showForm = !displayName || editing;
-
   function startEditing() {
     setDraft(displayName ?? "");
     setEditing(true);
@@ -70,9 +99,10 @@ export function DisplayNameProfile({ auth, functions }: DisplayNameProfileProps)
     setEditing(false);
   }
 
-  function handleSave() {
+  function handleSubmit(event: FormEvent) {
+    event.preventDefault();
     const trimmed = draft.trim();
-    if (trimmed.length < 1 || trimmed.length > MAX_LENGTH) return;
+    if (trimmed.length < 1 || trimmed.length > MAX_LENGTH || mutation.isPending) return;
     mutation.mutate(trimmed, { onSuccess: () => setEditing(false) });
   }
 
@@ -84,6 +114,7 @@ export function DisplayNameProfile({ auth, functions }: DisplayNameProfileProps)
   if (!showForm) {
     return (
       <section>
+        <LanguageSwitcher />
         <h1 className="mb-1 text-xl font-semibold">{t("profile.title")}</h1>
         <p className="mb-6 text-[var(--color-muted-foreground)]">{t("profile.subtitle")}</p>
         <div className="rounded-md border border-[var(--color-border)] p-4">
@@ -93,6 +124,7 @@ export function DisplayNameProfile({ auth, functions }: DisplayNameProfileProps)
               <p>{displayName}</p>
             </div>
             <button
+              ref={editButtonRef}
               type="button"
               className="-m-3 min-h-11 p-3 text-sm underline"
               onClick={startEditing}
@@ -110,12 +142,13 @@ export function DisplayNameProfile({ auth, functions }: DisplayNameProfileProps)
 
   return (
     <section>
+      <LanguageSwitcher />
       <h1 className="mb-1 text-xl font-semibold">{t("profile.title")}</h1>
       <p className="mb-6 text-[var(--color-muted-foreground)]">{t("profile.subtitle")}</p>
       {!displayName && (
         <p className="mb-4 text-sm text-[var(--color-muted-foreground)]">{t("profile.missing")}</p>
       )}
-      <div className="flex flex-col gap-3">
+      <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
         <div>
           <label htmlFor="displayName" className="mb-1 block text-sm font-medium">
             {t("profile.displayNameLabel")}
@@ -142,7 +175,7 @@ export function DisplayNameProfile({ auth, functions }: DisplayNameProfileProps)
           )}
         </div>
         <div className="flex gap-3">
-          <Button type="button" disabled={!canSave} onClick={handleSave} className="min-h-11">
+          <Button type="submit" disabled={!canSave} className="min-h-11">
             {mutation.isPending ? t("profile.saving") : t("profile.save")}
           </Button>
           {displayName && (
@@ -158,7 +191,7 @@ export function DisplayNameProfile({ auth, functions }: DisplayNameProfileProps)
           )}
         </div>
         <DisplayNameMutationError error={mutation.error} />
-      </div>
+      </form>
     </section>
   );
 }

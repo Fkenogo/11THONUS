@@ -203,6 +203,32 @@ describe("DisplayNameProfile — error states", () => {
     expect(screen.getByText(en.identity.profile.missing)).toBeInTheDocument();
   });
 
+  it("stays in edit mode showing the error when editing an existing value fails to save (does not silently revert to the read view)", async () => {
+    vi.spyOn(displayNameApi, "makeCallGetMyDisplayName").mockReturnValue(async () => ({
+      displayName: "Fred Kenogo",
+    }));
+    vi.spyOn(displayNameApi, "makeCallSetDisplayName").mockReturnValue(async () => {
+      throw new IdentityApiError("unavailable");
+    });
+    renderProfile();
+    await screen.findByText("Fred Kenogo");
+
+    await userEvent.click(screen.getByRole("button", { name: en.identity.profile.editAction }));
+    await userEvent.clear(screen.getByLabelText(en.identity.profile.displayNameLabel));
+    await userEvent.type(screen.getByLabelText(en.identity.profile.displayNameLabel), "New Value");
+    await userEvent.click(screen.getByRole("button", { name: en.identity.profile.save }));
+
+    // The failure must not silently drop back to the read view showing the
+    // stale-but-real old value as if nothing happened — the field, the
+    // Save/Cancel controls, and the error must all still be visible.
+    expect(await screen.findByRole("alert")).toHaveTextContent(en.identity.errors.unavailable);
+    expect(screen.getByLabelText(en.identity.profile.displayNameLabel)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: en.identity.profile.save })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: en.identity.profile.editAction }),
+    ).not.toBeInTheDocument();
+  });
+
   it("never leaks a raw error message", async () => {
     vi.spyOn(displayNameApi, "makeCallGetMyDisplayName").mockReturnValue(async () => ({
       displayName: undefined,
@@ -269,6 +295,75 @@ describe("DisplayNameProfile — error states", () => {
   });
 });
 
+describe("DisplayNameProfile — accessibility: keyboard and focus", () => {
+  it("submits the form when Enter is pressed in the Display Name field (keyboard operation)", async () => {
+    const setDisplayName = vi.fn(async () => ({ displayName: "Name" }));
+    vi.spyOn(displayNameApi, "makeCallGetMyDisplayName").mockReturnValue(async () => ({
+      displayName: undefined,
+    }));
+    vi.spyOn(displayNameApi, "makeCallSetDisplayName").mockReturnValue(setDisplayName);
+    renderProfile();
+    await screen.findByText(en.identity.profile.missing);
+
+    await userEvent.type(
+      screen.getByLabelText(en.identity.profile.displayNameLabel),
+      "Name{Enter}",
+    );
+
+    await waitFor(() => expect(setDisplayName).toHaveBeenCalled());
+  });
+
+  it("does not submit via Enter while the value is invalid", async () => {
+    const setDisplayName = vi.fn();
+    vi.spyOn(displayNameApi, "makeCallGetMyDisplayName").mockReturnValue(async () => ({
+      displayName: undefined,
+    }));
+    vi.spyOn(displayNameApi, "makeCallSetDisplayName").mockReturnValue(setDisplayName);
+    renderProfile();
+    await screen.findByText(en.identity.profile.missing);
+
+    await userEvent.type(screen.getByLabelText(en.identity.profile.displayNameLabel), "   {Enter}");
+
+    expect(setDisplayName).not.toHaveBeenCalled();
+  });
+
+  it("moves focus to the edit action after returning to the read view on save success", async () => {
+    let stored: string | undefined;
+    vi.spyOn(displayNameApi, "makeCallGetMyDisplayName").mockReturnValue(async () => ({
+      displayName: stored,
+    }));
+    vi.spyOn(displayNameApi, "makeCallSetDisplayName").mockReturnValue(async () => {
+      stored = "Fred Kenogo";
+      return { displayName: "Fred Kenogo" };
+    });
+    renderProfile();
+    await screen.findByText(en.identity.profile.missing);
+
+    await userEvent.type(
+      screen.getByLabelText(en.identity.profile.displayNameLabel),
+      "Fred Kenogo",
+    );
+    await userEvent.click(screen.getByRole("button", { name: en.identity.profile.save }));
+
+    const editButton = await screen.findByRole("button", { name: en.identity.profile.editAction });
+    await waitFor(() => expect(editButton).toHaveFocus());
+  });
+
+  it("moves focus to the edit action after cancelling out of edit mode", async () => {
+    vi.spyOn(displayNameApi, "makeCallGetMyDisplayName").mockReturnValue(async () => ({
+      displayName: "Fred Kenogo",
+    }));
+    renderProfile();
+    await screen.findByText("Fred Kenogo");
+
+    await userEvent.click(screen.getByRole("button", { name: en.identity.profile.editAction }));
+    await userEvent.click(screen.getByRole("button", { name: en.identity.profile.cancel }));
+
+    const editButton = screen.getByRole("button", { name: en.identity.profile.editAction });
+    await waitFor(() => expect(editButton).toHaveFocus());
+  });
+});
+
 describe("DisplayNameProfile — localization", () => {
   it("renders French copy when French is active, with no English leakage", async () => {
     await i18n.changeLanguage("fr");
@@ -279,6 +374,60 @@ describe("DisplayNameProfile — localization", () => {
     expect(await screen.findByText(fr.identity.profile.missing)).toBeInTheDocument();
     expect(screen.getByLabelText(fr.identity.profile.displayNameLabel)).toBeInTheDocument();
     expect(container.textContent).not.toContain(en.identity.profile.missing);
+  });
+
+  it("offers an on-page language switch, matching every other standalone page (no shell wraps /profile)", async () => {
+    vi.spyOn(displayNameApi, "makeCallGetMyDisplayName").mockReturnValue(async () => ({
+      displayName: undefined,
+    }));
+    renderProfile();
+    await screen.findByText(en.identity.profile.missing);
+    expect(screen.getByRole("button", { name: "Français" })).toBeInTheDocument();
+  });
+
+  it("switches EN to FR on this page, preserving the route, session, and unsaved draft", async () => {
+    vi.spyOn(displayNameApi, "makeCallGetMyDisplayName").mockReturnValue(async () => ({
+      displayName: undefined,
+    }));
+    renderProfile();
+    await screen.findByText(en.identity.profile.missing);
+
+    await userEvent.type(
+      screen.getByLabelText(en.identity.profile.displayNameLabel),
+      "Unsaved Draft",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Français" }));
+
+    expect(await screen.findByText(fr.identity.profile.missing)).toBeInTheDocument();
+    expect(screen.getByLabelText(fr.identity.profile.displayNameLabel)).toHaveValue(
+      "Unsaved Draft",
+    );
+  });
+
+  it("switches FR back to EN on this page", async () => {
+    await i18n.changeLanguage("fr");
+    vi.spyOn(displayNameApi, "makeCallGetMyDisplayName").mockReturnValue(async () => ({
+      displayName: undefined,
+    }));
+    renderProfile();
+    await screen.findByText(fr.identity.profile.missing);
+
+    await userEvent.click(screen.getByRole("button", { name: "English" }));
+
+    expect(await screen.findByText(en.identity.profile.missing)).toBeInTheDocument();
+  });
+
+  it("preserves the saved Display Name display across a language switch in the read view", async () => {
+    vi.spyOn(displayNameApi, "makeCallGetMyDisplayName").mockReturnValue(async () => ({
+      displayName: "Fred Kenogo",
+    }));
+    renderProfile();
+    await screen.findByText("Fred Kenogo");
+
+    await userEvent.click(screen.getByRole("button", { name: "Français" }));
+
+    expect(await screen.findByText(fr.identity.profile.title)).toBeInTheDocument();
+    expect(screen.getByText("Fred Kenogo")).toBeInTheDocument();
   });
 });
 
