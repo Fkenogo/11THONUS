@@ -4361,3 +4361,43 @@
 - **Report:** [`ENG-P2-003-CORR-TIMEFIX-001-staff-invitation-concurrency-test-determinism-implementation-report-2026-08-27.md`](../05-implementation/reports/ENG-P2-003-CORR-TIMEFIX-001-staff-invitation-concurrency-test-determinism-implementation-report-2026-08-27.md).
 - **Final gate:** **STAFF MEMBERSHIP CONCURRENCY TEST DETERMINISM CORRECTED — PR READY FOR FOUNDER
   REVIEW.**
+
+## `ENG-P2-003-CORR-TIMEFIX-001-REVIEW` — Independent Review, Merge & Closure (2026-08-27)
+
+- **Independent review of draft PR #184 in a fresh isolated worktree at the exact PR head — the
+  implementation report was not trusted, every claim was independently re-derived and the fix was
+  mutation-tested.** Clean; no findings, no correction needed.
+- **Root cause independently re-derived from source** (`inviteParams`'s hardcoded
+  `2026-08-20T01:00:00Z` creation time, `invitationPolicy.ts`'s 7-day expiry math, and
+  `revokeStaffInvitationService.ts`'s correct, pre-existing expiry-precedence rule) — confirmed
+  exactly as reported.
+- **Mutation-tested the fix directly:** restoring live `new Date()` in the corrected line
+  reproduced the exact original failure under today's real calendar time
+  (`expected 'expired' to be 'revoked'`); restoring the deterministic value passed cleanly again.
+  The exactly-one-wins invariant was verified structurally (both accept and revoke run inside real
+  Firestore transactions with explicit `pending`-only guards, whose serializable write-conflict
+  detection is the actual mechanism enforcing it) rather than via a production-code mutation, to
+  avoid destabilizing the shared, already-extensively-tested transaction/idempotency
+  infrastructure for a bounded test-fixture review.
+- **Independently re-classified all 3 remaining `new Date()` occurrences** in the file — confirmed
+  the implementation's audit accurate: 2 other `revokeStaffInvitation` calls don't inspect the
+  persisted `invitation.status` field the way the fixed one did (traced through
+  `revokeStaffInvitationService.ts`'s outer-outcome wrapper and `transitionInvitationStatus`'s
+  uniform invalid-transition error); 1 is an unrelated audit-timestamp field.
+- **Zero production-code diff independently confirmed** via `git diff --name-only -- 'functions/src/**'`.
+- **Full validation re-run fresh:** focused Scenario 12 (1/1), full
+  `staffMembershipIntegration.emulator.test.ts` (19/19), full Firebase Emulator Suite (688/690, 2
+  pre-existing skips), functions unit (1563/1563), typecheck/lint/format clean.
+- **Merged:** PR #184 → `main` at `a0fdb42f958d045bd3ab164fd74e962d4502ae9d`, a genuine merge
+  commit (two parents, matching every prior PR in this chain except the disclosed #177 squash
+  deviation). **Post-merge CI confirmed green** (run `33052683289`), registering and completing
+  promptly — notably, the *immediately preceding* merge to `main` (PR #183) had its own
+  push-triggered CI fail on this exact pre-existing defect, confirming this fix genuinely restores
+  `main` to a reliably green state rather than merely passing by chance.
+- **Status unchanged:** does not alter Package D, `ENG-P3-002`, or Capability 3 status. No UI
+  Package E/F/G/H work started or modified.
+- **Files:** this entry and the dedicated review report only. No source file touched by this
+  review.
+- **Report:** [`eng-p2-003-corr-timefix-001-review-report-2026-08-27.md`](../05-implementation/reports/eng-p2-003-corr-timefix-001-review-report-2026-08-27.md).
+- **Final gate:** **STAFF MEMBERSHIP CONCURRENCY TEST DETERMINISM CORRECTION MERGED AND CLOSED —
+  UI PROGRAMME MAY RESUME.**
