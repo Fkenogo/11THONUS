@@ -4429,3 +4429,38 @@
 - **Report:** [`FD-P3-002-G-001-founder-disposition-staff-team-identity-projection-2026-08-27.md`](../05-implementation/reports/FD-P3-002-G-001-founder-disposition-staff-team-identity-projection-2026-08-27.md).
 - **Final gate:** **PACKAGE G FOUNDER IDENTITY-PROJECTION DISPOSITION RECORDED — STAFF TRANSPORT
   IDENTITY CORRECTION AWAITS FRESH IMPLEMENTATION AUTHORIZATION.**
+
+## `ENG-P3-002-UI-IMP-G` — Staff Transport Identity Correction (partial) (2026-08-27)
+
+- **Outcome: PARTIAL.** Implements the pending-invitation half of `FD-P3-002-G-001` fully;
+  explicitly does **not** implement the active-member display-name half — no existing
+  authoritative, non-protected display-name source exists anywhere in the codebase (`users`
+  document's `displayName` field is schema-reserved but never written;
+  `customerProfile.firstName/lastName` is protected profile data; Firebase Auth `displayName`/email
+  is authentication-provider metadata — all three explicitly prohibited or absent). Stopped per
+  Phase D's own instruction rather than widening exposure.
+- **`StaffInvitationSummary`** (`functions/src/domains/permissions/service/staffTransportReadService.ts`,
+  mirrored in `apps/web/src/business/api/staffLists.ts`) gains an additive `email?: string` field,
+  populated **only** when `deliveryType === "email"` — the exact case `FD-P3-002-G-001` §2
+  authorizes ("where the delivery target is email, the invitation email"). Phone-delivery
+  invitations continue to expose no identity value, since §4 separately and unconditionally
+  prohibits phone numbers.
+- **`StaffMembershipSummary` is unchanged** — no field added, no field removed.
+- No authorization, tenant-isolation, mutation, lifecycle, or permission semantics changed; no new
+  callable, query, index, or repository method added; no Team UI (Package F) file touched.
+- **Tests:** rewrote the invitation-privacy test to assert the new authorized behavior (email
+  exposed for email delivery, withheld for phone delivery); added distinguishability and
+  cross-Business-isolation tests; added one frontend contract-level passthrough test. Full
+  validation: functions unit suite 143/143 files (1563 tests) PASS; full Firebase Emulator Suite
+  52/52 files (690 tests, 2 pre-existing unrelated skips) PASS; web suite 93/93 files (596 tests)
+  PASS; typecheck/lint/format/build clean on both `functions` and `apps/web`; secret scan clean.
+- **Status:** Package G partially implemented (invitation half complete, submitted for review;
+  member-display-name half blocked, requires a fresh Founder/architecture decision); Package F not
+  started; Package H not started; `ENG-P3-002`/Capability 3 remain Open.
+- **Files:** `functions/src/domains/permissions/service/staffTransportReadService.ts` (+ its
+  emulator test), `apps/web/src/business/api/staffLists.ts` (+ its test), this entry, and the
+  dedicated implementation report. No other file touched.
+- **Report:** [`ENG-P3-002-UI-IMP-G-staff-transport-identity-correction-implementation-report-2026-08-27.md`](../05-implementation/reports/ENG-P3-002-UI-IMP-G-staff-transport-identity-correction-implementation-report-2026-08-27.md).
+- **Final gate:** **ENG-P3-002-UI PACKAGE G BLOCKED (PARTIAL) — ACTIVE-MEMBER DISPLAY NAME HAS NO
+  EXISTING AUTHORITATIVE NON-PROTECTED SOURCE; PENDING-INVITATION IDENTITY CORRECTION IS FULLY
+  IMPLEMENTED, TESTED, AND SUBMITTED FOR FOUNDER REVIEW. PACKAGE F TEAM UI NOT STARTED.**

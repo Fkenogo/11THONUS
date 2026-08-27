@@ -61,12 +61,13 @@ async function seedInvitation(params: {
   id: string;
   businessId: string;
   role: "manager" | "staff";
+  deliveryTarget?: { type: "email" | "phone"; value: string };
 }) {
   const invitation = createBusinessMembershipInvitation({
     id: params.id,
     businessId: params.businessId,
     role: params.role,
-    deliveryTarget: { type: "email", value: "invitee@example.com" },
+    deliveryTarget: params.deliveryTarget ?? { type: "email", value: "invitee@example.com" },
     invitedBy: "cust_owner",
     invitedAt: NOW,
     expiresAt: LATER,
@@ -100,7 +101,7 @@ describe("listStaffInvitationsForBusiness", () => {
     ).rejects.toMatchObject({ category: "RESOURCE_NOT_FOUND" });
   });
 
-  it("38. bounded DTO privacy — never exposes the raw delivery-target value (email/phone)", async () => {
+  it("38. bounded DTO privacy — email delivery exposes the invitation email (FD-P3-002-G-001 §2), phone delivery exposes no identity value", async () => {
     await seedMembership({
       membershipId: "mem-1",
       userId: "cust_owner",
@@ -108,11 +109,75 @@ describe("listStaffInvitationsForBusiness", () => {
       role: "owner",
     });
     await seedInvitation({ id: "inv-1", businessId: "biz-a", role: "staff" });
+    await seedInvitation({
+      id: "inv-2",
+      businessId: "biz-a",
+      role: "staff",
+      deliveryTarget: { type: "phone", value: "+15555550100" },
+    });
 
     const result = await listStaffInvitationsForBusiness(db, "cust_owner", "biz-a");
-    const dto = result[0] as unknown as Record<string, unknown>;
-    expect(JSON.stringify(dto)).not.toContain("invitee@example.com");
-    expect(dto["deliveryType"]).toBe("email");
+    const byId = Object.fromEntries(
+      result.map((i) => [i.invitationId, i as Record<string, unknown>]),
+    );
+
+    expect(byId["inv-1"]?.["deliveryType"]).toBe("email");
+    expect(byId["inv-1"]?.["email"]).toBe("invitee@example.com");
+
+    expect(byId["inv-2"]?.["deliveryType"]).toBe("phone");
+    expect(byId["inv-2"]?.["email"]).toBeUndefined();
+    expect(JSON.stringify(byId["inv-2"])).not.toContain("+15555550100");
+  });
+
+  it("39. two email invitations are distinguishable by their exposed email", async () => {
+    await seedMembership({
+      membershipId: "mem-1",
+      userId: "cust_owner",
+      businessId: "biz-a",
+      role: "owner",
+    });
+    await seedInvitation({
+      id: "inv-1",
+      businessId: "biz-a",
+      role: "staff",
+      deliveryTarget: { type: "email", value: "alice@example.com" },
+    });
+    await seedInvitation({
+      id: "inv-2",
+      businessId: "biz-a",
+      role: "staff",
+      deliveryTarget: { type: "email", value: "bob@example.com" },
+    });
+
+    const result = await listStaffInvitationsForBusiness(db, "cust_owner", "biz-a");
+    const emails = result.map((i) => i.email).sort();
+    expect(emails).toEqual(["alice@example.com", "bob@example.com"]);
+  });
+
+  it("40. cross-Business invitation identity never leaks — only the requested Business's invitation emails are returned", async () => {
+    await seedMembership({
+      membershipId: "mem-1",
+      userId: "cust_owner",
+      businessId: "biz-a",
+      role: "owner",
+    });
+    await seedInvitation({
+      id: "inv-1",
+      businessId: "biz-a",
+      role: "staff",
+      deliveryTarget: { type: "email", value: "own-business@example.com" },
+    });
+    await seedInvitation({
+      id: "inv-2",
+      businessId: "biz-b",
+      role: "staff",
+      deliveryTarget: { type: "email", value: "other-business@example.com" },
+    });
+
+    const result = await listStaffInvitationsForBusiness(db, "cust_owner", "biz-a");
+    expect(result).toHaveLength(1);
+    expect(result[0]?.email).toBe("own-business@example.com");
+    expect(JSON.stringify(result)).not.toContain("other-business@example.com");
   });
 
   it("filters by status when supplied", async () => {

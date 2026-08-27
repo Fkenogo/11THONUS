@@ -10,6 +10,8 @@ export type StaffInvitationSummary = {
   role: string;
   status: InvitationStatus;
   deliveryType: string;
+  /** Present only when `deliveryType` is `"email"` (`FD-P3-002-G-001` §2). */
+  email?: string;
   invitedAt: string;
   expiresAt: string;
 };

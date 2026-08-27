@@ -1,5 +1,7 @@
 /**
- * Staff list-query read transport (`ENG-P3-002A`, design §39/§40/Phase N).
+ * Staff list-query read transport (`ENG-P3-002A`, design §39/§40/Phase N;
+ * invitation-identity projection added under `ENG-P3-002-UI-IMP-G` per the
+ * Founder disposition `FD-P3-002-G-001`).
  *
  * Wraps the new bounded repository queries (`listInvitationsByBusiness`,
  * `listMembershipsByBusiness`) with the same read-authority re-derivation
@@ -7,11 +9,21 @@
  * (§21/§25) — any active membership (Owner/Manager/Staff) may read the
  * roster/invitation-status of their own Business; a caller with no
  * membership in `businessId` is denied identically to "Business not
- * found" (enumeration resistance).
+ * found" (enumeration resistance). `FD-P3-002-G-001` does not widen this —
+ * it only changes what an already-authorized caller may see.
  *
- * DTOs are deliberately minimal (Phase N): no `AuthenticationReference`
- * internals, no raw delivery-target contact value (email/phone), no
- * protected Customer Identity fields, no permission-audit internals.
+ * DTOs remain minimal (Phase N), narrowed only by `FD-P3-002-G-001`'s exact
+ * authorization: no `AuthenticationReference` internals, no protected
+ * Customer Identity fields, no permission-audit internals, and — for
+ * invitations — the raw delivery-target value is exposed **only** when the
+ * delivery type is `email` (`FD-P3-002-G-001` §2, "where the delivery
+ * target is email, the invitation email"); a `phone`-delivered invitation's
+ * value remains withheld, since phone numbers are explicitly prohibited by
+ * `FD-P3-002-G-001` §4 and no separate disposition covers phone-delivery
+ * identity. `StaffMembershipSummary` is unchanged by this task — see
+ * `ENG-P3-002-UI-IMP-G`'s implementation report for why the active-member
+ * display-name half of `FD-P3-002-G-001` was not implemented (no existing
+ * authoritative, non-protected display-name source exists).
  */
 
 import type { Firestore } from "firebase-admin/firestore";
@@ -48,12 +60,19 @@ async function assertActiveMembership(
   }
 }
 
-/** Phase N's bounded invitation-status DTO — no raw delivery-target value. */
+/**
+ * Phase N's bounded invitation-status DTO, additively extended under
+ * `FD-P3-002-G-001` §2: `email` is present only when `deliveryType` is
+ * `"email"` — the exact, and only, delivery-identity value the disposition
+ * authorizes exposing. Absent (never a fabricated value) for `"phone"`
+ * deliveries.
+ */
 export type StaffInvitationSummary = {
   invitationId: string;
   role: string;
   status: string;
   deliveryType: string;
+  email?: string;
   invitedAt: string;
   expiresAt: string;
 };
@@ -64,6 +83,9 @@ function toInvitationSummary(invitation: BusinessMembershipInvitation): StaffInv
     role: invitation.role,
     status: invitation.status,
     deliveryType: invitation.deliveryTarget.type,
+    ...(invitation.deliveryTarget.type === "email"
+      ? { email: invitation.deliveryTarget.value }
+      : {}),
     invitedAt: invitation.invitedAt.toISOString(),
     expiresAt: invitation.expiresAt.toISOString(),
   };
