@@ -4401,3 +4401,31 @@
 - **Report:** [`eng-p2-003-corr-timefix-001-review-report-2026-08-27.md`](../05-implementation/reports/eng-p2-003-corr-timefix-001-review-report-2026-08-27.md).
 - **Final gate:** **STAFF MEMBERSHIP CONCURRENCY TEST DETERMINISM CORRECTION MERGED AND CLOSED —
   UI PROGRAMME MAY RESUME.**
+
+## `FD-P3-002-G-001` — Founder Disposition: Staff Team Identity Projection for Package G (2026-08-27)
+
+- **Governance/documentation only** — no source, `functions/`, `apps/web/`, Firestore, Rules,
+  Firebase configuration, or dependency touched; Package G implementation not started.
+- Records the Founder decision `ENG-P3-002-UI-RECON-001` Part XV required before Package G — Staff
+  Transport Identity Correction — may begin, following the prior `ENG-P3-002-UI-IMP-G` entry-gate
+  task's correct stop (no separately-scoped authorization existed to reverse the deliberately
+  minimal `StaffMembershipSummary`/`StaffInvitationSummary` design).
+- **Authorized:** active-member display name (server-side resolved from an existing authoritative,
+  non-protected source) plus existing role/status; pending-invitation actual delivery
+  identity/email plus existing invitation role/status — for already-authorized Business callers
+  only.
+- **Not authorized:** any broader profile data, protected customer data, phone numbers,
+  authentication-provider/provider-ID data, cross-Business information, a general
+  identity/people/customer directory or lookup capability, or any mutation/authorization-model
+  change.
+- **Fail-closed rule recorded:** if no existing authoritative non-protected source can supply a
+  safe display name, or a future invitation delivery type isn't already covered, implementation
+  must stop and report the exact gap rather than widen exposure.
+- **Status:** Package E unchanged (satisfied by inclusion in B/C/D); Package F not started; Package
+  G identity-projection policy resolved, implementation not started, awaiting a fresh separately
+  scoped Founder implementation authorization; Package H not started; `ENG-P3-002`/Capability 3
+  remain Open.
+- **Files:** this entry and the dedicated disposition report only. No other file touched.
+- **Report:** [`FD-P3-002-G-001-founder-disposition-staff-team-identity-projection-2026-08-27.md`](../05-implementation/reports/FD-P3-002-G-001-founder-disposition-staff-team-identity-projection-2026-08-27.md).
+- **Final gate:** **PACKAGE G FOUNDER IDENTITY-PROJECTION DISPOSITION RECORDED — STAFF TRANSPORT
+  IDENTITY CORRECTION AWAITS FRESH IMPLEMENTATION AUTHORIZATION.**
