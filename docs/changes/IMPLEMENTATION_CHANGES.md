@@ -4469,3 +4469,47 @@
 - **Report:** [`FD-IDENTITY-DISPLAY-001-founder-disposition-platform-display-name-2026-08-27.md`](../05-implementation/reports/FD-IDENTITY-DISPLAY-001-founder-disposition-platform-display-name-2026-08-27.md).
 - **Final gate:** **PLATFORM DISPLAY NAME FOUNDER DISPOSITION RECORDED — IDENTITY-PROFILE-A AWAITS
   FRESH IMPLEMENTATION AUTHORIZATION.**
+
+## `IDENTITY-PROFILE-A` — Platform Display Name Backend Foundation (2026-08-27)
+
+- Implements the backend foundation `FD-IDENTITY-DISPLAY-001` authorizes: `users/{userId}.displayName`
+  (TRD10 §10.6.1, previously schema-reserved but never populated) is now self-service
+  create/update/read-able by its owning Customer Identity only.
+- **New:** `identity/models/displayName.ts` (pure MVP validation — trim, reject empty/whitespace-only,
+  1-50 chars, Unicode permitted, no uniqueness); `identity/repositories/displayNameRepository.ts`
+  (`setDisplayName`/`readDisplayName` — targeted `transaction.update()` of exactly `displayName`/
+  `updatedAt`/`updatedBy`, never a full-document `.set()`, idempotency-guarded, fail-closed via
+  `getCustomerIdentityById` reuse); `identity/repositories/authenticatedIdentityActor.ts` (per-domain
+  actor resolution mirroring `authenticatedBusinessActor.ts`'s own pattern — server-derived caller
+  identity, never client-supplied); two new callables, `setDisplayName`/`getMyDisplayName`, wired in
+  `index.ts` next to the other identity-domain callables.
+- **Two new error factories** in `identityErrors.ts` (`invalidDisplayNameError`,
+  `identityActorNotEligibleError`); no other existing file's behavior changed.
+- Self-edit-only, server-derived target identity — no client-supplied `userId` field exists on
+  either request type; Business Owners/managers have no path to edit another identity's Display
+  Name (this capability has no Business context at all). No `CustomerProfile` read, no Firebase Auth
+  directory lookup, no general user lookup/search/directory capability. Missing Display Name reads
+  as genuinely absent (`{ displayName: undefined }`), never fabricated.
+- **Architecture finding (self-corrected):** the Identity domain's own ESLint boundary keeps
+  `identity/services/**` framework-independent (unlike `business`/`authentication`, where
+  `services/**` is Firebase-capable) — both new Firebase-touching files were placed in
+  `identity/repositories/**` instead, matching `customerIdentityRepository.ts`'s own precedent.
+- **Deliberate omission:** no new domain event was added for Display Name changes —
+  `identityEvents.ts` is explicitly scoped to a different, closed task's 9 events, and
+  `FD-IDENTITY-DISPLAY-001` §19 requires no new audit subsystem; flagged as a Founder-visible gap,
+  not silently assumed.
+- **Tests:** 10 new unit tests (`displayName.test.ts`), 6 new unit tests
+  (`authenticatedIdentityActor.test.ts`), 13 new emulator tests (`displayNameRepository.emulator.test.ts`).
+  Full validation: functions unit suite 145/145 files (1579 tests) PASS; full Firebase Emulator
+  Suite 53/53 files (701 tests, 2 pre-existing unrelated skips) PASS; typecheck/lint/format/build
+  clean; secret scan clean. No `apps/web/` file touched — full web suite not run (nothing to
+  regress).
+- **Status:** `IDENTITY-PROFILE-A` implemented and submitted for review; `IDENTITY-PROFILE-B` not
+  started; Package G active-member completion not started (now unblocked in principle, still
+  requires its own fresh authorization); Package F not started; Package H not started;
+  `ENG-P3-002`/Capability 3 remain Open.
+- **Files:** the 7 new/modified `functions/` files listed above, this entry, and the dedicated
+  implementation report. No `apps/web/`, Rules, Firebase configuration, or dependency file touched.
+- **Report:** [`IDENTITY-PROFILE-A-platform-display-name-backend-foundation-implementation-report-2026-08-27.md`](../05-implementation/reports/IDENTITY-PROFILE-A-platform-display-name-backend-foundation-implementation-report-2026-08-27.md).
+- **Final gate:** **IDENTITY-PROFILE-A READY FOR FOUNDER REVIEW — PLATFORM DISPLAY NAME BACKEND
+  FOUNDATION IMPLEMENTED; PROFILE-COMPLETION UI NOT STARTED.**
