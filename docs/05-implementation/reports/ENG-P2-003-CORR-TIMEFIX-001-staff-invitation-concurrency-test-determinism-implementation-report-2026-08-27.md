@@ -223,7 +223,10 @@ A matching entry added to `docs/changes/IMPLEMENTATION_CHANGES.md` under
 
 ## 30–32. PR number, final head SHA, CI result
 
-Recorded once the draft PR is opened and its CI run completes — not fabricated here in advance.
+- **PR:** [#184](https://github.com/Fkenogo/11THONUS/pull/184) — draft, from
+  `fix/eng-p2-003-corr-timefix-001` against `main`. Not self-merged.
+- **Final head SHA:** `7b4948f89496444bac52f2cb7ba98f33b6994a83`.
+- **CI:** pending at the time of this report — see the PR's own Checks tab for current status.
 
 ## 33. Exact next Founder action
 
