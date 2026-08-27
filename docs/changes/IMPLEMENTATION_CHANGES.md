@@ -4513,3 +4513,45 @@
 - **Report:** [`IDENTITY-PROFILE-A-platform-display-name-backend-foundation-implementation-report-2026-08-27.md`](../05-implementation/reports/IDENTITY-PROFILE-A-platform-display-name-backend-foundation-implementation-report-2026-08-27.md).
 - **Final gate:** **IDENTITY-PROFILE-A READY FOR FOUNDER REVIEW — PLATFORM DISPLAY NAME BACKEND
   FOUNDATION IMPLEMENTED; PROFILE-COMPLETION UI NOT STARTED.**
+
+## `IDENTITY-PROFILE-A-REVIEW` — Independent Review, Correction, Merge & Closure (2026-08-27)
+
+- Independent review of PR #189, not trusted from the implementation report — authority
+  re-derived directly from `FD-IDENTITY-DISPLAY-001`/`FD-IDENTITY-001`/`DEC-IDENTITY-001`/TRD10;
+  every write/read path traced against real source; the fix was mutation-tested.
+- **Phase H (existing-serializer compatibility) exhaustively verified:** searched every file in
+  `functions/src` that touches the `users` collection — confirmed the **only** full-document
+  `.set()` anywhere is `createCustomerIdentity`'s create path, structurally gated against ever
+  firing on an existing document; every other write (`identityLifecycleRepository.ts`,
+  `authenticationReferenceRepository.ts`, and this PR's own `displayNameRepository.ts`) uses a
+  targeted `transaction.update()`. No existing or new path can erase `displayName`.
+- **One genuine finding, corrected on the PR:** `parseSetDisplayNameRequest`/
+  `parseGetMyDisplayNameRequest` were the only authority-sensitive request parsers in this
+  codebase without their own exported "mass-assignment boundary" regression test (every other one
+  — `parseCreateBusinessCommand`, `parseBusinessProfilePatch`, `parseCreateStaffInvitationRequest`,
+  `parseAcceptBusinessTermsRequest` — already has one). Already safe by construction (verified by
+  direct read before any fix), but untested. Corrected: exported both parsers, added 4 new tests;
+  RED (temporarily un-exported, 2/21 tests failed to import) → GREEN (restored, 21/21 pass).
+- **Mutation testing performed and fully reverted** (confirmed byte-identical via `diff` after
+  each): full-document overwrite (`.set()` instead of `.update()`) → 4/13 emulator tests failed;
+  whitespace-only-accepted (disabled min-length check) → 3/10 unit tests failed; fabricated
+  fallback name → 2/13 emulator tests failed. All caught by the existing suite.
+- **Unicode "character" counting classified explicitly** (UTF-16 code units, not grapheme
+  clusters — already disclosed in code, not a defect; astral-plane content has a stricter
+  effective limit than a literal 50-characters reading) — recorded, not corrected, since
+  `FD-IDENTITY-DISPLAY-001` §5 doesn't specify codepoint/grapheme semantics and introducing
+  `Intl.Segmenter` would be new, unauthorized behavior.
+- **Full validation re-run on the corrected head:** functions unit suite 145/145 files (1583
+  tests, +4 from the correction); full Firebase Emulator Suite 53/53 files (701 tests, 2
+  pre-existing unrelated skips); typecheck/lint/format clean; secret scan clean.
+- **Merged** via a genuine two-parent merge commit (`4137315b41e0ab7ff4e5cac3cffe90a2478bb73e`),
+  matching this repository's established `feat/`-PR convention (confirmed by inspecting PRs
+  #173/#179/#181's own merge commits) — squash deliberately not substituted.
+- **Status:** `IDENTITY-PROFILE-A` merged and closed; `IDENTITY-PROFILE-B` not started; Package G
+  active-member completion not started (unblocked in principle); Package F/H not started;
+  `ENG-P3-002`/Capability 3 remain Open.
+- **Files:** `functions/src/index.ts`/`index.test.ts` (the correction only), this entry, and the
+  dedicated review report.
+- **Report:** [`identity-profile-a-review-report-2026-08-27.md`](../05-implementation/reports/identity-profile-a-review-report-2026-08-27.md).
+- **Final gate:** **IDENTITY-PROFILE-A MERGED AND CLOSED — PLATFORM DISPLAY NAME FOUNDATION
+  AVAILABLE FOR SEPARATELY AUTHORIZED CONSUMERS.**
