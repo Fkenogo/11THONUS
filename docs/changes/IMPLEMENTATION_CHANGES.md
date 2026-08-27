@@ -4295,3 +4295,26 @@
 - **Report:** [`eng-p3-002-ui-imp-d-review-report-2026-08-26.md`](../05-implementation/reports/eng-p3-002-ui-imp-d-review-report-2026-08-26.md).
 - **Final gate:** **ENG-P3-002-UI PACKAGE D MERGED AND CLOSED — NEXT PACKAGE AWAITS FRESH FOUNDER
   AUTHORIZATION.**
+
+## `ENG-P3-002-UI-IMP-D-REVIEW` — Post-Merge CI Accuracy Correction (2026-08-27)
+
+- **Correction to the prior entry's post-merge CI claim, for accuracy.** Once the GitHub Actions
+  backlog cleared, closure-sync PR #182's real `push`-triggered check (run `33045167343`) **did**
+  register and **failed**, 3/3 attempts including 2 reruns, on an unrelated test:
+  `staffMembershipIntegration.emulator.test.ts` — "concurrent accept vs revoke of the same
+  invitation" — `AssertionError: expected 'expired' to be 'revoked'`.
+- **Root-caused, not merely reproduced:** that test's `inviteParams` helper hardcodes invitation
+  creation at `now: new Date("2026-08-20T01:00:00.000Z")`, while the racing revoke call in the
+  same test passes live `now: new Date()` — a time-bomb that only breaks once real wall-clock time
+  crosses the invitation's hardcoded expiry window, which happened exactly as this review crossed
+  the 2026-08-27 calendar boundary mid-task.
+- **Confirmed unrelated to Package D or PR #182:** zero `functions/` diff across the entire #181
+  and #182 merge history — this defect is pre-existing and domain-unrelated (Staff Membership,
+  `ENG-P2-003` territory), not a Package D regression. Not fixed here — outside Package D's
+  authorization; flagged as a separate follow-up task instead.
+- **Package D itself remains verified green:** its own code was independently confirmed passing
+  CI multiple times before the date rollover (draft-PR check, 2 manual re-dispatches against the
+  final head, and the initial post-merge dispatch on `533549c`) — none of those runs hit this
+  test, since it only started failing after real time crossed the hardcoded window.
+- **Status unchanged:** Package D complete/merged and closed; `ENG-P3-002`/Capability 3 remain
+  Open. This correction changes no code and reopens nothing.
