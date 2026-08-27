@@ -359,15 +359,16 @@ migration, so rollback is a clean, isolated revert with no downstream dependency
 
 ## 39. PR number
 
-Recorded once opened — see the companion draft PR for branch `feat/identity-profile-b`.
+[#191](https://github.com/Fkenogo/11THONUS/pull/191) (draft, base `main`, head `feat/identity-profile-b`).
 
 ## 40. Final head SHA
 
-Recorded once committed — see the companion commit for this branch.
+`10136343d80b1a0ad5df4c4ec1c38f6558296007`.
 
 ## 41. CI result
 
-Recorded once the PR's CI run completes.
+Pending at the time of this report (`Build, Lint, Test, Emulator Validation` run queued/running on
+PR #191) — not yet observed green or red. Local validation (§26) is independently green.
 
 ## 42. `IDENTITY-PROFILE-B` status
 
