@@ -4429,3 +4429,43 @@
 - **Report:** [`FD-P3-002-G-001-founder-disposition-staff-team-identity-projection-2026-08-27.md`](../05-implementation/reports/FD-P3-002-G-001-founder-disposition-staff-team-identity-projection-2026-08-27.md).
 - **Final gate:** **PACKAGE G FOUNDER IDENTITY-PROJECTION DISPOSITION RECORDED — STAFF TRANSPORT
   IDENTITY CORRECTION AWAITS FRESH IMPLEMENTATION AUTHORIZATION.**
+
+## `FD-IDENTITY-DISPLAY-001` — Founder Disposition: 11thONUS Platform Display Name (2026-08-27)
+
+- **Governance/documentation only** — no `functions/`, `apps/web/`, Firestore, Rules, Firebase
+  configuration, or dependency touched; no `users` document modified; no profile-completion UI or
+  Package G/F work performed.
+- Records the Founder decision arising from the same-day `USER-DISPLAY-IDENTITY-RECON-001`
+  reconciliation: **`users.displayName`** (TRD10 §10.6.1, already schema-reserved, never
+  populated) is adopted as the sole authoritative platform Display Name — no
+  `StaffMembership.displayName`, no separate `UserDisplayProfile` collection, no second identity
+  source.
+- **Semantics:** a user-controlled, human-readable label — not a legal name, verified identity,
+  auth-provider name, email alias, or unique handle. **Not unique**, no reservation index.
+  **Self-editable by the owning identity only**, server-derived caller, never client-supplied
+  `userId`; Business Owners/managers cannot edit another member's Display Name. **Validation
+  (MVP):** trim whitespace, reject empty/whitespace-only, Unicode permitted, 1–50 characters after
+  trimming, no username-style restriction. **No moderation system for MVP** (recorded as a known,
+  accepted limitation). **Lazy completion only** — must not block registration/participation
+  (`DEC-IDENTITY-001` Standard Participation Principle preserved); invitation acceptance sequencing
+  approved as authenticate → accept → membership established → optional non-blocking prompt, never
+  entangled with invitation entitlement/authorization. **No migration/backfill**, no fabricated
+  fallback from email/phone/Firebase Auth/Customer Profile/invitation delivery target. **Missing
+  value stays genuinely absent** in every server projection — never a placeholder.
+- **Team projection authority:** Package G may project exactly `users/{customerIdentityId}.displayName`,
+  server-side only, only for callers already authorized to read that Business's Team — does not
+  widen Team authorization. **Privacy boundary unchanged:** `FD-P3-002-G-001` §4's full prohibition
+  list (Customer Profile first/last name, email, phone, auth-provider data, provider metadata,
+  internal IDs, cross-Business data) remains fully in force; Display Name is exposed only through
+  explicitly authorized projections, never a platform-wide directory.
+- **Profile photo deferred**, no Storage/upload capability introduced. **Telephone excluded**,
+  remains contact/authentication-related identity. **No new audit/history subsystem** required for
+  MVP beyond whatever the existing identity-mutation event architecture already produces
+  incidentally.
+- **Status:** PR #187 remains independent/pending review, unmodified; `IDENTITY-PROFILE-A`/
+  `IDENTITY-PROFILE-B` not started; Package G active-member completion not started; Package F not
+  started; Package H not started; `ENG-P3-002`/Capability 3 remain Open.
+- **Files:** this entry and the dedicated disposition report only. No other file touched.
+- **Report:** [`FD-IDENTITY-DISPLAY-001-founder-disposition-platform-display-name-2026-08-27.md`](../05-implementation/reports/FD-IDENTITY-DISPLAY-001-founder-disposition-platform-display-name-2026-08-27.md).
+- **Final gate:** **PLATFORM DISPLAY NAME FOUNDER DISPOSITION RECORDED — IDENTITY-PROFILE-A AWAITS
+  FRESH IMPLEMENTATION AUTHORIZATION.**
