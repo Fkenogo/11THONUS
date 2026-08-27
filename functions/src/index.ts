@@ -363,7 +363,16 @@ export const recoverAuthenticatedIdentity = onCall(async (request) => {
   }
 });
 
-function parseSetDisplayNameRequest(data: unknown): {
+/**
+ * Whitelist parser (mass-assignment boundary, mirroring
+ * `parseCreateBusinessCommand`'s own precedent): only `rawToken`/
+ * `referenceType`/`displayName`/`idempotencyKey` are read off `data` — a
+ * client-supplied `userId`/`customerIdentityId`/`targetUserId` (or any
+ * other key) is silently dropped here, never reaching
+ * `setDisplayNameCommand`. This is a structural guarantee, not a denylist.
+ * Exported only for the mass-assignment regression test in `index.test.ts`.
+ */
+export function parseSetDisplayNameRequest(data: unknown): {
   rawToken: string;
   referenceType: AuthenticationReferenceType;
   displayName: string;
@@ -410,7 +419,8 @@ export const setDisplayName = onCall(async (request) => {
   }
 });
 
-function parseGetMyDisplayNameRequest(data: unknown): {
+/** Exported only for the mass-assignment regression test in `index.test.ts`. */
+export function parseGetMyDisplayNameRequest(data: unknown): {
   rawToken: string;
   referenceType: AuthenticationReferenceType;
 } {

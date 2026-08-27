@@ -7,6 +7,8 @@ import {
   parseCreateStaffInvitationRequest,
   parseRevokeStaffInvitationRequest,
   parseAcceptBusinessTermsRequest,
+  parseSetDisplayNameRequest,
+  parseGetMyDisplayNameRequest,
 } from "./index";
 
 /**
@@ -286,5 +288,68 @@ describe("parseAcceptBusinessTermsRequest (mass-assignment boundary, security-cr
       languageCode: undefined,
       collectionMethod: undefined,
     });
+  });
+});
+
+describe("parseSetDisplayNameRequest (mass-assignment boundary, security-critical — IDENTITY-PROFILE-A)", () => {
+  const validPayload = {
+    rawToken: "raw-token",
+    referenceType: "email",
+    displayName: "Fred Kenogo",
+    idempotencyKey: "key-1",
+  };
+
+  it("only reads rawToken/referenceType/displayName/idempotencyKey — a client-supplied target identity is structurally absent from the output even if present on the payload", () => {
+    const malicious = {
+      ...validPayload,
+      userId: "attacker-controlled-uid",
+      customerIdentityId: "cust_attacker",
+      targetUserId: "cust_victim",
+      updatedBy: "cust_attacker",
+      updatedAt: "2020-01-01T00:00:00.000Z",
+    };
+
+    const parsed = parseSetDisplayNameRequest(malicious);
+
+    expect(parsed).toEqual(validPayload);
+    for (const forbiddenKey of [
+      "userId",
+      "customerIdentityId",
+      "targetUserId",
+      "updatedBy",
+      "updatedAt",
+    ]) {
+      expect(Object.keys(parsed)).not.toContain(forbiddenKey);
+      expect((parsed as Record<string, unknown>)[forbiddenKey]).toBeUndefined();
+    }
+  });
+
+  it("rejects a missing/non-string displayName", () => {
+    expect(() => parseSetDisplayNameRequest({ ...validPayload, displayName: undefined })).toThrow();
+    expect(() => parseSetDisplayNameRequest({ ...validPayload, displayName: 42 })).toThrow();
+  });
+
+  it("rejects a missing rawToken/referenceType/idempotencyKey", () => {
+    expect(() => parseSetDisplayNameRequest({ ...validPayload, rawToken: undefined })).toThrow();
+    expect(() =>
+      parseSetDisplayNameRequest({ ...validPayload, idempotencyKey: undefined }),
+    ).toThrow();
+  });
+});
+
+describe("parseGetMyDisplayNameRequest (mass-assignment boundary — IDENTITY-PROFILE-A)", () => {
+  it("only reads rawToken/referenceType — a client-supplied target identity is structurally absent even if present on the payload", () => {
+    const malicious = {
+      rawToken: "raw-token",
+      referenceType: "email",
+      userId: "attacker-controlled-uid",
+      customerIdentityId: "cust_victim",
+    };
+
+    const parsed = parseGetMyDisplayNameRequest(malicious);
+
+    expect(parsed).toEqual({ rawToken: "raw-token", referenceType: "email" });
+    expect(Object.keys(parsed)).not.toContain("userId");
+    expect(Object.keys(parsed)).not.toContain("customerIdentityId");
   });
 });
