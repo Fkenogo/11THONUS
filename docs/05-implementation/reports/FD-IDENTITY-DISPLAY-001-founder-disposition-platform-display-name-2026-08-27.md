@@ -264,7 +264,10 @@ downstream dependency to unwind.
 ## 28. Changes-tracking state
 
 `docs/changes/IMPLEMENTATION_CHANGES.md` updated with a new dated entry (`FD-IDENTITY-DISPLAY-001`,
-2026-08-27) immediately following the existing `ENG-P3-002-UI-IMP-G` entry.
+2026-08-27) immediately following the existing `FD-P3-002-G-001` entry — the entry immediately
+preceding it on `origin/main` at the time this branch was created (`ENG-P3-002-UI-IMP-G`'s own
+changes-tracking entry exists only on unmerged PR #187, not on `origin/main`, so it does not
+precede this one in the merged file).
 
 ## 29. PR number
 
