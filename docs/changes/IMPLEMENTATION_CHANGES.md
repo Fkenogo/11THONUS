@@ -4318,3 +4318,46 @@
   test, since it only started failing after real time crossed the hardcoded window.
 - **Status unchanged:** Package D complete/merged and closed; `ENG-P3-002`/Capability 3 remain
   Open. This correction changes no code and reopens nothing.
+
+## `ENG-P2-003-CORR-TIMEFIX-001` — Staff Invitation Concurrency Test Determinism Correction (2026-08-27)
+
+- **Test-fixture determinism correction, TDD, draft PR — not self-merged. Zero production-code
+  diff.** Follow-up to the defect flagged during the `ENG-P3-002-UI-IMP-D-REVIEW` post-merge CI
+  investigation.
+- **Reproduced first:** an isolated, targeted run of Scenario 12's "concurrent accept vs revoke"
+  test against unmodified `origin/main` failed reliably (`AssertionError: expected 'expired' to be
+  'revoked'`); a full emulator-suite run passed on one attempt, confirming the failure is
+  timing-*sensitive* (exposed reliably only in isolation) rather than pure random flakiness.
+- **Root-caused via direct source analysis, not assumed:** `inviteParams`'s hardcoded invitation
+  creation `now: new Date("2026-08-20T01:00:00.000Z")` plus `invitationPolicy.ts`'s 7-day expiry
+  yields a fixed `expiresAt` of `2026-08-27T01:00:00.000Z`. Scenario 12's revoke call passed live
+  `now: new Date()` instead of a fixed value consistent with that window — once real wall-clock
+  time crossed the boundary (exactly as this repository's date rolled to 2026-08-27),
+  `revokeStaffInvitationService.ts`'s own correct, pre-existing, documented expiry-precedence rule
+  (reclassify a past-due `pending` invitation to `expired`, never `revoked`) began firing for a
+  reason unrelated to the concurrency behavior actually under test. **No production defect found**
+  — confirmed by direct analysis before any change was made, per this task's own instruction.
+- **Fix:** changed that one `now` to a fixed `new Date("2026-08-20T02:00:00.000Z")` — identical to
+  `acceptParams`'s own already-established default, one hour after creation, safely inside the
+  7-day window. The actual concurrency invariant (`Promise.allSettled` race, exactly one winner,
+  no partial state) is a property of Firestore transaction contention, not of the `now` value —
+  unweakened, unfaked.
+- **Audited all 4 `new Date()` occurrences in the file**, classified individually: 2 other
+  `revokeStaffInvitation` calls confirmed safe (neither inspects the persisted `invitation.status`
+  field the way the broken one did); 1 unrelated audit-timestamp field confirmed safe; only the one
+  fixed was a genuine deterministic problem. No broader time-fixture debt found elsewhere in this
+  file.
+- **Determinism proven, not merely asserted:** the isolated Scenario 12 test was run **5
+  consecutive times** post-fix, each against a fresh emulator instance — 5/5 passed.
+- **Full validation:** full `staffMembershipIntegration.emulator.test.ts` 19/19 (all
+  accept/revoke/expiry/concurrency semantics unchanged); full Firebase Emulator Suite 688/690 (2
+  pre-existing skips); functions unit 1563/1563 unaffected; typecheck/lint clean (1 pre-existing
+  unrelated warning); format clean.
+- **Files:** one line + comment in
+  `functions/src/domains/permissions/service/staffMembershipIntegration.emulator.test.ts`, this
+  entry, and the dedicated report. **Zero production-code diff.**
+- **Status:** does not change Package D, `ENG-P3-002`, or Capability 3 status. Does not start any
+  new UI package.
+- **Report:** [`ENG-P2-003-CORR-TIMEFIX-001-staff-invitation-concurrency-test-determinism-implementation-report-2026-08-27.md`](../05-implementation/reports/ENG-P2-003-CORR-TIMEFIX-001-staff-invitation-concurrency-test-determinism-implementation-report-2026-08-27.md).
+- **Final gate:** **STAFF MEMBERSHIP CONCURRENCY TEST DETERMINISM CORRECTED — PR READY FOR FOUNDER
+  REVIEW.**
