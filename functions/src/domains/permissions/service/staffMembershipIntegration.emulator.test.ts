@@ -1536,7 +1536,16 @@ describe("SCENARIO 12 — concurrency", () => {
             idempotencyKey: nextId("revoke"),
             correlationId: "corr",
             actor,
-            now: new Date(),
+            // Deterministic clock correction (`ENG-P2-003-CORR-TIMEFIX-001`): this invitation is
+            // created via `inviteParams`'s fixed `now: new Date("2026-08-20T01:00:00.000Z")`
+            // (7-day expiry -> 2026-08-27T01:00:00.000Z). The revoke side of this race must use a
+            // `now` inside that same validity window — matching `acceptParams`'s own fixed
+            // default of one hour later — not live wall-clock time, which eventually crosses the
+            // invitation's fixed expiry and makes `revokeStaffInvitationService`'s governed
+            // expiry-precedence rule (§ module comment: a past-due `pending` invitation is
+            // correctly reclassified to `expired`, never `revoked`) fire for a reason that has
+            // nothing to do with the concurrency behavior this test actually exercises.
+            now: new Date("2026-08-20T02:00:00.000Z"),
             newId: () => nextId("evt"),
           },
         ),
