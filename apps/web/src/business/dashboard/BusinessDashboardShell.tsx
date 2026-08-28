@@ -2,9 +2,8 @@
  * The Business Dashboard shell (`ENG-P3-002-UI-IMP-B`, per `ENG-P3-002-UI-RECON-001` Part VIII).
  * The first shared layout/route structure in this codebase: a mobile hamburger-triggered
  * expandable menu and a persistent desktop sidebar around the same nested `<Outlet />` — never a
- * participant-style bottom bar on either viewport (Founder-rejected). Reused unmodified by
- * Packages C/D/F for their own destinations; this package wires only Dashboard Home (DASH-01)
- * behind it, everything else behind `DashboardComingSoon`.
+ * participant-style bottom bar on either viewport (Founder-rejected). Reused unmodified by every
+ * Dashboard destination (Home, Profile, Locations, Team, Terms).
  */
 
 import { useEffect, useId, useRef, useState } from "react";

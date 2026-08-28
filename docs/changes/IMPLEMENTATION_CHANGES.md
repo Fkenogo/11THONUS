@@ -4730,3 +4730,43 @@
 - **Report:** [`ENG-P3-002-UI-IMP-G-COMPLETION-REVIEW-independent-review-report-2026-08-28.md`](../05-implementation/reports/ENG-P3-002-UI-IMP-G-COMPLETION-REVIEW-independent-review-report-2026-08-28.md).
 - **Final gate:** **PACKAGE G MERGED AND CLOSED — STAFF IDENTITY TRANSPORT READY FOR SEPARATELY
   AUTHORIZED TEAM UI.**
+
+## `ENG-P3-002-UI-IMP-F` — Team Management UI (2026-08-28)
+
+- **Package F implemented** (MGMT-01/DASH-04), per `ENG-P3-002-UI-RECON-001` Part XV/Brief 6,
+  `FD-P3-002-G-001`, `FD-IDENTITY-DISPLAY-001`, against the now-merged Package G Staff transport
+  (PR #192): a new `TeamManagementPage` mounted at `/business/:businessId/dashboard/team` inside
+  the existing, unmodified `BusinessDashboardShell`. Active members render real `displayName`
+  (never fabricated when absent — a neutral "Unnamed team member" state instead); pending
+  invitations render real `email` for email-delivery invitations (a neutral "Invitation sent"
+  fallback for phone-delivery, never the phone number). Only `createStaffInvitation`
+  (role gated to the real `manager`/`staff` vocabulary) and `revokeStaffInvitation` (behind an
+  inline confirmation) are wired — no role-change, membership-removal, suspend/reactivate, or
+  resend control exists, since no corresponding callable exists in `functions/src/index.ts`.
+- **Stitch inventions excluded**, confirmed by direct inspection of `team_management_mobile`/
+  `invite_team_member_mobile`: the "PROGRES" wordmark, the per-member `more_vert` menu, the
+  "Resend" action, and the invented "Admin"/"Editor" roles with fabricated capability text.
+- **Dead code removed:** `DashboardComingSoon` (its last production consumer, the `team` route,
+  now has real content) and its test were deleted; `BusinessDashboardShell.tsx`'s stale docstring
+  reference corrected.
+- **Dev-only Founder-QA harness extended** (`DashboardHarnessPage.tsx`) with local, zero-network
+  fixture data for the two Staff query keys, so real-browser/responsive/EN-FR verification could be
+  performed against actual rendered content — verified at 375×812, 768×1024, and 1280×720, and in
+  both English and French (route/data preserved across the language switch).
+- **TDD:** `TeamManagementPage.test.tsx` (19 tests) written first, confirmed RED (module-not-found)
+  before any production code existed, then GREEN.
+- **Full validation:** web unit suite 96/96 files, 647/647 tests passing (was 96/630 before this
+  task — one net test file added, one removed); web typecheck/build clean; functions unit suite
+  unchanged (145/145, 1583 tests — no `functions/` file touched); full Firebase Emulator Suite
+  53/53 files, 722 passed, 2 skipped, 0 failed (no regression from the Package G baseline); lint
+  clean (one pre-existing, unrelated warning); format clean; secret scan clean.
+- **Status:** Package F implemented, submitted as a **draft PR**, not self-merged. Package H
+  remains not started. `ENG-P3-002`/Capability 3 remain Open.
+- **Files:** `apps/web/src/business/dashboard/TeamManagementPage.tsx`/`.test.tsx` (new);
+  `BusinessDashboardRoutes.tsx`/`.test.tsx`; `BusinessDashboardShell.tsx` (docstring only);
+  `DashboardComingSoon.tsx`/`.test.tsx` (deleted); `apps/web/src/dev/dashboardHarness/
+  DashboardHarnessPage.tsx`; `apps/web/src/i18n/locales/en.ts`/`fr.ts`; this entry; the dedicated
+  implementation report.
+- **Report:** [`ENG-P3-002-UI-IMP-F-team-management-ui-implementation-report-2026-08-28.md`](../05-implementation/reports/ENG-P3-002-UI-IMP-F-team-management-ui-implementation-report-2026-08-28.md).
+- **Final gate:** **PACKAGE F READY FOR FOUNDER REVIEW — TEAM MANAGEMENT UI IMPLEMENTED AGAINST
+  GOVERNED STAFF IDENTITY TRANSPORT; PACKAGE H NOT STARTED.**

@@ -16,7 +16,9 @@ import type { Auth } from "firebase/auth";
 import type { Functions } from "firebase/functions";
 import { BusinessApiProvider } from "../../business/BusinessApiContext";
 import { BusinessDashboardRoutes } from "../../business/dashboard/BusinessDashboardRoutes";
+import { businessQueryKeys } from "../../business/hooks/queryKeys";
 import type { BusinessContext } from "../../business/api/businessContext";
+import type { StaffInvitationSummary, StaffMembershipSummary } from "../../business/api/staffLists";
 
 /**
  * A real Firebase `Auth`/`Functions` instance is never constructed here — this harness never
@@ -48,7 +50,41 @@ const HARNESS_CONTEXT: BusinessContext = {
   termsAcceptance: { accepted: false },
 };
 
+/**
+ * `useStaffMembershipsQuery`/`useStaffInvitationsQuery` are `enabled`-gated on a *ready*
+ * authenticated actor, which this harness deliberately never produces (see `inertAuth` above) —
+ * so, unmodified, the Team route (Package F) would render only its permanent loading state, never
+ * real content, making it impossible to visually/responsive-verify against actual rendered CSS.
+ * Pre-seeding the query cache under the exact keys those hooks read (`queryKeys.ts`) gives the
+ * Team screen real, local, no-network fixture data to render — the query itself is still never
+ * enabled/refetched, so this remains zero-network, matching the harness's own guarantee above.
+ */
+const HARNESS_MEMBERSHIPS: StaffMembershipSummary[] = [
+  { membershipId: "harness-mem-owner", role: "owner", status: "active", displayName: "Safi" },
+  { membershipId: "harness-mem-2", role: "manager", status: "active", displayName: "Jean-Claude" },
+  { membershipId: "harness-mem-3", role: "staff", status: "active" },
+];
+const HARNESS_INVITATIONS: StaffInvitationSummary[] = [
+  {
+    invitationId: "harness-inv-1",
+    role: "staff",
+    status: "invited",
+    deliveryType: "email",
+    invitedAt: "2026-08-01T00:00:00.000Z",
+    expiresAt: "2026-08-08T00:00:00.000Z",
+    email: "elise.m@example.com",
+  },
+];
+
 const harnessQueryClient = new QueryClient();
+harnessQueryClient.setQueryData(
+  businessQueryKeys.staffMemberships(HARNESS_CONTEXT.businessId),
+  HARNESS_MEMBERSHIPS,
+);
+harnessQueryClient.setQueryData(
+  businessQueryKeys.staffInvitations(HARNESS_CONTEXT.businessId),
+  HARNESS_INVITATIONS,
+);
 
 export function DashboardHarnessPage() {
   return (
