@@ -173,6 +173,22 @@ export function invalidDisplayNameError(): IdentityDomainError {
 }
 
 /**
+ * A stored `users/{userId}.displayName` value that fails
+ * `normalizeDisplayName`'s own contract (`FD-IDENTITY-DISPLAY-001` §5) —
+ * only reachable via data corruption or a direct-write bypass, since
+ * `setDisplayName` never persists a value that would fail this check.
+ * Distinct from an *absent* `displayName` field, which is a valid "not set
+ * yet" outcome, not an error (`readDisplayNamesByUserIds`,
+ * `ENG-P3-002-UI-IMP-G-COMPLETION`).
+ */
+export function malformedDisplayNameRecordError(userId: string): IdentityDomainError {
+  return new IdentityDomainError(
+    "VALIDATION_FAILED",
+    `The stored display name for user "${userId}" does not match the expected shape.`,
+  );
+}
+
+/**
  * Mirrors `invalidCustomerIdentityForOwnerError`'s `AUTH_REQUIRED` category
  * (`authenticatedBusinessActor.ts`) — this domain's own equivalent for a
  * verified credential that does not resolve to an eligible Customer

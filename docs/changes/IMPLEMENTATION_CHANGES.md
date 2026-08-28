@@ -4640,3 +4640,46 @@
 - **Report:** [`identity-profile-b-review-report-2026-08-27.md`](../05-implementation/reports/identity-profile-b-review-report-2026-08-27.md).
 - **Final gate:** **IDENTITY-PROFILE-B MERGED AND CLOSED — DISPLAY NAME PROFILE-COMPLETION
   CAPABILITY AVAILABLE FOR SEPARATELY AUTHORIZED INTEGRATION.**
+
+## `ENG-P3-002-UI-IMP-G-COMPLETION` — Complete Staff Transport Identity Projection (2026-08-28)
+
+- Completes Package G now that `IDENTITY-PROFILE-A`/`IDENTITY-PROFILE-B` supply the authoritative
+  `users.displayName` source `FD-P3-002-G-001` §10 required before the active-member half of §5
+  could be implemented. PR #187 (draft, unreviewed, conflicting with `main`) implemented only the
+  pending-invitation half (§2/§6, email delivery); its exact reviewed content is re-applied
+  verbatim here alongside the new active-member work, and PR #187 is superseded/closed by this PR
+  — no competing implementation left standing.
+- **Active membership:** `StaffMembershipSummary.displayName?: string` added, resolved server-side
+  via a new `readDisplayNamesByUserIds` (identity domain, one batched `Firestore#getAll`, no
+  per-membership round trip). Resolves uniformly via `membership.userId -> users.displayName` for
+  every role — this specifically removes the earlier invitation-linkage limitation for Owners
+  (bootstrap-created, never invited). Absent when not yet set (never fabricated from email,
+  `CustomerProfile`, Firebase Auth, or the originating invitation); a malformed stored value fails
+  the read closed (`staffIdentityIntegrityFailureError`, new permission-domain error) rather than
+  degrading silently.
+- **Pending invitation:** `StaffInvitationSummary.email?: string` added, present only when
+  `deliveryType === "email"` (`FD-P3-002-G-001` §2) — identical to PR #187's already-written logic.
+- **No authorization change:** `assertActiveMembership`'s existing read-authority re-derivation is
+  untouched; no permission, role, or mutation file was modified.
+- **Full validation:** functions unit suite unchanged (145/145 files, 1583 tests); full Firebase
+  Emulator Suite (auth+firestore+functions+hosting+storage) 53/53 files, 719 passed, 2 skipped, 0
+  failed — including the untouched `staffInvitation.emulator.test.ts`/
+  `staffMembershipIntegration.emulator.test.ts` mutation suites, confirming no regression; web unit
+  suite 96/96 files (630 tests, +2 new additive pass-through tests); typecheck/lint/format clean
+  after one `prettier --write` pass; secret scan clean. No deployment performed.
+- **Genuine finding, not a defect:** the pre-existing invitation emulator test asserting email is
+  never exposed was superseded (expected — `FD-P3-002-G-001` §2 authorizes exactly the reverse for
+  email-delivery invitations) and updated in place, matching PR #187's own already-reviewed-quality
+  fix to that same assertion.
+- **Status:** Package G complete, submitted as a **draft PR**, not self-merged. Package F (Team UI)
+  and Package H remain not started — no such file created or touched. `ENG-P3-002`/Capability 3
+  remain Open.
+- **Files:** `functions/src/domains/permissions/service/staffTransportReadService.ts`/
+  `.emulator.test.ts`; `functions/src/domains/permissions/models/permissionErrors.ts`;
+  `functions/src/domains/identity/repositories/displayNameRepository.ts`/`.emulator.test.ts`;
+  `functions/src/domains/identity/models/identityErrors.ts`;
+  `apps/web/src/business/api/staffLists.ts`/`.test.ts`; this entry; the dedicated implementation
+  report.
+- **Report:** [`ENG-P3-002-UI-IMP-G-COMPLETION-staff-transport-identity-projection-implementation-report-2026-08-28.md`](../05-implementation/reports/ENG-P3-002-UI-IMP-G-COMPLETION-staff-transport-identity-projection-implementation-report-2026-08-28.md).
+- **Final gate:** **PACKAGE G READY FOR FOUNDER REVIEW — ACTIVE STAFF DISPLAY NAME AND PENDING
+  INVITATION IDENTITY PROJECTIONS COMPLETE; PACKAGE F NOT STARTED.**

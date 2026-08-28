@@ -41,7 +41,7 @@ import {
 } from "../../../shared/idempotency/idempotencyService";
 import { stampUpdate } from "../../../shared/metadata/baseMetadata";
 import { normalizeDisplayName } from "../models/displayName";
-import { IdentityDomainError } from "../models/identityErrors";
+import { IdentityDomainError, malformedDisplayNameRecordError } from "../models/identityErrors";
 import { getCustomerIdentityById } from "./customerIdentityRepository";
 
 const COLLECTION = "users";
@@ -147,4 +147,58 @@ export async function setDisplayName(
     await failIdempotencyKey(db, params.idempotencyKey);
     throw error;
   }
+}
+
+/**
+ * Batch-resolves `users/{userId}.displayName` for many userIds in one
+ * round trip (`Firestore#getAll`) — the Staff-roster active-membership
+ * identity projection `FD-P3-002-G-001` §5 authorizes
+ * (`ENG-P3-002-UI-IMP-G-COMPLETION`). Deliberately the narrowest read this
+ * projection needs: no `CustomerIdentity` round trip through
+ * `fromUserDocument` (that schema — `authenticationReferences`,
+ * `trustReference`, etc. — is unrelated to this concern and many
+ * legitimate callers of this projection have no reason to load it).
+ *
+ * A missing `users` document, or one whose `displayName` field is simply
+ * absent, resolves to `undefined` — a valid "Display Name not set yet"
+ * outcome, not an error (`FD-P3-002-G-001` §10/`ENG-P3-002-UI-IMP-G`'s own
+ * report: this projection must not fail a Staff listing merely because a
+ * member hasn't set a Display Name). Only a *present* `displayName` value
+ * that fails `normalizeDisplayName`'s own stored-value contract is a
+ * malformed record and throws `malformedDisplayNameRecordError` — reusing
+ * the exact validation `setDisplayName` already enforces at write time, so
+ * no second, independently-drifting validation rule is invented here.
+ */
+export async function readDisplayNamesByUserIds(
+  db: Firestore,
+  userIds: readonly string[],
+): Promise<Map<string, string | undefined>> {
+  const uniqueIds = Array.from(new Set(userIds));
+  const result = new Map<string, string | undefined>();
+  if (uniqueIds.length === 0) {
+    return result;
+  }
+
+  const refs = uniqueIds.map((id) => db.collection(COLLECTION).doc(id));
+  const snapshots = await db.getAll(...refs);
+
+  snapshots.forEach((snapshot, index) => {
+    const userId = uniqueIds[index] as string;
+    if (!snapshot.exists) {
+      result.set(userId, undefined);
+      return;
+    }
+    const raw = (snapshot.data() as { displayName?: unknown } | undefined)?.displayName;
+    if (raw === undefined) {
+      result.set(userId, undefined);
+      return;
+    }
+    try {
+      result.set(userId, normalizeDisplayName(raw));
+    } catch {
+      throw malformedDisplayNameRecordError(userId);
+    }
+  });
+
+  return result;
 }

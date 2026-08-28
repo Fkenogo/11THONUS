@@ -1,7 +1,11 @@
 import { deleteApp, getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { readDisplayName, setDisplayName } from "./displayNameRepository";
+import {
+  readDisplayName,
+  readDisplayNamesByUserIds,
+  setDisplayName,
+} from "./displayNameRepository";
 import { createCustomerIdentity } from "./customerIdentityRepository";
 import { IdentityDomainError } from "../models/identityErrors";
 import type { EventActor } from "../../../shared/events/domainEvent";
@@ -264,5 +268,74 @@ describe("readDisplayName", () => {
 
   it("18. fails closed for an unknown Customer Identity id", async () => {
     await expect(readDisplayName(db, "does-not-exist")).rejects.toThrow(IdentityDomainError);
+  });
+});
+
+describe("readDisplayNamesByUserIds (ENG-P3-002-UI-IMP-G-COMPLETION, FD-P3-002-G-001 §5)", () => {
+  it("batch-resolves Display Names for multiple userIds in one call", async () => {
+    await seedIdentity("cust_20a");
+    await seedIdentity("cust_20b");
+    await setDisplayName(db, {
+      customerIdentityId: "cust_20a",
+      displayName: "Alice",
+      idempotencyKey: "set-20a",
+      correlationId: "corr-20a",
+    });
+    await setDisplayName(db, {
+      customerIdentityId: "cust_20b",
+      displayName: "Bob",
+      idempotencyKey: "set-20b",
+      correlationId: "corr-20b",
+    });
+
+    const result = await readDisplayNamesByUserIds(db, ["cust_20a", "cust_20b"]);
+    expect(result.get("cust_20a")).toBe("Alice");
+    expect(result.get("cust_20b")).toBe("Bob");
+  });
+
+  it("does not fail when a userId has no `users` document at all — resolves to undefined, not an error", async () => {
+    const result = await readDisplayNamesByUserIds(db, ["does-not-exist"]);
+    expect(result.get("does-not-exist")).toBeUndefined();
+    expect(result.has("does-not-exist")).toBe(true);
+  });
+
+  it("does not fail when a `users` document exists but has never had a Display Name set", async () => {
+    await seedIdentity("cust_21");
+
+    const result = await readDisplayNamesByUserIds(db, ["cust_21"]);
+    expect(result.get("cust_21")).toBeUndefined();
+  });
+
+  it("throws malformedDisplayNameRecordError when the stored displayName field is not a valid string", async () => {
+    await seedIdentity("cust_22");
+    await db.collection("users").doc("cust_22").set({ displayName: 12345 }, { merge: true });
+
+    await expect(readDisplayNamesByUserIds(db, ["cust_22"])).rejects.toThrow(IdentityDomainError);
+  });
+
+  it("throws malformedDisplayNameRecordError when the stored displayName field is an empty string", async () => {
+    await seedIdentity("cust_23");
+    await db.collection("users").doc("cust_23").set({ displayName: "   " }, { merge: true });
+
+    await expect(readDisplayNamesByUserIds(db, ["cust_23"])).rejects.toThrow(IdentityDomainError);
+  });
+
+  it("deduplicates repeated userIds into a single read", async () => {
+    await seedIdentity("cust_24");
+    await setDisplayName(db, {
+      customerIdentityId: "cust_24",
+      displayName: "Carol",
+      idempotencyKey: "set-24",
+      correlationId: "corr-24",
+    });
+
+    const result = await readDisplayNamesByUserIds(db, ["cust_24", "cust_24"]);
+    expect(result.size).toBe(1);
+    expect(result.get("cust_24")).toBe("Carol");
+  });
+
+  it("returns an empty map for an empty input without any Firestore read", async () => {
+    const result = await readDisplayNamesByUserIds(db, []);
+    expect(result.size).toBe(0);
   });
 });
