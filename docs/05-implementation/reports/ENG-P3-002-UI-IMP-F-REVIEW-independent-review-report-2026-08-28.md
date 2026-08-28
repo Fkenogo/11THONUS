@@ -17,8 +17,9 @@ never locally observed before the PR was opened.
 
 ## 2. Final reviewed head
 
-`e1a4d1c7...` (recorded at merge, §32) on branch `feat/eng-p3-002-ui-imp-f-team-management`, after
-this review's corrections were committed on top of `8fb7ba5`.
+`61227c42dcbf7ac641c2abc54fd9c9576d697337` on branch `feat/eng-p3-002-ui-imp-f-team-management`,
+after this review's corrections were committed on top of `8fb7ba5`; CI passed against this exact
+head (`gh run view` → `conclusion: success`) before merge.
 
 ## 3. Package F scope result
 
@@ -374,17 +375,20 @@ None. No `package.json` dependency added or changed, no `firebase.json`/`firesto
 
 ## 32. Merge SHA
 
-`e1a4d1c7f2a89b3c5d6e8f0a1b2c3d4e5f6a7b8c` — placeholder pending actual merge; recorded exactly once
-the merge commit exists (see the companion commit for this branch's merge into `main`).
+`da46e15871ab427edf429bc4f2b40d677c0f39b5` — merge commit for PR #193 into `main`
+(`gh pr merge 193 --merge`), confirmed via `gh pr view 193 --json mergeCommit,mergedAt,state`
+(`state: MERGED`).
 
 ## 33. Closure-sync SHA
 
-Recorded once the closure-sync commit/PR exists (this same task performs it, per the
-implementation-PR convention every prior package in this repository followed).
+Recorded in this same commit — see the companion commit for branch
+`docs/eng-p3-002-ui-imp-f-review-closure-sync`.
 
 ## 34. Post-merge CI
 
-Recorded once observed against the post-merge `main` head.
+**PASS.** GitHub Actions run `33157259347` against `main`'s post-merge head
+`da46e15871ab427edf429bc4f2b40d677c0f39b5` completed with `conclusion: success` (`gh run view
+33157259347 --json status,conclusion`).
 
 ## 35. Risks
 
@@ -417,7 +421,7 @@ this review found).
 
 ## 38. Package F final status
 
-**Independently reviewed, corrected, and merged** (pending the merge step, §41).
+**Independently reviewed, corrected, and merged.**
 
 ## 39. Package H status
 
