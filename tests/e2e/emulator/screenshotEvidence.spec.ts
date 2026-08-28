@@ -189,9 +189,7 @@ test.describe("Screenshot evidence (Phase L2) — French subset", () => {
       });
       await shot(page, `16-business-terms-${tag}-fr.png`);
       await page.goto(`/business/${businessId}/dashboard/team`);
-      await expect(page.getByRole("heading", { name: "Équipe" })).toBeVisible({
-        timeout: 15_000,
-      });
+      await expect(page.getByText("Propriétaire")).toBeVisible({ timeout: 15_000 });
       await shot(page, `17-team-${tag}-fr.png`);
     }
   });
