@@ -41,7 +41,11 @@ import {
 } from "../../../shared/idempotency/idempotencyService";
 import { stampUpdate } from "../../../shared/metadata/baseMetadata";
 import { normalizeDisplayName } from "../models/displayName";
-import { IdentityDomainError, malformedDisplayNameRecordError } from "../models/identityErrors";
+import {
+  IdentityDomainError,
+  malformedDisplayNameRecordError,
+  unknownCustomerIdentityError,
+} from "../models/identityErrors";
 import { getCustomerIdentityById } from "./customerIdentityRepository";
 
 const COLLECTION = "users";
@@ -154,20 +158,37 @@ export async function setDisplayName(
  * round trip (`Firestore#getAll`) — the Staff-roster active-membership
  * identity projection `FD-P3-002-G-001` §5 authorizes
  * (`ENG-P3-002-UI-IMP-G-COMPLETION`). Deliberately the narrowest read this
- * projection needs: no `CustomerIdentity` round trip through
- * `fromUserDocument` (that schema — `authenticationReferences`,
- * `trustReference`, etc. — is unrelated to this concern and many
- * legitimate callers of this projection have no reason to load it).
+ * projection needs beyond plain existence: no `CustomerIdentity` round trip
+ * through `fromUserDocument` (that full schema — `authenticationReferences`,
+ * `trustReference`, etc. — is unrelated to Display Name correctness, and a
+ * document that is malformed only in fields this projection never reads or
+ * exposes must not fail a Staff listing over data it has no reason to be
+ * sensitive to).
  *
- * A missing `users` document, or one whose `displayName` field is simply
- * absent, resolves to `undefined` — a valid "Display Name not set yet"
- * outcome, not an error (`FD-P3-002-G-001` §10/`ENG-P3-002-UI-IMP-G`'s own
- * report: this projection must not fail a Staff listing merely because a
- * member hasn't set a Display Name). Only a *present* `displayName` value
- * that fails `normalizeDisplayName`'s own stored-value contract is a
- * malformed record and throws `malformedDisplayNameRecordError` — reusing
- * the exact validation `setDisplayName` already enforces at write time, so
- * no second, independently-drifting validation rule is invented here.
+ * Two distinct outcomes are deliberately *not* conflated (independent
+ * review, `ENG-P3-002-UI-IMP-G-COMPLETION-REVIEW`):
+ *
+ *   - a `users` document that **exists** but has no `displayName` field is
+ *     a valid "Display Name not set yet" outcome (`undefined`) — not an
+ *     error (`FD-P3-002-G-001` §10: this projection must not fail a Staff
+ *     listing merely because a member hasn't set a Display Name);
+ *   - a `users` document that **does not exist at all** for a
+ *     `membership.userId` is a referential-integrity violation, not an
+ *     absent-value case: every real membership's `userId` is only ever
+ *     created after `getCustomerIdentityById` (or the caller's own already
+ *     -authenticated identity, for Owner bootstrap) has confirmed that
+ *     identity exists — see `acceptStaffInvitationService.ts`. This
+ *     mirrors `getCustomerIdentityById`'s own existing fail-closed
+ *     convention for a missing target (`unknownCustomerIdentityError`,
+ *     `RESOURCE_NOT_FOUND`) — reused here rather than re-invented, and
+ *     rethrown, never silently normalized to "no Display Name set" (a
+ *     corrupted/orphaned membership must not present as an ordinary
+ *     un-named Staff member).
+ *
+ * A *present* `displayName` value that fails `normalizeDisplayName`'s own
+ * stored-value contract is a malformed record and throws
+ * `malformedDisplayNameRecordError` (`VALIDATION_FAILED`) — reusing the
+ * exact validation `setDisplayName` already enforces at write time.
  */
 export async function readDisplayNamesByUserIds(
   db: Firestore,
@@ -185,8 +206,7 @@ export async function readDisplayNamesByUserIds(
   snapshots.forEach((snapshot, index) => {
     const userId = uniqueIds[index] as string;
     if (!snapshot.exists) {
-      result.set(userId, undefined);
-      return;
+      throw unknownCustomerIdentityError(userId);
     }
     const raw = (snapshot.data() as { displayName?: unknown } | undefined)?.displayName;
     if (raw === undefined) {

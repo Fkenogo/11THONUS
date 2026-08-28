@@ -293,10 +293,10 @@ describe("readDisplayNamesByUserIds (ENG-P3-002-UI-IMP-G-COMPLETION, FD-P3-002-G
     expect(result.get("cust_20b")).toBe("Bob");
   });
 
-  it("does not fail when a userId has no `users` document at all — resolves to undefined, not an error", async () => {
-    const result = await readDisplayNamesByUserIds(db, ["does-not-exist"]);
-    expect(result.get("does-not-exist")).toBeUndefined();
-    expect(result.has("does-not-exist")).toBe(true);
+  it("fails closed (does not resolve to undefined) when a userId has no `users` document at all — a referential-integrity violation, distinct from 'Display Name not set' (independent review correction)", async () => {
+    await expect(readDisplayNamesByUserIds(db, ["does-not-exist"])).rejects.toThrow(
+      IdentityDomainError,
+    );
   });
 
   it("does not fail when a `users` document exists but has never had a Display Name set", async () => {
@@ -304,6 +304,14 @@ describe("readDisplayNamesByUserIds (ENG-P3-002-UI-IMP-G-COMPLETION, FD-P3-002-G
 
     const result = await readDisplayNamesByUserIds(db, ["cust_21"]);
     expect(result.get("cust_21")).toBeUndefined();
+  });
+
+  it("a mix of an existing-but-unset userId and a missing-document userId still fails the whole batch closed (no partial silent success)", async () => {
+    await seedIdentity("cust_21b");
+
+    await expect(readDisplayNamesByUserIds(db, ["cust_21b", "does-not-exist-2"])).rejects.toThrow(
+      IdentityDomainError,
+    );
   });
 
   it("throws malformedDisplayNameRecordError when the stored displayName field is not a valid string", async () => {
@@ -337,5 +345,15 @@ describe("readDisplayNamesByUserIds (ENG-P3-002-UI-IMP-G-COMPLETION, FD-P3-002-G
   it("returns an empty map for an empty input without any Firestore read", async () => {
     const result = await readDisplayNamesByUserIds(db, []);
     expect(result.size).toBe(0);
+  });
+
+  it("a `users` document that exists but fails the full CustomerIdentity schema elsewhere still resolves a valid displayName (deliberately scoped: this projection validates only the field it reads/exposes, not the whole document — independent review, State 5)", async () => {
+    // No `id`/`status`/`authenticationReferences` at all — would fail
+    // `fromUserDocument`'s full schema check, but this repository function
+    // never calls that; it validates only `displayName` itself.
+    await db.collection("users").doc("cust_25").set({ displayName: "Otherwise Malformed" });
+
+    const result = await readDisplayNamesByUserIds(db, ["cust_25"]);
+    expect(result.get("cust_25")).toBe("Otherwise Malformed");
   });
 });

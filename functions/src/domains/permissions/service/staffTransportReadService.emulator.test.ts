@@ -86,6 +86,21 @@ async function seedMalformedUserDisplayName(userId: string, rawDisplayName: unkn
   await db.collection("users").doc(userId).set({ displayName: rawDisplayName });
 }
 
+/**
+ * A genuine but bare `users/{userId}` document — exists, has no
+ * `displayName` field. Every real membership's `userId` always has a
+ * backing `users` document (`acceptStaffInvitationService.ts`'s
+ * `getCustomerIdentityById` check, or the caller's own already-
+ * authenticated identity for Owner bootstrap) — tests that don't care
+ * about Display Name still need this seeded so `listStaffMembershipsForBusiness`
+ * doesn't fail closed on a referential-integrity violation that isn't the
+ * thing under test (independent review correction,
+ * `ENG-P3-002-UI-IMP-G-COMPLETION-REVIEW`).
+ */
+async function seedBareUser(userId: string) {
+  await db.collection("users").doc(userId).set({});
+}
+
 describe("listStaffInvitationsForBusiness", () => {
   it("17. lists invitations scoped to the caller's own Business", async () => {
     await seedMembership({
@@ -242,6 +257,7 @@ describe("listStaffMembershipsForBusiness", () => {
       businessId: "biz-b",
       role: "owner",
     });
+    await seedBareUser("cust_owner");
 
     const result = await listStaffMembershipsForBusiness(db, "cust_owner", "biz-a");
     expect(result.map((m) => m.membershipId)).toEqual(["mem-1"]);
@@ -267,6 +283,7 @@ describe("listStaffMembershipsForBusiness", () => {
       businessId: "biz-a",
       role: "owner",
     });
+    await seedBareUser("cust_owner");
 
     const result = await listStaffMembershipsForBusiness(db, "cust_owner", "biz-a");
     const dto = result[0] as unknown as Record<string, unknown>;
@@ -315,6 +332,7 @@ describe("listStaffMembershipsForBusiness", () => {
         businessId: "biz-a",
         role: "staff",
       });
+      await seedBareUser("cust_owner");
       await seedUserDisplayName("cust_staff", "Ada Lovelace");
 
       const result = await listStaffMembershipsForBusiness(db, "cust_owner", "biz-a");
@@ -340,6 +358,7 @@ describe("listStaffMembershipsForBusiness", () => {
         businessId: "biz-a",
         role: "staff",
       });
+      await seedBareUser("cust_owner");
       await seedUserDisplayName("cust_staff_1", "Alan Turing");
       await seedUserDisplayName("cust_staff_2", "Barbara Liskov");
 
@@ -369,6 +388,7 @@ describe("listStaffMembershipsForBusiness", () => {
         businessId: "biz-a",
         role: "staff",
       });
+      await seedBareUser("cust_owner");
       await seedUserDisplayName("cust_staff_1", "Jordan Smith");
       await seedUserDisplayName("cust_staff_2", "Jordan Smith");
 
@@ -381,14 +401,17 @@ describe("listStaffMembershipsForBusiness", () => {
       );
     });
 
-    it("5. a missing Display Name is represented safely — absent field, not a fabricated value, and does not fail the listing", async () => {
+    it("5. a missing Display Name (State 1: valid users document, no displayName field) is represented safely — absent field, not a fabricated value, and does not fail the listing", async () => {
       await seedMembership({
         membershipId: "mem-owner",
         userId: "cust_owner",
         businessId: "biz-a",
         role: "owner",
       });
-      // No users/cust_owner document at all, and no displayName ever set.
+      // A genuine users/cust_owner document exists — it simply has never
+      // had a Display Name set. Distinct from State 4 below (no document
+      // at all), which must NOT be treated the same way.
+      await seedBareUser("cust_owner");
 
       const result = await listStaffMembershipsForBusiness(db, "cust_owner", "biz-a");
       const dto = result[0] as unknown as Record<string, unknown>;
@@ -397,7 +420,23 @@ describe("listStaffMembershipsForBusiness", () => {
       expect(Object.keys(dto)).not.toContain("displayName");
     });
 
-    it("6. a malformed stored Display Name fails the read closed, per the identity domain's own integrity policy", async () => {
+    it("State 4: a membership referencing a users document that does not exist at all fails the read closed — NOT treated as equivalent to 'Display Name absent' (independent review correction)", async () => {
+      await seedMembership({
+        membershipId: "mem-owner",
+        userId: "cust_owner",
+        businessId: "biz-a",
+        role: "owner",
+      });
+      // No users/cust_owner document at all — a referential-integrity
+      // violation (every real membership.userId is guaranteed to have a
+      // backing users document), not a benign "hasn't set a name" case.
+
+      await expect(
+        listStaffMembershipsForBusiness(db, "cust_owner", "biz-a"),
+      ).rejects.toMatchObject({ category: "VALIDATION_FAILED" });
+    });
+
+    it("6. a malformed stored Display Name fails the read closed, per the identity domain's own integrity policy (isolated: the owner's own record is genuine and unset, so the failure is provably the staff member's malformed record, not a missing-document false positive)", async () => {
       await seedMembership({
         membershipId: "mem-owner",
         userId: "cust_owner",
@@ -410,6 +449,7 @@ describe("listStaffMembershipsForBusiness", () => {
         businessId: "biz-a",
         role: "staff",
       });
+      await seedBareUser("cust_owner");
       await seedMalformedUserDisplayName("cust_staff", 12345);
 
       await expect(
@@ -464,6 +504,7 @@ describe("listStaffMembershipsForBusiness", () => {
         businessId: "biz-a",
         role: "owner",
       });
+      await seedBareUser("cust_owner");
       // The member has no Display Name set, but an unrelated invitation to
       // this same Business carries an email — that must never be borrowed.
       await seedInvitation({ id: "inv-1", businessId: "biz-a", role: "staff" });

@@ -326,7 +326,14 @@ closed by `IDENTITY-PROFILE-A`/`B`).
   not overengineer" instruction and the absence of any existing partial-degrade precedent in this
   domain.
 - **PR #187 closure:** closing #187 as superseded is a documentation/administrative action, not a
-  code risk — its exact reviewed content is preserved verbatim in this PR's diff.
+  code risk — its exact content (unreviewed at the time PR #187 was open — `reviewDecision` was
+  empty; **reused/re-applied here, not independently reviewed by this report**) is preserved
+  verbatim in this PR's diff. This report's own claim of correctness rests on this task's own RED
+  →GREEN/emulator/mutation evidence (§19-20), not on any prior review of PR #187, because no such
+  review occurred before this point. *Correction, `ENG-P3-002-UI-IMP-G-COMPLETION-REVIEW`: an
+  independent review pass subsequently re-verified this reused invitation-email logic directly
+  (not trusting this claim) and found it correct as written — see that review's own report for the
+  review evidence this document does not itself provide.*
 
 ## 30. Rollback
 

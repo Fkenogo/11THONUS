@@ -34,9 +34,12 @@
  *     from email, `CustomerProfile`, Firebase Auth, or the invitation that
  *     originated the membership (Owners have none; §5 resolves uniformly
  *     for every role via `membership.userId` alone). A malformed
- *     `displayName` record fails the whole read closed
- *     (`staffIdentityIntegrityFailureError`) rather than degrading
- *     silently — this domain's existing fail-closed convention.
+ *     `displayName` record, or a `membership.userId` with no backing
+ *     `users` document at all (a referential-integrity violation — see
+ *     `readDisplayNamesByUserIds`'s own doc comment), fails the whole read
+ *     closed (`staffIdentityIntegrityFailureError`) rather than degrading
+ *     silently or presenting a corrupted member as an ordinary un-named
+ *     one — this domain's existing fail-closed convention.
  */
 
 import type { Firestore } from "firebase-admin/firestore";

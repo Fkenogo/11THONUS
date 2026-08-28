@@ -4645,10 +4645,12 @@
 
 - Completes Package G now that `IDENTITY-PROFILE-A`/`IDENTITY-PROFILE-B` supply the authoritative
   `users.displayName` source `FD-P3-002-G-001` §10 required before the active-member half of §5
-  could be implemented. PR #187 (draft, unreviewed, conflicting with `main`) implemented only the
-  pending-invitation half (§2/§6, email delivery); its exact reviewed content is re-applied
-  verbatim here alongside the new active-member work, and PR #187 is superseded/closed by this PR
-  — no competing implementation left standing.
+  could be implemented. PR #187 (draft, unreviewed — `reviewDecision` empty — conflicting with
+  `main`) implemented only the pending-invitation half (§2/§6, email delivery); its exact,
+  still-unreviewed content is reused/re-applied verbatim here alongside the new active-member
+  work, and PR #187 is superseded/closed by this PR — no competing implementation left standing.
+  Review quality for this reused logic is established, if at all, by an independent review of
+  *this* PR, not inherited from PR #187.
 - **Active membership:** `StaffMembershipSummary.displayName?: string` added, resolved server-side
   via a new `readDisplayNamesByUserIds` (identity domain, one batched `Firestore#getAll`, no
   per-membership round trip). Resolves uniformly via `membership.userId -> users.displayName` for
@@ -4683,3 +4685,48 @@
 - **Report:** [`ENG-P3-002-UI-IMP-G-COMPLETION-staff-transport-identity-projection-implementation-report-2026-08-28.md`](../05-implementation/reports/ENG-P3-002-UI-IMP-G-COMPLETION-staff-transport-identity-projection-implementation-report-2026-08-28.md).
 - **Final gate:** **PACKAGE G READY FOR FOUNDER REVIEW — ACTIVE STAFF DISPLAY NAME AND PENDING
   INVITATION IDENTITY PROJECTIONS COMPLETE; PACKAGE F NOT STARTED.**
+
+## `ENG-P3-002-UI-IMP-G-COMPLETION-REVIEW` — Independent Review, Correction, Merge & Closure (2026-08-28)
+
+- **Independent review of draft PR #192, in a fresh isolated worktree at the exact PR head
+  (`4f1eb555`) — the implementation report was not trusted as proof.** One genuine
+  privacy/integrity defect found and corrected: `readDisplayNamesByUserIds` silently treated a
+  `membership.userId` with **no backing `users` document at all** identically to "Display Name not
+  set yet" — conflating a referential-integrity violation (every real membership's `userId` is only
+  ever created after `getCustomerIdentityById` confirms the identity exists, or is the caller's own
+  already-authenticated identity for Owner bootstrap) with a benign, valid outcome. Corrected to
+  fail closed (reusing the identity domain's own existing `unknownCustomerIdentityError`
+  convention), matching the codebase's dominant fail-closed posture and this review's own explicit
+  instruction not to conflate the two states.
+- **Regression found and fixed as a direct consequence of the correction:**
+  `businessOnboardingJourney.emulator.test.ts`'s Owner fixture never seeded a genuine `users`
+  document (a pre-existing, unrelated realism gap only exposed once the fail-closed check was
+  added) — fixed by seeding a real Customer Identity for the Owner, matching production's actual
+  precondition.
+- **Documentation-accuracy correction:** the original implementation report and this file's own
+  prior entry described PR #187's reused invitation-email logic as "reviewed content" while also
+  correctly recording that #187 itself was unreviewed (`reviewDecision` empty) — a factual
+  contradiction. Corrected in place to distinguish "reused/re-applied" from "independently
+  reviewed" — this review is what establishes the latter.
+- **Five mutation tests performed and fully reverted** (confirmed byte-identical via `diff` after
+  each): reverting the missing-document fix → 3 tests failed; removing the malformed-Display-Name
+  guard → 2 tests failed (and would have leaked a raw non-string value); adding `userId` to the
+  membership DTO → 2 tests failed; unconditionally adding `email` to the invitation DTO regardless
+  of delivery type → 1 test failed (and would have leaked a raw phone number).
+- **Full validation re-run twice:** first run (before the fixture correction) surfaced the one
+  regression (721/724 passing); second run, full Firebase Emulator Suite, 53/53 files, **722
+  passed, 2 skipped, 0 failed**. Functions unit suite unchanged (145/145, 1583 tests); web unit
+  suite unchanged (96/96, 630 tests — no `apps/web` file touched by this review); typecheck/lint/
+  format clean; secret scan clean. No deployment performed.
+- **Scope audit:** correction touches 5 source/test files (all within Package G's own read-
+  projection contract or its direct test blast radius) plus 2 documentation-accuracy fixes — no
+  Rules, Firebase configuration, mutation-domain file, or Package F/H content anywhere.
+- **Status:** Package G independently reviewed, corrected, and merged. Package F, Package H remain
+  not started; `ENG-P3-002`/Capability 3 remain Open.
+- **Files:** `functions/src/domains/identity/repositories/displayNameRepository.ts`/
+  `.emulator.test.ts`; `functions/src/domains/permissions/service/staffTransportReadService.ts`/
+  `.emulator.test.ts`; `functions/src/domains/business/services/businessOnboardingJourney.emulator.test.ts`;
+  this entry (and the prior entry's wording correction); the dedicated review report.
+- **Report:** [`ENG-P3-002-UI-IMP-G-COMPLETION-REVIEW-independent-review-report-2026-08-28.md`](../05-implementation/reports/ENG-P3-002-UI-IMP-G-COMPLETION-REVIEW-independent-review-report-2026-08-28.md).
+- **Final gate:** **PACKAGE G MERGED AND CLOSED — STAFF IDENTITY TRANSPORT READY FOR SEPARATELY
+  AUTHORIZED TEAM UI.**
