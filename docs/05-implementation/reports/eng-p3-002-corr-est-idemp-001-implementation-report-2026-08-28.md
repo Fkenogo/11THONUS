@@ -9,7 +9,7 @@
 
 ## 2. Package H disposition
 
-Package H (`ENG-P3-002-UI-IMP-F`, team-management UI) is merged to `main` (PR [#193](https://github.com/Fkenogo/11THONUS/pull/193), review-closure PR [#194](https://github.com/Fkenogo/11THONUS/pull/194)). No file it touched is modified by this correction (Phase K, non-regression).
+**Correction (`ENG-P3-002-CORR-EST-IDEMP-001-REVIEW`):** this section originally misidentified Package H. `ENG-P3-002-UI-IMP-F` (team-management UI, PR [#193](https://github.com/Fkenogo/11THONUS/pull/193)/[#194](https://github.com/Fkenogo/11THONUS/pull/194), merged) is a *different*, unrelated package. **Package H is `ENG-P3-002-UI-IMP-H`** ("integration, E2E QA & closure evidence"), **PR [#196](https://github.com/Fkenogo/11THONUS/pull/196), still OPEN and marked draft** at the time of this correction — not merged to `main`. This is the package whose own report claims new emulator-backed Playwright coverage including `tests/e2e/emulator/establishment.spec.ts` (see the independent review report's Phase I for the full reconciliation). No file either package touched is modified by this correction (Phase K, non-regression) — confirmed zero file overlap between #196 and this PR.
 
 ## 3. Existing idempotency architecture (Phase C)
 
@@ -97,7 +97,7 @@ Unchanged: `requestHash` binds `ownerUserId` (server-resolved, never client-supp
 
 ## 21. Package H E2E regression
 
-No dedicated Playwright spec for the establishment/`createBusiness` wizard flow exists in this repository (`tests/e2e/*.spec.ts` covers dashboard shell/team/profile-locations/terms harnesses and app-shell only — none reference `NewBusinessPage`, `BusinessWizardPage`, or `createBusiness`). Nothing to regress-test at that layer; the emulator-level suite above is the relevant automated coverage for this defect, and it is unaffected by client code (none changed).
+**Correction (`ENG-P3-002-CORR-EST-IDEMP-001-REVIEW`):** this statement was accurate only about this PR's own ancestry (branched from `main`, which does not include Package H) and was incomplete without saying so. An establishment Playwright spec **does** exist — `tests/e2e/emulator/establishment.spec.ts` — authored in Package H's own PR [#196](https://github.com/Fkenogo/11THONUS/pull/196) (`feat/eng-p3-002-ui-imp-h`), which is not yet merged to `main` and therefore not present in this PR's base or diff. It is run via a separate, non-CI-wired script (`pnpm test:e2e:emulator`, added by #196), not the default `pnpm test:e2e` GitHub Actions step. See the independent review report's Phase I for the full reconciliation.
 
 ## 22. Full validation
 

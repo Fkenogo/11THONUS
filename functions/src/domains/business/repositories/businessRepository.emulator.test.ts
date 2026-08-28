@@ -345,6 +345,49 @@ describe("bootstrapBusiness — idempotency", () => {
     expect(businessesAfterRetry.size).toBe(0);
   });
 
+  it("ENG-P3-002-CORR-EST-IDEMP-001-REVIEW: rejects the same key reused by a different resolved owner as IDEMPOTENCY_CONFLICT, never a cross-user cache hit (Phase F/16 cross-user isolation)", async () => {
+    const idempotencyKey = "key_cross_owner_1";
+    const first = await bootstrapBusiness(
+      db,
+      baseRequest,
+      buildParams({
+        ownerUserId: "cust_owner_a",
+        idempotencyKey,
+        generator: new SequenceGenerator(["BIZ23456D"]),
+      }),
+    );
+
+    // Same key, identical request body, but a *different* server-resolved
+    // owner (never client-supplied — `ownerUserId` always comes from the
+    // verified credential). `stableRequestHash` binds `ownerUserId`, so
+    // this must be a fail-closed conflict, never a silent replay of
+    // `cust_owner_a`'s Business handed back to `cust_owner_b`.
+    await expect(
+      bootstrapBusiness(
+        db,
+        baseRequest,
+        buildParams({
+          ownerUserId: "cust_owner_b",
+          idempotencyKey,
+          generator: new SequenceGenerator(["BIZ23456E"]),
+        }),
+      ),
+    ).rejects.toMatchObject({ category: "IDEMPOTENCY_CONFLICT" });
+
+    const ownerBBusinesses = await db
+      .collection("businesses")
+      .where("ownerUserId", "==", "cust_owner_b")
+      .get();
+    expect(ownerBBusinesses.size).toBe(0);
+
+    const ownerABusinesses = await db
+      .collection("businesses")
+      .where("ownerUserId", "==", "cust_owner_a")
+      .get();
+    expect(ownerABusinesses.size).toBe(1);
+    expect(ownerABusinesses.docs[0]?.id).toBe(first.businessId);
+  });
+
   it("does not block the same Customer Identity from creating two different Businesses with different keys", async () => {
     const first = await bootstrapBusiness(
       db,
