@@ -44,7 +44,7 @@ import {
 import { writeOutboxEntry } from "../../../shared/outbox/outboxWriter";
 import type { EventActor } from "../../../shared/events/domainEvent";
 import { buildBusinessCreatedEvent } from "../events/businessEvents";
-import { BusinessDomainError } from "../models/businessErrors";
+import { BusinessDomainError, businessCreationInProgressError } from "../models/businessErrors";
 import {
   buildBootstrapBusinessInput,
   toCreateBusinessResult,
@@ -87,7 +87,10 @@ export type BootstrapBusinessParams = {
  * Deterministic hash over every client-controlled field plus the
  * server-resolved `ownerUserId` — same key + same request replays; same key
  * + a materially different request (including a different resolved owner)
- * is a fail-closed `IDEMPOTENCY_CONFLICT` (Phase M).
+ * is a fail-closed `IDEMPOTENCY_CONFLICT` (Phase M). A same key + the *same*
+ * request still `processing` under a concurrent caller is a different case
+ * (`ENG-P3-002-CORR-EST-IDEMP-001`): retryable `TEMPORARY_UNAVAILABLE`, not
+ * a conflict — see `businessCreationInProgressError`.
  */
 function stripUndefined<T extends Record<string, unknown>>(value: T): Partial<T> {
   const result: Partial<T> = {};
@@ -99,7 +102,8 @@ function stripUndefined<T extends Record<string, unknown>>(value: T): Partial<T>
   return result;
 }
 
-function stableRequestHash(ownerUserId: string, request: CreateBusinessRequest): string {
+/** Exported only for the deterministic idempotency-contention regression test in `businessRepository.emulator.test.ts`. */
+export function stableRequestHash(ownerUserId: string, request: CreateBusinessRequest): string {
   const sortedEntries = Object.keys(request)
     .sort()
     .map((key) => [key, (request as Record<string, unknown>)[key]] as const);
@@ -125,10 +129,12 @@ export async function bootstrapBusiness(
     return reservation.record.responseSnapshot as CreateBusinessResult;
   }
   if (reservation.outcome === "in_progress") {
-    throw new BusinessDomainError(
-      "IDEMPOTENCY_CONFLICT",
-      `Business creation for idempotency key "${params.idempotencyKey}" is already in progress.`,
-    );
+    // Retryable, not fail-closed (`ENG-P3-002-CORR-EST-IDEMP-001`, mirroring
+    // `commandDispatcher.ts`'s governed `in_progress` handling): the winning
+    // concurrent call under this same key has not committed yet, so the
+    // caller must retry the *same* key rather than treat this as a
+    // definitive failure and abandon it for a new one.
+    throw businessCreationInProgressError(params.idempotencyKey);
   }
   if (reservation.outcome === "conflict") {
     throw new BusinessDomainError(
