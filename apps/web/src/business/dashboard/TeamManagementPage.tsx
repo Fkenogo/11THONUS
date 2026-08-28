@@ -92,7 +92,7 @@ export function TeamManagementPage({ context }: { context: BusinessContext }) {
   const invitations = invitationsQuery.data ?? [];
   const activeMemberships = memberships.filter((membership) => membership.status === "active");
   const otherMembers = activeMemberships.filter((membership) => membership.role !== "owner");
-  const pendingInvitations = invitations.filter((invitation) => invitation.status === "invited");
+  const pendingInvitations = invitations.filter((invitation) => invitation.status === "pending");
 
   const roleLabel: Record<string, string> = {
     owner: t("teamManagement.roleOwner"),
@@ -101,7 +101,7 @@ export function TeamManagementPage({ context }: { context: BusinessContext }) {
   };
   const statusLabel: Record<string, string> = {
     active: t("teamManagement.statusActive"),
-    invited: t("teamManagement.statusPending"),
+    pending: t("teamManagement.statusPending"),
     accepted: t("teamManagement.statusAccepted"),
     revoked: t("teamManagement.statusRevoked"),
     expired: t("teamManagement.statusExpired"),
