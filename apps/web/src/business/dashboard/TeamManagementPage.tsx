@@ -16,7 +16,7 @@
  * wording to the consuming UI package).
  */
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "../../i18n";
 import { Button, Select, TextField } from "../../components/ui/formPrimitives";
 import { useStaffInvitationsQuery, useStaffMembershipsQuery } from "../hooks/businessQueries";
@@ -39,6 +39,24 @@ export function TeamManagementPage({ context }: { context: BusinessContext }) {
 
   const [inviteOpen, setInviteOpen] = useState(false);
   const [confirmRevokeId, setConfirmRevokeId] = useState<string | null>(null);
+
+  const inviteButtonRef = useRef<HTMLButtonElement>(null);
+  const wasInviteOpenRef = useRef(false);
+  useEffect(() => {
+    if (wasInviteOpenRef.current && !inviteOpen) {
+      inviteButtonRef.current?.focus();
+    }
+    wasInviteOpenRef.current = inviteOpen;
+  }, [inviteOpen]);
+
+  const revokeButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const lastConfirmRevokeIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (lastConfirmRevokeIdRef.current && !confirmRevokeId) {
+      revokeButtonRefs.current[lastConfirmRevokeIdRef.current]?.focus();
+    }
+    lastConfirmRevokeIdRef.current = confirmRevokeId;
+  }, [confirmRevokeId]);
 
   if (membershipsQuery.status === "pending" || invitationsQuery.status === "pending") {
     return (
@@ -110,7 +128,12 @@ export function TeamManagementPage({ context }: { context: BusinessContext }) {
       <p className="mb-6 text-[var(--color-muted-foreground)]">{t("teamManagement.description")}</p>
 
       {!inviteOpen ? (
-        <Button type="button" className="mb-6 min-h-11" onClick={() => setInviteOpen(true)}>
+        <Button
+          ref={inviteButtonRef}
+          type="button"
+          className="mb-6 min-h-11"
+          onClick={() => setInviteOpen(true)}
+        >
           {t("teamManagement.inviteAction")}
         </Button>
       ) : (
@@ -155,10 +178,19 @@ export function TeamManagementPage({ context }: { context: BusinessContext }) {
             >
               <p className="mb-2">{t("teamManagement.confirmRevokeBody")}</p>
               <div className="flex gap-2">
-                <Button type="button" onClick={() => handleRevokeConfirm(invitation.invitationId)}>
+                <Button
+                  type="button"
+                  disabled={revokeMutation.isPending}
+                  onClick={() => handleRevokeConfirm(invitation.invitationId)}
+                >
                   {t("teamManagement.confirmRevokeAction")}
                 </Button>
-                <Button type="button" variant="secondary" onClick={() => setConfirmRevokeId(null)}>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={revokeMutation.isPending}
+                  onClick={() => setConfirmRevokeId(null)}
+                >
                   {t("actions.cancel")}
                 </Button>
               </div>
@@ -170,6 +202,9 @@ export function TeamManagementPage({ context }: { context: BusinessContext }) {
               roleLabel={roleLabel}
               statusLabel={statusLabel}
               onRevoke={() => setConfirmRevokeId(invitation.invitationId)}
+              revokeButtonRef={(el) => {
+                revokeButtonRefs.current[invitation.invitationId] = el;
+              }}
             />
           ),
         )}
@@ -208,11 +243,13 @@ function InvitationRow({
   roleLabel,
   statusLabel,
   onRevoke,
+  revokeButtonRef,
 }: {
   invitation: StaffInvitationSummary;
   roleLabel: Record<string, string>;
   statusLabel: Record<string, string>;
   onRevoke: () => void;
+  revokeButtonRef: (el: HTMLButtonElement | null) => void;
 }) {
   const { t } = useTranslation("business");
   const identity = invitation.email ?? t("teamManagement.invitationSentFallback");
@@ -226,6 +263,7 @@ function InvitationRow({
         </p>
       </div>
       <button
+        ref={revokeButtonRef}
         type="button"
         className="min-h-11 px-2 text-sm text-red-600 underline"
         onClick={onRevoke}

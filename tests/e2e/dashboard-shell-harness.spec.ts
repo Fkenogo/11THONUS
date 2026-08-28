@@ -132,15 +132,15 @@ test.describe("Business Dashboard shell — language switching", () => {
     page,
   }) => {
     await page.goto(`${HARNESS_PATH}/team`);
-    await expect(page.getByRole("heading", { name: "Team" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Team", exact: true })).toBeVisible();
 
     await page.getByRole("button", { name: "Français" }).click();
-    await expect(page.getByRole("heading", { name: "Équipe" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Équipe", exact: true })).toBeVisible();
     await expect(page).toHaveURL(/\/dashboard-harness\/team$/);
     await expect(page.locator("nav").getByText("Acme Salon")).toBeVisible();
 
     await page.getByRole("button", { name: "English" }).click();
-    await expect(page.getByRole("heading", { name: "Team" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Team", exact: true })).toBeVisible();
     await expect(page).toHaveURL(/\/dashboard-harness\/team$/);
   });
 });

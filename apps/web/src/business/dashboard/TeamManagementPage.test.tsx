@@ -137,6 +137,36 @@ describe("TeamManagementPage (Package F, MGMT-01/DASH-04)", () => {
     expect(screen.getByText("elise.m@example.com")).toBeInTheDocument();
   });
 
+  it("returns focus to the Invite team member button after the invite form is cancelled", async () => {
+    setLoaded([owner], []);
+    renderPage();
+    const inviteButton = screen.getByRole("button", { name: "Invite team member" });
+    await userEvent.click(inviteButton);
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.getByRole("button", { name: "Invite team member" })).toHaveFocus();
+  });
+
+  it("returns focus to the Cancel invitation button after the revoke confirmation is dismissed", async () => {
+    setLoaded(
+      [owner],
+      [
+        {
+          invitationId: "inv-1",
+          role: "staff",
+          status: "invited",
+          deliveryType: "email",
+          invitedAt: "2026-08-01T00:00:00.000Z",
+          expiresAt: "2026-08-08T00:00:00.000Z",
+          email: "a@example.com",
+        },
+      ],
+    );
+    renderPage();
+    await userEvent.click(screen.getByRole("button", { name: "Cancel invitation" }));
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.getByRole("button", { name: "Cancel invitation" })).toHaveFocus();
+  });
+
   it("does not fabricate an identity for a phone-delivery invitation lacking an email", () => {
     setLoaded(
       [owner],
@@ -245,6 +275,73 @@ describe("TeamManagementPage (Package F, MGMT-01/DASH-04)", () => {
     await userEvent.click(screen.getByRole("button", { name: "Cancel invitation" }));
     await userEvent.click(screen.getByRole("button", { name: "Yes, cancel invitation" }));
     expect(mockRevoke).toHaveBeenCalledWith("inv-1", expect.anything());
+  });
+
+  it("disables the revoke-confirmation button while the revoke mutation is pending, to prevent a duplicate submit", async () => {
+    setLoaded(
+      [owner],
+      [
+        {
+          invitationId: "inv-1",
+          role: "staff",
+          status: "invited",
+          deliveryType: "email",
+          invitedAt: "2026-08-01T00:00:00.000Z",
+          expiresAt: "2026-08-08T00:00:00.000Z",
+          email: "a@example.com",
+        },
+      ],
+    );
+    revokePending = true;
+    renderPage();
+    await userEvent.click(screen.getByRole("button", { name: "Cancel invitation" }));
+    expect(screen.getByRole("button", { name: "Yes, cancel invitation" })).toBeDisabled();
+  });
+
+  it("shows a revoke failure without implying success, and leaves the invitation state unchanged", async () => {
+    setLoaded(
+      [owner],
+      [
+        {
+          invitationId: "inv-1",
+          role: "staff",
+          status: "invited",
+          deliveryType: "email",
+          invitedAt: "2026-08-01T00:00:00.000Z",
+          expiresAt: "2026-08-08T00:00:00.000Z",
+          email: "a@example.com",
+        },
+      ],
+    );
+    revokeError = new BusinessApiError("unavailable");
+    renderPage();
+    await userEvent.click(screen.getByRole("button", { name: "Cancel invitation" }));
+    await userEvent.click(screen.getByRole("button", { name: "Yes, cancel invitation" }));
+    expect(
+      screen.getByText("This is temporarily unavailable. Please try again shortly."),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.getByText("a@example.com")).toBeInTheDocument();
+  });
+
+  it("never renders an unsupported Resend action anywhere on the page", () => {
+    setLoaded(
+      [owner],
+      [
+        {
+          invitationId: "inv-1",
+          role: "staff",
+          status: "invited",
+          deliveryType: "email",
+          invitedAt: "2026-08-01T00:00:00.000Z",
+          expiresAt: "2026-08-08T00:00:00.000Z",
+          email: "a@example.com",
+        },
+      ],
+    );
+    renderPage();
+    expect(screen.queryByRole("button", { name: /resend/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/resend/i)).not.toBeInTheDocument();
   });
 
   it("does not show a revoke control for a non-pending invitation", () => {

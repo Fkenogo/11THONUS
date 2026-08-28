@@ -63,6 +63,12 @@ const HARNESS_MEMBERSHIPS: StaffMembershipSummary[] = [
   { membershipId: "harness-mem-owner", role: "owner", status: "active", displayName: "Safi" },
   { membershipId: "harness-mem-2", role: "manager", status: "active", displayName: "Jean-Claude" },
   { membershipId: "harness-mem-3", role: "staff", status: "active" },
+  {
+    membershipId: "harness-mem-4",
+    role: "staff",
+    status: "active",
+    displayName: "Marie-Christine Ndayishimiye Nkurunziza",
+  },
 ];
 const HARNESS_INVITATIONS: StaffInvitationSummary[] = [
   {
@@ -73,6 +79,15 @@ const HARNESS_INVITATIONS: StaffInvitationSummary[] = [
     invitedAt: "2026-08-01T00:00:00.000Z",
     expiresAt: "2026-08-08T00:00:00.000Z",
     email: "elise.m@example.com",
+  },
+  {
+    invitationId: "harness-inv-2",
+    role: "manager",
+    status: "invited",
+    deliveryType: "email",
+    invitedAt: "2026-08-01T00:00:00.000Z",
+    expiresAt: "2026-08-08T00:00:00.000Z",
+    email: "a-very-long-example-invitation-address-for-overflow-testing@example.com",
   },
 ];
 
