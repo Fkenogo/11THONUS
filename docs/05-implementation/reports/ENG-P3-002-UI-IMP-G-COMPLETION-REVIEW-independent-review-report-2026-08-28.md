@@ -17,8 +17,8 @@ unreviewed commits beyond the reported head. CI check `Build, Lint, Test, Emulat
 
 ## 2. Final reviewed head
 
-`e58033ea...` — see §33 (recorded after the correction commit, before merge). The corrected head
-supersedes `4f1eb555` as the actual reviewed and merged state.
+`e2146809230af5b63975cb2467e218d6821564b6` — the correction commit pushed to PR #192's branch,
+superseding `4f1eb555` as the actual reviewed and merged state.
 
 ## 3. PR #187 disposition
 
