@@ -346,17 +346,16 @@ signature, or error was removed or renamed, so a revert cannot break any other c
 
 ## 33. PR number
 
-To be assigned on `gh pr create` (draft) — see closing note below; this report is written before
-PR creation per the task's own phase ordering (validation before PR).
+[#192](https://github.com/Fkenogo/11THONUS/pull/192) (draft, not self-merged).
 
 ## 34. Final head SHA
 
-Recorded at the time of PR creation (post-report commit).
+`422d903959e774d599253296059905292eab41fb`
 
 ## 35. CI
 
-Not yet run (PR not yet opened at time of writing). Local validation (§21) is the evidence base for
-this report; CI will re-run the same suites on push.
+PR opened as draft; CI will run against `422d903`. Local validation (§21) is the evidence base for
+this report and was performed against this exact commit's content before push.
 
 ## 36. Package G status
 
