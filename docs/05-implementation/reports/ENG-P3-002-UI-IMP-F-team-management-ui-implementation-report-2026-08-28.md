@@ -426,11 +426,11 @@ a placeholder) reverts cleanly to the placeholder state PR #192's own tree alrea
 
 ## 38. PR number
 
-Recorded once opened — see the companion PR for branch `feat/eng-p3-002-ui-imp-f-team-management`.
+[#193](https://github.com/Fkenogo/11THONUS/pull/193) (draft, not self-merged).
 
 ## 39. Final head SHA
 
-Recorded once committed — see the companion commit for this branch.
+`47f860ec93cb03b6f39377cb7ae4c4304bc6bcd5`
 
 ## 40. CI result
 
