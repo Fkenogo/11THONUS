@@ -4730,3 +4730,91 @@
 - **Report:** [`ENG-P3-002-UI-IMP-G-COMPLETION-REVIEW-independent-review-report-2026-08-28.md`](../05-implementation/reports/ENG-P3-002-UI-IMP-G-COMPLETION-REVIEW-independent-review-report-2026-08-28.md).
 - **Final gate:** **PACKAGE G MERGED AND CLOSED — STAFF IDENTITY TRANSPORT READY FOR SEPARATELY
   AUTHORIZED TEAM UI.**
+
+## `ENG-P3-002-UI-IMP-F` — Team Management UI (2026-08-28)
+
+- **Package F implemented** (MGMT-01/DASH-04), per `ENG-P3-002-UI-RECON-001` Part XV/Brief 6,
+  `FD-P3-002-G-001`, `FD-IDENTITY-DISPLAY-001`, against the now-merged Package G Staff transport
+  (PR #192): a new `TeamManagementPage` mounted at `/business/:businessId/dashboard/team` inside
+  the existing, unmodified `BusinessDashboardShell`. Active members render real `displayName`
+  (never fabricated when absent — a neutral "Unnamed team member" state instead); pending
+  invitations render real `email` for email-delivery invitations (a neutral "Invitation sent"
+  fallback for phone-delivery, never the phone number). Only `createStaffInvitation`
+  (role gated to the real `manager`/`staff` vocabulary) and `revokeStaffInvitation` (behind an
+  inline confirmation) are wired — no role-change, membership-removal, suspend/reactivate, or
+  resend control exists, since no corresponding callable exists in `functions/src/index.ts`.
+- **Stitch inventions excluded**, confirmed by direct inspection of `team_management_mobile`/
+  `invite_team_member_mobile`: the "PROGRES" wordmark, the per-member `more_vert` menu, the
+  "Resend" action, and the invented "Admin"/"Editor" roles with fabricated capability text.
+- **Dead code removed:** `DashboardComingSoon` (its last production consumer, the `team` route,
+  now has real content) and its test were deleted; `BusinessDashboardShell.tsx`'s stale docstring
+  reference corrected.
+- **Dev-only Founder-QA harness extended** (`DashboardHarnessPage.tsx`) with local, zero-network
+  fixture data for the two Staff query keys, so real-browser/responsive/EN-FR verification could be
+  performed against actual rendered content — verified at 375×812, 768×1024, and 1280×720, and in
+  both English and French (route/data preserved across the language switch).
+- **TDD:** `TeamManagementPage.test.tsx` (19 tests) written first, confirmed RED (module-not-found)
+  before any production code existed, then GREEN.
+- **Full validation:** web unit suite 96/96 files, 647/647 tests passing (was 96/630 before this
+  task — one net test file added, one removed); web typecheck/build clean; functions unit suite
+  unchanged (145/145, 1583 tests — no `functions/` file touched); full Firebase Emulator Suite
+  53/53 files, 722 passed, 2 skipped, 0 failed (no regression from the Package G baseline); lint
+  clean (one pre-existing, unrelated warning); format clean; secret scan clean.
+- **Status:** Package F implemented, submitted as a **draft PR**, not self-merged. Package H
+  remains not started. `ENG-P3-002`/Capability 3 remain Open.
+- **Files:** `apps/web/src/business/dashboard/TeamManagementPage.tsx`/`.test.tsx` (new);
+  `BusinessDashboardRoutes.tsx`/`.test.tsx`; `BusinessDashboardShell.tsx` (docstring only);
+  `DashboardComingSoon.tsx`/`.test.tsx` (deleted); `apps/web/src/dev/dashboardHarness/
+  DashboardHarnessPage.tsx`; `apps/web/src/i18n/locales/en.ts`/`fr.ts`; this entry; the dedicated
+  implementation report.
+- **Report:** [`ENG-P3-002-UI-IMP-F-team-management-ui-implementation-report-2026-08-28.md`](../05-implementation/reports/ENG-P3-002-UI-IMP-F-team-management-ui-implementation-report-2026-08-28.md).
+- **Final gate:** **PACKAGE F READY FOR FOUNDER REVIEW — TEAM MANAGEMENT UI IMPLEMENTED AGAINST
+  GOVERNED STAFF IDENTITY TRANSPORT; PACKAGE H NOT STARTED.**
+
+## `ENG-P3-002-UI-IMP-F-REVIEW` — Independent Review, Correction, Merge & Closure (2026-08-28)
+
+- **Independent review of draft PR #193, in a fresh isolated worktree at the exact PR head
+  (`8fb7ba5`) — the implementation report was not trusted as proof.** CI was found **actually
+  failing** (not a flake): the implementation report itself disclosed Playwright was never run
+  locally, and a pre-existing Package-B e2e test's heading-name locator became ambiguous once
+  Package F's own (correctly governed) `<h2>Team members</h2>` heading existed alongside the
+  `<h1>Team</h1>`. Fixed with `exact: true` on that locator — production markup unchanged.
+- **Two genuine defects found via manual code review, confirmed live in a real browser:** (1) the
+  revoke-confirmation buttons lacked the `disabled={isPending}` guard the Invite button already
+  had — not a security issue (the shared idempotency-key holder already protects the backend
+  effect) but a real double-submit/consistency gap; (2) focus was not restored to the triggering
+  button after closing either the invite form or the revoke confirmation (`document.activeElement`
+  fell to `<body>`) — a genuine accessibility defect. Both fixed with RED→GREEN unit tests, and
+  the focus fix independently re-confirmed with a live `document.activeElement` check before/after.
+- **Two genuine unit-test coverage gaps found via 9 deliberate mutation tests, fully reverted after
+  each:** an unsupported "Resend" action and a silently-succeeding revoke failure could both have
+  been introduced without any existing test noticing. Closed with two new tests, each verified to
+  fail against its mutation and pass against the real code.
+- **Missing per-package real-browser coverage closed:** Package F had no dedicated Playwright spec
+  at all (every sibling package — B/C/D — has one), so the 390×844 breakpoint this review's own
+  scope required had no automated coverage. Added `tests/e2e/dashboard-team-harness.spec.ts` (9
+  tests: 375×812 with real long-identity fixtures, 390×844, tablet, desktop shell/content/invite/
+  revoke, EN/FR) — the dev harness's fixture data was extended with one long Display Name and one
+  long invitation email specifically so overflow could be verified against real content.
+- **`formPrimitives.tsx`'s shared `Button` extended** to accept an optional `ref` (React 19 prop,
+  additive/backward-compatible, confirmed by the full unaffected web unit suite) — needed for the
+  focus-restoration fix.
+- **Full validation, twice (before and after corrections), no flakes observed:** web unit suite
+  96/96 files, 652/652 tests; functions unit suite unchanged, 145/145 files, 1583 tests; full
+  Firebase Emulator Suite 53/53 files, 722 passed/2 skipped/0 failed; **Playwright e2e 32/32
+  passing** (the originally-failing CI job, now fixed and re-verified); typecheck/lint/format/build
+  clean; secret scan clean.
+- **Scope audit:** every correction is additive or narrowly bounded to Package F's own
+  already-authorized surface — no backend contract, no governed copy string's meaning, and no
+  original identity/action decision was changed; only verification and two narrow UI defects were
+  fixed.
+- **Status:** Package F independently reviewed, corrected, and merged. Package H remains not
+  started; `ENG-P3-002`/Capability 3 remain Open.
+- **Files:** `apps/web/src/business/dashboard/TeamManagementPage.tsx`/`.test.tsx`;
+  `apps/web/src/components/ui/formPrimitives.tsx`;
+  `apps/web/src/dev/dashboardHarness/DashboardHarnessPage.tsx`;
+  `tests/e2e/dashboard-shell-harness.spec.ts`; `tests/e2e/dashboard-team-harness.spec.ts` (new);
+  this entry; the dedicated review report.
+- **Report:** [`ENG-P3-002-UI-IMP-F-REVIEW-independent-review-report-2026-08-28.md`](../05-implementation/reports/ENG-P3-002-UI-IMP-F-REVIEW-independent-review-report-2026-08-28.md).
+- **Final gate:** **PACKAGE F MERGED AND CLOSED — TEAM MANAGEMENT UI READY FOR PACKAGE H
+  INTEGRATION / FOUNDER QA.**

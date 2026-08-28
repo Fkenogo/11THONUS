@@ -7,6 +7,14 @@ import type { BusinessContext } from "../api/businessContext";
 vi.mock("../hooks/businessQueries", () => ({
   useBusinessCategoriesQuery: () => ({ data: [{ id: "cat-1", displayLabel: "Hair salon" }] }),
   useBusinessTypesQuery: () => ({ data: [], status: "success" }),
+  useStaffMembershipsQuery: () => ({
+    data: [
+      { membershipId: "mem-owner", role: "owner", status: "active", displayName: "Acme Owner" },
+    ],
+    status: "success",
+    refetch: vi.fn(),
+  }),
+  useStaffInvitationsQuery: () => ({ data: [], status: "success", refetch: vi.fn() }),
 }));
 vi.mock("../hooks/businessMutations", () => ({
   useUpdateBusinessProfileMutation: () => ({ mutate: vi.fn(), isPending: false, error: undefined }),
@@ -21,6 +29,8 @@ vi.mock("../hooks/businessMutations", () => ({
     isPending: false,
     error: undefined,
   }),
+  useCreateStaffInvitationMutation: () => ({ mutate: vi.fn(), isPending: false, error: undefined }),
+  useRevokeStaffInvitationMutation: () => ({ mutate: vi.fn(), isPending: false, error: undefined }),
 }));
 
 const context: BusinessContext = {
