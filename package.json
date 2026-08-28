@@ -13,7 +13,8 @@
     "format:check": "prettier --check .",
     "typecheck": "pnpm -r run typecheck",
     "test": "pnpm -r run test",
-    "test:e2e": "playwright test",
+    "test:e2e": "playwright test --project=chromium --project=chromium-dashboard-harness",
+    "test:e2e:emulator": "node tests/e2e/emulator/seedCommerceKnowledge.mjs && playwright test --project=chromium-emulator-e2e",
     "emulators": "firebase emulators:start --project demo-11thonus",
     "emulators:validate": "firebase emulators:exec --project demo-11thonus \"pnpm --filter functions test:emulator\"",
     "prepare": "husky"
