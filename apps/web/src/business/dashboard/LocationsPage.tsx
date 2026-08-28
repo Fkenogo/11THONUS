@@ -18,6 +18,7 @@ import { useState } from "react";
 import { useTranslation } from "../../i18n";
 import { Button, TextField } from "../../components/ui/formPrimitives";
 import { useUpdateBusinessBranchProfileMutation } from "../hooks/businessMutations";
+import { optionalField } from "../api/optionalField";
 import { MutationError } from "../onboarding/MutationError";
 import type { BusinessContext, BusinessContextBranch } from "../api/businessContext";
 
@@ -99,7 +100,10 @@ function LocationEditForm({
   const mutation = useUpdateBusinessBranchProfileMutation(businessId, branch.branchId);
 
   function handleSave() {
-    mutation.mutate({ displayName, city, address: address || undefined }, { onSuccess: onDone });
+    mutation.mutate(
+      { displayName, city, ...optionalField("address", address) },
+      { onSuccess: onDone },
+    );
   }
 
   return (

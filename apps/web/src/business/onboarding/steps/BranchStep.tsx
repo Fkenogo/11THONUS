@@ -8,6 +8,7 @@ import { useState } from "react";
 import { useTranslation } from "../../../i18n";
 import { Button, TextField } from "../../../components/ui/formPrimitives";
 import { useUpdateBusinessBranchProfileMutation } from "../../hooks/businessMutations";
+import { optionalField } from "../../api/optionalField";
 import type { BusinessContext } from "../../api/businessContext";
 import { MutationError } from "../MutationError";
 
@@ -27,7 +28,7 @@ export function BranchStep({
 
   function handleSave() {
     mutation.mutate(
-      { displayName, city, address: address || undefined },
+      { displayName, city, ...optionalField("address", address) },
       { onSuccess: onContinue },
     );
   }
