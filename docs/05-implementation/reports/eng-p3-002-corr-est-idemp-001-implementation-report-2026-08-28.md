@@ -166,7 +166,9 @@ This report is the changes-tracking update for this correction; no other governa
 
 ## 33–35. PR / SHA / CI
 
-See PR link and head SHA reported alongside this report at PR-open time (draft, not merged, not self-merged).
+- PR: [#197](https://github.com/Fkenogo/11THONUS/pull/197) (draft, open, not merged, not self-merged).
+- Head SHA: `c96a97ebc9c39f6126c8dd68ff86a9c5bc049cbf`.
+- CI: pending at time of writing — see PR checks.
 
 ## 36. ENG-P3-002 status
 
