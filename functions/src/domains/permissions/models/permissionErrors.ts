@@ -320,6 +320,22 @@ export function membershipReadTransientFailureError(): PermissionDomainError {
   );
 }
 
+/**
+ * A membership's underlying `users/{userId}` identity record failed the
+ * identity domain's own integrity check while resolving the Staff-roster
+ * Display Name projection (`FD-P3-002-G-001` §5,
+ * `ENG-P3-002-UI-IMP-G-COMPLETION`) — fail-closed, deliberately does not
+ * leak the identity domain's internal error detail to a Staff-list caller.
+ * Never thrown merely because a Display Name has not been set yet (that is
+ * a valid, non-error outcome — see `readDisplayNamesByUserIds`).
+ */
+export function staffIdentityIntegrityFailureError(): PermissionDomainError {
+  return new PermissionDomainError(
+    "VALIDATION_FAILED",
+    "A Staff member's identity record does not match the expected shape.",
+  );
+}
+
 /*
  * ENG-P2-003C — Staff Membership Lifecycle & Role Management command
  * errors. Same closed-taxonomy discipline as every error above — every

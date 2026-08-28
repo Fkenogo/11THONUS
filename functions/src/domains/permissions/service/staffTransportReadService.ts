@@ -1,5 +1,11 @@
 /**
- * Staff list-query read transport (`ENG-P3-002A`, design §39/§40/Phase N).
+ * Staff list-query read transport (`ENG-P3-002A`, design §39/§40/Phase N;
+ * identity projection completed under `ENG-P3-002-UI-IMP-G-COMPLETION` per
+ * the Founder disposition `FD-P3-002-G-001`, now that `FD-IDENTITY-DISPLAY-001`
+ * and `IDENTITY-PROFILE-A`/`IDENTITY-PROFILE-B` supply the authoritative,
+ * non-protected `users.displayName` source `FD-P3-002-G-001` §10 required
+ * before the active-member half of §5 could be implemented — see PR #187's
+ * report for the prior stop).
  *
  * Wraps the new bounded repository queries (`listInvitationsByBusiness`,
  * `listMembershipsByBusiness`) with the same read-authority re-derivation
@@ -7,11 +13,33 @@
  * (§21/§25) — any active membership (Owner/Manager/Staff) may read the
  * roster/invitation-status of their own Business; a caller with no
  * membership in `businessId` is denied identically to "Business not
- * found" (enumeration resistance).
+ * found" (enumeration resistance). `FD-P3-002-G-001` does not widen this —
+ * it only changes what an already-authorized caller may see.
  *
- * DTOs are deliberately minimal (Phase N): no `AuthenticationReference`
- * internals, no raw delivery-target contact value (email/phone), no
- * protected Customer Identity fields, no permission-audit internals.
+ * DTOs remain minimal (Phase N), narrowed only by `FD-P3-002-G-001`'s exact
+ * authorization: no `AuthenticationReference` internals, no protected
+ * Customer Identity fields, no permission-audit internals, and:
+ *
+ *   - for invitations, the raw delivery-target value is exposed **only**
+ *     when the delivery type is `email` (`FD-P3-002-G-001` §2/§6); a
+ *     `phone`-delivered invitation's value remains withheld (§4 prohibits
+ *     phone numbers unconditionally, and no separate disposition covers
+ *     phone-delivery identity);
+ *   - for active memberships, `displayName` is resolved server-side from
+ *     `users/{membership.userId}.displayName` (`FD-P3-002-G-001` §5) via
+ *     `readDisplayNamesByUserIds` (one batched `db.getAll`, bounded by the
+ *     same membership roster query — no additional per-membership round
+ *     trip, no general user-directory/cache layer). Absent when the member
+ *     has not set a Display Name yet — a valid outcome, never fabricated
+ *     from email, `CustomerProfile`, Firebase Auth, or the invitation that
+ *     originated the membership (Owners have none; §5 resolves uniformly
+ *     for every role via `membership.userId` alone). A malformed
+ *     `displayName` record, or a `membership.userId` with no backing
+ *     `users` document at all (a referential-integrity violation — see
+ *     `readDisplayNamesByUserIds`'s own doc comment), fails the whole read
+ *     closed (`staffIdentityIntegrityFailureError`) rather than degrading
+ *     silently or presenting a corrupted member as an ordinary un-named
+ *     one — this domain's existing fail-closed convention.
  */
 
 import type { Firestore } from "firebase-admin/firestore";
@@ -23,7 +51,12 @@ import {
 import type { BusinessMembershipInvitation } from "../models/businessMembershipInvitation";
 import type { EvaluationBusinessMembership } from "../evaluator/types";
 import type { InvitationStatus } from "../models/invitationStatus";
-import { staffReadNotAuthorizedError } from "../models/permissionErrors";
+import {
+  staffIdentityIntegrityFailureError,
+  staffReadNotAuthorizedError,
+} from "../models/permissionErrors";
+import { readDisplayNamesByUserIds } from "../../identity/repositories/displayNameRepository";
+import { IdentityDomainError } from "../../identity/models/identityErrors";
 
 /**
  * Re-derives the caller's own read authority over `businessId` from their
@@ -48,12 +81,19 @@ async function assertActiveMembership(
   }
 }
 
-/** Phase N's bounded invitation-status DTO — no raw delivery-target value. */
+/**
+ * Phase N's bounded invitation-status DTO, additively extended under
+ * `FD-P3-002-G-001` §2: `email` is present only when `deliveryType` is
+ * `"email"` — the exact, and only, delivery-identity value the disposition
+ * authorizes exposing. Absent (never a fabricated value) for `"phone"`
+ * deliveries.
+ */
 export type StaffInvitationSummary = {
   invitationId: string;
   role: string;
   status: string;
   deliveryType: string;
+  email?: string;
   invitedAt: string;
   expiresAt: string;
 };
@@ -64,23 +104,36 @@ function toInvitationSummary(invitation: BusinessMembershipInvitation): StaffInv
     role: invitation.role,
     status: invitation.status,
     deliveryType: invitation.deliveryTarget.type,
+    ...(invitation.deliveryTarget.type === "email"
+      ? { email: invitation.deliveryTarget.value }
+      : {}),
     invitedAt: invitation.invitedAt.toISOString(),
     expiresAt: invitation.expiresAt.toISOString(),
   };
 }
 
-/** Phase N's bounded membership-roster DTO — no `userId`/Customer Identity reference. */
+/**
+ * Phase N's bounded membership-roster DTO — no `userId`/Customer Identity
+ * reference. `displayName` added under `FD-P3-002-G-001` §5
+ * (`ENG-P3-002-UI-IMP-G-COMPLETION`): resolved server-side from
+ * `users/{userId}.displayName`, absent when not yet set.
+ */
 export type StaffMembershipSummary = {
   membershipId: string;
   role: string;
   status: string;
+  displayName?: string;
 };
 
-function toMembershipSummary(membership: EvaluationBusinessMembership): StaffMembershipSummary {
+function toMembershipSummary(
+  membership: EvaluationBusinessMembership,
+  displayName: string | undefined,
+): StaffMembershipSummary {
   return {
     membershipId: membership.id,
     role: membership.role,
     status: membership.status,
+    ...(displayName !== undefined ? { displayName } : {}),
   };
 }
 
@@ -104,5 +157,21 @@ export async function listStaffMembershipsForBusiness(
 ): Promise<StaffMembershipSummary[]> {
   await assertActiveMembership(db, userId, businessId);
   const memberships = await listMembershipsByBusiness(db, businessId);
-  return memberships.map(toMembershipSummary);
+
+  let displayNames: Map<string, string | undefined>;
+  try {
+    displayNames = await readDisplayNamesByUserIds(
+      db,
+      memberships.map((membership) => membership.userId),
+    );
+  } catch (error) {
+    if (error instanceof IdentityDomainError) {
+      throw staffIdentityIntegrityFailureError();
+    }
+    throw error;
+  }
+
+  return memberships.map((membership) =>
+    toMembershipSummary(membership, displayNames.get(membership.userId)),
+  );
 }

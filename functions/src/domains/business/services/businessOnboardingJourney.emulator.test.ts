@@ -29,6 +29,7 @@ import {
   listStaffInvitationsForBusiness,
   listStaffMembershipsForBusiness,
 } from "../../permissions/service/staffTransportReadService";
+import { createCustomerIdentity } from "../../identity/repositories/customerIdentityRepository";
 
 /**
  * `ENG-P3-002C` — the real, chained-together onboarding journey the
@@ -93,6 +94,7 @@ beforeEach(async () => {
     "businessTermsAcceptances",
     "idempotencyRecords",
     "outboxEntries",
+    "users",
     BUSINESS_TERMS_CONFIG_COLLECTION,
   ]) {
     const snapshot = await db.collection(collection).get();
@@ -201,6 +203,31 @@ function newIds() {
 describe("ENG-P3-002C — real onboarding journey (bootstrap through pending_verification)", () => {
   it("resolve → create → hydrate → classify → branch → staff invite/list/revoke → terms → submit → pending_verification", async () => {
     await seedCommerceKnowledge();
+    // A real Owner is always already-authenticated (a genuine `users`
+    // document exists) before they can create a Business — `bootstrapBusiness`
+    // itself doesn't re-validate this, but `listStaffMembershipsForBusiness`'s
+    // Display Name projection (`ENG-P3-002-UI-IMP-G-COMPLETION`) now fails
+    // closed on a `membership.userId` with no backing `users` document (a
+    // referential-integrity violation, not a benign case) — seeded here to
+    // keep this journey representative of the real flow, independent review
+    // correction, `ENG-P3-002-UI-IMP-G-COMPLETION-REVIEW`.
+    await createCustomerIdentity(db, {
+      eventId: "evt_journey_owner_identity",
+      correlationId: "corr_journey_owner_identity",
+      actor: { actorType: "user", actorId: OWNER_USER_ID },
+      occurredAt: CREATED_AT.toISOString(),
+      customerIdentityId: OWNER_USER_ID,
+      initialAuthenticationReference: {
+        referenceId: `auth_${OWNER_USER_ID}`,
+        referenceType: "phone_otp",
+        createdAt: CREATED_AT,
+        createdBy: OWNER_USER_ID,
+      },
+      createdAt: CREATED_AT,
+      createdBy: OWNER_USER_ID,
+      idempotencyKey: "journey-owner-identity",
+      requestHash: "journey-owner-identity-hash",
+    });
 
     // 1. resume-detection: zero Businesses for a fresh owner.
     const ownedBefore = await getOwnedBusinesses(db, OWNER_USER_ID);

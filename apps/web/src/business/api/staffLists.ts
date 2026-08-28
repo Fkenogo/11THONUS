@@ -10,13 +10,21 @@ export type StaffInvitationSummary = {
   role: string;
   status: InvitationStatus;
   deliveryType: string;
+  /** Present only when `deliveryType` is `"email"` (`FD-P3-002-G-001` §2). */
+  email?: string;
   invitedAt: string;
   expiresAt: string;
 };
 
 export type ListStaffInvitationsRequest = { businessId: string; statusFilter?: InvitationStatus };
 
-export type StaffMembershipSummary = { membershipId: string; role: string; status: string };
+export type StaffMembershipSummary = {
+  membershipId: string;
+  role: string;
+  status: string;
+  /** Server-resolved `users.displayName`; absent when not yet set (`FD-P3-002-G-001` §5). */
+  displayName?: string;
+};
 
 export type ListStaffMembershipsRequest = { businessId: string };
 
