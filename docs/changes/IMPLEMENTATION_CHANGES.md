@@ -5204,3 +5204,49 @@ report:
 [`PR-201-REVIEW-CORR-001-review-findings-correction-report-2026-08-29.md`](../05-implementation/reports/PR-201-REVIEW-CORR-001-review-findings-correction-report-2026-08-29.md).
 
 **Final gate:** **`PR #201 REVIEW FINDINGS CORRECTED — READY FOR FOUNDER RE-REVIEW; NOT MERGED`**.
+
+## DEC-LEGAL-002-LEGAL-OPINION-RECON-001 — External Legal Opinion Reconciliation (2026-08-29)
+
+Reconciled the external 11thONUS Legal Opinion (Comprehensive Legal Opinion & Core Terms
+Framework, `DEC-LEGAL-002` Handoff) against the merged `DEC-LEGAL-002` package, Founder FD-1–FD-7,
+confirmed `DEC-LOY-011`, and existing tracked authority. Filed the opinion verbatim as evidence with
+a provenance header; built a 20-row Reconciliation Matrix classifying every opinion section A–F;
+recorded thirteen Founder legal-architecture dispositions (`LEG-FD-01`–`LEG-FD-13`) — most confirm
+or narrowly qualify counsel's conclusions, while several specific universal-rule recommendations are
+expressly **not adopted**: the blanket "rewards have no monetary/cash value" phrasing (corrected per
+FD-6 — a reward may have economic value without being cash), a mandatory 60-day exit run-off period,
+a mandatory cash-conversion-on-exit duty (11thONUS is not the funder of any exit remedy), a universal
+30-day programme-change notice, universal 7/14/24/48-day/hour suspension periods, "customer data as
+contractual consideration," Kirundi as a general application language (remains "architecture-ready,"
+not core), and forced scrolling as a universal acceptance requirement. Each declined recommendation
+is fully reconciled against the authoritative Founder position, not left contradictory.
+
+A ten-pattern live-authority conflict search across `docs/` found **zero material conflicts** — every
+"no monetary value" hit was already-correct FD-6 text rejecting that phrasing, the "60-day" hit
+belonged to an unrelated cross-border-hosting decision, suspension-period hits in TRD18 concerned
+feature-flag defaults (not Business suspension), and Kirundi was already correctly scoped as
+"architecture-ready" rather than a launch language. No live-authority file required correction.
+
+Determined (task-scoped, not deferred): Customer Terms constitute a separate future governed work
+package, distinct from Business Terms, and are confirmed **not** a Capability 3 blocker — direct
+inspection of `businessLifecycleCommand.ts`'s `assertCurrentBusinessTermsAccepted` confirms the
+actual code-enforced blocker is the Business Terms component only.
+
+`EXT-LEG-002` updated `PENDING` → `EVIDENCE_RECEIVED` (External Dependencies Register), per that
+register's own already-specified resolution sequence — not `CLOSED`, since one Founder decision
+(dispute-resolution forum/seat/rules — the disputes clause cannot be drafted without it, and this
+task's own governing instructions withhold authority to select it) and the liability-cap figures
+remain genuinely open. `DEC-LEGAL-002` Decision Register `Status` is **unchanged** (`OPEN_LEGAL`) —
+a `Notes`-field addendum records the reconciliation, following the existing FD-1 precedent of
+updating Notes without flipping Status.
+
+A section-by-section Terms Drafting Readiness assessment found 14 of 16 Core Business Terms sections
+ready to draft on principle-based language now; the Disputes/corrections and Liability sections are
+not, pending the two Founder decisions above.
+
+No `functions/`, `apps/web/`, Firestore Rules, dependency, or config change anywhere in this entire
+governance thread. Docs-only. Full 48-point report:
+[`DEC-LEGAL-002-LEGAL-OPINION-RECON-001-reconciliation-report-2026-08-29.md`](../05-implementation/reports/DEC-LEGAL-002-LEGAL-OPINION-RECON-001-reconciliation-report-2026-08-29.md).
+
+**Final gate:** **`DEC-LEGAL-002 LEGAL OPINION RECONCILED — FOUNDER DECISIONS REMAIN BEFORE TERMS
+DRAFTING`**.
