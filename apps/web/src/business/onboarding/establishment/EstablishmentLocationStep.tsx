@@ -17,6 +17,7 @@ import { useState } from "react";
 import { useTranslation } from "../../../i18n";
 import { Button, TextField } from "../../../components/ui/formPrimitives";
 import { useCreateBusinessMutation } from "../../hooks/businessMutations";
+import { optionalField } from "../../api/optionalField";
 import { MutationError } from "../MutationError";
 import type { EstablishmentIdentityValues } from "./EstablishmentIdentityStep";
 
@@ -60,7 +61,7 @@ export function EstablishmentLocationStep({
       {
         displayName: identityValues.displayName,
         primaryCategoryId: identityValues.primaryCategoryId,
-        businessTypeId: identityValues.businessTypeId || undefined,
+        ...optionalField("businessTypeId", identityValues.businessTypeId),
         contactPhone: identityValues.contactPhone,
         countryCode,
         city,

@@ -26,6 +26,11 @@
  * nested inside any shell that already provides one, so without its own
  * switcher a direct visit had no on-page way to change language
  * (`IDENTITY-PROFILE-B-REVIEW` finding).
+ *
+ * `ENG-P3-002-UI-IMP-H` Phase L2 finding: every state's root `<section>` now
+ * carries `mx-auto max-w-lg p-6` (matching `NewBusinessPage`'s established
+ * page-padding convention) — it previously rendered with no padding at all,
+ * flush against the viewport edge, unlike every other top-level page.
  */
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
@@ -68,7 +73,7 @@ export function DisplayNameProfile({ auth, functions }: DisplayNameProfileProps)
 
   if (query.status === "pending") {
     return (
-      <section>
+      <section className="mx-auto max-w-lg p-6">
         <LanguageSwitcher />
         <p>{t("profile.loading")}</p>
       </section>
@@ -77,7 +82,7 @@ export function DisplayNameProfile({ auth, functions }: DisplayNameProfileProps)
 
   if (query.status === "error") {
     return (
-      <section>
+      <section className="mx-auto max-w-lg p-6">
         <LanguageSwitcher />
         <h1 className="mb-1 text-xl font-semibold">{t("profile.title")}</h1>
         <p role="alert" className="mt-2 text-sm text-red-600">
@@ -113,7 +118,7 @@ export function DisplayNameProfile({ auth, functions }: DisplayNameProfileProps)
 
   if (!showForm) {
     return (
-      <section>
+      <section className="mx-auto max-w-lg p-6">
         <LanguageSwitcher />
         <h1 className="mb-1 text-xl font-semibold">{t("profile.title")}</h1>
         <p className="mb-6 text-[var(--color-muted-foreground)]">{t("profile.subtitle")}</p>
@@ -141,7 +146,7 @@ export function DisplayNameProfile({ auth, functions }: DisplayNameProfileProps)
   const fieldError = tooLong ? t("validation.tooLong") : undefined;
 
   return (
-    <section>
+    <section className="mx-auto max-w-lg p-6">
       <LanguageSwitcher />
       <h1 className="mb-1 text-xl font-semibold">{t("profile.title")}</h1>
       <p className="mb-6 text-[var(--color-muted-foreground)]">{t("profile.subtitle")}</p>

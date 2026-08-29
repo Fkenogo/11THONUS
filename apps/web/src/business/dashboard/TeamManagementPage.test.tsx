@@ -125,7 +125,7 @@ describe("TeamManagementPage (Package F, MGMT-01/DASH-04)", () => {
         {
           invitationId: "inv-1",
           role: "staff",
-          status: "invited",
+          status: "pending",
           deliveryType: "email",
           invitedAt: "2026-08-01T00:00:00.000Z",
           expiresAt: "2026-08-08T00:00:00.000Z",
@@ -153,7 +153,7 @@ describe("TeamManagementPage (Package F, MGMT-01/DASH-04)", () => {
         {
           invitationId: "inv-1",
           role: "staff",
-          status: "invited",
+          status: "pending",
           deliveryType: "email",
           invitedAt: "2026-08-01T00:00:00.000Z",
           expiresAt: "2026-08-08T00:00:00.000Z",
@@ -174,7 +174,7 @@ describe("TeamManagementPage (Package F, MGMT-01/DASH-04)", () => {
         {
           invitationId: "inv-2",
           role: "staff",
-          status: "invited",
+          status: "pending",
           deliveryType: "phone",
           invitedAt: "2026-08-01T00:00:00.000Z",
           expiresAt: "2026-08-08T00:00:00.000Z",
@@ -192,7 +192,7 @@ describe("TeamManagementPage (Package F, MGMT-01/DASH-04)", () => {
         {
           invitationId: "inv-1",
           role: "manager",
-          status: "invited",
+          status: "pending",
           deliveryType: "email",
           invitedAt: "2026-08-01T00:00:00.000Z",
           expiresAt: "2026-08-08T00:00:00.000Z",
@@ -263,7 +263,7 @@ describe("TeamManagementPage (Package F, MGMT-01/DASH-04)", () => {
         {
           invitationId: "inv-1",
           role: "staff",
-          status: "invited",
+          status: "pending",
           deliveryType: "email",
           invitedAt: "2026-08-01T00:00:00.000Z",
           expiresAt: "2026-08-08T00:00:00.000Z",
@@ -284,7 +284,7 @@ describe("TeamManagementPage (Package F, MGMT-01/DASH-04)", () => {
         {
           invitationId: "inv-1",
           role: "staff",
-          status: "invited",
+          status: "pending",
           deliveryType: "email",
           invitedAt: "2026-08-01T00:00:00.000Z",
           expiresAt: "2026-08-08T00:00:00.000Z",
@@ -305,7 +305,7 @@ describe("TeamManagementPage (Package F, MGMT-01/DASH-04)", () => {
         {
           invitationId: "inv-1",
           role: "staff",
-          status: "invited",
+          status: "pending",
           deliveryType: "email",
           invitedAt: "2026-08-01T00:00:00.000Z",
           expiresAt: "2026-08-08T00:00:00.000Z",
@@ -331,7 +331,7 @@ describe("TeamManagementPage (Package F, MGMT-01/DASH-04)", () => {
         {
           invitationId: "inv-1",
           role: "staff",
-          status: "invited",
+          status: "pending",
           deliveryType: "email",
           invitedAt: "2026-08-01T00:00:00.000Z",
           expiresAt: "2026-08-08T00:00:00.000Z",
@@ -410,7 +410,7 @@ describe("TeamManagementPage (Package F, MGMT-01/DASH-04)", () => {
         {
           invitationId: "inv-1",
           role: "staff",
-          status: "invited",
+          status: "pending",
           deliveryType: "phone",
           invitedAt: "2026-08-01T00:00:00.000Z",
           expiresAt: "2026-08-08T00:00:00.000Z",

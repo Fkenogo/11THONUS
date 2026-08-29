@@ -11,20 +11,20 @@ describe("toCallListStaffInvitations", () => {
       {
         invitationId: "inv-1",
         role: "staff",
-        status: "invited",
+        status: "pending",
         deliveryType: "email",
         invitedAt: "t1",
         expiresAt: "t2",
       },
     ];
     const call = toCallListStaffInvitations(async (payload) => {
-      expect(payload).toMatchObject({ businessId: "b-1", statusFilter: "invited" });
+      expect(payload).toMatchObject({ businessId: "b-1", statusFilter: "pending" });
       return { data: invitations };
     });
 
     const result = await call(
       { getIdToken: async () => "t", referenceType: "email" },
-      { businessId: "b-1", statusFilter: "invited" },
+      { businessId: "b-1", statusFilter: "pending" },
     );
 
     expect(result).toEqual(invitations);
@@ -35,7 +35,7 @@ describe("toCallListStaffInvitations", () => {
       {
         invitationId: "inv-1",
         role: "staff",
-        status: "invited",
+        status: "pending",
         deliveryType: "email",
         email: "invitee@example.com",
         invitedAt: "t1",

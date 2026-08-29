@@ -3,7 +3,16 @@
 import { httpsCallable, type Functions } from "firebase/functions";
 import { toCallWithActor, type AuthenticatedActor } from "./businessCallableClient";
 
-export type InvitationStatus = "invited" | "accepted" | "revoked" | "expired";
+/**
+ * Matches the backend's closed vocabulary exactly
+ * (`functions/src/domains/permissions/models/invitationStatus.ts`'s
+ * `INVITATION_STATUSES`) — `ENG-P3-002-UI-IMP-H` Phase H finding: this used
+ * to read `"invited"`, which the live `listStaffInvitations` response never
+ * actually returns (it returns `"pending"`), so every pending invitation
+ * was silently invisible in the Team Management UI (the status-filter
+ * comparison in `TeamManagementPage.tsx` never matched).
+ */
+export type InvitationStatus = "pending" | "accepted" | "revoked" | "expired";
 
 export type StaffInvitationSummary = {
   invitationId: string;

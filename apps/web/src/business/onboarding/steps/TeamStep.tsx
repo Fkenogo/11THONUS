@@ -20,7 +20,7 @@ export function TeamStep({
 }) {
   const { t } = useTranslation("business");
   const statusLabel: Record<string, string> = {
-    invited: t("team.statusInvited"),
+    pending: t("team.statusInvited"),
     accepted: t("team.statusAccepted"),
     revoked: t("team.statusRevoked"),
     expired: t("team.statusExpired"),
@@ -83,7 +83,7 @@ export function TeamStep({
             <span>
               {invitation.role} — {statusLabel[invitation.status] ?? invitation.status}
             </span>
-            {invitation.status === "invited" && (
+            {invitation.status === "pending" && (
               <button
                 type="button"
                 className="text-red-600 underline"
