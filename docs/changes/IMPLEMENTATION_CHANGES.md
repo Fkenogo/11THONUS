@@ -4893,3 +4893,53 @@ level (`CDR-001-capability-delivery-roadmap.md`) — unchanged, separately gover
 complete by this closure. See the
 [merge/closure report](../05-implementation/reports/eng-p3-002-corr-est-idemp-001-merge-closure-report-2026-08-29.md)
 for the full 27-point account.
+
+## `ENG-P3-002-CLOSURE-001` — Founder Closure Recording & Capability 3 Readiness Assessment (2026-08-29)
+
+Entry gate re-verified independently, not assumed from the prior task's own report: all four merge
+SHAs (`a5ae068`, `5cc1aa7`, `6a08235`, `0cbc50d`) confirmed ancestral to `origin/main` via
+`git merge-base --is-ancestor`; current `main` tip (`0cbc50d`) CI confirmed `success`; no later
+commit reopens `ENG-P3-002`; no open PR touches the business/idempotency domain; `ENG-P3-002` not
+already administratively closed anywhere else in the repository.
+
+**Founder decision recorded: `ENG-P3-002` is approved for closure and is now `CLOSED`** —
+Packages A–H (including Package G's `readDisplayNamesByUserIds` privacy/fail-closed correction) and
+`IDENTITY-PROFILE-A`/`B` all independently reconfirmed merged (each verified against its actual
+merge commit, not the narrative status text alone — Package A's own two merges, `84995e6`/`99c1fc8`
+via PR #173/#175, were found via `git log`, not `IMPLEMENTATION_CHANGES.md`, whose Package-A entries
+never recorded a "merged" follow-up); the EST-02 idempotency correction complete; hosted Founder QA
+deferred/not required for closure (Founder disposition, unchanged); no blocking engineering finding
+remains. Recorded in `CDR-001-capability-delivery-roadmap.md` §2 and §5 (Capability 3 section) —
+the two documents this task determined are actually kept live for capability/work-package status
+(`engineering-implementation-programme.md` and `docs/00-governance/requirements-traceability-matrix.md`
+were checked and found stale/unmaintained for this scope — not touched, per "do not rewrite
+historical reports" and to avoid unrelated-file scope creep). Deferred items preserved, not
+reopened: `Business.address`/`BusinessBranch.address` model debt; the `legalName`/`logoUrl`/
+`supportedLanguages` read-contract gap; Terms reacceptance/versioning pending `DEC-LEGAL-002`;
+unsupported Team actions; multi-location; the transient category-label flash; `LanguageSwitcher`
+cosmetic spacing; intermittent unrelated CI timing flakes.
+
+**Capability 3 readiness independently assessed** against the authoritative definitions found —
+`CDR-001` §5's own Capability 3 objective/work-package list, and `engineering-implementation-
+programme.md`'s Phase 3/P3 row (TRD22 §22.13 exit criteria) — not inferred from `ENG-P3-002`'s own
+numbering. Every named major work package is `Complete`/`Closed` except `ENG-P3-003` (Knowledge
+Studio), which `DEC-CKS-002` (Founder-approved, `ENG-P3-001-DESIGN-001` §26) explicitly dispositions
+as not launch-blocking. However, direct source inspection (`businessLifecycleCommand.ts`'s
+`assertCurrentBusinessTermsAccepted`) confirms `submitBusinessForVerification` fails closed today
+whenever no governed Terms version is configured — exactly the state Package H's own evidence
+(`07-business-terms-unavailable-*.png`) shows — so no business can currently complete onboarding
+end-to-end. `DEC-LEGAL-002` (Terms content) is confirmed `OPEN_LEGAL` in `decision-register.md`.
+**Recommendation: `CAPABILITY 3 IN PROGRESS — blocked on DEC-LEGAL-002 (Terms content) resolution
+and governed Terms-version configuration`** — not `READY FOR FOUNDER CLOSURE` (the capability's own
+customer-facing completion criterion is not yet achievable end-to-end) and not `NOT STARTED` (which
+would be false — every named engineering work package is genuinely complete or Founder-dispositioned
+non-blocking; the roadmap's own `Planned`/`Not started` labels for Capability 3 were stale and are
+corrected in place). Full 16-point report, requirements matrix, and evidence:
+[`eng-p3-002-closure-001-capability-3-readiness-report-2026-08-29.md`](../05-implementation/reports/eng-p3-002-closure-001-capability-3-readiness-report-2026-08-29.md).
+
+No feature implementation performed. No `functions/`, `apps/web/`, Firestore Rules, dependency, or
+config change. Docs-only.
+
+**Final gate:** **`ENG-P3-002 CLOSED — CAPABILITY 3 STATUS ASSESSED`** — followed by
+**`CAPABILITY 3 IN PROGRESS — blocked on DEC-LEGAL-002 (Terms content) resolution and governed
+Terms-version configuration`**.
