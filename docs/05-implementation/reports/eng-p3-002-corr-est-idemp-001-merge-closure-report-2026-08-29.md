@@ -89,7 +89,7 @@ Re-run on the final merged head (`028014d`, PR #197's actual merge commit conten
 | GitHub Actions CI on PR #197's final head (`028014d`) | **pass** (run `33241613069`, 6m28s) |
 | GitHub Actions CI post-merge on `main` (`6a08235`) | **pass** (run `33241895178`) |
 
-No new environmental artifact beyond the one already disclosed in §9 and the prior review's disclosed local lint/worktree finding (both re-confirmed unrelated to this correction).
+One additional environmental artifact, per Phase M's instruction to separate these from source regressions: CI's first run on the docs-only closure-sync PR (#199, run `33242285934`) failed a single, pre-existing, unrelated test — `commandDispatcher.emulator.test.ts > dispatchCommand — concurrent-worker safety (ENG-P1-002-CR1) > two simultaneous commands with the same idempotency key execute the handler exactly once`, timed out at 5000ms. This file (`functions/src/shared/commands/commandDispatcher.ts`/`.emulator.test.ts`) is untouched by this correction (last modified by an unrelated commit `4b00b7c`) and is the same disclosed class of "concurrency-timing idempotency-test flake" this repository's own historical closure reports (e.g. `CDR-001-capability-delivery-roadmap.md`'s Capability-2 G2 entry) have repeatedly noted before. Triggered `gh run rerun --failed` on the identical commit — passed clean (5m32s), confirming the flake. No new environmental artifact beyond this, §9, and the prior review's disclosed local lint/worktree finding (all confirmed unrelated to this correction).
 
 ## 14. #197 merge SHA
 
