@@ -4858,3 +4858,38 @@ re-confirmed green (GitHub Actions run `33240795040`, `conclusion: success`). Pa
 merged; `ENG-P3-002` is **not** closed and Capability 3 remains **Open/Not started** — both
 contingent on PR #197 (`ENG-P3-002-CORR-EST-IDEMP-001`) landing next per the Founder's explicit
 sequencing decision.
+
+## `ENG-P3-002-CORR-EST-IDEMP-001-REVIEW` — Merge & Closure (2026-08-29)
+
+Founder-directed sequencing executed: PR #197 (EST-02 idempotency correction) updated via a
+non-destructive `git merge origin/main` onto the post-#196 baseline (verified, not assumed, zero
+file overlap: `git diff` between the pre-merge and post-merge tip over the correction's own files
+produced no output) and fully revalidated — deterministic processing-state test, completed-state
+replay, real-concurrency test, client key-retention test, cross-user isolation test, functions unit
+(1584 passed), functions emulator (724 passed/2 skipped/0 failed), web unit (661 passed), typecheck,
+canonical CI-equivalent lint, production build, format, secret scan, and the CI-run fixture-backed
+Playwright harness (32/32) all re-run clean on the final merged head `028014d`. Package H's own
+live-emulator establishment Playwright suite (`pnpm test:e2e:emulator`) could not be safely executed
+in this session — the standard emulator ports are held by an unrelated Claude Code session's own
+Firebase Emulator Suite instance in a different scratchpad directory, serving stale code; reusing or
+disrupting it was declined as unsafe for shared-machine state this session doesn't own. This gap is
+disclosed, not glossed over — and is not a CI regression, since `.github/workflows/ci.yml` does not
+run that script either (confirmed by direct read); the underlying idempotency logic is independently
+proven via the in-process emulator suite, which exercises the identical production code path the
+callable itself invokes.
+
+Merged into `main` via merge commit `6a0823566929b982d417a00cc53e75b678980555` (not self-merged in
+violation of instruction — CI passed on the exact reviewed head `028014d` before merge). Post-merge
+CI on `main` at `6a08235` re-confirmed green (GitHub Actions run `33241895178`,
+`conclusion: success`).
+
+**`ENG-P3-002 READY FOR FOUNDER CLOSURE`** — Package H and the EST-02 idempotency correction are
+both now merged and closed; no blocking `ENG-P3-002` engineering defect remains known; deferred
+items (the `Business.address`/`BusinessBranch.address` product decision, the Business-Profile
+read-contract gap, the transient category-label flash, `LanguageSwitcher` cosmetic spacing) remain
+documented separately, none touched here; hosted Founder QA remains explicitly deferred, not
+required for current closure. **Capability 3 remains `Not started`** at the capability-roadmap
+level (`CDR-001-capability-delivery-roadmap.md`) — unchanged, separately governed, not marked
+complete by this closure. See the
+[merge/closure report](../05-implementation/reports/eng-p3-002-corr-est-idemp-001-merge-closure-report-2026-08-29.md)
+for the full 27-point account.
