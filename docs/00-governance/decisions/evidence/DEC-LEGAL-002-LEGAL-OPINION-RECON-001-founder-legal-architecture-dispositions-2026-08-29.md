@@ -1,13 +1,13 @@
-> **Title:** Founder Legal Architecture Disposition Record — LEG-FD-01 through LEG-FD-13
-> **Version:** 1.0 · **Status:** Founder-approved product/legal-architecture positions, recorded 2026-08-29 · **Classification:** Working (governance record)
+> **Title:** Founder Legal Architecture Disposition Record — LEG-FD-01 through LEG-FD-15
+> **Version:** 2.0 (2026-08-29 — adds LEG-FD-14/15, task `DEC-LEGAL-002-FOUNDER-CLOSE-001`) · **Status:** Founder-approved product/legal-architecture positions · **Classification:** Working (governance record)
 > **Governing document:** [Decision Register](../decision-register.md) `DEC-LEGAL-002` — this record informs `DEC-LEGAL-002`; it does not itself close it
-> **Task:** `DEC-LEGAL-002-LEGAL-OPINION-RECON-001`
+> **Task:** `DEC-LEGAL-002-LEGAL-OPINION-RECON-001` (LEG-FD-01–13, v1.0); `DEC-LEGAL-002-FOUNDER-CLOSE-001` (LEG-FD-14–15, v2.0 — continuation, not a restart)
 > **Inputs reconciled:** [External Legal Opinion (verbatim)](DEC-LEGAL-002-LEGAL-OPINION-RECON-001-external-legal-opinion-body-2026-08-29.md); Founder FD-1–FD-7 ([Legal Counsel Handoff Pack](DEC-LEGAL-002-FOUNDER-DISP-001-legal-counsel-handoff-pack-2026-08-29.md) §3); `DEC-LOY-011` (CONFIRMED); existing governed architecture (TRD suite, Decision Register, CDR-001).
-> **Relationship to FD-1–FD-7:** LEG-FD-01–13 are a distinct, later Founder disposition set. They do not reopen, contradict, or supersede FD-1–FD-7 or `DEC-LOY-011` — where a topic overlaps (reward monetary character, suspension, exit, programme changes), the earlier disposition is preserved and LEG-FD-04–08 below add the *legal-form* qualification counsel's opinion prompted, cross-referenced rather than restated.
+> **Relationship to FD-1–FD-7:** LEG-FD-01–15 are a distinct, later Founder disposition set. They do not reopen, contradict, or supersede FD-1–FD-7 or `DEC-LOY-011` — where a topic overlaps (reward monetary character, suspension, exit, programme changes), the earlier disposition is preserved and LEG-FD-04–08 below add the *legal-form* qualification counsel's opinion prompted, cross-referenced rather than restated.
 
 # Purpose
 
-This record captures thirteen Founder positions on how 11thONUS reconciles the external Legal Opinion (`DEC-LEGAL-002-LEGAL-OPINION-RECON-001`'s reconciled evidence) against existing Founder product authority, confirmed decisions, and governed architecture. These are **governance-architecture and product-policy positions**, not final Terms language and not, by themselves, a legal conclusion. They set the boundaries within which Core Business Terms may later be drafted.
+This record captures fifteen Founder positions on how 11thONUS reconciles the external Legal Opinion (`DEC-LEGAL-002-LEGAL-OPINION-RECON-001`'s reconciled evidence) against existing Founder product authority, confirmed decisions, and governed architecture. These are **governance-architecture and product-policy positions**, not final Terms language and not, by themselves, a legal conclusion. They set the boundaries within which Core Business Terms may later be drafted. LEG-FD-14/15 (added 2026-08-29, `DEC-LEGAL-002-FOUNDER-CLOSE-001`) resolve the two items LEG-FD-11 and the Reconciliation Matrix's row 9 had left open — see the "16/16" readiness conclusion in the [Terms Drafting Readiness Note](DEC-LEGAL-002-LEGAL-OPINION-RECON-001-terms-drafting-readiness-2026-08-29.md).
 
 ---
 
@@ -176,8 +176,50 @@ Material changes affecting rights or obligations require affirmative reacceptanc
 
 ---
 
+## LEG-FD-14 — B2B Dispute Resolution
+
+**Disposition: APPROVED** (`DEC-LEGAL-002-FOUNDER-CLOSE-001`, 2026-08-29 — resolves the item LEG-FD-11 explicitly left open).
+
+Business ↔ 11thONUS contractual disputes use: good-faith resolution → mediation where appropriate → binding arbitration if unresolved.
+
+**Core Business Terms arbitration architecture:**
+
+- **Seat:** Kigali, Rwanda.
+- **Institution/rules:** Kigali International Arbitration Centre (KIAC).
+- **Language:** English or French.
+
+Jurisdictional overlays may modify this architecture where mandatory applicable law requires a different mechanism for a specific jurisdiction's Business Terms addendum — this is the Layer 2 overlay mechanism already described in the Terms Drafting Readiness Note §1, not an exception invented here.
+
+**Scope boundary:** this disposition applies only to Business ↔ 11thONUS contractual disputes. It does **not** impose the same arbitration architecture on customer disputes — Customer ↔ 11thONUS and Customer ↔ Business dispute treatment remains governed by LEG-FD-11's existing principle-level architecture (platform complaint mechanism → applicable external/legal remedies; mandatory customer rights to local courts/regulators unaffected). No mandatory consumer arbitration is introduced by this disposition.
+
+**What is deliberately not decided here:** additional procedural periods (e.g., a time limit for bringing a claim), cost-allocation mechanics, the number of arbitrators, or other arbitration procedural detail beyond seat/institution/language. The Legal Opinion (§13) raises these as possible drafting elements ("clear cost allocation," "time limits for claims"), but none is already supported by governed authority at a specific value, so none is invented here — they are left to the controlled Terms-drafting stage, where KIAC's own default procedural rules will supply defaults unless the drafted clause displaces them.
+
+**Reconciliation with the Legal Opinion §8/§13:** Reconciliation Matrix rows 8 and 13 (previously classified F — deferred) are now resolved and reclassified. The opinion's own recommendation (Kigali/KIAC seat, English/French, arbitration for B2B) is adopted; the opinion's further proposal of an explicit "clear opt-out" for the arbitration clause, and its Customer-Terms-side "no mandatory arbitration" position, are both already consistent with this disposition's scope boundary and require no separate action.
+
+---
+
+## LEG-FD-15 — Liability Architecture
+
+**Disposition: APPROVED WITH JURISDICTIONAL/LEGAL QUALIFICATION** (`DEC-LEGAL-002-FOUNDER-CLOSE-001`, 2026-08-29 — resolves the Liability item Reconciliation Matrix row 9 had left open).
+
+**Business claims.** Subject to applicable law and non-excludable liability, the aggregate direct contractual liability of 11thONUS to a Business is capped at the total fees actually paid by that Business to 11thONUS during the 12 months immediately preceding the event giving rise to the claim.
+
+**Zero-fee Businesses.** No nominal or arbitrary monetary cap is invented for a free, complimentary, or pilot Business that has paid no fees during that period (a strict application of the fees-paid formula would produce a cap of zero, which this disposition does not attempt to correct with an invented substitute figure). Appropriate treatment for a zero-fee arrangement is left to final legal drafting and/or future commercial governance (potentially engaging `DEC-SUB-013`, Complimentary/free plans policy, itself unresolved and untouched by this disposition) — not decided or estimated here.
+
+**Customer claims.** Counsel's suggested nominal "$25 USD / BIF equivalent" global cap (Legal Opinion §9) is **not adopted**. Portable principle: 11thONUS liability to customers is limited to the maximum extent permitted by applicable law, subject to mandatory consumer rights and jurisdiction-specific requirements — no invented fixed-currency figure is substituted for that legal-drafting judgment.
+
+**Separation of liability preserved.** Liability attributable to 11thONUS (platform operation, its own conduct) remains distinct from Business Reward Program/fulfilment liability, which belongs to the Business — consistent with FD-2/FD-3/FD-6 and LEG-FD-04's existing "11thONUS is not the guarantor or fulfiller" position. This disposition does not merge the two.
+
+**Mandatory-law boundary.** No limitation or exclusion of liability adopted under this disposition purports to override a liability that applicable law does not permit the parties to exclude or limit (e.g., liability for fraud, wilful misconduct, gross negligence, death or personal injury, or a non-excludable statutory consumer warranty — Legal Opinion §11's own "Prohibited Exclusions" table is accepted as jurisdiction-specific legal input on this exact point, Reconciliation Matrix row 11, classification C, unaffected by this disposition). The standard qualifying phrase "to the maximum extent permitted by applicable law" is preserved as the intended drafting pattern for every limitation/exclusion clause — this disposition does not authorize turning counsel's recommendations into broader exclusions than applicable law permits.
+
+**Reconciliation with the Legal Opinion §9:** Reconciliation Matrix row 9 (previously classified D — open) is now resolved and reclassified. The opinion's 12-month-fees Business cap structure is adopted; its nominal fixed-amount customer cap is **not** adopted (reclassified in part to E — conflicts with the portable "maximum extent permitted by applicable law" principle, expressly reconciled); its indirect/consequential/punitive/special-damages disclaimer structure and its Rwanda/Burundi jurisdiction-specific liability notes (notice-and-takedown, ARCT obligations) remain accepted as drafting/jurisdictional input, unaffected.
+
+---
+
 ## Cross-Cutting Notes
 
 - No LEG-FD item above authorizes any Terms configuration, Terms drafting, application/source change, or Firebase/configuration change. All are docs-only governance positions.
 - No LEG-FD item reopens FD-1–FD-7 or `DEC-LOY-011`. Where overlap exists, the earlier disposition is the controlling substantive rule; the LEG-FD item adds only the legal-form qualification prompted by the opinion.
 - Subscription boundary (Legal Opinion §20) is addressed separately — see the Reconciliation Matrix row 20 and the Terms Drafting Readiness Note §"Subscription Boundary." No `DEC-SUB-*` status is changed by this record.
+- LEG-FD-14/15 (v2.0, `DEC-LEGAL-002-FOUNDER-CLOSE-001`) resolve the two items this record's v1.0 left open (dispute forum/seat/rules; liability caps), bringing Core Business Terms drafting readiness to 16/16 sections at the architecture/decision level — see the Terms Drafting Readiness Note. This does not itself draft, approve, configure, or make effective any Terms content or version, and does not close `DEC-LEGAL-002`.
+- No LEG-FD item invents an arbitrary customer liability cap, a universal 60-day run-off, a universal cash-settlement rule, or a Kirundi application-language requirement — each was considered and expressly declined (LEG-FD-15, LEG-FD-07, LEG-FD-08, LEG-FD-02 respectively).
