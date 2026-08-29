@@ -1,8 +1,11 @@
 # ENG-P3-002-CORR-EST-IDEMP-001-REVIEW — Independent Concurrency/Idempotency Review
 
-**Gate:** `ESTABLISHMENT IDEMPOTENCY REVIEW BLOCKED — PR #196 (Package H, `ENG-P3-002-UI-IMP-H`) is open and draft; PR #197 does not contain it. Per this review's own Phase A/J instruction, this is a STOP-before-merge condition, not a technical merge conflict (zero file overlap, both independently green against the same `main` tip).`
+**Original gate (superseded below):** `ESTABLISHMENT IDEMPOTENCY REVIEW BLOCKED — PR #196 (Package H, `ENG-P3-002-UI-IMP-H`) is open and draft; PR #197 does not contain it.` Per this review's own Phase A/J instruction this was a STOP-before-merge condition, not a technical merge conflict (zero file overlap, both independently green against the same `main` tip).
 
-The correction under review is sound and independently re-verified end-to-end (see below). It is **not merged** in this session, pending the Founder's decision on PR #196/#197 sequencing.
+**Final gate:** `ESTABLISHMENT IDEMPOTENCY CORRECTION MERGED AND CLOSED — SAME-KEY CONCURRENT/REPEATED CREATEBUSINESS OPERATIONS CONVERGE ON ONE AUTHORITATIVE BUSINESS.` The Founder resolved the sequencing blocker: merge PR #196 (Package H) first, then update and revalidate PR #197 against the new baseline, then merge. Both steps executed in this session — see the addendum below and the dedicated
+[`ENG-P3-002-CORR-EST-IDEMP-001-REVIEW` merge/closure report](eng-p3-002-corr-est-idemp-001-merge-closure-report-2026-08-29.md) for the full Founder-directed execution (Steps 1–5, the required 27-point report, and the final ENG-P3-002 closure assessment).
+
+The correction under review is sound and was independently re-verified end-to-end below *before* any merge decision — that analysis stands unchanged. What follows in this document is the original independent review; the subsequent merge execution is documented separately per the Founder's own numbered report structure.
 
 ## 1. Entry PR/head/CI
 
@@ -255,3 +258,7 @@ Decide the PR #196/#197 sequencing:
 4. Only then consider ENG-P3-002 closure / Capability 3 completion, contingent on both packages' own final states.
 
 If the Founder instead wants #197 merged first (equally safe given zero file overlap), that is also viable — but the review task's explicit Phase J instruction was to stop and present this choice rather than pick one unilaterally.
+
+---
+
+**Postscript (2026-08-29):** The Founder chose option 1 above (Package H first). Execution of that decision — PR #196 merge, closure sync, PR #197 update/revalidation/merge, and the final ENG-P3-002 closure assessment — is documented in the dedicated [`eng-p3-002-corr-est-idemp-001-merge-closure-report-2026-08-29.md`](eng-p3-002-corr-est-idemp-001-merge-closure-report-2026-08-29.md), not by editing the historical analysis above.
