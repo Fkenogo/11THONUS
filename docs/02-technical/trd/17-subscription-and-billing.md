@@ -432,7 +432,7 @@ The platform should preserve, subject to policy:
 - previous On Us Moments;
 - customer purchase history.
 
-Rules for redemption during business suspension shall be clearly defined.
+Rules for redemption during business suspension are defined in §17.20, per `DEC-LOY-011` (CONFIRMED).
 
 # 17.19 Recommended Suspension Policy
 
@@ -446,9 +446,11 @@ For the MVP, a suspended business should normally:
 
 Customer verification of already-recorded Purchase Records may remain available for a limited policy window.
 
-Earned rewards should remain visible, but redemption rules during suspension must be governed explicitly.
+Earned rewards should remain visible. Redemption during suspension is governed explicitly by §17.20.
 
 # 17.20 Reward Liability During Suspension
+
+**Traceability:** the requirement below reflects `DEC-LOY-011` — "Reward redemption during business suspension" — recorded **CONFIRMED** in the [Decision Register](../../00-governance/decisions/decision-register.md) (Founder resolution, `DEC-LEGAL-002-FOUNDER-DISP-001`, 2026-08-29: Option (a) as the default, subject to governed exceptions). The Decision Register entry is the authoritative record of the decision itself, including the historical A–D options considered and the Founder's disposition text in full; this section states the resulting technical requirement.
 
 The platform must distinguish between:
 
@@ -458,6 +460,14 @@ The platform must distinguish between:
 Suspending the software subscription does not automatically erase valid customer rewards.
 
 The business remains responsible for rewards already earned under active Reward Programs, subject to the governing commercial terms.
+
+**Redemption during suspension — default rule.** Valid rewards earned before a Business's suspension remain redeemable during suspension by default. Suspension arising solely from the Business's commercial or subscription relationship with 11thONUS (including subscription/payment status) shall not, by itself, block redemption of otherwise valid earned rewards.
+
+**New activity vs. redemption.** Suspension may restrict new loyalty activity (new Purchase Records, new Reward Programs, and the other capabilities listed in §17.19) per the suspension policy already stated there. Restricting new activity does not, by itself, extend to blocking redemption of rewards already earned before suspension.
+
+**Governed exceptions.** Redemption may nevertheless be restricted, paused, or subject to additional review where the specific reason for suspension makes continued redemption inappropriate or unsafe — including circumstances involving suspected fraud, security or integrity concerns, legal or regulatory requirements, disputed reward validity, or another governed exception. Manual review is not the default treatment. **The exception-handling workflow — how such restriction or review is triggered, evaluated, and resolved — is not designed by this requirement and is a future implementation gap**, to be addressed by a separate, later-governed engineering work package, not inferred here.
+
+**Responsibility.** The participating Business remains responsible for fulfilment of its reward obligations. Continued redemption does not make 11thONUS the guarantor or fulfiller of the reward.
 
 # 17.21 Subscription Usage
 

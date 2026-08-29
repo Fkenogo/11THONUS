@@ -898,18 +898,13 @@ The platform must confirm whether any launch program may reward a quantity great
 
 **Required before:** Reward Program schema freeze.
 
-**OPD-005 - Reward Use During Business Suspension**
+**OPD-005 - Reward Use During Business Suspension** — ✅ resolved 2026-08-29 (`DEC-LOY-011`, CONFIRMED; see [Decision Register](../../00-governance/decisions/decision-register.md))
 
-The product must define whether already-earned rewards remain redeemable:
+Already-earned, validly earned rewards remain redeemable during suspension **by default**. Suspension arising solely from the Business's commercial or subscription relationship with 11thONUS does not by itself block redemption of otherwise valid earned rewards. Redemption may nevertheless be restricted, paused, or subject to additional review where the specific reason for suspension makes continued redemption inappropriate or unsafe — including circumstances involving suspected fraud, security or integrity concerns, legal or regulatory requirements, disputed reward validity, or another governed exception; manual review is not the default treatment. Suspension may separately restrict new loyalty activity per §17.19 of TRD17, which does not, by itself, extend to blocking redemption of rewards already earned. The participating Business remains responsible for fulfilment; 11thONUS does not become the guarantor or fulfiller of the reward. The exception-handling workflow itself (how such restriction/review is triggered, evaluated, and resolved) is not designed by this requirement — see [TRD17 §17.20](17-subscription-and-billing.md) for the full corresponding requirement.
 
-- throughout suspension;
-- during grace only;
-- subject to manual review;
-- unavailable until reactivation.
+**Original options considered (preserved for traceability, not superseded — resolved among them as stated above):** throughout suspension; during grace only; subject to manual review; unavailable until reactivation.
 
-Customer trust strongly favors preservation, but operational handling requires a clear rule.
-
-**Required before:** Subscription suspension implementation.
+**Required before:** Subscription suspension implementation. *(Resolved — no longer blocking; implementation may proceed against the confirmed rule above.)*
 
 **OPD-006 - Pending Unit Allocation Policy**
 

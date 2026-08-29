@@ -4943,3 +4943,264 @@ config change. Docs-only.
 **Final gate:** **`ENG-P3-002 CLOSED — CAPABILITY 3 STATUS ASSESSED`** — followed by
 **`CAPABILITY 3 IN PROGRESS — blocked on DEC-LEGAL-002 (Terms content) resolution and governed
 Terms-version configuration`**.
+
+## DEC-LEGAL-002-PREP-001 — Consumer/Loyalty Terms & Business Obligations Decision Preparation (2026-08-29)
+
+Prepared `DEC-LEGAL-002` (Consumer/loyalty terms and business reward obligations, `OPEN_LEGAL`,
+Priority D3) for Founder and external-legal-counsel resolution. Governance/decision-preparation
+only — no legal conclusion drawn, no option marked approved, no Terms content invented, no
+placeholder legal value created, and `DEC-LEGAL-002`/`EXT-LEG-002` statuses left unchanged
+(`OPEN_LEGAL`/`PENDING`).
+
+Reconstructed the current product model (platform/business/customer relationship, confirming the
+"platform standardises trust, not how businesses build customer relationships" principle against
+`11thONUS-at-a-Glance.md` and the Product Manifesto — no shared platform-wide loyalty programme
+assumed); a 19-topic Business Obligation Matrix and 14-topic Platform Responsibility Matrix (most
+rows marked `PRODUCT DECISION REQUIRED` or `LEGAL COUNSEL TO ADVISE` rather than answered by
+invention); a 17-question Legal Counsel Question Set; a 7-item Founder Decision Sheet (including the
+unreconciled tension — surfaced, not resolved, by the prior `ENG-P3-002-CLOSURE-001` report — between
+`DEC-LEGAL-002`'s Phase 14/15 "Required by" framing across the Decision Register, Decision
+Resolution Plan v1, and Master Workflow, and its confirmed Phase-3/Capability-3 runtime-blocking
+effect); a Terms Instrument Model and headings-only Content Architecture for Business Terms and
+Customer Terms; a subscription-terms reconciliation (classified `CURRENT DEC-LEGAL-002 SCOPE` —
+confirmed still in scope per the Decision Register's and `EXT-LEG-002`'s own text, not superseded or
+deferred, and distinct from the still-open `DEC-SUB-*` pricing/plan-catalogue values); and a
+documentation-only re-statement of the existing, already-built Terms implementation contract
+(`platformConfig/businessTerms.currentVersion` config document with no client write path, write-once
+acceptance-record schema, transactional fail-closed gate, reacceptance-on-version-change behavior) —
+strictly separated from the legal/governance values (real Terms content, real version identifier)
+still not authorized.
+
+No `functions/`, `apps/web/`, Firestore Rules, dependency, or config change. No Decision Register or
+External Dependencies Register field modified. Docs-only. Full 27-point report:
+[`DEC-LEGAL-002-PREP-001-decision-preparation-report-2026-08-29.md`](../05-implementation/reports/DEC-LEGAL-002-PREP-001-decision-preparation-report-2026-08-29.md).
+Deliverables in
+[`docs/00-governance/decisions/evidence/`](../00-governance/decisions/evidence/) (Product & Legal
+Decision Brief, Business Obligation Matrix, Legal Counsel Question Set, Founder Decision Sheet,
+Terms Content Architecture, Resolution Plan), all prefixed `DEC-LEGAL-002-PREP-001-`.
+
+**Final gate:** **`DEC-LEGAL-002 DECISION PACKAGE READY FOR FOUNDER AND LEGAL-COUNSEL REVIEW — NO
+LEGAL DECISION OR TERMS CONFIGURATION APPLIED`**.
+
+## DEC-LEGAL-002-FOUNDER-DISP-001 — Founder Product Dispositions Recorded & Legal-Counsel Handoff (2026-08-29)
+
+Recorded the Founder's dispositions on FD-1 through FD-7 (from the `DEC-LEGAL-002-PREP-001` Founder
+Decision Sheet) as Founder product/commercial positions informing `DEC-LEGAL-002` — **not legal
+conclusions, and `DEC-LEGAL-002` remains `OPEN_LEGAL`.** In full: re-prioritise the Business Terms
+component now as an immediate Capability 3 dependency, without weakening the existing fail-closed
+mechanism or bringing forward other Phase 14/15 legal items (FD-1); a participating Business's
+obligation to honour validly earned customer rewards survives that Business's own suspension (FD-2)
+and exit (FD-3) — subject to the applicable Reward Program terms and a legally-impossible-fulfilment
+exception, with 11thONUS never becoming the guarantor/fulfiller; 11thONUS may suspend/restrict a
+Business for governed trust, security, integrity, or compliance reasons without transferring the
+Business's reward-obligation responsibility to itself (FD-4); Businesses may change their Reward
+Programs prospectively but never retrospectively remove or materially reduce an already-earned
+reward (FD-5); rewards are not platform-held cash and create no general cash-withdrawal entitlement,
+without asserting they carry "no monetary value" (FD-6); and `DEC-LEGAL-002` may draft a
+general/structural subscription-terms framework now, inventing no specific plan/pricing value
+governed by open commercial decisions (FD-7).
+
+Reconciled the governance timing tension the prior `ENG-P3-002-CLOSURE-001` report surfaced but did
+not resolve: the Decision Register's `DEC-LEGAL-002` entry (`decision-register.md:1221`) — the sole
+authoritative status record — now states the Business Terms component is an immediate Capability 3
+dependency (Founder-reprioritised) while the remaining legal/pilot-gate items keep their original
+Phase 14/15 timing; `Status` (`OPEN_LEGAL`) and `Priority` (`D3`) are unchanged. The Decision
+Resolution Plan v1, Master Workflow, and Coding-Agent Prompt Register — historical planning
+snapshots already confirmed stale for current-status purposes — were deliberately left untouched to
+avoid rewriting programme history.
+
+Reconciled the `DEC-LEGAL-002-PREP-001` package in place (Founder Decision Sheet, Business
+Obligation Matrix, Product & Legal Decision Brief, Legal Counsel Question Set, Terms Content
+Architecture, Resolution Plan — each versioned 1.0 → 2.0) so legal counsel is now asked for legal
+form, enforceability, required wording, permitted exceptions, required notices, remedies, and
+consumer-protection/governing-law implications of the Founder's decided positions — not to choose
+the underlying product policy again. Produced a new, counsel-facing
+[Legal Counsel Handoff Pack](../00-governance/decisions/evidence/DEC-LEGAL-002-FOUNDER-DISP-001-legal-counsel-handoff-pack-2026-08-29.md)
+consolidating the factual product model, the FD-1–FD-7 positions, both obligation/responsibility
+matrices, the Terms architecture, and the full question set, without internal engineering material
+(no source file paths or schema detail).
+
+No `functions/`, `apps/web/`, Firestore Rules, dependency, or config change. `EXT-LEG-002` remains
+`PENDING`. Capability 3 remains `Open — engineering work packages complete; blocked on governed
+Terms-content configuration (DEC-LEGAL-002)`. No Terms version configured. Docs-only. Full 23-point
+report:
+[`DEC-LEGAL-002-FOUNDER-DISP-001-founder-disposition-recording-report-2026-08-29.md`](../05-implementation/reports/DEC-LEGAL-002-FOUNDER-DISP-001-founder-disposition-recording-report-2026-08-29.md).
+
+**Final gate:** **`DEC-LEGAL-002 FOUNDER PRODUCT POSITIONS RECORDED — LEGAL-COUNSEL HANDOFF READY;
+DEC-LEGAL-002 REMAINS OPEN PENDING LEGAL REVIEW`**.
+
+## DEC-LOY-011-RECON-001 — DEC-LOY-011 Founder Resolution Recorded; DEC-LEGAL-002 Handoff Reconciled (2026-08-29)
+
+A read-only assessment (`DEC-LOY-011-RECON-001`) first found that `DEC-LEGAL-002-FOUNDER-DISP-001`'s
+FD-2 disposition only **partially** resolved the separate, pre-existing `DEC-LOY-011` ("Reward
+redemption during business suspension," `OPEN_FOUNDER`) decision: FD-2 reinforced the already-
+confirmed survival-of-earned-obligation principle, but `DEC-LOY-011`'s own genuine open question —
+which redemption model applies during suspension (throughout / grace-only / manual-review / blocked-
+until-reactivation) — remained unanswered. The Founder has now resolved that remaining question:
+**Option (a) as the default, subject to governed exceptions** — valid rewards earned before Business
+suspension remain redeemable during suspension by default; suspension may stop/restrict new loyalty
+activity without automatically preventing redemption of already-earned rewards; redemption may be
+restricted, paused, or subject to review only where the specific suspension reason makes continued
+redemption inappropriate or unsafe (fraud, security/integrity, legal/regulatory, disputed validity,
+or another governed exception); suspension arising solely from the Business's commercial/subscription
+relationship with 11thONUS does not by itself block redemption; the Business remains responsible for
+fulfilment; 11thONUS is not the guarantor. Recorded in the Decision Register: `DEC-LOY-011` moved
+`OPEN_FOUNDER` → **`CONFIRMED`**, original A–D options and question preserved for historical
+traceability, not superseded. The original `DEC-SUB-003` ("Trial structure") dependency — a pre-
+existing register cross-reference error, since actual grace-period mechanics live in `DEC-SUB-008` —
+was removed entirely rather than corrected to `DEC-SUB-008`, because the approved Option (a) does not
+condition redemption eligibility on any grace-period value. `DEC-ID-005` (owner-initiated self-
+suspension, which depends on `DEC-LOY-011`) was **not** resolved — its own broader feature-existence
+question is untouched — only its `Dependencies` field was annotated to reflect that the `DEC-LOY-011`
+half of its dependency is now settled.
+
+Reconciled the `DEC-LEGAL-002-FOUNDER-DISP-001` package (Founder Decision Sheet, Business Obligation
+Matrix, Product & Legal Decision Brief, Terms Content Architecture, Resolution Plan, Legal Counsel
+Question Set, and the Legal Counsel Handoff Pack) so every reference to the suspension-redemption
+question now distinguishes (1) survival of the earned obligation, informed by FD-2, from (2) default
+operational redeemability, resolved by `DEC-LOY-011` — and so legal counsel is asked only for
+enforceability, legally required exceptions, notices, and remedies for the now-decided default-
+redeemable-with-governed-exceptions model, never to choose among the original four redemption
+options.
+
+No `functions/`, `apps/web/`, Firestore Rules, dependency, or config change. `DEC-LEGAL-002` remains
+`OPEN_LEGAL`; `EXT-LEG-002` remains `PENDING`; Capability 3 remains `Open — engineering work packages
+complete; blocked on governed Terms-content configuration (DEC-LEGAL-002)` (unaffected by the
+`DEC-LOY-011` resolution). No Terms version configured. Docs-only. Full 26-point report:
+[`DEC-LOY-011-RECON-001-founder-resolution-recording-report-2026-08-29.md`](../05-implementation/reports/DEC-LOY-011-RECON-001-founder-resolution-recording-report-2026-08-29.md).
+
+**Final gate:** **`DEC-LOY-011 FOUNDER RESOLUTION RECORDED — DEC-LEGAL-002 LEGAL-COUNSEL HANDOFF
+RECONCILED AND READY FOR FOUNDER REVIEW — NO APPLICATION OR TERMS CONFIGURATION CHANGE`**.
+
+## DEC-LOY-011-TRD17-SYNC-001 — TRD17 Suspension Requirements Synchronized to Confirmed DEC-LOY-011 (2026-08-29)
+
+Synchronized the one live technical document the Decision Register itself names as affected by
+`DEC-LOY-011` — `docs/02-technical/trd/17-subscription-and-billing.md` §17.18–17.20 — now that the
+decision is `CONFIRMED` (`DEC-LEGAL-002-FOUNDER-DISP-001`, same date). §17.18 and §17.19 previously
+stated redemption rules during suspension "must be governed explicitly" / "shall be clearly
+defined," which was accurate while the decision was `OPEN_FOUNDER` and is no longer accurate. §17.20
+previously stated only the general platform-access-vs-business-obligation distinction and that
+suspension does not automatically erase valid rewards, without the specific confirmed rule. Added an
+explicit traceability citation to `DEC-LOY-011` (CONFIRMED) and the Decision Register as the
+authoritative source, then stated — without inventing any implementation — the confirmed default
+rule (valid rewards earned before suspension remain redeemable by default), the commercial/
+subscription-suspension carve-out (suspension arising solely from the Business's commercial/
+subscription relationship with 11thONUS does not by itself block redemption), the new-activity
+distinction (cross-referencing §17.19's existing restriction list rather than inventing new ones),
+the governed-exception categories (fraud, security/integrity, legal/regulatory, disputed validity,
+or another governed exception — explicitly not manual-review-by-default), and the responsibility
+statement (Business remains responsible for fulfilment; 11thONUS is not the guarantor/fulfiller).
+The exception-handling workflow itself is explicitly flagged as **not designed by this requirement**
+— a documented future implementation gap for a separate, later-governed engineering work package, not
+implemented here.
+
+Checked all live `docs/02-technical/` and `docs/01-product/` documents for any other assertion that
+`DEC-LOY-011`/redemption-during-suspension remains undecided — none found. The Founder Decision
+Agenda's item B6 still frames the question as open; this is a non-technical Founder task-list
+document, out of this task's scope to edit, and is flagged rather than corrected.
+
+`DEC-ID-005` remains `OPEN_FOUNDER`, unchanged. `DEC-LEGAL-002` remains `OPEN_LEGAL`, unchanged;
+`EXT-LEG-002` remains `PENDING`; Capability 3 remains `Open — engineering work packages complete;
+blocked on governed Terms-content configuration (DEC-LEGAL-002)`; no Terms version configured. No
+`functions/`, `apps/web/`, Firestore Rules, dependency, or config change — the Decision Register
+itself was not touched by this task (only the prior, already-recorded `DEC-LOY-011-RECON-001` diff
+remains). Docs-only. Full 24-point report:
+[`DEC-LOY-011-TRD17-SYNC-001-live-authority-synchronization-report-2026-08-29.md`](../05-implementation/reports/DEC-LOY-011-TRD17-SYNC-001-live-authority-synchronization-report-2026-08-29.md).
+
+**Final gate:** **`DEC-LOY-011/TRD17 LIVE AUTHORITY SYNCHRONIZED — DEC-LEGAL-002 COUNSEL HANDOFF
+REMAINS READY — NO APPLICATION OR TERMS CONFIGURATION CHANGE`**.
+
+## DEC-LEGAL-002-COUNSEL-HANDOFF-CLOSE-001 — Final Governance Hygiene, Repository-Safe Recording & Counsel-Handoff Closure (2026-08-29)
+
+Closed the internal preparation cycle for `DEC-LEGAL-002` / `DEC-LOY-011`. Reconciled the last live
+document still framing `DEC-LOY-011` as an open Founder question: the Founder Decision Agenda's
+Batch B item B6 ("Do earned rewards survive if the business stops paying us?") was struck through
+and answered per the document's own established Batch-A convention — original question, options,
+and note preserved verbatim for traceability, a "Final decision" line added citing the Decision
+Register, and the document's running open-decision count updated 24→23.
+
+Performed a full final integrity review across the entire pending governance package (Decision
+Register, all six `DEC-LEGAL-002-PREP-001` evidence documents, the `DEC-LEGAL-002-FOUNDER-DISP-001`
+Legal Counsel Handoff Pack, TRD17, the Founder Decision Agenda, all four prior implementation/
+governance reports, and this changes log) — confirmed no document misstates `DEC-LEGAL-002` (still
+`OPEN_LEGAL`), `EXT-LEG-002` (still `PENDING`), Capability 3 (still blocked on Terms-content
+configuration), or `DEC-ID-005` (still `OPEN_FOUNDER`); confirmed no `DEC-SUB-*` value was
+accidentally decided; confirmed Founder product positions are consistently distinguished from legal
+conclusions; confirmed TRD17 documents requirements only, with the suspension exception-handling
+workflow explicitly left undesigned; confirmed zero application/source/config files anywhere in the
+diff. Reviewed the Legal Counsel Handoff Pack v2.0 from an external-counsel perspective against ten
+usability criteria (self-contained explanation, clear Founder positions, no re-asked product
+decisions, no policy-as-legal-fact framing, no placeholder conclusions, Business Terms vs.
+Reward-Program-rules distinction, privacy kept separately governed, open `DEC-SUB-*` values
+preserved, clear expected outputs) — all passed; applied one minor clarity addition (an orienting
+sentence in the Executive Brief noting the `DEC-LOY-011` resolution is folded into FD-2) with no
+substantive legal drafting performed.
+
+**Repository-safe recording:** found the working branch (`docs/eng-p3-002-closure-001`) had already
+been merged into `main` via PR #200 before this session's uncommitted work began — its tip commit's
+tree was verified byte-identical to `origin/main`'s tree. Rather than recording new, unrelated
+governance work onto an already-closed branch, created a fresh branch from `origin/main` (zero-risk,
+content-neutral rebase of the base) and staged and committed **only** the files belonging to this
+reviewed `DEC-LEGAL-002`/`DEC-LOY-011` governance package, explicitly excluding every unrelated
+pre-existing untracked file already present in the working tree (a founder-facing directory, several
+untracked governance/product documents from other in-progress threads, and an archive file) — none
+of which were modified, discarded, or included.
+
+No `functions/`, `apps/web/`, Firestore Rules, dependency, or config change anywhere in this entire
+governance thread. Docs-only. Full 27-point report:
+[`DEC-LEGAL-002-COUNSEL-HANDOFF-CLOSE-001-final-hygiene-and-recording-report-2026-08-29.md`](../05-implementation/reports/DEC-LEGAL-002-COUNSEL-HANDOFF-CLOSE-001-final-hygiene-and-recording-report-2026-08-29.md).
+
+**Final gate:** **`DEC-LEGAL-002 INTERNAL PREPARATION RECORDED — COUNSEL HANDOFF READY —
+DEC-LEGAL-002 REMAINS OPEN_LEGAL PENDING EXTERNAL LEGAL REVIEW`**.
+
+## PR-201-REVIEW-CORR-001 — Corrected Three Automated Review Findings on PR #201 (2026-08-29)
+
+An automated Codex review of PR #201 (head `8eb78c2`) surfaced one P1 and two P2 findings, all
+independently verified against actual repository content before correcting, per Founder
+disposition to fix rather than merge past them.
+
+**P1 — live TRD23 authority still contradicted the confirmed `DEC-LOY-011`.**
+`docs/02-technical/trd/23-traceability-and-completion-review.md`'s `OPD-005` section still told
+engineers "The product must define whether already-earned rewards remain redeemable," listing the
+four original options as open, "Required before: Subscription suspension implementation." Corrected
+to state the confirmed rule (cross-referencing TRD17 §17.20 rather than duplicating it), with the
+original options preserved for traceability and the "Required before" line annotated as resolved.
+The same contradiction was also present in `docs/00-governance/requirements-traceability-matrix.md`'s
+`OPD-005` row ("Affected by open decision(s) DEC-LOY-011 — do not implement…") — corrected as part
+of the same finding, since the reviewer named both documents together.
+
+**P2 — the Product & Legal Decision Brief and Business Obligation Matrix cited three documents that
+are not tracked in the repository** (`docs/11thONUS-at-a-Glance.md`, the Product Manifesto, and
+`verified-loyalty-principles.md` — confirmed via `git ls-files` returning no match for any of the
+three). Audited every citation to these files proposition-by-proposition: propositions with tracked
+support (platform/business relationship model, Verified Unit/Loyalty Cycle mechanics, no-automatic-
+expiry) were re-cited to `PRD0 — Product Foundation`, `PRD6 — Reward Programs, Verified Units and
+Loyalty Cycle Management`, the Platform Constitution, and the relevant CONFIRMED Decision Register
+entries; the "platform standardises trust" / "businesses own the customer relationship" principle
+was re-grounded in the Founder Decision Sheet's own cross-cutting principle (Founder-authorized text
+already contained in this governed package) plus corroborating tracked PRD0 sections. Two
+propositions were found to have **no tracked support at all** and were withdrawn rather than
+re-cited to something convenient: "Reward quantity fixed at creation" (tracked authority actually
+contradicts this — `DEC-LOY-009` is `OPEN_FOUNDER`, "Current confirmed position: none") and "multiple
+completed, unredeemed Rewards may coexist for a customer" (no tracked source states this either way).
+Both are now flagged as explicit, unresolved authority gaps in the Business Obligation Matrix rather
+than asserted or silently dropped. The three untracked files were not added, modified, staged, or
+committed.
+
+**P2 — the Founder Decision Agenda's blanket status line contradicted its own B6 update.** "Nothing
+here is decided yet, except Batch A (below)" was replaced with a durable rule ("An entry below is
+still open unless it is explicitly marked decided/confirmed/resolved") rather than a brittle,
+growing enumeration — consistent with the document's existing convention for marking individual
+items decided.
+
+Cross-document search for any other live authority still asserting `DEC-LOY-011` open, redemption
+blocked during commercial-only suspension, `DEC-LEGAL-002` resolved, or Terms configured — none
+found beyond the two files already corrected above. No `functions/`, `apps/web/`, Firestore Rules,
+dependency, or config change. `DEC-LOY-011` remains CONFIRMED; `DEC-ID-005` remains `OPEN_FOUNDER`
+(including the newly-discovered-but-unrelated `DEC-LOY-009`, left exactly as `OPEN_FOUNDER`);
+`DEC-LEGAL-002` remains `OPEN_LEGAL`; `EXT-LEG-002` remains `PENDING`; Capability 3 remains blocked
+on governed Terms-content configuration; no Terms version configured. Docs-only. Full 32-point
+report:
+[`PR-201-REVIEW-CORR-001-review-findings-correction-report-2026-08-29.md`](../05-implementation/reports/PR-201-REVIEW-CORR-001-review-findings-correction-report-2026-08-29.md).
+
+**Final gate:** **`PR #201 REVIEW FINDINGS CORRECTED — READY FOR FOUNDER RE-REVIEW; NOT MERGED`**.

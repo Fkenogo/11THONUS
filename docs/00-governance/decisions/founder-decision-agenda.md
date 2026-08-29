@@ -1,9 +1,9 @@
 # 11thONUS Founder Decision Agenda
 
 > **Purpose:** Your open decisions, in plain language, in the order that avoids rework. Full detail for every item is in the [Decision Register](decision-register.md) under its ID — if wording here and there ever differs, the register governs.
-> **Nothing here is decided yet, except Batch A (below).** Where we say "recommended", that is only a recommendation — your choice is what counts, and you can also propose an option that isn't listed.
+> **An entry below is still open unless it is explicitly marked decided/confirmed/resolved** (struck through, with an "✅ answered `<date>`" line and a Final decision citing the Decision Register). Where we say "recommended", that is only a recommendation — your choice is what counts, and you can also propose an option that isn't listed.
 > **How to answer:** reply in chat in any form you like — e.g. *"B1: a but remind me what 'pending pot' shows the customer…"*. Each answer is then recorded in the register following the [decision update procedure](../decision-update-procedure.md), and we confirm back what was recorded before touching any document.
-> *(Updated in Phase 3A: batches re-ordered A–E so that everything blocking the documentation freeze comes first. Updated in Phase 3B, 16 July 2026: Batch A recorded as CONFIRMED — 24 open decisions remain across Batches B–E.)*
+> *(Updated in Phase 3A: batches re-ordered A–E so that everything blocking the documentation freeze comes first. Updated in Phase 3B, 16 July 2026: Batch A recorded as CONFIRMED — 24 open decisions remain across Batches B–E. Updated 2026-08-29 (`DEC-LEGAL-002-FOUNDER-DISP-001`): B6 (DEC-LOY-011) recorded CONFIRMED — 23 open decisions remain across Batches B–E.)*
 
 ---
 
@@ -67,9 +67,10 @@ All four freeze-blocking decisions below are now **CONFIRMED**. Full text of eac
 - **Options:** (a) expiry is final — the business may simply record it again if genuine; (b) expired purchases can still be verified within a window; (c) nothing expires in the MVP — reminders continue.
 - **Consequence:** (c) means the customer's list can fill with stale items; (a) is cleanest but strict.
 
-### B6. Do earned rewards survive if the business stops paying us? — DEC-LOY-011
-- **Options:** (a) customers can redeem earned rewards throughout suspension *(the documents lean this way — customer trust)*; (b) only during the grace period; (c) case-by-case; (d) frozen until the business pays.
-- **Note:** whatever you choose, earned rewards are never *erased* — that's already confirmed.
+### ~~B6. Do earned rewards survive if the business stops paying us?~~ — DEC-LOY-011 ✅ answered 2026-08-29: **(a), qualified** — redeemable by default during suspension, subject to governed exceptions.
+- **Options (as originally asked):** (a) customers can redeem earned rewards throughout suspension *(the documents lean this way — customer trust)*; (b) only during the grace period; (c) case-by-case; (d) frozen until the business pays.
+- **Note (as originally asked):** whatever you choose, earned rewards are never *erased* — that's already confirmed.
+- **Final decision (recorded in the Decision Register, `DEC-LEGAL-002-FOUNDER-DISP-001`, 2026-08-29):** Option (a) as the default, subject to governed exceptions. Valid rewards earned before suspension remain redeemable during suspension by default; suspension arising solely from the Business's commercial/subscription relationship with 11thONUS does not by itself block redemption; redemption may still be restricted, paused, or reviewed where the specific suspension reason (fraud, security/integrity, legal/regulatory, disputed validity, or another governed exception) makes continued redemption inappropriate or unsafe; the Business remains responsible for fulfilment; 11thONUS is not the guarantor/fulfiller. Full text in the [Decision Register](decision-register.md) `DEC-LOY-011` entry.
 
 ### B7. Program housekeeping — DEC-LOY-013 (+ B8. one word: DEC-UX-002)
 - **B7:** Confirm that pausing a Reward Program keeps customers' progress and earned rewards safe (already implied — just confirm), and that moving customers between programs and "seasonal variants" are **not** in the MVP.
