@@ -12,6 +12,7 @@ import { useTranslation } from "../../../i18n";
 import { Button, Select } from "../../../components/ui/formPrimitives";
 import { useBusinessCategoriesQuery, useBusinessTypesQuery } from "../../hooks/businessQueries";
 import { useUpdateBusinessProfileMutation } from "../../hooks/businessMutations";
+import { optionalField } from "../../api/optionalField";
 import type { BusinessContext } from "../../api/businessContext";
 import { MutationError } from "../MutationError";
 
@@ -36,7 +37,7 @@ export function ClassificationStep({
 
   function handleSave() {
     mutation.mutate(
-      { primaryCategoryId: categoryId, businessTypeId: businessTypeId || undefined },
+      { primaryCategoryId: categoryId, ...optionalField("businessTypeId", businessTypeId) },
       { onSuccess: onContinue },
     );
   }

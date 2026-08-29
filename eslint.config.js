@@ -437,4 +437,14 @@ export default tseslint.config(
       globals: { ...globals.node },
     },
   },
+  {
+    // ENG-P3-002-UI-IMP-H: plain Node fixture scripts for the emulator-backed
+    // Playwright E2E project (not part of the browser-run `apps/web` bundle).
+    files: ["tests/e2e/emulator/*.mjs"],
+    languageOptions: {
+      ecmaVersion: 2023,
+      sourceType: "module",
+      globals: { ...globals.node },
+    },
+  },
 );

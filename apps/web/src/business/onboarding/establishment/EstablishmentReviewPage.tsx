@@ -18,6 +18,14 @@
  * the raw ISO code; timezone renders exactly as persisted — no detection, no conversion, the
  * backend value stays authoritative. `Business.address` (a separate, deliberately unresolved
  * field) is not touched by this screen.
+ *
+ * `ENG-P3-002-UI-IMP-H` Phase L2 finding: this screen (all three states —
+ * review, editing identity, editing location) is rendered directly by
+ * `BusinessWizardPage` with no ancestor page-padding wrapper (unlike
+ * `NewBusinessPage`, which wraps EST-01/EST-02 in `mx-auto max-w-lg p-6`) —
+ * on a wide desktop viewport the cards previously stretched edge-to-edge
+ * with no horizontal margin at all. Each branch now carries that same
+ * `mx-auto max-w-lg p-6` wrapper directly.
  */
 
 import { useState } from "react";
@@ -65,25 +73,25 @@ export function EstablishmentReviewPage({ context }: { context: BusinessContext 
 
   if (editing === "identity") {
     return (
-      <>
+      <div className="mx-auto max-w-lg p-6">
         <LanguageSwitcher />
         <EstablishmentProgress current={3} total={3} />
         <ClassificationStep context={context} onContinue={() => setEditing(null)} />
-      </>
+      </div>
     );
   }
   if (editing === "location") {
     return (
-      <>
+      <div className="mx-auto max-w-lg p-6">
         <LanguageSwitcher />
         <EstablishmentProgress current={3} total={3} />
         <BranchStep context={context} onContinue={() => setEditing(null)} />
-      </>
+      </div>
     );
   }
 
   return (
-    <section>
+    <section className="mx-auto max-w-lg p-6">
       <LanguageSwitcher />
       <EstablishmentProgress current={3} total={3} />
       <h1 className="mb-4 text-xl font-semibold">{t("review.title")}</h1>

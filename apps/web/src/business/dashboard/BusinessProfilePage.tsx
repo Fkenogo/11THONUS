@@ -28,6 +28,7 @@ import { useTranslation } from "../../i18n";
 import { Button, Select, TextField } from "../../components/ui/formPrimitives";
 import { useBusinessCategoriesQuery, useBusinessTypesQuery } from "../hooks/businessQueries";
 import { useUpdateBusinessProfileMutation } from "../hooks/businessMutations";
+import { optionalField } from "../api/optionalField";
 import { MutationError } from "../onboarding/MutationError";
 import type { BusinessContext } from "../api/businessContext";
 
@@ -130,9 +131,9 @@ function BusinessProfileEditForm({
       {
         displayName,
         primaryCategoryId: categoryId,
-        businessTypeId: businessTypeId || undefined,
+        ...optionalField("businessTypeId", businessTypeId),
         contactPhone,
-        contactEmail: contactEmail || undefined,
+        ...optionalField("contactEmail", contactEmail),
       },
       { onSuccess: onDone },
     );
