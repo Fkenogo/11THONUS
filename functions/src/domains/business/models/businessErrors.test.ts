@@ -4,6 +4,7 @@ import {
   businessAlreadyClosedError,
   businessArchivedError,
   businessCodeGenerationExhaustedError,
+  businessCreationInProgressError,
   clientSuppliedOwnerUserIdError,
   duplicateBusinessCodeError,
   invalidBusinessBranchFieldError,
@@ -61,6 +62,10 @@ describe("factory functions map to the existing closed taxonomy only", () => {
 
   it("businessCodeGenerationExhaustedError -> TEMPORARY_UNAVAILABLE (design §18, customer-invisible retry exhaustion)", () => {
     expect(businessCodeGenerationExhaustedError(5).category).toBe("TEMPORARY_UNAVAILABLE");
+  });
+
+  it("businessCreationInProgressError -> TEMPORARY_UNAVAILABLE, not IDEMPOTENCY_CONFLICT (ENG-P3-002-CORR-EST-IDEMP-001: retryable, mirrors commandDispatcher.ts's governed in_progress handling)", () => {
+    expect(businessCreationInProgressError("key_1").category).toBe("TEMPORARY_UNAVAILABLE");
   });
 
   it("clientSuppliedOwnerUserIdError -> VALIDATION_FAILED (bootstrap authority boundary, §11)", () => {

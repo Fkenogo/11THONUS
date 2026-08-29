@@ -123,6 +123,29 @@ export function invalidCustomerIdentityForOwnerError(userId: string): BusinessDo
   );
 }
 
+/**
+ * `ENG-P3-002-CORR-EST-IDEMP-001`: a concurrent bootstrap attempt under the
+ * *same* idempotency key is still `processing` (the winning concurrent call
+ * has not committed yet). This is never a genuine conflict — the caller
+ * supplied the same key and the same request, so the correct eventual
+ * outcome is the winner's result, not a rejection. Mapped to
+ * `TEMPORARY_UNAVAILABLE` (the same category `commandDispatcher.ts`'s
+ * governed `in_progress` handling already uses for this exact reservation
+ * outcome, TRD11 §11.14) rather than `IDEMPOTENCY_CONFLICT` (reserved for a
+ * same-key request whose *content* actually differs) — `IDEMPOTENCY_CONFLICT`
+ * maps to a non-retryable client error code, which was causing the caller to
+ * discard its held idempotency key and retry under a brand-new one once the
+ * winner completed, producing a duplicate Business. `TEMPORARY_UNAVAILABLE`
+ * maps to a retryable code, so a caller retrying with the *same* key instead
+ * observes the winner's now-`completed` record and replays its result.
+ */
+export function businessCreationInProgressError(idempotencyKey: string): BusinessDomainError {
+  return new BusinessDomainError(
+    "TEMPORARY_UNAVAILABLE",
+    `Business creation for idempotency key "${idempotencyKey}" is still in progress.`,
+  );
+}
+
 /** `ENG-P2-002C`: a profile/lifecycle command targeted a Business that does not exist. */
 export function businessNotFoundError(businessId: string): BusinessDomainError {
   return new BusinessDomainError("RESOURCE_NOT_FOUND", `Business "${businessId}" was not found.`);

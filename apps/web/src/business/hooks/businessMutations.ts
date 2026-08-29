@@ -35,8 +35,19 @@ function requireReadyActor(actorState: ReturnType<typeof useAuthenticatedActor>)
   return actorState.actor;
 }
 
-/** Settles the key holder: keep the key alive only for a retryable failure. */
-function settleKeyOnError(holder: ReturnType<typeof createIdempotencyKeyHolder>, error: unknown) {
+/**
+ * Settles the key holder: keep the key alive only for a retryable failure.
+ * Exported only for the key-retention regression test in
+ * `businessMutations.test.ts` (`ENG-P3-002-CORR-EST-IDEMP-001-REVIEW`) —
+ * this is the exact client-side half of the `createBusiness` idempotency
+ * contract: a `TEMPORARY_UNAVAILABLE`-mapped ("unavailable") error must
+ * retain the held key so a retry replays the same operation, while any
+ * other (definitive) error must discard it.
+ */
+export function settleKeyOnError(
+  holder: ReturnType<typeof createIdempotencyKeyHolder>,
+  error: unknown,
+) {
   const code = (error as BusinessApiError | undefined)?.code;
   if (!code || !isRetryableBusinessErrorCode(code)) {
     holder.clear();

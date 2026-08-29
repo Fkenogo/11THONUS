@@ -1,7 +1,11 @@
 import { deleteApp, getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { bootstrapBusiness, type BootstrapBusinessParams } from "./businessRepository";
+import {
+  bootstrapBusiness,
+  stableRequestHash,
+  type BootstrapBusinessParams,
+} from "./businessRepository";
 import type { CreateBusinessRequest } from "../models/businessBootstrap";
 import type { BusinessCodeCandidateGenerator } from "../services/businessCodeGenerator";
 import { getBusinessMembershipByUserAndBusiness } from "../../permissions/repositories/businessMembershipRepository";
@@ -260,9 +264,128 @@ describe("bootstrapBusiness — idempotency", () => {
     expect(businessesSnapshot.size).toBe(1);
     const membershipsSnapshot = await db.collection("businessMemberships").get();
     expect(membershipsSnapshot.size).toBe(1);
-    // At least one settles; a losing concurrent attempt fails closed
-    // (in_progress) rather than creating a second Business.
+    // At least one settles; a losing concurrent attempt under the same key
+    // must fail *retryable* (TEMPORARY_UNAVAILABLE) — never a fail-closed
+    // conflict — since the winner is completing the same requested
+    // operation, not a genuinely different one
+    // (`ENG-P3-002-CORR-EST-IDEMP-001`).
     expect(results.some((r) => r.status === "fulfilled")).toBe(true);
+    for (const r of results) {
+      if (r.status === "rejected") {
+        expect(r.reason).toMatchObject({ category: "TEMPORARY_UNAVAILABLE" });
+      }
+    }
+  });
+
+  it("ENG-P3-002-CORR-EST-IDEMP-001: a same-key call observing a concurrent 'processing' reservation fails retryable (TEMPORARY_UNAVAILABLE), never a fail-closed conflict, and creates no Business", async () => {
+    // Deterministic reproduction of the Package H race's decisive branch —
+    // no reliance on real transaction-timing luck (Phase H: "a timing-
+    // sensitive test that merely 'usually passes' is not sufficient closure
+    // evidence"). A winning concurrent call's `checkAndReserveIdempotencyKey`
+    // is exactly this: a "processing" record already committed under this
+    // key/hash before this call's own reservation transaction reads it.
+    const idempotencyKey = "key_in_progress_1";
+    const ownerUserId = "cust_in_progress";
+    const requestHash = stableRequestHash(ownerUserId, baseRequest);
+    await db.collection("idempotencyRecords").doc(idempotencyKey).set({
+      idempotencyKey,
+      operationType: "business.create",
+      actorId: ownerUserId,
+      requestHash,
+      status: "processing",
+      createdAt: new Date(),
+    });
+
+    await expect(
+      bootstrapBusiness(
+        db,
+        baseRequest,
+        buildParams({
+          ownerUserId,
+          idempotencyKey,
+          generator: new SequenceGenerator(["BIZ23456B"]),
+        }),
+      ),
+    ).rejects.toMatchObject({ category: "TEMPORARY_UNAVAILABLE" });
+
+    const businessesSnapshot = await db
+      .collection("businesses")
+      .where("ownerUserId", "==", ownerUserId)
+      .get();
+    expect(businessesSnapshot.size).toBe(0);
+
+    // Once the real winner's transaction actually commits (simulated here
+    // by transitioning the same record to "completed" with its response),
+    // a retry under the SAME key converges on that result — never creates a
+    // Business of its own.
+    const winningResult = {
+      businessId: "biz_winner_1",
+      businessCode: "BIZ23456Z",
+      branchId: "branch_winner_1",
+      status: "draft" as const,
+    };
+    await db.collection("idempotencyRecords").doc(idempotencyKey).update({
+      status: "completed",
+      completedAt: new Date(),
+      resultReference: winningResult.businessId,
+      responseSnapshot: winningResult,
+    });
+
+    const retryResult = await bootstrapBusiness(
+      db,
+      baseRequest,
+      buildParams({ ownerUserId, idempotencyKey }),
+    );
+    expect(retryResult).toEqual(winningResult);
+
+    const businessesAfterRetry = await db
+      .collection("businesses")
+      .where("ownerUserId", "==", ownerUserId)
+      .get();
+    expect(businessesAfterRetry.size).toBe(0);
+  });
+
+  it("ENG-P3-002-CORR-EST-IDEMP-001-REVIEW: rejects the same key reused by a different resolved owner as IDEMPOTENCY_CONFLICT, never a cross-user cache hit (Phase F/16 cross-user isolation)", async () => {
+    const idempotencyKey = "key_cross_owner_1";
+    const first = await bootstrapBusiness(
+      db,
+      baseRequest,
+      buildParams({
+        ownerUserId: "cust_owner_a",
+        idempotencyKey,
+        generator: new SequenceGenerator(["BIZ23456D"]),
+      }),
+    );
+
+    // Same key, identical request body, but a *different* server-resolved
+    // owner (never client-supplied — `ownerUserId` always comes from the
+    // verified credential). `stableRequestHash` binds `ownerUserId`, so
+    // this must be a fail-closed conflict, never a silent replay of
+    // `cust_owner_a`'s Business handed back to `cust_owner_b`.
+    await expect(
+      bootstrapBusiness(
+        db,
+        baseRequest,
+        buildParams({
+          ownerUserId: "cust_owner_b",
+          idempotencyKey,
+          generator: new SequenceGenerator(["BIZ23456E"]),
+        }),
+      ),
+    ).rejects.toMatchObject({ category: "IDEMPOTENCY_CONFLICT" });
+
+    const ownerBBusinesses = await db
+      .collection("businesses")
+      .where("ownerUserId", "==", "cust_owner_b")
+      .get();
+    expect(ownerBBusinesses.size).toBe(0);
+
+    const ownerABusinesses = await db
+      .collection("businesses")
+      .where("ownerUserId", "==", "cust_owner_a")
+      .get();
+    expect(ownerABusinesses.size).toBe(1);
+    expect(ownerABusinesses.docs[0]?.id).toBe(first.businessId);
   });
 
   it("does not block the same Customer Identity from creating two different Businesses with different keys", async () => {
