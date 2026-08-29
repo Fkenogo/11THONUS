@@ -5152,3 +5152,55 @@ governance thread. Docs-only. Full 27-point report:
 
 **Final gate:** **`DEC-LEGAL-002 INTERNAL PREPARATION RECORDED — COUNSEL HANDOFF READY —
 DEC-LEGAL-002 REMAINS OPEN_LEGAL PENDING EXTERNAL LEGAL REVIEW`**.
+
+## PR-201-REVIEW-CORR-001 — Corrected Three Automated Review Findings on PR #201 (2026-08-29)
+
+An automated Codex review of PR #201 (head `8eb78c2`) surfaced one P1 and two P2 findings, all
+independently verified against actual repository content before correcting, per Founder
+disposition to fix rather than merge past them.
+
+**P1 — live TRD23 authority still contradicted the confirmed `DEC-LOY-011`.**
+`docs/02-technical/trd/23-traceability-and-completion-review.md`'s `OPD-005` section still told
+engineers "The product must define whether already-earned rewards remain redeemable," listing the
+four original options as open, "Required before: Subscription suspension implementation." Corrected
+to state the confirmed rule (cross-referencing TRD17 §17.20 rather than duplicating it), with the
+original options preserved for traceability and the "Required before" line annotated as resolved.
+The same contradiction was also present in `docs/00-governance/requirements-traceability-matrix.md`'s
+`OPD-005` row ("Affected by open decision(s) DEC-LOY-011 — do not implement…") — corrected as part
+of the same finding, since the reviewer named both documents together.
+
+**P2 — the Product & Legal Decision Brief and Business Obligation Matrix cited three documents that
+are not tracked in the repository** (`docs/11thONUS-at-a-Glance.md`, the Product Manifesto, and
+`verified-loyalty-principles.md` — confirmed via `git ls-files` returning no match for any of the
+three). Audited every citation to these files proposition-by-proposition: propositions with tracked
+support (platform/business relationship model, Verified Unit/Loyalty Cycle mechanics, no-automatic-
+expiry) were re-cited to `PRD0 — Product Foundation`, `PRD6 — Reward Programs, Verified Units and
+Loyalty Cycle Management`, the Platform Constitution, and the relevant CONFIRMED Decision Register
+entries; the "platform standardises trust" / "businesses own the customer relationship" principle
+was re-grounded in the Founder Decision Sheet's own cross-cutting principle (Founder-authorized text
+already contained in this governed package) plus corroborating tracked PRD0 sections. Two
+propositions were found to have **no tracked support at all** and were withdrawn rather than
+re-cited to something convenient: "Reward quantity fixed at creation" (tracked authority actually
+contradicts this — `DEC-LOY-009` is `OPEN_FOUNDER`, "Current confirmed position: none") and "multiple
+completed, unredeemed Rewards may coexist for a customer" (no tracked source states this either way).
+Both are now flagged as explicit, unresolved authority gaps in the Business Obligation Matrix rather
+than asserted or silently dropped. The three untracked files were not added, modified, staged, or
+committed.
+
+**P2 — the Founder Decision Agenda's blanket status line contradicted its own B6 update.** "Nothing
+here is decided yet, except Batch A (below)" was replaced with a durable rule ("An entry below is
+still open unless it is explicitly marked decided/confirmed/resolved") rather than a brittle,
+growing enumeration — consistent with the document's existing convention for marking individual
+items decided.
+
+Cross-document search for any other live authority still asserting `DEC-LOY-011` open, redemption
+blocked during commercial-only suspension, `DEC-LEGAL-002` resolved, or Terms configured — none
+found beyond the two files already corrected above. No `functions/`, `apps/web/`, Firestore Rules,
+dependency, or config change. `DEC-LOY-011` remains CONFIRMED; `DEC-ID-005` remains `OPEN_FOUNDER`
+(including the newly-discovered-but-unrelated `DEC-LOY-009`, left exactly as `OPEN_FOUNDER`);
+`DEC-LEGAL-002` remains `OPEN_LEGAL`; `EXT-LEG-002` remains `PENDING`; Capability 3 remains blocked
+on governed Terms-content configuration; no Terms version configured. Docs-only. Full 32-point
+report:
+[`PR-201-REVIEW-CORR-001-review-findings-correction-report-2026-08-29.md`](../05-implementation/reports/PR-201-REVIEW-CORR-001-review-findings-correction-report-2026-08-29.md).
+
+**Final gate:** **`PR #201 REVIEW FINDINGS CORRECTED — READY FOR FOUNDER RE-REVIEW; NOT MERGED`**.

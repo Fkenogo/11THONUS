@@ -1,7 +1,7 @@
 # 11thONUS Founder Decision Agenda
 
 > **Purpose:** Your open decisions, in plain language, in the order that avoids rework. Full detail for every item is in the [Decision Register](decision-register.md) under its ID — if wording here and there ever differs, the register governs.
-> **Nothing here is decided yet, except Batch A (below).** Where we say "recommended", that is only a recommendation — your choice is what counts, and you can also propose an option that isn't listed.
+> **An entry below is still open unless it is explicitly marked decided/confirmed/resolved** (struck through, with an "✅ answered `<date>`" line and a Final decision citing the Decision Register). Where we say "recommended", that is only a recommendation — your choice is what counts, and you can also propose an option that isn't listed.
 > **How to answer:** reply in chat in any form you like — e.g. *"B1: a but remind me what 'pending pot' shows the customer…"*. Each answer is then recorded in the register following the [decision update procedure](../decision-update-procedure.md), and we confirm back what was recorded before touching any document.
 > *(Updated in Phase 3A: batches re-ordered A–E so that everything blocking the documentation freeze comes first. Updated in Phase 3B, 16 July 2026: Batch A recorded as CONFIRMED — 24 open decisions remain across Batches B–E. Updated 2026-08-29 (`DEC-LEGAL-002-FOUNDER-DISP-001`): B6 (DEC-LOY-011) recorded CONFIRMED — 23 open decisions remain across Batches B–E.)*
 
