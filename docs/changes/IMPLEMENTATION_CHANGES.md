@@ -4827,3 +4827,34 @@ self-merged in violation of instruction — CI passed on the exact reviewed head
 convention). Post-merge CI on `main` at `da46e15` re-confirmed green (GitHub Actions run
 `33157259347`, `conclusion: success`). Review report updated with the real merge SHA. Package F is
 now merged and closed; Package H remains not started; `ENG-P3-002`/Capability 3 remain Open.
+
+## `ENG-P3-002-UI-IMP-H` — Integration, E2E QA & Merge/Closure Sync (2026-08-29)
+
+Founder decision: merge Package H (`ENG-P3-002-UI-IMP-H`, PR #196) before the EST-02 idempotency
+correction (`ENG-P3-002-CORR-EST-IDEMP-001`, PR #197), since Package H is the integration/QA
+baseline whose own live-emulator E2E work discovered the EST-02 defect PR #197 corrects. Verified
+before merge: PR #196's head (`5703053a9fb63016884d039576c5367b97a6dd29`) and CI (pass, 6m1s) were
+unchanged since this reviewer's prior read; no new unreviewed commits; the package's own
+implementation report, 17-screenshot evidence set + index, and Founder Visual QA checklist are all
+present (`docs/05-implementation/reports/ENG-P3-002-UI-IMP-H-implementation-report.md`,
+`docs/05-implementation/reports/ENG-P3-002-UI-IMP-H-founder-visual-qa-checklist.md`,
+`docs/05-implementation/evidence/ENG-P3-002-UI-IMP-H/*`); the EST-02 idempotency defect is
+documented in that report as a genuine, reproduced, **unfixed** residual risk ("blocking for
+awareness... most warrants a dedicated, backend-authorized follow-up package" — explicitly not
+fixed there per that package's own instruction not to invent new idempotency architecture), i.e.
+still an open closure blocker pending PR #197, not silently treated as resolved; hosted Founder QA
+is explicitly recorded "DEFERRED / NOT REQUIRED FOR CURRENT CLOSURE ASSESSMENT" (Founder decision,
+no hosted preview exists for this package); and, per the roadmap
+(`docs/05-implementation/roadmap/CDR-001-capability-delivery-roadmap.md`), Capability 3 remains
+`Not started` at the capability level — untouched by this merge. PR #196's own report recommends
+"`ENG-P3-002 COMPLETE WITH DOCUMENTED DEFERRED ITEMS`" but does **not** mark Capability 3 complete;
+per the Founder's explicit instruction for this merge, `ENG-P3-002` is **not** declared closed here
+regardless — closure remains contingent on PR #197 also landing.
+
+Marked ready for review (was draft) and merged into `main` via merge commit
+`a5ae068098e16c95262d791945fcb6cb6ba44d0b` (not self-merged in violation of instruction — CI passed
+on the exact reviewed head `5703053` before merge). Post-merge CI on `main` at `a5ae068`
+re-confirmed green (GitHub Actions run `33240795040`, `conclusion: success`). Package H is now
+merged; `ENG-P3-002` is **not** closed and Capability 3 remains **Open/Not started** — both
+contingent on PR #197 (`ENG-P3-002-CORR-EST-IDEMP-001`) landing next per the Founder's explicit
+sequencing decision.
