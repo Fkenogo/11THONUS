@@ -1,7 +1,7 @@
 > **Title:** DEC-LEGAL-002-BT-DRAFT-001 — Core Business Terms Instrument Architecture & Part I Drafting Report
-> **Version:** 1.0 · **Status:** Report — controlled drafting complete for Part I only · **Classification:** Working (governance record — implementation/drafting report)
+> **Version:** 1.1 (2026-08-30 — superseded in part by the [Correction Report](DEC-LEGAL-002-BT-DRAFT-001-CORR-001-correction-report-2026-08-30.md); this report's original narrative below is left intact as the historical record of the v1.0 drafting session, per the instruction not to rewrite historical reports — see the Correction Report for what changed and why) · **Status:** Report — controlled drafting complete for Part I only (as of v1.0); corrected per Founder disposition (v1.1, see Correction Report) · **Classification:** Working (governance record — implementation/drafting report)
 > **Governing document:** [Decision Register](../../00-governance/decisions/decision-register.md) `DEC-LEGAL-002` (Status: `OPEN_LEGAL`, unchanged)
-> **Task:** `DEC-LEGAL-002-BT-DRAFT-001`
+> **Task:** `DEC-LEGAL-002-BT-DRAFT-001` (v1.0); `DEC-LEGAL-002-BT-DRAFT-001-CORR-001` (v1.1 correction, separate report)
 > **Date:** 2026-08-30
 > **Deliverables produced:** [Core Business Terms — Draft](../../00-governance/decisions/evidence/DEC-LEGAL-002-BT-DRAFT-001-core-business-terms-draft-2026-08-30.md); [Drafting Traceability Matrix](../../00-governance/decisions/evidence/DEC-LEGAL-002-BT-DRAFT-001-drafting-traceability-matrix-2026-08-30.md); [Controlled Inputs Register](../../00-governance/decisions/evidence/DEC-LEGAL-002-BT-DRAFT-001-controlled-inputs-register-2026-08-30.md); this report; [Documentation Changes Log](../../00-governance/documentation-changes-log.md) Entry 126; [Decision Register](../../00-governance/decisions/decision-register.md) `DEC-LEGAL-002` Notes addendum.
 
@@ -183,7 +183,7 @@ None.
 # 30. Risks/open drafting inputs
 
 - Six controlled inputs remain open (CI-01–CI-06, Controlled Inputs Register) — most materially, the operator's registered legal identity (CI-01), without which no real Terms version can ever be configured regardless of drafting completeness.
-- The Terms Drafting Readiness Note's internal 16-vs-17 row-count discrepancy (§6/§19 above) should be flagged to the Founder for correction at the note's next revision — not corrected by this task, as the note is read-only historical evidence.
+- The Terms Drafting Readiness Note's internal 16-vs-17 row-count discrepancy (§6/§19 above) was flagged to the Founder for correction. **Resolved 2026-08-30 by `DEC-LEGAL-002-BT-DRAFT-001-CORR-001`:** the Founder confirmed the enumeration error (17 rows, all Ready) and directed the live draft/traceability/register/report documents to state 17/17; the Terms Drafting Readiness Note itself remains unedited as historical evidence. See the [Correction Report](DEC-LEGAL-002-BT-DRAFT-001-CORR-001-correction-report-2026-08-30.md).
 - Parts II–VIII remain entirely undrafted; a large majority of substantive Business Terms content (reward obligations, suspension, exit, liability, dispute mechanics, subscription structure) does not yet exist in drafted form, despite all sixteen/seventeen readiness-table sections being architecture-ready.
 - The reacceptance-on-Terms-change engineering decision (CI-05, per LEG-FD-13) must be separately authorized before any drafted Changes-to-Terms clause (Part VII §22, not yet drafted) can be implemented, independent of this task.
 

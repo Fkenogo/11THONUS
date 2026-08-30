@@ -1,8 +1,8 @@
 > **Title:** Core Business Terms — Draft (Instrument Architecture + Part I)
-> **Version:** 1.0 · **Status:** DRAFT — NOT APPROVED — NOT EFFECTIVE — NOT CONFIGURED · **Classification:** Working (governance record — controlled legal drafting)
+> **Version:** 1.1 (2026-08-30 — corrected per Founder disposition, task `DEC-LEGAL-002-BT-DRAFT-001-CORR-001`) · **Status:** DRAFT — NOT APPROVED — NOT EFFECTIVE — NOT CONFIGURED · **Classification:** Working (governance record — controlled legal drafting)
 > **Governing document:** [Decision Register](../decision-register.md) `DEC-LEGAL-002` (Status: `OPEN_LEGAL`, unchanged by this document)
 > **Source-of-truth path:** `docs/00-governance/decisions/evidence/DEC-LEGAL-002-BT-DRAFT-001-core-business-terms-draft-2026-08-30.md`
-> **Date:** 2026-08-30 · **Task:** `DEC-LEGAL-002-BT-DRAFT-001`
+> **Date:** 2026-08-30 (v1.0) / 2026-08-30 (v1.1 correction) · **Task:** `DEC-LEGAL-002-BT-DRAFT-001` (v1.0); `DEC-LEGAL-002-BT-DRAFT-001-CORR-001` (v1.1 — Founder-directed corrections; see [Correction Report](../../../05-implementation/reports/DEC-LEGAL-002-BT-DRAFT-001-CORR-001-correction-report-2026-08-30.md))
 > **Authorities drafted from:** Founder FD-1–FD-7 ([Legal Counsel Handoff Pack](DEC-LEGAL-002-FOUNDER-DISP-001-legal-counsel-handoff-pack-2026-08-29.md) §3); `DEC-LOY-011` (Decision Register, CONFIRMED); LEG-FD-01–LEG-FD-15 ([Founder Legal Architecture Disposition Record v2.0](DEC-LEGAL-002-LEGAL-OPINION-RECON-001-founder-legal-architecture-dispositions-2026-08-29.md)); [Reconciliation Matrix](DEC-LEGAL-002-LEGAL-OPINION-RECON-001-reconciliation-matrix-2026-08-29.md); [Terms Instrument Architecture & Drafting Readiness Note v2.0](DEC-LEGAL-002-LEGAL-OPINION-RECON-001-terms-drafting-readiness-2026-08-29.md); [Terms Content Architecture](DEC-LEGAL-002-PREP-001-terms-content-architecture-2026-08-29.md); [Legal Counsel Handoff Pack](DEC-LEGAL-002-FOUNDER-DISP-001-legal-counsel-handoff-pack-2026-08-29.md).
 > **Companion documents:** [Business Terms Drafting Traceability Matrix](DEC-LEGAL-002-BT-DRAFT-001-drafting-traceability-matrix-2026-08-30.md); [Controlled Inputs Register](DEC-LEGAL-002-BT-DRAFT-001-controlled-inputs-register-2026-08-30.md); [Drafting Report](../../../05-implementation/reports/DEC-LEGAL-002-BT-DRAFT-001-drafting-report-2026-08-30.md).
 
@@ -89,9 +89,9 @@ The following is the proposed complete architecture for the Core Business Terms,
 26. Jurisdictional Overlay Mechanism
 27. [Overlay index — populated as overlays are drafted; Burundi overlay not drafted here]
 
-### 0.2 Sixteen/Seventeen-Section Readiness Mapping
+### 0.2 Readiness Mapping — 17 of 17 Sections
 
-The Terms Drafting Readiness Note (v2.0) states "16 of 16 sections ready to draft" in its §6 narrative conclusion, but its own §3 table (as read directly for this task) lists **seventeen** distinct section rows. This is flagged here as an observed discrepancy in the read-only evidence record, not corrected in that record (which is historical and not to be overwritten per this task's instructions) and not treated as a conflict of authority — every row in the table is unambiguously marked **Ready**, so the discrepancy is a labelling/count artifact in the readiness note's own narrative text, not a substantive gap or contradiction affecting what may be drafted. All seventeen rows are mapped below; none is omitted.
+The Terms Drafting Readiness Note (v2.0) states "16 of 16 sections ready to draft" in its §6 narrative conclusion. On independent verification (originally for `DEC-LEGAL-002-BT-DRAFT-001`, re-verified for the Founder correction pass `DEC-LEGAL-002-BT-DRAFT-001-CORR-001`), its own §3 table contains **seventeen** distinct section rows, every one of which is marked **Ready**. This is a counting/labelling error in that note's narrative text, not a substantive gap, not a contradiction between rows, and not a change to any readiness decision — no section was added, no additional Founder or legal position was created, and no row's Ready status changed. Per the Founder's correction disposition, this document (and its companion Traceability Matrix, Controlled Inputs Register, and Drafting Report) accordingly state the readiness conclusion as **17 of 17 sections ready to draft**. The Terms Drafting Readiness Note itself is a historical, dated evidence record and is left unedited, per the instruction not to overwrite historical evidence — its own narrative "16 of 16" wording remains for the Founder to correct at that note's next revision, if any. All seventeen rows are mapped below; none is omitted.
 
 | # | Readiness-table section | Governing authority | Mapped to proposed section(s) | Drafted in this task? |
 |---|---|---|---|---|
@@ -129,9 +129,9 @@ These 11thONUS Core Business Terms ("**Terms**") govern the relationship between
 
 1.1 These Terms are entered into between 11thONUS and the Business identified in the Business's account registration. Where a Business is an entity rather than an individual, references to "the Business" mean that entity, acting through an individual with authority to bind it (see §1.3).
 
-1.2 [CONTROLLED INPUT REQUIRED: whether these Terms cover only the named legal entity that registers, or also its affiliates/related entities — no governed product position addresses multi-entity or franchise-group Business structures].
+1.2 These Terms bind only the legal entity or sole proprietor registered as the Business. An affiliate, related company, franchisee or other separate legal person is not automatically a party merely because of its relationship with that Business, unless expressly agreed by 11thONUS under an applicable governed arrangement.
 
-1.3 The individual who completes registration on behalf of a Business represents that they have the authority to bind the Business to these Terms. 11thONUS relies on this representation and is not required to independently verify corporate authority beyond the Business's own account-authority structure (see Part II §9, not drafted in this task).
+1.3 The individual who completes registration on behalf of a Business represents that they have the authority to bind the Business to these Terms. 11thONUS relies on this representation. Where necessary for verification, security, compliance, dispute resolution, or platform integrity, 11thONUS may request reasonable evidence of that authority; this section does not establish a routine or universal requirement to independently verify corporate authority beyond the Business's own account-authority structure (see Part II §9, not drafted in this task).
 
 1.4 These Terms take effect for a given Business upon that Business's acceptance in accordance with §7 (Acceptance and Formation), and apply for as long as the Business participates on the platform, subject to §16 (Business Exit and Termination; Outstanding Rewards) (Part IV, not drafted in this task).
 
@@ -139,7 +139,7 @@ These 11thONUS Core Business Terms ("**Terms**") govern the relationship between
 
 Only the terms necessary to read Part I are defined here. Additional definitions will be added as later Parts are drafted; no definition here should be read as pre-empting or narrowing a definition that a later Part may require.
 
-- **"11thONUS"** or **"the platform"** means the identity, purchase-verification, and reward-cycle infrastructure described in §4 (Platform Role), operated by the entity identified in the Preamble.
+- **"11thONUS"** or **"the platform"** means the customer-verified loyalty platform operated by the entity identified in the Preamble, including the infrastructure and functions described in §4 (Platform Role).
 - **"Business"** means the participating business entity or sole proprietor described in §1.
 - **"Reward Program"** means the customer reward programme that a Business designs, owns, and operates using the platform's shared infrastructure, as described in §6.
 - **"Customer"** means an individual who transacts with a Business and participates in that Business's Reward Program through the platform. Customers are not a party to these Terms (see §6.3).
@@ -150,9 +150,9 @@ Only the terms necessary to read Part I are defined here. Additional definitions
 
 3.1 11thONUS is a platform through which participating Businesses operate customer-verified loyalty ("Reward") programmes. The platform provides shared infrastructure for identity, purchase verification, and reward-cycle mechanics; it does not itself operate a shared or unified loyalty programme across Businesses, and it does not sell, market, or fulfil any Business's underlying goods or services.
 
-3.2 These Terms govern the Business's use of the platform and its relationship with 11thONUS. They do not govern: (a) the content, design, or terms of the Business's own Reward Program, which the Business alone controls (§6); (b) the Business's relationship with its own customers generally, except to the extent these Terms expressly impose a governed minimum requirement on that relationship (§6, §13, §14); or (c) any relationship between 11thONUS and a customer directly, which — if and when established — is governed by a separate Customer Terms / Platform Terms of Use instrument (§0.0), not this document.
+3.2 These Terms govern the Business's use of the platform and its relationship with 11thONUS. They do not govern: (a) the content, design, or terms of the Business's own Reward Program, which the Business alone controls (§6); (b) the Business's relationship with its own customers generally, except to the extent these Terms expressly impose a governed minimum requirement on that relationship (§6, §13, §14); or (c) 11thONUS's direct relationship with a customer, which is governed by the separate Customer Terms / Platform Terms of Use instrument (§0.0) — an approved separate legal-instrument architecture and a distinct future controlled work package under the differentiated-instrument model (LEG-FD-10) — not this document.
 
-3.3 [CONTROLLED INPUT REQUIRED: whether these Terms apply platform-wide from a single global version, or whether jurisdiction-specific versions of the Core Terms will be issued directly rather than through the overlay-addendum mechanism described in §26 (Part VIII, not drafted) — the governed architecture assumes a single portable Core Terms text supplemented by overlays, but this has not been tested against a drafted overlay].
+3.3 These Terms are issued as a single portable Core Business Terms text (Layer 1 of the jurisdiction architecture), supplemented — not redefined — by jurisdiction-specific overlays or addenda (Layer 2; §26, Part VIII, not drafted in this task) where mandatory or appropriate local law requires additional or different provisions. 11thONUS may present a consolidated or localized rendering of the applicable Core Terms and overlay to a Business in a given jurisdiction for accessibility, without changing this underlying two-layer architecture.
 
 ### Section 4 — Platform Role
 
@@ -161,8 +161,6 @@ Only the terms necessary to read Part I are defined here. Additional definitions
 4.2 11thONUS's role is that of an infrastructure and verification platform. 11thONUS records and verifies platform-level activity (identity, purchase entries, reward-cycle progress, and Terms-acceptance records) but does not itself decide what a Business's Reward Program rewards, at what threshold, or with what value. Those are decisions the Business makes for its own Reward Program (§6).
 
 4.3 11thONUS does not sell, supply, or deliver the underlying goods or services a Business provides to its customers, and is not a party to the transaction between a Business and its customer.
-
-4.4 [CONTROLLED INPUT REQUIRED: precise description of platform service tiers or feature differentiation, if any exists or is planned — no governed product/commercial decision on service-tier differentiation was found in the reviewed authorities; this Terms draft describes only the undifferentiated platform role common to all Businesses].
 
 ### Section 5 — Independent Business Relationship (No Agency)
 
@@ -180,13 +178,13 @@ Only the terms necessary to read Part I are defined here. Additional definitions
 
 6.2 The Business is solely responsible for the content, design, communication, and lawful operation of its own Reward Program, including what qualifies as a rewardable purchase, what a completed reward consists of, and how the Business communicates its Reward Program to its customers — subject to the governed minimum requirements this instrument imposes (in later Parts, not drafted in this task) regarding survival of earned rewards and prospective-only programme changes.
 
-6.3 A customer's participation in a Business's Reward Program does not, by itself, make the customer a party to these Terms. Where 11thONUS establishes a direct relationship with customers for platform access or use, that relationship is governed by a separate Customer Terms / Platform Terms of Use instrument (§0.0), not by this document. Nothing in this section should be read as already establishing, or as declining to establish, that separate instrument — its existence and content are outside this task's scope.
+6.3 A customer's participation in a Business's Reward Program does not, by itself, make the customer a party to these Terms. 11thONUS's direct relationship with customers for platform access or use is governed by the separate Customer Terms / Platform Terms of Use instrument (§0.0) — a distinct instrument under the approved differentiated-instrument architecture (LEG-FD-10), not this document. That instrument is a separate future controlled work package; its content is not drafted by this task, and this section does not resolve or draft any part of it.
 
 6.4 References in these Terms to a Business's "Reward Program" mean the programme the Business itself has authored and published using the platform's shared infrastructure. Nothing in these Terms should be read as 11thONUS authoring, endorsing, or guaranteeing the content of any Business's Reward Program.
 
 ### Section 7 — Acceptance and Formation
 
-7.1 A Business becomes bound by the current version of these Terms only upon affirmative acceptance by the Accepting Individual, recorded in accordance with this section. Acceptance is a precondition to the Business submitting for platform verification and to the Business's continued participation on the platform.
+7.1 A Business becomes bound by the current version of these Terms only upon affirmative acceptance by the Accepting Individual, recorded in accordance with this section. Acceptance is a precondition to the Business submitting for platform verification. Whether, and under what circumstances, continued participation on the platform requires an ongoing or repeated acceptance — including following a change to these Terms — is not resolved by this section; that matter is reserved to §22 (Changes to These Terms; Reacceptance) (Part VII, not drafted in this task) and the separately governed reacceptance-implementation decision (Controlled Inputs Register).
 
 7.2 An acceptance of these Terms is valid only where it includes, at minimum: (a) an affirmative act of acceptance by the Accepting Individual (not a passive or default action); (b) identification of the Accepting Individual and the Business on whose behalf acceptance is given; (c) an exact reference to the specific version of these Terms being accepted; (d) an authoritative, server-recorded timestamp of the moment of acceptance; and (e) the ability to retrieve the exact accepted version of these Terms after acceptance.
 
@@ -194,9 +192,9 @@ Only the terms necessary to read Part I are defined here. Additional definitions
 
 7.4 Where these Terms are later amended and a new version is issued, a Business's prior acceptance of an earlier version does not constitute acceptance of the new version. Continued participation on the platform following the issuance of a new version is subject to the reacceptance mechanism described in a future Changes-to-Terms clause (Part VII §22, not drafted in this task); this section does not itself specify what happens upon a Terms version change.
 
-7.5 [CONTROLLED INPUT REQUIRED: whether acceptance under this section may be given only by the Business's registering owner, or also by an authorised staff member with delegated authority — the existing acceptance mechanism as described in the reviewed authorities scopes acceptance to the business-owner flow; whether a delegated-staff acceptance is legally sufficient has not been governed].
+7.5 Initial acceptance of these Terms may be given by the registering Business Owner or another individual with authority to bind the Business (see §1.3). Ordinary staff or platform permissions do not, by themselves, confer authority to accept or reaccept these Terms on the Business's behalf. Any future capability allowing a delegated staff member to accept or reaccept these Terms on the Business's behalf requires explicit governance/authorization and is not established by this section.
 
-7.6 11thONUS maintains a record of each Business's acceptance, including the information described in §7.2, for so long as necessary to demonstrate the Business's agreement to the applicable version of these Terms.
+7.6 11thONUS maintains an auditable record of each Business's acceptance, including the information described in §7.2. Retention of that record is subject to applicable law and 11thONUS's governed data-retention policy; this section does not itself establish a retention period or retention standard.
 
 ---
 
