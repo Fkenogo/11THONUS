@@ -298,7 +298,7 @@ The following terms are added for Part II and do not alter any Part I definition
 
 ### Section 11 — Reward Program Responsibility
 
-11.1 Each Business designs, owns, and controls its own Reward Program using the platform's shared infrastructure. The Business determines what qualifies as a rewardable purchase, the threshold(s) for earning a reward, the reward(s) it offers, and the other terms of its Reward Program, subject to applicable law and to the governed minimum requirements this instrument imposes (§13, Reward Obligations; §14, Programme Changes).
+11.1 Each Business designs, owns, and controls its own Reward Program using the platform's shared infrastructure. Within the platform's governed shared catalogue and reward-cycle mechanics — including any platform-fixed earning threshold, which this section does not authorize a Business to alter — the Business selects the purchasable categories from that catalogue that qualify under its own Reward Program and determines the reward(s) it offers, subject to applicable law and to the governed minimum requirements this instrument imposes (§13, Reward Obligations; §14, Programme Changes). This section does not resolve the separate, still-open question of how a qualifying purchase is generally defined.
 
 11.2 The Business is responsible for communicating its Reward Program to its customers accurately and not in a knowingly misleading manner, and for keeping that communication consistent with the Reward Program as the Business actually operates it.
 
