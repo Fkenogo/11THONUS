@@ -298,7 +298,7 @@ The following terms are added for Part II and do not alter any Part I definition
 
 ### Section 11 — Reward Program Responsibility
 
-11.1 Each Business designs, owns, and controls its own Reward Program using the platform's shared infrastructure. Within the platform's governed shared catalogue and reward-cycle mechanics — including any platform-fixed earning threshold, which this section does not authorize a Business to alter — the Business selects the purchasable categories from that catalogue that qualify under its own Reward Program and determines the reward(s) it offers, subject to applicable law and to the governed minimum requirements this instrument imposes (§13, Reward Obligations; §14, Programme Changes). This section does not resolve the separate, still-open question of how a qualifying purchase is generally defined.
+11.1 Each Business designs, owns, and controls its own Reward Program using the platform's shared infrastructure, including — consistent with §6.2 — selecting the purchasable categories from the platform's shared catalogue that qualify under its own Reward Program, and determining the reward(s) it offers. This authority operates within the platform's governed shared catalogue and reward-cycle mechanics — including any platform-fixed earning threshold, which this section does not authorize a Business to alter — and is subject to applicable law and to the governed minimum requirements this instrument imposes (§13, Reward Obligations; §14, Programme Changes).
 
 11.2 The Business is responsible for communicating its Reward Program to its customers accurately and not in a knowingly misleading manner, and for keeping that communication consistent with the Reward Program as the Business actually operates it.
 
@@ -308,7 +308,7 @@ The following terms are added for Part II and do not alter any Part I definition
 
 11.5 A Business's Reward Program rules must not conflict with these Terms or with applicable platform governance. Where a conflict exists, these Terms and applicable platform governance govern the Business's use of the platform, without prejudice to the Business's responsibility for its own Reward Program under §11.1–§11.4.
 
-11.6 This section does not establish a mandatory reward type, a mandatory reward amount or value, a mandatory earning threshold, a mandatory programme cadence, mandatory programme tiers, or a minimum or maximum reward value. Those remain matters for each Business's own Reward Program, within the boundaries this instrument establishes.
+11.6 This section does not establish a mandatory reward type, a mandatory reward amount or value, a mandatory programme cadence, mandatory programme tiers, or a minimum or maximum reward value — those remain matters for each Business's own Reward Program, within the boundaries this instrument establishes. This section does not itself alter, and should not be read as making a Business-controlled matter, the platform-fixed earning threshold described in §11.1.
 
 ### Section 12 — Transaction Recording
 

@@ -64,13 +64,25 @@ A fourth `@codex review` request (head `8f765b2`) returned six comments; four we
 
 Both corrections are substantive (they change what §11.1 actually authorizes a Business to do), unlike every other finding in this correction pass, which was administrative/citation-only. The Traceability Matrix's §11.1 row and the Controlled Inputs Register's stale §13.6 rationale bullet (still describing the pre-correction schema-only rationale) were also corrected in this pass, and a new explanatory bullet was added for §11.1 alongside the existing §14.4 bullet.
 
+## Sixth re-review — one further genuine consistency finding, plus two stale re-flags and one report-accuracy finding
+
+A fifth `@codex review` request (head `168df94`) returned six comments; three were confirmed stale re-flags of already-fixed items, and three were genuine:
+
+**Finding 15 — Preserve the platform-fixed threshold in §11.6.** §11.6's do-not-invent list still included "a mandatory earning threshold" among matters that "remain matters for each Business's own Reward Program," directly contradicting the round-5 correction to §11.1 (which excluded the platform-fixed threshold from Business authority). **Correction:** §11.6 rewritten to remove "earning threshold" from the Business-controlled list and to state explicitly that this section does not make the platform-fixed threshold a Business-controlled matter, cross-referencing §11.1.
+
+**Finding 16 — Remove the surviving qualifying-purchase decision (reconciled with Part I, not by rewriting Part I).** The round-5 correction added a disclaimer to §11.1 stating the general qualifying-purchase-definition question is "separately open," but Part I §6.2 — already-approved Founder baseline, unedited by this task — independently allocates "what qualifies as a rewardable purchase" to the Business as part of its Reward Program responsibility. The disclaimer created an apparent internal contradiction. **Correction, consistent with the governing instruction not to substantively rewrite §§1–10:** §6.2 was **not** modified. Instead, §11.1 was corrected to cross-reference §6.2's existing allocation directly ("consistent with §6.2 — selecting the purchasable categories from the platform's shared catalogue that qualify under its own Reward Program"), removing the disclaimer that risked contradicting it. This is not a reopening of Part I: the Business's Reward-Program-level qualifying-purchase authority was already established before this task began; Part III now states that existing allocation consistently instead of independently re-deciding or appearing to unsettle it. The Legal Counsel Handoff Pack §4's distinct, broader "qualifying-purchase definition" item (a legal/regulatory-level question) remains genuinely open and untouched by either §6.2 or §11.1 — no controlled-input action was needed because no clause in this task purports to resolve that broader question; only the narrower, already-governed Reward-Program-level allocation is at issue in §11.1/§6.2, and it was already settled by the approved baseline.
+
+**Finding 17 — Update the correction report's verification scope.** The Verification section below (pre-existing text) understated the diff by referencing only the round-1 corrections. **Correction:** rewritten to cover all corrections made across all six review rounds.
+
 ## Verification
 
-- Direct search confirmed no other instance of "Parts III–VIII" or "Part III, not drafted" remains anywhere in the instrument after both corrections.
+- Direct search confirmed no instance of "Parts III–VIII," "Part III, not drafted," "three parts," or a stale Part II "heading only" label remains anywhere in the instrument after all corrections.
 - The corrected §14.4 text was re-checked against the prohibited-concept list: it does not assert universal reacceptance, does not assert no-reacceptance, and does not resolve `DEC-ID-005`, `DEC-LOY-009`, or any `DEC-SUB-*` item.
-- Parts I, II, and the rest of Part III were verified unchanged by direct diff — only §14.4 and the Part I heading note were touched by this correction pass.
-- No new Controlled Input was created. CI-01/CI-05 remain the only open controlled inputs. `DEC-LEGAL-002` = `OPEN_LEGAL`; Capability 3 = Open; Terms = `NOT CONFIGURED`; `DEC-ID-005`/`DEC-LOY-009`/all unresolved `DEC-SUB-*` unchanged.
-- Docs-only; no application, source, Firebase, or configuration change.
+- The corrected §13.6 text was re-checked against `DEC-LOY-005` (CONFIRMED): no auto-expiry currently, no Business-level expiry authority granted by this clause, any future policy requires separate governed authorization.
+- The corrected §11.1/§11.6 text was re-checked against `TRD10-firestore-data-architecture.md` §10.9.2 (platform-fixed threshold, not Business-configurable) and against Part I §6.2 (no contradiction remains — §11.1 now cross-references §6.2's existing allocation rather than independently restating or disclaiming it).
+- Part I (§§1–7) and Part II (§§8–10) clause body text verified unchanged by direct diff throughout every round of this correction pass, except the seven documented administrative scope-label corrections (none of which altered a legal proposition) — Part I §6.2 in particular was read multiple times across rounds 5 and 6 and left byte-for-byte unedited.
+- No new Controlled Input was created across any of the six review rounds. CI-01/CI-05 remain the only open controlled inputs. `DEC-LEGAL-002` = `OPEN_LEGAL`; Capability 3 = Open; Terms = `NOT CONFIGURED`; `DEC-ID-005`/`DEC-LOY-009`/all unresolved `DEC-SUB-*` unchanged.
+- Docs-only; no application, source, Firebase, or configuration change, across any round.
 
 ## Files modified
 
