@@ -1,17 +1,25 @@
-> **Title:** Business Terms Drafting Controlled Inputs Register — Part I
-> **Version:** 1.1 (2026-08-30 — corrected per Founder disposition, task `DEC-LEGAL-002-BT-DRAFT-001-CORR-001`: CI-02, CI-03, CI-04, and CI-06 resolved and moved below; CI-01 and CI-05 remain open) · **Status:** Working (governance record — open drafting inputs) · **Classification:** Working (governance record)
+> **Title:** Business Terms Drafting Controlled Inputs Register — Parts I–II
+> **Version:** 2.0 (2026-08-30 — Part II, §§8–10, reviewed; no new controlled input identified, task `DEC-LEGAL-002-BT-DRAFT-002`) · **Status:** Working (governance record — open drafting inputs) · **Classification:** Working (governance record)
 > **Governing document:** [Decision Register](../decision-register.md) `DEC-LEGAL-002`
 > **Source-of-truth path:** `docs/00-governance/decisions/evidence/DEC-LEGAL-002-BT-DRAFT-001-controlled-inputs-register-2026-08-30.md`
-> **Date:** 2026-08-30 · **Task:** `DEC-LEGAL-002-BT-DRAFT-001` (v1.0); `DEC-LEGAL-002-BT-DRAFT-001-CORR-001` (v1.1 correction)
-> **Governs:** [Core Business Terms — Draft](DEC-LEGAL-002-BT-DRAFT-001-core-business-terms-draft-2026-08-30.md), Part I only (§§1–7)
+> **Date:** 2026-08-30 · **Task:** `DEC-LEGAL-002-BT-DRAFT-001` (v1.0); `DEC-LEGAL-002-BT-DRAFT-001-CORR-001` (v1.1 correction, Part I only); `DEC-LEGAL-002-BT-DRAFT-002` (v2.0 — Part II review, no register change)
+> **Governs:** [Core Business Terms — Draft](DEC-LEGAL-002-BT-DRAFT-001-core-business-terms-draft-2026-08-30.md), Part I (§§1–7) and Part II (§§8–10)
 
 # Purpose
 
 Every `[CONTROLLED INPUT REQUIRED: ...]` marker in the Core Business Terms draft (Part I) is catalogued here with a classification of what must happen before the marker can be resolved. This register exists so that no value is ever silently invented — each row states exactly what is missing and who must supply it.
 
+# Part II review (task `DEC-LEGAL-002-BT-DRAFT-002`)
+
+Part II (§§8–10) was drafted entirely on principle-based language already supported by existing authority (`ENG-P2-002`/`003`/`004`-DESIGN-001, `ENG-P3-002`-DESIGN-001, FD-4, LEG-FD-01, LEG-FD-06, and Part I §1.3/§5/§7.5 of this same instrument, cross-referenced not redrafted). No `[CONTROLLED INPUT REQUIRED: ...]` marker was needed in Part II, and no new controlled input is added to this register by this task. In particular:
+
+- The Business-verification discretion clause (§8.7) is drafted from LEG-FD-01's general fallback interpretive standard (transparency, fairness, proportionality) precisely because no more specific verification SLA, criterion set, or automatic-approval rule exists in any reviewed authority — this is treated as a case where the general standard is sufficient to draft a discretion clause, not as a gap requiring a new controlled input, consistent with the Terms Drafting Readiness Note's own "Ready" classification for this readiness-table row (`ENG-P3-002` onboarding architecture).
+- The Prohibited Conduct catalogue (§10.1) is drafted from FD-4's suspension-grounds language and LEG-FD-06's non-exhaustive platform-integrity descriptive list, consistent with the readiness table's own basis for rating this row **Ready** ("Existing platform-integrity principles; no new item raised") — not a new Founder product position on fraud/abuse policy. This is a narrower use of that authority than a freestanding fraud/abuse policy would be, and is not read as resolving the separate, still-open question (noted in the Legal Counsel Handoff Pack) of a dedicated fraud/abuse product policy — that question remains unresolved and is not created or closed as a controlled input by this task, because Part II's §10 does not purport to be that policy; it is a Terms-level prohibited-conduct clause only.
+- The Staff-access-management clause (§9.5) deliberately uses durable, mechanism-agnostic language ("using the mechanisms the platform makes available for that purpose from time to time") rather than asserting that role-change, member-removal, or invitation-resend functionality is currently available, because current UI/callable implementation (per the ENG-P3-002-UI-IMP-F Team Management UI report) is narrower than the full architecture `ENG-P2-003`-DESIGN-001 designed. This drafting choice avoids creating a controlled input, since the clause does not depend on which specific staff-management features are live at any given time.
+
 # Register — remaining open controlled inputs
 
-Only two controlled inputs remain open in Part I after the correction pass. Both were already open before the correction and are genuinely unresolved matters, not newly created gaps.
+Only two controlled inputs remain open across Parts I–II after the correction pass and the Part II review. Both were already open before Part II and are genuinely unresolved matters, not newly created gaps.
 
 | ID | Marker location | What is missing | Classification | Who must resolve it |
 |---|---|---|---|---|
@@ -41,4 +49,6 @@ None of these four resolutions invents a `DEC-SUB-*` value, a multi-entity produ
 
 # Cross-reference note
 
-No row in this register duplicates a prohibited-concept item from the governing task's §6 boundary list (30-day notice, 60-day run-off, mandatory cash settlement, fixed suspension/cure periods, forced scrolling, Kirundi as a core language, data-as-consideration, arbitrary liability caps, `DEC-SUB-*` values, plan/price/billing mechanics, gift-card rules, `DEC-ID-005`/`DEC-LOY-009` resolution, or multiple-unredeemed-rewards rules) — none of those concepts appear in Part I of the draft at all, drafted or as a placeholder, because Part I does not reach those subject areas (they belong to Parts III, IV, V, and VI, none of which are drafted in this task). See the [Drafting Report](../../../05-implementation/reports/DEC-LEGAL-002-BT-DRAFT-001-drafting-report-2026-08-30.md) §14 for the actual text-search confirming this.
+No row in this register duplicates a prohibited-concept item from the governing task's §6 boundary list (30-day notice, 60-day run-off, mandatory cash settlement, fixed suspension/cure periods, forced scrolling, Kirundi as a core language, data-as-consideration, arbitrary liability caps, `DEC-SUB-*` values, plan/price/billing mechanics, gift-card rules, `DEC-ID-005`/`DEC-LOY-009` resolution, or multiple-unredeemed-rewards rules) — none of those concepts appear in Part I of the draft at all, drafted or as a placeholder, because Part I does not reach those subject areas (they belong to Parts III, IV, V, and VI, none of which are drafted in this task). See the [Part I Drafting Report](../../../05-implementation/reports/DEC-LEGAL-002-BT-DRAFT-001-drafting-report-2026-08-30.md) §14 for the actual text-search confirming this.
+
+Part II carries the same discipline for its own governing task's boundary list (Team during establishment; Subscription Plan as onboarding requirement; Business Code as public/commercial identifier; unsupported multi-branch assumptions; invented KYC/KYB requirements; unsupported roles; staff Terms-acceptance authority; automatic verification approval; reward rules belonging to Part III; suspension mechanics belonging to Part IV; fixed notice/cure periods; `DEC-SUB-*`/`DEC-ID-005`/`DEC-LOY-009` resolution) — a direct `grep`-based search confirms none of these concepts appear in Part II. Business Code specifically was deliberately kept out of the contractual text entirely (not genuinely necessary to §8's eligibility/onboarding clauses), consistent with its governed internal/support-use-only status (`ENG-P2-002-DESIGN-001` §24). See the [Part II Drafting Report](../../../05-implementation/reports/DEC-LEGAL-002-BT-DRAFT-002-drafting-report-2026-08-30.md) for the full search log.

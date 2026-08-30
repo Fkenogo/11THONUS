@@ -1,16 +1,17 @@
-> **Title:** Core Business Terms — Draft (Instrument Architecture + Part I)
-> **Version:** 1.1 (2026-08-30 — corrected per Founder disposition, task `DEC-LEGAL-002-BT-DRAFT-001-CORR-001`) · **Status:** DRAFT — NOT APPROVED — NOT EFFECTIVE — NOT CONFIGURED · **Classification:** Working (governance record — controlled legal drafting)
+> **Title:** Core Business Terms — Draft (Instrument Architecture + Part I + Part II)
+> **Version:** 2.0 (2026-08-30 — Part II, Business Participation, drafted, task `DEC-LEGAL-002-BT-DRAFT-002`) · **Status:** DRAFT — NOT APPROVED — NOT EFFECTIVE — NOT CONFIGURED · **Classification:** Working (governance record — controlled legal drafting)
 > **Governing document:** [Decision Register](../decision-register.md) `DEC-LEGAL-002` (Status: `OPEN_LEGAL`, unchanged by this document)
 > **Source-of-truth path:** `docs/00-governance/decisions/evidence/DEC-LEGAL-002-BT-DRAFT-001-core-business-terms-draft-2026-08-30.md`
-> **Date:** 2026-08-30 (v1.0) / 2026-08-30 (v1.1 correction) · **Task:** `DEC-LEGAL-002-BT-DRAFT-001` (v1.0); `DEC-LEGAL-002-BT-DRAFT-001-CORR-001` (v1.1 — Founder-directed corrections; see [Correction Report](../../../05-implementation/reports/DEC-LEGAL-002-BT-DRAFT-001-CORR-001-correction-report-2026-08-30.md))
-> **Authorities drafted from:** Founder FD-1–FD-7 ([Legal Counsel Handoff Pack](DEC-LEGAL-002-FOUNDER-DISP-001-legal-counsel-handoff-pack-2026-08-29.md) §3); `DEC-LOY-011` (Decision Register, CONFIRMED); LEG-FD-01–LEG-FD-15 ([Founder Legal Architecture Disposition Record v2.0](DEC-LEGAL-002-LEGAL-OPINION-RECON-001-founder-legal-architecture-dispositions-2026-08-29.md)); [Reconciliation Matrix](DEC-LEGAL-002-LEGAL-OPINION-RECON-001-reconciliation-matrix-2026-08-29.md); [Terms Instrument Architecture & Drafting Readiness Note v2.0](DEC-LEGAL-002-LEGAL-OPINION-RECON-001-terms-drafting-readiness-2026-08-29.md); [Terms Content Architecture](DEC-LEGAL-002-PREP-001-terms-content-architecture-2026-08-29.md); [Legal Counsel Handoff Pack](DEC-LEGAL-002-FOUNDER-DISP-001-legal-counsel-handoff-pack-2026-08-29.md).
-> **Companion documents:** [Business Terms Drafting Traceability Matrix](DEC-LEGAL-002-BT-DRAFT-001-drafting-traceability-matrix-2026-08-30.md); [Controlled Inputs Register](DEC-LEGAL-002-BT-DRAFT-001-controlled-inputs-register-2026-08-30.md); [Drafting Report](../../../05-implementation/reports/DEC-LEGAL-002-BT-DRAFT-001-drafting-report-2026-08-30.md).
+> **Date:** 2026-08-30 (v1.0) / 2026-08-30 (v1.1 correction) / 2026-08-30 (v2.0 — Part II) · **Task:** `DEC-LEGAL-002-BT-DRAFT-001` (v1.0); `DEC-LEGAL-002-BT-DRAFT-001-CORR-001` (v1.1 — Founder-directed corrections to Part I; see [Correction Report](../../../05-implementation/reports/DEC-LEGAL-002-BT-DRAFT-001-CORR-001-correction-report-2026-08-30.md)); `DEC-LEGAL-002-BT-DRAFT-002` (v2.0 — Part II, Business Participation, §§8–10; see [Drafting Report](../../../05-implementation/reports/DEC-LEGAL-002-BT-DRAFT-002-drafting-report-2026-08-30.md))
+> **Authorities drafted from (Part I):** Founder FD-1–FD-7 ([Legal Counsel Handoff Pack](DEC-LEGAL-002-FOUNDER-DISP-001-legal-counsel-handoff-pack-2026-08-29.md) §3); `DEC-LOY-011` (Decision Register, CONFIRMED); LEG-FD-01–LEG-FD-15 ([Founder Legal Architecture Disposition Record v2.0](DEC-LEGAL-002-LEGAL-OPINION-RECON-001-founder-legal-architecture-dispositions-2026-08-29.md)); [Reconciliation Matrix](DEC-LEGAL-002-LEGAL-OPINION-RECON-001-reconciliation-matrix-2026-08-29.md); [Terms Instrument Architecture & Drafting Readiness Note v2.0](DEC-LEGAL-002-LEGAL-OPINION-RECON-001-terms-drafting-readiness-2026-08-29.md); [Terms Content Architecture](DEC-LEGAL-002-PREP-001-terms-content-architecture-2026-08-29.md); [Legal Counsel Handoff Pack](DEC-LEGAL-002-FOUNDER-DISP-001-legal-counsel-handoff-pack-2026-08-29.md).
+> **Additional authorities drafted from (Part II):** Founder FD-4 (platform suspension grounds: trust, security, integrity, compliance, participants) and FD-2/FD-3 (earned-reward survival, referenced not redrafted) ([Legal Counsel Handoff Pack](DEC-LEGAL-002-FOUNDER-DISP-001-legal-counsel-handoff-pack-2026-08-29.md) §3); LEG-FD-01 (fallback interpretive standard: transparency, fairness, proportionality) and LEG-FD-06 (suspension process; non-exhaustive platform-integrity grounds catalogue) ([Founder Legal Architecture Disposition Record v2.0](DEC-LEGAL-002-LEGAL-OPINION-RECON-001-founder-legal-architecture-dispositions-2026-08-29.md)); `ENG-P2-002-DESIGN-001` (Business Identity Architecture — Owner model, delegation principle); `ENG-P2-003-DESIGN-001` (Staff Membership & Identity Architecture — Owner/Manager/Staff role model, permission model, invitation architecture); `ENG-P2-004-DESIGN-001` (Role-Context & Permission-Resolution Architecture — Sensitive Permission Catalogue, override-resolution rule); `ENG-P3-002-DESIGN-001` (Business Onboarding Architecture — mandatory/optional/out-of-scope onboarding classification; ungoverned verification-mechanism boundary); Part I §1.3, §5, §7.5 of this same instrument (referenced, not redrafted).
+> **Companion documents:** [Business Terms Drafting Traceability Matrix](DEC-LEGAL-002-BT-DRAFT-001-drafting-traceability-matrix-2026-08-30.md); [Controlled Inputs Register](DEC-LEGAL-002-BT-DRAFT-001-controlled-inputs-register-2026-08-30.md); [Part I Drafting Report](../../../05-implementation/reports/DEC-LEGAL-002-BT-DRAFT-001-drafting-report-2026-08-30.md); [Part II Drafting Report](../../../05-implementation/reports/DEC-LEGAL-002-BT-DRAFT-002-drafting-report-2026-08-30.md).
 
 ---
 
 > # ⚠️ DRAFT — NOT APPROVED — NOT EFFECTIVE — NOT CONFIGURED
 >
-> This document is a **controlled drafting instrument**, not a Terms version. It has not been reviewed or approved by legal counsel beyond the already-filed external Legal Opinion, has not been approved by the Founder as final Terms content, has not been assigned a version identifier, and has not been written to `platformConfig/businessTerms` or any other configuration surface. `DEC-LEGAL-002` remains `OPEN_LEGAL`. Capability 3 remains blocked on governed Terms-content configuration. No Business can accept this document and no acceptance record may reference it. Every `[CONTROLLED INPUT REQUIRED: ...]` marker below is an explicit gap, not an oversight — see the companion Controlled Inputs Register.
+> This document is a **controlled drafting instrument**, not a Terms version. It has not been reviewed or approved by legal counsel beyond the already-filed external Legal Opinion, has not been approved by the Founder as final Terms content, has not been assigned a version identifier, and has not been written to `platformConfig/businessTerms` or any other configuration surface. `DEC-LEGAL-002` remains `OPEN_LEGAL`. Capability 3 remains blocked on governed Terms-content configuration. No Business can accept this document and no acceptance record may reference it. Every `[CONTROLLED INPUT REQUIRED: ...]` marker below is an explicit gap, not an oversight — see the companion Controlled Inputs Register. **Part II (§§8–10, added 2026-08-30) carries exactly the same status. Parts III–VIII remain headings/placeholders only.**
 
 ---
 
@@ -18,10 +19,11 @@
 
 ## How to read this document
 
-This document has two parts:
+This document has three parts:
 
 - **Part 0 — Complete Proposed Structure.** The full section architecture proposed for the eventual Core Business Terms, covering all subject areas identified as drafting-ready in the Terms Drafting Readiness Note. Sections not yet drafted appear as headings with a placeholder note only — no clause text.
-- **Part I — Foundation, Relationship and Acceptance.** The only portion drafted with full clause text in this task, per the governing task scope.
+- **Part I — Foundation, Relationship and Acceptance.** Drafted with full clause text in task `DEC-LEGAL-002-BT-DRAFT-001` (corrected `-CORR-001`).
+- **Part II — Business Participation (§§8–10).** Drafted with full clause text in task `DEC-LEGAL-002-BT-DRAFT-002`. Parts III–VIII remain headings/placeholders only.
 
 This instrument governs the relationship between 11thONUS and a participating Business only. It does not govern the relationship between 11thONUS and a Business's customers (a separate future Customer Terms/Platform Terms of Use instrument, not drafted here — see §0.0 Instrument Map), and it does not govern the content of any individual Business's own Reward Program (authored and controlled by that Business — see §0.0).
 
@@ -97,12 +99,12 @@ The Terms Drafting Readiness Note (v2.0) states "16 of 16 sections ready to draf
 |---|---|---|---|---|
 | 1 | Parties/relationship | LEG-FD-01 | §1 Parties and Agreement | **Yes** |
 | 2 | Platform service | Legal Counsel Handoff Pack §2 | §4 Platform Role | **Yes** |
-| 3 | Business eligibility | `ENG-P3-002` onboarding architecture | §8 Business Eligibility, Registration and Onboarding | No — Part II heading only |
-| 4 | Account authority | `ENG-P2-002`/`003` | §9 Account Authority | No — Part II heading only |
+| 3 | Business eligibility | `ENG-P3-002` onboarding architecture | §8 Business Eligibility, Registration and Onboarding | **Yes** |
+| 4 | Account authority | `ENG-P2-002`/`003` | §9 Account Authority | **Yes** |
 | 5 | Reward Program responsibility | FD-5 | §11 Reward Program Responsibility; §6 Business/Customer Relationship Boundary (foundational statement only) | Foundational statement in §6 **yes**; full clause **no** |
 | 6 | Transaction recording | Product-model description | §12 Transaction Recording | No — Part III heading only |
 | 7 | Reward obligations | FD-2/FD-3, `DEC-LOY-011`, LEG-FD-04/07/08 | §13 Reward Obligations | No — Part III heading only |
-| 8 | Prohibited conduct | Existing platform-integrity principles | §10 Prohibited Conduct | No — Part II heading only |
+| 8 | Prohibited conduct | Existing platform-integrity principles | §10 Prohibited Conduct | **Yes** |
 | 9 | Disputes/corrections | LEG-FD-11, LEG-FD-14 | §17 Complaints and Dispute Facilitation; §21 Governing Law and Dispute Resolution | No — Part IV/VII heading only |
 | 10 | Suspension/termination | FD-3/FD-4, `DEC-LOY-011`, LEG-FD-06 | §15 Suspension and Restriction; §16 Business Exit and Termination | No — Part IV heading only |
 | 11 | Programme changes | FD-5, LEG-FD-05 | §14 Programme Changes | No — Part III heading only |
@@ -145,6 +147,13 @@ Only the terms necessary to read Part I are defined here. Additional definitions
 - **"Customer"** means an individual who transacts with a Business and participates in that Business's Reward Program through the platform. Customers are not a party to these Terms (see §6.3).
 - **"Terms"** means this Core Business Terms document, as it may be amended from time to time in accordance with a future governed Changes-to-Terms clause (Part VII §22, not drafted in this task).
 - **"Accepting Individual"** means the individual described in §1.3 who affirmatively accepts these Terms on the Business's behalf, as recorded under §7.
+
+#### Additional definitions (Part II terms)
+
+The following terms are added for Part II and do not alter any Part I definition above.
+
+- **"Business Owner"** means the individual described in §1.3 who registers the Business, or another individual with authority to bind the Business, and who is treated under §9.1 as the Business's authorized representative for purposes of these Terms.
+- **"Staff"** means an individual the Business authorizes to use particular platform capabilities on the Business's behalf under §9.2, according to the roles and permissions the platform makes available for that purpose. Staff are not Business Owners and do not, by virtue of being Staff alone, have the authority described in §1.3 or §7.5.
 
 ### Section 3 — Purpose and Scope
 
@@ -200,13 +209,89 @@ Only the terms necessary to read Part I are defined here. Additional definitions
 
 ## End of Part I
 
-Parts II through VIII above (§§8–27) are headings and placeholders only, per the governing task scope. No clause text for those Parts has been drafted, and none should be inferred from Part I's treatment of adjacent topics (for example, §6's Reward Program Responsibility statement is a foundational relationship-boundary statement only, not the full Reward Program Responsibility clause reserved for Part III §11).
+---
+
+## Part II — Business Participation
+
+*(Drafted with full clause text in task `DEC-LEGAL-002-BT-DRAFT-002`. Parts III through VIII remain headings and placeholders only — see "End of Part II" below.)*
+
+### Section 8 — Business Eligibility, Registration and Onboarding
+
+8.1 A Business must be a legally existing business entity, or a sole proprietor, with the legal capacity to enter into these Terms. The individual who registers a Business on its behalf must have the authority described in §1.3.
+
+8.2 The Business must ensure that the information it provides to 11thONUS during registration and onboarding — including its business identity, contact information, and Main Location — is accurate and is not knowingly misleading, and must promptly correct any such information that becomes inaccurate.
+
+8.3 Before platform capabilities that require verification become available to it, a Business must complete the applicable onboarding requirements 11thONUS makes available for that purpose. Onboarding requirements may evolve as the platform's capabilities evolve. Nothing in this section requires a Business, as a condition of completing onboarding, to select a subscription plan, invite Staff, publish a Reward Program, or establish more than one place of business, except to the extent the onboarding requirements 11thONUS makes available at the relevant time expressly provide otherwise.
+
+8.4 11thONUS may request information reasonably necessary for verification, security, compliance, or platform integrity purposes, whether during onboarding or afterward. The Business must respond in a manner that is accurate and not knowingly misleading.
+
+8.5 As provided in §7 (Acceptance and Formation), a Business must accept the current version of these Terms before it may submit its registration for platform verification.
+
+8.6 Completing registration and onboarding does not itself mean that a Business has been verified or approved to participate in any particular platform activity that requires verification. Verification is a separate step, addressed in §8.7.
+
+8.7 Following a Business's submission for verification, 11thONUS may approve the Business for participation, decline to approve it, approve it subject to restrictions, or request further information reasonably necessary for verification, security, compliance, or platform integrity purposes. 11thONUS exercises this discretion consistently with the transparency, fairness, and proportionality standard that otherwise governs the interpretation of these Terms. This section does not establish a verification timeline or service commitment, an automatic-approval rule, an exhaustive statement of verification criteria, or any fee for verification.
+
+8.8 Completing registration and onboarding does not guarantee that a Business will be, or will remain, verified or approved to participate in any particular platform activity.
+
+### Section 9 — Account Authority (Owners, Staff and Permissions)
+
+9.1 The individual who registers a Business, or another individual with authority to bind the Business (§1.3), is the Business's Business Owner for purposes of these Terms. The Business Owner has authority to establish, manage, and act on behalf of the Business's relationship with 11thONUS under these Terms, including the acceptance authority described in §7.
+
+9.2 The Business may authorize other individuals as Staff to use particular platform capabilities on its behalf, according to the roles and permissions the platform makes available for that purpose. Staff access is a matter of the Business's ongoing management of its account following onboarding; it is not part of registration or onboarding under §8.
+
+9.3 Being granted platform permissions as Staff does not, by itself, give an individual authority to bind the Business, to accept or reaccept these Terms on the Business's behalf (§7.5), or to act beyond the specific capabilities the individual's role and permissions cover. A Business Owner's delegation of platform permissions to Staff does not delegate the Business Owner's own authority under §1.3, except to the extent these Terms expressly provide otherwise.
+
+9.4 The platform's role and permission model governs what platform capabilities a person may use. It does not determine, and 11thONUS does not adjudicate, a person's employment relationship, corporate authority, or other legal relationship with the Business outside the platform. The Business is responsible for aligning the platform access it grants with the actual authority it intends that person to have.
+
+9.5 The Business is solely responsible for deciding whom to authorize as Staff, for the roles and permissions it grants them, and for adjusting or removing that access — using the mechanisms the platform makes available for that purpose from time to time — when a person should no longer have it, including when their relationship with the Business ends or their responsibilities change.
+
+9.6 Staff must act only within the permissions the Business has granted them. As between the Business and 11thONUS, the Business remains responsible under these Terms for acts undertaken using the platform access the Business granted to its Staff, to the same extent as if the Business had undertaken those acts itself, without prejudice to any right the Business may separately have against that individual.
+
+9.7 The Business must take reasonable steps to protect the credentials and access it and its Staff use to reach the platform, and must not knowingly permit access contrary to these Terms or the platform's role and permission model.
+
+9.8 Where the Business knows of, or reasonably suspects, unauthorized use of its account or its Staff's access, it must notify 11thONUS without undue delay and cooperate reasonably with 11thONUS's efforts to investigate and address the matter. This section does not make the Business responsible for unauthorized use resulting solely from a failure or compromise of 11thONUS's own platform, systems, or security.
+
+### Section 10 — Prohibited Conduct
+
+10.1 In using the platform, a Business — including Staff acting on its behalf — must not:
+
+(a) engage in fraud or attempted fraud in connection with the platform, a Reward Program, or a customer;
+
+(b) fabricate, or knowingly record false, purchase or loyalty activity;
+
+(c) manipulate, or attempt to manipulate, Reward Program records in a manner inconsistent with the Business's own Reward Program terms;
+
+(d) access or use the platform, or any account, without authorization;
+
+(e) misuse another Business's or a customer's identity, account, or information;
+
+(f) interfere with, disrupt, or attempt to circumvent the operation, security, or integrity of the platform;
+
+(g) knowingly provide materially false or misleading information to 11thONUS, including during registration, onboarding, or verification (see also §8.2, §8.4);
+
+(h) use the platform for an unlawful purpose;
+
+(i) engage in conduct intended to defeat or circumvent the platform's verification or trust controls; or
+
+(j) misuse customer information obtained through the Business's participation on the platform, including using it for a purpose inconsistent with the Business's own Reward Program terms or applicable law.
+
+10.2 This section does not limit a Business's legitimate control over its own customer relationships or its own Reward Program, exercised consistently with these Terms (§6).
+
+10.3 The conduct described in §10.1 illustrates conduct that undermines platform trust, security, integrity, or compliance. It is not an exhaustive statement of all conduct that may result in platform action.
+
+10.4 Conduct described in this section, or other conduct inconsistent with these Terms, may result in platform action against the Business, including suspension or restriction of the Business's participation, subject to Part IV §15 (Suspension and Restriction, not drafted in this task). This section does not itself establish a notice period, a cure period, or a termination mechanism, and does not alter the treatment of a customer's already-earned rewards (Part III, not drafted in this task).
+
+---
+
+## End of Part II
+
+Parts III through VIII above (§§11–27) remain headings and placeholders only, per the governing task scope. No clause text for those Parts has been drafted, and none should be inferred from Part I or Part II's treatment of adjacent topics (for example, §10.4's cross-reference to suspension states only that platform action may follow prohibited conduct; it does not draft any part of §15, and §9's treatment of Staff access does not draft any part of §11's Reward Program Responsibility clause).
 
 ---
 
 ## Status Reaffirmation
 
-Drafting this Part I document does not change any of the following, all of which remain exactly as they stood before this task:
+Drafting this Part I and Part II document does not change any of the following, all of which remain exactly as they stood before this task:
 
 - `DEC-LEGAL-002` = **OPEN_LEGAL** (Decision Register)
 - Capability 3 = **Open — engineering work packages complete; blocked on governed Terms-content configuration** (`CDR-001` §5)
