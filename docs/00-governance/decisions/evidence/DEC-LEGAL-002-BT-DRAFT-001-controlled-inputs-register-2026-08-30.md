@@ -1,8 +1,8 @@
 > **Title:** Business Terms Drafting Controlled Inputs Register — Parts I–II
-> **Version:** 2.0 (2026-08-30 — Part II, §§8–10, reviewed; no new controlled input identified, task `DEC-LEGAL-002-BT-DRAFT-002`) · **Status:** Working (governance record — open drafting inputs) · **Classification:** Working (governance record)
+> **Version:** 2.1 (2026-08-30 — Part II PR-review corrections applied; no new controlled input identified, task `DEC-LEGAL-002-BT-DRAFT-002-CORR-001`) · **Status:** Working (governance record — open drafting inputs) · **Classification:** Working (governance record)
 > **Governing document:** [Decision Register](../decision-register.md) `DEC-LEGAL-002`
 > **Source-of-truth path:** `docs/00-governance/decisions/evidence/DEC-LEGAL-002-BT-DRAFT-001-controlled-inputs-register-2026-08-30.md`
-> **Date:** 2026-08-30 · **Task:** `DEC-LEGAL-002-BT-DRAFT-001` (v1.0); `DEC-LEGAL-002-BT-DRAFT-001-CORR-001` (v1.1 correction, Part I only); `DEC-LEGAL-002-BT-DRAFT-002` (v2.0 — Part II review, no register change)
+> **Date:** 2026-08-30 · **Task:** `DEC-LEGAL-002-BT-DRAFT-001` (v1.0); `DEC-LEGAL-002-BT-DRAFT-001-CORR-001` (v1.1 correction, Part I only); `DEC-LEGAL-002-BT-DRAFT-002` (v2.0 — Part II, no register change); `DEC-LEGAL-002-BT-DRAFT-002-CORR-001` (v2.1 — PR #204 review-finding corrections, no register change)
 > **Governs:** [Core Business Terms — Draft](DEC-LEGAL-002-BT-DRAFT-001-core-business-terms-draft-2026-08-30.md), Part I (§§1–7) and Part II (§§8–10)
 
 # Purpose
@@ -17,9 +17,18 @@ Part II (§§8–10) was drafted entirely on principle-based language already su
 - The Prohibited Conduct catalogue (§10.1) is drafted from FD-4's suspension-grounds language and LEG-FD-06's non-exhaustive platform-integrity descriptive list, consistent with the readiness table's own basis for rating this row **Ready** ("Existing platform-integrity principles; no new item raised") — not a new Founder product position on fraud/abuse policy. This is a narrower use of that authority than a freestanding fraud/abuse policy would be, and is not read as resolving the separate, still-open question (noted in the Legal Counsel Handoff Pack) of a dedicated fraud/abuse product policy — that question remains unresolved and is not created or closed as a controlled input by this task, because Part II's §10 does not purport to be that policy; it is a Terms-level prohibited-conduct clause only.
 - The Staff-access-management clause (§9.5) deliberately uses durable, mechanism-agnostic language ("using the mechanisms the platform makes available for that purpose from time to time") rather than asserting that role-change, member-removal, or invitation-resend functionality is currently available, because current UI/callable implementation (per the ENG-P3-002-UI-IMP-F Team Management UI report) is narrower than the full architecture `ENG-P2-003`-DESIGN-001 designed. This drafting choice avoids creating a controlled input, since the clause does not depend on which specific staff-management features are live at any given time.
 
+# Part II PR-review correction pass (task `DEC-LEGAL-002-BT-DRAFT-002-CORR-001`)
+
+Four PR #204 review findings (Codex, all P2) were corrected in place — see the Part II Correction Report for the full disposition of each. None of the four corrections created a new controlled input:
+
+- **Verification-outcome finding:** the corrected §8.6–§8.8 removes the invented approve/decline/restrict outcome architecture entirely, stating only that verification/participation requirements are separately governed and not created by this instrument (per `ENG-P3-002-DESIGN-001`'s explicit "must not be invented" finding on the `pending_verification → trial` mechanism). Part II remains completely draftable without resolving that mechanism — no controlled input was needed, and none is added.
+- **Business Owner/Authorized Representative finding:** resolved by adding a new "Authorized Representative" definition and correcting §9.1/§9.3/§2 to keep the two concepts distinct, using existing `ENG-P2-002-DESIGN-001` §7 architecture and Part I §1.3/§7.5 (both already governed). No new Founder or legal position was required.
+- **Onboarding-exclusion finding:** resolved by removing the self-defeating "onboarding requirements... expressly provide otherwise" exception from §8.3 and requiring separate governance/authorization to change the four exclusions. This is a drafting-discipline correction, not a new open question.
+- **Stale-scope-label finding:** an administrative consistency correction only (three statements corrected); no controlled input is implicated.
+
 # Register — remaining open controlled inputs
 
-Only two controlled inputs remain open across Parts I–II after the correction pass and the Part II review. Both were already open before Part II and are genuinely unresolved matters, not newly created gaps.
+Only two controlled inputs remain open across Parts I–II after the correction pass, the Part II review, and the Part II PR-review correction pass. Both were already open before Part II and are genuinely unresolved matters, not newly created gaps.
 
 | ID | Marker location | What is missing | Classification | Who must resolve it |
 |---|---|---|---|---|
