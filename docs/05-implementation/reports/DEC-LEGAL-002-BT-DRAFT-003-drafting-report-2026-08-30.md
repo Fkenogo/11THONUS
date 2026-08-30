@@ -148,11 +148,11 @@ A `grep`-based search of the extracted Part III text (`## Part III` through `## 
 
 ## 33. PR review-thread state
 
-Not yet applicable — PR not yet opened at the time this report was drafted. This report is updated in the completion message once the PR is opened and any automated review completes.
+PR #205 opened; CI (`Build, Lint, Test, Emulator Validation`) passed. Codex automated review posted two P2 findings, both addressed in place — see the [Part III Correction Report](DEC-LEGAL-002-BT-DRAFT-003-CORR-001-correction-report-2026-08-30.md) for the full disposition of each.
 
 ## 34. Automated/human review findings
 
-None yet — pending PR creation and CI/review completion.
+Two Codex findings (both P2), reviewed head `ef874961a7`: (1) §14.4 originally asserted a no-customer-reacceptance default for Reward Program changes, prematurely deciding a question the Legal Counsel Handoff Pack §4 records as genuinely open — corrected to an explicit non-resolution; (2) the Part I heading note still read "Parts III–VIII remain headings/placeholders only" after Part III was drafted, an internally contradictory stale scope label missed by the original five-correction inventory — corrected, and the inventory count updated to six. Both corrections applied in task `DEC-LEGAL-002-BT-DRAFT-003-CORR-001`; no new controlled input was created by either correction.
 
 ## 35. DEC-LEGAL-002 status
 
