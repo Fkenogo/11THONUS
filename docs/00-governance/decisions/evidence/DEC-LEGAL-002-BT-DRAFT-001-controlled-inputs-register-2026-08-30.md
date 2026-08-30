@@ -1,8 +1,8 @@
 > **Title:** Business Terms Drafting Controlled Inputs Register — Parts I–II
-> **Version:** 2.1 (2026-08-30 — Part II PR-review corrections applied; no new controlled input identified, task `DEC-LEGAL-002-BT-DRAFT-002-CORR-001`) · **Status:** Working (governance record — open drafting inputs) · **Classification:** Working (governance record)
+> **Version:** 2.2 (2026-08-30 — Part II final Founder wording corrections applied; no new controlled input identified, task `DEC-LEGAL-002-BT-DRAFT-002-CORR-002`) · **Status:** Working (governance record — open drafting inputs) · **Classification:** Working (governance record)
 > **Governing document:** [Decision Register](../decision-register.md) `DEC-LEGAL-002`
 > **Source-of-truth path:** `docs/00-governance/decisions/evidence/DEC-LEGAL-002-BT-DRAFT-001-controlled-inputs-register-2026-08-30.md`
-> **Date:** 2026-08-30 · **Task:** `DEC-LEGAL-002-BT-DRAFT-001` (v1.0); `DEC-LEGAL-002-BT-DRAFT-001-CORR-001` (v1.1 correction, Part I only); `DEC-LEGAL-002-BT-DRAFT-002` (v2.0 — Part II, no register change); `DEC-LEGAL-002-BT-DRAFT-002-CORR-001` (v2.1 — PR #204 review-finding corrections, no register change)
+> **Date:** 2026-08-30 · **Task:** `DEC-LEGAL-002-BT-DRAFT-001` (v1.0); `DEC-LEGAL-002-BT-DRAFT-001-CORR-001` (v1.1 correction, Part I only); `DEC-LEGAL-002-BT-DRAFT-002` (v2.0 — Part II, no register change); `DEC-LEGAL-002-BT-DRAFT-002-CORR-001` (v2.1 — PR #204 review-finding corrections, no register change); `DEC-LEGAL-002-BT-DRAFT-002-CORR-002` (v2.2 — final Founder wording corrections, no register change)
 > **Governs:** [Core Business Terms — Draft](DEC-LEGAL-002-BT-DRAFT-001-core-business-terms-draft-2026-08-30.md), Part I (§§1–7) and Part II (§§8–10)
 
 # Purpose
@@ -26,9 +26,13 @@ Four PR #204 review findings (Codex, all P2) were corrected in place — see the
 - **Onboarding-exclusion finding:** resolved by removing the self-defeating "onboarding requirements... expressly provide otherwise" exception from §8.3 and requiring separate governance/authorization to change the four exclusions. This is a drafting-discipline correction, not a new open question.
 - **Stale-scope-label finding:** an administrative consistency correction only (three statements corrected); no controlled input is implicated.
 
+# Part II final Founder wording-correction pass (task `DEC-LEGAL-002-BT-DRAFT-002-CORR-002`)
+
+Two narrow wording corrections were made following Founder re-review of PR #204 (the Staff definition, and §9.3/§9.6). Neither is a substantive policy question and neither created a new controlled input: both corrected an overstatement or an open-ended drafting risk using authority already governed and already cited (Part I §1.3/§7.5, `ENG-P2-002-DESIGN-001`/`ENG-P2-003-DESIGN-001`). No governing conflict was discovered; none is created.
+
 # Register — remaining open controlled inputs
 
-Only two controlled inputs remain open across Parts I–II after the correction pass, the Part II review, and the Part II PR-review correction pass. Both were already open before Part II and are genuinely unresolved matters, not newly created gaps.
+Only two controlled inputs remain open across Parts I–II after the correction pass, the Part II review, the Part II PR-review correction pass, and the Part II final wording-correction pass. Both were already open before Part II and are genuinely unresolved matters, not newly created gaps.
 
 | ID | Marker location | What is missing | Classification | Who must resolve it |
 |---|---|---|---|---|
