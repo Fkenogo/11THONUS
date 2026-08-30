@@ -20,7 +20,7 @@
 
 ## How to read this document
 
-This document has three parts:
+This document has four parts:
 
 - **Part 0 — Complete Proposed Structure.** The full section architecture proposed for the eventual Core Business Terms, covering all subject areas identified as drafting-ready in the Terms Drafting Readiness Note. Sections not yet drafted appear as headings with a placeholder note only — no clause text.
 - **Part I — Foundation, Relationship and Acceptance.** Drafted with full clause text in task `DEC-LEGAL-002-BT-DRAFT-001` (corrected `-CORR-001`).

@@ -44,7 +44,7 @@ Communicated to the user before drafting began (see conversation record): §11 f
 
 ## 7. Parts I–II integrity
 
-Part I (§§1–7) and Part II (§§8–10) clause body text is unchanged from the merged PR #204 baseline. Five administrative scope-label corrections were made (Instrument Map §0.0's readiness-table narrative; Part 0 §0.2 readiness-table rows 5/6/7/11; the "Independence/no-agency" narrative note; §6.2's forward-reference parenthetical; §10.4's forward-reference parenthetical) — each replaces a stale "not drafted in this task"/"remains Part III, not drafted" pointer with the correct Part III cross-reference now that Part III exists, following the identical precedent PR #204 review finding 4 established when Part II was drafted (correcting stale "Part I only" labels). No clause's legal proposition was altered by any of these five corrections; a direct diff confirms no other Part I/II text changed.
+Part I (§§1–7) and Part II (§§8–10) clause body text is unchanged from the merged PR #204 baseline. Six administrative scope-label corrections were made in total (five in the original drafting pass, one added in the `DEC-LEGAL-002-BT-DRAFT-003-CORR-001` PR-review correction pass): Instrument Map §0.0's readiness-table narrative; Part 0 §0.2 readiness-table rows 5/6/7/11; the "Independence/no-agency" narrative note; §6.2's forward-reference parenthetical; §10.4's forward-reference parenthetical; and the Part I heading note (originally missed, corrected on PR #205 review — see §33/§34 below). Each replaces a stale "not drafted in this task"/"remains Part III, not drafted"/"Parts III–VIII remain headings/placeholders only" pointer with the correct Part III cross-reference now that Part III exists, following the identical precedent PR #204 review finding 4 established when Part II was drafted (correcting stale "Part I only" labels). No clause's legal proposition was altered by any of these six corrections; a direct diff confirms no other Part I/II text changed.
 
 ## 8. §11 clauses drafted
 
@@ -168,7 +168,8 @@ Unchanged: `NOT CONFIGURED` (`platformConfig/businessTerms`).
 
 ## 38. Files modified
 
-- `docs/00-governance/decisions/evidence/DEC-LEGAL-002-BT-DRAFT-001-core-business-terms-draft-2026-08-30.md` (Part III added; five administrative scope-label corrections to Parts I/II; header/version metadata updated to v3.0)
+- `docs/00-governance/decisions/evidence/DEC-LEGAL-002-BT-DRAFT-001-core-business-terms-draft-2026-08-30.md` (Part III added; six administrative scope-label corrections to Parts I/II across the original pass and the `-CORR-001` PR-review pass; §14.4 corrected on PR-review to an explicit non-resolution; header/version metadata updated to v3.1)
+- `docs/00-governance/documentation-changes-log.md` (Entry 128 — Part III drafting; Entry 129 — `-CORR-001` PR-review corrections)
 - `docs/00-governance/decisions/evidence/DEC-LEGAL-002-BT-DRAFT-001-drafting-traceability-matrix-2026-08-30.md` (Part III clause rows added; header/version metadata updated to v3.0)
 - `docs/00-governance/decisions/evidence/DEC-LEGAL-002-BT-DRAFT-001-controlled-inputs-register-2026-08-30.md` (Part III review section added; cross-reference note extended; header/version metadata updated to v3.0)
 - `docs/00-governance/decisions/decision-register.md` (new "Last controlled update" entry prepended for `DEC-LEGAL-002-BT-DRAFT-003`; full prior history preserved)
@@ -178,7 +179,7 @@ No other file was modified. The pre-existing untracked files present at task sta
 
 ## 39. Diff summary
 
-Additive: full clause text for §§11–14 (23 numbered sub-clauses across four sections); one new Traceability Matrix table (23 rows) plus a "Part III clauses removed" note; one new Controlled Inputs Register section (Part III review) plus an extended cross-reference note; one new decision-register.md history entry; one new drafting report. Corrective (non-substantive, scope-label only): five Part I/II forward-reference pointers updated from "not drafted in this task"/"remains Part III, not drafted" to the correct Part III cross-reference. No Part I or Part II clause body text was rewritten.
+Additive: full clause text for §§11–14 (23 numbered sub-clauses across four sections); one new Traceability Matrix table (23 rows) plus a "Part III clauses removed" note; one new Controlled Inputs Register section (Part III review) plus an extended cross-reference note; one new decision-register.md history entry; one new drafting report; two new documentation-changes-log entries (128, 129). Corrective (non-substantive, scope-label only): six Part I/II forward-reference pointers updated from "not drafted in this task"/"remains Part III, not drafted"/"Parts III–VIII remain headings/placeholders only" to the correct Part III cross-reference, across the original drafting pass (five) and the `-CORR-001` PR-review pass (one). §14.4 was also corrected on PR review from an affirmative no-reacceptance default to an explicit non-resolution. No Part I or Part II clause body text was rewritten.
 
 ## 40. Commands executed
 
@@ -198,7 +199,7 @@ None. Docs-only. No `functions/`, `apps/web/`, Firestore Rules, or Firebase conf
 
 ## 44. Validation results
 
-Full Part III clause-by-clause authority-traceability review completed (§31 above, matrix populated). Prohibited-concept search completed with no asserted-concept matches (§32 above). Parts I–II integrity verified by direct comparison — only the five documented administrative scope-label corrections found. `DEC-LOY-009` boundary verified preserved by direct inspection of §13's full text (§21 above).
+Full Part III clause-by-clause authority-traceability review completed (§31 above, matrix populated). Prohibited-concept search completed with no asserted-concept matches (§32 above). Parts I–II integrity verified by direct comparison — only the six documented administrative scope-label corrections found (five in the original pass, one added on PR-review). `DEC-LOY-009` boundary verified preserved by direct inspection of §13's full text (§21 above). §14.4 verified corrected to an explicit non-resolution per PR #205 review (§33/§34).
 
 ## 45. Risks/open drafting matters
 
