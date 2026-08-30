@@ -59,7 +59,7 @@ The following is the proposed complete architecture for the Core Business Terms,
 6. Business/Customer Relationship Boundary
 7. Acceptance and Formation
 
-**Part II — Business Participation** *(heading only — not drafted)*
+**Part II — Business Participation** *(drafted in task `DEC-LEGAL-002-BT-DRAFT-002` — see Part II below)*
 8. Business Eligibility, Registration and Onboarding
 9. Account Authority (Owners, Staff, Permissions)
 10. Prohibited Conduct
@@ -334,7 +334,7 @@ The following terms are added for Part II and do not alter any Part I definition
 
 13.5 A reward is a benefit offered under the applicable Business's Reward Program. It is not money issued by 11thONUS, a bank deposit, e-money issued or held by 11thONUS, a stored cash balance held by 11thONUS, or a general entitlement to cash withdrawal from 11thONUS. A reward may nonetheless have economic value. Unless the applicable Reward Program expressly provides otherwise, a reward is not redeemable for cash and is fulfilled by the Business according to its Reward Program. Redemption for cash is not a platform-wide entitlement created by these Terms. A future gift card, stored-value, or similar product is outside the scope of this instrument unless separately governed.
 
-13.6 Where a Business's Reward Program provides for the expiry of an unredeemed reward, that expiry is a matter of the Business's own Reward Program, subject to §13.4 (no retrospective removal or reduction of a reward already validly earned) and to applicable law. This instrument does not itself establish a platform-wide expiry rule, a no-expiry rule, a minimum or maximum expiry period, or a rule for the treatment of expiry following a Business's suspension or exit.
+13.6 Under the platform's current governed operation, an earned reward does not automatically expire; the platform's reward-status architecture supports an expired state, but that state is not enabled for automatic expiry under current governance. This section does not itself authorize a Business's Reward Program to provide for reward expiry, and does not establish a minimum or maximum expiry period or a rule for the treatment of expiry following a Business's suspension or exit. Any future per-program expiry policy requires separate governed platform authorization before a Business's Reward Program may rely on it, and remains subject to §13.4 (no retrospective removal or reduction of a reward already validly earned) and to applicable law.
 
 13.7 Nothing in this section states, and nothing in this section should be read as deciding, the quantity of a reward at the time it is created, or whether multiple unredeemed rewards may coexist under a Reward Program at the same time. Those matters remain governed separately and are not decided by this instrument.
 
