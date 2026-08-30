@@ -44,6 +44,16 @@ After pushing the two corrections above, `@codex review` was requested on the PR
 
 **Finding 9 — Include the correction report in the file inventory.** The Drafting Report's §38 file inventory and its "No other file was modified" closing statement did not list the newly created `DEC-LEGAL-002-BT-DRAFT-003-CORR-001-correction-report-2026-08-30.md` itself. **Correction:** the Drafting Report's §38 was updated to include this correction report, and §5, §20, §34 were updated to record the `DEC-LOY-005` finding and its correction.
 
+## Fourth re-review — three findings, all consistency follow-ons from round 3 (no new substantive issue)
+
+A third `@codex review` request (head `43f6d993`) returned six comments; four were confirmed stale re-flags of already-fixed round 1–3 items, and two were genuine consistency follow-ons from the round-3 `DEC-LOY-005` and Part-II-label corrections that had not yet propagated to every summary location:
+
+**Finding 10 — Align the §13 summary with the corrected no-expiry policy.** The Drafting Report's §15 ("§13 clauses drafted" summary) still said "reward expiry left to each Business's Reward Program, no platform-wide rule," reintroducing the exact policy round 3 had removed from §13.6 and the report's own §20/§34. **Correction:** §15 updated to state that reward expiry preserves the `DEC-LOY-005` CONFIRMED position, with a cross-reference to §20/§34.
+
+**Finding 11 — Update the correction inventory to seven labels.** The Traceability Matrix's "Clauses removed" narrative and the Drafting Report's §7/§39/§44 still said "five" or "six" administrative corrections after round 3 added the Part 0 §0.1 Part II architecture label as a seventh. **Correction:** all four locations updated to state "seven," with the count broken out (five original + two PR-review).
+
+**Finding 12 — Reconcile the decision-register arithmetic.** The decision-register "Last controlled update" summary said "nine findings... leaving six distinct corrections," an internally inconsistent count against the report's own 2+4+3=9 breakdown. **Correction:** restated as twelve total review comments across three rounds (2+4+6), three of which (round 3) were confirmed stale, yielding nine substantively distinct corrections — matching the correction report's own finding numbering (1 through 9, plus this fourth round's three non-substantive consistency follow-ons, which do not add new findings to that count since they only propagate already-made corrections to remaining summary text).
+
 ## Verification
 
 - Direct search confirmed no other instance of "Parts III–VIII" or "Part III, not drafted" remains anywhere in the instrument after both corrections.
