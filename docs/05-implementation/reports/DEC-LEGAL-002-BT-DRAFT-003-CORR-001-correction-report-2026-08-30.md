@@ -74,6 +74,14 @@ A fifth `@codex review` request (head `168df94`) returned six comments; three we
 
 **Finding 17 — Update the correction report's verification scope.** The Verification section below (pre-existing text) understated the diff by referencing only the round-1 corrections. **Correction:** rewritten to cover all corrections made across all six review rounds.
 
+## Seventh re-review — a pre-existing Part I defect discovered and flagged, not edited
+
+A sixth `@codex review` request (head `c00be25`) returned five comments; three were confirmed stale re-flags, and two were genuine:
+
+**Finding 18 — Reconcile the fixed threshold with §4.2.** After the round-5/6 threshold fixes to §11.1/§11.6, a Codex finding correctly identified that **already-approved Part I §4.2** (drafted in `DEC-LEGAL-002-BT-DRAFT-001`, unedited since) states that "at what threshold" a Reward Program pays out "[is a] decision the Business makes for its own Reward Program" — directly contradicting `TRD10-firestore-data-architecture.md` §10.9.2's platform-fixed MVP threshold, the same authority round 5 used to correct §11.1/§11.6. This is a genuine factual defect, but it **predates this task** — it was present in the original Part I draft and missed by that task's own authority review and both of its correction passes, only becoming visible once Part III's clauses correctly stated the platform-fixed rule. **Disposition, per the governing instruction not to substantively rewrite §§1–10:** Part I §4.2 is **not edited by this task**. It is instead recorded as a flagged pre-existing defect in the Controlled Inputs Register (new section, "Flagged pre-existing defect — Part I §4.2"), classified as blocking whole-instrument Founder approval (an internal contradiction exists between Part I and Part III on who controls the threshold) but not blocking Part III's own approval (Part III's own text is correct) or Terms configuration/implementation. A dedicated Founder-authorized correction task to Part I is recommended, following the `DEC-LEGAL-002-BT-DRAFT-001-CORR-001` precedent. This is the first (and only) finding in this entire correction pass that this task does not resolve outright — every other finding across all seven rounds was corrected in place.
+
+**Finding 19 — Include the sixth review round in the change log.** The documentation-changes-log header still said "five review rounds" after round 6 added two more corrections. **Correction:** header updated to "seven review rounds" (now including this round), with round 6 and round 7 (this finding) both summarized.
+
 ## Verification
 
 - Direct search confirmed no instance of "Parts III–VIII," "Part III, not drafted," "three parts," or a stale Part II "heading only" label remains anywhere in the instrument after all corrections.

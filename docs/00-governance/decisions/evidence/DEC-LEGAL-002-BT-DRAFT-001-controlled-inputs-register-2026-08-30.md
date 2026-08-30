@@ -71,6 +71,25 @@ None of these four resolutions invents a `DEC-SUB-*` value, a multi-entity produ
 - **Jurisdiction-overlay input** — the input is expected to be supplied differently per jurisdiction, via the overlay mechanism (§26 of the draft), not as a single global value.
 - **Future commercial input** — the input depends on an unresolved `DEC-SUB-*` or other commercial decision not yet reached.
 
+# Flagged pre-existing defect — NOT resolved by this task, NOT a new controlled input, Part I §4.2 (discovered during PR #205 review round 7)
+
+During PR #205 review round 7, a genuine factual conflict was discovered in **already-approved Part I §4.2** (drafted in task `DEC-LEGAL-002-BT-DRAFT-001`, Founder-approved via `-CORR-001`, unedited by Parts II or III):
+
+> "4.2 ... 11thONUS ... does not itself decide what a Business's Reward Program rewards, at what threshold, or with what value. Those are decisions the Business makes for its own Reward Program (§6)."
+
+This directly conflicts with `TRD10-firestore-data-architecture.md` §10.9.2's Threshold Rule (MVP): `requiredVerifiedUnits` "is stored as a number for architectural consistency, but for the MVP it is **fixed at 10 by platform rule and is not business-configurable**... Alternative thresholds may be introduced only through formal product approval and never retroactively." The earning threshold is not, in fact, a decision the Business makes — it is a platform-fixed MVP rule.
+
+This defect **predates this task entirely** — it was present in the original Part I draft (`DEC-LEGAL-002-BT-DRAFT-001`) and was not caught by that task's own authority review, nor by either of its correction passes, nor by Part II's drafting or its two correction passes. It surfaced only because Part III's own §11.1/§11.6 correctly stated the platform-fixed-threshold rule (per PR #205 review rounds 5–6), creating a visible internal contradiction with Part I.
+
+**Per the governing task instruction (§16: "If a substantive change to §§1–10 appears necessary, STOP and report it for Founder review"), Part I §4.2 is NOT edited by this task.** It is instead flagged here as a discovered defect requiring Founder/legal correction in a future task, following the same instrument-integrity discipline this task applied to §6.2 (round 6): a substantive change to Part I is reported, not silently made.
+
+**Classification:**
+- **Does not block Part III's own approval** — Part III's clauses (§11.1, §11.6) independently and correctly state the platform-fixed threshold; the defect exists entirely within Part I's own text.
+- **Blocks whole-instrument (Parts I–III, and ultimately I–VIII) Founder approval as a single coherent document** — the instrument currently contains an internal factual contradiction about who controls the earning threshold (Part I §4.2 says the Business; Part III §§11.1/11.6 say the platform, correctly) that must be reconciled before the full document is approved as internally consistent.
+- **Does not block Terms configuration or implementation** — no Terms version is configured regardless; this is a drafting-consistency defect, not an engineering blocker.
+
+**Recommended resolution (not performed here):** correct Part I §4.2 to remove "at what threshold" from the list of Business-made decisions (or to state the threshold is platform-fixed, consistent with Part III), via a dedicated Founder-authorized correction task to Part I, following the same pattern already used for `DEC-LEGAL-002-BT-DRAFT-001-CORR-001`.
+
 # Cross-reference note
 
 No row in this register duplicates a prohibited-concept item from the governing task's §6 boundary list (30-day notice, 60-day run-off, mandatory cash settlement, fixed suspension/cure periods, forced scrolling, Kirundi as a core language, data-as-consideration, arbitrary liability caps, `DEC-SUB-*` values, plan/price/billing mechanics, gift-card rules, `DEC-ID-005`/`DEC-LOY-009` resolution, or multiple-unredeemed-rewards rules) — none of those concepts appear in Part I of the draft at all, drafted or as a placeholder, because Part I does not reach those subject areas (they belong to Parts III, IV, V, and VI, none of which are drafted in this task). See the [Part I Drafting Report](../../../05-implementation/reports/DEC-LEGAL-002-BT-DRAFT-001-drafting-report-2026-08-30.md) §14 for the actual text-search confirming this.

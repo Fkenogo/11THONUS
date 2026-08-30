@@ -210,7 +210,11 @@ Full Part III clause-by-clause authority-traceability review completed (§31 abo
 
 ## 45. Risks/open drafting matters
 
-None newly introduced. Existing open matters (CI-01, CI-05, `DEC-LOY-009`, `DEC-ID-005`, all unresolved `DEC-SUB-*`) remain exactly as they stood before this task and are not resolved, narrowed, or otherwise affected by Part III's drafting. Part IV (§§15–17, Suspension/Restriction, Business Exit and Termination, Complaints and Dispute Facilitation) is the next drafting-readiness item and was not begun.
+Existing open matters (CI-01, CI-05, `DEC-LOY-009`, `DEC-ID-005`, all unresolved `DEC-SUB-*`) remain exactly as they stood before this task and are not resolved, narrowed, or otherwise affected by Part III's drafting.
+
+**One flagged pre-existing defect, discovered but not created by this task (PR #205 review round 7):** already-approved Part I §4.2 states that the earning threshold is "[a] decision the Business makes for its own Reward Program," directly contradicting `TRD10-firestore-data-architecture.md` §10.9.2's platform-fixed MVP threshold — the same authority this task's own §11.1/§11.6 correctly rely on. This defect predates this task (present since the original Part I draft, missed by that task's authority review and both its correction passes) and only became visible once Part III's clauses correctly stated the platform-fixed rule. Per the governing instruction against substantively rewriting §§1–10, Part I §4.2 was **not edited** by this task — it is recorded in the Controlled Inputs Register's new "Flagged pre-existing defect" section, classified as blocking whole-instrument (not Part-III-only) Founder approval, with a recommended dedicated Founder-authorized correction task. This is the only finding across all seven PR #205 review rounds that this task does not resolve outright.
+
+Part IV (§§15–17, Suspension/Restriction, Business Exit and Termination, Complaints and Dispute Facilitation) is the next drafting-readiness item and was not begun.
 
 ## 46. Rollback instructions
 
