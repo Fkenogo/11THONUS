@@ -1,17 +1,18 @@
-> **Title:** Core Business Terms — Draft (Instrument Architecture + Part I + Part II)
-> **Version:** 2.2 (2026-08-30 — Part II final Founder wording corrections applied, task `DEC-LEGAL-002-BT-DRAFT-002-CORR-002`) · **Status:** DRAFT — NOT APPROVED — NOT EFFECTIVE — NOT CONFIGURED · **Classification:** Working (governance record — controlled legal drafting)
+> **Title:** Core Business Terms — Draft (Instrument Architecture + Part I + Part II + Part III)
+> **Version:** 3.2 (2026-08-30 — Founder-authorized targeted Part I authority corrections to §4.2/§6.1/§6.2, reconciled with Part III §11.1, task `DEC-LEGAL-002-BT-DRAFT-003-CORR-002`) · **Status:** DRAFT — NOT APPROVED — NOT EFFECTIVE — NOT CONFIGURED · **Classification:** Working (governance record — controlled legal drafting)
 > **Governing document:** [Decision Register](../decision-register.md) `DEC-LEGAL-002` (Status: `OPEN_LEGAL`, unchanged by this document)
 > **Source-of-truth path:** `docs/00-governance/decisions/evidence/DEC-LEGAL-002-BT-DRAFT-001-core-business-terms-draft-2026-08-30.md`
-> **Date:** 2026-08-30 (v1.0) / 2026-08-30 (v1.1 correction) / 2026-08-30 (v2.0 — Part II) / 2026-08-30 (v2.1 — Part II PR-review correction) / 2026-08-30 (v2.2 — Part II final wording correction) · **Task:** `DEC-LEGAL-002-BT-DRAFT-001` (v1.0); `DEC-LEGAL-002-BT-DRAFT-001-CORR-001` (v1.1 — Founder-directed corrections to Part I; see [Correction Report](../../../05-implementation/reports/DEC-LEGAL-002-BT-DRAFT-001-CORR-001-correction-report-2026-08-30.md)); `DEC-LEGAL-002-BT-DRAFT-002` (v2.0 — Part II, Business Participation, §§8–10; see [Drafting Report](../../../05-implementation/reports/DEC-LEGAL-002-BT-DRAFT-002-drafting-report-2026-08-30.md)); `DEC-LEGAL-002-BT-DRAFT-002-CORR-001` (v2.1 — PR #204 review-finding corrections; see [Correction Report](../../../05-implementation/reports/DEC-LEGAL-002-BT-DRAFT-002-CORR-001-correction-report-2026-08-30.md)); `DEC-LEGAL-002-BT-DRAFT-002-CORR-002` (v2.2 — Founder final wording corrections to Staff definition and §9.3/§9.6; see [Correction Report](../../../05-implementation/reports/DEC-LEGAL-002-BT-DRAFT-002-CORR-002-correction-report-2026-08-30.md))
+> **Date:** 2026-08-30 (v1.0) / 2026-08-30 (v1.1 correction) / 2026-08-30 (v2.0 — Part II) / 2026-08-30 (v2.1 — Part II PR-review correction) / 2026-08-30 (v2.2 — Part II final wording correction) / 2026-08-30 (v3.0 — Part III) / 2026-08-30 (v3.1 — Part III PR-review correction) / 2026-08-30 (v3.2 — Founder-authorized targeted Part I correction) · **Task:** `DEC-LEGAL-002-BT-DRAFT-001` (v1.0); `DEC-LEGAL-002-BT-DRAFT-001-CORR-001` (v1.1 — Founder-directed corrections to Part I; see [Correction Report](../../../05-implementation/reports/DEC-LEGAL-002-BT-DRAFT-001-CORR-001-correction-report-2026-08-30.md)); `DEC-LEGAL-002-BT-DRAFT-002` (v2.0 — Part II, Business Participation, §§8–10; see [Drafting Report](../../../05-implementation/reports/DEC-LEGAL-002-BT-DRAFT-002-drafting-report-2026-08-30.md)); `DEC-LEGAL-002-BT-DRAFT-002-CORR-001` (v2.1 — PR #204 review-finding corrections; see [Correction Report](../../../05-implementation/reports/DEC-LEGAL-002-BT-DRAFT-002-CORR-001-correction-report-2026-08-30.md)); `DEC-LEGAL-002-BT-DRAFT-002-CORR-002` (v2.2 — Founder final wording corrections to Staff definition and §9.3/§9.6; see [Correction Report](../../../05-implementation/reports/DEC-LEGAL-002-BT-DRAFT-002-CORR-002-correction-report-2026-08-30.md)); `DEC-LEGAL-002-BT-DRAFT-003` (v3.0 — Part III, Programme Operation, §§11–14; see [Drafting Report](../../../05-implementation/reports/DEC-LEGAL-002-BT-DRAFT-003-drafting-report-2026-08-30.md)); `DEC-LEGAL-002-BT-DRAFT-003-CORR-001` (v3.1 — PR #205 Codex review-finding corrections to §14.4 and the stale Part I heading note; see [Correction Report](../../../05-implementation/reports/DEC-LEGAL-002-BT-DRAFT-003-CORR-001-correction-report-2026-08-30.md)); `DEC-LEGAL-002-BT-DRAFT-003-CORR-002` (v3.2 — Founder-authorized targeted correction of §4.2 platform-fixed threshold, §6.1 ownership language, §6.2 qualifying-purchase allocation, and §2/§11.1 reconciliation; see [Correction Report](../../../05-implementation/reports/DEC-LEGAL-002-BT-DRAFT-003-CORR-002-correction-report-2026-08-31.md))
 > **Authorities drafted from (Part I):** Founder FD-1–FD-7 ([Legal Counsel Handoff Pack](DEC-LEGAL-002-FOUNDER-DISP-001-legal-counsel-handoff-pack-2026-08-29.md) §3); `DEC-LOY-011` (Decision Register, CONFIRMED); LEG-FD-01–LEG-FD-15 ([Founder Legal Architecture Disposition Record v2.0](DEC-LEGAL-002-LEGAL-OPINION-RECON-001-founder-legal-architecture-dispositions-2026-08-29.md)); [Reconciliation Matrix](DEC-LEGAL-002-LEGAL-OPINION-RECON-001-reconciliation-matrix-2026-08-29.md); [Terms Instrument Architecture & Drafting Readiness Note v2.0](DEC-LEGAL-002-LEGAL-OPINION-RECON-001-terms-drafting-readiness-2026-08-29.md); [Terms Content Architecture](DEC-LEGAL-002-PREP-001-terms-content-architecture-2026-08-29.md); [Legal Counsel Handoff Pack](DEC-LEGAL-002-FOUNDER-DISP-001-legal-counsel-handoff-pack-2026-08-29.md).
 > **Additional authorities drafted from (Part II):** Founder FD-4 (platform suspension grounds: trust, security, integrity, compliance, participants) and FD-2/FD-3 (earned-reward survival, referenced not redrafted) ([Legal Counsel Handoff Pack](DEC-LEGAL-002-FOUNDER-DISP-001-legal-counsel-handoff-pack-2026-08-29.md) §3); LEG-FD-01 (fallback interpretive standard: transparency, fairness, proportionality) and LEG-FD-06 (suspension process; non-exhaustive platform-integrity grounds catalogue) ([Founder Legal Architecture Disposition Record v2.0](DEC-LEGAL-002-LEGAL-OPINION-RECON-001-founder-legal-architecture-dispositions-2026-08-29.md)); `ENG-P2-002-DESIGN-001` (Business Identity Architecture — Owner model, delegation principle); `ENG-P2-003-DESIGN-001` (Staff Membership & Identity Architecture — Owner/Manager/Staff role model, permission model, invitation architecture); `ENG-P2-004-DESIGN-001` (Role-Context & Permission-Resolution Architecture — Sensitive Permission Catalogue, override-resolution rule); `ENG-P3-002-DESIGN-001` (Business Onboarding Architecture — mandatory/optional/out-of-scope onboarding classification; ungoverned verification-mechanism boundary); Part I §1.3, §5, §7.5 of this same instrument (referenced, not redrafted).
-> **Companion documents:** [Business Terms Drafting Traceability Matrix](DEC-LEGAL-002-BT-DRAFT-001-drafting-traceability-matrix-2026-08-30.md); [Controlled Inputs Register](DEC-LEGAL-002-BT-DRAFT-001-controlled-inputs-register-2026-08-30.md); [Part I Drafting Report](../../../05-implementation/reports/DEC-LEGAL-002-BT-DRAFT-001-drafting-report-2026-08-30.md); [Part II Drafting Report](../../../05-implementation/reports/DEC-LEGAL-002-BT-DRAFT-002-drafting-report-2026-08-30.md).
+> **Additional authorities drafted from (Part III):** Founder FD-2, FD-3, FD-5, FD-6 ([Legal Counsel Handoff Pack](DEC-LEGAL-002-FOUNDER-DISP-001-legal-counsel-handoff-pack-2026-08-29.md) §3); `DEC-LOY-011` (Decision Register, CONFIRMED — default-redeemable-during-suspension-with-governed-exceptions); LEG-FD-01, LEG-FD-04, LEG-FD-05, LEG-FD-07, LEG-FD-08 ([Founder Legal Architecture Disposition Record v2.0](DEC-LEGAL-002-LEGAL-OPINION-RECON-001-founder-legal-architecture-dispositions-2026-08-29.md)); `TRD10-firestore-data-architecture.md` §§10.9–10.12 (Reward Program, Purchase Record, Verified Unit, Loyalty Cycle, Reward and Redemption schemas — factual architecture, referenced not re-implemented); `TRD17-subscription-and-billing.md` §§17.19–17.20 (suspension policy; reward liability during suspension, synchronized to `DEC-LOY-011`); `ENG-P2-002-DESIGN-001` §24 (Business Code — internal/support-use-only status, FD-3 of that document); Part I §§4, 6 and Part II §10 of this same instrument (referenced, not redrafted).
+> **Companion documents:** [Business Terms Drafting Traceability Matrix](DEC-LEGAL-002-BT-DRAFT-001-drafting-traceability-matrix-2026-08-30.md); [Controlled Inputs Register](DEC-LEGAL-002-BT-DRAFT-001-controlled-inputs-register-2026-08-30.md); [Part I Drafting Report](../../../05-implementation/reports/DEC-LEGAL-002-BT-DRAFT-001-drafting-report-2026-08-30.md); [Part II Drafting Report](../../../05-implementation/reports/DEC-LEGAL-002-BT-DRAFT-002-drafting-report-2026-08-30.md); [Part III Drafting Report](../../../05-implementation/reports/DEC-LEGAL-002-BT-DRAFT-003-drafting-report-2026-08-30.md).
 
 ---
 
 > # ⚠️ DRAFT — NOT APPROVED — NOT EFFECTIVE — NOT CONFIGURED
 >
-> This document is a **controlled drafting instrument**, not a Terms version. It has not been reviewed or approved by legal counsel beyond the already-filed external Legal Opinion, has not been approved by the Founder as final Terms content, has not been assigned a version identifier, and has not been written to `platformConfig/businessTerms` or any other configuration surface. `DEC-LEGAL-002` remains `OPEN_LEGAL`. Capability 3 remains blocked on governed Terms-content configuration. No Business can accept this document and no acceptance record may reference it. Every `[CONTROLLED INPUT REQUIRED: ...]` marker below is an explicit gap, not an oversight — see the companion Controlled Inputs Register. **Part II (§§8–10, added 2026-08-30) carries exactly the same status. Parts III–VIII remain headings/placeholders only.**
+> This document is a **controlled drafting instrument**, not a Terms version. It has not been reviewed or approved by legal counsel beyond the already-filed external Legal Opinion, has not been approved by the Founder as final Terms content, has not been assigned a version identifier, and has not been written to `platformConfig/businessTerms` or any other configuration surface. `DEC-LEGAL-002` remains `OPEN_LEGAL`. Capability 3 remains blocked on governed Terms-content configuration. No Business can accept this document and no acceptance record may reference it. Every `[CONTROLLED INPUT REQUIRED: ...]` marker below is an explicit gap, not an oversight — see the companion Controlled Inputs Register. **Part II (§§8–10, added 2026-08-30) and Part III (§§11–14, added 2026-08-30) carry exactly the same status. Parts IV–VIII remain headings/placeholders only.**
 
 ---
 
@@ -19,11 +20,12 @@
 
 ## How to read this document
 
-This document has three parts:
+This document has four parts:
 
 - **Part 0 — Complete Proposed Structure.** The full section architecture proposed for the eventual Core Business Terms, covering all subject areas identified as drafting-ready in the Terms Drafting Readiness Note. Sections not yet drafted appear as headings with a placeholder note only — no clause text.
 - **Part I — Foundation, Relationship and Acceptance.** Drafted with full clause text in task `DEC-LEGAL-002-BT-DRAFT-001` (corrected `-CORR-001`).
-- **Part II — Business Participation (§§8–10).** Drafted with full clause text in task `DEC-LEGAL-002-BT-DRAFT-002`. Parts III–VIII remain headings/placeholders only.
+- **Part II — Business Participation (§§8–10).** Drafted with full clause text in task `DEC-LEGAL-002-BT-DRAFT-002`.
+- **Part III — Programme Operation (§§11–14).** Drafted with full clause text in task `DEC-LEGAL-002-BT-DRAFT-003`. Parts IV–VIII remain headings/placeholders only.
 
 This instrument governs the relationship between 11thONUS and a participating Business only. It does not govern the relationship between 11thONUS and a Business's customers (a separate future Customer Terms/Platform Terms of Use instrument, not drafted here — see §0.0 Instrument Map), and it does not govern the content of any individual Business's own Reward Program (authored and controlled by that Business — see §0.0).
 
@@ -37,7 +39,7 @@ Per the Terms Instrument Architecture (Terms Drafting Readiness Note §2, confir
 
 | Instrument | Relationship governed | Status |
 |---|---|---|
-| **A. Core Business Terms** (this document) | 11thONUS ↔ participating Business | Drafting in progress — Part I (Founder-approved baseline) and Part II (draft, pending Founder review) drafted; Parts III–VIII not drafted |
+| **A. Core Business Terms** (this document) | 11thONUS ↔ participating Business | Drafting in progress — Part I (Founder-approved baseline), Part II, and Part III (draft, pending Founder review) drafted; Parts IV–VIII not drafted |
 | **B. Customer Terms / Platform Terms of Use** | 11thONUS ↔ customer, platform access/use | Separate future governed work package — not drafted here |
 | **C. Business Reward Program Rules** | Business ↔ its own customers, programme mechanics | Authored per-Business; not a platform-wide instrument |
 | **D. Jurisdictional Overlays** | Applied to instrument A, B, or C per jurisdiction | Burundi overlay is the anticipated first overlay; not drafted here |
@@ -57,12 +59,12 @@ The following is the proposed complete architecture for the Core Business Terms,
 6. Business/Customer Relationship Boundary
 7. Acceptance and Formation
 
-**Part II — Business Participation** *(heading only — not drafted)*
+**Part II — Business Participation** *(drafted in task `DEC-LEGAL-002-BT-DRAFT-002` — see Part II below)*
 8. Business Eligibility, Registration and Onboarding
 9. Account Authority (Owners, Staff, Permissions)
 10. Prohibited Conduct
 
-**Part III — Programme Operation** *(heading only — not drafted)*
+**Part III — Programme Operation** *(drafted in this task — see Part III below)*
 11. Reward Program Responsibility
 12. Transaction Recording
 13. Reward Obligations (Earning, Fulfilment, Survival of Earned Rewards)
@@ -101,13 +103,13 @@ The Terms Drafting Readiness Note (v2.0) states "16 of 16 sections ready to draf
 | 2 | Platform service | Legal Counsel Handoff Pack §2 | §4 Platform Role | **Yes** |
 | 3 | Business eligibility | `ENG-P3-002` onboarding architecture | §8 Business Eligibility, Registration and Onboarding | **Yes** |
 | 4 | Account authority | `ENG-P2-002`/`003` | §9 Account Authority | **Yes** |
-| 5 | Reward Program responsibility | FD-5 | §11 Reward Program Responsibility; §6 Business/Customer Relationship Boundary (foundational statement only) | Foundational statement in §6 **yes**; full clause **no** |
-| 6 | Transaction recording | Product-model description | §12 Transaction Recording | No — Part III heading only |
-| 7 | Reward obligations | FD-2/FD-3, `DEC-LOY-011`, LEG-FD-04/07/08 | §13 Reward Obligations | No — Part III heading only |
+| 5 | Reward Program responsibility | FD-5 | §11 Reward Program Responsibility; §6 Business/Customer Relationship Boundary (foundational statement only) | **Yes** |
+| 6 | Transaction recording | Product-model description | §12 Transaction Recording | **Yes** |
+| 7 | Reward obligations | FD-2/FD-3, `DEC-LOY-011`, LEG-FD-04/07/08 | §13 Reward Obligations | **Yes** |
 | 8 | Prohibited conduct | Existing platform-integrity principles | §10 Prohibited Conduct | **Yes** |
 | 9 | Disputes/corrections | LEG-FD-11, LEG-FD-14 | §17 Complaints and Dispute Facilitation; §21 Governing Law and Dispute Resolution | No — Part IV/VII heading only |
 | 10 | Suspension/termination | FD-3/FD-4, `DEC-LOY-011`, LEG-FD-06 | §15 Suspension and Restriction; §16 Business Exit and Termination | No — Part IV heading only |
-| 11 | Programme changes | FD-5, LEG-FD-05 | §14 Programme Changes | No — Part III heading only |
+| 11 | Programme changes | FD-5, LEG-FD-05 | §14 Programme Changes | **Yes** |
 | 12 | Data/privacy references | LEG-FD-09 | §23 Data and Privacy (cross-reference only) | No — Part VII heading only |
 | 13 | Fees/commercial provisions | FD-7 | §18 Subscription and Fees | No — Part V heading only |
 | 14 | Liability | LEG-FD-15 | §19 Liability | No — Part VI heading only |
@@ -115,13 +117,13 @@ The Terms Drafting Readiness Note (v2.0) states "16 of 16 sections ready to draf
 | 16 | Changes to Terms | LEG-FD-13 | §22 Changes to These Terms; Reacceptance | No — Part VII heading only |
 | 17 | Electronic acceptance | LEG-FD-03 | §7 Acceptance and Formation | **Yes** |
 
-Independence/no-agency (§5) is not a separate row in the readiness table; it is drafted here as an integral part of the "Parties/relationship" readiness row (LEG-FD-01), consistent with LEG-FD-01's characterisation of the platform–business relationship. The Business/customer relationship boundary (§6) is likewise drafted from the same LEG-FD-01/FD-5 authority as a foundational statement, not as a full "Reward Program responsibility" clause (which remains Part III, not drafted).
+Independence/no-agency (§5) is not a separate row in the readiness table; it is drafted here as an integral part of the "Parties/relationship" readiness row (LEG-FD-01), consistent with LEG-FD-01's characterisation of the platform–business relationship. The Business/customer relationship boundary (§6) is likewise drafted from the same LEG-FD-01/FD-5 authority as a foundational statement, not as a full "Reward Program responsibility" clause (the full clause is now §11, Part III, drafted in task `DEC-LEGAL-002-BT-DRAFT-003`).
 
 ---
 
 ## Part I — Foundation, Relationship and Acceptance
 
-*(Drafted with full clause text in task `DEC-LEGAL-002-BT-DRAFT-001` (corrected `-CORR-001`) — the Founder-approved drafting baseline. Part II, §§8–10 below, is now also drafted with full clause text (task `DEC-LEGAL-002-BT-DRAFT-002`, corrected `-CORR-001`), and remains draft pending Founder review. Parts III–VIII remain headings/placeholders only.)*
+*(Drafted with full clause text in task `DEC-LEGAL-002-BT-DRAFT-001` (corrected `-CORR-001`) — the Founder-approved drafting baseline. Part II, §§8–10 below, is now also drafted with full clause text (task `DEC-LEGAL-002-BT-DRAFT-002`, corrected `-CORR-001`), and Part III, §§11–14, is now also drafted with full clause text (task `DEC-LEGAL-002-BT-DRAFT-003`) — both remain draft pending Founder review. Parts IV–VIII remain headings/placeholders only.)*
 
 ### Preamble
 
@@ -143,7 +145,7 @@ Only the terms necessary to read Part I are defined here. Additional definitions
 
 - **"11thONUS"** or **"the platform"** means the customer-verified loyalty platform operated by the entity identified in the Preamble, including the infrastructure and functions described in §4 (Platform Role).
 - **"Business"** means the participating business entity or sole proprietor described in §1.
-- **"Reward Program"** means the customer reward programme that a Business designs, owns, and operates using the platform's shared infrastructure, as described in §6.
+- **"Reward Program"** means the customer reward programme that a Business designs, controls, and operates using the platform's shared infrastructure, as described in §6.
 - **"Customer"** means an individual who transacts with a Business and participates in that Business's Reward Program through the platform. Customers are not a party to these Terms (see §6.3).
 - **"Terms"** means this Core Business Terms document, as it may be amended from time to time in accordance with a future governed Changes-to-Terms clause (Part VII §22, not drafted in this task).
 - **"Accepting Individual"** means the individual described in §1.3 who affirmatively accepts these Terms on the Business's behalf, as recorded under §7.
@@ -168,7 +170,7 @@ The following terms are added for Part II and do not alter any Part I definition
 
 4.1 11thONUS provides the Business with access to platform infrastructure that supports the Business's Reward Program, including: (a) identity and account-authority infrastructure for the Business and its authorised staff; (b) a shared reference catalogue of purchasable categories against which the Business's customer transactions are recorded; (c) purchase recording and verification functionality; and (d) reward-cycle mechanics that track a customer's progress toward, and completion of, rewards under the Business's Reward Program.
 
-4.2 11thONUS's role is that of an infrastructure and verification platform. 11thONUS records and verifies platform-level activity (identity, purchase entries, reward-cycle progress, and Terms-acceptance records) but does not itself decide what a Business's Reward Program rewards, at what threshold, or with what value. Those are decisions the Business makes for its own Reward Program (§6).
+4.2 11thONUS's role is that of an infrastructure and verification platform. 11thONUS records and verifies platform-level activity (identity, purchase entries, reward-cycle progress, and Terms-acceptance records) but does not itself decide what a Business's Reward Program rewards or with what value. Those are decisions the Business makes for its own Reward Program (§6), within platform mechanics that applicable platform governance establishes — including a governed earning threshold, which, where platform governance fixes one, is determined by that governance rather than by the individual Business.
 
 4.3 11thONUS does not sell, supply, or deliver the underlying goods or services a Business provides to its customers, and is not a party to the transaction between a Business and its customer.
 
@@ -184,9 +186,9 @@ The following terms are added for Part II and do not alter any Part I definition
 
 ### Section 6 — Business/Customer Relationship Boundary
 
-6.1 Each Business owns and controls its own Reward Program and its own relationship with its customers. The platform standardises trust and verification infrastructure common to all Businesses; it does not become a shared or unified loyalty programme, and it does not take ownership of any Business's customer relationship.
+6.1 Each Business controls and is responsible for its own Reward Program and its own relationship with its customers. The platform standardises trust and verification infrastructure common to all Businesses; it does not become a shared or unified loyalty programme, and it does not take over any Business's customer relationship.
 
-6.2 The Business is solely responsible for the content, design, communication, and lawful operation of its own Reward Program, including what qualifies as a rewardable purchase, what a completed reward consists of, and how the Business communicates its Reward Program to its customers — subject to the governed minimum requirements this instrument imposes (in later Parts, not drafted in this task) regarding survival of earned rewards and prospective-only programme changes.
+6.2 The Business is solely responsible for the content, design, communication, and lawful operation of its own Reward Program, including what a completed reward consists of, how the Business communicates its Reward Program to its customers, and the Business's configuration of its Reward Program within the platform's governed shared-catalogue and reward-cycle mechanics — subject to the governed minimum requirements this instrument imposes (§13, Reward Obligations, and §14, Programme Changes, both Part III, drafted in task `DEC-LEGAL-002-BT-DRAFT-003`) regarding survival of earned rewards and prospective-only programme changes. What generally qualifies as a rewardable or qualifying purchase remains separately governed and is not decided by these Terms.
 
 6.3 A customer's participation in a Business's Reward Program does not, by itself, make the customer a party to these Terms. 11thONUS's direct relationship with customers for platform access or use is governed by the separate Customer Terms / Platform Terms of Use instrument (§0.0) — a distinct instrument under the approved differentiated-instrument architecture (LEG-FD-10), not this document. That instrument is a separate future controlled work package; its content is not drafted by this task, and this section does not resolve or draft any part of it.
 
@@ -214,7 +216,7 @@ The following terms are added for Part II and do not alter any Part I definition
 
 ## Part II — Business Participation
 
-*(Drafted with full clause text in task `DEC-LEGAL-002-BT-DRAFT-002`. Parts III through VIII remain headings and placeholders only — see "End of Part II" below.)*
+*(Drafted with full clause text in task `DEC-LEGAL-002-BT-DRAFT-002`. Part III, §§11–14, is now also drafted with full clause text (task `DEC-LEGAL-002-BT-DRAFT-003`) — see below. Parts IV through VIII remain headings and placeholders only.)*
 
 ### Section 8 — Business Eligibility, Registration and Onboarding
 
@@ -280,7 +282,7 @@ The following terms are added for Part II and do not alter any Part I definition
 
 10.3 The conduct described in §10.1 illustrates conduct that undermines platform trust, security, integrity, or compliance. It is not an exhaustive statement of all conduct that may result in platform action.
 
-10.4 Conduct described in this section, or other conduct inconsistent with these Terms, may result in platform action against the Business, including suspension or restriction of the Business's participation, subject to Part IV §15 (Suspension and Restriction, not drafted in this task). This section does not itself establish a notice period, a cure period, or a termination mechanism, and does not alter the treatment of a customer's already-earned rewards (Part III, not drafted in this task).
+10.4 Conduct described in this section, or other conduct inconsistent with these Terms, may result in platform action against the Business, including suspension or restriction of the Business's participation, subject to Part IV §15 (Suspension and Restriction, not drafted in this task). This section does not itself establish a notice period, a cure period, or a termination mechanism, and does not alter the treatment of a customer's already-earned rewards (§13, Reward Obligations, Part III, drafted in task `DEC-LEGAL-002-BT-DRAFT-003`).
 
 10.5 This section states a contractual prohibition only. It does not establish, and should not be read as establishing, a fraud-detection methodology, a conduct-classification scheme, an adjudication procedure, or an enforcement or remediation policy. Any such operational policy is a separate matter for future governance and is not created by these Terms.
 
@@ -288,13 +290,77 @@ The following terms are added for Part II and do not alter any Part I definition
 
 ## End of Part II
 
-Parts III through VIII above (§§11–27) remain headings and placeholders only, per the governing task scope. No clause text for those Parts has been drafted, and none should be inferred from Part I or Part II's treatment of adjacent topics (for example, §10.4's cross-reference to suspension states only that platform action may follow prohibited conduct; it does not draft any part of §15, and §9's treatment of Staff access does not draft any part of §11's Reward Program Responsibility clause).
+---
+
+## Part III — Programme Operation
+
+*(Drafted with full clause text in task `DEC-LEGAL-002-BT-DRAFT-003`. Parts IV through VIII remain headings and placeholders only — see "End of Part III" below.)*
+
+### Section 11 — Reward Program Responsibility
+
+11.1 Each Business designs, controls, and is responsible for its own Reward Program using the platform's shared infrastructure, including — consistent with §6.1 and §6.2 — determining the reward(s) it offers and the other Business-controlled parameters of its Reward Program. This authority operates within the platform's governed shared-catalogue and reward-cycle mechanics — including a governed earning threshold, which, where applicable platform governance fixes one, is determined by that governance rather than by the individual Business, and which this section does not authorize a Business to alter — and is subject to applicable law and to the governed minimum requirements this instrument imposes (§13, Reward Obligations; §14, Programme Changes).
+
+11.2 The Business is responsible for communicating its Reward Program to its customers accurately and not in a knowingly misleading manner, and for keeping that communication consistent with the Reward Program as the Business actually operates it.
+
+11.3 11thONUS provides the shared infrastructure described in §4 (Platform Role) that supports a Business's Reward Program, including identity, purchase recording and verification, and reward-cycle mechanics. Providing that infrastructure does not make 11thONUS the operator of the Business's Reward Program in the commercial or customer-relationship sense, and does not make 11thONUS a party to, a guarantor of, or a fulfiller of, any reward offered under it (see §13).
+
+11.4 The Business remains solely responsible for its own relationship with its customers under its Reward Program, consistent with §6 (Business/Customer Relationship Boundary). 11thONUS does not standardize how a Business designs its Reward Program or its customer relationships, and a Business's participation on the platform does not make its Reward Program part of a shared or unified 11thONUS loyalty programme.
+
+11.5 A Business's Reward Program rules must not conflict with these Terms or with applicable platform governance. Where a conflict exists, these Terms and applicable platform governance govern the Business's use of the platform, without prejudice to the Business's responsibility for its own Reward Program under §11.1–§11.4.
+
+11.6 This section does not establish a mandatory reward type, a mandatory reward amount or value, a mandatory programme cadence, mandatory programme tiers, or a minimum or maximum reward value — those remain matters for each Business's own Reward Program, within the boundaries this instrument establishes. This section does not itself alter, and should not be read as making a Business-controlled matter, the platform-fixed earning threshold described in §11.1.
+
+### Section 12 — Transaction Recording
+
+12.1 The underlying sale or provision of goods or services giving rise to a rewardable purchase is a transaction between the Business and its customer. 11thONUS is not a party to that transaction, does not sell, supply, or process payment for the underlying goods or services, and does not become the seller, payment processor, or merchant of record merely because platform activity related to that transaction is recorded or verified under this section.
+
+12.2 The Business is responsible for accurately recording, or submitting for recording, the purchase and loyalty activity information that the platform's purchase-recording and verification functionality (§4.1) requires, consistent with its own Reward Program.
+
+12.3 The Business must not fabricate, or knowingly record or submit false or misleading, purchase or loyalty activity (see also §10.1(b)). Information submitted for recording must reflect actual qualifying activity under the Business's Reward Program.
+
+12.4 Customer verification of recorded purchase or loyalty activity, where applicable, operates according to the platform's governed verification mechanisms described in §4.1. This section does not itself establish a verification timeline, an evidentiary presumption, or a correction or reversal procedure beyond what those governed mechanisms provide.
+
+12.5 Platform records of purchase and loyalty activity support the identity, trust, and reward-cycle functions described in §4 (Platform Role). This section does not itself establish payment settlement, receipt requirements, point-of-sale integration requirements, accounting or tax treatment, custody of payment funds, or a chargeback, refund, or transaction-correction procedure; any such matter, to the extent it exists, is governed separately from these Terms.
+
+### Section 13 — Reward Obligations
+
+13.1 Once a reward has been validly earned by a customer under the applicable Business Reward Program and the platform's governed reward-cycle mechanics, the resulting obligation to honour that reward is an obligation of the Business. 11thONUS does not become the guarantor, funder, or fulfiller of that obligation merely by providing the infrastructure through which it was earned or is recorded.
+
+13.2 Suspension or restriction of a Business's participation under these Terms does not, by itself, extinguish a reward validly earned by a customer before the suspension. Valid rewards earned before a Business's suspension remain redeemable during the suspension by default. Suspension arising solely from the Business's commercial or subscription relationship with 11thONUS does not, by itself, prevent redemption of an otherwise valid earned reward. Redemption of an earned reward may nevertheless be restricted, paused, or subject to additional review where the specific reason for suspension makes continued redemption inappropriate or unsafe — including suspected fraud, security or integrity concerns, legal or regulatory requirements, disputed reward validity, or another governed exception. The mechanics of any such restriction, pause, or review are governed separately from these Terms and are not established by this section. This section does not itself establish the grounds, process, or consequences of a suspension, which are addressed in Part IV §15 (Suspension and Restriction), not drafted in this task.
+
+13.3 A Business's exit from the platform does not, by itself, extinguish a reward validly earned by a customer before the effective date of exit. The Business remains responsible for that obligation according to its Reward Program and these Terms. 11thONUS does not become the guarantor or fulfiller of that obligation as a result of the Business's exit. This section does not itself establish a fixed transition or run-off period, a mandatory cash-settlement or refund requirement, or any other specific exit mechanism; the treatment of a Business's exit and its effect on ongoing platform access is addressed in Part IV §16 (Business Exit and Termination; Outstanding Rewards), not drafted in this task.
+
+13.4 Neither a change to a Business's Reward Program (§14) nor a suspension or exit described in this section may be used to retrospectively remove or materially reduce a reward already validly earned by a customer under the rules applicable when it was earned.
+
+13.5 A reward is a benefit offered under the applicable Business's Reward Program. It is not money issued by 11thONUS, a bank deposit, e-money issued or held by 11thONUS, a stored cash balance held by 11thONUS, or a general entitlement to cash withdrawal from 11thONUS. A reward may nonetheless have economic value. Unless the applicable Reward Program expressly provides otherwise, a reward is not redeemable for cash and is fulfilled by the Business according to its Reward Program. Redemption for cash is not a platform-wide entitlement created by these Terms. A future gift card, stored-value, or similar product is outside the scope of this instrument unless separately governed.
+
+13.6 Under the platform's current governed operation, an earned reward does not automatically expire; the platform's reward-status architecture supports an expired state, but that state is not enabled for automatic expiry under current governance. This section does not itself authorize a Business's Reward Program to provide for reward expiry, and does not establish a minimum or maximum expiry period or a rule for the treatment of expiry following a Business's suspension or exit. Any future per-program expiry policy requires separate governed platform authorization before a Business's Reward Program may rely on it, and remains subject to §13.4 (no retrospective removal or reduction of a reward already validly earned) and to applicable law.
+
+13.7 Nothing in this section states, and nothing in this section should be read as deciding, the quantity of a reward at the time it is created, or whether multiple unredeemed rewards may coexist under a Reward Program at the same time. Those matters remain governed separately and are not decided by this instrument.
+
+### Section 14 — Programme Changes
+
+14.1 A Business may change its Reward Program prospectively, subject to applicable law, its own Reward Program terms, and these Terms and applicable platform governance.
+
+14.2 A prospective change to a Reward Program applies only from its effective date onward. A Business must not use a programme change to retrospectively remove or materially reduce a reward already validly earned by a customer under the rules applicable when it was earned (see also §13.4).
+
+14.3 Where a Business makes a material adverse prospective change to its Reward Program, the Business must give its customers reasonable advance communication of that change, taking into account the nature of the change and applicable law. This section does not establish a fixed notice period, and does not require platform approval of a Business's Reward Program change except to the extent a governed platform requirement separately applies.
+
+14.4 Whether, and under what circumstances, a Business's customers must separately accept or reaccept a change to the Business's Reward Program — as distinct from the Business's own acceptance of these Terms under §7 — is not established by this section. This section neither requires nor forecloses a customer-facing reacceptance mechanism for Reward Program changes; that question, and the related question of what legal effect publishing a Reward Program has on the Business's customers, are not decided by this instrument. This is without prejudice to any reacceptance requirement that applies to these Terms themselves under a future Changes-to-Terms clause (Part VII §22, not drafted in this task).
+
+14.5 Nothing in this section authorizes 11thONUS to standardize how Businesses design their Reward Programs or their customer relationships; each Business retains control over its own Reward Program's content, consistent with §6 and §11.
+
+---
+
+## End of Part III
+
+Parts IV through VIII above (§§15–27) remain headings and placeholders only, per the governing task scope. No clause text for those Parts has been drafted, and none should be inferred from Part I, Part II, or Part III's treatment of adjacent topics (for example, §13.2's and §13.3's cross-references to suspension and exit state only that a governed suspension or exit does not extinguish an earned reward; they do not draft any part of §15 or §16, and §14's treatment of programme changes does not draft any part of §22's Changes-to-Terms/reacceptance clause).
 
 ---
 
 ## Status Reaffirmation
 
-Drafting this Part I and Part II document does not change any of the following, all of which remain exactly as they stood before this task:
+Drafting this Part I, Part II, and Part III document does not change any of the following, all of which remain exactly as they stood before this task:
 
 - `DEC-LEGAL-002` = **OPEN_LEGAL** (Decision Register)
 - Capability 3 = **Open — engineering work packages complete; blocked on governed Terms-content configuration** (`CDR-001` §5)
