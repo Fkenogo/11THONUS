@@ -105,7 +105,8 @@ Adjacent but distinct: **`DEC-ID-005`** (owner-initiated business self-suspensio
 | Pricing / price points | **C** | DEC-SUB-008 (OPEN_FOUNDER); EXT-LEG-003 (OPEN_LEGAL) |
 | Currency | **C** | DEC-SUB-008 (OPEN_FOUNDER) |
 | Billing interval | **C** | DEC-SUB-008 (OPEN_FOUNDER) |
-| Payment method | **D** | Not a Core Terms matter — operational/payment-provider configuration (DEC-PROV-001-adjacent) |
+| Payment method (mechanism-agnostic structural reference, e.g. "as specified on the platform") | **B** (corrected from D) | External Legal Opinion §20 Structural Subscription Provisions table ("Payment methods — As specified on platform"), Reconciliation Matrix row 20, Class A |
+| Payment method (specific method/provider/rail named or integrated) | **D** | Not a Core Terms matter — operational/payment-provider configuration (DEC-PROV-001-adjacent); excluded by FD-7's "does not authorize... billing implementation" |
 | Billing provider | **D** | Operational/vendor selection, not contractual |
 | Invoice mechanics (existence of invoices/receipts as a concept) | **B** | TRD17 §17.37 confirms the subscription/billing-period/payment-attempt/invoice/receipt distinction structurally; no format/timing value governed |
 | Tax treatment | **B** | Non-numeric: "taxes where legally applicable" is a durable structural statement; no rate/jurisdiction mechanic governed |
@@ -143,6 +144,7 @@ Adjacent but distinct: **`DEC-ID-005`** (owner-initiated business self-suspensio
 - That commercial suspension is a species of suspension already governed by §15, and reactivation follows the structural pattern TRD17 §17.31 describes (plan selection, resolving payment, confirmed status, restoring access) without inventing new lifecycle states beyond `businessStatus.ts`'s eight governed states.
 - That taxes apply where legally applicable, without asserting a rate, jurisdiction, or collection mechanism.
 - That invoices/receipts exist as a structural billing concept (TRD17 §17.37), without format/timing detail.
+- That accepted payment methods are as specified by 11thONUS on the platform from time to time — a mechanism-agnostic forward-reference, not naming any specific method/provider/rail (corrected this pass from Category D; External Legal Opinion §20's own accepted structural table, Reconciliation Matrix row 20).
 
 ### 11. Open §18 Content (Category C — not drafting-ready; would require inventing a value or resolving an open decision)
 
@@ -150,7 +152,7 @@ Plan names; prices; currency; billing intervals; staff limits; trial structure/l
 
 ### 12. Out-of-Scope §18 Content (Category D — operational/configuration, not a Core Business Terms matter)
 
-Specific payment method(s) accepted; billing/payment provider selection and integration; invoice numbering/format; dunning/retry cadence implementation; Subscription Plan UI; pricing-page copy. These belong to product/engineering configuration (explicitly excluded by FD-7's "does not authorize... billing implementation; pricing implementation") — they should never become contractual provisions regardless of `DEC-SUB-*` resolution.
+**Corrected — payment method requires a narrower split, not a blanket Category D prohibition.** A mechanism-agnostic structural reference to payment methods ("payment methods accepted are as specified by 11thONUS on the platform from time to time") is **Category B**, not Category D: the accepted External Legal Opinion §20 "Structural Subscription Provisions (Value-Independent)" table lists exactly this — `Payment methods — As specified on platform` — as a value-independent structural provision (Reconciliation Matrix row 20, Class A, "confirms FD-7 exactly"), and FD-7 only withholds authorization for *billing implementation* and *pricing implementation*, not for a value-independent forward-reference sentence. **Remains Category D:** the specific payment method(s) actually accepted (e.g., naming a card network, mobile-money provider, or bank-transfer rail); billing/payment provider selection and integration; invoice numbering/format; dunning/retry cadence implementation; Subscription Plan UI; pricing-page copy. These remain product/engineering configuration (FD-7's "does not authorize... billing implementation; pricing implementation") and should never become contractual provisions regardless of `DEC-SUB-*` resolution.
 
 ## 13. Recommended §18 Drafting Architecture
 
@@ -275,7 +277,7 @@ Neither CI-01 nor CI-05 is resolved, touched, or restated as a Part V or Part VI
 - Any nominal fixed-currency customer liability cap (LEG-FD-15 — the "$25 USD/BIF equivalent" figure is expressly rejected).
 - Any indemnity defence-control, settlement-consent, or legal-cost-allocation mechanic not already stated in governed authority.
 - Any refund policy, auto-renewal default, or commercial/subscription/pricing-change notice period or standard not already governed — including any notice standard borrowed by analogy from FD-5/LEG-FD-05 (those govern Reward Program changes only, not commercial/subscription changes).
-- Any payment method, billing provider, or invoicing/UI implementation detail (explicitly excluded by FD-7 as outside Core Terms scope entirely, regardless of `DEC-SUB-*` resolution).
+- Any *specific* payment method, billing provider, or invoicing/UI implementation detail (explicitly excluded by FD-7 as outside Core Terms scope entirely, regardless of `DEC-SUB-*` resolution). A mechanism-agnostic structural reference ("payment methods as specified on the platform") is permitted — see corrected §10/§12.
 - Any resolution, implication, or narrowing of `DEC-ID-005` (owner-initiated self-suspension) beyond its existing non-resolution treatment in §15.7/§16.8.
 
 ## 27. Files Modified
