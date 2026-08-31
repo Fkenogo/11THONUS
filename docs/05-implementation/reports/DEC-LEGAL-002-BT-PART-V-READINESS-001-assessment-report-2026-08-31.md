@@ -70,7 +70,7 @@ b2f798d Merge pull request #205 from Fkenogo/docs/dec-legal-002-bt-draft-003
 >
 > *"This disposition does not authorize: Subscription Plan UI; billing implementation; pricing implementation; resolution of any open `DEC-SUB-*` decision."*
 
-**Interpretation for this task:** FD-7 authorizes drafting §18 **now**, but only as a structural framework (parties, the fact that fees may apply, billing-cycle mechanics in the abstract, cancellation rights, change-to-terms mechanics). It is an explicit, standing prohibition against populating §18 with any `DEC-SUB-*` value — this is a durable constraint on drafting, not a one-time caveat that expires once some other decision is made.
+**Interpretation for this task:** FD-7 authorizes drafting §18 **now**, but only as a structural framework (parties, the fact that fees may apply, billing-cycle mechanics in the abstract, cancellation rights, change-to-terms mechanics). It is an explicit prohibition against populating §18 with any *currently-unresolved* `DEC-SUB-*` value. **Corrected this pass — this is not a permanent, durable ban that survives resolution.** FD-7's own text is explicit that "specific commercial terms become binding only when separately governed and applicable to the Business" — i.e., once a given `DEC-SUB-*` item is actually resolved (CONFIRMED), that value becomes available to reflect in §18 (or a later revision of it); the prohibition tracks each item's *current* `OPEN_FOUNDER` status, not the section itself in perpetuity. This distinction matters for a future §18 revision task: it should re-check each item's live status rather than treating this report's "not drafting-ready" list as fixed for all time.
 
 ## 7. Full `DEC-SUB-*` Inventory and Status (unchanged by this task)
 
@@ -90,7 +90,7 @@ b2f798d Merge pull request #205 from Fkenogo/docs/dec-legal-002-bt-draft-003
 | DEC-SUB-012 | Plan capacity by product count (historical) | **SUPERSEDED** by DEC-SUB-004 |
 | DEC-SUB-013 | Complimentary/free plans policy | **OPEN_FOUNDER** |
 
-No `DEC-SUB-*` status has changed across any Part I–IV drafting/correction task, and none changes in this task. Four are CONFIRMED (structural facts already safe to reflect: paid plans exist, capacity counted by active Reward Programs, upgrade/downgrade mechanics, essential controls never paywalled). Seven remain OPEN_FOUNDER (all numeric/named commercial values). Two are superseded/historical only.
+No `DEC-SUB-*` status has changed across any Part I–IV drafting/correction task, and none changes in this task. Four are CONFIRMED — **corrected this pass:** DEC-SUB-004 through DEC-SUB-007 specifically (capacity counted by active Reward Programs; single-branch/branch-ready architecture; upgrade/downgrade mechanics; essential controls never paywalled) — the original sentence here substituted the separate `DEC-PROD-004` "paid plans exist" fact for `DEC-SUB-005`'s actual confirmed content, which is corrected. Seven remain OPEN_FOUNDER (all numeric/named commercial values). Two are superseded/historical only.
 
 Adjacent but distinct: **`DEC-ID-005`** (owner-initiated business self-suspension) remains **OPEN_FOUNDER** — not a `DEC-SUB-*` item, but relevant if §18 needs to describe suspension mechanics, since Part IV §15/§16 already carve this boundary out explicitly and §18 must do the same rather than assume it.
 
