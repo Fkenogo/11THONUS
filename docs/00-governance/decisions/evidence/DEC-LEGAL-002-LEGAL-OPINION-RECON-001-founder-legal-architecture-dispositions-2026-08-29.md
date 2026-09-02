@@ -1,13 +1,13 @@
-> **Title:** Founder Legal Architecture Disposition Record — LEG-FD-01 through LEG-FD-15
-> **Version:** 2.0 (2026-08-29 — adds LEG-FD-14/15, task `DEC-LEGAL-002-FOUNDER-CLOSE-001`) · **Status:** Founder-approved product/legal-architecture positions · **Classification:** Working (governance record)
+> **Title:** Founder Legal Architecture Disposition Record — LEG-FD-01 through LEG-FD-16
+> **Version:** 3.0 (2026-09-02 — adds LEG-FD-16, task `DEC-LEGAL-002-BT-PART-VII-READINESS-001-CORR-001`) · **Status:** Founder-approved product/legal-architecture positions · **Classification:** Working (governance record)
 > **Governing document:** [Decision Register](../decision-register.md) `DEC-LEGAL-002` — this record informs `DEC-LEGAL-002`; it does not itself close it
-> **Task:** `DEC-LEGAL-002-LEGAL-OPINION-RECON-001` (LEG-FD-01–13, v1.0); `DEC-LEGAL-002-FOUNDER-CLOSE-001` (LEG-FD-14–15, v2.0 — continuation, not a restart)
-> **Inputs reconciled:** [External Legal Opinion (verbatim)](DEC-LEGAL-002-LEGAL-OPINION-RECON-001-external-legal-opinion-body-2026-08-29.md); Founder FD-1–FD-7 ([Legal Counsel Handoff Pack](DEC-LEGAL-002-FOUNDER-DISP-001-legal-counsel-handoff-pack-2026-08-29.md) §3); `DEC-LOY-011` (CONFIRMED); existing governed architecture (TRD suite, Decision Register, CDR-001).
-> **Relationship to FD-1–FD-7:** LEG-FD-01–15 are a distinct, later Founder disposition set. They do not reopen, contradict, or supersede FD-1–FD-7 or `DEC-LOY-011` — where a topic overlaps (reward monetary character, suspension, exit, programme changes), the earlier disposition is preserved and LEG-FD-04–08 below add the *legal-form* qualification counsel's opinion prompted, cross-referenced rather than restated.
+> **Task:** `DEC-LEGAL-002-LEGAL-OPINION-RECON-001` (LEG-FD-01–13, v1.0); `DEC-LEGAL-002-FOUNDER-CLOSE-001` (LEG-FD-14–15, v2.0 — continuation, not a restart); `DEC-LEGAL-002-BT-PART-VII-READINESS-001-CORR-001` (LEG-FD-16, v3.0 — continuation, not a restart)
+> **Inputs reconciled:** [External Legal Opinion (verbatim)](DEC-LEGAL-002-LEGAL-OPINION-RECON-001-external-legal-opinion-body-2026-08-29.md); Founder FD-1–FD-7 ([Legal Counsel Handoff Pack](DEC-LEGAL-002-FOUNDER-DISP-001-legal-counsel-handoff-pack-2026-08-29.md) §3); `DEC-LOY-011` (CONFIRMED); existing governed architecture (TRD suite, Decision Register, CDR-001); Reconciliation Matrix row 12 (governing law, Classification C — drafting input only, not itself a Founder decision until LEG-FD-16).
+> **Relationship to FD-1–FD-7:** LEG-FD-01–16 are a distinct, later Founder disposition set. They do not reopen, contradict, or supersede FD-1–FD-7 or `DEC-LOY-011` — where a topic overlaps (reward monetary character, suspension, exit, programme changes), the earlier disposition is preserved and LEG-FD-04–08 below add the *legal-form* qualification counsel's opinion prompted, cross-referenced rather than restated.
 
 # Purpose
 
-This record captures fifteen Founder positions on how 11thONUS reconciles the external Legal Opinion (`DEC-LEGAL-002-LEGAL-OPINION-RECON-001`'s reconciled evidence) against existing Founder product authority, confirmed decisions, and governed architecture. These are **governance-architecture and product-policy positions**, not final Terms language and not, by themselves, a legal conclusion. They set the boundaries within which Core Business Terms may later be drafted. LEG-FD-14/15 (added 2026-08-29, `DEC-LEGAL-002-FOUNDER-CLOSE-001`) resolve the two items LEG-FD-11 and the Reconciliation Matrix's row 9 had left open — see the "16/16" readiness conclusion in the [Terms Drafting Readiness Note](DEC-LEGAL-002-LEGAL-OPINION-RECON-001-terms-drafting-readiness-2026-08-29.md).
+This record captures sixteen Founder positions on how 11thONUS reconciles the external Legal Opinion (`DEC-LEGAL-002-LEGAL-OPINION-RECON-001`'s reconciled evidence) against existing Founder product authority, confirmed decisions, and governed architecture. These are **governance-architecture and product-policy positions**, not final Terms language and not, by themselves, a legal conclusion. They set the boundaries within which Core Business Terms may later be drafted. LEG-FD-14/15 (added 2026-08-29, `DEC-LEGAL-002-FOUNDER-CLOSE-001`) resolve the two items LEG-FD-11 and the Reconciliation Matrix's row 9 had left open — see the "16/16" readiness conclusion in the [Terms Drafting Readiness Note](DEC-LEGAL-002-LEGAL-OPINION-RECON-001-terms-drafting-readiness-2026-08-29.md). LEG-FD-16 (added 2026-09-02, `DEC-LEGAL-002-BT-PART-VII-READINESS-001-CORR-001`) resolves the Core Business Terms substantive-governing-law question that the Part VII readiness assessment identified as Reconciliation-row-12 Classification C (a legal-drafting input, not a Founder-decided fact) — the Founder has now made that decision directly, rather than leaving it to the drafter's ordinary judgment at Terms-drafting time.
 
 ---
 
@@ -216,10 +216,39 @@ Jurisdictional overlays may modify this architecture where mandatory applicable 
 
 ---
 
+## LEG-FD-16 — Core Business Terms Governing Law
+
+**Disposition: APPROVED** (`DEC-LEGAL-002-BT-PART-VII-READINESS-001-CORR-001`, 2026-09-02 — resolves the Core Business Terms substantive-governing-law question that the Part VII readiness assessment identified as Reconciliation-row-12 Classification C, a legal-drafting input the Founder had not yet decided).
+
+The Core Business Terms governing the contractual relationship between 11thONUS and a participating Business shall be governed by the laws of Rwanda, subject to:
+
+- mandatory applicable law;
+- non-waivable statutory/regulatory requirements;
+- jurisdiction-specific overlays where required.
+
+**This is a separate substantive-law decision.** It is not inferred from, and does not derive its authority from, either of the following, which remain distinct questions governed separately by LEG-FD-14:
+
+- Kigali as the arbitration seat;
+- KIAC as the arbitration institution.
+
+LEG-FD-14's arbitration architecture (good-faith resolution → mediation where appropriate → binding arbitration; seat Kigali, Rwanda; institution KIAC; language English or French) is unaffected and unaltered by this disposition — LEG-FD-16 supplies the substantive law a Kigali/KIAC tribunal (or a court exercising mandatory jurisdiction) would apply to the Business ↔ 11thONUS contractual relationship; it does not restate, alter, or duplicate LEG-FD-14's forum/institution/procedure architecture.
+
+**Scope boundary.** This disposition governs the Core Business Terms only — the 11thONUS ↔ participating-Business relationship. It does **not** automatically extend Rwanda governing law to:
+
+- Customer Terms (the separate future 11thONUS ↔ customer instrument, LEG-FD-10);
+- Business Reward Program Rules (Business-authored, Layer 3, LEG-FD-10);
+- mandatory consumer claims, which remain subject to whatever consumer-protection law cannot be displaced by contractual choice of law;
+- jurisdiction-specific matters where local mandatory law controls (Layer 2 jurisdictional overlays, e.g. a future Burundi overlay) — LEG-FD-01's global-standard-fallback/mandatory-law-compliance principle and LEG-FD-14's own overlay proviso apply here without modification.
+
+**Reconciliation with the Legal Opinion §12 / Reconciliation Matrix row 12:** row 12 (previously Classification C — "recorded as counsel's recommended split; final governing-law clause selection remains a legal-drafting decision at Terms-drafting time, informed by but not concluded by this reconciliation") is now resolved and reclassified for the Business Terms half of the opinion's recommended split. The opinion's Rwanda-law recommendation for Business Terms is **adopted** by this disposition; its Burundi-law recommendation for Customer Terms (Burundi residents) is **not addressed here** — that remains a future Customer Terms governing-law question, outside `DEC-LEGAL-002`'s Business Terms scope and outside this disposition.
+
+---
+
 ## Cross-Cutting Notes
 
 - No LEG-FD item above authorizes any Terms configuration, Terms drafting, application/source change, or Firebase/configuration change. All are docs-only governance positions.
 - No LEG-FD item reopens FD-1–FD-7 or `DEC-LOY-011`. Where overlap exists, the earlier disposition is the controlling substantive rule; the LEG-FD item adds only the legal-form qualification prompted by the opinion.
 - Subscription boundary (Legal Opinion §20) is addressed separately — see the Reconciliation Matrix row 20 and the Terms Drafting Readiness Note §"Subscription Boundary." No `DEC-SUB-*` status is changed by this record.
 - LEG-FD-14/15 (v2.0, `DEC-LEGAL-002-FOUNDER-CLOSE-001`) resolve the two items this record's v1.0 left open (dispute forum/seat/rules; liability caps), bringing Core Business Terms drafting readiness to 16/16 sections at the architecture/decision level — see the Terms Drafting Readiness Note. This does not itself draft, approve, configure, or make effective any Terms content or version, and does not close `DEC-LEGAL-002`.
+- LEG-FD-16 (v3.0, `DEC-LEGAL-002-BT-PART-VII-READINESS-001-CORR-001`) resolves the Core Business Terms substantive-governing-law question the Part VII readiness assessment flagged as Reconciliation-row-12 Classification C (drafting input, not a decided fact). This does not itself draft, approve, configure, or make effective any Terms content or version, and does not close `DEC-LEGAL-002`. It does not extend Rwanda law to the Customer Terms, Business Reward Program Rules, mandatory consumer claims, or jurisdiction-specific overlay matters — see LEG-FD-16's own scope boundary.
 - No LEG-FD item invents an arbitrary customer liability cap, a universal 60-day run-off, a universal cash-settlement rule, or a Kirundi application-language requirement — each was considered and expressly declined (LEG-FD-15, LEG-FD-07, LEG-FD-08, LEG-FD-02 respectively).
