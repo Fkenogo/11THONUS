@@ -13,7 +13,7 @@ Readiness assessment reports in this repository (precedent: `DEC-LEGAL-002-BT-PA
 
 **`PART VIII READINESS — FOUNDER APPROVED — BOUNDED DRAFTING READY`**
 
-This approval covers only the Part VIII readiness assessment (`DEC-LEGAL-002-BT-PART-VIII-READINESS-001`, as corrected by `-CORR-001`) and its drafting boundaries. It does **not** approve any Part VIII clause text (none has been drafted), and it does **not** authorize substantive Burundi overlay drafting beyond the one established item (row 11, pre-acceptance disclosure categories) — every other Burundi- or Rwanda-specific D-classified row remains genuinely open and requires the separately-authorized jurisdiction-verification task before substantive drafting.
+This approval covers only the Part VIII readiness assessment (`DEC-LEGAL-002-BT-PART-VIII-READINESS-001`, as corrected by `-CORR-001`) and its drafting boundaries. It does **not** approve any Part VIII clause text (none has been drafted). **Corrected by `-CLOSE-001-CORR-001`:** this approval does not authorize substantive Burundi overlay clause drafting at this stage. The established Burundi mandatory pre-acceptance disclosure requirement (row 11) may be identified in the §27 overlay index, but its substantive overlay clause treatment remains subject to the separately authorized jurisdiction-verification step — as does every other Burundi- or Rwanda-specific D-classified row, which remains genuinely open and requires that same task before substantive drafting.
 
 ## 3. Entry state verified before merge
 
@@ -52,6 +52,14 @@ This closure does not begin Part VIII drafting and does not begin broad legal re
 
 ---
 
+## Correction Note (`DEC-LEGAL-002-BT-PART-VIII-READINESS-001-CLOSE-001-CORR-001`, 2026-09-02)
+
+§2 above originally read "...does not authorize substantive Burundi overlay drafting beyond the one established item (row 11, pre-acceptance disclosure categories)" — wording that could be read as authorizing substantive drafting of the established Burundi mandatory disclosure clause itself. Corrected: this approval does not authorize substantive Burundi overlay clause drafting at this stage for any row, including row 11; the established disclosure requirement may be *identified/indexed* in §27, but its *substantive overlay clause text* remains subject to the separately authorized jurisdiction-verification step, exactly like every other D-classified row. This is a wording-precision correction only — it does not reopen `PART VIII READINESS — FOUNDER APPROVED — BOUNDED DRAFTING READY`, does not change the Burundi row-11 A classification, does not affect CI-01/CI-05 (both remain `OPEN`), and does not alter any other governance position recorded in this closure. The approved sequence remains: jurisdiction verification → Founder review → Part VIII substantive drafting.
+
+---
+
 ## FINAL GATE
 
 `PR #213 MERGED — PART VIII READINESS FOUNDER APPROVED — BOUNDED DRAFTING READY — PART VIII CLAUSES REMAIN UNDRAFTED — JURISDICTION VERIFICATION NEXT`
+
+`PR #214 CLOSURE WORDING CORRECTED — FOUNDER BOUNDARY PRESERVED — SUBSTANTIVE BURUNDI OVERLAY DRAFTING NOT YET AUTHORIZED — READY FOR FINAL REVIEW`
