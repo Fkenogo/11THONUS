@@ -48,7 +48,7 @@ The primary worktree (`/Volumes/PRODUCTION/Projects/11THONUS`) was not entered, 
 
 ## 9. Next-step boundary
 
-This closure does not begin Part VIII drafting and does not begin broad legal research. The expected next programme step is a separate, narrowly authorized jurisdiction-verification task addressing only the D-classified Rwanda/Burundi questions identified in the corrected matrix (rows 1, 2's residual point, 3, 4, 6, 8, 9, 12, 13) that materially affect drafting — to be authorized separately by the Founder.
+This closure does not begin Part VIII drafting and does not begin broad legal research. The expected next programme step is a separate, narrowly authorized jurisdiction-verification task addressing only the D-classified Rwanda/Burundi questions identified in the corrected matrix (rows 1, 2's residual point, 3, 4, 6, 8, 9, **11's Rwanda component (operator/business disclosures beyond CI-01)**, 12, 13) that materially affect drafting — to be authorized separately by the Founder. Row 11's Burundi component is not included in this list because it is already established as A (Mandatory Overlay), not D; the Rwanda component of the same row remains D and is included above.
 
 ---
 
