@@ -24,6 +24,20 @@ Running log of all controlled changes to the documentation suite. Every consolid
 
 ---
 
+## Entry 152 — `DEC-LEGAL-002-BT-DRAFT-007-CLOSE-001`: Part VII Historical Founder Approval Reconciled
+
+- **Date:** 3 September 2026
+- **Performed by:** Claude (AI agent), per Founder task instruction `DEC-LEGAL-002-BT-DRAFT-007-CLOSE-001`
+- **Basis:** Administrative reconciliation, not a new substantive approval exercise. The Founder's approval of Core Business Terms Part VII (§§21–25) already occurred on review of corrected PR #212 head `0a56456051f2de417932883291c2f8d9cb5e7599` (merged as `f94daa7a2e444909ad80742c3dd978914c98683a` on 2026-09-02) — the same PR whose `-CORR-001`/`-CORR-002` correction commits addressed the Founder's own review findings (§25.1/§25.4/§25.5 boundary overreach; §22.3 automated-review finding). The living document's status labels had never been updated to reflect that approval, unlike Parts I–VI (corrected to "Founder-approved" in the same `-CORR-001` pass) and unlike Part VIII (closed via `DEC-LEGAL-002-BT-DRAFT-008-CLOSE-001`).
+- **Verification performed before editing:** confirmed PR #212's full commit history (`d361990` draft, `a404a53` CORR-001, `0a56456`/`f94daa7` CORR-002/merge) via `gh pr view 212`; diffed the current `origin/main` §21–25 clause text against the exact PR #212 merge commit `f94daa7` — found only two cosmetic cross-reference edits (§21.1, §21.8: "§26, Part VIII, not drafted in this task" → "§26, Part VIII", made by the later `DEC-LEGAL-002-BT-DRAFT-008` task once Part VIII was drafted, the same administrative cross-reference-resolution technique every prior Part underwent) — §22, §23, §24, §25 showed zero diff. Confirmed the current Part VII text remains substantively identical to the Founder-reviewed baseline; proceeded on that basis.
+- **Correction:** two status-label edits only — Instrument Map (§0.0) row A, and the Part I heading note — reconciled from "Parts I–VI and Part VIII are each a Founder-approved controlled drafting baseline; Part VII remains draft pending Founder review" to **"Parts I–VIII are each a Founder-approved controlled drafting baseline. This does not mean the complete Business Terms are finally approved, effective, or configured."** No clause text touched; Part VII drafting not reopened.
+- **Files modified:** `documentation-changes-log.md` (this entry); `DEC-LEGAL-002-BT-DRAFT-001-core-business-terms-draft-2026-08-30.md` (two status-label edits, header version → 8.3; no clause text changed); `DEC-LEGAL-002-BT-DRAFT-007-CLOSE-001-closure-report-2026-09-03.md` (created). No Drafting Traceability Matrix, Controlled Inputs Register, or Decision Register change.
+- **Preserved exactly:** whole instrument = `DRAFT — NOT APPROVED — NOT EFFECTIVE — NOT CONFIGURED` (unchanged); `DEC-LEGAL-002 = OPEN_LEGAL` (unchanged); CI-01/CI-05 = `OPEN` (unchanged); Terms configuration = `NOT CONFIGURED` (unchanged); Capability 3 = Open, blocked on governed Terms-content configuration (unchanged); all Part VII substantive text unchanged (verified byte-for-byte against the PR #212 merge, save the two pre-existing cosmetic cross-reference edits already made by the DRAFT-008 task).
+- **Gate:** `PART VII HISTORICAL FOUNDER APPROVAL RECONCILED — PARTS I–VIII NOW RECORDED AS FOUNDER-APPROVED CONTROLLED DRAFTING BASELINES — WHOLE INSTRUMENT REMAINS NOT FINAL / NOT EFFECTIVE / NOT CONFIGURED`.
+- **Explicitly NOT done:** No new substantive Founder review performed — this records an approval that already occurred. No clause text drafted, redrafted, or reopened. No new Controlled Input created. No Terms configuration. No application/source/Firebase/dependency/config change. No new legal research. Primary worktree's unrelated `FD-COM-001` work not touched — this task used a fresh isolated worktree (`docs/dec-legal-002-bt-draft-007-close-001`).
+
+---
+
 ## Entry 151 — `DEC-LEGAL-002-BT-DRAFT-008-CLOSE-001`: PR #217 Merged, Founder Approval of Part VIII Recorded
 
 - **Date:** 3 September 2026
