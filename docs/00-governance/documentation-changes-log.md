@@ -24,6 +24,23 @@ Running log of all controlled changes to the documentation suite. Every consolid
 
 ---
 
+## Entry 151 — `DEC-LEGAL-002-BT-DRAFT-008-CLOSE-001`: PR #217 Merged, Founder Approval of Part VIII Recorded
+
+- **Date:** 3 September 2026
+- **Performed by:** Claude (AI agent), per Founder task instruction `DEC-LEGAL-002-BT-DRAFT-008-CLOSE-001`
+- **Basis:** Founder authorization: Core Business Terms Part VIII (§§26–27) — **APPROVED AS A CONTROLLED DRAFTING BASELINE**, as corrected through `DEC-LEGAL-002-BT-DRAFT-008-CORR-001`. Approval of the controlled drafting baseline only — not approval of final/effective Business Terms, and does not authorize Terms configuration.
+- **Entry-gate verification (before merge):** PR #217 `OPEN`, `mergeStateStatus: CLEAN`, `mergeable: MERGEABLE`; exact head `2de734b879b098acd2c83f93ebb28b65f70b9124`, matching the approved head exactly; CI green at that head (`Build, Lint, Test, Emulator Validation`, pass, 6m45s); both Codex review threads (`PRRT_kwDOTaQe386e2995`, `PRRT_kwDOTaQe386e29-A`) confirmed `isResolved: true`; only the four already-accounted-for review comments existed (two original findings, two reply confirmations) — no new finding; `origin/main` unchanged since PR #217 branched (still `9930900d8ccc0106ca4819409ea5adc990cfd275`, the PR #216 merge) — reviewed diff still valid; `DEC-LEGAL-002 = OPEN_LEGAL` confirmed unchanged.
+- **Merge:** PR #217 merged via `gh pr merge --merge --match-head-commit 2de734b879b098acd2c83f93ebb28b65f70b9124` — a regular merge commit, head-pinned so the merge would have aborted had the head moved. No squash, rebase, or force-push. Merge commit `9a8df6fafa341e665bd867b39ebf5cd68a1330d9`; `origin/main` confirmed to contain it.
+- **Post-merge CI:** green against the actual merge SHA `9a8df6fafa341e665bd867b39ebf5cd68a1330d9` (workflow run `33745394674`).
+- **Founder-approval recording:** per this repository's established convention (matching the `DEC-LEGAL-002-BT-PART-VIII-READINESS-001-CLOSE-001` precedent, PR #214) — a bounded follow-up documentation PR, not a direct push to `main`. Two precise status-label edits were made to the living Core Business Terms document (Instrument Map §0.0 row A; Part I heading note) changing "Part VII and Part VIII remain draft pending Founder review" to "Parts I–VI and Part VIII are each a Founder-approved controlled drafting baseline; Part VII remains draft pending Founder review" — version bumped 8.1 → 8.2, no clause text changed. **Part VII's status is left untouched** — this task's Founder authorization approves Part VIII only; Part VII was never separately closed with its own Founder-approval task and remains draft pending review, a discrepancy noted for the Founder's awareness, not resolved by this task.
+- **Files modified:** `documentation-changes-log.md` (this entry); `DEC-LEGAL-002-BT-DRAFT-001-core-business-terms-draft-2026-08-30.md` (two status-label edits, header version → 8.2; no clause text changed); `DEC-LEGAL-002-BT-DRAFT-008-CLOSE-001-closure-report-2026-09-03.md` (created). No Drafting Traceability Matrix or Controlled Inputs Register change — neither's content depends on Founder-approval status.
+- **Status of Parts I–VIII:** Parts I–VI and Part VIII = Founder-approved controlled drafting baselines. Part VII = draft, pending separate Founder review (unchanged).
+- **Preserved exactly:** `DEC-LEGAL-002 = OPEN_LEGAL` (unchanged); Terms configuration = `NOT CONFIGURED` (unchanged); Capability 3 = Open, blocked on governed Terms-content configuration (unchanged); CI-01/CI-05 = `OPEN` (unchanged); the five verified-no-additional-overlay findings, the Burundi mandatory disclosure finding, the nine Category R items, and the two Category F items all unchanged; LEG-FD-01–16 unchanged.
+- **Gate:** `PR #217 MERGED — CORE BUSINESS TERMS PART VIII §§26–27 APPROVED AS CONTROLLED DRAFTING BASELINE — PARTS I–VIII SECTIONAL DRAFTING COMPLETE — NOT FINAL / NOT EFFECTIVE / NOT CONFIGURED`.
+- **Explicitly NOT done:** Business Terms not configured; `platformConfig/businessTerms` not written. CI-01/CI-05 not resolved. `DEC-LEGAL-002` status not changed. Capability 3 not closed. No whole-instrument reconciliation begun. Part VII not approved (left as-is, no authorization received for it). No application/source/Firebase/dependency/config change. No new legal research. Primary worktree's unrelated `FD-COM-001` work not read, touched, or altered — this task used a second fresh isolated worktree (`docs/dec-legal-002-bt-draft-008-close-001`), separate from both the primary worktree and the now-merged `docs/dec-legal-002-bt-draft-008` worktree.
+
+---
+
 ## Entry 150 — `DEC-LEGAL-002-BT-DRAFT-008-CORR-001`: §27.4/§27.8 Corrected (PR #217 Automated Review)
 
 - **Date:** 3 September 2026
