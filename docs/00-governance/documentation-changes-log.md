@@ -24,6 +24,21 @@ Running log of all controlled changes to the documentation suite. Every consolid
 
 ---
 
+## Entry 156 — `11ONUS-PROG-002`: Post-Business-Terms-Deferral Programme Position and Next Delivery Recommendation
+
+- **Date:** 3 September 2026
+- **Performed by:** Claude (AI agent), per Founder task instruction `11ONUS-PROG-002`
+- **Nature:** Assessment/recommendation only — no engineering package started, no capability closed, no Business Terms modified/configured, no `DEC-*`/CI resolved, no roadmap or programme status field changed.
+- **Entry gate verified:** `origin/main` at `939a07d4ca23207e81c18f7a0034934feb3c8011` (PR #221 merged); `ENG-P3-002` closed; Capability 3 `Open — engineering work packages complete; blocked on governed Terms-content configuration`; `DEC-LEGAL-002 = OPEN_LEGAL`; CI-01 `OPEN — DEFERRED PENDING CORPORATE REGISTRATION EVIDENCE`; Business Terms `DRAFT — NOT APPROVED — NOT EFFECTIVE — NOT CONFIGURED`; CI-05 open, Class B, non-blocking to a first Terms version; §19.2 open, Class B but conditional, no live trigger while `DEC-SUB-013`'s position is "none"; `ENG-P3-003` not started; `FD-COM-001` confirmed unrelated, uncommitted, primary-worktree-only.
+- **Finding:** Capability 4 and all subsequent capabilities are genuinely blocked (not merely administratively open) — a completed Capability 3 (Terms-gated business onboarding) is a real architectural prerequisite. `DEC-TECH-008` and `DEC-SUB-013`/§19.2 are open but unblock no engineering package. `ENG-P3-003` (Knowledge Studio) is the sole candidate that is genuine forward product delivery, fully unblocked by CI-01/Terms/Capability-3-closure, and already Founder-dispositioned (`DEC-CKS-002`) as approvable — but has not yet received the fresh start-authorization every other `ENG-P*` package in this programme has required.
+- **Disclosed, not corrected by this task:** the Master Workflow (2026-07-26), Engineering Implementation Programme (2026-08-22), and Coding-Agent Prompt Register (2026-08-07) trackers are materially behind CDR-001 (2026-08-29) and the Decision Register/Documentation Changes Log (2026-08-31/2026-09-03) — a pre-existing risk first flagged, unfixed, in the original `ENG-PROG-001` report (2026-07-29), not a new defect. Correcting these trackers was judged out of this assessment task's scope and is flagged for separate Founder-directed action.
+- **Recommendation:** authorize a bounded `ENG-P3-003-DESIGN-001` architecture/delivery-design package (design only, no implementation) as the next delivery direction — not `ENG-P3-003` implementation itself, not Capability 4, not any Business-Terms-adjacent work.
+- **Files modified:** `documentation-changes-log.md` (this entry); `11ONUS-PROG-002-post-business-terms-deferral-programme-position-2026-09-03.md` (created). No other file modified. No Firebase/application/Rules change.
+- **Gate:** `11THONUS PROGRAMME POSITION REASSESSED — CI-01 PARKED — HIGHEST-PRIORITY UNBLOCKED DELIVERY DIRECTION IDENTIFIED`.
+- **Explicitly NOT done:** `ENG-P3-003` not started or authorized to start. Capability 3 not closed. `DEC-LEGAL-002` not touched. CI-01/CI-05 not resolved. `DEC-SUB-013`/§19.2 not resolved. No roadmap/programme/decision-register status field edited, despite the disclosed currency gap. `FD-COM-001` (primary worktree) not read, stashed, committed, or altered. See the [Assessment Report](../../05-implementation/reports/11ONUS-PROG-002-post-business-terms-deferral-programme-position-2026-09-03.md).
+
+---
+
 ## Entry 155 — `DEC-LEGAL-002-BT-CI-01-DEF-001`: CI-01 Recorded Deferred Pending Miledge Ventures Africa Corporate Registration
 
 - **Date:** 3 September 2026
