@@ -24,6 +24,20 @@ Running log of all controlled changes to the documentation suite. Every consolid
 
 ---
 
+## Entry 155 — `DEC-LEGAL-002-BT-CI-01-DEF-001`: CI-01 Recorded Deferred Pending Miledge Ventures Africa Corporate Registration
+
+- **Date:** 3 September 2026
+- **Performed by:** Claude (AI agent), per Founder task instruction `DEC-LEGAL-002-BT-CI-01-DEF-001`
+- **Basis:** Founder direction: Miledge Ventures Africa is the intended operating company for 11thONUS; corporate registration is underway in Burundi, Uganda, Rwanda, and Kenya; the exact contracting entity, registration number, and registered address will be confirmed when the relevant registration documents become available.
+- **Recording:** CI-01's existing Controlled Inputs Register row annotated with status **`OPEN — DEFERRED PENDING CORPORATE REGISTRATION EVIDENCE`** (a status annotation, not a resolution — Classification unchanged: "Required before Founder approval and required before legal approval"). A new narrative section records the Founder's direction, the explicit non-inferences (no entity chosen among the four registrations; no invented registration number/address/corporate form; no inference from Rwanda governing law, Kigali/KIAC arbitration, product-management location, or the Burundi pilot), and the reopening trigger (receipt of registration evidence sufficient to establish the exact contracting entity, name, number, and address, followed by a separately authorized verification/insertion task). **The Preamble bracket itself is unchanged — no value inserted, CI-01 not resolved or narrowed.**
+- **Preserved:** the `DEC-LEGAL-002-BT-WHOLE-RECON-001` finding that CI-01 is the sole unconditional blocker to final Core Business Terms approval is unchanged. Distinguished explicitly: still blocked by CI-01 (final approval, final governed Terms version issuance, effectiveness, production Terms configuration, production Business acceptance, final Capability 3 closure); not blocked merely by CI-01 (governance preparation, engineering unrelated to Terms activation, documentation/readiness work, other independent decisions, non-representing test/implementation work, other capabilities/workstreams with their own satisfied gates). No specific engineering package authorized by this record. §19.2/`DEC-SUB-013` boundary from PR #220 preserved unchanged and untouched.
+- **Roadmap assessment (read-only, not started):** `ENG-P3-003` (Knowledge Studio) identified as already Founder-dispositioned (`DEC-CKS-002`) as not launch-blocking and separately authorizable — independent of CI-01/Terms activation/Capability 3 closure. Not begun by this task.
+- **Files modified:** `documentation-changes-log.md` (this entry); `DEC-LEGAL-002-BT-DRAFT-001-controlled-inputs-register-2026-08-30.md` (CI-01 row annotated, new deferral narrative added, version → 9.0); `DEC-LEGAL-002-BT-CI-01-DEF-001-implementation-report-2026-09-03.md` (created). **No edit to the living Core Business Terms instrument** (Preamble unchanged) or to the Decision Register/Drafting Traceability Matrix.
+- **Gate:** `CI-01 DEFERRED PENDING MILEDGE VENTURES AFRICA REGISTRATION EVIDENCE — FINAL BUSINESS TERMS ACTIVATION GATE PRESERVED — INDEPENDENT WORK MAY CONTINUE`.
+- **Explicitly NOT done:** CI-01 not resolved or closed. No Preamble value inserted. No entity chosen among the four national registrations. No registration number/address/corporate form invented. No corporate/legal research into the four registrations performed. `DEC-LEGAL-002` not closed (`OPEN_LEGAL` unchanged). Complete Business Terms not approved/finalized; no effective date assigned; no Terms configuration. Capability 3 status unchanged. CI-05/`DEC-SUB-013`/§19.2 not touched. No application/source/Firebase/dependency/config change. No specific subsequent engineering package authorized or started. Primary worktree's unrelated `FD-COM-001` work untouched — used a fresh isolated worktree (`docs/dec-legal-002-bt-ci-01-def-001`). Not self-merged.
+
+---
+
 ## Entry 154 — `DEC-LEGAL-002-BT-WHOLE-RECON-001-CORR-001`: `DEC-SUB-013`/§19.2 Classification Corrected (PR #220)
 
 - **Date:** 3 September 2026
