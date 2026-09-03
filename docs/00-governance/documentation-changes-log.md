@@ -24,6 +24,18 @@ Running log of all controlled changes to the documentation suite. Every consolid
 
 ---
 
+## Entry 150 — `DEC-LEGAL-002-BT-DRAFT-008-CORR-001`: §27.4/§27.8 Corrected (PR #217 Automated Review)
+
+- **Date:** 3 September 2026
+- **Performed by:** Claude (AI agent), per Founder task instruction `DEC-LEGAL-002-BT-DRAFT-008-CORR-001`
+- **Basis:** PR #217 (head `64ca7f37db814466c588f27449fce98be7fa341f`, CI green) received two Codex automated-review findings, both genuine and in scope. P1: §27.4's closing sentence tied a new jurisdiction's required §26 assessment only to the administrative act of adding it to the §27 index, not to operating the platform there, leaving open a launch-before-assessment gap contrary to `DEC-LEGAL-002-BT-PART-VIII-DRAFT-BOUNDARY-001` §23's pre-launch gate. P2: §27.8 consolidated all nine reserved items into one paragraph ending with a single generic "future task" statement, dropping the nine item-specific reassessment triggers `DEC-LEGAL-002-BT-PART-VIII-DRAFT-BOUNDARY-001` §24 records for each item.
+- **Correction:** §27.4 corrected to require a not-yet-indexed jurisdiction's §26 assessment before 11thONUS operates the platform for Businesses there, and separately before indexing — the pre-launch gate is now explicit, not implied. §27.8 restructured into nine lettered subsections (a)–(i), each restating its jurisdiction/topic and its own reassessment trigger, retrieved verbatim in substance from the merged drafting-boundary report and translated into plain contractual language (no "repository-verified" or other internal-report phrasing). Neither correction resolved, narrowed, or reclassified any of the nine reserved or two future-triggered items; neither touched §26, §27.1–§27.3, §27.5–§27.7, §27.9, or any Part I–VII clause.
+- **Files modified:** `documentation-changes-log.md` (this entry); `DEC-LEGAL-002-BT-DRAFT-001-core-business-terms-draft-2026-08-30.md` (§27.4/§27.8 corrected; version → 8.1); `DEC-LEGAL-002-BT-DRAFT-001-drafting-traceability-matrix-2026-08-30.md` (rows updated; correction-pass narrative added; version → 8.1); `DEC-LEGAL-002-BT-DRAFT-008-CORR-001-correction-report-2026-09-03.md` (created). Controlled Inputs Register unchanged (its Part VIII narrative does not quote §27.4/§27.8's specific text).
+- **Gate:** `PR #217 PART VIII CORR-001 COMPLETE — PRE-LAUNCH JURISDICTION GATE RESTORED — NINE RESERVATION TRIGGERS PRESERVED — READY FOR FOUNDER REVIEW`.
+- **Explicitly NOT done:** No new Controlled Input created; CI-01/CI-05 unchanged (both `OPEN`). No Category R item resolved or reclassified; no Category F item activated. No jurisdiction-determination test invented. No new jurisdiction added or researched. No Parts I–VII substantive change. `DEC-LEGAL-002` unchanged (`OPEN_LEGAL`); Terms configuration unchanged (`NOT CONFIGURED`); Capability 3 unchanged; LEG-FD-01–16 unchanged. Not self-merged.
+
+---
+
 ## Entry 149 — `DEC-LEGAL-002-BT-DRAFT-008`: Core Business Terms Part VIII (§§26–27 Jurisdictional Overlays) Draft
 
 - **Date:** 3 September 2026
