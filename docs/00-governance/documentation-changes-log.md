@@ -24,6 +24,23 @@ Running log of all controlled changes to the documentation suite. Every consolid
 
 ---
 
+## Entry 157 — `ENG-P3-003-DESIGN-001`: Knowledge Studio MVP Architecture and Delivery Design
+
+- **Date:** 3 September 2026
+- **Performed by:** Claude (AI agent), per Founder task instruction `ENG-P3-003-DESIGN-001`, following Founder approval of `11ONUS-PROG-002`'s recommendation (PR #222 merged as `cd7c758`).
+- **Nature:** Design/architecture only — no implementation, no Firebase/Firestore Rules/production configuration change, no data migration, no callable/HTTPS endpoint added, no npm dependency added. `ENG-P3-003` itself remains `Not started` in `CDR-001`; this task produces only the design prerequisite (`ENG-P3-003A`–`G` proposed, none started).
+- **Basis:** `DEC-CKS-002` (Knowledge Studio not launch-blocking, separately authorizable); `DEC-DATA-005` (frozen 5-value `KnowledgeLifecycleStatus`, preserved unchanged); TRD18 §18.5.5–18.6/§18.10/§18.18–18.28/§18.49/§18.56–18.62 (roles, permissions, draft model, publishing/audit/API-boundary requirements — the controlling architecture source for this task, since no other document or code addressed these questions; TRD18 itself remains `Status: Draft for approval`, flagged as a risk at §24 of the design report).
+- **Architecture strategy:** preserves the existing `commerceKnowledge` domain schema/repositories entirely unchanged; adds a new, separate `KnowledgeDraft` model/collection as the editorial working surface (live published nodes untouched until publish); adds a new, minimal, structurally-parallel platform-administrator permission evaluator (`PlatformAdministratorDocument`, Knowledge-scoped roles/permissions) rather than extending the existing Business-role evaluator, which has no way to express an actor with no `businessId` in scope. Resolves the one real tension found — TRD18's narrated 6-stage object lifecycle vs. the frozen 5-value node status — by locating "approved" on the new draft object's own status field, never adding a sixth value to `KnowledgeNode.status`.
+- **Reconciles**, without contradicting any Founder decision: TRD10 §10.3/§10.4's placeholder `knowledgeSuggestions` collection entry is superseded by TRD18's fuller `KnowledgeDraftDocument` shape (a business suggestion becomes one `source` value on a draft, not a separate collection).
+- **Identifies and specifies the fix for** a previously-flagged, unresolved risk (`ENG-P3-001-DESIGN-001` §10.5): the seed loader's own reconciliation logic would silently force a Studio-authored, still-`in_review` node forward to `active` on any rerun. A new `updatedBy`-based guard is specified (not implemented) to close it.
+- **Decomposition:** seven proposed implementation packages (`ENG-P3-003A` platform-admin auth primitive; `B` draft model/lifecycle; `C` publish-path composition/audit/events; `D` transport; `E`/`F` frontend; `G` bulk-import/analytics, explicitly deferred post-MVP) — none authorized to begin by this task.
+- **Founder input still needed** (not blocking this design, flagged for the first implementation package): `knowledge.edit_draft` scope (any editor vs. own-drafts-only), MFA-enforcement mechanism, first-administrator bootstrap path.
+- **Files modified:** `documentation-changes-log.md` (this entry); `ENG-P3-003-DESIGN-001-knowledge-studio-architecture-delivery-design.md` (created). No other file modified. No Firebase/application/Rules change.
+- **Gate:** `ENG-P3-003 KNOWLEDGE STUDIO ARCHITECTURE / DELIVERY DESIGN COMPLETE — IMPLEMENTATION BOUNDARIES AND PACKAGE SEQUENCE READY FOR FOUNDER REVIEW`.
+- **Explicitly NOT done:** `ENG-P3-003` implementation not started. No package (`A`–`G`) started or authorized to start. Capability 3 status unchanged. Capability 4 not started. Business Terms not touched. CI-01/CI-05 not resolved. `DEC-SUB-013`/§19.2 not resolved. No subscription functionality introduced. No merchant-controlled taxonomy authoring introduced. Stale programme trackers not modified. `FD-COM-001` (primary worktree) not read, stashed, committed, or altered. See the [Design Document](../05-implementation/roadmap/ENG-P3-003-DESIGN-001-knowledge-studio-architecture-delivery-design.md).
+
+---
+
 ## Entry 156 — `11ONUS-PROG-002`: Post-Business-Terms-Deferral Programme Position and Next Delivery Recommendation
 
 - **Date:** 3 September 2026
