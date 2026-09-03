@@ -24,6 +24,22 @@ Running log of all controlled changes to the documentation suite. Every consolid
 
 ---
 
+## Entry 158 — `ENG-P3-003-DESIGN-001-CORR-001`: TRD18 Authority Boundary Corrected, Founder Decisions Surfaced
+
+- **Date:** 3 September 2026
+- **Performed by:** Claude (AI agent), per Founder task instruction `ENG-P3-003-DESIGN-001-CORR-001` (PR #223 not yet approved for merge).
+- **Nature:** Design correction only — amends the existing, unmerged `ENG-P3-003-DESIGN-001` document in place (v1.0 → v1.1) on its existing PR #223 branch. No implementation, no code, no collection, no Firestore Rules change.
+- **Finding:** v1.0 treated TRD18 §18.5.5–18.6/§18.10/§18.18–18.28/§18.49/§18.56–18.62 as "the controlling architecture reference." No Founder approval of TRD18 as a whole was found on merged `origin/main`, and one on-point, unresolved, explicitly blocking Decision Register entry — `DEC-GOV-007` ("Which of TRD18's eleven administrator roles are staffed/enabled at MVP launch?", `Status: OPEN_FOUNDER`, `Final decision: —`, "Blocks: Phase 12 admin build") — covers exactly the `knowledge_editor`/`knowledge_approver` role pair §6 relied on. All 23 TRD chapters (including TRD10, which the already-implemented `commerceKnowledge` domain is built against) share the same `Draft for approval (pre-freeze)` header status, so this is not a defect unique to TRD18 — the material distinction is `DEC-GOV-007`'s specific, open, blocking scope.
+- **Correction:** new §2A classifies every material design element as A (already governed — e.g. `DEC-DATA-005`'s frozen node/tag lifecycle, `DEC-SEC-002`'s confirmed MFA/audit/permission-scoping requirement, the Commerce Knowledge/Knowledge Studio standards' suggestion-review principle), B (design recommendation requiring Founder approval — the `PlatformAdministratorDocument` concept, the specific role vocabulary, the `KnowledgeDraft` model/lifecycle, self-approval separation, bulk import), or C (engineering implementation detail — permission-identifier naming, audit-record field shape, publication-event naming, API/callable naming). §6/§7/§8/§9/§13/§17/§18/§24 revised accordingly. `DEC-DATA-005`, `DEC-CKS-001`, `DEC-CKS-002`, the existing Commerce Knowledge read/seed architecture, and the existing Business permission architecture are **not reopened**.
+- **Founder decisions consolidated**: a single bundled `FD-KS-1` (platform-administrator model existence + MVP role subset + separate `KnowledgeDraft` model + self-approval separation) replaces the prior three-scattered-question framing and is now the explicit gate on `ENG-P3-003A`/`B`. Two narrower items remain (edit-scope default, first-administrator bootstrap); the third (MFA mechanism) is downgraded from "Founder decision" to "already-confirmed requirement, Engineering-Lead-owned mechanism" per `DEC-SEC-002`.
+- **Seed-collision reassessment**: the `updatedBy`-only guard originally proposed is corrected as insufficient (conflates audit-display provenance with ownership; depends on every write path reliably setting it; silent-failure mode). A dedicated `managedBy: "seed"|"studio"` provenance field, decoupled from `updatedBy`, is now the recommended (not implemented) fix.
+- **Package sequence**: the seven-package decomposition (`ENG-P3-003A`–`G`) remains architecturally valid; `A`/`B` are now explicitly gated on `FD-KS-1`; `B`'s seed-guard scope corrected to `managedBy`.
+- **Files modified:** `documentation-changes-log.md` (this entry); `ENG-P3-003-DESIGN-001-knowledge-studio-architecture-delivery-design.md` (amended in place). No other file modified. No Firebase/application/Rules/TRD18-file change.
+- **Gate:** `ENG-P3-003 DESIGN AUTHORITY BOUNDARY CORRECTED — GOVERNED BASELINE SEPARATED FROM FOUNDER-APPROVAL ITEMS — IMPLEMENTATION REMAINS NOT AUTHORIZED`.
+- **Explicitly NOT done:** `ENG-P3-003A`–`G` not implemented, not started. No collection/model/code added. Firestore Rules untouched. Capability 3 unchanged. Business Terms/CI-01 untouched. TRD18 not approved by implication — its own file and status are unchanged; only this design's *treatment* of it was corrected. Stale programme trackers not modified. `FD-COM-001` (primary worktree) not read, stashed, committed, or altered. See the [Corrected Design Document](../05-implementation/roadmap/ENG-P3-003-DESIGN-001-knowledge-studio-architecture-delivery-design.md).
+
+---
+
 ## Entry 157 — `ENG-P3-003-DESIGN-001`: Knowledge Studio MVP Architecture and Delivery Design
 
 - **Date:** 3 September 2026
