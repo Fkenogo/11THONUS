@@ -1,7 +1,7 @@
 > **Title:** Core Business Terms §§1–27 — Whole-Instrument Reconciliation and Finalization Readiness Assessment
-> **Version:** 1.0 (2026-09-03) · **Status:** Working (governance record — read-only assessment) · **Classification:** Working (governance record)
+> **Version:** 1.1 (2026-09-03 — `DEC-LEGAL-002-BT-WHOLE-RECON-001-CORR-001`: `DEC-SUB-013` separated from the blanket `DEC-SUB-* = C` statement and explicitly linked to the conditional-B §19.2 item, with an unambiguous operational rule and a two-track finalization path) · **Status:** Working (governance record — read-only assessment) · **Classification:** Working (governance record)
 > **Governing document:** [Decision Register](../../00-governance/decisions/decision-register.md) `DEC-LEGAL-002` (Status: `OPEN_LEGAL`, unchanged by this report)
-> **Task:** `DEC-LEGAL-002-BT-WHOLE-RECON-001`
+> **Task:** `DEC-LEGAL-002-BT-WHOLE-RECON-001`; `DEC-LEGAL-002-BT-WHOLE-RECON-001-CORR-001` (v1.1 correction; see [Correction Report](DEC-LEGAL-002-BT-WHOLE-RECON-001-CORR-001-correction-report-2026-09-03.md))
 > **Governs:** assessment only — no edit to [Core Business Terms — Draft](../../00-governance/decisions/evidence/DEC-LEGAL-002-BT-DRAFT-001-core-business-terms-draft-2026-08-30.md)
 
 # Assessment strategy (stated before any inspection concluded)
@@ -56,7 +56,7 @@ Read §§1–27 sequentially as a single contract (not eight independent Parts);
 
 **NON-BLOCKING-2 — Jurisdiction-overlay status labels not added to §2 Definitions.** §27.2's five status labels ("Established Mandatory Overlay," etc.) are self-contained, bolded, and used consistently only within §27 — they function correctly without a formal §2 definition, but a maximally polished final instrument might add them to the definitions list for internal-drafting-convention consistency with the rest of the document. Cosmetic only.
 
-**NON-BLOCKING-3 — §19.2 zero-fee-Business liability cap gap has a live, not merely theoretical, dependency.** §19.2 leaves open what the 12-months-fees liability cap produces for a Business that has paid no fees — an explicit, LEG-FD-15-authorized non-resolution. Because `DEC-SUB-013` (complimentary/free plans policy) and the general possibility of pilot/free-tier Businesses remain genuinely open (`OPEN_FOUNDER`), this gap is not purely theoretical: if 11thONUS onboards a zero-fee Business under a *configured* Terms version before this is resolved, that Business's liability-cap outcome is genuinely undefined. This does not block *Core Terms approval* (the clause is coherent, bounded, and Founder-authorized as written) but is a live operational question the Founder should have in view before *launch* if any free/pilot Business participation is planned at that time — see §13 classification below (classified B, conditionally).
+**NON-BLOCKING-3 — §19.2 zero-fee-Business liability cap gap is a conditional, not unconditional, launch dependency.** §19.2 leaves open what the 12-months-fees liability cap produces for a Business that has paid no fees — an explicit, LEG-FD-15-authorized non-resolution. This gap is not purely theoretical: if 11thONUS onboards *any* zero-fee Business (including a complimentary, free, or pilot Business) under the first *configured* Terms version before this is resolved, that Business's liability-cap outcome is genuinely undefined. It does not block *Core Terms approval* (the clause is coherent, bounded, and Founder-authorized as written), and it does not block a fee-paying-only launch. Its trigger is *intent to onboard a zero-fee Business*, not the mere existence of an open `DEC-SUB-013` — see §13 for the precise relationship between the two, and the unambiguous operational rule stated there.
 
 # 8. A/B/C classification table — every remaining open issue
 
@@ -75,10 +75,11 @@ Read §§1–27 sequentially as a single contract (not eight independent Parts);
 | §27.8(i) Burundi general provisions | **C** | Same basis |
 | §27.9 Rwanda commercial/subscription | **C** | Explicitly future-triggered on FD-7 commercial activation |
 | §27.9 Burundi commercial/subscription | **C** | Same basis |
-| `DEC-SUB-001`/`002`/`003`/`008`/`009`/`010`/`013` (open) | **C** | §18.6 states a valid bounded non-resolution; Terms complete without them |
+| `DEC-SUB-001`/`002`/`003`/`008`/`009`/`010` (open) | **C** | §18.6 states a valid bounded non-resolution; Terms complete without them |
+| `DEC-SUB-013` (complimentary/free plans policy, open) | **C**, explicitly linked to the §19.2 conditional-B item below | §18.6 states a valid bounded non-resolution on its own commercial-policy question (whether/how to offer complimentary plans); Terms complete without it. **Does not itself resolve, and is not the same question as, §19.2's liability-cap treatment** — see §13 |
 | `DEC-ID-005` (owner-initiated self-suspension) | **C** | §15.7/§16.8 explicit non-resolution; platform-initiated suspension fully drafted |
 | `DEC-LOY-009` (reward quantity/coexistence) | **C** | §13.7 explicit non-resolution; earned-reward-survival principle stated without it |
-| §19.2 zero-fee liability-cap gap | **B** (conditional) | Not a Core-approval blocker; becomes a live launch concern only if a zero-fee/pilot Business is onboarded before resolution — see §7, NON-BLOCKING-3 |
+| §19.2 zero-fee liability-cap gap | **B** (conditional) | Not a Core-approval blocker; becomes a live launch concern only if a zero-fee Business (including any complimentary/free/pilot Business) is intended for onboarding under the first configured Terms version before this is resolved — see §7 NON-BLOCKING-3 and §13 |
 | §20.3 six omitted indemnity procedural mechanics | **C** | Independently omittable (Classification D per Part VI authority report); ordinary bounded drafting judgment |
 
 No item required a fourth category.
@@ -107,7 +108,13 @@ Both = **Class C**. Textbook future-triggered reservations: explicitly gated on 
 
 # 13. Open `DEC-SUB-*` classification
 
-`DEC-SUB-001`, `-002`, `-003`, `-008`, `-009`, `-010`, `-013` (all `OPEN_FOUNDER` on `origin/main`, confirmed) = **Class C**, per §18.6's own explicit, already-governed non-resolution: "becomes binding on a Business only where separately governed, applicable to that Business, and communicated to it." §18 is fully draftable and complete without any of them; none is required to state the fee-conditionality, payer-boundary, plan-capacity, or suspension-cross-reference principles that make up §18's actual content. The one item warranting a qualifier is `DEC-SUB-013` specifically (see §7, NON-BLOCKING-3, and the §19.2 row of the table at §8) — not because §18 itself is incomplete, but because its interaction with §19.2's liability-cap gap becomes operationally live the moment a real zero-fee Business exists.
+`DEC-SUB-001`, `-002`, `-003`, `-008`, `-009`, `-010`, and `-013` are all `OPEN_FOUNDER` on `origin/main` (confirmed directly). All seven = **Class C**, per §18.6's own explicit, already-governed non-resolution: "becomes binding on a Business only where separately governed, applicable to that Business, and communicated to it." §18 is fully draftable and complete without any of them; none is required to state the fee-conditionality, payer-boundary, plan-capacity, or suspension-cross-reference principles that make up §18's actual content.
+
+**`DEC-SUB-013` requires a precise, separately stated relationship, not a blanket inclusion in the general `DEC-SUB-*` statement above.** Inspecting its exact governed scope on `origin/main`: `DEC-SUB-013` ("Complimentary/free plans policy") decides *whether the platform will offer complimentary/free/pilot plans at all, and under what governance* — its "Current confirmed position" is explicitly **"none"**; no complimentary program is currently authorized. It does **not** decide, address, or resolve §19.2's separate legal question — what the 12-months-fees liability cap produces when a Business has paid no fees. These are two independent questions: `DEC-SUB-013` is a commercial-policy decision (will free access exist); §19.2 is a legal-drafting gap (what is 11thONUS's liability to a Business paying nothing). Resolving `DEC-SUB-013` in favor of a complimentary programme would not, by itself, supply an answer to §19.2 — and leaving `DEC-SUB-013` unresolved does not, by itself, create the §19.2 problem either.
+
+**The correct classification is therefore: `DEC-SUB-013` = Class C on its own terms** (the Terms are complete without a complimentary-plans policy, exactly like the other six `DEC-SUB-*` items) — **explicitly linked to, but not merged with,** the separate conditional-Class-B item already identified at §19.2. The actual trigger for that Class-B condition is not "`DEC-SUB-013` resolved" — it is **"a zero-fee Business is actually intended for onboarding under the first configured Terms version"**, a condition `DEC-SUB-013` may eventually authorize (if resolved toward option (a) or (b) in its own options list) but is not the exclusive path to, and does not itself settle the liability question for. Because `DEC-SUB-013`'s current governed position is "none," no zero-fee onboarding path is presently authorized at all — meaning the §19.2 conditional-B gate has **no live trigger today**, but must be re-checked the moment any complimentary/free/pilot access is actually authorized or granted, whether through a future `DEC-SUB-013` disposition or any other administrative path.
+
+**Unambiguous operational rule (stated once, for use downstream):** *No zero-fee Business — including any complimentary, free, or pilot Business — should be onboarded under the first configured Terms version while §19.2's zero-fee liability treatment remains unresolved.* This rule is not triggered by `DEC-SUB-013` remaining open; it is triggered by an actual zero-fee onboarding intent, from whatever source. If the initial launch cohort consists only of fee-paying Businesses, this rule imposes no blocker at all.
 
 # 14. `DEC-ID-005` classification
 
@@ -163,11 +170,11 @@ Exactly one: **CI-01** (operator legal identity — Preamble). Nothing else.
 
 # 27. Matters that only block Rwanda/Burundi launch/configuration
 
-**CI-05**, conditionally, for any *second* Terms version only (not the first). **The §19.2 zero-fee liability-cap gap**, conditionally, only if a zero-fee/pilot Business is expected to be onboarded under a configured Terms version. No §27.8/§27.9 item independently blocks Rwanda/Burundi launch (all Class C, per §11–12).
+**CI-05**, conditionally, for any *second* Terms version only (not the first). **The §19.2 zero-fee liability-cap gap**, conditionally — triggered only by intent to onboard a zero-fee Business (including a complimentary, free, or pilot Business) under the first configured Terms version, not by `DEC-SUB-013` remaining open on its own; a fee-paying-only launch is unaffected (see §13). No §27.8/§27.9 item independently blocks Rwanda/Burundi launch (all Class C, per §11–12).
 
 # 28. Matters legitimately future-triggered (Class C, block neither)
 
-All nine §27.8 items; both §27.9 items; `DEC-SUB-001`/`-002`/`-003`/`-008`/`-009`/`-010`/`-013`; `DEC-ID-005`; `DEC-LOY-009`; §20.3's six omitted indemnity procedural mechanics.
+All nine §27.8 items; both §27.9 items; `DEC-SUB-001`/`-002`/`-003`/`-008`/`-009`/`-010`/`-013` (including `DEC-SUB-013` on its own commercial-policy terms — see §13 for its separate, explicit link to the conditional-B §19.2 item); `DEC-ID-005`; `DEC-LOY-009`; §20.3's six omitted indemnity procedural mechanics.
 
 # 29. Is the complete §§1–27 instrument currently suitable for final legal/Founder approval?
 
@@ -200,7 +207,13 @@ One narrowly-scoped future task, **not performed here**: once the Founder confir
 
 **Note on CI-05:** step 7 does not require CI-05 resolved — CI-05 only becomes a precondition the first time a *second* Terms version requiring reacceptance is issued. It should be resolved before that event, not before this one.
 
-**Note on §19.2/DEC-SUB-013:** if any zero-fee/pilot Business participation is planned as part of the launch configured in step 7, the Founder should resolve or explicitly risk-accept the §19.2 gap before that configuration goes live for such Businesses.
+**Core Terms approval/configuration track (steps 1–7 above) is complete and unconditional once CI-01 is resolved — it does not depend on §19.2 or `DEC-SUB-013` at all.** Steps 1–7 configure the Terms for fee-paying Businesses without qualification.
+
+**Zero-fee Business launch readiness — a separate, conditional track, not a precondition to steps 1–7:**
+
+- 7a. Before onboarding *any* zero-fee Business (complimentary, free, or pilot) under the configured Terms version from step 7, the Founder must either (i) resolve §19.2's liability-cap treatment for zero-fee Businesses, or (ii) knowingly accept the resulting undefined-liability risk for that specific onboarding.
+- 7b. `DEC-SUB-013` (whether/how complimentary plans exist at all) may be resolved independently of, before, after, or never in relation to 7a — resolving it in favor of a complimentary programme does not itself satisfy 7a, and 7a does not depend on `DEC-SUB-013`'s resolution status. The operative condition is the *intent to onboard a zero-fee Business*, from whatever authorization source.
+- **If the initial launch cohort is exclusively fee-paying Businesses, steps 7a–7b impose no blocker and can be deferred indefinitely without affecting Capability 3 closure (§36).**
 
 # 35. Proposed final onboarding acceptance verification
 
@@ -208,7 +221,7 @@ One narrowly-scoped future task, **not performed here**: once the Founder confir
 
 # 36. Proposed Capability 3 closure condition
 
-9. Capability 3 closes when: (a) `platformConfig/businessTerms` holds the approved, versioned Terms content; (b) the step-8 end-to-end onboarding-acceptance verification passes; and (c) `DEC-LEGAL-002` is recorded closed. No further engineering work package is required — `CDR-001` already records every named Capability-3 work package (`ENG-P2-002`, `ENG-P2-003`, `ENG-P2-004`, `ENG-P3-001`, `ENG-P3-002`) as `Complete`/`Closed`, with `ENG-P3-003` (Knowledge Studio) separately non-blocking per `DEC-CKS-002`.
+9. Capability 3 closes when: (a) `platformConfig/businessTerms` holds the approved, versioned Terms content; (b) the step-8 end-to-end onboarding-acceptance verification passes (using a fee-paying test Business — the zero-fee track at §34 is independent and not required for this verification); and (c) `DEC-LEGAL-002` is recorded closed. No further engineering work package is required — `CDR-001` already records every named Capability-3 work package (`ENG-P2-002`, `ENG-P2-003`, `ENG-P2-004`, `ENG-P3-001`, `ENG-P3-002`) as `Complete`/`Closed`, with `ENG-P3-003` (Knowledge Studio) separately non-blocking per `DEC-CKS-002`.
 
 # 37. Files modified
 
@@ -259,4 +272,4 @@ Decide whether to proceed with the finite path at §§33–36: supply the operat
 
 ---
 
-**Gate:** `CORE BUSINESS TERMS WHOLE-INSTRUMENT RECONCILIATION COMPLETE — FINALIZATION BLOCKERS CLASSIFIED — FINITE PATH TO APPROVED / CONFIGURED TERMS ESTABLISHED`
+**Gate:** `WHOLE-INSTRUMENT RECONCILIATION CORRECTED — CI-01 REMAINS SOLE CORE-APPROVAL BLOCKER — ZERO-FEE BUSINESS LAUNCH CONDITION EXPLICITLY GOVERNED AS CONDITIONAL BLOCKER`

@@ -24,6 +24,20 @@ Running log of all controlled changes to the documentation suite. Every consolid
 
 ---
 
+## Entry 154 — `DEC-LEGAL-002-BT-WHOLE-RECON-001-CORR-001`: `DEC-SUB-013`/§19.2 Classification Corrected (PR #220)
+
+- **Date:** 3 September 2026
+- **Performed by:** Claude (AI agent), per Founder task instruction `DEC-LEGAL-002-BT-WHOLE-RECON-001-CORR-001`
+- **Basis:** PR #220's report classified all open `DEC-SUB-*`, including `DEC-SUB-013`, as Class C in one blanket statement while separately classifying §19.2's zero-fee liability-cap gap as conditional Class B — an inconsistency, since the relationship between the two was left unstated.
+- **Inspection:** `DEC-SUB-013`'s exact governed scope confirmed on `origin/main` — decision question "will the platform offer complimentary plans, and under what governance"; current confirmed position "**none**." Confirmed it decides *whether* zero-fee participation exists, not §19.2's separate legal question of what the liability cap produces when it does.
+- **Correction:** `DEC-SUB-013` separated from the blanket `DEC-SUB-*` statement and classified Class C on its own terms, explicitly linked to (not merged with) the conditional-B §19.2 item. Added the unambiguous operational rule: no zero-fee Business (including complimentary/free/pilot) should be onboarded under the first configured Terms version while §19.2 remains unresolved — triggered by intent to onboard a zero-fee Business, not by `DEC-SUB-013`'s own open status. Split the finalization path into a Core-approval/configuration track (unconditional once CI-01 resolves) and a separate, deferrable zero-fee-launch-readiness track.
+- **Preserved:** CI-01 remains the sole unconditional Class A blocker; §19.2 does not block Core approval; a fee-paying-only launch is unaffected; all nine §27.8 items, both §27.9 items, `DEC-ID-005`, `DEC-LOY-009` unchanged. `DEC-SUB-013` not resolved; §19.2 not touched; no liability cap invented; no new legal research.
+- **Files modified:** `documentation-changes-log.md` (this entry); `DEC-LEGAL-002-BT-WHOLE-RECON-001-whole-instrument-reconciliation-report-2026-09-03.md` (§7/§8/§13/§27/§28/§34/§36 corrected, version → 1.1); `DEC-LEGAL-002-BT-WHOLE-RECON-001-CORR-001-correction-report-2026-09-03.md` (created).
+- **Gate:** `WHOLE-INSTRUMENT RECONCILIATION CORRECTED — CI-01 REMAINS SOLE CORE-APPROVAL BLOCKER — ZERO-FEE BUSINESS LAUNCH CONDITION EXPLICITLY GOVERNED AS CONDITIONAL BLOCKER`.
+- **Explicitly NOT done:** No Terms clause text edited. No Terms configuration. No status changes (`DEC-LEGAL-002`, CI-01, CI-05, Capability 3 all unchanged). No app/Firebase changes. No unrelated files touched. Primary worktree's `FD-COM-001` work untouched. Not self-merged.
+
+---
+
 ## Entry 153 — `DEC-LEGAL-002-BT-WHOLE-RECON-001`: Whole-Instrument Reconciliation and Finalization Readiness Assessment
 
 - **Date:** 3 September 2026
