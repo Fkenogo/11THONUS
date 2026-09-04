@@ -25,6 +25,18 @@
  * identity). A missing/invalid authentication upstream must never reach
  * this function with a fabricated `callerUserId` — that is the caller's
  * responsibility, exactly as it is for the Business evaluator.
+ *
+ * **`verifiedMfaSatisfied` (`AUTH-MFA-001`).** The same division of labor
+ * applies here: this function does not verify MFA itself, and it never
+ * will — the only correct way to produce this value is
+ * `deriveVerifiedMfaSatisfied(credential)` (`deriveVerifiedMfaSatisfied.ts`)
+ * applied to the same already-resolved `AuthenticatedCredential` that
+ * produced `callerUserId`. There is still no command in this repository
+ * that actually calls this function with a real, network-derived
+ * credential — that transport (`ENG-P3-003D`) remains future,
+ * separately-authorized work — but the fact this parameter needs is now a
+ * real, correctly-derived, testable one (`AUTH-MFA-001`), not merely a
+ * placeholder boolean with no legitimate way to become `true`.
  */
 
 import { randomUUID } from "node:crypto";

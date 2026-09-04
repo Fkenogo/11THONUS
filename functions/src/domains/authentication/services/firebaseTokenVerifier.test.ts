@@ -282,4 +282,96 @@ describe("createFirebaseAdminTokenVerifier", () => {
       ).rejects.toMatchObject({ category: "TEMPORARY_UNAVAILABLE" });
     },
   );
+
+  // AUTH-MFA-001: provider-neutral `verifiedSecondFactor` derivation from
+  // Firebase's own `firebase.sign_in_second_factor` claim (never from any
+  // account-enrollment state — no UserRecord/enrollment type is even
+  // imported by this module).
+  describe("verifiedSecondFactor (AUTH-MFA-001)", () => {
+    it("is false for an ordinary password-only session — no sign_in_second_factor claim present", async () => {
+      const verifyIdToken = vi
+        .fn()
+        .mockResolvedValue(decoded({ firebase: { identities: {}, sign_in_provider: "password" } }));
+      const verifier = createFirebaseAdminTokenVerifier(verifyIdToken, { now: () => fixedNow });
+
+      const credential = await verifier.verify({ referenceType: "email", rawToken: "raw" });
+
+      expect(credential.verifiedSecondFactor).toBe(false);
+    });
+
+    it("is true for a session Firebase itself verified as multi-factor (sign_in_second_factor: 'phone')", async () => {
+      const verifyIdToken = vi.fn().mockResolvedValue(
+        decoded({
+          firebase: {
+            identities: {},
+            sign_in_provider: "password",
+            sign_in_second_factor: "phone",
+          },
+        }),
+      );
+      const verifier = createFirebaseAdminTokenVerifier(verifyIdToken, { now: () => fixedNow });
+
+      const credential = await verifier.verify({ referenceType: "email", rawToken: "raw" });
+
+      expect(credential.verifiedSecondFactor).toBe(true);
+    });
+
+    it("is true for a TOTP-completed session (sign_in_second_factor: 'totp') — no factor-type allowlist is applied", async () => {
+      const verifyIdToken = vi.fn().mockResolvedValue(
+        decoded({
+          firebase: { identities: {}, sign_in_provider: "password", sign_in_second_factor: "totp" },
+        }),
+      );
+      const verifier = createFirebaseAdminTokenVerifier(verifyIdToken, { now: () => fixedNow });
+
+      const credential = await verifier.verify({ referenceType: "email", rawToken: "raw" });
+
+      expect(credential.verifiedSecondFactor).toBe(true);
+    });
+
+    it("is false for a malformed (empty-string) sign_in_second_factor claim — fails closed, never throws", async () => {
+      const verifyIdToken = vi.fn().mockResolvedValue(
+        decoded({
+          firebase: { identities: {}, sign_in_provider: "password", sign_in_second_factor: "" },
+        }),
+      );
+      const verifier = createFirebaseAdminTokenVerifier(verifyIdToken, { now: () => fixedNow });
+
+      const credential = await verifier.verify({ referenceType: "email", rawToken: "raw" });
+
+      expect(credential.verifiedSecondFactor).toBe(false);
+    });
+
+    it("is false for a non-string sign_in_second_factor claim — fails closed against a malformed/unexpected shape", async () => {
+      const verifyIdToken = vi.fn().mockResolvedValue(
+        decoded({
+          firebase: {
+            identities: {},
+            sign_in_provider: "password",
+            // @ts-expect-error — deliberately malformed claim shape to prove fail-closed handling.
+            sign_in_second_factor: 12345,
+          },
+        }),
+      );
+      const verifier = createFirebaseAdminTokenVerifier(verifyIdToken, { now: () => fixedNow });
+
+      const credential = await verifier.verify({ referenceType: "email", rawToken: "raw" });
+
+      expect(credential.verifiedSecondFactor).toBe(false);
+    });
+
+    it("ordinary Business/customer authentication behavior is otherwise unchanged by this extension", async () => {
+      const verifyIdToken = vi.fn().mockResolvedValue(decoded({ uid: "authuid_customer" }));
+      const verifier = createFirebaseAdminTokenVerifier(verifyIdToken, { now: () => fixedNow });
+
+      const credential = await verifier.verify({
+        referenceType: "phone_otp",
+        rawToken: "raw-firebase-id-token",
+      });
+
+      expect(credential.referenceId).toBe("authuid_customer");
+      expect(credential.referenceType).toBe("phone_otp");
+      expect(credential.verifiedSecondFactor).toBe(false);
+    });
+  });
 });
