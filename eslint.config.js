@@ -431,6 +431,73 @@ export default tseslint.config(
     },
   },
   {
+    // `ENG-P3-003A`: same machine-enforced boundary as the domain-foundation
+    // blocks above, scoped to the new Platform Administration domain's
+    // `models/`/`evaluator/` layers (`ENG-P3-003-DESIGN-001` §6 — the
+    // platform-permission evaluator must stay pure, mirroring the Business
+    // evaluator's own `evaluatePermission.ts`). `repositories/`/`services/`
+    // are excluded — those layers implement persistence/orchestration and
+    // are Firebase-adapter-capable by design, same carve-out reasoning as
+    // every other domain block above.
+    files: ["functions/src/domains/platformAdministration/**/*.ts"],
+    ignores: [
+      "functions/src/domains/platformAdministration/repositories/**",
+      "functions/src/domains/platformAdministration/services/**",
+    ],
+    languageOptions: {
+      ecmaVersion: 2023,
+      globals: globals.node,
+    },
+    rules: {
+      "@typescript-eslint/no-unused-vars": "error",
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: [
+                "firebase-admin",
+                "firebase-admin/*",
+                "firebase-functions",
+                "firebase-functions/*",
+              ],
+              message:
+                "The Platform Administration domain's models/evaluator layers (ENG-P3-003A) are framework-independent — no Firebase SDK import is permitted here. Persistence/orchestration belongs to repositories/ and services/ instead.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // Domain-isolation boundary, applied across the whole Platform
+    // Administration domain (`ENG-P3-003A`), not just its pure layers —
+    // Platform Administration and the Business-role permission evaluator
+    // are structurally disjoint authorization worlds
+    // (`ENG-P3-003-DESIGN-001` §6.4/§13.2: a platform administrator has no
+    // `businessId` in scope at all). Neither domain may import the other,
+    // in either direction.
+    files: ["functions/src/domains/platformAdministration/**/*.ts"],
+    languageOptions: {
+      ecmaVersion: 2023,
+      globals: globals.node,
+    },
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["**/domains/business/**", "**/domains/permissions/**"],
+              message:
+                "Platform Administration and the Business-role permission evaluator are structurally disjoint authorization worlds (ENG-P3-003-DESIGN-001 §6.4/§13.2) — never import one from the other.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ["*.{js,ts}", "**/*.config.{js,ts}"],
     languageOptions: {
       ecmaVersion: 2023,

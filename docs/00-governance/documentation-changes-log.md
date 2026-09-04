@@ -24,6 +24,21 @@ Running log of all controlled changes to the documentation suite. Every consolid
 
 ---
 
+## Entry 160 — `ENG-P3-003A`: Knowledge Studio Platform Administrator Authorization Foundation Implemented
+
+- **Date:** 3 September 2026
+- **Performed by:** Claude (AI agent), per Founder task instruction `ENG-P3-003A`, following Founder approval of `ENG-P3-003-PROG-SYNC-001` (PR #224, merged `54ef881`) and `FD-KS-1`/`DEC-GOV-011`.
+- **Nature:** First implementation package under `ENG-P3-003-DESIGN-001` v1.1 — authorization infrastructure only, TDD, pending Founder-authorized review/merge. Not implemented: `KnowledgeDraft`, draft lifecycle, editing/approval/publishing, seed `managedBy` change, Commerce Knowledge migration, Knowledge Studio frontend, bulk import/analytics, any other TRD18 role/workspace, Business Terms, Capability 4, subscription functionality.
+- **New domain**: `functions/src/domains/platformAdministration/` (21 files, ~1990 lines) — `PlatformAdministrator` model/persistence (`platformAdministrators/{userId}`, TRD18 §18.10 schema); closed 2-role vocabulary (`knowledge_editor`, `knowledge_approver` only — **`platform_super_administrator` deliberately excluded**, since `FD-KS-1`'s literal wording approves only these two and calls every other TRD18 role, without naming an exception, "the remainder... not activated"); closed 7-permission Knowledge vocabulary and role-default catalogue; a pure, fail-closed `evaluateKnowledgePlatformPermission` evaluator (structurally parallel to, never importing or imported by, the Business-role evaluator); `resolvePlatformAdministratorAuthorization` (the server-side enforcement primitive future commands will call, auditing every decision); `bootstrapPlatformAdministrator` (never wired to any callable/HTTPS transport — reuses the exact Admin-SDK-only trust boundary `runCommerceKnowledgeSeed` already establishes, idempotent/retry-safe, fails closed on any conflicting prior state).
+- **MFA**: `DEC-SEC-002`'s requirement is recorded (`mfaRequired: true`, unconditional) but **not yet enforceable as a working control** — the evaluator takes verified MFA evidence as an explicit input, never trusting the persisted flag, and since `firebaseTokenVerifier.ts` surfaces no second-factor claim and this codebase has no MFA-enrollment flow at all, every real request fails closed via `MFA_NOT_ESTABLISHED` until a future Authentication-domain extension supplies genuine verified evidence. Reported as an explicit dependency, per instruction, rather than simulated.
+- **Firestore Rules**: explicit (functionally-redundant, already-covered-by-catch-all) deny blocks added for `platformAdministrators`/`platformAdministrationAuditRecords`, per explicit review instruction.
+- **Full regression**: functions unit `1622/1622`, functions emulator `743/743` (2 pre-existing skips, unrelated), `apps/web` unit `661/661` (untouched), typecheck/lint/build all clean.
+- **Files modified:** `documentation-changes-log.md` (this entry); the new `platformAdministration` domain (21 files); `eslint.config.js` (two new boundary blocks); `firestore.rules` (two new deny blocks); the implementation report. No other file modified. No `functions/src/index.ts`, `apps/web/src`, Business Terms, or unrelated-domain change.
+- **Gate:** `ENG-P3-003A PLATFORM ADMINISTRATOR AUTHORIZATION FOUNDATION IMPLEMENTED — KNOWLEDGE STUDIO MVP ROLES FAIL-CLOSED — READY FOR FOUNDER REVIEW`.
+- **Explicitly NOT done:** `ENG-P3-003B` onward not started. No `onCall`/HTTPS transport added. `DEC-DATA-005` not touched. CI-01/`DEC-LEGAL-002` not touched. Capability 3/4 status unchanged. No implication that TRD18 as a whole, or any role beyond the two `FD-KS-1` named, is approved. `FD-COM-001` (primary worktree) not read, stashed, committed, or altered. See the [Implementation Report](../05-implementation/reports/ENG-P3-003A-platform-administrator-authorization-foundation-implementation-report-2026-09-03.md).
+
+---
+
 ## Entry 159 — `ENG-P3-003-PROG-SYNC-001`: Knowledge Studio Authorization Recorded (`DEC-GOV-011`/`FD-KS-1`); Stale Programme Trackers Reconciled
 
 - **Date:** 3 September 2026

@@ -43,6 +43,33 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Platform Administration — Knowledge Studio authorization foundation
+    // (ENG-P3-003A, ENG-P3-003-DESIGN-001 §6/§10, FD-KS-1/DEC-GOV-011).
+    //
+    // Written exclusively through trusted server-side paths (the Admin SDK,
+    // not subject to Security Rules) — `bootstrapPlatformAdministrator.ts`
+    // (never wired to any client-reachable transport) and, in a future
+    // package, governed callables. No client — including an active platform
+    // administrator's own signed-in session — ever creates, activates,
+    // suspends, removes, or changes permissions on a `platformAdministrators`
+    // record directly; that would make administrator management a
+    // client-self-service operation, which `ENG-P3-003-DESIGN-001` and this
+    // task's own security requirements explicitly forbid. These blocks make
+    // that deny-all posture explicit for these two new collections, not to
+    // grant any access.
+    match /platformAdministrators/{userId} {
+      allow read, write: if false;
+    }
+
+    // Append-only audit trail for Platform Administration authorization
+    // decisions and administrator lifecycle events (ENG-P3-003A). No client
+    // ever reads or writes this collection directly — a future, separately
+    // authorized administrative audit-search surface would add its own
+    // narrowly-scoped `allow read` here; it does not loosen this default.
+    match /platformAdministrationAuditRecords/{recordId} {
+      allow read, write: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
