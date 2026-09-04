@@ -5290,3 +5290,19 @@ report:
 
 **Final gate:** **`DEC-LEGAL-002 FOUNDER LEGAL ARCHITECTURE COMPLETE — CORE BUSINESS TERMS 16/16
 READY FOR CONTROLLED DRAFTING — PR AWAITS FOUNDER REVIEW`**.
+
+---
+
+## 2026-09-04 — AUTH-MFA-003A — DEV Identity Platform Upgrade + TOTP MFA Enablement (Provider Configuration)
+
+- **Date:** 2026-09-04
+- **Phase:** TRD22 Phase 12 identity/security enablement (Platform Administrator MFA, per `AUTH-MFA-002` §12 package sequence)
+- **Task:** `AUTH-MFA-003A` — upgrade `eleventh-on-us-dev` to Firebase Authentication with Identity Platform and enable TOTP multi-factor authentication, provider configuration only.
+- **Status:** Implemented — awaiting Technical Review (corrected by `AUTH-MFA-003A-CORR-001`; not self-merged, Founder re-review pending)
+- **Files changed:** see the [Implementation Report](../05-implementation/reports/AUTH-MFA-003A-identity-platform-upgrade-totp-enablement-implementation-report-2026-09-04.md) (new) and its correction report. Repository diff is documentation-only; no application/source/Firebase-rule/dependency/config file changed.
+- **Tests:** no repository code changed, so no code test suite applies. Live post-change project-config read-back verified `subtype: IDENTITY_PLATFORM`, `mfa.state: ENABLED`, TOTP-only provider. Correction task `AUTH-MFA-003A-CORR-001` later established the SDK TOTP-enrollment capability evidence and the email-verification prerequisite on 2026-09-04 (see its Implementation-Correction Report, linked below).
+- **Configuration:** external DEV-only Firebase Authentication configuration changed on `eleventh-on-us-dev` (project `709450867178`, `11thONUS Development`); **application code unchanged**. Affected environment: `dev` only — **staging (`eleventh-on-us-staging`) and production (nonexistent) untouched**. Changes: (1) **Identity Platform upgrade** — Authentication tier changed standard `FIREBASE_AUTH` → `IDENTITY_PLATFORM` (one operation: `POST /v2/projects/eleventh-on-us-dev/identityPlatform:initializeAuth`); (2) **TOTP enablement** — project `mfa` enabled (`state: ENABLED`) with a single TOTP-only `providerConfigs[]` entry (`state: ENABLED`, `totpProviderConfig.adjacentIntervals: 5`); (3) **SMS MFA NOT enabled** — no phone/SMS MFA provider introduced; (4) existing email (`enabled`, `passwordRequired`) and phoneNumber (`enabled`) sign-in providers preserved; `smsRegionConfig` allowlist `["BI"]` unchanged. Decision authority: `DEC-SEC-004` (Founder disposition `FD-MFA-2`, CONFIRMED) — dev-only upgrade, TOTP-only factor policy.
+- **Migrations:** none (no repository schema/product code).
+- **Risks:** one-way Identity Platform upgrade (no automatic rollback); TOTP-disable supported via project-config PATCH; genuine MFA-authenticated administrator sessions require future enrollment/challenge packages (`AUTH-MFA-003A1/B/C`). See the Implementation Report §20.
+- **Rollback:** TOTP disable is supported via project-config PATCH (`admin/v2/projects/eleventh-on-us-dev/config?updateMask=mfa`). **Identity Platform upgrade has NO automatic rollback / downgrade path** — a git revert does not reverse the external change. Repository rollback: do not merge / revert the documentation PR normally.
+- **Report link:** [`docs/05-implementation/reports/AUTH-MFA-003A-identity-platform-upgrade-totp-enablement-implementation-report-2026-09-04.md`](../05-implementation/reports/AUTH-MFA-003A-identity-platform-upgrade-totp-enablement-implementation-report-2026-09-04.md), corrected by [`docs/05-implementation/reports/AUTH-MFA-003A-CORR-001-implementation-correction-report-2026-09-04.md`](../05-implementation/reports/AUTH-MFA-003A-CORR-001-implementation-correction-report-2026-09-04.md).

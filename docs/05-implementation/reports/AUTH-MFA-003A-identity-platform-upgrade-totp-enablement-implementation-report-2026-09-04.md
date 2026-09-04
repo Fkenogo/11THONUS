@@ -187,3 +187,25 @@ The Firebase access token was used in-memory for the REST calls and was never wr
 `AUTH-MFA-003A COMPLETE — ELEVENTH-ON-US-DEV IDENTITY PLATFORM CAPABILITY ENABLED — TOTP MFA ENABLED FOR DEV — SMS MFA NOT INTRODUCED — EXISTING BUSINESS/CUSTOMER AUTH PROVIDERS PRESERVED — NO ADMINISTRATOR ENROLLED — NO CLIENT MFA IMPLEMENTATION — NO TRUSTED DISCOVERY IMPLEMENTATION — STAGING/PRODUCTION UNTOUCHED — READY FOR AUTH-MFA-003A1 AND SUBSEQUENT CLIENT MFA WORK`
 
 **Ready for the next task:** `AUTH-MFA-003A1` (trusted administrator-discovery callable) and the subsequent client MFA packages (`AUTH-MFA-003B` enrollment UI, `AUTH-MFA-003C` challenge UI, `AUTH-MFA-003D` recovery) — each separately authorizable per DEC-SEC-004.
+
+---
+
+## 23. Correction addendum — `AUTH-MFA-003A-CORR-001` (2026-09-04)
+
+**Why closure was stopped:** `AUTH-MFA-003A-CLOSE-001` correctly held the merge of PR #228 at the entry gate because two Codex P2 findings at the Founder-approved head were open and unresolved.
+
+**The two P2 findings (verified directly on PR #228):**
+- **P2-1** — missing the repository-required `docs/changes/IMPLEMENTATION_CHANGES.md` entry (PR checklist `.github/PULL_REQUEST_TEMPLATE.md:36-41`; engineering-record standard `engineering-implementation-records-standard.md:95`).
+- **P2-2** — AUTH-MFA-002 defined AUTH-MFA-003A's completion evidence as including validation that TOTP enrollment is possible through the supported SDK path (`AUTH-MFA-002` §12.1); AUTH-MFA-003A verified live configuration but did not perform that validation.
+
+**Implementation-record correction (P2-1):** the required AUTH-MFA-003A entry was added to `docs/changes/IMPLEMENTATION_CHANGES.md` (append-only, per `ENTRY_TEMPLATE.md`), recording the external DEV-only Firebase configuration change, Identity Platform upgrade, TOTP enablement, SMS-MFA-not-enabled, staging/production untouched, application-code-unchanged, `DEC-SEC-004`, report link, and the Identity-Platform no-automatic-rollback limitation.
+
+**Validation evidence (P2-2):** installed `firebase@12.16.0` / `@firebase/auth@1.13.3` (≥ v9.19.1 floor) expose and correctly implement the TOTP enrollment chain (`TotpMultiFactorGenerator`, `TotpSecret`, `multiFactor(user).getSession()/enroll()` → REST `POST /v2/accounts/mfaEnrollment:start` and `:finalize`). Live DEV config re-read confirms `IDENTITY_PLATFORM`, `mfa.state: ENABLED`, TOTP-only provider. **The AUTH-MFA-002 "Emulator TOTP enrollment test" is technically impossible**: the installed Auth emulator (`firebase-tools@15.24.0`) hard-codes MFA enrollment to PHONE_SMS and rejects TOTP (`Missing phoneEnrollmentInfo`), matching the still-open upstream issue `firebase/firebase-tools#6224` (internal b/288313571). A faithful live DEV enrollment therefore additionally requires a privileged temporary email-verified test identity; that security-sensitive live action was **not improvised** and is held for Founder disposition. The gate is not rewritten or weakened.
+
+**Email-verification finding:** **a Firebase / Identity Platform platform requirement** — MFA (including TOTP) enrollment requires the user's email to be verified (authoritative Firebase docs; corroborated by emulator `UNVERIFIED_EMAIL` assertion). Not an 11thONUS policy choice and not test-specific. Recorded as a technical prerequisite for the future AUTH-MFA-003B administrator enrollment flow. No new product/security policy introduced.
+
+**Validation environment/identity used:** none (SDK/config/authoritative-evidence based; no live enrollment). **Cleanup:** n/a — no temporary test identity created. **No permanent administrator enrolled.** **No secret/QR/TOTP/token persisted.**
+
+**Remaining AUTH-MFA-003B/C dependencies:** AUTH-MFA-003A1 (discovery callable) and Founder disposition of the live DEV enrollment-reachability test; email verification is a confirmed prerequisite for AUTH-MFA-003B.
+
+For the full evidence and method, see the [AUTH-MFA-003A-CORR-001 Implementation Correction Report](AUTH-MFA-003A-CORR-001-implementation-correction-report-2026-09-04.md).
