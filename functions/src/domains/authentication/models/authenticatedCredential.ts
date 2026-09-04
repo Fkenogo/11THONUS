@@ -24,6 +24,22 @@
  * (`AuthenticationReferenceType` — `phone_otp`/`google_sign_in`/`email`/
  * `future_provider`); this module does not redefine or duplicate it.
  *
+ * `verifiedSecondFactor` (`AUTH-MFA-001` additive extension, Founder-
+ * authorized): a provider-neutral fact — "this specific, currently-verified
+ * session completed a genuine second-factor challenge" — for `DEC-SEC-002`-
+ * gated consumers (Platform Administration) to gate on, without ever seeing
+ * a Firebase claim shape. It answers a **session-specific** question, never
+ * an **account-enrollment** one: it is derived solely from this verified
+ * token's own sign-in claims, never from a user record's persisted
+ * multi-factor-enrollment settings — an account with a second factor
+ * enrolled that signed in *without* using it must report `false` here, and
+ * this module has no way to consult enrollment state even if a caller
+ * wanted it to (no `UserRecord`/enrollment type is imported). Required
+ * (never optional) precisely so no consumer can defensively-default it to
+ * `true` on a missing field — the only way to get `true` is for the
+ * adapter (`firebaseTokenVerifier.ts`) to have derived it from a genuinely
+ * verified claim. It is **never** accepted from client input.
+ *
  * Pure domain module — no Firebase import.
  */
 
@@ -43,6 +59,8 @@ export type AuthenticatedCredential = {
    */
   readonly authenticatedAt?: Date;
   readonly providerSignals: ProviderSignals;
+  /** See the module note above — a session-specific fact, never account-enrollment state. Required, never defaulted to `true`. */
+  readonly verifiedSecondFactor: boolean;
 };
 
 export type CreateAuthenticatedCredentialParams = {
@@ -51,6 +69,8 @@ export type CreateAuthenticatedCredentialParams = {
   verifiedAt: Date;
   authenticatedAt?: Date;
   providerSignals?: ProviderSignals;
+  /** Defaults to `false` — a credential is never treated as second-factor-verified unless the adapter explicitly says so. */
+  verifiedSecondFactor?: boolean;
 };
 
 export function createAuthenticatedCredential(
@@ -75,5 +95,6 @@ export function createAuthenticatedCredential(
     verifiedAt: params.verifiedAt,
     ...(params.authenticatedAt !== undefined ? { authenticatedAt: params.authenticatedAt } : {}),
     providerSignals: { ...(params.providerSignals ?? {}) },
+    verifiedSecondFactor: params.verifiedSecondFactor === true,
   };
 }

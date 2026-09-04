@@ -24,6 +24,22 @@ Running log of all controlled changes to the documentation suite. Every consolid
 
 ---
 
+## Entry 161 — `AUTH-MFA-001`: Platform Administrator Verified-MFA Authentication Extension
+
+- **Date:** 4 September 2026
+- **Performed by:** Claude (AI agent), per Founder task instruction `AUTH-MFA-001`, following Founder approval of `ENG-P3-003A` (PR #225, merged `388e5aa`) and explicit disposition that the MFA fail-closed behavior "is correct" and must not be simulated.
+- **Nature:** Minimal authentication-domain extension, TDD, pending Founder-authorized review/merge. Not general MFA product functionality, not an enrollment UI, not a redesign of Customer authentication.
+- **Discovered**: `firebase-admin@13.10.0`'s own type declarations (`lib/auth/token-verifier.d.ts`) confirm `DecodedIdToken.firebase.sign_in_second_factor?: string` — populated by Firebase Admin's `verifyIdToken` only for a token from a genuine, server-verified multi-factor sign-in for that specific session (never from account-enrollment state, which lives on a structurally separate `UserRecord.multiFactor` type this change never imports).
+- **Extension**: `AuthenticatedCredential` (`functions/src/domains/authentication/models/`) gains `verifiedSecondFactor: boolean` (required, defaults `false`) — a provider-neutral fact, never a Firebase claim shape. `firebaseTokenVerifier.ts` derives it from the verified claim (any non-empty value Firebase itself populates qualifies — no SMS/TOTP allowlist policy invented). A new `deriveVerifiedMfaSatisfied(credential)` in `functions/src/domains/platformAdministration/services/` is the one, narrow, correct way to feed `ENG-P3-003A`'s `resolvePlatformAdministratorAuthorization` — takes only an `AuthenticatedCredential`, never a raw boolean or request data.
+- **Enrollment finding**: no client-side MFA enrollment or sign-in-challenge-resolution flow exists anywhere in `apps/web/src/authentication/*` (confirmed by exhaustive grep) — the client SDK is capable of it, but no application code uses that capability. **Not built in this task** (would be unauthorized "broad MFA product functionality"/"enrollment UI"). Reported as the exact, sole remaining dependency.
+- **Disposition**: server-side verification foundation is genuinely operational (a real MFA-verified token would flow through correctly, tested end to end); overall platform-administrator MFA compliance is **not** yet operational, because no real administrator session can be produced without the missing enrollment/challenge UI. `ENG-P3-003A`'s fail-closed behavior is unchanged, `DEC-SEC-002` is not weakened.
+- **Full regression**: functions unit `1634/1634` (12 new), functions emulator `746/746` (2 pre-existing skips, unrelated), `apps/web` unit `661/661` (untouched), typecheck/lint/build all clean.
+- **Files modified:** `documentation-changes-log.md` (this entry); `authenticatedCredential.ts`/`.test.ts`; `firebaseTokenVerifier.ts`/`.test.ts`; `resolvePlatformAdministratorAuthorization.ts` (doc-only); new `deriveVerifiedMfaSatisfied.ts`/`.test.ts` and `mfaIntegration.emulator.test.ts`; the implementation report. No other file modified. No `apps/web/src` UI change, no `functions/src/index.ts` change.
+- **Gate:** `SERVER-SIDE MFA VERIFICATION FOUNDATION COMPLETE — PLATFORM ADMINISTRATOR ACCESS REMAINS FAIL-CLOSED PENDING CLIENT-SIDE MFA ENROLLMENT AND SIGN-IN-CHALLENGE HANDLING`.
+- **Explicitly NOT done:** `ENG-P3-003B` not started. No `KnowledgeDraft`/Knowledge Studio UI. No `platform_super_administrator` introduced. `FD-KS-1` unchanged. `DEC-SEC-002` not weakened. No enrollment UI, no SMS/TOTP policy choice. Business Terms/CI-01/Capability 4 untouched. `FD-COM-001` (primary worktree) not read, stashed, committed, or altered. See the [Implementation Report](../05-implementation/reports/AUTH-MFA-001-platform-administrator-verified-mfa-authentication-extension-implementation-report-2026-09-04.md).
+
+---
+
 ## Entry 160 — `ENG-P3-003A`: Knowledge Studio Platform Administrator Authorization Foundation Implemented
 
 - **Date:** 3 September 2026

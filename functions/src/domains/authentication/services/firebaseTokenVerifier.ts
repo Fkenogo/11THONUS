@@ -119,6 +119,33 @@ function authenticatedAtFromClaim(authTimeSeconds: unknown): Date | undefined {
   return new Date(authTimeSeconds * 1000);
 }
 
+/**
+ * `AUTH-MFA-001`: derive the provider-neutral `verifiedSecondFactor` fact
+ * from the verified token's own `firebase.sign_in_second_factor` claim.
+ *
+ * Per the Firebase Admin SDK's own type declaration (`token-verifier.d.ts`):
+ * "The type identifier of the second factor... provided the ID token was
+ * obtained from a multi-factor authenticated user" — Firebase itself only
+ * ever populates this claim when the token resulted from a genuine,
+ * server-verified multi-factor sign-in for *this* session; it is not
+ * present merely because the account has a factor enrolled, and a client
+ * cannot forge it without breaking `verifyIdToken`'s signature check.
+ *
+ * Deliberately **not** an allowlist of specific factor types ("phone" vs
+ * "totp") — the Founder's task brief explicitly forbids introducing an
+ * SMS/TOTP policy choice without existing authority, and Firebase alone
+ * controls which values this claim can ever hold. Any non-empty string
+ * value Firebase actually populates here is treated as qualifying; an
+ * absent, empty, or non-string value is not. No enrollment state
+ * (`UserRecord.multiFactor`) is consulted anywhere in this function or
+ * this module — that would answer "is a factor enrolled on this account,
+ * ever," not "did *this* session use one," which is exactly the
+ * stale/non-session-specific evidence the Founder's task brief forbids.
+ */
+function verifiedSecondFactorFromClaim(signInSecondFactor: unknown): boolean {
+  return typeof signInSecondFactor === "string" && signInSecondFactor.trim().length > 0;
+}
+
 function errorCode(error: unknown): string | undefined {
   if (error && typeof error === "object" && "code" in error) {
     const code = (error as { code?: unknown }).code;
@@ -211,6 +238,9 @@ export function createFirebaseAdminTokenVerifier(
           providerSignals: {
             signInProvider: verifiedProvider,
           },
+          verifiedSecondFactor: verifiedSecondFactorFromClaim(
+            decoded.firebase?.sign_in_second_factor,
+          ),
         });
       } catch (error) {
         throw mapVerificationFailure(error);

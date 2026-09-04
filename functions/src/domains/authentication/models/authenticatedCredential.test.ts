@@ -98,3 +98,35 @@ describe("createAuthenticatedCredential", () => {
     ).toThrow(AuthenticationDomainError);
   });
 });
+
+describe("createAuthenticatedCredential — verifiedSecondFactor (AUTH-MFA-001)", () => {
+  it("defaults to false when not supplied — never assumed satisfied", () => {
+    const credential = createAuthenticatedCredential({
+      referenceType: "phone_otp",
+      referenceId: "authuid_1",
+      verifiedAt,
+    });
+    expect(credential.verifiedSecondFactor).toBe(false);
+  });
+
+  it("carries true only when explicitly supplied true", () => {
+    const credential = createAuthenticatedCredential({
+      referenceType: "email",
+      referenceId: "authuid_1",
+      verifiedAt,
+      verifiedSecondFactor: true,
+    });
+    expect(credential.verifiedSecondFactor).toBe(true);
+  });
+
+  it("coerces any non-true input to false (fail closed on a malformed caller value)", () => {
+    const credential = createAuthenticatedCredential({
+      referenceType: "email",
+      referenceId: "authuid_1",
+      verifiedAt,
+      // @ts-expect-error — deliberately malformed input to prove fail-closed coercion.
+      verifiedSecondFactor: "true",
+    });
+    expect(credential.verifiedSecondFactor).toBe(false);
+  });
+});
