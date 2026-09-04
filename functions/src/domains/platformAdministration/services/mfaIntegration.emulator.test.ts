@@ -101,17 +101,15 @@ describe("AUTH-MFA-001 full-chain integration", () => {
     });
 
     const verifier = createFirebaseAdminTokenVerifier(
-      vi
-        .fn()
-        .mockResolvedValue(
-          decoded({
-            firebase: {
-              identities: {},
-              sign_in_provider: "password",
-              sign_in_second_factor: "phone",
-            },
-          }),
-        ),
+      vi.fn().mockResolvedValue(
+        decoded({
+          firebase: {
+            identities: {},
+            sign_in_provider: "password",
+            sign_in_second_factor: "phone",
+          },
+        }),
+      ),
       { now: () => now },
     );
     const credential = await verifier.verify({ referenceType: "email", rawToken: "raw" });
