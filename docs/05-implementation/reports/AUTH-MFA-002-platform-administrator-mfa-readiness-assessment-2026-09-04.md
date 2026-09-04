@@ -344,31 +344,58 @@ Firebase documentation states: "MFA requires email verification." This may mean:
 
 ## 8. Phase 6 — Administrator Enrollment Architecture
 
-### 8.1 Minimum Safe Enrollment Flow
+### 8.1 Trusted Administrator Discovery and Enrollment Flow
+
+The enrollment flow requires a **trusted server-side administrator-discovery mechanism** that does not yet exist. The current codebase denies all client reads of `platformAdministrators` (`firestore.rules:46-62`), no callable returns administrator status to the client, and the `authenticate` response exposes only `customerIdentityId` — not administrator role or status. A provisioned administrator cannot self-identify as one through any existing client-accessible surface.
+
+**Complete enrollment sequence (corrected):**
 
 ```
-Provisioned platform administrator signs in (primary factor only)
-    → Evaluator denies: MFA_NOT_ESTABLISHED (existing behavior)
-    → Application detects: user is platform administrator, MFA not yet enrolled
-    → Redirects to TOTP enrollment screen
-    → Enrollment flow:
-        1. multiFactor(user).getSession() → MultiFactorSession
-        2. TotpMultiFactorGenerator.generateSecret(session) → TotpSecret
-        3. Display QR code (TotpSecret.generateQrCodeUrl()) + manual entry key
-        4. User scans QR code with authenticator app
-        5. User enters current 6-digit TOTP code
-        6. TotpMultiFactorGenerator.assertionForEnrollment(secret, otp) → assertion
-        7. multiFactor(user).enroll(assertion, "Platform Admin TOTP")
-        8. Sign out (existing sessions are revoked by enrollment anyway)
-        9. Sign in again with primary factor
-            → Firebase throws auth/multi-factor-auth-required
-        10. Resolve MFA challenge with TOTP code
-            → New ID token contains sign_in_second_factor: "totp"
-            → verifiedSecondFactor resolves to true
-        Note: A simple token refresh does NOT produce sign_in_second_factor.
-        The claim is only present on tokens issued after a genuine MFA challenge
-        resolution. The user must complete a full re-authentication including
-        the second-factor challenge.
+1. Provisioned platform administrator signs in (primary factor only)
+    → Firebase Auth session established
+    → No MFA claim on token (primary-factor-only sign-in)
+
+2. Client calls trusted administrator-discovery callable (AUTH-MFA-003A1)
+    → Callable reads platformAdministrators/{userId} via Admin SDK
+    → Returns: { isPlatformAdministrator: true/false }
+    → Client never directly reads the platformAdministrators collection
+    → Client never self-asserts administrator status
+
+3. If discovery returns true:
+    → Client checks whether TOTP factor is enrolled
+        → If not enrolled: redirect to TOTP enrollment screen
+        → If enrolled: redirect to MFA challenge screen
+
+4. TOTP enrollment flow:
+    a. multiFactor(user).getSession() → MultiFactorSession
+    b. TotpMultiFactorGenerator.generateSecret(session) → TotpSecret
+    c. Display QR code (TotpSecret.generateQrCodeUrl()) + manual entry key
+    d. User scans QR code with authenticator app
+    e. User enters current 6-digit TOTP code
+    f. TotpMultiFactorGenerator.assertionForEnrollment(secret, otp) → assertion
+    g. multiFactor(user).enroll(assertion, "Platform Admin TOTP")
+
+5. Sign out (existing sessions are revoked by enrollment anyway)
+6. Sign in again with primary factor
+    → Firebase throws auth/multi-factor-auth-required
+7. Resolve MFA challenge with TOTP code
+    → New ID token contains sign_in_second_factor: "totp"
+    → verifiedSecondFactor resolves to true
+
+8. Client calls discovery callable again
+    → Returns isPlatformAdministrator: true
+    → Client calls Knowledge Studio command (future AUTH-MFA-003C transport)
+    → resolvePlatformAdministratorAuthorization checks MFA → allows access
+
+Note: A simple token refresh does NOT produce sign_in_second_factor.
+The claim is only present on tokens issued after a genuine MFA challenge
+resolution. The user must complete a full re-authentication including
+the second-factor challenge.
+
+Note: The discovery callable returns only whether the user is a platform
+administrator. It does NOT return roles, status details, or any other
+information. It does NOT itself grant Knowledge Studio access — that
+requires the separate MFA-verified authorization path.
 ```
 
 ### 8.2 Security Invariants
@@ -388,6 +415,99 @@ Provisioned platform administrator signs in (primary factor only)
 | First-login enrollment | On first sign-in after provisioning, require enrollment | Acceptable alternative |
 | Voluntary enrollment | Administrator may enroll at any time | **Not recommended** — delays MFA compliance |
 | Grace period | Allow N days before requiring enrollment | **Not recommended** — weakens security posture |
+
+---
+
+## 8A. Trusted Administrator Discovery Architecture
+
+### 8A.1 The Gap
+
+The enrollment flow described in Section 8.1 requires the client to detect whether a provisioned user is a platform administrator. The current codebase has **no mechanism for this detection**:
+
+| Surface | Status | Evidence |
+|---|---|---|
+| Firestore security rules | **Deny-all** for client reads | `firestore.rules:46-62` — `allow read, write: if false` |
+| Cloud Function callables | **None** expose administrator status | 20 callables audited; none read `platformAdministrators` |
+| Authenticate response | **No admin fields** | Returns only `mode`, `customerIdentityId`, `session` |
+| Authorization resolver | **Server-only, no transport** | `resolvePlatformAdministratorAuthorization.ts` — not wired to any callable |
+| Bootstrap path | **Server-only Admin SDK** | `bootstrapPlatformAdministrator.ts:4-6` — explicitly never wired to any transport |
+| Client app code | **No admin references** | Zero mentions in `apps/web/` |
+
+### 8A.2 Required Server-Side Discovery Mechanism
+
+A new `onCall` callable is required. It must satisfy these properties:
+
+| Property | Requirement | Rationale |
+|---|---|---|
+| **Identity derivation** | Derive user identity from the verified Firebase Auth token, not client-supplied data | Prevents self-assertion of administrator status |
+| **Server-side record read** | Read `platformAdministrators/{userId}` via Admin SDK | Firestore rules deny client reads; only Admin SDK can access |
+| **Minimal disclosure** | Return only `{ isPlatformAdministrator: boolean }` | No roles, no status details, no record contents exposed |
+| **No authorization grant** | Discovery alone does not permit Knowledge Studio access | MFA verification is still required for authorization |
+| **MFA boundary preserved** | Discovery does not bypass `MFA_NOT_ESTABLISHED` | Fail-closed evaluator remains the authorization gate |
+| **No unrestricted reads** | Callable reads exactly one document by derived userId | No enumeration, no listing, no bulk access |
+| **Transport binding** | Wired as an `onCall` function in `functions/src/index.ts` | Only existing transport mechanism in the codebase |
+
+### 8A.3 Conceptual Callable Design
+
+```typescript
+// Conceptual — not implementing, just documenting the architecture
+// AUTH-MFA-003A1
+
+import { onCall } from "firebase-functions/v2/https";
+import { getFirestore } from "firebase-admin/firestore";
+
+export const discoverPlatformAdministrator = onCall(async (request) => {
+  // 1. Identity is derived from the verified Firebase Auth token
+  const userId = request.auth?.uid;
+  if (!userId) {
+    return { isPlatformAdministrator: false };
+  }
+
+  // 2. Server-side read of the authoritative administrator record
+  const doc = await getFirestore()
+    .collection("platformAdministrators")
+    .doc(userId)
+    .get();
+
+  // 3. Minimal disclosure — only boolean, no record contents
+  if (!doc.exists) {
+    return { isPlatformAdministrator: false };
+  }
+
+  const data = doc.data();
+  return {
+    isPlatformAdministrator: data?.status === "active",
+  };
+});
+```
+
+### 8A.4 Security Analysis
+
+| Threat | Mitigation |
+|---|---|
+| Client self-asserts administrator status | Identity derived from verified token; client never supplies userId |
+| Client reads platformAdministrators directly | Firestore rules deny-all; callable uses Admin SDK |
+| Information disclosure (roles, status, etc.) | Callable returns only `{ isPlatformAdministrator: boolean }` |
+| Discovery grants Knowledge Studio access | Discovery is a routing decision only; authorization requires `resolvePlatformAdministratorAuthorization` with MFA verification |
+| Enumeration of administrators | Callable reads exactly one document by derived userId |
+| Non-administrator learns they are not admin | Returns `false` — no information leakage beyond "you are not an administrator" |
+
+### 8A.5 Interaction with Existing Auth Architecture
+
+- The discovery callable is called **after** normal primary authentication succeeds.
+- It reads the `platformAdministrators/{userId}` record via Admin SDK — the same record that `resolvePlatformAdministratorAuthorization` reads for authorization.
+- The callable does **not** replace or bypass `resolvePlatformAdministratorAuthorization`. It is a separate, earlier decision: "should this user be offered enrollment/challenge UI?"
+- A user discovered as a platform administrator must still complete the full MFA enrollment + challenge flow before any `resolvePlatformAdministratorAuthorization` call succeeds.
+- The discovery callable is consumed **only** by the client-side enrollment/challenge routing logic. It is not consumed by any backend authorization path.
+
+### 8A.6 Package Boundary
+
+The discovery callable is a **small, bounded, server-side prerequisite** that does not depend on TOTP being enabled (it only reads a Firestore document). It belongs as a separate package:
+
+- **AUTH-MFA-003A1** — Trusted platform-administrator discovery callable
+- Depends on: nothing (reads Firestore document; Admin SDK already available)
+- Gates: AUTH-MFA-003B (enrollment UI) and AUTH-MFA-003C (challenge UI routing)
+- Does **not** gate: AUTH-MFA-003A (Identity Platform upgrade) or AUTH-MFA-003D (recovery)
 
 ---
 
@@ -518,12 +638,13 @@ The recovery mechanism needs explicit authorization:
 | Package | Objective | Prerequisites | Implementation Boundary | Tests Required | Config Dependency | Founder Decision | Completion Gate |
 |---|---|---|---|---|---|---|---|
 | **AUTH-MFA-003A** | Identity Platform upgrade + TOTP enablement on `dev` | Founder decision on upgrade + TOTP policy | Firebase Console upgrade; project config update; verification | Emulator TOTP enrollment test; project config read-back verification | Identity Platform upgrade; TOTP config | Yes (upgrade + policy) | TOTP enabled on `dev`; enrollment possible via SDK |
-| **AUTH-MFA-003B** | Platform administrator TOTP enrollment UI | AUTH-MFA-003A | Client-side enrollment flow in `apps/web/` | Enrollment unit tests; emulator enrollment integration test | None | No (engineering detail) | Administrator can enroll TOTP factor |
-| **AUTH-MFA-003C** | MFA sign-in challenge handling | AUTH-MFA-003A; AUTH-MFA-003B | Client-side challenge flow in `apps/web/` | Challenge unit tests; emulator challenge integration test | None | No (engineering detail) | MFA-enrolled administrator can complete sign-in |
+| **AUTH-MFA-003A1** | Trusted platform-administrator discovery callable | Nothing (reads Firestore document; Admin SDK available) | Server-side `onCall` function in `functions/src/` | Callable unit test; emulator integration test; security boundary test | None | No (engineering detail) | Callable returns `{ isPlatformAdministrator: boolean }` for authenticated users |
+| **AUTH-MFA-003B** | Platform administrator TOTP enrollment UI | AUTH-MFA-003A; AUTH-MFA-003A1 | Client-side enrollment flow in `apps/web/` (consumes discovery callable) | Enrollment unit tests; emulator enrollment integration test | None | No (engineering detail) | Administrator can enroll TOTP factor |
+| **AUTH-MFA-003C** | MFA sign-in challenge handling | AUTH-MFA-003A; AUTH-MFA-003A1 | Client-side challenge flow in `apps/web/` (consumes discovery callable for routing) | Challenge unit tests; emulator challenge integration test | None | No (engineering detail) | MFA-enrolled administrator can complete sign-in |
 | **AUTH-MFA-003D** | Administrator MFA recovery/reset | AUTH-MFA-003A | Admin SDK reset operation; audit logging | Recovery unit tests; emulator recovery test | None | Yes (recovery authorization policy) | Locked-out administrator can regain access |
 | **AUTH-MFA-003E** | End-to-end operational validation | AUTH-MFA-003A through D | Full integration test on `dev` | End-to-end emulator test; manual `dev` verification | None | No | Production-ready MFA path validated on `dev` |
 
-### 12.2 ENG-P3-003 Dependency Analysis
+### 12.2 Actual Dependency Sequence
 
 ```
 ENG-P3-003A (COMPLETE — authorization foundation)
@@ -532,23 +653,27 @@ AUTH-MFA-001 (COMPLETE — server-side MFA verification)
     ↓
 AUTH-MFA-002 (THIS ASSESSMENT — readiness determination)
     ↓
-AUTH-MFA-003A (Identity Platform + TOTP enablement)
+AUTH-MFA-003A (Identity Platform + TOTP enablement) ──── AUTH-MFA-003A1 (discovery callable)
+    ↓                                                    ↓
+    ├──→ AUTH-MFA-003A1 (discovery callable)              │
+    ↓                                                    ↓
+AUTH-MFA-003B (enrollment UI — consumes discovery)  ←────┘
     ↓
-AUTH-MFA-003B + AUTH-MFA-003C (enrollment + challenge UI)
+AUTH-MFA-003C (challenge UI — consumes discovery for routing)
     ↓
-    → ENG-P3-003B can begin (KnowledgeDraft model)
-    → AUTH-MFA-003D (recovery) can proceed in parallel
+AUTH-MFA-003D (recovery) can proceed in parallel with 003C
     ↓
 AUTH-MFA-003E (end-to-end validation)
     ↓
 Knowledge Studio MVP can operate with legitimate MFA-authenticated administrators
 ```
 
-**Key insight:** `ENG-P3-003B` (KnowledgeDraft model) does not strictly depend on MFA client implementation — it is a data model task. However, the Knowledge Studio MVP cannot be *used* by real administrators until MFA is operational end-to-end. Therefore:
+**Parallelism:**
+- `ENG-P3-003B` (KnowledgeDraft model) can begin once AUTH-MFA-003A1 exists — it is a data model task that does not require an operational MFA session.
+- `AUTH-MFA-003D` (recovery) can proceed in parallel with AUTH-MFA-003C (challenge UI).
+- `AUTH-MFA-003A` and `AUTH-MFA-003A1` can proceed in parallel — neither depends on the other.
 
-- `ENG-P3-003B` can be authorized to proceed in parallel with `AUTH-MFA-003B`/`AUTH-MFA-003C`.
-- Knowledge Studio UI work should not begin until MFA enrollment and challenge flows are implemented.
-- The Knowledge Studio MVP "operational readiness" gate requires MFA to be end-to-end functional.
+**Key insight:** The enrollment flow now requires two server-side capabilities: (1) Identity Platform + TOTP enabled (AUTH-MFA-003A), and (2) a trusted discovery callable to identify administrators (AUTH-MFA-003A1). The client enrollment UI (AUTH-MFA-003B) depends on both.
 
 ---
 
@@ -566,6 +691,7 @@ Knowledge Studio MVP can operate with legitimate MFA-authenticated administrator
 | Billing/plan implications | Blaze active; Identity Platform adds MAU-based pricing | Firebase documentation | 50,000 MAU free tier sufficient for admin population | Founder (informational) |
 | Existing-user impact | **None** — MFA enforcement is per-user, not project-wide | Firebase MFA architecture; 11thONUS evaluator separation | Enable with confidence | N/A (engineering confirmation) |
 | Enrollment approach | Post-provisioning forced enrollment | Phase 6 analysis | Mandatory before first platform-admin action | Founder (operational policy) |
+| Administrator discovery | **No mechanism exists** — client cannot identify administrators | Firestore deny-all; no callable; authenticate response lacks admin fields | New server-side callable required (AUTH-MFA-003A1) | No (engineering detail) |
 | Challenge handling | Not implemented; SDK supports it | Client SDK type definitions; Firebase documentation | Required (AUTH-MFA-003C) | No (engineering) |
 | Recovery/reset | Not implemented; Admin SDK supports factor unenrollment | Admin SDK documentation | Controlled admin reset (AUTH-MFA-003D) | **Founder decision** (authorization policy) |
 | Rollout sequence | Emulator → dev → staging → production | Phase 9 analysis | Staged rollout | Founder (for each stage) |
@@ -687,6 +813,8 @@ Pending — will be assessed after PR is opened.
 
 5. **Recovery without SMS.** If an administrator loses their authenticator device and no backup factor exists, they are locked out until a controlled admin reset. **Mitigation:** Controlled admin reset (AUTH-MFA-003D) with audit trail.
 
+6. **Trusted administrator-discovery gap.** No existing mechanism allows the client to identify whether a signed-in user is a platform administrator. Firestore rules deny client reads of `platformAdministrators`, no callable returns administrator status, and the authenticate response lacks administrator fields. **Mitigation:** AUTH-MFA-003A1 (new server-side callable) resolves this before enrollment UI (AUTH-MFA-003B) can be implemented.
+
 ---
 
 ## 24. Rollback Instructions for Repository Changes
@@ -771,13 +899,14 @@ Will be confirmed after PR creation. PR will be left open for Founder review.
 
 ### `MFA READINESS REQUIRES FOUNDER DECISION — IDENTITY PLATFORM UPGRADE AND TOTP PRIMARY FACTOR POLICY`
 
-Three conditions prevent a real 11thONUS platform administrator from completing an MFA-authenticated session:
+Four conditions prevent a real 11thONUS platform administrator from completing an MFA-authenticated session:
 
 1. **Firebase Authentication with Identity Platform upgrade not performed** — MFA is not available on the current standard Firebase Authentication tier. This is the first gate.
 2. **TOTP MFA not enabled at project level** — even after upgrade, TOTP must be explicitly enabled. This depends on (1).
-3. **No client-side enrollment or challenge UI** — no user-facing flow exists to enroll a TOTP factor or complete a second-factor challenge. This depends on (1) and (2).
+3. **No trusted administrator-discovery mechanism** — the client cannot identify whether a signed-in user is a platform administrator, because Firestore rules deny client reads of `platformAdministrators` and no callable returns administrator status. This is an engineering dependency (AUTH-MFA-003A1), not a Founder decision.
+4. **No client-side enrollment or challenge UI** — no user-facing flow exists to enroll a TOTP factor or complete a second-factor challenge. This depends on (1), (2), and (3).
 
-All three are addressable through a clear, staged implementation path. None requires architectural redesign. The server-side foundation (AUTH-MFA-001) is complete and correct.
+All four are addressable through a clear, staged implementation path. None requires architectural redesign. The server-side foundation (AUTH-MFA-001) is complete and correct.
 
 ---
 
