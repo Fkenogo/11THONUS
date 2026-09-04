@@ -359,9 +359,16 @@ Provisioned platform administrator signs in (primary factor only)
         5. User enters current 6-digit TOTP code
         6. TotpMultiFactorGenerator.assertionForEnrollment(secret, otp) → assertion
         7. multiFactor(user).enroll(assertion, "Platform Admin TOTP")
-        8. Refresh ID token (enrollment revokes existing sessions per Firebase behavior)
-        → New ID token contains sign_in_second_factor claim
-        → Subsequent sign-in triggers MFA challenge
+        8. Sign out (existing sessions are revoked by enrollment anyway)
+        9. Sign in again with primary factor
+            → Firebase throws auth/multi-factor-auth-required
+        10. Resolve MFA challenge with TOTP code
+            → New ID token contains sign_in_second_factor: "totp"
+            → verifiedSecondFactor resolves to true
+        Note: A simple token refresh does NOT produce sign_in_second_factor.
+        The claim is only present on tokens issued after a genuine MFA challenge
+        resolution. The user must complete a full re-authentication including
+        the second-factor challenge.
 ```
 
 ### 8.2 Security Invariants
@@ -437,7 +444,7 @@ try {
 | Administrator changes phone (new device, same number) | Authenticator app data lost | Re-install authenticator app, re-scan QR (if saved) or controlled reset |
 | Administrator changes authenticator app | Old enrollments may be inaccessible | Controlled admin reset |
 | Factor compromised | Security risk | Controlled admin reset + factor unenrollment |
-| Administrator leaves organisation | Account should be deactivated | `bootstrapPlatformAdministrator` can set status to `removed` |
+| Administrator leaves organisation | Account should be deactivated | `transitionPlatformAdministratorStatusPersisted(db, userId, "remove", ...)` via authorized operational path (Admin SDK only); `bootstrapPlatformAdministrator` cannot modify or remove existing records |
 
 ### 10.2 Supported Firebase Recovery Mechanisms
 
