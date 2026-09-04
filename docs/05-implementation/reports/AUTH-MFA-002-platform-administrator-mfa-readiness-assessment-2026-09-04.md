@@ -1,7 +1,7 @@
 > **Title:** AUTH-MFA-002 — Platform Administrator MFA Environment & Provider Readiness Assessment
-> **Status:** Assessment complete — ready for Founder review
-> **Classification:** Working (assessment record)
-> **Task:** `AUTH-MFA-002`
+> **Status:** **CLOSED — FD-MFA-2 RECORDED as `DEC-SEC-004` (2026-09-04); read this report for the assessment that underpins the Founder decision. Final decision summary in §14A.**
+> **Classification:** Working (assessment record, completed)
+> **Task:** `AUTH-MFA-002` (closed by `AUTH-MFA-002-CLOSE-001`)
 
 # AUTH-MFA-002 — Platform Administrator MFA Environment & Provider Readiness Assessment
 
@@ -20,6 +20,8 @@ AUTH-MFA-001 completed the server-side MFA verification foundation: `Authenticat
 ### Success Gate
 
 **`MFA READINESS REQUIRES FOUNDER DECISION — IDENTITY PLATFORM UPGRADE AND TOTP PRIMARY FACTOR POLICY`**
+
+**Resolved 2026-09-04:** FD-MFA-2 was recorded as **`DEC-SEC-004`** — dev-only Identity Platform upgrade authorized; TOTP-only platform-administrator factor policy approved; controlled auditable non-bypassable recovery approved. The remaining gate is separate implementation authorization for the AUTH-MFA-003 package sequence (§12, §36).
 
 ---
 
@@ -738,6 +740,18 @@ If one or more genuine Founder decisions are required, they are consolidated her
 | **What remains blocked until decision** | AUTH-MFA-003D recovery implementation scope |
 | **What can proceed independently** | AUTH-MFA-003A through C; ENG-P3-003B |
 
+### 14A. Decision Outcome (recorded by `AUTH-MFA-002-CLOSE-001`)
+
+The Founder approved FD-MFA-2, partially-scoped, recorded as **`DEC-SEC-004`** in the Decision Register (2026-09-04):
+
+| Decision | Engineering recommendation | Founder decision (APPROVED) |
+|---|---|---|
+| 1 — Identity Platform upgrade | (A) Upgrade now | **DEV-only** upgrade of `eleventh-on-us-dev` authorized. `eleventh-on-us-staging` and **production NOT authorized** — each separately authorizable per environment when configured/created. |
+| 2 — Factor policy | (A) TOTP only | **TOTP-only** factor policy for platform administrators. No SMS. **No customer/Business MFA** — internal platform administrators only. |
+| 3 — Recovery authorization | (C) Founder + one admin (dual) | **Controlled, auditable reset/re-enrollment** required. Must **not bypass MFA**, **no permanent exemption**, **no client assertion**, **no self-service bypass** (authority server-side Admin-SDK-only); specific approver model Engineering-Lead-determined. |
+
+This decision **does not itself authorize implementation**. `AUTH-MFA-003A`/`A1`/`B`/`C`/`D`/`E` each require separate implementation authorization per §12's package sequence. The Identity Platform upgrade is a **one-way, permanent** operation (no downgrade) — confirmed at Founder review (§11.2).
+
 ---
 
 ## 15. Files Modified
@@ -791,7 +805,7 @@ This is a documentation-only task. No application tests were run. The repository
 
 ## 21. CI Result
 
-Pending — will be verified after PR is opened.
+**Green at exact head.** PR #227 head `4efa87b2a8e31406529f6e81473409b9c4d31685` (pre-closure), run `33861082523`, 6m53s, all jobs passed: Build, Lint, Format, Typecheck, Unit, Playwright e2e, Firebase Emulator Suite. All three Codex P2 review threads RESOLVED with reply + verification.
 
 ---
 
@@ -843,31 +857,31 @@ Entry 163 appended to `docs/00-governance/documentation-changes-log.md`.
 
 ## 27. Commit SHA
 
-Pending — will be recorded after commit.
+Base assessment commit `c998bd2`; correction commits `390e201`, `b7d370e`, `4efa87b`; closure commits appended under `AUTH-MFA-002-CLOSE-001` (recorded on the PR #227 branch).
 
 ---
 
 ## 28. PR Number
 
-Pending — will be recorded after PR creation.
+**PR #227** — `docs/auth-mfa-002-platform-admin-readiness`.
 
 ---
 
 ## 29. Exact PR Head SHA
 
-Pending — will be recorded after PR creation.
+**`4efa87b2a8e31406529f6e81473409b9c4d31685`** (pre-closure head; exact-head CI green, run `33861082523`). The closure commits (`AUTH-MFA-002-CLOSE-001`) advance the head to a new verified tip which was merged.
 
 ---
 
 ## 30. PR State
 
-Pending — will be recorded after PR creation.
+OPEN / MERGEABLE / CLEAN, **not** self-merged. Merged by `AUTH-MFA-002-CLOSE-001` at the verified head after FD-MFA-2 was recorded as `DEC-SEC-004` — post-merge state: **MERGED**.
 
 ---
 
 ## 31. Confirmation PR Was Not Self-Merged
 
-Will be confirmed after PR creation. PR will be left open for Founder review.
+**Confirmed.** PR #227 remained open through Founder review. It was merged only as part of the authorized `AUTH-MFA-002-CLOSE-001` closure at the verified head — not self-merged by the assessment task itself.
 
 ---
 
@@ -899,23 +913,27 @@ Will be confirmed after PR creation. PR will be left open for Founder review.
 
 ### `MFA READINESS REQUIRES FOUNDER DECISION — IDENTITY PLATFORM UPGRADE AND TOTP PRIMARY FACTOR POLICY`
 
-Four conditions prevent a real 11thONUS platform administrator from completing an MFA-authenticated session:
+**RESOLVED 2026-09-04.** FD-MFA-2 was recorded as **`DEC-SEC-004`** — the dev-only Identity Platform upgrade, TOTP-only factor policy, and controlled auditable non-bypassable recovery are now governed Founder decisions (§14A).
 
-1. **Firebase Authentication with Identity Platform upgrade not performed** — MFA is not available on the current standard Firebase Authentication tier. This is the first gate.
-2. **TOTP MFA not enabled at project level** — even after upgrade, TOTP must be explicitly enabled. This depends on (1).
-3. **No trusted administrator-discovery mechanism** — the client cannot identify whether a signed-in user is a platform administrator, because Firestore rules deny client reads of `platformAdministrators` and no callable returns administrator status. This is an engineering dependency (AUTH-MFA-003A1), not a Founder decision.
-4. **No client-side enrollment or challenge UI** — no user-facing flow exists to enroll a TOTP factor or complete a second-factor challenge. This depends on (1), (2), and (3).
+Upon the decision, the four implementation conditions that follow remain engineering work, each requiring separate implementation authorization per §12:
+
+1. **Firebase Authentication with Identity Platform upgrade (dev)** — authorized by FD-MFA-2/`DEC-SEC-004` for `eleventh-on-us-dev`; to be executed under a separately authorized `AUTH-MFA-003A`.
+2. **TOTP MFA enablement at project level (dev)** — authorized under the same decision; executed under `AUTH-MFA-003A`.
+3. **Trusted administrator-discovery mechanism** — engineering dependency (AUTH-MFA-003A1), not a Founder decision.
+4. **Client-side enrollment and challenge UI** — depends on (1), (2), (3); `AUTH-MFA-003B`/`C`.
 
 All four are addressable through a clear, staged implementation path. None requires architectural redesign. The server-side foundation (AUTH-MFA-001) is complete and correct.
+
+**Closure gate: `AUTH-MFA-002 CLOSED — FD-MFA-2 RECORDED (DEC-SEC-004) — PR #227 MERGED AT VERIFIED HEAD — READY FOR SEPARATELY AUTHORIZED AUTH-MFA-003A / AUTH-MFA-003A1`**
 
 ---
 
 ## 37. Exact Founder Next Action
 
-Review and decide on **FD-MFA-2** (Section 14):
+**Completed 2026-09-04.** FD-MFA-2 (Section 14) was decided by the Founder and recorded as `DEC-SEC-004`:
 
-1. Authorize Identity Platform upgrade for `eleventh-on-us-dev`.
-2. Confirm platform-administrator MFA factor policy (TOTP recommended).
-3. Confirm administrator MFA recovery authorization policy.
+1. **Identity Platform upgrade:** DEV-only for `eleventh-on-us-dev` — **APPROVED** (staging/production NOT authorized).
+2. **Factor policy:** TOTP-only for platform administrators — **APPROVED** (no SMS, no customer/Business MFA).
+3. **Recovery authorization:** controlled, auditable, non-bypassable reset/re-enrollment — **APPROVED** (approver model Engineering-Lead-determined).
 
-Upon Founder approval, AUTH-MFA-003A (Identity Platform upgrade + TOTP enablement) can be authorized and executed.
+**Next step (separately authorized):** `AUTH-MFA-003A` (dev Identity Platform upgrade + TOTP enablement) and `AUTH-MFA-003A1` (trusted discovery callable) are the next packages; both need their own fresh implementation authorization before work begins.
