@@ -40,7 +40,10 @@ import {
   emitCustomerAuthenticated,
 } from "./domains/authentication/services/authenticationEventEmitter";
 import type { AuthenticationReferenceType } from "./domains/identity/models/authenticationReference";
-import { resolveAuthenticatedIdentityActor } from "./domains/identity/repositories/authenticatedIdentityActor";
+import {
+  resolveAuthenticatedIdentityActor,
+  resolveAuthenticatedIdentityActorReadOnly,
+} from "./domains/identity/repositories/authenticatedIdentityActor";
 import {
   setDisplayName as setDisplayNameCommand,
   readDisplayName as getMyDisplayNameCommand,
@@ -504,17 +507,22 @@ export function parseDiscoverPlatformAdministratorRequest(data: unknown): {
  * a structurally-malformed record surfaces as `permission-denied`
  * (`platform_administration_failed`), an ineligible Customer Identity as
  * `unauthenticated` — neither can silently fabricate
- * `{ isPlatformAdministrator: false | true }`. Read-only: performs no
- * audit mutation, since no governed `PLATFORM_ADMINISTRATION_AUDIT_ACTION_TYPES`
- * entry exists for a pure routing read (its role — proving the discovery
- * was issued — can be answered by the consuming access-layer command's own
- * governed audit channel instead).
+ * `{ isPlatformAdministrator: false | true }`. Read-only end to end: the
+ * identity is resolved through `resolveAuthenticatedIdentityActorReadOnly`
+ * (the non-auditing `internal_service` lookup twin — no
+ * `IdentityLookupAttempted` outbox event on any probe), the administrator
+ * discovery is a single `.get()`, and no governed
+ * `PLATFORM_ADMINISTRATION_AUDIT_ACTION_TYPES` entry exists for a pure
+ * routing read (its role — proving the discovery was issued — can be
+ * answered by the consuming access-layer command's own governed audit
+ * channel instead). Repeated routing probes therefore write nothing
+ * anywhere.
  */
 export const discoverPlatformAdministrator = onCall(async (request) => {
   const parsed = parseDiscoverPlatformAdministratorRequest(request.data);
   const db = getFirestore(getAdminApp());
   try {
-    const { userId } = await resolveAuthenticatedIdentityActor(
+    const { userId } = await resolveAuthenticatedIdentityActorReadOnly(
       db,
       { rawToken: parsed.rawToken, referenceType: parsed.referenceType },
       { verifier: firebaseAdminTokenVerifier() },

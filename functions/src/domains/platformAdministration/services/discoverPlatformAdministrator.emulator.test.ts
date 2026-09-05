@@ -33,6 +33,7 @@ beforeEach(async () => {
   for (const collection of [
     PLATFORM_ADMINISTRATORS_COLLECTION,
     PLATFORM_ADMINISTRATION_AUDIT_RECORDS_COLLECTION,
+    "outboxEntries",
   ]) {
     const snapshot = await db.collection(collection).get();
     await Promise.all(snapshot.docs.map((doc) => doc.ref.delete()));
@@ -114,7 +115,7 @@ describe("discoverPlatformAdministrator (AUTH-MFA-003A1, emulator)", () => {
     );
   });
 
-  it("is a read-only routing read — repeated discovery writes no audit record", async () => {
+  it("is a read-only routing read — repeated discovery writes no audit record and no identity outbox event", async () => {
     await bootstrapPlatformAdministrator(db, {
       targetUserId: "user_editor",
       roles: ["knowledge_editor"],
@@ -130,17 +131,26 @@ describe("discoverPlatformAdministrator (AUTH-MFA-003A1, emulator)", () => {
       now,
     });
 
-    const countBefore = (
+    const auditCountBefore = (
       await db.collection(PLATFORM_ADMINISTRATION_AUDIT_RECORDS_COLLECTION).get()
     ).docs.length;
+    // The shared identity outbox: the discoverable record is read via the
+    // non-auditing resolution twin at the callable boundary (see
+    // `authenticatedIdentityActor.emulator.test.ts`), so this domain-level
+    // assertion stays green by construction and guards against any future
+    // service-level side effect.
+    const outboxCountBefore = (await db.collection("outboxEntries").get()).docs.length;
 
     await discoverPlatformAdministrator(db, "user_editor");
     await discoverPlatformAdministrator(db, "user_approver");
     await discoverPlatformAdministrator(db, "user_never_existed");
 
-    const countAfter = (await db.collection(PLATFORM_ADMINISTRATION_AUDIT_RECORDS_COLLECTION).get())
-      .docs.length;
+    const auditCountAfter = (
+      await db.collection(PLATFORM_ADMINISTRATION_AUDIT_RECORDS_COLLECTION).get()
+    ).docs.length;
+    const outboxCountAfter = (await db.collection("outboxEntries").get()).docs.length;
 
-    expect(countAfter).toBe(countBefore);
+    expect(auditCountAfter).toBe(auditCountBefore);
+    expect(outboxCountAfter).toBe(outboxCountBefore);
   });
 });
