@@ -84,4 +84,14 @@ describe("App shell", () => {
 
     expect(await screen.findByText("Please sign in to continue.")).toBeInTheDocument();
   });
+
+  it("guards /auth/mfa/enroll behind authentication, routing a signed-out visitor to the sign-in-required fallback", async () => {
+    render(
+      <MemoryRouter initialEntries={["/auth/mfa/enroll"]}>
+        <App auth={fakeSignedOutAuth} functions={fakeFunctions} />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Please sign in to continue.")).toBeInTheDocument();
+  });
 });

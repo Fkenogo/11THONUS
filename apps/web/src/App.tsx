@@ -11,6 +11,7 @@ import { NewBusinessPage } from "./business/onboarding/NewBusinessPage";
 import { BusinessWizardPage } from "./business/onboarding/BusinessWizardPage";
 import { BusinessDashboardBoundaryPage } from "./business/dashboard/BusinessDashboardBoundaryPage";
 import { DisplayNameProfile } from "./identity/DisplayNameProfile";
+import { MfaEnrollmentPage } from "./authentication/mfa/MfaEnrollmentPage";
 
 // Guarded directly on the literal `import.meta.env.DEV` (not via an
 // intermediate function call) so Vite's production build statically
@@ -127,6 +128,14 @@ function App({ auth, functions }: AppProps) {
           element={
             <RequireAuthenticatedUser auth={auth} renderUnauthenticated={() => <SignInRequired />}>
               <DisplayNameProfile auth={auth} functions={functions} />
+            </RequireAuthenticatedUser>
+          }
+        />
+        <Route
+          path="/auth/mfa/enroll"
+          element={
+            <RequireAuthenticatedUser auth={auth} renderUnauthenticated={() => <SignInRequired />}>
+              <MfaEnrollmentPage auth={auth} functions={functions} />
             </RequireAuthenticatedUser>
           }
         />
