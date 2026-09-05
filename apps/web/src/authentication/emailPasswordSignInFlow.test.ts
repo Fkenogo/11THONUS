@@ -5,6 +5,11 @@ import {
   type AuthenticateOutcome,
   type AuthenticatePayload,
 } from "./authenticateClient";
+import {
+  isPendingMfaChallenge,
+  MFA_REQUIRED_ERROR_CODE,
+  type MfaChallengeSdkDeps,
+} from "./mfa/mfaSdkChallenge";
 
 const auth = { id: "auth" } as never;
 
@@ -20,6 +25,28 @@ const outcome = (mode: AuthenticateOutcome["mode"]): AuthenticateOutcome => ({
 
 function fakeUser(token = "id-token-email") {
   return { user: { getIdToken: vi.fn(async () => token) } };
+}
+
+function totpHint(uid: string) {
+  return { uid, factorId: "totp", enrollmentTime: "2026-09-01T00:00:00.000Z" };
+}
+
+/** Real-SDK-shaped challenge seam with a single TOTP hint (AUTH-MFA-003C). */
+function mfaChallengeSdk(): MfaChallengeSdkDeps {
+  return {
+    getResolver: (() => ({
+      hints: [totpHint("totp-1")],
+      resolveSignIn: vi.fn(async () => ({
+        user: { getIdToken: vi.fn(async () => "mfa-resolved-token") },
+      })),
+    })) as never,
+    TotpMultiFactorGenerator: {
+      FACTOR_ID: "totp",
+      assertionForSignIn: vi.fn(
+        (enrollmentId: string, code: string) => ({ factorId: "totp", enrollmentId, code }) as never,
+      ),
+    },
+  };
 }
 
 describe("emailPasswordSignInFlow (AUTH-CORR-003)", () => {
@@ -38,7 +65,7 @@ describe("emailPasswordSignInFlow (AUTH-CORR-003)", () => {
     });
 
     expect(register).toHaveBeenCalledWith(auth, "new@user.co", "pw123456");
-    expect(result.mode).toBe("registered");
+    expect(result).toMatchObject({ mode: "registered" });
     // Bridged to AUTH-03 with the derived `email` reference type; token passed once.
     expect(calls[0]).toMatchObject({ referenceType: "email", rawToken: "id-token-email" });
   });
@@ -54,7 +81,53 @@ describe("emailPasswordSignInFlow (AUTH-CORR-003)", () => {
     });
 
     expect(signIn).toHaveBeenCalledWith(auth, "back@user.co", "pw123456");
-    expect(result.mode).toBe("signed_in");
+    expect(result).toMatchObject({ mode: "signed_in" });
+  });
+
+  it("intercepts auth/multi-factor-auth-required and returns a TOTP challenge, never bridging pre-MFA (AUTH-MFA-003C)", async () => {
+    const signIn = vi.fn(async () => {
+      throw { code: MFA_REQUIRED_ERROR_CODE };
+    });
+    const callAuthenticate = vi.fn(async () => outcome("signed_in"));
+
+    const result = await signInWithEmailPassword(auth, "admin@onus.co", "pw", {
+      callAuthenticate,
+      signIn,
+      challengeSdk: mfaChallengeSdk(),
+    });
+
+    expect(isPendingMfaChallenge(result)).toBe(true);
+    expect(result).toMatchObject({ kind: "mfa-challenge", factorUids: ["totp-1"] });
+    // No AUTH-03 bridge happens before the second factor is resolved.
+    expect(callAuthenticate).not.toHaveBeenCalled();
+  });
+
+  it("registration shares the same fail-closed MFA interception (AUTH-MFA-003C)", async () => {
+    const register = vi.fn(async () => {
+      throw { code: MFA_REQUIRED_ERROR_CODE };
+    });
+    const callAuthenticate = vi.fn(async () => outcome("registered"));
+
+    const result = await registerWithEmailPassword(auth, "admin@onus.co", "pw", {
+      callAuthenticate,
+      register,
+      challengeSdk: mfaChallengeSdk(),
+    });
+
+    expect(isPendingMfaChallenge(result)).toBe(true);
+    expect(callAuthenticate).not.toHaveBeenCalled();
+  });
+
+  it("passes a non-MFA first-factor error through unchanged (no AUTH-03 bridge)", async () => {
+    const signIn = vi.fn(async () => {
+      throw { code: "auth/invalid-credential" };
+    });
+    const callAuthenticate = vi.fn(async () => outcome("signed_in"));
+
+    await expect(
+      signInWithEmailPassword(auth, "back@user.co", "wrong", { callAuthenticate, signIn }),
+    ).rejects.toMatchObject({ code: "auth/invalid-credential" });
+    expect(callAuthenticate).not.toHaveBeenCalled();
   });
 
   it("reuses one idempotency key across a transient retry (AUTH-03 replay gate preserved)", async () => {
