@@ -333,5 +333,15 @@ export const en = {
       signOutFailed:
         "We couldn't sign you out. Two-step verification is enabled, but your current session is still active — sign out, then sign in again to be asked for a code from your authenticator app.",
     },
+    challenge: {
+      title: "Two-step verification",
+      body: "Enter the 6-digit code from your authenticator app to finish signing in.",
+      codeLabel: "Verification code",
+      confirm: "Confirm sign-in",
+      verifying: "Verifying…",
+      cancel: "Cancel",
+      errorInvalid: "That code didn't work. Check your app and try again.",
+      errorGeneric: "We couldn't complete sign-in. Please try again.",
+    },
   },
 } as const;
