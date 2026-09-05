@@ -1,8 +1,10 @@
 > **Title:** AUTH-MFA-003A1 — Trusted Platform-Administrator Discovery Callable — Implementation Report
-> **Status:** Implemented — pending Founder Technical Review/merge
+> **Status:** Implemented · Founder Technical Review closed via `AUTH-MFA-003A1-CLOSE-001` — awaiting Founder merge authorization
 > **Classification:** Working (implementation record)
 
 # AUTH-MFA-003A1 — Trusted Platform-Administrator Discovery Callable — Implementation Report
+
+> **Superseding clarification (`AUTH-MFA-003A1-CLOSE-001`, Founder Technical Review closure):** Sections of this report describing the original use of `resolveAuthenticatedIdentityActor` in the final callable are **superseded by `AUTH-MFA-003A1-CORR-001`** (see §15) and are retained only as historical evidence of the intermediate state. The **final** callable (`discoverPlatformAdministrator`) resolves its caller through **`resolveAuthenticatedIdentityActorReadOnly`** — the non-mutating twin that runs the reference lookup with the server-hardcoded, deliberately non-audited `internal_service` purpose and makes zero `IdentityLookupAttempted` outbox writes. All final-state conclusions and validation in this report must be read with that correction applied.
 
 ## 1. Entry state and base SHA
 
