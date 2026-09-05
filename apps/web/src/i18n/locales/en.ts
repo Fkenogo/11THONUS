@@ -329,7 +329,9 @@ export const en = {
     completion: {
       title: "Two-step verification turned on",
       body: "For your security, you're now being signed out. Sign in again to continue — you will be asked for a code from your authenticator app the next time.",
-      signOut: "Sign out",
+      signOutRetry: "Try signing out again",
+      signOutFailed:
+        "We couldn't sign you out. Two-step verification is enabled, but your current session is still active — sign out, then sign in again to be asked for a code from your authenticator app.",
     },
   },
 } as const;

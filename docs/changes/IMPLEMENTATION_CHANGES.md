@@ -5342,3 +5342,17 @@ READY FOR CONTROLLED DRAFTING — PR AWAITS FOUNDER REVIEW`**.
 - **Risks:** no live enrollment exercised (live-DEV reachability test still held for Founder disposition per `AUTH-MFA-003A-CORR-001`); challenge UI (`AUTH-MFA-003C`) and removal/recovery (`AUTH-MFA-003D`) not begun; see report §11.
 - **Rollback:** do not merge / revert the PR. No live configuration and nothing deployed — reverting the PR's files restores the pre-package route/i18n/dependency state exactly.
 - **Report link:** [`docs/05-implementation/reports/AUTH-MFA-003B-admin-totp-enrollment-implementation-report-2026-09-05.md`](../05-implementation/reports/AUTH-MFA-003B-admin-totp-enrollment-implementation-report-2026-09-05.md).
+
+---
+
+- **Date:** 2026-09-05
+- **Phase:** TRD22 Phase 12 identity/security enablement (Platform Administrator MFA — same package, PR #230 resumed)
+- **Task:** `AUTH-MFA-003B-CORR-001` — correct the four automated technical-review findings on PR #230 (resume of `feat/auth-mfa-003b-admin-totp-enrollment`, pre-correction head `fb3430a00290d62c767a80ee3e6784acf10920a1`).
+- **Status:** Corrected — re-awaiting Founder Technical Review (not self-merged)
+- **Files changed:** `apps/web/src/authentication/mfa/hooks/queryKeys.ts` + `usePlatformAdministratorDiscoveryQuery.ts` (discovery key now `["mfa","platform-administrator-discovery",uid]` — P1-01); `apps/web/src/authentication/mfa/MfaEnrollmentPage.tsx` (P1-02 completion/unverified-email branches evaluated before the already-enrolled and unverified-email-entry gates; P2-01 automatic `signOutCurrentSession(auth)` on reaching completion with a fail-closed retry surfaced only on automatic-invocation failure; P2-02 wiring through the new bounded classifier); `apps/web/src/authentication/mfa/mfaSdkFlow.ts` (`isEnrollmentEmailUnverifiedError` replaced by `classifyMfaEnrollmentError` → `invalid-code` | `unverified-email` | `other`); `apps/web/src/i18n/locales/en.ts` + `fr.ts` (`completion.signOut` → `signOutFailed` + `signOutRetry`, exact EN/FR parity); MfaEnrollmentPage.test.tsx (page suite 23 → 28, incl. same-`QueryClient` user-switch cache-scoping tests, completion-over-gate precedence, automatic sign-out, retry, and classification regressions) + mfaSdkFlow.test.ts (classifier suite). No server file touched.
+- **Tests:** full repo suite green — functions unit **153 files / 1651 passed** (unchanged, no server code touched); apps/web **101 files / 704 passed** (6 net-new mfa tests); `pnpm emulators:validate` **59 files / 756 passed / 2 skipped** (functions untouched; CI-equivalent baseline); typecheck/lint/build/format clean (lint 0 errors, one pre-existing `apps/web` react-refresh warning).
+- **Configuration:** none — no live Firebase/Identity Platform/TOTP change, no deployment, no real administrator enrolled, no secret material created or persisted, no Firestore Rules change.
+- **Migrations:** none.
+- **Risks:** unchanged from the base package (no live enrollment; Auth emulator cannot execute TOTP enrollment; `AUTH-MFA-003C`/`AUTH-MFA-003D` not begun); the correction adds no new risk — the uid-scoped key simply partitions Callable-backed routing data per Firebase UID.
+- **Rollback:** do not merge / revert the PR. No live configuration and nothing deployed — reverting reverts the whole `AUTH-MFA-003B` package including the correction.
+- **Report link:** [`docs/05-implementation/reports/AUTH-MFA-003B-admin-totp-enrollment-implementation-report-2026-09-05.md`](../05-implementation/reports/AUTH-MFA-003B-admin-totp-enrollment-implementation-report-2026-09-05.md) (see §14).

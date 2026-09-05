@@ -11,6 +11,14 @@ import { mfaQueryKeys } from "./queryKeys";
  * local/optimistic value, never a direct `platformAdministrators` collection
  * read. `enabled` only once the session is `"ready"`, mirroring every other
  * authenticated query in this codebase.
+ *
+ * The query key is scoped to the caller's Firebase `uid` so that a cached
+ * result for one user can never be served to a different user within the
+ * app-wide singleton `QueryClient`'s retention window (`P1-01` correction:
+ * the discovery answer is user-dependent routing data). The server callable
+ * remains the authority; there is no persistent client-side administrator
+ * state to clear on a user transition — switching to a different uid resolves
+ * a fresh callable-backed entry.
  */
 export function usePlatformAdministratorDiscoveryQuery(platform: {
   auth: Auth;
@@ -18,7 +26,9 @@ export function usePlatformAdministratorDiscoveryQuery(platform: {
 }) {
   const session = useMfaSession(platform.auth);
   return useQuery({
-    queryKey: mfaQueryKeys.platformAdministratorDiscovery(),
+    queryKey: mfaQueryKeys.platformAdministratorDiscovery(
+      session.status === "ready" ? session.user.uid : "no-session",
+    ),
     queryFn: () =>
       makeCallDiscoverPlatformAdministrator(platform.functions)(
         session.status === "ready"

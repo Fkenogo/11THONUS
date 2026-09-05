@@ -105,10 +105,30 @@ export function createMfaEnrollmentFlow(deps: MfaSdkDeps = defaultMfaSdkDeps): M
 }
 
 /**
- * True when the thrown enrollment error is the verified-email precondition
- * (`auth/unverified-email`). Keeps the SDK error vocabulary inside this module
- * so the page never needs to know Firebase enum names.
+ * Bounded classification of a failed TOTP enrollment attempt (`P2-02`
+ * correction). Every failure is mapped to one of three safe categories so the
+ * page renders a known, localized message and never a raw Firebase error:
+ *
+ * - `"invalid-code"` — the submitted one-time code was rejected by the SDK
+ *   (`auth/invalid-verification-code`). The in-memory secret is retained so
+ *   the caller may retry immediately on the verify step.
+ * - `"unverified-email"` — the account's email is not verified
+ *   (`auth/unverified-email`), which Firebase requires before enrollment. The
+ *   caller is moved to the bounded verified-email precondition state and the
+ *   transient secret is cleared.
+ * - `"other"` — any terminal failure (network, provider unavailable, stale
+ *   session, internal). The secret is cleared and the caller restarts from
+ *   the intro step with a generic message; no discipline-specific detail is
+ *   rendered.
+ *
+ * The Firebase error-code vocabulary stays inside this module; the page only
+ * ever sees the three categories above.
  */
-export function isEnrollmentEmailUnverifiedError(error: unknown): boolean {
-  return (error as { code?: unknown } | undefined)?.code === "auth/unverified-email";
+export type MfaEnrollmentErrorCategory = "invalid-code" | "unverified-email" | "other";
+
+export function classifyMfaEnrollmentError(error: unknown): MfaEnrollmentErrorCategory {
+  const code = (error as { code?: unknown } | undefined)?.code;
+  if (code === "auth/unverified-email") return "unverified-email";
+  if (code === "auth/invalid-verification-code") return "invalid-code";
+  return "other";
 }

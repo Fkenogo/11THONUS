@@ -335,7 +335,9 @@ export const fr = {
     completion: {
       title: "Vérification en deux étapes activée",
       body: "Pour votre sécurité, vous êtes en train d'être déconnecté. Reconnectez-vous pour continuer — un code de votre application d'authentification vous sera demandé.",
-      signOut: "Se déconnecter",
+      signOutRetry: "Réessayer de se déconnecter",
+      signOutFailed:
+        "Nous n'avons pas pu vous déconnecter. La vérification en deux étapes est activée, mais votre session actuelle est toujours active — déconnectez-vous, puis reconnectez-vous pour qu'un code de votre application d'authentification vous soit demandé.",
     },
   },
 } as const;

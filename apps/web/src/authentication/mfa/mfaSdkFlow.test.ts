@@ -8,8 +8,8 @@ import type {
   User,
 } from "firebase/auth";
 import {
+  classifyMfaEnrollmentError,
   createMfaEnrollmentFlow,
-  isEnrollmentEmailUnverifiedError,
   MFA_FACTOR_DISPLAY_NAME,
   TOTP_ISSUER,
   type MfaSdkDeps,
@@ -143,17 +143,21 @@ describe("createMfaEnrollmentFlow — completeEnrollment", () => {
   });
 });
 
-describe("isEnrollmentEmailUnverifiedError", () => {
-  it("recognises the Firebase verified-email precondition error", () => {
-    expect(isEnrollmentEmailUnverifiedError({ code: "auth/unverified-email" })).toBe(true);
+describe("classifyMfaEnrollmentError", () => {
+  it("classifies the Firebase verified-email precondition as unverified-email", () => {
+    expect(classifyMfaEnrollmentError({ code: "auth/unverified-email" })).toBe("unverified-email");
   });
 
-  it("returns false for every other error (code, raw, or non-object)", () => {
-    expect(isEnrollmentEmailUnverifiedError({ code: "auth/invalid-verification-code" })).toBe(
-      false,
+  it("classifies a rejected code as invalid-code (retryable, secret retained)", () => {
+    expect(classifyMfaEnrollmentError({ code: "auth/invalid-verification-code" })).toBe(
+      "invalid-code",
     );
-    expect(isEnrollmentEmailUnverifiedError(new Error("boom"))).toBe(false);
-    expect(isEnrollmentEmailUnverifiedError(undefined)).toBe(false);
-    expect(isEnrollmentEmailUnverifiedError(null)).toBe(false);
+  });
+
+  it("classifies everything else (raw, unknown code, or non-object) as other", () => {
+    expect(classifyMfaEnrollmentError({ code: "auth/network-request-failed" })).toBe("other");
+    expect(classifyMfaEnrollmentError(new Error("boom"))).toBe("other");
+    expect(classifyMfaEnrollmentError(undefined)).toBe("other");
+    expect(classifyMfaEnrollmentError(null)).toBe("other");
   });
 });

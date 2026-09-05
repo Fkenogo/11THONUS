@@ -37,7 +37,7 @@
  * execute TOTP enrollment).
  */
 
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import type { Auth } from "firebase/auth";
 import type { Functions } from "firebase/functions";
 import { LanguageSwitcher, useTranslation } from "../../i18n";
@@ -46,8 +46,8 @@ import { signOutCurrentSession } from "../signOutFlow";
 import { useMfaSession } from "./hooks/useMfaSession";
 import { usePlatformAdministratorDiscoveryQuery } from "./hooks/usePlatformAdministratorDiscoveryQuery";
 import {
+  classifyMfaEnrollmentError,
   createMfaEnrollmentFlow,
-  isEnrollmentEmailUnverifiedError,
   type EnrollmentPreview,
   type MfaEnrollmentFlow,
 } from "./mfaSdkFlow";
@@ -107,13 +107,26 @@ export function MfaEnrollmentPage({ auth, functions }: MfaEnrollmentPageProps) {
     try {
       await flow.completeEnrollment(session.user, preview.secret, otp.trim());
       setPreview(null);
+      setOtp("");
       setStep("completion");
     } catch (error) {
-      if (isEnrollmentEmailUnverifiedError(error)) {
-        setPreview(null);
-        setStep("unverified-email");
-      } else {
-        setVerifyError("invalid");
+      switch (classifyMfaEnrollmentError(error)) {
+        case "unverified-email":
+          setPreview(null);
+          setOtp("");
+          setStep("unverified-email");
+          break;
+        case "invalid-code":
+          setVerifyError("invalid");
+          break;
+        case "other":
+        default:
+          setPreview(null);
+          setOtp("");
+          setSignOutError(false);
+          setStartError(true);
+          setStep("intro");
+          break;
       }
     } finally {
       setConfirming(false);
@@ -128,6 +141,22 @@ export function MfaEnrollmentPage({ auth, functions }: MfaEnrollmentPageProps) {
       setSignOutError(true);
     }
   }
+
+  useEffect(() => {
+    if (step !== "completion") return;
+    let cancelled = false;
+    void (async () => {
+      setSignOutError(false);
+      try {
+        await signOutCurrentSession(auth);
+      } catch {
+        if (!cancelled) setSignOutError(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [step, auth]);
 
   if (session.status === "loading") {
     return (
@@ -195,6 +224,38 @@ export function MfaEnrollmentPage({ auth, functions }: MfaEnrollmentPageProps) {
     );
   }
 
+  if (step === "completion") {
+    return (
+      <section className="mx-auto max-w-lg p-6">
+        <LanguageSwitcher />
+        <h1 className="mb-1 text-xl font-semibold">{t("completion.title")}</h1>
+        <p className="mb-4 text-sm text-[var(--color-muted-foreground)]">{t("completion.body")}</p>
+        {signOutError && (
+          <>
+            <p role="alert" className="mt-2 text-sm text-red-600">
+              {t("completion.signOutFailed")}
+            </p>
+            <Button type="button" onClick={handleSignOut} className="min-h-11">
+              {t("completion.signOutRetry")}
+            </Button>
+          </>
+        )}
+      </section>
+    );
+  }
+
+  if (step === "unverified-email") {
+    return (
+      <section className="mx-auto max-w-lg p-6">
+        <LanguageSwitcher />
+        <h1 className="mb-1 text-xl font-semibold">{t("access.unverifiedEmailTitle")}</h1>
+        <p className="text-sm text-[var(--color-muted-foreground)]">
+          {t("access.unverifiedEmailBody")}
+        </p>
+      </section>
+    );
+  }
+
   if (!session.user.emailVerified) {
     return (
       <section className="mx-auto max-w-lg p-6">
@@ -214,36 +275,6 @@ export function MfaEnrollmentPage({ auth, functions }: MfaEnrollmentPageProps) {
         <h1 className="mb-1 text-xl font-semibold">{t("access.alreadyEnrolledTitle")}</h1>
         <p className="text-sm text-[var(--color-muted-foreground)]">
           {t("access.alreadyEnrolledBody")}
-        </p>
-      </section>
-    );
-  }
-
-  if (step === "completion") {
-    return (
-      <section className="mx-auto max-w-lg p-6">
-        <LanguageSwitcher />
-        <h1 className="mb-1 text-xl font-semibold">{t("completion.title")}</h1>
-        <p className="mb-4 text-sm text-[var(--color-muted-foreground)]">{t("completion.body")}</p>
-        {signOutError && (
-          <p role="alert" className="mt-2 text-sm text-red-600">
-            {t("verify.errorGeneric")}
-          </p>
-        )}
-        <Button type="button" onClick={handleSignOut} className="min-h-11">
-          {t("completion.signOut")}
-        </Button>
-      </section>
-    );
-  }
-
-  if (step === "unverified-email") {
-    return (
-      <section className="mx-auto max-w-lg p-6">
-        <LanguageSwitcher />
-        <h1 className="mb-1 text-xl font-semibold">{t("access.unverifiedEmailTitle")}</h1>
-        <p className="text-sm text-[var(--color-muted-foreground)]">
-          {t("access.unverifiedEmailBody")}
         </p>
       </section>
     );
