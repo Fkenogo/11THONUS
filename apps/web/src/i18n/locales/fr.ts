@@ -281,4 +281,63 @@ export const fr = {
       failed: "Nous n'avons pas pu enregistrer cela. Veuillez réessayer.",
     },
   },
+  mfa: {
+    page: {
+      title: "Vérification en deux étapes",
+      loading: "Chargement…",
+      retry: "Réessayer",
+      signInRequired: "Veuillez vous connecter pour continuer.",
+      failed: "Impossible de charger cette page. Veuillez réessayer.",
+      unresolvedAuthReference:
+        "Nous n'avons pas pu déterminer comment vous êtes connecté. Veuillez vous reconnecter.",
+    },
+    access: {
+      deniedTitle: "Accès restreint",
+      deniedBody:
+        "Cette page est réservée aux administrateurs de la plateforme 11thONUS. Si vous pensez qu'il s'agit d'une erreur, veuillez contacter l'assistance.",
+      unverifiedEmailTitle: "Adresse e-mail vérifiée requise",
+      unverifiedEmailBody:
+        "La vérification en deux étapes exige une adresse e-mail vérifiée sur votre compte. Vérifiez votre adresse e-mail, puis reconnectez-vous pour continuer.",
+      alreadyEnrolledTitle: "La vérification en deux étapes est déjà configurée",
+      alreadyEnrolledBody:
+        "Votre compte dispose déjà d'une application d'authentification inscrite. Reconnectez-vous : un code vous sera demandé.",
+    },
+    intro: {
+      title: "Protégez votre compte d'administrateur",
+      body: "Configurez la vérification en deux étapes avec une application d'authentification. Désormais, la connexion exigera aussi un code de votre application.",
+      begin: "Commencer",
+    },
+    setup: {
+      title: "Scannez le code",
+      body: "Scannez ce code avec votre application d'authentification, ou saisissez la clé manuellement.",
+      qrLabel: "Code de vérification en deux étapes pour votre compte 11thONUS",
+      manualKeyLabel: "Clé de saisie manuelle",
+      manualKeyHint:
+        "Votre clé change à chaque configuration — conservez-la dans votre application d'authentification pour ce compte.",
+      codeLengthLabel: "Longueur du code",
+      codeLengthValue: "{{length}} chiffres, renouvelé toutes les {{interval}} secondes",
+      cancel: "Annuler",
+      continue: "J'ai scanné le code",
+    },
+    verify: {
+      title: "Confirmez le code",
+      body: "Saisissez le code à 6 chiffres actuellement affiché dans votre application d'authentification.",
+      codeLabel: "Code de vérification",
+      confirm: "Confirmer",
+      verifying: "Confirmation…",
+      cancel: "Annuler",
+      errorInvalid: "Ce code ne fonctionne pas. Vérifiez votre application et réessayez.",
+      errorGeneric: "La configuration n'a pas abouti. Veuillez réessayer.",
+      unverifiedEmailTitle: "Adresse e-mail vérifiée requise",
+      unverifiedEmailBody:
+        "L'inscription de ce compte a échoué car son adresse e-mail n'est pas vérifiée. Vérifiez votre adresse e-mail, puis reconnectez-vous pour continuer.",
+    },
+    completion: {
+      title: "Vérification en deux étapes activée",
+      body: "Pour votre sécurité, vous êtes en train d'être déconnecté. Reconnectez-vous pour continuer — un code de votre application d'authentification vous sera demandé.",
+      signOutRetry: "Réessayer de se déconnecter",
+      signOutFailed:
+        "Nous n'avons pas pu vous déconnecter. La vérification en deux étapes est activée, mais votre session actuelle est toujours active — déconnectez-vous, puis reconnectez-vous pour qu'un code de votre application d'authentification vous soit demandé.",
+    },
+  },
 } as const;

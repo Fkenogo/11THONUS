@@ -276,4 +276,62 @@ export const en = {
       failed: "We couldn't save that. Please try again.",
     },
   },
+  mfa: {
+    page: {
+      title: "Two-step verification",
+      loading: "Loading…",
+      retry: "Try again",
+      signInRequired: "Please sign in to continue.",
+      failed: "We couldn't load this page. Please try again.",
+      unresolvedAuthReference: "We couldn't determine how you signed in. Please sign in again.",
+    },
+    access: {
+      deniedTitle: "Access restricted",
+      deniedBody:
+        "This page is available only to 11thONUS platform administrators. If you believe this is a mistake, please contact support.",
+      unverifiedEmailTitle: "Verified email required",
+      unverifiedEmailBody:
+        "Two-step verification requires a verified email address on your account. Verify your email, then sign in again to continue.",
+      alreadyEnrolledTitle: "Two-step verification is already set up",
+      alreadyEnrolledBody:
+        "Your account already has an authenticator app enrolled. Continue by signing in — you will be asked for your verification code.",
+    },
+    intro: {
+      title: "Protect your administrator account",
+      body: "Set up two-step verification with an authenticator app. From now on, signing in will also require a code from your app.",
+      begin: "Get started",
+    },
+    setup: {
+      title: "Scan the code",
+      body: "Scan this code with your authenticator app, or enter the key manually.",
+      qrLabel: "Two-step verification code for your 11thONUS account",
+      manualKeyLabel: "Manual entry key",
+      manualKeyHint:
+        "Your key changes on every setup — keep it in your authenticator app for this account.",
+      codeLengthLabel: "Code length",
+      codeLengthValue: "{{length}} digits, refreshed every {{interval}} seconds",
+      cancel: "Cancel",
+      continue: "I've scanned the code",
+    },
+    verify: {
+      title: "Confirm the code",
+      body: "Enter the 6-digit code currently shown in your authenticator app.",
+      codeLabel: "Verification code",
+      confirm: "Confirm",
+      verifying: "Confirming…",
+      cancel: "Cancel",
+      errorInvalid: "That code didn't work. Check your app and try again.",
+      errorGeneric: "We couldn't complete setup. Please try again.",
+      unverifiedEmailTitle: "Verified email required",
+      unverifiedEmailBody:
+        "Enrolling this account failed because its email address is not verified. Verify your email, then sign in again to continue.",
+    },
+    completion: {
+      title: "Two-step verification turned on",
+      body: "For your security, you're now being signed out. Sign in again to continue — you will be asked for a code from your authenticator app the next time.",
+      signOutRetry: "Try signing out again",
+      signOutFailed:
+        "We couldn't sign you out. Two-step verification is enabled, but your current session is still active — sign out, then sign in again to be asked for a code from your authenticator app.",
+    },
+  },
 } as const;
