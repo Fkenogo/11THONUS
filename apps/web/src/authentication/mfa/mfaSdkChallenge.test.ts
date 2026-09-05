@@ -60,7 +60,7 @@ describe("mfaSdkChallenge (AUTH-MFA-003C)", () => {
     expect(isMfaRequiredError(new Error("mfa"))).toBe(false);
   });
 
-  it("builds a challenge from the resolver, exposing only TOTP hints", () => {
+  it("creates a challenge from a resolver with exactly one TOTP hint alongside phone hints (CORR-001)", () => {
     const resolver = {
       hints: [hint("totp-1", "totp"), hint("phone-1", "phone")],
       resolveSignIn: vi.fn(),
@@ -83,8 +83,8 @@ describe("mfaSdkChallenge (AUTH-MFA-003C)", () => {
     });
 
     expect(sdk.getResolver).toHaveBeenCalledWith(auth, mfaRequiredError);
-    // Only the TOTP hint survives; the phone hint is never surfaced.
-    expect(challenge.factorUids).toEqual(["totp-1"]);
+    // Exactly one TOTP factor (mixed with phone hints) still creates a challenge.
+    expect(isPendingMfaChallenge(challenge)).toBe(true);
     expect(calls).toEqual([]);
   });
 
@@ -101,6 +101,92 @@ describe("mfaSdkChallenge (AUTH-MFA-003C)", () => {
         sdk,
       }),
     ).toThrow(MfaChallengeUnavailableError);
+  });
+
+  it("fails closed with an ambiguous multiple-TOTP configuration — never selects a first factor (CORR-001)", () => {
+    const resolver = {
+      hints: [hint("totp-1", "totp"), hint("totp-2", "totp")],
+      resolveSignIn: vi.fn(),
+    };
+    const sdk = makeSdk(() => resolver as never);
+    const callAuthenticate = vi.fn();
+
+    expect(() =>
+      createPendingMfaChallenge({
+        auth,
+        error: mfaRequiredError,
+        referenceType: "email",
+        deps: { callAuthenticate },
+        sdk,
+      }),
+    ).toThrow(MfaChallengeUnavailableError);
+
+    // No silent selection: neither factor is ever asserted, nothing resolves,
+    // and AUTH-03 is never bridged for the ambiguous configuration.
+    expect(sdk.TotpMultiFactorGenerator.assertionForSignIn).not.toHaveBeenCalled();
+    expect(resolver.resolveSignIn).not.toHaveBeenCalled();
+    expect(callAuthenticate).not.toHaveBeenCalled();
+  });
+
+  it("submits only the single TOTP factor for a mixed resolver — never a phone hint (CORR-001)", async () => {
+    const resolver = {
+      hints: [hint("totp-1", "totp"), hint("phone-1", "phone")],
+      resolveSignIn: vi.fn(async (assertion: unknown) => ({
+        user: { getIdToken: vi.fn(async () => mfaResolvedToken) },
+        assertion,
+      })),
+    };
+    const sdk = makeSdk(() => resolver as never);
+    const callAuthenticate = vi.fn(async () => makeOutcome("email"));
+
+    const challenge = createPendingMfaChallenge({
+      auth,
+      error: mfaRequiredError,
+      referenceType: "email",
+      deps: { callAuthenticate },
+      sdk,
+    });
+
+    const outcome = await challenge.submit("123456");
+
+    // The assertion targets the single TOTP enrollment id — the phone hint is
+    // never touched — and the MFA-resolved user's token reaches AUTH-03.
+    expect(sdk.TotpMultiFactorGenerator.assertionForSignIn).toHaveBeenCalledWith(
+      "totp-1",
+      "123456",
+    );
+    expect(callAuthenticate).toHaveBeenCalledTimes(1);
+    expect((callAuthenticate as ReturnType<typeof vi.fn>).mock.calls[0][0].rawToken).toBe(
+      mfaResolvedToken,
+    );
+    expect(outcome).toEqual(makeOutcome("email"));
+  });
+
+  it("never leaks factor metadata to the UI surface (CORR-001)", () => {
+    const resolver = {
+      hints: [
+        { uid: "totp-1", factorId: "totp", enrollmentTime: "2026-09-01T00:00:00.000Z" },
+        { uid: "phone-2", factorId: "phone", phoneNumber: "+15555550100" },
+      ],
+      resolveSignIn: vi.fn(),
+    };
+    const sdk = makeSdk(() => resolver as never);
+
+    const challenge = createPendingMfaChallenge({
+      auth,
+      error: mfaRequiredError,
+      referenceType: "email",
+      deps: { callAuthenticate: vi.fn() },
+      sdk,
+    });
+
+    // The entire public surface is { kind, submit, clear } — no factor ids,
+    // no enrollment timestamps, no phone hints, no metadata.
+    expect(Object.keys(challenge).sort()).toEqual(["clear", "kind", "submit"]);
+    expect(JSON.stringify(challenge)).not.toContain("totp-1");
+    expect(JSON.stringify(challenge)).not.toContain("phone-2");
+    expect(JSON.stringify(challenge)).not.toContain("enrollmentTime");
+    expect(JSON.stringify(challenge)).not.toContain("+1555");
   });
 
   it("submit resolves sign-in with a TOTP assertion then bridges the MFA-resolved user's token", async () => {
@@ -215,7 +301,6 @@ describe("mfaSdkChallenge (AUTH-MFA-003C)", () => {
     expect(
       isPendingMfaChallenge({
         kind: "mfa-challenge",
-        factorUids: [],
         submit: vi.fn(),
         clear: vi.fn(),
       }),

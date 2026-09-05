@@ -7,6 +7,7 @@ import {
 } from "./authenticateClient";
 import {
   isPendingMfaChallenge,
+  MfaChallengeUnavailableError,
   MFA_REQUIRED_ERROR_CODE,
   type MfaChallengeSdkDeps,
 } from "./mfa/mfaSdkChallenge";
@@ -97,8 +98,36 @@ describe("emailPasswordSignInFlow (AUTH-CORR-003)", () => {
     });
 
     expect(isPendingMfaChallenge(result)).toBe(true);
-    expect(result).toMatchObject({ kind: "mfa-challenge", factorUids: ["totp-1"] });
+    expect(result).toMatchObject({ kind: "mfa-challenge" });
     // No AUTH-03 bridge happens before the second factor is resolved.
+    expect(callAuthenticate).not.toHaveBeenCalled();
+  });
+
+  it("fails closed on an ambiguous multiple-TOTP configuration — never selects a first factor, never bridges (CORR-001)", async () => {
+    const signIn = vi.fn(async () => {
+      throw { code: MFA_REQUIRED_ERROR_CODE };
+    });
+    const callAuthenticate = vi.fn(async () => outcome("signed_in"));
+    const resolver = {
+      hints: [totpHint("totp-1"), totpHint("totp-2")],
+      resolveSignIn: vi.fn(),
+    };
+    const sdk: MfaChallengeSdkDeps = {
+      getResolver: (() => resolver) as never,
+      TotpMultiFactorGenerator: mfaChallengeSdk().TotpMultiFactorGenerator,
+    };
+
+    await expect(
+      signInWithEmailPassword(auth, "admin@onus.co", "pw", {
+        callAuthenticate,
+        signIn,
+        challengeSdk: sdk,
+      }),
+    ).rejects.toBeInstanceOf(MfaChallengeUnavailableError);
+
+    // No assertion, no resolution, and AUTH-03 never runs for the ambiguous config.
+    expect(sdk.TotpMultiFactorGenerator.assertionForSignIn).not.toHaveBeenCalled();
+    expect(resolver.resolveSignIn).not.toHaveBeenCalled();
     expect(callAuthenticate).not.toHaveBeenCalled();
   });
 

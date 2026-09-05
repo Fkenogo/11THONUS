@@ -3,9 +3,16 @@ import { signInWithGoogle } from "./googleSignInFlow";
 import type { AuthenticateOutcome, CallAuthenticate } from "./authenticateClient";
 import {
   isPendingMfaChallenge,
+  MfaChallengeUnavailableError,
   MFA_REQUIRED_ERROR_CODE,
   type MfaChallengeSdkDeps,
 } from "./mfa/mfaSdkChallenge";
+
+const totpHint = {
+  uid: "totp-1",
+  factorId: "totp",
+  enrollmentTime: "2026-09-01T00:00:00.000Z",
+};
 
 const outcome: AuthenticateOutcome = {
   mode: "signed_in",
@@ -54,7 +61,7 @@ describe("signInWithGoogle", () => {
     const callAuthenticate = vi.fn<CallAuthenticate>(async () => outcome);
     const challengeSdk: MfaChallengeSdkDeps = {
       getResolver: (() => ({
-        hints: [{ uid: "totp-1", factorId: "totp", enrollmentTime: "2026-09-01T00:00:00.000Z" }],
+        hints: [totpHint],
         resolveSignIn: vi.fn(async () => ({
           user: { getIdToken: vi.fn(async () => "mfa-resolved-token") },
         })),
@@ -71,8 +78,39 @@ describe("signInWithGoogle", () => {
     const result = await signInWithGoogle({} as never, { signIn, callAuthenticate, challengeSdk });
 
     expect(isPendingMfaChallenge(result)).toBe(true);
-    expect(result).toMatchObject({ kind: "mfa-challenge", factorUids: ["totp-1"] });
+    expect(result).toMatchObject({ kind: "mfa-challenge" });
     // No AUTH-03 bridge happens before the second factor is resolved.
+    expect(callAuthenticate).not.toHaveBeenCalled();
+  });
+
+  it("fails closed on an ambiguous multiple-TOTP configuration — never selects a first factor, never bridges (CORR-001)", async () => {
+    const signIn = vi.fn(async () => {
+      throw { code: MFA_REQUIRED_ERROR_CODE };
+    });
+    const callAuthenticate = vi.fn<CallAuthenticate>(async () => outcome);
+    const challengeSdk: MfaChallengeSdkDeps = {
+      getResolver: (() => ({
+        hints: [
+          { ...totpHint, uid: "totp-1" },
+          { ...totpHint, uid: "totp-2" },
+        ],
+        resolveSignIn: vi.fn(),
+      })) as never,
+      TotpMultiFactorGenerator: {
+        FACTOR_ID: "totp",
+        assertionForSignIn: vi.fn(
+          (enrollmentId: string, code: string) =>
+            ({ factorId: "totp", enrollmentId, code }) as never,
+        ),
+      },
+    };
+
+    await expect(
+      signInWithGoogle({} as never, { signIn, callAuthenticate, challengeSdk }),
+    ).rejects.toBeInstanceOf(MfaChallengeUnavailableError);
+
+    // No assertion, no resolution, and AUTH-03 never runs for the ambiguous config.
+    expect(challengeSdk.TotpMultiFactorGenerator.assertionForSignIn).not.toHaveBeenCalled();
     expect(callAuthenticate).not.toHaveBeenCalled();
   });
 

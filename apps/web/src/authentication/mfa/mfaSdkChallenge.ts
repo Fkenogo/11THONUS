@@ -9,9 +9,14 @@
  *
  * The result is a bounded {@link PendingMfaChallenge}:
  *
- * - `factorUids` is the **TOTP-only** subset of `resolver.hints` — no other
- *   factor type is surfaced and no factor-selection UI exists (`DEC-SEC-004`
- *   TOTP-only policy).
+ * - The challenge is created only when the resolver exposes **exactly one**
+ *   TOTP factor; zero TOTP factors and an ambiguous multiple-TOTP
+ *   configuration both fail closed (`AUTH-MFA-003C-CORR-001`). No client
+ *   factor-selection policy — "first factor wins" or otherwise — is ever
+ *   applied (`DEC-SEC-004` TOTP-only policy).
+ * - The single selected enrollment ID stays internal to the challenge
+ *   closure; the public surface never lists factor IDs, enrollment
+ *   timestamps, factor metadata, or phone hints.
  * - `submit(code)` builds a TOTP assertion with
  *   `TotpMultiFactorGenerator.assertionForSignIn` and passes it to
  *   `resolver.resolveSignIn`, then hands the **MFA-resolved user's** token to
@@ -48,6 +53,12 @@ export const MFA_CHALLENGE_CODE_LENGTH = 6;
 /** Bounded failure classification of a TOTP challenge attempt. */
 export type MfaChallengeErrorCategory = "invalid-code" | "session-expired" | "other";
 
+/**
+ * Fail-closed marker: no usable TOTP challenge exists for this account — either
+ * the resolver exposes no TOTP factor, or it exposes more than one (ambiguous,
+ * unsupported). The panel maps this to `auth_forbidden`; no challenge UI, no
+ * AUTH-03 bridge, and no downgrade ever follow (`AUTH-MFA-003C-CORR-001`).
+ */
 export class MfaChallengeUnavailableError extends Error {
   constructor() {
     super("mfa-challenge-unavailable");
@@ -101,7 +112,6 @@ export function classifyMfaChallengeError(error: unknown): MfaChallengeErrorCate
  */
 export type PendingMfaChallenge = {
   readonly kind: "mfa-challenge";
-  readonly factorUids: readonly string[];
   submit: (oneTimePassword: string) => Promise<AuthenticateOutcome>;
   clear: () => void;
 };
@@ -128,8 +138,11 @@ export type CreatePendingMfaChallengeArgs = {
 
 /**
  * Builds the bounded challenge from the MFA-required error, fail-closed:
- * throws {@link MfaChallengeUnavailableError} (no bypass) when the resolver
- * exposes no TOTP factor.
+ * throws {@link MfaChallengeUnavailableError} (no bypass) unless the resolver
+ * exposes **exactly one** TOTP factor. Zero supported TOTP hints and an
+ * ambiguous multiple-TOTP configuration are both treated as an unavailable
+ * challenge — no challenge UI, no AUTH-03 bridge, no downgrade, and no
+ * silent first-factor selection (`AUTH-MFA-003C-CORR-001`).
  */
 export function createPendingMfaChallenge({
   auth,
@@ -142,11 +155,10 @@ export function createPendingMfaChallenge({
   const totpHints = resolver.hints.filter(
     (hint) => hint.factorId === sdk.TotpMultiFactorGenerator.FACTOR_ID,
   );
-  if (totpHints.length === 0) {
+  if (totpHints.length !== 1) {
     throw new MfaChallengeUnavailableError();
   }
-  const factorUids = totpHints.map((hint) => hint.uid);
-  const enrollmentId = factorUids[0];
+  const enrollmentId = totpHints[0].uid;
 
   // Mutable holder so `clear()` can drop the resolver reference entirely.
   let holder: { resolver: MultiFactorResolver } | null = { resolver };
@@ -167,5 +179,5 @@ export function createPendingMfaChallenge({
     holder = null;
   };
 
-  return { kind: "mfa-challenge", factorUids, submit, clear };
+  return { kind: "mfa-challenge", submit, clear };
 }

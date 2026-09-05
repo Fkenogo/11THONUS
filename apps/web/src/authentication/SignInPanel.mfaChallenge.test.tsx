@@ -22,7 +22,6 @@ function challenge(
 ): PendingMfaChallenge {
   return {
     kind: "mfa-challenge",
-    factorUids: ["totp-1"],
     submit,
     clear,
   };
@@ -182,5 +181,47 @@ describe("SignInPanel — TOTP second-factor challenge (AUTH-MFA-003C)", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/can't sign in right now/i);
     expect(onSignedIn).not.toHaveBeenCalled();
+  });
+
+  it("fails closed with auth_forbidden on an ambiguous multiple-TOTP configuration — no challenge UI, no factor list (CORR-001)", async () => {
+    const actions = makeActions({
+      signInWithGoogle: vi.fn(async () => {
+        throw new MfaChallengeUnavailableError();
+      }),
+    });
+    const onSignedIn = vi.fn();
+    const user = userEvent.setup();
+    render(<SignInPanel actions={actions} onSignedIn={onSignedIn} />);
+
+    await user.click(screen.getByRole("button", { name: /continue with google/i }));
+
+    // No challenge step is shown for the ambiguous configuration.
+    expect(await screen.findByRole("alert")).toHaveTextContent(/can't sign in right now/i);
+    expect(
+      screen.queryByRole("heading", { name: /two-step verification/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/verification code/i)).not.toBeInTheDocument();
+    // No factor identifier, enrollment timestamp, or phone hint is exposed.
+    expect(document.body.textContent).not.toContain("totp-");
+    expect(onSignedIn).not.toHaveBeenCalled();
+  });
+
+  it("renders no factor-selection surface — the challenge step exposes only the code input and confirm/cancel (CORR-001)", async () => {
+    const actions = makeActions({ signInWithEmail: vi.fn(async () => challenge()) });
+    const user = userEvent.setup();
+    render(<SignInPanel actions={actions} />);
+
+    await user.type(screen.getByLabelText(/email/i), "admin@onus.co");
+    await user.type(screen.getByLabelText(/password/i), "password");
+    await user.click(screen.getByRole("button", { name: /sign in with email/i }));
+
+    await screen.findByRole("heading", { name: /two-step verification/i });
+    // The only interactive challenge elements are the 6-digit input and confirm/cancel.
+    expect(screen.getByLabelText(/verification code/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /confirm sign-in/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /cancel/i })).toBeInTheDocument();
+    expect(screen.queryByRole("radio")).not.toBeInTheDocument();
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    expect(screen.queryByText(/totp-/)).not.toBeInTheDocument();
   });
 });
