@@ -70,6 +70,7 @@ import {
 import { AuthorizeAndExecuteError } from "./domains/permissions/service/authorizeAndExecute";
 import { PermissionDomainError } from "./domains/permissions/models/permissionErrors";
 import { CommerceKnowledgeDomainError } from "./domains/commerceKnowledge/models/commerceKnowledgeErrors";
+import { PlatformAdministrationDomainError } from "./domains/platformAdministration/models/platformAdministrationErrors";
 import {
   getOwnedBusinesses as getOwnedBusinessesRead,
   getBusinessContext as getBusinessContextRead,
@@ -97,6 +98,7 @@ import {
   isInvitationStatus,
   type InvitationStatus,
 } from "./domains/permissions/models/invitationStatus";
+import { discoverPlatformAdministrator as discoverPlatformAdministratorRead } from "./domains/platformAdministration/services/discoverPlatformAdministrator";
 
 setGlobalOptions({ region: PLATFORM_REGION, maxInstances: 10 });
 
@@ -176,6 +178,19 @@ function toHttpsError(error: unknown): HttpsError {
     return new HttpsError(
       CATEGORY_TO_HTTPS[error.category] ?? "internal",
       "commerce_knowledge_read_failed",
+    );
+  }
+  if (error instanceof PlatformAdministrationDomainError) {
+    // Fail-closed discovery path (`AUTH-MFA-003A1`): a structurally malformed
+    // `platformAdministrators/{userId}` record makes the repository throw
+    // `platformAdministratorConfigMalformedError` (AUTH_FORBIDDEN →
+    // permission-denied) rather than return `false` — an unverifiable record
+    // is treated as *unknown access*, never as *not-an-administrator*. Same
+    // stable-message convention as every other domain mapping above; the
+    // domain message (which can name the unverifiable field) is never echoed.
+    return new HttpsError(
+      CATEGORY_TO_HTTPS[error.category] ?? "internal",
+      "platform_administration_failed",
     );
   }
   return new HttpsError("internal", "authentication_failed");
@@ -448,6 +463,63 @@ export const getMyDisplayName = onCall(async (request) => {
       { verifier: firebaseAdminTokenVerifier() },
     );
     return await getMyDisplayNameCommand(db, userId);
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+/**
+ * Whitelist parser (`AUTH-MFA-003A1`, mass-assignment boundary): only
+ * `rawToken`/`referenceType` are read off `data`. The identity whose
+ * `platformAdministrators/{userId}` record is read is always the
+ * server-resolved caller (see the callable below) — a client-supplied
+ * `userId`/`customerIdentityId`/`targetUserId`/`roles`/`status`/`isPlatformAdministrator`
+ * (or any other key) is silently dropped here, never reaching the discovery
+ * service. The request carries no identity-selecting field at all, so there
+ * is nothing for a caller to mass-assign. Exported only for the
+ * mass-assignment regression test in `index.test.ts`.
+ */
+export function parseDiscoverPlatformAdministratorRequest(data: unknown): {
+  rawToken: string;
+  referenceType: AuthenticationReferenceType;
+} {
+  const value = (data ?? {}) as Record<string, unknown>;
+  return {
+    rawToken: parseRawToken(value.rawToken),
+    referenceType: parseReferenceType(value.referenceType),
+  };
+}
+
+/**
+ * `discoverPlatformAdministrator` (`AUTH-MFA-003A1`) — the read-only routing
+ * primitive an access layer calls to ask "is this authenticated user a
+ * currently-active platform administrator?", before offering any privileged
+ * administration/session flow. Answer derived exclusively from the
+ * server-verified identity's own `platformAdministrators/{userId}` record
+ * (doc id = Customer Identity ID, one record per identity,
+ * `ENG-P3-003-DESIGN-001` §6) — never from any request field. Only
+ * `status === "active"` is discoverable; no record, `invited`, `suspended`
+ * and `removed` (terminal) each resolve to `false`, exactly mirroring
+ * `evaluateKnowledgePlatformPermission`'s eligibility test. Fails closed:
+ * a structurally-malformed record surfaces as `permission-denied`
+ * (`platform_administration_failed`), an ineligible Customer Identity as
+ * `unauthenticated` — neither can silently fabricate
+ * `{ isPlatformAdministrator: false | true }`. Read-only: performs no
+ * audit mutation, since no governed `PLATFORM_ADMINISTRATION_AUDIT_ACTION_TYPES`
+ * entry exists for a pure routing read (its role — proving the discovery
+ * was issued — can be answered by the consuming access-layer command's own
+ * governed audit channel instead).
+ */
+export const discoverPlatformAdministrator = onCall(async (request) => {
+  const parsed = parseDiscoverPlatformAdministratorRequest(request.data);
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId } = await resolveAuthenticatedIdentityActor(
+      db,
+      { rawToken: parsed.rawToken, referenceType: parsed.referenceType },
+      { verifier: firebaseAdminTokenVerifier() },
+    );
+    return await discoverPlatformAdministratorRead(db, userId);
   } catch (error) {
     throw toHttpsError(error);
   }

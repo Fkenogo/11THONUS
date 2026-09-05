@@ -5306,3 +5306,19 @@ READY FOR CONTROLLED DRAFTING — PR AWAITS FOUNDER REVIEW`**.
 - **Risks:** one-way Identity Platform upgrade (no automatic rollback); TOTP-disable supported via project-config PATCH; genuine MFA-authenticated administrator sessions require future enrollment/challenge packages (`AUTH-MFA-003A1/B/C`). See the Implementation Report §20.
 - **Rollback:** TOTP disable is supported via project-config PATCH (`admin/v2/projects/eleventh-on-us-dev/config?updateMask=mfa`). **Identity Platform upgrade has NO automatic rollback / downgrade path** — a git revert does not reverse the external change. Repository rollback: do not merge / revert the documentation PR normally.
 - **Report link:** [`docs/05-implementation/reports/AUTH-MFA-003A-identity-platform-upgrade-totp-enablement-implementation-report-2026-09-04.md`](../05-implementation/reports/AUTH-MFA-003A-identity-platform-upgrade-totp-enablement-implementation-report-2026-09-04.md), corrected by [`docs/05-implementation/reports/AUTH-MFA-003A-CORR-001-implementation-correction-report-2026-09-04.md`](../05-implementation/reports/AUTH-MFA-003A-CORR-001-implementation-correction-report-2026-09-04.md).
+
+---
+
+## 2026-09-05 — AUTH-MFA-003A1 — Trusted Platform-Administrator Discovery Callable
+
+- **Date:** 2026-09-05
+- **Phase:** TRD22 Phase 12 identity/security enablement (Platform Administrator MFA, per `AUTH-MFA-002` §12 package sequence)
+- **Task:** `AUTH-MFA-003A1` — implement the trusted, server-side platform-administrator discovery callable (`discoverPlatformAdministrator`) returning only `{ isPlatformAdministrator: boolean }`.
+- **Status:** Implemented — awaiting Technical Review (not self-merged)
+- **Files changed:** services + tests created and transport wired — full created/modified list in the [Implementation Report](../05-implementation/reports/AUTH-MFA-003A1-trusted-administrator-discovery-implementation-report-2026-09-05.md).
+- **Tests:** unit `pnpm --filter functions test` — 153 files / **1645 passed** (7 new discovery unit tests + 4 new parser mass-assignment regressions); `typecheck` clean; `lint` clean (one pre-existing untested `apps/web` warning); `format:check` clean; emulator `pnpm emulators:validate` — **58 files / 752 passed / 2 skipped** (6 new discovery emulator tests; full pass green). One pre-existing Firestore-contention flake in `authorizeAndExecute.emulator.test.ts` observed on the first full sweep and green on re-run/isolation — disclosed in the report §10.
+- **Configuration:** none — no live Firebase/Identity Platform/TOTP/project configuration change; Firestore Rules untouched (deny-all on `platformAdministrators` unchanged).
+- **Migrations:** none.
+- **Risks:** no wired consumer yet (AUTH-MFA-003B/003C client packages will consume discovery); no live enrollment path changed; see report §12.
+- **Rollback:** do not merge / revert the PR. No live configuration and no compiled artifact shipped — reverting the PR's files restores the pre-package `index.ts`/domain state exactly.
+- **Report link:** [`docs/05-implementation/reports/AUTH-MFA-003A1-trusted-administrator-discovery-implementation-report-2026-09-05.md`](../05-implementation/reports/AUTH-MFA-003A1-trusted-administrator-discovery-implementation-report-2026-09-05.md).

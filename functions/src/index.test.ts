@@ -9,6 +9,7 @@ import {
   parseAcceptBusinessTermsRequest,
   parseSetDisplayNameRequest,
   parseGetMyDisplayNameRequest,
+  parseDiscoverPlatformAdministratorRequest,
 } from "./index";
 
 /**
@@ -351,5 +352,63 @@ describe("parseGetMyDisplayNameRequest (mass-assignment boundary — IDENTITY-PR
     expect(parsed).toEqual({ rawToken: "raw-token", referenceType: "email" });
     expect(Object.keys(parsed)).not.toContain("userId");
     expect(Object.keys(parsed)).not.toContain("customerIdentityId");
+  });
+});
+
+/**
+ * Adversarial mass-assignment regression (`AUTH-MFA-003A1`, Phase 10) — the
+ * same runtime proof the other whitelist parsers above establish. The
+ * discovery callable's authority derives exclusively from the
+ * server-resolved identity; a malicious payload must never be able to steer
+ * which identity's `platformAdministrators/{userId}` record is read, nor to
+ * dictate the answer.
+ */
+describe("parseDiscoverPlatformAdministratorRequest (mass-assignment boundary — AUTH-MFA-003A1)", () => {
+  it("drops every identity/result-steering field an attacker attaches to the payload", () => {
+    const malicious = {
+      rawToken: "raw-token",
+      referenceType: "email",
+      userId: "attacker-controlled-uid",
+      customerIdentityId: "cust_victim",
+      targetUserId: "cust_victim",
+      roles: ["platform_super_administrator"],
+      status: "active",
+      isPlatformAdministrator: true,
+      mfaSatisfied: true,
+    };
+
+    const parsed = parseDiscoverPlatformAdministratorRequest(malicious);
+
+    expect(parsed).toEqual({ rawToken: "raw-token", referenceType: "email" });
+    for (const forbiddenKey of [
+      "userId",
+      "customerIdentityId",
+      "targetUserId",
+      "roles",
+      "status",
+      "isPlatformAdministrator",
+      "mfaSatisfied",
+    ]) {
+      expect(Object.keys(parsed)).not.toContain(forbiddenKey);
+      expect((parsed as Record<string, unknown>)[forbiddenKey]).toBeUndefined();
+    }
+  });
+
+  it("parses to exactly the whitelisted field set — nothing more, nothing less", () => {
+    const parsed = parseDiscoverPlatformAdministratorRequest({
+      rawToken: "raw-token",
+      referenceType: "email",
+      unexpectedExtraField: "should be dropped",
+    });
+
+    expect(Object.keys(parsed).sort()).toEqual(["rawToken", "referenceType"]);
+  });
+
+  it("rejects a missing rawToken (no authenticated credential → unauthenticated, fail closed)", () => {
+    expect(() => parseDiscoverPlatformAdministratorRequest({ referenceType: "email" })).toThrow();
+  });
+
+  it("rejects a missing/unsupported referenceType", () => {
+    expect(() => parseDiscoverPlatformAdministratorRequest({ rawToken: "raw-token" })).toThrow();
   });
 });
