@@ -16,19 +16,48 @@ import {
   type AuthenticateDeps,
   type AuthenticateOutcome,
 } from "./authenticateClient";
+import {
+  createPendingMfaChallenge,
+  isMfaRequiredError,
+  type MfaChallengeSdkDeps,
+  type PendingMfaChallenge,
+} from "./mfa/mfaSdkChallenge";
+
+type FirebaseUserResult = { user: { getIdToken: () => Promise<string> } };
+
+/** Google first-factor result — either bridged, or a pending TOTP challenge. */
+export type GoogleSignInResult = AuthenticateOutcome | PendingMfaChallenge;
 
 export type GoogleSignInDeps = AuthenticateDeps & {
-  signIn?: (auth: Auth) => Promise<{ user: { getIdToken: () => Promise<string> } }>;
+  signIn?: (auth: Auth) => Promise<FirebaseUserResult>;
+  /** Challenge SDK seam (AUTH-MFA-003C) — defaults to the real SDK; injected only in tests. */
+  challengeSdk?: MfaChallengeSdkDeps;
 };
 
 export async function signInWithGoogle(
   auth: Auth,
   deps: GoogleSignInDeps,
-): Promise<AuthenticateOutcome> {
+): Promise<GoogleSignInResult> {
   const signIn = deps.signIn ?? ((a: Auth) => signInWithPopup(a, new GoogleAuthProvider()));
-  const credential = await signIn(auth);
-  return authenticate(
-    { getIdToken: () => credential.user.getIdToken(), referenceType: "google_sign_in" },
-    deps,
-  );
+  try {
+    const credential = await signIn(auth);
+    return authenticate(
+      { getIdToken: () => credential.user.getIdToken(), referenceType: "google_sign_in" },
+      deps,
+    );
+  } catch (error) {
+    // A federated first-factor sign-in raises `auth/multi-factor-auth-required`
+    // through the popup for an MFA-enrolled user: surface a bounded TOTP
+    // challenge instead of an error (AUTH-MFA-003C).
+    if (isMfaRequiredError(error)) {
+      return createPendingMfaChallenge({
+        auth,
+        error,
+        referenceType: "google_sign_in",
+        deps,
+        sdk: deps.challengeSdk,
+      });
+    }
+    throw error;
+  }
 }

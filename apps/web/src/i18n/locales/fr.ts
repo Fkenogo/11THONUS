@@ -339,5 +339,15 @@ export const fr = {
       signOutFailed:
         "Nous n'avons pas pu vous déconnecter. La vérification en deux étapes est activée, mais votre session actuelle est toujours active — déconnectez-vous, puis reconnectez-vous pour qu'un code de votre application d'authentification vous soit demandé.",
     },
+    challenge: {
+      title: "Vérification en deux étapes",
+      body: "Saisissez le code à 6 chiffres de votre application d'authentification pour terminer la connexion.",
+      codeLabel: "Code de vérification",
+      confirm: "Confirmer la connexion",
+      verifying: "Vérification…",
+      cancel: "Annuler",
+      errorInvalid: "Ce code ne fonctionne pas. Vérifiez votre application et réessayez.",
+      errorGeneric: "La connexion n'a pas abouti. Veuillez réessayer.",
+    },
   },
 } as const;
