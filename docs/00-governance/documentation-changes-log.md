@@ -2,7 +2,9 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-09-07 (Entry 178 added: `AUTH-MFA-003D-FD-001` — Founder Recovery Policy Disposition + design closure + merge of PR #232. The Founder approved the ten Platform Administrator MFA recovery decisions **R1–R10 as one package** (disposition `FD-MFA-R`) on 2026-09-07; recorded in the Decision Register as **`DEC-SEC-005`**, resolving the recovery approver/initiation model left open by `DEC-SEC-004` without superseding its TOTP-only factor policy or dev-only Identity Platform bootstrap. R1 normal recovery initiated on the target's behalf by an independent authorised Platform Administrator presenting server-verified MFA evidence (no target-initiated pre-MFA recovery-proof mechanism at MVP; break-glass when no eligible independent administrator); R2 self-approval prohibited without exception; R3 one independent active MFA-satisfied approver at MVP (server-verified chain to `verifiedMfaSatisfied === true`; active status alone insufficient); R4 break-glass requires explicit Founder authorization + backend/service-account execution, fully attributable/audited, no public endpoint, no standing service-account authority; R5 session revocation mandatory and fail-closed before factor removal (`approved → revoke → succeeds → verify factor binding → remove factor`; no natural-expiry downgrade); R6 administrator lifecycle unchanged (recovery state separate; no activation/reactivation/role/status change); R7 persistent recovery-request record bound to the exact original factor enrollment (`targetFactorEnrollmentId`-equivalent immutable identifier; no TOTP secrets/codes/recovery credentials stored; retries never remove a replacement factor); R8 approval expires one hour after approval if execution has not begun (no revival/extension); R9 completion requires `reset → fresh TOTP enrollment → end enrollment session → fresh primary sign-in → genuine TOTP challenge → server-verified sign_in_second_factor` before privileged access is restored; R10 audit vocabulary extended with `mfa_recovery_requested/approved/executed/denied/expired` (no `mfa_recovery_failed` unless separately approved). The corrected design assessment was finalized as the approved design basis (new §34 Founder Disposition) and closed; an editorial phrase was corrected (`session-revocation gap`). **This recording authorizes NO implementation** — `AUTH-MFA-003D-IMPL-001` not started, no code/stubs created, no live Firebase action. PR #232 was merged at its exact reviewed final head; post-merge `origin/main` and CI verified SUCCESS.
+> **Last controlled update:** 2026-09-07 (Entry 181 added: `AUTH-MFA-003D-WP-AUTH-001` — Founder execution authorization recorded for the sole official `FEF-EWPCS-001` v1.0 work package at `docs/05-implementation/reports/AUTH-MFA-003D-IMPL-001-work-package-2026-09-07.md`, reference `FD-AUTH-MFA-003D-IMPL-001`. The Founder reviewed pre-authorization WP head `b32eef5d576c4e9ad0bbea43d424f02ed6fba095`; the WP state is now **AUTHORISED — READY FOR IMPLEMENTATION**. This bounded execution authority neither creates a new security decision nor changes `DEC-SEC-005` / `FD-MFA-R` R1–R10, the security invariants, acceptance criteria, or High-Risk Review Gate. All future execution Entry Gate checks remain required. No production code, dependency, configuration, live action, or implementation changed.)
+> **Prior update:** 2026-09-07 (Entry 179 added the provisional custom `AUTH-MFA-003D-WP-001` recording on PR #233. It is retained as history only and is superseded by Entry 180's official FEF template instantiation; it grants no implementation authority.)
+> **Earlier update:** 2026-09-07 (Entry 178 added: `AUTH-MFA-003D-FD-001` — Founder Recovery Policy Disposition + design closure + merge of PR #232. The Founder approved the ten Platform Administrator MFA recovery decisions **R1–R10 as one package** (disposition `FD-MFA-R`) on 2026-09-07; recorded in the Decision Register as **`DEC-SEC-005`**, resolving the recovery approver/initiation model left open by `DEC-SEC-004` without superseding its TOTP-only factor policy or dev-only Identity Platform bootstrap. R1 normal recovery initiated on the target's behalf by an independent authorised Platform Administrator presenting server-verified MFA evidence (no target-initiated pre-MFA recovery-proof mechanism at MVP; break-glass when no eligible independent administrator); R2 self-approval prohibited without exception; R3 one independent active MFA-satisfied approver at MVP (server-verified chain to `verifiedMfaSatisfied === true`; active status alone insufficient); R4 break-glass requires explicit Founder authorization + backend/service-account execution, fully attributable/audited, no public endpoint, no standing service-account authority; R5 session revocation mandatory and fail-closed before factor removal (`approved → revoke → succeeds → verify factor binding → remove factor`; no natural-expiry downgrade); R6 administrator lifecycle unchanged (recovery state separate; no activation/reactivation/role/status change); R7 persistent recovery-request record bound to the exact original factor enrollment (`targetFactorEnrollmentId`-equivalent immutable identifier; no TOTP secrets/codes/recovery credentials stored; retries never remove a replacement factor); R8 approval expires one hour after approval if execution has not begun (no revival/extension); R9 completion requires `reset → fresh TOTP enrollment → end enrollment session → fresh primary sign-in → genuine TOTP challenge → server-verified sign_in_second_factor` before privileged access is restored; R10 audit vocabulary extended with `mfa_recovery_requested/approved/executed/denied/expired` (no `mfa_recovery_failed` unless separately approved). The corrected design assessment was finalized as the approved design basis (new §34 Founder Disposition) and closed; an editorial phrase was corrected (`session-revocation gap`). **This recording authorizes NO implementation** — `AUTH-MFA-003D-IMPL-001` not started, no code/stubs created, no live Firebase action. PR #232 was merged at its exact reviewed final head; post-merge `origin/main` and CI verified SUCCESS.
 > 
 > **Prior update:** 2026-09-07 (Entry 177 added: `AUTH-MFA-003D-DESIGN-001-CORR-001` — eight automated review findings corrected on PR #232 (design/assessment only; base `origin/main` `a7b3a43756837390d60137a96883c8925b8e306e`). Corrected: (1) locked-out requester cannot use the normal authenticated application path — recovery request creation is delegated to a separate bounded pre-MFA proof mechanism or an independently authenticated actor/operator (design decides; see report §10B); (2) every in-product recovery approver must be an active Platform Administrator satisfying the existing server-verified MFA path (`verifiedMfaSatisfied === true`), no active-status-only or factorless approval while the backend/service-account break-glass operator uses a separate governed trust boundary; (3) factor reset is fail-closed on session-revocation failure — approved recovery → revoke → revocation succeeds → then factor reset; (4) recovery authorization binds to the exact original TOTP enrollment (`targetFactorEnrollmentId` immutable precondition), and retries that find a replacement factor never remove it; (5) ID-token cryptographic lifetime (~1 h `exp`) is distinguished from 11thONUS backend acceptance — the inspected verifier calls `verifyIdToken(rawToken, true)` at `firebaseTokenVerifier.ts:174`, so a pre-revocation token is rejected once revocation is authoritative, not accepted for an hour; (6) the server-side TOTP factor-removal API reconciled to the verified Identity Platform **v1 Admin** `projects.accounts.update` (`POST /v1/projects/{targetProjectId}/accounts:update`, service-account/OAuth2, IAM `firebaseauth.users.update`, `mfa` `MfaInfo` overwrite) as the primary backend path, vs the client-facing v2 `accounts.mfaEnrollment:withdraw` (user `idToken`, single-factor, reissues tokens) and the Admin SDK `updateUser` blocked by #2995; (7) the invalid baseline SHA corrected to `a7b3a43756837390d60137a96883c8925b8e306e` in both places in this log; (8) report file inventory corrected to the actual three-file diff. Status: `READY FOR FOUNDER RECOVERY POLICY DISPOSITION`.
 > 
@@ -41,6 +43,81 @@
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+
+## Entry 181 — `AUTH-MFA-003D-WP-AUTH-001`: Founder Execution Authorization — `AUTH-MFA-003D-IMPL-001`
+
+- **Date:** 7 September 2026
+- **Performed by:** Codex, in the isolated PR #233 worktree (branch `docs/auth-mfa-003d-impl-001-wp`, Founder-reviewed pre-authorization WP head `b32eef5d576c4e9ad0bbea43d424f02ed6fba095`). **Documentation/governance only — no production code, dependency, configuration, Firebase state, live change, or substantive recovery implementation.**
+
+### Authorization record
+
+- **Execution authorization:** Founder authorization is recorded as `FD-AUTH-MFA-003D-IMPL-001`, under `FEF-EWPCS-001` v1.0 and `DEC-SEC-005` / `FD-MFA-R` R1–R10.
+- **Scope and effect:** this authorization applies only to the bounded authoritative work package. It does not create a new security policy decision, alter or permit redesign of R1–R10, waive the provider capability stop gate, or waive any remaining Entry Gate or High-Risk Review Gate checkpoint.
+- **Status:** **AUTHORISED — READY FOR IMPLEMENTATION.** The maximum implementation-agent completion state remains **IMPLEMENTED — AWAITING INDEPENDENT REVIEW**; implementation has not started.
+
+### Preserved contract and records
+
+- **Unchanged:** the 23 acceptance criteria, security invariants, revocation-before-post-revocation-factor-verification ordering, durable absent-factor retry evidence, replacement-factor fail-closed rule, transactional Platform Administration audit coordination, required validation, agent permission boundary, and High-Risk Review Gate.
+- **Updated:** the authoritative WP, this changes log, and `docs/changes/IMPLEMENTATION_CHANGES.md` under established project conventions. `DEC-SEC-005`, R1–R10, production code, dependencies, configuration, and Firebase/live state are unchanged.
+- **Rollback:** revert this documentation-only authorization-recording commit. Reverting it removes the recorded execution authorization but does not change the underlying policy or design authority.
+
+---
+
+## Entry 180 — `AUTH-MFA-003D-WP-002`: Official FEF Work Package Replacement — `AUTH-MFA-003D-IMPL-001`
+
+- **Date:** 7 September 2026
+- **Performed by:** Codex, in the isolated PR #233 worktree (branch `docs/auth-mfa-003d-impl-001-wp`, original head `126722c6089228e0230f41f6dcebc3fb1a9e38ce`). **Documentation/governance only — no production code, dependency, configuration, Firebase state, or live change; implementation is not started.**
+
+### Supersession and authority
+
+- **Superseded recording:** Entry 179 and its custom work-package structure are retained only as pre-FEF provenance. They are not the governing work-package format and do not authorise implementation.
+- **Replacement:** the same sole source-of-truth WP path now contains an instantiation of `FEF-EWPCS-001-TPL-WP-001` under the approved `FEF-EWPCS-001` v1.0 standard. No competing work package was created.
+- **Status:** **PENDING FOUNDER AUTHORISATION — NOT EXECUTABLE.** `DEC-SEC-005` remains policy authority only; this replacement does not manufacture an execution authorisation.
+
+### Carried-forward security corrections
+
+1. **R5 ordering:** execution now requires revocation and confirmed success before authoritative current factor state is retrieved and the exact approved binding is verified immediately before reset.
+2. **Absent original factor:** a first execution with an unexplained absent factor is not successful. Retry reconciliation requires durable evidence that the same recovery previously reached the provider-reset stage.
+3. **Replacement-factor safety:** an old approval never permits deletion of a replacement factor; inability to guarantee that invariant is `BLOCKED — DECISION REQUIRED`.
+4. **Audit architecture:** recovery state and Platform Administration audit persistence must be transactionally coordinated in Firestore. The identity-domain `outboxEntries` projection is not reused, and no unapproved recovery outbox is invented.
+
+### Records and validation
+
+- **Updated:** the sole WP document, this changes log, and `docs/changes/IMPLEMENTATION_CHANGES.md` under the established project convention.
+- **Preserved:** `DEC-SEC-005` / R1–R10, `DEC-SEC-004`, approved design basis, `AUTH-03` trust architecture, and existing Platform Administration audit boundary.
+- **PR handling:** PR #233 is reused because the provisional document can be cleanly replaced in place without competing history. It remains open for review and is not merged by this task.
+
+---
+
+## Entry 179 — `AUTH-MFA-003D-WP-001`: Controlled Implementation Work Package — `AUTH-MFA-003D-IMPL-001`
+
+- **Date:** 7 September 2026
+- **Performed by:** big-pickle (AI agent), in an isolated worktree (branch `docs/auth-mfa-003d-impl-001-wp`, base `origin/main` `ebdb7cc80ba4930c4075321899b58df0620efc6a` — the PR #232 merge). **Documentation/governance only — no production code, dependencies, configuration, Firebase state, or live change; `AUTH-MFA-003D` implementation is NOT started by this task.**
+
+### Purpose and authority
+
+This entry records the authoring of the **controlled implementation work package** for `AUTH-MFA-003D-IMPL-001` — Platform Administrator MFA Recovery & Reset. The task translates the Founder-approved recovery policy (`DEC-SEC-005` / `FD-MFA-R`, R1–R10) and the corrected design (`AUTH-MFA-003D-DESIGN-001` + `-CORR-001`) into an executable engineering contract. **It makes no new Founder decision; it does not authorize production implementation.**
+
+### Framework and placement
+
+- **FEF-EWPCS-001 v1.0:** template **unavailable** in any authorized repository or working environment — verified; **no unofficial FEF-EWPCS template fabricated**. FEF-EWPCS principles (authority condition; fixed Founder policy; security invariants; scope/acceptance; evidence for independent review; live-environment boundary) preserved and mapped onto current 11thONUS controlled-document conventions.
+- **Placement (no dedicated work-package directory exists):** `docs/05-implementation/reports/AUTH-MFA-003D-IMPL-001-work-package-2026-09-07.md` — the smallest logical controlled path, adjacent to the governing `AUTH-MFA-003D-DESIGN-001` assessment already in `docs/05-implementation/reports/`. No competing copies created.
+
+### Work package contract highlights (as recorded)
+
+- **Authority condition (§2):** implementation authorized only by the combination of `DEC-SEC-005`/`FD-MFA-R`, this merged controlled WP, and explicit Founder execution authorization; the agent must stop if authorities cannot be verified.
+- **Classification (§2):** ID `AUTH-MFA-003D-IMPL-001`; Controlled Security Implementation Work Package; entry state `AUTHORISED / READY FOR IMPLEMENTATION` only after review+merge; execution outcome limited to `IMPLEMENTED — AWAITING INDEPENDENT REVIEW` or `BLOCKED — DECISION REQUIRED` (never self-declares APPROVED/MERGED/CLOSED).
+- **Fixed policy (§5):** R1–R10 preserved verbatim, zero engineering discretion.
+- **Primary invariant (§6):** recovery restores the ability to establish MFA again; never manufacturers/substitutes/bypasses MFA proof; no substitute for `firebase.sign_in_second_factor` / `verifiedMfaSatisfied === true`.
+- **Contract sections (§7–§31):** persistent recovery model (semantics over syntax; no TOTP material); lifecycle; request/approval/denial/expiry security; mandatory fail-closed execution ordering (revoke → confirm → reset; STOP on revocation failure); exact-factor idempotency (absent ⇒ idempotent; replacement ⇒ fail closed); partial-failure model (six enumerated cases); provider boundary (Identity Platform v1 Admin `projects.accounts.update`, re-verify before implementation, no silent substitution, material divergence ⇒ `BLOCKED`); revocation through existing backend architecture (`revokeRefreshTokens`, revocation-aware `verifyIdToken(rawToken, true)` intact); adapter architecture (no raw HTTP/service-account in presentation/domain); break-glass contract (no public endpoint, Founder-authorization evidence reference — not a client boolean, service-account execution-only, no lifecycle elevation, no MFA exemption); exactly five audit events with correct timing; Platform Administrator boundaries; smallest usable UI + EN/FR parity; Firestore server-governance; concurrency protections; no recovery-to-MFA shortcut; security testing acceptance matrix (Authority/Persistent model/Execution/Audit/Break-glass/Regression); validation requirements with accurate TOTP Emulator limitations; live-environment prohibition; out-of-scope list (incl. `AUTH-MFA-003E`, `ENG-P3-003B`, implementation PR merge); agent permissions; 25-item evidence requirement for the future completion report.
+
+### Governance and validation
+
+- **Records updated (established convention only):** this documentation-changes log (Entry 179), `docs/changes/IMPLEMENTATION_CHANGES.md` (WP recording entry), and the WP document itself. **`DEC-SEC-005` not modified** — no new recovery-policy decision.
+- **Validation:** docs-only; repository Prettier checks pass on touched documents; PR CI runs on the pushed head.
+- **PR handling:** a PR against `main` was opened for **Founder review** and was **not merged** by this task. Implementation of `AUTH-MFA-003D-IMPL-001` does not begin until the §2 authority condition is met.
 
 ---
 
