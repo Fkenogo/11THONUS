@@ -5464,3 +5464,17 @@ READY FOR CONTROLLED DRAFTING — PR AWAITS FOUNDER REVIEW`**.
 - **Validation:** docs-only; repository Prettier/format checks pass; PR CI runs on the pushed head.
 - **Configuration:** none. **Migrations:** none. **Risks:** none added — records the contract only; implementation risk (Firebase v1 Admin factor-removal path, Admin SDK #2995, provider contract drift) is governed by the WP's `BLOCKED — DECISION REQUIRED` provisions.
 - **Rollback:** for this authoring task, revert the WP-recording commit(s) — documentation only.
+
+---
+
+## 2026-09-07 — AUTH-MFA-003D-WP-002 — Official FEF Work Package Replacement
+
+- **Date:** 2026-09-07
+- **Phase:** TRD22 Phase 12 identity/security enablement. Documentation/governance correction on existing PR #233 branch `docs/auth-mfa-003d-impl-001-wp`; original PR head `126722c6089228e0230f41f6dcebc3fb1a9e38ce`; base `origin/main` `ebdb7cc80ba4930c4075321899b58df0620efc6a`. **No production implementation or live Firebase action.**
+- **Status:** **PENDING FOUNDER AUTHORISATION — NOT EXECUTABLE.** This change replaces the provisional custom WP format with an official `FEF-EWPCS-001` v1.0 template instantiation; it does not grant execution authority.
+- **Authority and placement:** FEF-EWPCS-001 v1.0, its Work Package Template, and its Completion Report Template were verified **APPROVED — ACTIVE**, effective 2026-09-07. The sole authoritative WP remains [`AUTH-MFA-003D-IMPL-001-work-package-2026-09-07.md`](../05-implementation/reports/AUTH-MFA-003D-IMPL-001-work-package-2026-09-07.md); no parallel document was created. `DEC-SEC-005` / `FD-MFA-R` R1–R10, `DEC-SEC-004` / `FD-MFA-2`, the merged design basis, and `AUTH-03` are consumed, not changed.
+- **Security corrections carried forward:** R5 now requires revocation → confirmed success → authoritative post-revocation current-factor retrieval → exact-factor verification immediately before reset. An unexplained absent factor on first execution is not successful; durable evidence of the same recovery's prior provider-reset stage is required for retry reconciliation. A replacement factor always fails closed and provider semantics that cannot guarantee exact-factor safety require `BLOCKED — DECISION REQUIRED`. Recovery-state and Platform Administration audit persistence must be coordinated in one Firestore transaction; `outboxEntries` is an identity-domain projection and is not reused or extended.
+- **FEF fields populated:** entry gate/hard authority stop; scope/out-of-scope/deferred decisions; dependencies; required implementation; invariants; prohibited shortcuts; 23 evidence-bearing acceptance criteria; required tests/validation; evidence; explicit permissions; high-risk review gate; expected state; stop conditions; and completion-report requirement.
+- **Files changed:** the authoritative WP, `docs/00-governance/documentation-changes-log.md` (Entry 180), and this record. No production code, dependency, configuration, decision, R1–R10 text, or Firebase state changed.
+- **Validation:** documentation format and repository validation run on the corrected head; PR #233 remains open for fresh review and must not be self-merged.
+- **Rollback:** revert this documentation-only correction commit. Entry 179 remains historical provenance and is explicitly superseded; the official replacement is restored by reverting this entry and the WP replacement together.
