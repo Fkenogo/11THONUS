@@ -5385,3 +5385,21 @@ READY FOR CONTROLLED DRAFTING — PR AWAITS FOUNDER REVIEW`**.
 - **Risks:** unchanged from 003C (Auth Emulator cannot execute a TOTP challenge; live-DEV reachability residual). The correction adds no new risk — an account with more than one TOTP factor now cannot sign in through this flow until the configuration is made unambiguous (declared fail-closed behavior, not new policy).
 - **Rollback:** revert the correction commit on the PR branch or do not merge; the base package's other capabilities are independent of this guard. No live configuration and nothing deployed.
 - **Report link:** [`docs/05-implementation/reports/AUTH-MFA-003C-admin-totp-challenge-implementation-report-2026-09-05.md`](../05-implementation/reports/AUTH-MFA-003C-admin-totp-challenge-implementation-report-2026-09-05.md) (see §3.2, §3.4, §13).
+
+---
+
+## 2026-09-07 — AUTH-MFA-003D-DESIGN-001 — Platform Administrator MFA Recovery & Reset Policy and Architecture Assessment
+
+- **Date:** 2026-09-07
+- **Phase:** TRD22 Phase 12 identity/security enablement (Platform Administrator MFA — design assessment, per `AUTH-MFA-002` §12 package sequence)
+- **Task:** `AUTH-MFA-003D-DESIGN-001` — assess and design the Platform Administrator MFA recovery/reset policy and architecture, identify Firebase capabilities and repository constraints, prepare Founder decision questions. **Design only — no production implementation.**
+- **Status:** Assessment complete — **READY FOR FOUNDER RECOVERY POLICY DISPOSITION**
+- **Files changed:** [`docs/05-implementation/reports/AUTH-MFA-003D-DESIGN-001-platform-administrator-mfa-recovery-assessment-2026-09-07.md`](../05-implementation/reports/AUTH-MFA-003D-DESIGN-001-platform-administrator-mfa-recovery-assessment-2026-09-07.md) (new). **No production code, configuration, Firebase state, or dependencies changed.**
+- **Key findings:** (1) Firebase Admin SDK has a known bug (#2995) preventing TOTP factor removal via `updateUser` — implementation must use the Firebase Auth REST API or Identity Platform API directly; (2) `revokeRefreshTokens` does not immediately invalidate existing ID tokens (~1 hour window); (3) session revocation and factor removal are separate operations requiring both to be performed; (4) the bootstrap precedent (`bootstrapPlatformAdministrator.ts`) provides a proven backend-only trust boundary for break-glass recovery; (5) no existing `platformAdministration` recovery mechanism exists — this is net-new design.
+- **Threat analysis:** 15 scenarios analyzed (attacker with password, stolen session, malicious administrator, collusion, single-admin lockout, compromised service account, replay, duplicate execution, wrong target, partial failure, suspended administrator, expired request).
+- **Founder decisions:** 10 decisions required covering recovery authority, self-approval prohibition, approval cardinality, break-glass authority, session revocation, lifecycle interaction, persistent request model, expiry, mandatory re-enrollment, and audit vocabulary.
+- **Configuration:** none.
+- **Migrations:** none.
+- **Risks:** none — design only. Implementation risk deferred to AUTH-MFA-003D implementation package.
+- **Rollback:** revert this task's commit(s) — documentation only.
+- **Report link:** [`docs/05-implementation/reports/AUTH-MFA-003D-DESIGN-001-platform-administrator-mfa-recovery-assessment-2026-09-07.md`](../05-implementation/reports/AUTH-MFA-003D-DESIGN-001-platform-administrator-mfa-recovery-assessment-2026-09-07.md).
