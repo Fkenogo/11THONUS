@@ -7,6 +7,20 @@
 
 ---
 
+## 2026-09-07 — AUTH-ARCH-001 — Authentication & Identity-Provider Architecture Reassessment
+
+- **Task / status:** Founder-authorised controlled architecture assessment — **ASSESSMENT COMPLETE — AWAITING FOUNDER ARCHITECTURE DISPOSITION**. Primary recommendation: **CHANGE** to an external managed IdP boundary while retaining Firebase Hosting, Cloud Functions, Firestore and Storage. This is not an approved migration or provider procurement.
+- **Evidence:** fetched `origin/main` `b0a039b2af2e4f869c5534ccb8d8705fdece661a`; inspected the merged `AUTH-MFA-003D`/Founder `DEC-SEC-005` R1–R10 chain, the current controlled work package, provider-feasibility evidence, application-wide Firebase dependencies, Rules/configuration/tests/CI, MTAIP project evidence and current official provider documentation.
+- **Finding:** Firebase Authentication / Identity Platform cannot satisfy the hard exact-factor administrative TOTP-recovery invariant. Its documented administrative update is whole-list and lacks an exact-factor conditional mutation; a stale recovery can remove a concurrent replacement factor. `AUTH-MFA-003D-IMPL-001` remains **BLOCKED — DECISION REQUIRED** and was not resumed.
+- **Target assessment:** Auth0 Customer Identity Enterprise was the best-qualified external candidate: documented named Guardian-enrollment deletion, M2M administration, signed-token MFA evidence and user-session administration. Non-production V1–V5 validation and Founder commercial/architecture direction remain required before any implementation. Cognito, WorkOS and self-hosted Keycloak were eliminated at qualification; Okta was technically credible but commercially disproportionate on published pricing.
+- **Architecture findings:** 11thONUS owns durable customer/business/authorization/audit semantics and its `TokenVerifierPort` is a real controlled seam. Firebase UID dependence has leaked into authentication-reference keying, same-principal linking, Platform Administrator record keys, verified-contact lookup and a legacy actor helper; these are controlled-programme migration requirements, not changes made here. Current Firestore/Storage Rules are deny-all and do not depend on `request.auth`, so Firebase data services need not migrate just because the IdP changes.
+- **Files changed:** this append-only record; `docs/00-governance/documentation-changes-log.md`; [`AUTH-ARCH-001 assessment`](../05-implementation/reports/AUTH-ARCH-001-authentication-identity-provider-architecture-reassessment-2026-09-07.md).
+- **Code/configuration/dependencies/migrations/live changes:** none.
+- **Validation:** static repository/history/configuration/Rules inspection and official provider-documentation research; documentation diff/relative-link validation. No production, provider, emulator or live credential mutation.
+- **Rollback:** revert this documentation commit only; no runtime/provider/data rollback is required.
+
+---
+
 ## 2026-07-17 — ENG-P0-001 — Repository, Tooling, Documentation Migration and Test-Framework Scaffold
 
 - **Date:** 2026-07-17
