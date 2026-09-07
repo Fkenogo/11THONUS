@@ -5425,3 +5425,27 @@ READY FOR CONTROLLED DRAFTING — PR AWAITS FOUNDER REVIEW`**.
 - **Configuration:** none. **Migrations:** none. **Risks:** none added — design only; implementation risk deferred to AUTH-MFA-003D implementation package.
 - **Rollback:** revert this task's commit(s) — documentation only; original Entry 176 and the base assessment remain preserved as superseded.
 - **Report link:** [`docs/05-implementation/reports/AUTH-MFA-003D-DESIGN-001-platform-administrator-mfa-recovery-assessment-2026-09-07.md`](../05-implementation/reports/AUTH-MFA-003D-DESIGN-001-platform-administrator-mfa-recovery-assessment-2026-09-07.md).
+
+---
+
+## 2026-09-07 — AUTH-MFA-003D-FD-001 — Founder Recovery Policy Disposition, Design Closure, and PR #232 Merge
+
+- **Date:** 2026-09-07
+- **Phase:** TRD22 Phase 12 identity/security enablement (Platform Administrator MFA — Founder disposition and design closure on PR #232, branch `docs/auth-mfa-003d-design-001`; base `origin/main` `a7b3a43756837390d60137a96883c8925b8e306e`). **Governance/documentation only — no implementation, no live Firebase action.**
+- **Status:** **COMPLETE / MERGED** — Founder approved the ten recovery decisions R1–R10 as one package (disposition `FD-MFA-R`, recorded as `DEC-SEC-005`); design assessment finalized as the approved design basis and closed; PR #232 merged at its exact reviewed final head. **`AUTH-MFA-003D` implementation = NOT STARTED / NOT AUTHORIZED by this recording.**
+- **Founder decisions recorded (R1–R10, governing authority for a future implementation package):**
+  1. **R1 — Recovery Request Authority:** normal recovery initiated on the target's behalf by an independent authorised Platform Administrator presenting server-verified MFA evidence; no target-initiated pre-MFA recovery-proof mechanism at MVP; break-glass when no eligible independent administrator.
+  2. **R2 — Self-Approval:** prohibited without exception (target ≠ approver; target ≠ normal-path executor exercising approval authority).
+  3. **R3 — Approval Cardinality:** one independent active MFA-satisfied approver at MVP (server-verified chain to `verifiedMfaSatisfied === true`; active status alone insufficient); no two-person requirement; break-glass if none eligible.
+  4. **R4 — Break-Glass Authority:** explicit Founder authorization + backend/service-account execution; service account is execution mechanism only; fully attributable/audited; no public endpoint; no standing service-account authority.
+  5. **R5 — Session Revocation:** mandatory and fail-closed before factor removal (`approved → revoke → revocation succeeds → verify approved factor binding → remove factor`); no natural-expiry downgrade; security invariant.
+  6. **R6 — Administrator Lifecycle:** unchanged (`invited → active → suspended → removed`); recovery state separate; no activation/reactivation/role/status change; privileged access unavailable until MFA re-established.
+  7. **R7 — Persistent Recovery Record:** persistent recovery-request record with controlled lifecycle; binds exact original factor enrollment (`targetFactorEnrollmentId`-equivalent immutable identifier); no TOTP secrets/codes/recovery credentials stored; retries never remove a replacement factor.
+  8. **R8 — Approval Expiry:** one hour after approval if execution has not begun; expired = new approval, never revived/extended.
+  9. **R9 — Re-enrollment and Fresh Challenge:** `old factor reset → fresh TOTP enrollment → end enrollment session → fresh primary sign-in → genuine TOTP challenge → Firebase MFA-resolved session → server verifies sign_in_second_factor`; no shortcut; security invariant.
+  10. **R10 — Recovery Audit Vocabulary:** `mfa_recovery_requested/approved/executed/denied/expired`; **no `mfa_recovery_failed`** unless separately justified and approved.
+- **Coherence:** initiating and approving administrator may be the same independent administrator unless existing architecture/authority requires separation; target self-approval remains prohibited; sole-administrator flows use the break-glass chain. Recovery remains TOTP-only. No new Platform Administrator role activated.
+- **Files changed:** `docs/00-governance/decisions/decision-register.md` (added **`DEC-SEC-005`**; note added to `DEC-SEC-004`; header + total-records updated), the [design assessment report](../05-implementation/reports/AUTH-MFA-003D-DESIGN-001-platform-administrator-mfa-recovery-assessment-2026-09-07.md) (status finalized; new §34 Founder Disposition; §19/§30/§32 updated; editorial phrase corrected), `docs/00-governance/documentation-changes-log.md` (Entry 178 added), and `docs/changes/IMPLEMENTATION_CHANGES.md` (this entry). **No production code, configuration, Firebase state, or dependencies changed.**
+- **Validation:** docs-only; repository format/line-length checks pass; PR CI re-ran SUCCESS at the new final head; no new review findings; PR #232 merged at the exact reviewed final head; post-merge `origin/main` and CI verified SUCCESS.
+- **Configuration:** none. **Migrations:** none. **Risks:** none added — this task records policy only; implementation risk (including the Firebase v1 Admin factor-removal path and Admin SDK #2995) is deferred to the AUTH-MFA-003D implementation package, which must consume R1–R10 as fixed governing authority.
+- **Rollback:** for this documentation task, revert the decision-recording commit(s); the design package is merged and preserved as the approved design basis (no production effect).

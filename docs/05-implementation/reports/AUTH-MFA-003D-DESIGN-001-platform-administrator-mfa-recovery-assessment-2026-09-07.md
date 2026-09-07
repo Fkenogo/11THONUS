@@ -1,10 +1,11 @@
 > **Title:** AUTH-MFA-003D-DESIGN-001 — Platform Administrator MFA Recovery & Reset — Policy and Architecture Assessment
-> **Status:** **DESIGN / ASSESSMENT — NOT IMPLEMENTED — READY FOR FOUNDER RECOVERY POLICY DISPOSITION**
-> **Classification:** Assessment (design record, completed; superseding correction `AUTH-MFA-003D-DESIGN-001-CORR-001` applied 2026-09-07)
-> **Task:** `AUTH-MFA-003D-DESIGN-001`
+> **Status:** **DESIGN / ASSESSMENT — APPROVED BY FOUNDER DISPOSITION (`FD-MFA-R`/`DEC-SEC-005`) — NOT IMPLEMENTED — CLOSED — APPROVED DESIGN BASIS FOR A FUTURE IMPLEMENTATION PACKAGE**
+> **Classification:** Assessment (design record, completed; superseding correction `AUTH-MFA-003D-DESIGN-001-CORR-001` applied 2026-09-07; Founder disposition `FD-MFA-R` recorded 2026-09-07 as `DEC-SEC-005`)
+> **Task:** `AUTH-MFA-003D-DESIGN-001` (design); `AUTH-MFA-003D-FD-001` (Founder disposition/closure)
 > **Baseline:** `origin/main` at `a7b3a43756837390d60137a96883c8925b8e306e` (PR #231 merge commit, 2026-09-06)
 > **Retrieval date:** 2026-09-07
 > **Correction head:** PR #232 pre-correction `3f38b99668daccedc7ec4982c6fc794538accf06` → corrected `AUTH-MFA-003D-DESIGN-001-CORR-001`
+> **Founder disposition:** **R1–R10 approved as one package (Founder `FD-MFA-R`), 2026-09-07, recorded as `DEC-SEC-005` in the Decision Register.** See **§34** for the authoritative final disposition. This report is now the **approved design basis** for a future implementation package; implementation remains **NOT STARTED / NOT AUTHORIZED BY THIS RECORDING** (future package `AUTH-MFA-003D-IMPL-001` or Founder-supplied equivalent).
 
 > **Correction notice (`AUTH-MFA-003D-DESIGN-001-CORR-001`):** This report was reviewed by an automated reviewer on PR #232; eight substantive findings were raised and all were confirmed genuine and corrected in place. The original assessment text is preserved below, with corrections applied to the affected sections and a consolidated correction record appended as **§33**. Read §33 for the authoritative post-correction state where it supersedes earlier sections.
 
@@ -155,7 +156,7 @@ The `UpdateMultiFactorInfoRequest` type only supports `"phone"` factors in write
 - **User selection:** pass `localId` (the user's UID) — this is the administrator/backend selection mechanism; do **not** pass an end-user `idToken` for admin execution.
 - **Factor reset semantics:** the `mfa` field is an `MfaInfo` object that **"will overwrite any previous multi-factor related information on the account."** Setting `mfa` to an empty `enrolledFactors` list removes all MFA enrollments; to remove one specific factor the executor supplies the remaining factor list. Therefore it supports both **all-factor removal** and **selective removal** (rewrite the list without the target). The `targetFactorEnrollmentId` precondition is enforced in application logic before invoking this API.
 - **Tenant:** if the user belongs to an Identity Platform tenant, include `tenantId` (or use the tenant-scoped path `v1/projects/{project}/tenants/{tenant}/accounts:update`).
-- **Session change:** this admin API **does not automatically revoke sessions**. Session revocation is a separate operation (see §6D). The v1 `accounts:update` request also accepts a `validSince` field (the `tokensValidAfterTime`); the AUTH-03D executor must call `revokeRefreshTokens(uid)` (or set `validSince`) explicitly. **This is the Android textual gap removed by CORR-001.**
+- **Session change:** this admin API **does not automatically revoke sessions**. Session revocation is a separate operation (see §6D). The v1 `accounts:update` request also accepts a `validSince` field (the `tokensValidAfterTime`); the AUTH-03D executor must call `revokeRefreshTokens(uid)` (or set `validSince`) explicitly. **This is the session-revocation gap removed by CORR-001.**
 - **Current status:** supported (current Identity Platform v1 Admin REST reference; `projects.accounts.update`, updated 2025-05-30).
 
 **Not the service-account/backend path — `accounts.mfaEnrollment:withdraw` (v2):**
@@ -821,7 +822,7 @@ No fifth state is added. Recovery is tracked in a separate `mfaRecoveryRequests`
 
 ## §19. Founder Decisions Required
 
-> **This section requires Founder disposition before AUTH-MFA-003D implementation can begin.**
+> **Founder dispositioned (history preserved).** This section is retained as the historical record of the ten decision questions as designed. The Founder approved R1–R10 as one package on **2026-09-07** (disposition `FD-MFA-R`), recorded in the Decision Register as **`DEC-SEC-005`**. **§34 is the authoritative final disposition** and governs where it supersedes the options/recommendations below. These decisions no longer await disposition.
 
 ### Decision 1: Normal Recovery Authority (CORR-001)
 
@@ -1032,9 +1033,10 @@ No live environment changes to roll back.
 
 ## §30. Final Recommendation
 
-**READY FOR FOUNDER RECOVERY POLICY DISPOSITION**
+**READY FOR FOUNDER RECOVERY POLICY DISPOSITION — DISPOSITIONED 2026-09-07 (`DEC-SEC-005` / `§34`)**
 
-All material questions have been researched and presented:
+Until 2026-09-07 this assessment presented all material questions for Founder disposition. The Founder has now approved R1–R10 as one package (disposition `FD-MFA-R`, recorded as `DEC-SEC-005`); §34 records the approved recovery architecture and final state. The recommendation below is preserved as history:
+
 - Firebase capability constraints identified (including critical Admin SDK bug and the verified v1 Admin / rejected v2 withdrawal backend APIs)
 - Repository architecture fully inspected
 - Threat model complete (15 scenarios)
@@ -1044,7 +1046,7 @@ All material questions have been researched and presented:
 - All 10 Founder decision questions prepared with options and recommendations
 - Eight automated-review findings confirmed and corrected (see §33)
 
-The Founder can now make recovery-policy decisions without requiring another agent to discover missing fundamentals.
+The Founder has now made the recovery-policy decisions; **§34** records them.
 
 ---
 
@@ -1065,7 +1067,7 @@ The Founder can now make recovery-policy decisions without requiring another age
 
 ## §32. Success Gate
 
-**AUTH-MFA-003D-DESIGN-001 PARTIAL WORK RECOVERED AND REVIEWED — VALID PRIOR WORK PRESERVED (branch skeleton only, no substantive work) — INCOMPLETE/UNSUPPORTED WORK CORRECTED (no work to correct) — CURRENT FIREBASE FACTOR-RESET AND SESSION-REVOCATION CAPABILITIES VERIFIED — RECOVERY ROLE/AUDIT/LIFECYCLE BOUNDARIES ASSESSED — SINGLE-ADMIN BREAK-GLASS PROBLEM ASSESSED — ATOMICITY AND THREAT MODEL COMPLETE — FOUNDER DECISION QUESTIONS COMPLETE — NO PRODUCTION IMPLEMENTATION — NO LIVE ENVIRONMENT CHANGE — READY FOR FOUNDER RECOVERY POLICY DISPOSITION**
+**AUTH-MFA-003D-DESIGN-001 PARTIAL WORK RECOVERED AND REVIEWED — VALID PRIOR WORK PRESERVED (branch skeleton only, no substantive work) — INCOMPLETE/UNSUPPORTED WORK CORRECTED (no work to correct) — CURRENT FIREBASE FACTOR-RESET AND SESSION-REVOCATION CAPABILITIES VERIFIED — RECOVERY ROLE/AUDIT/LIFECYCLE BOUNDARIES ASSESSED — SINGLE-ADMIN BREAK-GLASS PROBLEM ASSESSED — ATOMICITY AND THREAT MODEL COMPLETE — FOUNDER DECISION QUESTIONS COMPLETE — FOUNDER DISPOSITION RECORDED (`DEC-SEC-005`, SEE §34) — NO PRODUCTION IMPLEMENTATION — NO LIVE ENVIRONMENT CHANGE — APPROVED DESIGN BASIS FOR FUTURE IMPLEMENTATION — CLOSED**
 
 ---
 
@@ -1116,3 +1118,88 @@ CORR-001 remains **design/assessment-only**:
 ### Final State After CORR-001
 
 **AUTH-MFA-003D-DESIGN-001 — CORRECTED — EIGHT AUTOMATED-REVIEW FINDINGS CONFIRMED AND CORRECTED — SUPERSEDING CORRECTION RECORD IN §33 — FOUNDER DECISION QUESTIONS COMPLETE AND UPDATED — NO PRODUCTION IMPLEMENTATION — NO LIVE ENVIRONMENT CHANGE — READY FOR FOUNDER RECOVERY POLICY DISPOSITION**
+*(Subsequently dispositioned 2026-09-07 — see §34.)*
+
+---
+
+## §34. Founder Disposition — `FD-MFA-R` (Recorded as `DEC-SEC-005`)
+
+> **Authoritative final section.** The Founder reviewed `AUTH-MFA-003D-DESIGN-001`, `AUTH-MFA-003D-DESIGN-001-CORR-001`, PR #232, and the corrected Platform Administrator MFA recovery architecture, and on **2026-09-07** approved the ten recovery-policy decisions **R1–R10 as one coherent package** (disposition `FD-MFA-R`), recorded in the Decision Register as **`DEC-SEC-005`** under task `AUTH-MFA-003D-FD-001`. This section therefore supersedes §19's pending questions and the "awaiting disposition" wording elsewhere in this report. The history of the assessment (§1–§33, including the review findings) is preserved unchanged.
+>
+> **Implementation remains NOT STARTED and is NOT authorized by this recording.** A future implementation package (`AUTH-MFA-003D-IMPL-001` or the exact identifier the Founder later provides) is separately authorized. This report is the **approved design basis** for that package.
+
+### R1 — Recovery Request Authority
+
+**Decision:** Normal Platform Administrator MFA recovery shall be initiated on behalf of the affected administrator by an **independent authorised Platform Administrator presenting server-verified MFA evidence**. The MVP shall **not** implement a target-initiated pre-MFA recovery-proof mechanism. Where no eligible independent administrator is available, the separately governed Founder-authorised **break-glass** procedure shall apply.
+
+**Consequences:** the locked-out target does not need a normal AUTH-03 authenticated application session to initiate recovery; no new pre-MFA authentication surface is authorized at MVP; sole-administrator recovery uses the break-glass path.
+
+### R2 — Self-Approval
+
+**Decision:** A Platform Administrator shall **never approve or execute their own MFA recovery request**. Self-approval is prohibited **without exception** within the normal recovery path.
+
+**Consequences:** target ≠ approver; target ≠ normal-path executor where the executor exercises approval authority; no supplementary evidence may override this normal-path prohibition.
+
+### R3 — Approval Cardinality
+
+**Decision:** Normal MFA recovery requires approval by **one independent active Platform Administrator whose MFA satisfaction is verified server-side**. Two-person approval is not required for MVP. Where no eligible independent approver exists, recovery may proceed only through the separately controlled Founder-authorised break-glass path.
+
+**Security invariant:** an administrator approver must satisfy the authoritative MFA chain: `verified Firebase token → firebase.sign_in_second_factor → AuthenticatedCredential.verifiedSecondFactor → deriveVerifiedMfaSatisfied() → verifiedMfaSatisfied === true`. Active administrator status alone is insufficient.
+
+### R4 — Break-Glass Authority
+
+**Decision:** Sole-administrator MFA recovery shall use a break-glass procedure requiring (1) **explicit Founder authorization** and (2) **backend/service-account execution**. Service-account capability is an execution mechanism only and does not constitute independent standing authority to approve recovery. Every break-glass execution is fully attributable and audited.
+
+**Boundary:** no public break-glass endpoint; no autonomous service-account recovery authority.
+
+### R5 — Session Revocation
+
+**Decision:** Every recovery execution shall revoke the target administrator's existing authentication sessions **before** the approved MFA factor is removed. Session revocation is **mandatory and fail-closed** — if revocation cannot be confirmed, factor reset shall not proceed.
+
+**Required order:** `approved recovery → revoke target sessions → revocation succeeds → verify approved factor binding → remove approved factor`. No downgrade relying on natural token expiry is permitted. **Security invariant.**
+
+### R6 — Administrator Lifecycle
+
+**Decision:** MFA recovery shall **not change** the Platform Administrator lifecycle. Recovery state is maintained separately from `invited → active → suspended → removed`. Loss or reset of an MFA factor does not itself suspend or remove the administrator; privileged access remains unavailable until valid MFA is re-established.
+
+**Boundary:** recovery must not activate a suspended administrator, reactivate a removed administrator, change roles, or change Platform Administrator status.
+
+### R7 — Persistent Recovery Record
+
+**Decision:** MFA recovery shall use a **persistent recovery-request record** with a controlled lifecycle covering request, approval, execution, completion, denial, expiry, and failure. The approved recovery must bind to the **exact original MFA factor enrollment** being reset. The persistent record must **not** store TOTP secrets, TOTP codes, or recovery credentials.
+
+**Required binding:** the future implementation must retain an immutable provider factor identifier equivalent to `targetFactorEnrollmentId` (or the final architecture-equivalent identifier). Retries must never remove a replacement factor.
+
+### R8 — Approval Expiry
+
+**Decision:** An approved recovery authorization expires **one hour after approval** if execution has not begun. An expired recovery requires a new approval; it shall **not** be revived or extended in place. The exact one-hour policy is recorded as governing authority.
+
+### R9 — Re-enrollment and Fresh Challenge
+
+**Decision:** MFA recovery is not complete merely because the former factor was removed or a replacement factor was enrolled. The affected administrator must complete: `old factor reset → fresh TOTP enrollment → end enrollment session → fresh primary sign-in → genuine TOTP challenge → Firebase MFA-resolved session → server verifies firebase.sign_in_second_factor` before privileged Platform Administrator access is restored.
+
+**Security invariant.** No shortcut is authorized.
+
+### R10 — Recovery Audit Vocabulary
+
+**Decision:** Extend the Platform Administration audit vocabulary for future implementation with `mfa_recovery_requested`, `mfa_recovery_approved`, `mfa_recovery_executed`, `mfa_recovery_denied`, `mfa_recovery_expired`. Recovery failure state is preserved in the persistent recovery request. Do **not** add `mfa_recovery_failed` unless implementation later demonstrates a justified need and it is separately approved/extended.
+
+### Decision Package Coherence
+
+R1–R10 form **one approved recovery policy**.
+
+**Normal path:** locked-out target → independent active MFA-satisfied administrator initiates recovery on the target's behalf → one independent active MFA-satisfied administrator approves → persistent request binds exact original factor enrollment → execution begins before 1-hour approval expiry → target sessions revoked → **if revocation fails: STOP / fail closed** → approved original factor removed → recovery completion audited → target enrolls new TOTP → enrollment session ends → fresh primary sign-in → genuine TOTP challenge → server verifies real second-factor evidence → privileged access available again.
+
+The initiating administrator and approving administrator may be the **same independent administrator** unless existing architecture or prior authority explicitly requires separation between requester and approver. Target self-approval remains prohibited. Where repository authority makes requester/approver separation material and unresolved, it is reported rather than a new two-person requirement being invented.
+
+**Sole-administrator / break-glass:** no eligible independent administrator → explicit Founder authorization → backend/service-account execution → fully attributed audit → revoke target sessions → if revocation fails: STOP → remove exact approved factor → no role/lifecycle elevation → mandatory new TOTP enrollment → fresh sign-in → genuine challenge → privileged access restored only through verified MFA.
+
+### Final Approved Design State
+
+- **Governing decision:** `DEC-SEC-005` (Decision Register); resolves the recovery approver/initiation model left open by `DEC-SEC-004` without superseding its TOTP-only factor policy or dev-only Identity Platform bootstrap.
+- **Recovery remains TOTP-only.**
+- **Normal recovery and break-glass authorities** are recorded separately (R1/R3 normal; R4 break-glass).
+- **Session revocation (R5) and post-reset MFA re-establishment (R9) are mandatory invariants.**
+- **Status:** `AUTH-MFA-003D-DESIGN-001` = **COMPLETE / APPROVED / MERGED / CLOSED**. `AUTH-MFA-003D` implementation = **NOT STARTED / NOT AUTHORIZED BY THIS RECORDING**.
+- **FEF handoff:** per §9 of task `AUTH-MFA-003D-FD-001`, the future implementation package must consume the approved recovery policy (R1–R10) as fixed governing authority; engineering has no discretion to redesign R1–R10 without a new Founder decision.
+- **No implementation package/code/stubs were created by this disposition task; no live Firebase action was taken; no new Platform Administrator role was activated.**
