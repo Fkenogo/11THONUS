@@ -5403,3 +5403,25 @@ READY FOR CONTROLLED DRAFTING — PR AWAITS FOUNDER REVIEW`**.
 - **Risks:** none — design only. Implementation risk deferred to AUTH-MFA-003D implementation package.
 - **Rollback:** revert this task's commit(s) — documentation only.
 - **Report link:** [`docs/05-implementation/reports/AUTH-MFA-003D-DESIGN-001-platform-administrator-mfa-recovery-assessment-2026-09-07.md`](../05-implementation/reports/AUTH-MFA-003D-DESIGN-001-platform-administrator-mfa-recovery-assessment-2026-09-07.md).
+
+---
+
+## 2026-09-07 — AUTH-MFA-003D-DESIGN-001-CORR-001 — Corrections to the MFA Recovery Policy and Architecture Assessment
+
+- **Date:** 2026-09-07
+- **Phase:** TRD22 Phase 12 identity/security enablement (Platform Administrator MFA — correction to the AUTH-MFA-003D design assessment on PR #232, pushed to the existing `docs/auth-mfa-003d-design-001` branch; base unchanged at `origin/main` `a7b3a43756837390d60137a96883c8925b8e306e`). **Design/assessment only — no production implementation.**
+- **Status:** Corrected — **READY FOR FOUNDER RECOVERY POLICY DISPOSITION**
+- **Files changed:** the [design assessment report](../05-implementation/reports/AUTH-MFA-003D-DESIGN-001-platform-administrator-mfa-recovery-assessment-2026-09-07.md) (superseding correction appended + affected sections corrected), `docs/changes/IMPLEMENTATION_CHANGES.md` (this entry), and `docs/00-governance/documentation-changes-log.md` (Entry 176 original preserved; Entry 177 added). **No production code, configuration, Firebase state, or dependencies changed.**
+- **Eight findings corrected (all genuine):**
+  1. **Locked-out requester path (P1):** the affected administrator cannot use the normal authenticated application path (primary factor accepted → `auth/multi-factor-auth-required` → no resolved `UserCredential` → no AUTH-03 token → no session). Request creation is now designed as a bounded pre-MFA recovery proof (proves primary-factor possession without granting privileged access) or an independently authenticated actor/operator creating the request on the target's behalf. Founder section updated.
+  2. **Approver MFA (P1):** every in-product Platform Administrator approver must be active and satisfy the server-verified MFA path (`verifiedMfaSatisfied === true`). No active-status-only, no factorless, no client-declared MFA. Backend/service-account break-glass operator uses a separate governed trust boundary.
+  3. **Revocation fail-closed (P1):** `approved → revoke → revocation succeeds → THEN factor reset`. If revocation fails, request remains failed/retryable and factor reset MUST NOT proceed.
+  4. **Factor-enrollment binding (P1):** recovery binds to the exact original TOTP enrollment via immutable `targetFactorEnrollmentId`; retries never remove a replacement factor; idempotent/complete if already gone.
+  5. **ID-token lifetime vs backend acceptance (P2):** `exp` (~1 h) does not make a pre-revocation token usable against 11thONUS — the verifier calls `verifyIdToken(rawToken, true)` at `firebaseTokenVerifier.ts:174`. One-hour window no longer an accepted residual risk.
+  6. **Server-side factor-removal API reconciled (P2):** primary verified backend path is Identity Platform **v1 Admin** `projects.accounts.update` (`POST /v1/projects/{targetProjectId}/accounts:update`; service-account/OAuth2; IAM `firebaseauth.users.update`; `localId`; `mfa` `MfaInfo` overwrite). Client-facing v2 `accounts.mfaEnrollment:withdraw` (user `idToken`) is NOT a service-account path. Admin SDK `updateUser` blocked by #2995.
+  7. **Baseline SHA (P2):** corrected to `a7b3a43756837390d60137a96883c8925b8e306e` in both places in the controlled log (the previously recorded SHA did not exist).
+  8. **File inventory (P2):** corrected to the actual three-file diff (report + IMPLEMENTATION_CHANGES.md + documentation-changes-log.md).
+- **Validation:** docs-only; repository format/line-length checks pass; PR CI re-runs at the corrected head.
+- **Configuration:** none. **Migrations:** none. **Risks:** none added — design only; implementation risk deferred to AUTH-MFA-003D implementation package.
+- **Rollback:** revert this task's commit(s) — documentation only; original Entry 176 and the base assessment remain preserved as superseded.
+- **Report link:** [`docs/05-implementation/reports/AUTH-MFA-003D-DESIGN-001-platform-administrator-mfa-recovery-assessment-2026-09-07.md`](../05-implementation/reports/AUTH-MFA-003D-DESIGN-001-platform-administrator-mfa-recovery-assessment-2026-09-07.md).

@@ -1,9 +1,12 @@
 > **Title:** AUTH-MFA-003D-DESIGN-001 — Platform Administrator MFA Recovery & Reset — Policy and Architecture Assessment
 > **Status:** **DESIGN / ASSESSMENT — NOT IMPLEMENTED — READY FOR FOUNDER RECOVERY POLICY DISPOSITION**
-> **Classification:** Assessment (design record, completed)
+> **Classification:** Assessment (design record, completed; superseding correction `AUTH-MFA-003D-DESIGN-001-CORR-001` applied 2026-09-07)
 > **Task:** `AUTH-MFA-003D-DESIGN-001`
 > **Baseline:** `origin/main` at `a7b3a43756837390d60137a96883c8925b8e306e` (PR #231 merge commit, 2026-09-06)
 > **Retrieval date:** 2026-09-07
+> **Correction head:** PR #232 pre-correction `3f38b99668daccedc7ec4982c6fc794538accf06` → corrected `AUTH-MFA-003D-DESIGN-001-CORR-001`
+
+> **Correction notice (`AUTH-MFA-003D-DESIGN-001-CORR-001`):** This report was reviewed by an automated reviewer on PR #232; eight substantive findings were raised and all were confirmed genuine and corrected in place. The original assessment text is preserved below, with corrections applied to the affected sections and a consolidated correction record appended as **§33**. Read §33 for the authoritative post-correction state where it supersedes earlier sections.
 
 # AUTH-MFA-003D-DESIGN-001 — Platform Administrator MFA Recovery & Reset Policy and Architecture Assessment
 
@@ -30,6 +33,8 @@ The previous agent created:
 **Zero commits were added.** The branch is identical to `origin/main`. No report file was created. No PR was opened. No uncommitted work exists. The worktree was pruned but the branch reference remains.
 
 **Assessment:** The previous agent established only the branch skeleton. No substantive work was completed. This task begins the design assessment from scratch.
+
+> **CORR-001 note:** §2 describes the state at task *genesis* (branch skeleton, no PR). That historical state is preserved. The live state at the time of CORR-001 is: branch `docs/auth-mfa-003d-design-001` is pushed to `origin` with **PR #232** open; PR head `3f38b99668daccedc7ec4982c6fc794538accf06` (pre-correction). See §33.
 
 ### 2B. Repository State
 
@@ -140,48 +145,65 @@ The `UpdateMultiFactorInfoRequest` type only supports `"phone"` factors in write
 
 **Source:** https://github.com/firebase/firebase-admin-node/issues/2995 (retrieved 2026-09-07)
 
-### 6C. Firebase Auth REST API for TOTP Removal
+### 6C. Server-Side TOTP Factor-Removal API — RECONCILED (CORR-001)
 
-**Capability:** The Firebase Auth REST API (`identitytoolkit/v3/relyingparty/accounts:update`) supports updating `mfaInfo` which includes TOTP factors. This bypasses the Node.js Admin SDK limitation.
+> **Correction:** The original text conflated three different mechanisms. The verified, authoritative service-account/backend path is the **Identity Platform v1 Admin API `projects.accounts.update`** (not the client-facing `mfaEnrollment:withdraw`, and not the legacy `identitytoolkit/v3` REST). This is the recommended primary path for AUTH-MFA-003D execution. Verified against current Google Cloud reference docs (retrieved 2026-09-07).
 
-**Alternative:** The Identity Platform Admin API (`identityplatform/v1/accounts`) also supports full MFA factor management including TOTP.
+**Primary (recommended) — Identity Platform v1 Admin `projects.accounts.update`:**
+- **Endpoint:** `POST https://identitytoolkit.googleapis.com/v1/projects/{targetProjectId}/accounts:update`
+- **Authentication:** Google OAuth 2.0 **service-account** credential (not an end-user ID token). Requires IAM permission `firebaseauth.users.update` on the target project. OAuth scopes: `https://www.googleapis.com/auth/identitytoolkit` or `https://www.googleapis.com/auth/cloud-platform`. A service account with `firebaseauth.users.update` can perform this.
+- **User selection:** pass `localId` (the user's UID) — this is the administrator/backend selection mechanism; do **not** pass an end-user `idToken` for admin execution.
+- **Factor reset semantics:** the `mfa` field is an `MfaInfo` object that **"will overwrite any previous multi-factor related information on the account."** Setting `mfa` to an empty `enrolledFactors` list removes all MFA enrollments; to remove one specific factor the executor supplies the remaining factor list. Therefore it supports both **all-factor removal** and **selective removal** (rewrite the list without the target). The `targetFactorEnrollmentId` precondition is enforced in application logic before invoking this API.
+- **Tenant:** if the user belongs to an Identity Platform tenant, include `tenantId` (or use the tenant-scoped path `v1/projects/{project}/tenants/{tenant}/accounts:update`).
+- **Session change:** this admin API **does not automatically revoke sessions**. Session revocation is a separate operation (see §6D). The v1 `accounts:update` request also accepts a `validSince` field (the `tokensValidAfterTime`); the AUTH-03D executor must call `revokeRefreshTokens(uid)` (or set `validSince`) explicitly. **This is the Android textual gap removed by CORR-001.**
+- **Current status:** supported (current Identity Platform v1 Admin REST reference; `projects.accounts.update`, updated 2025-05-30).
 
-**Recommendation:** Implementation should target the Identity Platform Admin API (Google Cloud) as the primary path, with the Firebase Auth REST API as fallback.
+**Not the service-account/backend path — `accounts.mfaEnrollment:withdraw` (v2):**
+- **Endpoint:** `POST https://identitytoolkit.googleapis.com/v2/accounts/mfaEnrollment:withdraw`
+- **Authentication:** **requires the user's own ID token** (`idToken`) — it is the client/SDK-facing unenrollment operation (`multiFactor(user).unenroll`), **not** a service-account/backend operation.
+- **Semantics:** revokes **one** second factor identified by `mfaEnrollmentId`; returns newly issued `idToken`/`refreshToken` for that user. Not usable for the locked-out target (no valid user token available at execution time) and not the break-glass operator path. **Not recommended** for AUTH-MFA-003D backend execution.
 
-### 6D. Session/Refresh Token Revocation
+**Admin SDK `updateUser` — remains BLOCKED by issue #2995:**
+- `updateUser(uid, { multiFactor: { enrolledFactors: [...] } })` cannot be used to write back a TOTP factor (throws `Unsupported second factor ... "factorId":"totp"`), so it is not a reliable backend path for factor removal while the bug is open.
 
-**Capability:** `revokeRefreshTokens(uid)` updates `tokensValidAfterTime` to current time.
+**Legacy note (superseded):** the earlier report text referencing `identitytoolkit/v3/relyingparty/accounts:update` (Firebase Auth REST, API-key–based, `mfaInfo`) was a legacy/v1 Firebase Auth variant. For a service account executing a governed recovery, the **v1 Admin** `projects.accounts.update` (documented above) is the recommended, verified primary path; a fallback to the legacy Firebase Auth REST `accounts:update` with a service-account OAuth2 token is possible but not preferred, and its semantics must be re-verified at implementation time. **Do not** use the end-user `mfaEnrollment:withdraw` for backend execution.
 
-**Behavior:**
-- **Refresh tokens:** Revoked immediately — no new ID tokens can be obtained
-- **Existing ID tokens:** NOT immediately invalidated — remain valid until natural expiry (~1 hour)
-- **Verification with revocation check:** `verifyIdToken(idToken, true)` compares `iat` against `tokensValidAfterTime`; if `iat < tokensValidAfterTime`, throws `auth/id-token-revoked`
-- **Network cost:** Requires an extra RPC call per verification (~50-200ms latency)
+**Source:** https://cloud.google.com/identity-platform/docs/reference/rest/v1/projects.accounts/update and https://cloud.google.com/identity-platform/docs/reference/rest/v2/accounts.mfaEnrollment/withdraw (retrieved 2026-09-07).
 
-**11thonus uses this:** The token verifier already calls `verifyIdToken(rawToken, true)` with `checkRevoked=true` [firebaseTokenVerifier.ts:169]. Revocation checking is already active.
+### 6D. Session/Refresh Token Revocation — ID-token lifetime vs backends acceptance (CORR-001)
 
-**Source:** https://firebase.google.com/docs/auth/admin/manage-sessions (retrieved 2026-09-07)
+**Capability:** `revokeRefreshTokens(uid)` updates `tokensValidAfterTime` to the current time. Subsequent `verifyIdToken(idToken, true)` compares the token's `iat` against `tokensValidAfterTime`: if `iat < tokensValidAfterTime` the token is rejected as revoked.
+
+**Behavior — two distinct facts:**
+1. **Cryptographic token lifetime:** an already-issued Firebase ID token carries an `exp` roughly one hour from issuance; its signed expiry does not change after revocation.
+2. **11thONUS backend acceptance:** the backend does **not** accept a previously issued token for that one-hour window. Every production verification calls `verifyIdToken(rawToken, true)` (revocation checking enabled) at [firebaseTokenVerifier.ts:174](../../../functions/src/domains/authentication/services/firebaseTokenVerifier.ts) (`await verifyIdToken(raw.rawToken, true)`); the freshness anchor `authenticatedAtFromClaim(decoded.auth_time)` is at `:201`. Once revocation is authoritative, a token issued before `tokensValidAfterTime` is **rejected as revoked** by this backend — revocation is effective immediately for this server, not deferred ~1 hour.
+
+**Therefore:** there is **no one-hour privileged-access window** against 11thONUS after `revokeRefreshTokens(uid)`. Client-held tokens may still exist and still cryptographically verify (their `exp` is unchanged) until they reach their one-hour `exp`, but the 11thONUS backend rejects any token issued before `tokensValidAfterTime` because verification calls `verifyIdToken(rawToken, true)`. No residual "~1 hour usable session" risk is accepted in the threat analysis or the Founder decisions. Real propagation/cache timing (the short interval — typically tens of milliseconds to a few seconds — for `tokensValidAfterTime` to become authoritative across Firebase's verification plane) is a much smaller and bounded propagation concern, distinct from the one-hour signed-lifetime of a token, and is not treated as an accepted one-hour access window.
+
+**11thonus uses this:** the token verifier already calls `verifyIdToken(raw.rawToken, true)` with `checkRevoked=true` at [firebaseTokenVerifier.ts:174](../../../functions/src/domains/authentication/services/firebaseTokenVerifier.ts) (with the `auth_time` freshness anchor at `:201`). Revocation checking is already active.
+
+**Source:** https://firebase.google.com/docs/auth/admin/manage-sessions (retrieved 2026-09-07).
 
 ### 6E. Client-Side TOTP Unenrollment
 
-**Capability:** `multiFactor(user).unenroll(mfaEnrollmentId)` — requires recent re-authentication (`auth/requires-recent-login`).
+**Capability:** `multiFactor(user).unenroll(mfaEnrollmentId)` — requires recent re-authentication (`auth/requires-recent-login`) and the user's own session token.
 
 **Behavior:**
-- Sessions are NOT automatically revoked on unenrollment
+- Under the hood this invokes the client-facing `v2/accounts/mfaEnrollment:withdraw` (see §6C); sessions are NOT automatically revoked on unenrollment
 - If the most recently enabled factor is unenrolled, user receives `auth/user-token-expired` and is logged out
 - Email notification sent to user
 
-**11thonus uses this:** Not yet — no client-side unenrollment code exists. The `MfaEnrollmentPage` explicitly states "this page never re-enrolls, removes, or replaces factors (removal/replacement is `AUTH-MFA-003D`)."
+**11thonus uses this:** Not yet — no client-side unenrollment code exists. The `MfaEnrollmentPage` explicitly states "this page never re-enrolls, removes, or replaces factors (removal/replacement is `AUTH-MFA-003D`)." Client unenrollment is **not** the recommended backend execution path for recovery (it needs the target's own session token, unavailable to a locked-out user or break-glass operator).
 
 ### 6F. Factor Reset Behavior Summary
 
-| Action | Sessions revoked? | Next sign-in challenged? |
-|--------|-------------------|--------------------------|
-| Admin removes TOTP factor via API | **No** (must also call `revokeRefreshTokens`) | No — no factor enrolled, so no challenge |
-| Client unenrolls TOTP | No (unless most recent factor) | No — no factor enrolled |
-| `revokeRefreshTokens` alone | Yes (refresh tokens) | Existing ID tokens survive ~1 hour |
+| Action | Sessions revoked? | Backend acceptance after revocation | Next sign-in challenged? |
+|--------|-------------------|--------------------------------------|--------------------------|
+| Admin removes TOTP factor via Identity Platform v1 Admin `projects.accounts.update` (`mfa` overwrite) | **No** — must also call `revokeRefreshTokens(uid)` as a separate step | Pre-revocation ID tokens rejected once revocation is authoritative (no ~1 h usable window against 11thONUS) | No — no factor enrolled, so no challenge |
+| Client unenrolls TOTP (`mfaEnrollment:withdraw`) | No (unless most recent factor) | — | No — no factor enrolled |
+| `revokeRefreshTokens` alone | Yes (refresh tokens) | Pre-revocation ID tokens rejected; signed `exp` (~1 h) unchanged but unusable against backend | No — factor still enrolled, so a later sign-in still challenges |
 
-**Critical implication for recovery:** Removing a TOTP factor and revoking sessions are **separate operations** that must both be performed. Neither automatically triggers the other.
+**Critical implication for recovery:** Removing a TOTP factor and revoking sessions are **separate operations** that must both be performed. Neither automatically triggers the other — the Identity Platform v1 Admin `projects.accounts.update` does not revoke sessions on its own, exactly as `revokeRefreshTokens` alone does not remove the factor. The recovery-execution orchestration (see §14) must therefore sequence them, and must **fail closed** if revocation fails.
 
 ---
 
@@ -310,25 +332,44 @@ This is the only path that satisfies all requirements without introducing new tr
 
 ---
 
-## §10. Normal Recovery Options
+## §10. Normal Recovery Options — REVISED (CORR-001)
 
-### Who May Request Recovery
+> **Correction:** The affected administrator who has lost TOTP **cannot** use the normal authenticated application path. In the lost-TOTP scenario: primary factor accepted → Firebase raises `auth/multi-factor-auth-required` → no resolved `UserCredential` → no AUTH-03 token → no normal authenticated application session. The target therefore cannot create an authenticated recovery request through the existing sign-in path. Request initiation is instead designed as **Option A** (independently authenticated actor/operator creates the request on the target's behalf) or **Option B** (a bounded pre-MFA recovery proof). See §10B below.
+
+### 10A. Who May Request Recovery
 
 | Candidate | Assessment | Recommendation |
 |-----------|------------|----------------|
-| Affected administrator | Cannot prove identity without MFA | May request, but must provide identity evidence |
-| Another administrator | Can vouch for identity, but limited at MVP | Valid requestor |
+| Affected administrator (via normal app path) | **Not technically possible** — primary factor alone never yields an authenticated session in the lost-TOTP scenario | Not a valid requestor through the normal path |
+| Another (MFA-satisfied) administrator/operator | Can attest target identity; limited at MVP | Valid requestor (Option A) |
+| Affected administrator (via a bounded pre-MFA proof) | Proves primary-factor possession without a privileged session (see §10B) | Valid requestor **only** if Founder authorizes Option B and the proof is strictly bounded to request creation |
 | Founder/operator | Highest authority | Valid requestor |
 | Backend operator | Service-account access | Valid requestor (break-glass) |
 
-### Who May Approve Recovery
+### 10B. Locked-Out Requester Path — Two Design Options (CORR-001)
+
+Because the lost-TOTP target cannot authenticate through the normal path, request initiation must be **Option A** or **Option B** (Founder decision; see §19, Decision 1). **Neither is implemented here** — this is a design decision.
+
+**Option A — independently authenticated actor/operator creates the request.** Another authorized, MFA-satisfied administrator/operator (or Founder/operator) attests the target and creates the `MfaRecoveryRequest` on the target's behalf. This requires no new authentication mechanism; it relies on the existing server-verified MFA path for the requester and an explicit authorization (Founder decision) that such a requester may initiate recovery.
+
+**Option B — bounded pre-MFA recovery proof.** A separate recovery-request mechanism accepts evidence available **before** TOTP resolution, but that evidence must not itself grant privileged access. If this option is proposed, the design must define:
+- **What proves primary-factor possession:** a fresh challenge against the target's primary credential (e.g., a signed primary-factor sign-in step that is deliberately allowed to stop at the `multi-factor-auth-required` boundary) or another Founder-approved proof (e.g., a one-time operator-issued code) — the specific mechanism is itself a Founder decision (see §19).
+- **How the server verifies it without AUTH-03 completion:** the verification must be a dedicated, non-privileged server check that confirms primary-factor possession but produces **no** authenticated-application session and **no** AUTH-03 token, and does not reach `verifiedSecondFactor`/MFA-satisfied state.
+- **How it is bounded to recovery-request creation only:** the proof is consumed and invalidated for a single `MfaRecoveryRequest` in `pending` status, is not usable for any privileged operation, does not mint a session/refresh token, and expires with the request.
+- **Why it cannot become a privilege bypass:** it never produces MFA evidence (`verifiedMfaSatisfied`), never sets `verifiedSecondFactor`, never grants privileged access, and is server-verified via a non-privileged path with no elevation.
+
+The Founder decision section must reflect that the affected target cannot simply use the existing authenticated application path (see §19, Decision 1).
+
+### Who May Approve Recovery (CORR-001)
 
 | Candidate | Assessment | Recommendation |
 |-----------|------------|----------------|
 | Affected administrator | **No self-approval** | Explicit prohibition |
-| Another administrator | Valid if independent of target | One independent approver minimum |
-| Founder/operator | Highest authority | May approve any recovery |
-| `knowledge_approver` | Not a security-recovery role | **Cannot approve** without separate authority |
+| Another Platform Administrator | Valid only if **active** AND presenting the existing **server-verified MFA** path (`verifiedMfaSatisfied === true`); independent of target | One independent MFA-satisfied approver minimum |
+| Founder/operator | Highest authority | May approve any recovery (separate governed trust boundary when acting as operator) |
+| `knowledge_approver` | Not a security-recovery role | **Cannot approve** without separate authority and without satisfying the MFA requirement |
+
+**Mandatory approver MFA:** DEC-SEC-002 requires MFA for all Platform Administrators without exception. In-product approval therefore requires an **active** Platform Administrator whose request presents the server-verified MFA evidence (`verifiedMfaSatisfied === true` via the token's `sign_in_second_factor` claim). There is **no active-status-only approval, no factorless administrator approval, and no client-declared MFA state**. The backend/service-account break-glass operator is a distinct authority (see §11) and is **not** a Platform Administrator browser session.
 
 ### Approval Cardinality
 
@@ -350,19 +391,30 @@ Rationale:
 
 ---
 
-## §11. Identity Evidence
+## §11. Identity Evidence and Break-Glass Authority — REVISED (CORR-001)
 
-Evidence that a recovery requestor is who they claim:
+Evidence that a recovery requestor is who they claim (note: for a lost-TOTP target this is **not** a normal authenticated session — see §10B):
 
 | Evidence Type | Strength | Assessment |
 |---------------|----------|------------|
-| Primary-factor authentication (password/Google) | Strong — proves possession of primary credential | Required |
+| Primary-factor possession (via a **bounded pre-MFA proof**, corroborated by an actor) | Strong — proves possession of primary credential without a privileged session | Required for Option B |
 | Verified email | Moderate — proves email access, not identity | Supplementary only |
 | External verification (phone, ID) | Strong — independent channel | Not available at MVP |
 | Operator verification | Strong — human verification | Break-glass path |
-| Independent administrator approval | Strong — peer verification | Normal path |
+| Independent administrator approval (MFA-satisfied) | Strong — peer verification | Normal path |
 
-**Critical distinction:** Verified email is **not** MFA and must never be treated as proof of second-factor ownership.
+**Critical distinction:** Verified email is **not** MFA and must never be treated as proof of second-factor ownership. Primary-factor possession alone is **not** MFA and must not be treated as establishing a privileged session.
+
+### Break-Glass Authority (distinct trust boundary)
+
+The break-glass authority uses the **bootstrap precedent** (`bootstrapPlatformAdministrator.ts` — backend/service-account-only, no public endpoint), but it is explicitly **not** an in-product administrator permission:
+- Backend/service-account authority is a **different trust boundary** from an in-app Platform Administrator permission.
+- Break-glass does **not** require browser MFA because it is not an administrator browser session — it is a governed operational trust boundary.
+- It must require **explicit operator authorization** for each invocation (never a standing permission).
+- It must be **fully audited**.
+- It **cannot alter roles or lifecycle** (status remains `active`; no role elevation).
+- It **cannot grant privileged access** — it only removes the lost factor to restore the path to new MFA establishment.
+- There is **no public break-glass endpoint**.
 
 ---
 
@@ -410,10 +462,10 @@ Recovery will require extending this set. **This design task does not modify the
 
 | Aspect | Detail |
 |--------|--------|
-| **Current protection** | `revokeRefreshTokens` invalidates refresh tokens; `verifyIdToken(token, true)` checks revocation |
-| **Gap** | Stolen ID token valid for up to ~1 hour after revocation |
-| **Mitigation** | Short token lifetime + revocation check; privileged actions have 5-minute freshness gate |
-| **Founder decision** | No — existing protections are adequate |
+| **Current protection** | `revokeRefreshTokens(uid)` invalidates refresh tokens and updates `tokensValidAfterTime`; every production verification calls `verifyIdToken(raw.rawToken, true)` at [firebaseTokenVerifier.ts:174](../../../functions/src/domains/authentication/services/firebaseTokenVerifier.ts), so a token issued before `tokensValidAfterTime` is rejected by 11thONUS |
+| **Gap** | A stolen **refresh token** is invalidated by revocation; a stolen **already-issued ID token** keeps its signed `exp` (~1 h) but is rejected by 11thONUS once revocation is authoritative (no one-hour usable window against this backend) |
+| **Mitigation** | Session revocation at recovery-execution time rejects pre-revocation tokens at the backend; the privileged 5-minute freshness gate further bounds privileged actions; recovery execution also fails closed if revocation cannot complete so a stale MFA-authenticated session cannot outlive the reset |
+| **Founder decision** | No — existing protections are adequate; the one-hour signed-lifetime is not an accepted one-hour privileged-access window |
 
 ### T4: Malicious administrator resets another admin's TOTP
 
@@ -422,7 +474,7 @@ Recovery will require extending this set. **This design task does not modify the
 | **Current protection** | No recovery mechanism exists yet |
 | **Gap** | A compromised administrator could reset a co-administrator's TOTP to gain their account |
 | **Mitigation** | Normal path requires independent approver; break-glass requires Founder authorization; full audit trail |
-| **Founder decision** | Yes — who may approve recovery? (§15, Decision 2) |
+| **Founder decision** | Yes — who may approve recovery? (§19, Decision 2) |
 
 ### T5: Malicious target + approver collusion
 
@@ -431,7 +483,7 @@ Recovery will require extending this set. **This design task does not modify the
 | **Current protection** | None (no recovery mechanism) |
 | **Gap** | Colluding administrator and approver could perform unauthorized recovery |
 | **Mitigation** | Audit trail makes collusion detectable; break-glass path requires Founder; mandatory post-reset enrollment means colluding party gets no standing access |
-| **Founder decision** | Yes — is audit trail sufficient or is two-person approval required? (§15, Decision 3) |
+| **Founder decision** | Yes — is audit trail sufficient or is two-person approval required? (§19, Decision 3) |
 
 ### T6: Single-administrator lockout
 
@@ -440,7 +492,7 @@ Recovery will require extending this set. **This design task does not modify the
 | **Current protection** | None (no recovery mechanism) |
 | **Gap** | If sole administrator loses TOTP and no break-glass path exists, platform is locked |
 | **Mitigation** | Backend service-account-only break-glass recovery; bootstrap precedent already exists |
-| **Founder decision** | Yes — break-glass authority and process (§15, Decision 4) |
+| **Founder decision** | Yes — break-glass authority and process (§19, Decision 4) |
 
 ### T7: Compromised service account
 
@@ -456,8 +508,8 @@ Recovery will require extending this set. **This design task does not modify the
 | Aspect | Detail |
 |--------|--------|
 | **Current protection** | None (no recovery mechanism) |
-| **Gap** | Same recovery action could be replayed |
-| **Mitigation** | Idempotency check: if factor is already removed, operation is a no-op; execution state tracking prevents duplicate processing |
+| **Gap** | Same recovery action could be replayed and accidentally remove a newly enrolled replacement factor (retry hazard) |
+| **Mitigation** | Execution binds to the original `targetFactorEnrollmentId` (immutable precondition). On retry the executor verifies the current target still holds the originally approved enrollment: if already gone → idempotent/complete (no-op); if a different (replacement) factor exists → fail closed and require a new recovery decision; it **never** removes by "current factor list" |
 | **Founder decision** | No — technical implementation detail |
 
 ### T9: Duplicate recovery execution
@@ -466,7 +518,7 @@ Recovery will require extending this set. **This design task does not modify the
 |--------|--------|
 | **Current protection** | None |
 | **Gap** | Parallel recovery requests could cause race conditions |
-| **Mitigation** | Firestore transaction with read-before-write; recovery request state machine prevents concurrent execution |
+| **Mitigation** | Firestore transaction with read-before-write on a single `MfaRecoveryRequest` doc; the status state machine (`pending → approved → executing → completed | failed | expired`) plus an idempotency claim on the `targetUserId`/`targetFactorEnrollmentId` prevents concurrent execution; approval cardinality governed by a dedicated authorization check, not inferred from request fields |
 | **Founder decision** | No — technical implementation detail |
 
 ### T10: Wrong target identity
@@ -475,7 +527,7 @@ Recovery will require extending this set. **This design task does not modify the
 |--------|--------|
 | **Current protection** | None |
 | **Gap** | Recovery could target the wrong administrator |
-| **Mitigation** | Target identity must be verified through primary-factor authentication; `platformAdministrators/{userId}` doc-id-as-key prevents mismatch |
+| **Mitigation** | The request creation path supplies a bounded recovery proof (or an authorized actor/operator attests the target); the executor validates the exact `targetUserId` and the exact `targetFactorEnrollmentId`; `platformAdministrators/{userId}` doc-id-as-key prevents mismatch; the recovery request binds the factor being reset so a retargeted or re-enrolled identity cannot be operated on |
 | **Founder decision** | No — technical implementation detail |
 
 ### T11: Factor removed but audit write fails
@@ -483,8 +535,8 @@ Recovery will require extending this set. **This design task does not modify the
 | Aspect | Detail |
 |--------|--------|
 | **Current protection** | None |
-| **Gap** | TOTP factor removed but audit record not written — unauditable state change |
-| **Mitigation** | Firestore transaction: audit write and factor removal in same transaction where possible; if cross-service (Firebase Auth + Firestore), audit write must succeed even if factor removal confirmation is delayed |
+| **Gap** | TOTP factor removed (in Firebase Auth) but audit record not written (Firestore) — unauditable state change |
+| **Mitigation** | Firebase Auth and Firestore **cannot be one atomic transaction**; the design therefore uses a compensation/eventual-consistency model: persist a durable execution record *before* the external factor-removal call, then on completion write the audit; on audit-write failure retry the Firestore write against the durable record (idempotent). The recovery request's own state is the source of truth for reconciliation |
 | **Founder decision** | No — technical implementation detail |
 
 ### T12: Factor removed but session revocation fails
@@ -492,8 +544,8 @@ Recovery will require extending this set. **This design task does not modify the
 | Aspect | Detail |
 |--------|--------|
 | **Current protection** | None |
-| **Gap** | TOTP factor removed but `revokeRefreshTokens` fails — administrator retains active MFA session |
-| **Mitigation** | Session revocation must be attempted before factor removal; if revocation fails, factor removal should not proceed; existing sessions expire within ~1 hour naturally |
+| **Gap** | If factor removal proceeds after `revokeRefreshTokens` fails, an MFA-authenticated session could remain usable after the factor is gone — privileged access left behind |
+| **Mitigation** | **Fail closed:** approved recovery → revoke refresh tokens → if revocation fails the request remains `failed`/retryable and factor reset **MUST NOT proceed**; no downgrade relying on natural token expiry. Factor reset executes only after revocation succeeds |
 | **Founder decision** | No — technical implementation detail |
 
 ### T13: Session revocation succeeds but factor reset fails
@@ -501,8 +553,8 @@ Recovery will require extending this set. **This design task does not modify the
 | Aspect | Detail |
 |--------|--------|
 | **Current protection** | None |
-| **Gap** | Sessions revoked but TOTP factor not removed — administrator locked out with no MFA but sessions also revoked |
-| **Mitigation** | Factor removal is the critical operation; if it fails after session revocation, administrator must re-enroll with old factor (still exists) or operator retries factor removal |
+| **Gap** | Sessions revoked but TOTP factor not removed — target has no working MFA session and the old factor still exists |
+| **Mitigation** | The request stays `executing`/`failed` for retry. On retry the executor re-verifies target is `active` and that the approved `targetFactorEnrollmentId` still matches the current factor; because revocation already succeeded, no MFA-authenticated session survives the gap. Operator (service-account) retries factor removal via the Identity Platform v1 Admin API |
 | **Founder decision** | No — technical implementation detail |
 
 ### T14: Administrator suspended/removed during recovery
@@ -521,110 +573,147 @@ Recovery will require extending this set. **This design task does not modify the
 | **Current protection** | None |
 | **Gap** | A recovery request approved yesterday may no longer reflect current intent |
 | **Mitigation** | Recovery approvals should expire (recommended: 1 hour); expired requests require re-approval |
-| **Founder decision** | Yes — expiry requirement (§15, Decision 8) |
+| **Founder decision** | Yes — expiry requirement (§19, Decision 8) |
 
 ---
 
-## §14. Atomicity and Partial-Failure Model
+## §14. Atomicity and Partial-Failure Model — REVISED (CORR-001)
 
 ### Cross-Service Boundary
 
-Firebase Auth operations and Firestore transactions **cannot be assumed atomic together**. Factor removal happens in Firebase Auth (REST API or Identity Platform API); session revocation happens in Firebase Auth (`revokeRefreshTokens`); audit and recovery state happen in Firestore.
+Firebase Auth operations and Firestore transactions **cannot be assumed atomic together, and cannot be in one atomic transaction**. Factor removal happens in Firebase Auth via the Identity Platform v1 Admin `projects.accounts.update`; session revocation happens in Firebase Auth (`revokeRefreshTokens`); approval, persistent recovery state, and audit records live in Firestore. These are separate systems with independent failure domains.
 
-### Recommended Orchestration Model
+### Recovery-Execution Invariant (fail-closed)
+
+The following ordering is **mandatory** and fails closed:
 
 ```
-recovery request (Firestore: mfaRecoveryRequests collection)
-→ approval (Firestore: status update in same collection)
-→ execution claimed (Firestore: idempotency check, status → "executing")
-→ session revocation (Firebase Auth: revokeRefreshTokens)
-→ factor reset (Firebase Auth REST API: remove TOTP factor)
-→ execution completion (Firestore: status → "completed", audit record)
+approved recovery
+→ verify target still active
+→ verify approved factor enrollment still matches (targetFactorEnrollmentId)
+→ revoke refresh tokens (revokeRefreshTokens)
+→ IF revocation fails: STOP — request stays failed/retryable; factor reset MUST NOT proceed
+→ revocation succeeds
+→ THEN factor reset may proceed (Identity Platform v1 Admin projects.accounts.update)
+→ persist completion + audit
 ```
 
-### Failure Handling
+**Why factor reset must not proceed after revocation failure:** removing the factor while an MFA-authenticated session remains valid could leave a previously authenticated (MFA-satisfied) session with privileged access after the factor is gone. The design must fail closed, not rely on natural token expiry as a fallback.
+
+### Recommended Orchestration Model (Facet: request → approval → execution → recovery)
+
+```
+request (Firestore: mfaRecoveryRequests, status "pending", binds targetUserId + targetFactorEnrollmentId)
+→ approval (Firestore: status → "approved", approvedBy = active admin with verifiedMfaSatisfied === true)
+→ execution claimed (Firestore: transaction read-before-write, status → "executing")
+→ re-verify target active
+→ re-verify approved targetFactorEnrollmentId still matches current factor
+→ revoke refresh tokens (Firebase Auth: revokeRefreshTokens)
+→ IF revocation fails → status stays executing/failed; retry locally; escalate to operator; DO NOT remove factor
+→ factor reset (Identity Platform v1 Admin projects.accounts.update, mfa overwrite for targetFactorEnrollmentId)
+→ persist completion (Firestore: status → "completed", audit record) — durable and idempotent
+```
+
+### Failure Handling (revised)
 
 | Failure Point | Recovery Strategy |
 |---------------|-------------------|
-| Session revocation fails | Retry; if persistent, proceed to factor removal (existing sessions expire naturally within ~1 hour) |
-| Factor removal fails | Do not mark as completed; retry; if persistent, operator must investigate |
-| Audit write fails after factor removal | Compensation: retry audit write; factor is already removed — state is recoverable |
-| Execution state update fails after factor removal | Same as audit failure — retry; factor removal is the critical operation |
-| All steps succeed but completion write fails | Retry; idempotency prevents double-execution |
+| **Session revocation fails** | **Fail closed.** Request stays `executing`/`failed`, retry, escalate to break-glass operator. Factor reset **MUST NOT proceed**. No downgrade relying on natural expiry. |
+| **Factor removal fails after revocation succeeded** | Do not mark completed; request stays `executing`/`failed`; retry via break-glass operator using Identity Platform v1 Admin `projects.accounts.update`; no MFA session survives the gap (revocation already succeeded). |
+| **Audit write fails after factor removal** | Compensation: retry the Firestore audit write against the durable `MfaRecoveryRequest` record (idempotent). Factor already removed; state recoverable. |
+| **Execution-state update fails after factor removal** | Same as audit failure — the durable request record is the source of truth; retry to reach `completed`. |
+| **All steps succeed but completion write fails** | Retry; idempotency guaranteed by binding to `targetFactorEnrollmentId` — a retry that finds the original factor gone treats the reset step as already completed (idempotent). |
+| **Replacement factor appears before retry** | Detect that the current factor differs from the approved `targetFactorEnrollmentId` → fail closed and require a NEW recovery decision; do not remove the replacement factor. |
+
+### Explicit Retry-State Semantics
+
+- **Revocation succeeded / factor removal failed:** request remains `executing`/`failed`; safe to retry factor removal (idempotent, replay-safe) because revocation has already succeeded.
+- **Factor already absent because a prior attempt succeeded:** the executor verifies `targetFactorEnrollmentId` is no longer present → treat reset as already completed (idempotent complete).
+- **Replacement factor appears before retry:** the current factor differs from the approved `targetFactorEnrollmentId` → fail closed; require a new recovery decision; never remove the replacement.
+- **Completion write fails after external operations:** the durable `MfaRecoveryRequest` record lets the retry reconcile actual Firebase Auth state with Firestore state and settle on one terminal status.
 
 ### Idempotency
 
-- Recovery execution must be idempotent: if factor is already removed, operation completes without error
-- Recovery request must have unique ID (UUID) to prevent duplicate processing
-- Execution state machine: `pending → approved → executing → completed | failed`
+- Execution binds to the **immutable `targetFactorEnrollmentId`** captured at approval time (never to a "current factor list" re-read at retry time). This makes replay/retry safe and prevents accidental removal of a replacement factor.
+- Recovery request has a unique ID (UUID) and a `correlationId` to prevent duplicate processing.
+- Execution state machine: `pending → approved → executing → completed | failed | expired`, with `denied` reachable from `pending`.
 
 ---
 
-## §15. Recommended MVP Architecture
+## §15. Recommended MVP Architecture — REVISED (CORR-001)
 
-### Normal Path
+> **Correction:** The prior normal path asserted the locked-out target could "authenticate (primary factor)" and submit a request, and that an approver needed "primary + MFA — if they have MFA". Both are corrected below. The four phases are now explicitly separated: **request initiation**, **approval**, **execution**, and **target recovery**. The affected administrator who lost TOTP cannot simply use the existing authenticated application path (primary factor accepted → `auth/multi-factor-auth-required` → no resolved `UserCredential` → no AUTH-03 token → no session), so request creation is delegated to a bounded pre-MFA mechanism or an independently authenticated actor/operator (see §10B).
+
+### Normal Path (four separated phases)
 
 ```
-1. Recovery requested
-   - Requestor authenticates (primary factor: password/Google)
-   - Requestor identifies target administrator
-   - Server verifies requestor is not the target (no self-approval)
-   - Firestore: mfaRecoveryRequest record created (status: "pending")
+PHASE 1 — REQUEST INITIATION
+   Option A (independently authenticated actor/operator):
+     - Mandated by Founder decision; an authorized (MFA-satisfied) administrator/operator creates
+       the recovery request on the target's behalf, attesting the target identity.
+     - Server verifies the requestor is NOT the target (no self-approval).
+     - Firestore: MfaRecoveryRequest created (status "pending"), binding targetUserId +
+       targetFactorEnrollmentId.
+   Option B (bounded pre-MFA recovery proof) — if selected:
+     - The target proves primary-factor possession via a separate server-verifiable mechanism that
+       does NOT complete MFA, does NOT produce an AUTH-03 token, and does NOT establish a privileged
+       session (see §10B for the exact boundary).
+     - Server verifies the proof WITHOUT AUTH-03 completion and bounds it strictly to recovery-request
+       creation; it cannot be reused to obtain privileged access.
+   Founder decision required: which option(s) to authorize (see §19).
 
-2. Independent authorized actor approves
-   - Approver authenticates (primary + MFA — if they have MFA)
-   - Server verifies approver is an active platform administrator
-   - Server verifies approver is independent of target
-   - Firestore: status → "approved", approval recorded
+PHASE 2 — APPROVAL
+   - Approver must be an ACTIVE Platform Administrator presenting the existing server-verified MFA
+     path: verifiedMfaSatisfied === true (from the token's sign_in_second_factor claim via
+     firebaseTokenVerifier → AuthenticatedCredential.verifiedSecondFactor → deriveVerifiedMfaSatisfied).
+   - NO active-status-only approval; NO factorless administrator approval; NO client-declared MFA state.
+   - Server verifies approver is independent of target.
+   - Firestore: status → "approved", approvedBy + approvedAt recorded.
 
-3. Execution
-   - Operator (or automated process) initiates execution
-   - Server verifies approval is valid (not expired, not revoked)
-   - Server verifies target status is still "active"
-   - Firebase Auth: revokeRefreshTokens(targetUserId)
-   - Firebase Auth REST API: remove TOTP factor
-   - Firestore: status → "completed", audit record written
+PHASE 3 — EXECUTION
+   - Privileged, idempotent, bound to targetFactorEnrollmentId.
+   - Re-verify approval valid (not expired, not revoked).
+   - Re-verify target still ACTIVE.
+   - Re-verify approved targetFactorEnrollmentId still matches the current factor.
+   - Firebase Auth: revokeRefreshTokens(targetUserId)  ← revocation FIRST
+   - IF revocation fails: STOP; request stays executing/failed; factor reset MUST NOT proceed.
+   - Identity Platform v1 Admin: projects.accounts.update (mfa overwrite) removes the approved factor.
+   - Firestore: status → "completed", audit record written (idempotent).
 
-4. Target signs in
-   - Primary sign-in (email/password or Google)
-   - No TOTP challenge (factor was removed)
-   - MFA enrollment flow triggered
-   - New TOTP secret generated, QR scanned, code verified
-   - Factor enrolled
-
-5. Forced sign-out
-   - Client sign-out (clears local session)
-
-6. Fresh primary sign-in
-
-7. TOTP challenge
-   - Server verifies decoded.firebase.sign_in_second_factor
-   - verifiedSecondFactor: true
-   - Privileged authorization available again
+PHASE 4 — TARGET RECOVERY
+   - Target performs a fresh primary sign-in (email/password or Google).
+   - No TOTP challenge (the approved factor was removed).
+   - Mandatory new TOTP enrollment (new secret, QR, code verified).
+   - Forced sign-out (client clears local session).
+   - Fresh primary sign-in.
+   - TOTP challenge: server verifies decoded.firebase.sign_in_second_factor → verifiedSecondFactor: true
+   - Privileged authorization available again.
 ```
 
-### Break-Glass Path
+### Break-Glass Path (backend/service-account trust boundary)
+
+> **Correction (§11):** The break-glass authority is a **different trust boundary** from an in-product administrator permission. Backend/service-account authority is used for recovery the same way `bootstrapPlatformAdministrator.ts` uses it — it is **not** an in-app permission, does **not** require browser MFA, requires **explicit operator authorization**, is **fully audited**, **cannot alter roles/lifecycle**, **cannot grant privileged access**, and **only restores the path to new MFA establishment**. There is **no public break-glass endpoint**.
 
 ```
 1. Founder/authorized operator action
-   - Backend/service-account-only execution (no public endpoint)
-   - Same trust boundary as bootstrapPlatformAdministrator
+   - Backend/service-account-only execution (no public endpoint — same trust boundary as bootstrap).
+   - Explicit operator authorization required for each invocation (not a standing permission).
 
-2. Targeted administrator only
-   - Target userId must be a known platform administrator
+2. Targeted to one known Platform Administrator only
+   - Target userId must be a known platform administrator; execution binds the approved
+     targetFactorEnrollmentId.
 
-3. Execution
-   - Firebase Auth: revokeRefreshTokens(targetUserId)
-   - Firebase Auth REST API: remove TOTP factor
-   - Firestore: audit record written (action: "mfa_breakglass_executed")
+3. Execution (mirrors Phase 3)
+   - Re-verify target active; re-verify approved factor enrollment matches.
+   - Firebase Auth: revokeRefreshTokens(targetUserId); if it fails → STOP (fail closed).
+   - Identity Platform v1 Admin: projects.accounts.update removes the approved factor.
+   - Firestore: audit record written (action "mfa_breakglass_executed").
 
 4. No role/lifecycle change
-   - PlatformAdministrator.status remains "active"
-   - No new roles granted
-   - No access elevation
+   - PlatformAdministrator.status remains "active"; no new roles; no access elevation.
+   - Recovery only restores the ability to establish MFA; it grants no privileged access.
 
-5. Mandatory fresh enrollment + challenge
-   - Same as normal path steps 4-7
+5. Mandatory fresh enrollment + challenge (same as Phase 4).
 ```
 
 ### Architecture Validation
@@ -640,6 +729,7 @@ recovery request (Firestore: mfaRecoveryRequests collection)
 - Email-only verification: not sufficient evidence for MFA recovery
 - Persistent MFA exemption flag: violates no-permanent-exemption requirement
 - Client-asserted recovery: violates no-client-assertion requirement
+- A recovery path that lets the locked-out target authenticate through the normal MFA sign-in flow (not technically possible — primary factor alone never yields an authenticated session in the lost-TOTP scenario)
 
 ---
 
@@ -652,35 +742,42 @@ Recovery is executed as a single atomic operation (like bootstrap) — no persis
 **Pros:** Simpler; matches bootstrap precedent; no expiry management needed.
 **Cons:** No audit of the request/approval phase; no recovery trail; approver's decision not recorded.
 
-### Option B: Persistent Recovery Request Object (Recommended)
+### Option B: Persistent Recovery Request Object (Recommended) — REVISED (CORR-001)
 
-A `mfaRecoveryRequests` Firestore collection tracks the full lifecycle:
+A `mfaRecoveryRequests` Firestore collection tracks the full lifecycle. **The invariant added by CORR-001 is that the authorization binds to the exact factor being reset** — the request captures the immutable `targetFactorEnrollmentId` (or equivalent provider-specific immutable identifier) before execution, so retries can never remove a replacement factor. No secrets and no TOTP codes are ever stored in this record.
 
 ```typescript
 type MfaRecoveryRequest = {
   readonly id: string;                    // UUID
   readonly targetUserId: string;          // Platform administrator userId
-  readonly requestorUserId: string;       // Who requested
+  readonly targetFactorEnrollmentId: string; // IMMUTABLE provider-specific enrollment id of the
+                                            // exact TOTP factor being reset (captured before execution)
+  readonly requestorUserId: string;       // Who requested (independent actor/operator, or proof claimant)
   readonly requestorReference: string;    // Audit reference
+  readonly requestMode: "independent-actor" | "pre-mfa-proof" | "break-glass-operator";
   readonly reason: string;                // Human-readable reason
   readonly status: "pending" | "approved" | "denied" | "executing" | "completed" | "expired" | "failed";
   readonly requestedAt: Date;
-  readonly expiresAt?: Date;              // Approval expiry
-  readonly approvedBy?: string;           // Approver userId
-  readonly approvedAt?: Date;
+  readonly approvedBy: string;            // Approver userId (active admin with verifiedMfaSatisfied === true)
+  readonly approvedAt: Date;
+  readonly approvedMfaEvidence: boolean;  // TRUE only when the approver presented the server-verified
+                                          // second-factor claim; never client-declared
   readonly deniedBy?: string;
   readonly deniedAt?: Date;
   readonly denialReason?: string;
   readonly executedAt?: Date;
-  readonly executedBy?: string;
+  readonly executedBy?: string;           // Backend/service-account executor (break-glass) or operator
   readonly completedAt?: Date;
+  readonly expiresAt: Date;               // Approval expiry
   readonly failureReason?: string;
   readonly correlationId: string;
   readonly schemaVersion: number;
 };
 ```
 
-**Pros:** Full audit trail; expiry support; recovery state machine; idempotency; partial-failure tracking.
+> **Note:** This schema is a conceptual proposal to be finalized at implementation time; the exact field names/types are not mandatory. The load-bearing invariant is the binding to `targetFactorEnrollmentId` (the specific original factor), a verified-approver MFA-evidencing flag, and the absence of secrets/TOTP codes.
+
+**Pros:** Full audit trail; expiry support; recovery state machine; idempotency; partial-failure tracking; the `targetFactorEnrollmentId` binding makes execution/retries safe against a replacement factor.
 **Cons:** More complex; requires Firestore collection and rules.
 
 **Recommendation: Option B** — the audit and state-management benefits outweigh the complexity for a security-critical operation.
@@ -695,7 +792,7 @@ type MfaRecoveryRequest = {
 | Suspend during recovery | Adds complexity; requires reactivation; conflates MFA state with access state | Not recommended |
 | Separate recovery state object | Clean separation; `mfaRecoveryRequests` tracks recovery independently of status | **Recommended** — use Option B from §16 |
 
-**Rationale:** Recovery is about MFA factor management, not about whether the administrator should have access. An administrator who has lost their TOTP factor but can still authenticate with their primary factor should remain `active` — they just can't complete privileged operations until MFA is re-established.
+**Rationale:** Recovery is about MFA factor management, not about whether the administrator should have access. An administrator who has lost their TOTP factor can complete a primary sign-in (but cannot complete the MFA step or obtain a privileged AUTH-03 session — see §10B); they should remain `active` in lifecycle terms — the recovery is tracked separately and they simply cannot complete privileged operations until MFA is re-established.
 
 **Status lifecycle remains unchanged:**
 ```
@@ -726,15 +823,16 @@ No fifth state is added. Recovery is tracked in a separate `mfaRecoveryRequests`
 
 > **This section requires Founder disposition before AUTH-MFA-003D implementation can begin.**
 
-### Decision 1: Normal Recovery Authority
+### Decision 1: Normal Recovery Authority (CORR-001)
 
 | Aspect | Detail |
 |--------|--------|
 | **Current authority** | DEC-SEC-004 approves "controlled, auditable, non-bypassable recovery" |
-| **Technical constraint** | Firebase Admin SDK cannot remove TOTP factors (bug #2995); REST API or Identity Platform API required |
-| **Options** | A) Any active administrator may request; another independent administrator approves. B) Only Founder/operator may approve. C) Only Founder may initiate and approve. |
-| **Recommended** | Option A for normal path; Option B/C for break-glass |
-| **Consequence** | Determines how many humans must be involved in a recovery; affects operational burden and security |
+| **Technical constraint** | (a) Firebase Admin SDK cannot remove TOTP factors (bug #2995); Identity Platform v1 Admin API required. (b) The lost-TOTP target **cannot use the normal authenticated application path** — primary factor alone yields `auth/multi-factor-auth-required` with no resolved `UserCredential`, no AUTH-03 token, no session — so request initiation must be Option A or Option B below. |
+| **Options** | A) An independently authenticated, MFA-satisfied administrator/operator creates the request on the target's behalf; another independent MFA-satisfied administrator approves. B) A bounded pre-MFA recovery proof (see §10B Option B) lets the target attest primary-factor possession without a privileged session, combined with independent approval. C) Only Founder/operator may initiate and approve. |
+| **Recommended** | **A or B for request initiation** (Founder picks the requestor model — this is itself an open decision) **plus** one independent MFA-satisfied approver for the normal path; operator-only for break-glass. |
+| **Requires Founder decision** | Whether recovery request initiation is authorized via Option A (independent actor) and/or Option B (bounded pre-MFA proof). If Option B is disallowed, only Option A / break-glass can initiate. |
+| **Consequence** | Determines how many humans must be involved and whether the locked-out target has any self-attestation channel; affects operational burden and security |
 
 ### Decision 2: Self-Approval Prohibition
 
@@ -753,8 +851,8 @@ No fifth state is added. Recovery is tracked in a separate `mfaRecoveryRequests`
 | **Current authority** | No existing policy |
 | **Technical constraint** | At MVP, 1-2 platform administrators may exist |
 | **Options** | A) One independent approver. B) Two-person approval. C) Operator-only (break-glass). D) Hybrid: one approver for normal path, operator-only for break-glass. |
-| **Recommended** | Option D — one independent approver minimum; operator-only for break-glass |
-| **Consequence** | Determines how many humans must agree; two-person approval may be impractical at MVP |
+| **Recommended** | Option D — one independent **MFA-satisfied** approver minimum; operator-only for break-glass |
+| **Consequence** | Determines how many humans must agree; two-person approval may be impractical at MVP; the approver must present server-verified MFA evidence (`verifiedMfaSatisfied === true`), never active-status-only |
 
 ### Decision 4: Single-Administrator Break-Glass Authority
 
@@ -764,17 +862,17 @@ No fifth state is added. Recovery is tracked in a separate `mfaRecoveryRequests`
 | **Technical constraint** | Bootstrap already uses service-account-only execution as trust boundary |
 | **Options** | A) Backend service-account-only execution (same as bootstrap). B) Founder/operator explicit command. C) Both A and B with different audit trails. |
 | **Recommended** | Option C — backend execution with Founder authorization |
-| **Consequence** | Determines who can unlock a sole administrator; must not create a standing privilege |
+| **Consequence** | Determines who can unlock a sole administrator; must not create a standing privilege. Note: this is a **separate governed trust boundary** from in-product administrator approval — it uses the bootstrap/backend service-account boundary, is fully audited, cannot alter roles/lifecycle, and does **not** require browser MFA (it is not an administrator browser session); see §11 |
 
-### Decision 5: Mandatory Session Revocation
+### Decision 5: Mandatory Session Revocation (CORR-001)
 
 | Aspect | Detail |
 |--------|--------|
 | **Current authority** | No existing policy |
-| **Technical constraint** | `revokeRefreshTokens` revokes refresh tokens but not existing ID tokens (~1 hour window) |
-| **Options** | A) Always revoke all sessions before factor reset. B) Revoke sessions only if compromised access suspected. C) Never revoke; rely on natural expiry. |
-| **Recommended** | Option A — always revoke |
-| **Consequence** | Option A is safest; the 1-hour ID token window is acceptable given the forced re-enrollment requirement |
+| **Technical constraint** | `revokeRefreshTokens` revokes refresh tokens and (on next use) the session; critically, **11thONUS Firestore backend rejects ID tokens issued before revocation** because `firebaseTokenVerifier.ts:174` calls `verifyIdToken(raw.rawToken, true)` with revocation checking enabled. There is therefore **no one-hour privileged-access window** against this backend after revocation. |
+| **Options** | A) Always revoke all sessions before factor reset (revocation-fail-closed; factor reset only after revocation succeeds). B) Revoke sessions only if compromised access suspected. C) Never revoke; rely on natural expiry. |
+| **Recommended** | Option A — always revoke, and **fail closed** (if revocation fails, factor reset MUST NOT proceed) |
+| **Consequence** | Option A is safest and closes the only stale-token surface; revocation-fail-closed prevents any path that resets a factor while old sessions might still be accepted |
 
 ### Decision 6: Administrator Lifecycle During Recovery
 
@@ -828,15 +926,19 @@ No fifth state is added. Recovery is tracked in a separate `mfaRecoveryRequests`
 
 ---
 
-## §20. Files Modified
+## §20. Files Modified (CORR-001)
 
 **This design task modifies only documentation files.** No production code, configuration, or Firebase state is changed.
 
+> **Correction (finding #8):** The prior report said only the report file was added and that the two governance files were "not modified". The actual diff is **exactly three files** — the new report plus two governance logs updated to record this assessment (and again for the CORR-001 correction):
+
 | File | Change |
 |------|--------|
-| `docs/05-implementation/reports/AUTH-MFA-003D-DESIGN-001-platform-administrator-mfa-recovery-assessment-2026-09-07.md` | New — this report |
-| `docs/changes/IMPLEMENTATION_CHANGES.md` | Not modified in this task (to be updated when implementation begins) |
-| `docs/00-governance/documentation-changes-log.md` | Not modified in this task (to be updated when implementation begins) |
+| `docs/05-implementation/reports/AUTH-MFA-003D-DESIGN-001-platform-administrator-mfa-recovery-assessment-2026-09-07.md` | New — this report (extended by CORR-001 with §33) |
+| `docs/changes/IMPLEMENTATION_CHANGES.md` | **Modified** — DESIGN-001 entry added; CORR-001 entry appended (superseding) |
+| `docs/00-governance/documentation-changes-log.md` | **Modified** — Entry 176 (DESIGN-001) added; Entry 177 (CORR-001) added; incorrect baseline SHA corrected to `a7b3a43756837390d60137a96883c8925b8e306e` |
+
+No other files were touched by this task.
 
 ---
 
@@ -850,9 +952,9 @@ No `functions/src/**`, `apps/web/src/**`, Firestore Rules, Firebase configuratio
 
 ---
 
-## §22. Diff Summary
+## §22. Diff Summary (CORR-001)
 
-This task produces a documentation-only diff. The final commit adds one new report file.
+This task produces a documentation-only diff spanning exactly **three files**: the new report, `docs/changes/IMPLEMENTATION_CHANGES.md`, and `docs/00-governance/documentation-changes-log.md`. No production code, configuration, dependencies, or Firebase state are changed.
 
 ---
 
@@ -892,15 +994,15 @@ The report follows the existing report convention (YAML-style header, numbered s
 
 The report is self-contained and references existing files/decisions without creating circular dependencies.
 
-### Repository Status
+### Repository Status (CORR-001)
 
-Only one new file is added to the worktree. No existing files are modified.
+Exactly three documentation files are part of this task's diff (see §20): the report plus the two governance logs. No production source files are modified.
 
 ---
 
-## §27. PR Handling
+## §27. PR Handling (CORR-001)
 
-**No PR exists.** This design assessment produces a single report file. A PR will be created when the report is ready for review.
+PR **#232** (`AUTH-MFA-003D-DESIGN-001`) carries this design assessment. It received an automated review with **eight findings**; CORR-001 corrects all eight (see §33). The PR remains **open** (not merged), awaiting Founder recovery-policy disposition after the corrections.
 
 ---
 
@@ -908,10 +1010,10 @@ Only one new file is added to the worktree. No existing files are modified.
 
 | Risk | Severity | Mitigation |
 |------|----------|------------|
-| Firebase Admin SDK TOTP bug (#2995) | **High** | Must use REST API or Identity Platform API for factor removal |
+| Firebase Admin SDK TOTP bug (#2995) | **High** | Must use Identity Platform v1 Admin `projects.accounts.update` for factor removal (Admin SDK blocked) |
 | No live recovery testing possible at MVP | Medium | Design validated against Firebase capabilities; live testing deferred to AUTH-MFA-003D implementation |
 | Single-administrator lockout | Medium | Break-glass path addresses this; requires Founder decision |
-| 1-hour ID token window after revocation | Low | Acceptable given mandatory re-enrollment; sessions expire naturally |
+| Stale ID tokens after revocation | **Low (mitigated)** | No one-hour window: backend runs `verifyIdToken(raw.rawToken, true)` at `firebaseTokenVerifier.ts:174`; pre-revocation tokens are rejected |
 | Recovery approval expiry timing | Low | Founder decision required; default recommendation is 1 hour |
 
 ---
@@ -933,12 +1035,14 @@ No live environment changes to roll back.
 **READY FOR FOUNDER RECOVERY POLICY DISPOSITION**
 
 All material questions have been researched and presented:
-- Firebase capability constraints identified (including critical Admin SDK bug)
+- Firebase capability constraints identified (including critical Admin SDK bug and the verified v1 Admin / rejected v2 withdrawal backend APIs)
 - Repository architecture fully inspected
 - Threat model complete (15 scenarios)
-- Atomicity model defined
-- Normal and break-glass paths specified
+- Atomicity model defined (fail-closed execution)
+- Normal and break-glass paths specified (four-phase correction)
+- Locked-out requester path defined with two design options (§10B)
 - All 10 Founder decision questions prepared with options and recommendations
+- Eight automated-review findings confirmed and corrected (see §33)
 
 The Founder can now make recovery-policy decisions without requiring another agent to discover missing fundamentals.
 
@@ -962,3 +1066,53 @@ The Founder can now make recovery-policy decisions without requiring another age
 ## §32. Success Gate
 
 **AUTH-MFA-003D-DESIGN-001 PARTIAL WORK RECOVERED AND REVIEWED — VALID PRIOR WORK PRESERVED (branch skeleton only, no substantive work) — INCOMPLETE/UNSUPPORTED WORK CORRECTED (no work to correct) — CURRENT FIREBASE FACTOR-RESET AND SESSION-REVOCATION CAPABILITIES VERIFIED — RECOVERY ROLE/AUDIT/LIFECYCLE BOUNDARIES ASSESSED — SINGLE-ADMIN BREAK-GLASS PROBLEM ASSESSED — ATOMICITY AND THREAT MODEL COMPLETE — FOUNDER DECISION QUESTIONS COMPLETE — NO PRODUCTION IMPLEMENTATION — NO LIVE ENVIRONMENT CHANGE — READY FOR FOUNDER RECOVERY POLICY DISPOSITION**
+
+---
+
+## §33. Correction Record — AUTH-MFA-003D-DESIGN-001-CORR-001
+
+**Purpose:** Consolidated, superseding correction record for the eight automated-review findings on PR #232. This section is the authoritative record of what CORR-001 changed and why. It supersedes any earlier wording in sections referenced below.
+
+**Evidence basis (verified against the repository and Firebase/Google API documentation on 2026-09-07):**
+- `functions/src/domains/authentication/services/firebaseTokenVerifier.ts:174` calls `verifyIdToken(raw.rawToken, true)` (revocation checking enabled) — the 11thONUS backend rejects ID tokens issued before revocation; there is **no one-hour privileged-access window** against this backend.
+- `apps/web/src/authentication/emailPasswordSignInFlow.ts:54-76` and `apps/web/src/authentication/mfa/mfaSdkChallenge.ts:167-174` handle `auth/multi-factor-auth-required` and never resolve a `UserCredential` without the second factor — a lost-TOTP user cannot obtain a privileged AUTH-03 session through the normal sign-in path.
+- `functions/src/domains/platformAdministration/services/bootstrapPlatformAdministrator.ts` is the break-glass trust-boundary precedent (backend/service-account-only, no public endpoint).
+- Identity Platform v1 Admin: `POST https://identitytoolkit.googleapis.com/v1/projects/{targetProjectId}/accounts:update` with Google OAuth2 service-account credential and IAM `firebaseauth.users.update`; selects the user by `localId`, uses `mfa` = `MfaInfo` (overwrites all MFA info, so supports both all-factor and selective removal); **does not** auto-revoke sessions (revocation is a separate explicit `revokeRefreshTokens` step).
+- The v2 `accounts.mfaEnrollment:withdraw` (`POST /v2/accounts/mfaEnrollment:withdraw`) is **not** the backend path: it requires the user's own `idToken`, revokes one factor, and reissues tokens; it is the client-facing API invoked by `multiFactor.unenroll()`.
+- Firebase Admin SDK `updateUser` remains **blocked** for MFA by `firebase/firebase-admin-node#2995`.
+- Baseline (correct): `origin/main` = `a7b3a43756837390d60137a96883c8925b8e306e` (PR #231 merge). The prior log entry contained an invalid truncated SHA (`...6837390...`), now corrected in both occurrences.
+- The actual diff is exactly three files (see §20): the report, `docs/changes/IMPLEMENTATION_CHANGES.md`, and `docs/00-governance/documentation-changes-log.md`.
+
+### Eight Findings — Corrections Applied
+
+| # | Finding (automated review) | Determination | Correction |
+|---|----------------------------|---------------|------------|
+| 1 | Locked-out requester path (affected administrator cannot request via normal app path) | **Confirmed genuine** | §10A/§10B rewritten; §15 normal path revised to four separated phases; request initiation via Option A (independent actor) or Option B (bounded pre-MFA proof) |
+| 2 | Approver MFA requirement (approver must be MFA-satisfied, not just active) | **Confirmed genuine** | §10 "Who May Approve" corrected: requires active Platform Administrator presenting `verifiedMfaSatisfied === true` via `sign_in_second_factor`; no active-status-only or client-declared MFA |
+| 3 | Revocation fail-closed property (factor reset must not proceed if revocation fails) | **Confirmed genuine** | §14/§15/§19(D5)/§28 updated: revocation-first, fail-closed invariant; no natural-expiry downgrade |
+| 4 | Factor-enrollment binding (`targetFactorEnrollmentId` binds reset to the specific factor) | **Confirmed genuine** | §16 Option B schema, §15 execution, §14 idempotency all bind execution to the immutable `targetFactorEnrollmentId`; replacement factor → fail closed |
+| 5 | ID-token lifetime vs backend acceptance (~1 hour window claim) | **Confirmed genuine** | Corrected: `verifyIdToken(rawToken, true)` rejects pre-revocation tokens; **no one-hour window** against this backend (§6D, §19 D5, §28) |
+| 6 | Factor-removal API (v1 Admin vs Admin SDK vs v2 withdrawal) | **Confirmed genuine** | §6C reconciled: v1 Admin `projects.accounts.update` is the backend path; v2 `mfaEnrollment:withdraw` is client-sided and requires the user's own token; Admin SDK blocked by #2995 |
+| 7 | Baseline SHA correctness (%5B...%5D incorrect SHA in logs) | **Confirmed genuine** | Both incorrect occurrences in `documentation-changes-log.md` corrected to `a7b3a43756837390d60137a96883c8925b8e306e` |
+| 8 | File inventory (diff is 3 files, not 1; governance logs ARE modified) | **Confirmed genuine** | §20/§22/§26 corrected to the actual three-file diff |
+
+### Superseded Statements (replaced in this revision)
+
+The following prior statements are superseded by the corrected content in the sections cited:
+1. "Requestor authenticates (primary factor)" as the normal-path step 1 — **replaced** (§15 Phase 1).
+2. "Approver authenticates (primary + MFA — if they have MFA)" and "if they have MFA" hedging — **replaced** by a mandatory approver-MFA requirement (§10, §15 Phase 2).
+3. "Firebase Auth REST API: remove TOTP factor" ambiguous wording — **replaced** by the v1 Admin `projects.accounts.update` backend path (§6C, §15 Phase 3).
+4. "~1 hour window" after `revokeRefreshTokens` — **replaced** (§6D, §19 D5, §28).
+5. "Only one new file is added" — **replaced** by the exact three-file diff (§20, §22, §26).
+6. Baseline SHA `...6837390...` in the change log — **corrected** to `a7b3a43756837390d60137a96883c8925b8e306e`.
+
+### Scope Confirmation
+
+CORR-001 remains **design/assessment-only**:
+- No `functions/src/**`, `apps/web/src/**`, Firestore Rules, Firebase configuration, package manifests, lockfiles, or dependencies modified.
+- No AUTH-MFA-003D implementation started; PR #232 remains open and unmerged.
+- No live environment change.
+
+### Final State After CORR-001
+
+**AUTH-MFA-003D-DESIGN-001 — CORRECTED — EIGHT AUTOMATED-REVIEW FINDINGS CONFIRMED AND CORRECTED — SUPERSEDING CORRECTION RECORD IN §33 — FOUNDER DECISION QUESTIONS COMPLETE AND UPDATED — NO PRODUCTION IMPLEMENTATION — NO LIVE ENVIRONMENT CHANGE — READY FOR FOUNDER RECOVERY POLICY DISPOSITION**
