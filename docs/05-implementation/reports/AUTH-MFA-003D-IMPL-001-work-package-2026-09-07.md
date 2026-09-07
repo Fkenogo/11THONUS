@@ -4,9 +4,12 @@
 - **Parent standard:** FEF-EWPCS-001 — Engineering Work Package & Closure Standard v1.0
 - **Template status:** APPROVED — ACTIVE companion template
 - **Template effective date:** 2026-09-07
-- **Instantiation status:** **PENDING FOUNDER AUTHORISATION — NOT EXECUTABLE**
+- **Instantiation status:** **AUTHORISED — READY FOR IMPLEMENTATION**
+- **Founder authorization date:** 2026-09-07
+- **Founder-reviewed pre-authorization WP head:** `b32eef5d576c4e9ad0bbea43d424f02ed6fba095`
+- **Founder execution authorization reference:** `FD-AUTH-MFA-003D-IMPL-001`
 
-> This is the sole authoritative project work package for `AUTH-MFA-003D-IMPL-001`. It instantiates the official FEF template and does not itself authorise production implementation.
+> This is the sole authoritative project work package for `AUTH-MFA-003D-IMPL-001`. It instantiates the official FEF template and records bounded Founder execution authorization; it does not amend security policy or authorize production/live deployment.
 
 # Work Package
 
@@ -19,9 +22,9 @@
 - **Expected entry SHA:** `ebdb7cc80ba4930c4075321899b58df0620efc6a` at work-package authoring (PR #232 merge); the future execution agent must fetch and record the current authoritative `origin/main` SHA before implementation.
 - **Working branch / branch rule:** Create a dedicated `codex/`-prefixed implementation branch from the verified current `origin/main`; do not implement in a dirty primary worktree.
 - **Governing authority:** `DEC-SEC-005` / `FD-MFA-R` R1–R10; `DEC-SEC-004` / `FD-MFA-2` where still applicable; merged `AUTH-MFA-003D-DESIGN-001` and `AUTH-MFA-003D-DESIGN-001-CORR-001` (PR #232); existing `AUTH-03` server-authentication trust architecture.
-- **Founder / designated authorisation record:** `DEC-SEC-005` records recovery policy only. A separate, explicit Founder authorisation to execute this exact work package is required before implementation.
-- **Current programme state:** **PENDING FOUNDER AUTHORISATION — NOT EXECUTABLE.** This recorded work package does not change that state.
-- **Work package owner / execution agent:** Future implementation agent, only after the required Founder authorisation.
+- **Founder / designated authorisation record:** **`FD-AUTH-MFA-003D-IMPL-001` — Founder execution authorization recorded 2026-09-07.** Founder reviewed pre-authorization WP head `b32eef5d576c4e9ad0bbea43d424f02ed6fba095` and authorizes this bounded work package under `FEF-EWPCS-001` v1.0 and `DEC-SEC-005` / `FD-MFA-R` R1–R10. This is execution authority only: it does not create a new security-policy decision, amend R1–R10, or permit engineering to redesign them.
+- **Current programme state:** **AUTHORISED — READY FOR IMPLEMENTATION.** Future execution remains subject to every remaining Entry Gate check and the High-Risk Review Gate.
+- **Work package owner / execution agent:** Future implementation agent, subject to this recorded authorization and all remaining gates.
 - **Review authority:** Independent security/engineering reviewer on the exact implementation head.
 - **Approval authority:** Founder or an explicitly designated approval authority.
 
@@ -34,20 +37,19 @@ Confirm before implementation:
 - [x] Exact Work Package ID and bounded objective reconciled with existing project authority.
 - [x] Governing decisions, approved design basis, PR #232 closure, PR #233 state, and current Platform Administration audit architecture inspected.
 - [x] FEF-EWPCS-001 v1.0 and its Work Package and Completion Report templates verified **APPROVED — ACTIVE**, effective 2026-09-07.
+- [x] Founder execution authorization for this exact bounded package recorded 2026-09-07 as `FD-AUTH-MFA-003D-IMPL-001`, against reviewed pre-authorization WP head `b32eef5d576c4e9ad0bbea43d424f02ed6fba095`.
 - [ ] Future execution agent: fetch authoritative remote state and record current `origin/main` SHA and branch ahead/behind state.
 - [ ] Future execution agent: use a clean, isolated worktree with no unresolved merge, rebase, or cherry-pick state.
 - [ ] Future execution agent: verify this exact FEF work package is merged and remains authoritative.
-- [ ] Future execution agent: verify explicit Founder authorisation to execute this exact package.
+- [ ] Future execution agent: verify the recorded `FD-AUTH-MFA-003D-IMPL-001` authorization still applies to this exact authoritative package and that no governing authority has changed.
 - [ ] Future execution agent: verify Node 20, pinned package manager/runtime, required Firebase/Firestore emulator services, and required credentials only for authorised non-live validation.
 - [ ] Future execution agent: re-verify the supported Firebase/Identity Platform administrative factor-removal API and its exact-factor safety before coding.
 
 ### Hard Authority Stop
 
-The execution agent verifies authority; it does not create it. `DEC-SEC-005`, `DEC-SEC-004`, the approved design basis, this template instantiation, a roadmap position, or a plausible package identifier do **not** independently authorise implementation. Until explicit Founder authorisation is recorded, stop with:
+The execution agent verifies authority; it does not create or reinterpret it. `FD-AUTH-MFA-003D-IMPL-001` records Founder authorization for this exact bounded package only. `DEC-SEC-005`, `DEC-SEC-004`, the approved design basis, this template instantiation, a roadmap position, or a plausible package identifier do **not** independently authorise implementation, amend R1–R10, or waive any remaining Entry Gate or High-Risk Review Gate checkpoint.
 
-**PENDING FOUNDER AUTHORISATION — NOT EXECUTABLE**
-
-If an execution-time authority, prerequisite, provider capability, or security invariant is missing, report:
+If the recorded authorization cannot be verified, or an execution-time authority, prerequisite, provider capability, or security invariant is missing, report:
 
 **BLOCKED — DECISION REQUIRED**
 
@@ -86,7 +88,7 @@ A deferred matter is not implementation authority.
 | `DEC-SEC-005` / `FD-MFA-R` R1–R10 | Founder security policy | Confirmed | Fixed recovery policy; does not authorise execution. |
 | `DEC-SEC-004` / `FD-MFA-2` and `DEC-SEC-002` | Existing security authority | Confirmed | Preserves TOTP-only, server-side, non-bypassable Administrator MFA boundary. |
 | `AUTH-MFA-003D-DESIGN-001` + `-CORR-001` / PR #232 | Approved design basis | Merged | Supplies approved design and current architecture findings. |
-| Explicit Founder authorisation for this exact WP | Founder execution authority | **Missing** | Hard blocker; package is not executable. |
+| `FD-AUTH-MFA-003D-IMPL-001` for this exact WP | Founder execution authority | **Authorised — recorded 2026-09-07** | Satisfies this authority dependency only; all remaining Entry Gate and High-Risk Review Gate checks remain mandatory before implementation. |
 | Current Firebase/Identity Platform administrative factor API | External provider validation | Re-verification required | Hard blocker if it cannot safely remove only the approved factor. |
 | Platform Administration audit repository / Firestore transactions | Existing architecture | Available | Recovery completion and Platform Administration audit must be transactionally coordinated. |
 | Firebase Auth / Firestore emulators and authorised test environment | Validation dependency | Verify at execution | Required for applicable integration and concurrency evidence; no unsupported live TOTP-emulator claim. |
@@ -206,16 +208,19 @@ Use `FEF-EWPCS-001-COMPLETION-REPORT-TEMPLATE.md` for implementation completion.
 
 Is early review required before full implementation? **YES**
 
-- **Implementation approach review:** Before production code, inspect the provider API, exact-factor safety strategy, recovery state machine, transaction boundary, and authority gates against this WP.
-- **Contract/tests review:** Before a large implementation, independently inspect the proposed contracts and tests for ordering, absent-factor reconciliation, replacement-factor protection, audit atomicity, and no-bypass behaviour.
-- **Implementation:** Build only after the two bounded checkpoints are accepted.
+- **Entry Gate:** Complete and record every remaining future-execution Entry Gate check before implementation analysis.
+- **Implementation approach:** Before production code, inspect the provider API, exact-factor safety strategy, recovery state machine, transaction boundary, and authority gates against this WP; obtain independent approach review.
+- **Contract/tests:** Before a large implementation, independently inspect the proposed contracts and tests for ordering, absent-factor reconciliation, replacement-factor protection, audit atomicity, and no-bypass behaviour.
+- **Substantive implementation:** Build only after the independent approach and contract/tests checkpoints are accepted.
 - **Final review:** Independent reviewer assesses the exact validated head before Founder approval.
+
+Founder authorization of this work package does not waive any checkpoint in this sequence.
 
 ## 14. Expected Completion State
 
-Current state: **PENDING FOUNDER AUTHORISATION — NOT EXECUTABLE**.
+Current state: **AUTHORISED — READY FOR IMPLEMENTATION** under `FD-AUTH-MFA-003D-IMPL-001` (Founder authorization recorded 2026-09-07 against pre-authorization WP head `b32eef5d576c4e9ad0bbea43d424f02ed6fba095`). This authorization does not waive the remaining Entry Gate or High-Risk Review Gate checkpoints.
 
-After explicit Founder authorisation, the maximum self-declared state for the implementation agent is:
+The maximum self-declared state for the implementation agent remains:
 
 **IMPLEMENTED — AWAITING INDEPENDENT REVIEW**
 
@@ -229,7 +234,7 @@ The implementation agent may not self-declare `APPROVED`, `MERGED`, or `CLOSED`.
 
 Stop and report rather than assume if:
 
-- explicit Founder execution authorisation, exact WP authority, or governing authority cannot be verified;
+- the recorded Founder execution authorization, exact WP authority, or governing authority cannot be verified;
 - the provider API has changed, is unavailable, or cannot guarantee exact-factor safety;
 - a first execution finds the approved factor absent without durable provider-reset evidence;
 - a replacement factor, concurrent execution, expiry race, audit transaction failure, or provider/persistence inconsistency cannot be reconciled safely;
