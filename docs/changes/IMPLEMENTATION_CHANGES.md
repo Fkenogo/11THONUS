@@ -7,6 +7,19 @@
 
 ---
 
+## 2026-09-08 — AUTH-ARCH-001-CORR-001 — Correction to Authentication & Identity-Provider Architecture Reassessment
+
+- **Task / status:** Controlled documentation/research correction on PR #234 (pre-correction head `d17f94736405cc91f342ef9df2baf0a15458e090`; base `origin/main` `b0a039b2af2e4f869c5534ccb8d8705fdece661a`). **ASSESSMENT CORRECTED — AWAITING FOUNDER ARCHITECTURE-DIRECTION DISPOSITION — PROVIDER VALIDATION REQUIRED**. Stage 1/Stage 2/controlled-dependency/Firebase data-platform findings unchanged.
+- **Cognito correction:** eliminated on its actual TOTP administrative API, not `AdminSetUserMFAPreference` alone. `AdminDeleteSoftwareToken` (explicit lost-TOTP recovery operation) takes only `Username` + `UserPoolId`, exposes no immutable enrollment identifier, targets the current single software token, and has no documented precondition guard — a stale authorization can delete replacement F2. `AdminUserGlobalSignOut` narrows but does not close the race (residual validity; managed-login cookie not cleared; no session-empty confirmation). Still fails R7: **ELIMINATED for the exact-factor/replacement-factor reason**.
+- **Auth0 correction:** exact-factor finding preserved (`DELETE /api/v2/guardian/enrollments/{id}` → `204`). Session/refresh-token/bulk revocation all return `202 Accepted`, async, eventually consistent; session deletion does not revoke refresh tokens (separate Enterprise-only ops); issued JWT access tokens cannot be revoked. `202` ≠ confirmed. R5 **NOT PROVEN** — Auth0 reclassified **VALIDATION REQUIRED (leading candidate — NOT SELECTED)**. Domain-side token-revocation cutoff stated as explicit candidate-architecture element requiring Founder/security authority; not implemented.
+- **Dispositions:** architecture-direction **CHANGE** supportable now vs provider-selection **TARGET PROVIDER NOT YET SELECTED — VALIDATION REQUIRED**. V1–V5 rewritten (V1 exact-factor; V2 full revocation contract + JWT effect + fail-closed ordering; V3 product methods; V4 Functions/token/cutoff/transport; V5 commercial/operational). Founder Decision A/B split; future `AUTH-ARCH-002` validation-only programme recommended (no migration, production-config change, Firebase-service alteration, or MFA-implementation resumption).
+- **Files changed:** [`AUTH-ARCH-001 assessment`](../05-implementation/reports/AUTH-ARCH-001-authentication-identity-provider-architecture-reassessment-2026-09-07.md); `docs/00-governance/documentation-changes-log.md` (Entry 183); this record.
+- **Code/configuration/dependencies/migrations/live changes:** none. No `DEC-SEC-005` change. `AUTH-MFA-003D-IMPL-001` remains blocked. `FD-COM-001` untouched.
+- **Validation:** static documentation inspection plus current official AWS/Auth0 documentation research; documentation diff/relative-link validation. No production, provider, emulator or live credential mutation.
+- **Rollback:** revert this documentation commit only; no runtime/provider/data rollback is required.
+
+---
+
 ## 2026-09-07 — AUTH-ARCH-001 — Authentication & Identity-Provider Architecture Reassessment
 
 - **Task / status:** Founder-authorised controlled architecture assessment — **ASSESSMENT COMPLETE — AWAITING FOUNDER ARCHITECTURE DISPOSITION**. Primary recommendation: **CHANGE** to an external managed IdP boundary while retaining Firebase Hosting, Cloud Functions, Firestore and Storage. This is not an approved migration or provider procurement.
