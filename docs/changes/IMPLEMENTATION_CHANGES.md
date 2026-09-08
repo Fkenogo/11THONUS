@@ -7,6 +7,57 @@
 
 ---
 
+## 2026-09-08 — AUTH-ARCH-001-FD-001 — Founder Authentication Architecture Direction (`DEC-AUTH-002` / `FD-AUTH-ARCH-001`)
+
+- **Task / status:** Founder-disposition recording on PR #234 (Founder-reviewed head `be4c1c7692a7293a0ba5bba0b6cf4700cc61bf5e`). **AUTH-ARCH-001 = COMPLETE / FOUNDER-DISPOSED / MERGED / CLOSED** (post-merge verification required).
+- **Direction recorded:** Decision A APPROVED — CHANGE to a separately controlled external managed IdP boundary; Firebase Authentication no longer the target architecture (product/provider-fit under fixed `DEC-SEC-005` R5/R7); Firebase Hosting/Functions/Firestore/Storage retained pending separate reassessment; controlled provider dependency + durable-identity boundary recorded as principle; provider subject stays an opaque reference.
+- **Explicitly not decided/started:** Auth0 NOT selected (leading candidate, validation required); provider selection deferred to future `AUTH-ARCH-002` (16-item validation scope noted, not started); `AUTH-MFA-003D-IMPL-001` remains authorised/blocked (no resumption, no R1–R10 change); `DATA-ARCH-001` noted as a separate future assessment (no PostgreSQL decision, provisioning, or persistence change).
+- **Files changed:** `docs/00-governance/decisions/decision-register.md` (new `DEC-AUTH-002`); AUTH-ARCH-001 assessment (COMPLETE status + §17); `docs/00-governance/documentation-changes-log.md` (Entry 185); this record. No provider-selection decision created; unrelated decisions unmodified.
+- **Code/configuration/dependencies/migrations/live changes:** none. `FD-COM-001` untouched.
+- **Validation:** documentation diff; `git diff --check`; relative-link validation; CI SUCCESS required on the exact final head; regular merge commit with expected-head protection; post-merge CI SUCCESS on the merge commit required.
+- **Rollback:** revert the disposition commit(s) / the merge; no runtime/provider/data rollback is required.
+
+---
+
+## 2026-09-08 — AUTH-ARCH-001-CORR-002 — Reconcile AUTH-MFA-003D Work-Package State and Correct PR #234 Review Findings
+
+- **Task / status:** Controlled documentation/governance correction on PR #234 (pre-correction head `6dfee169fc5a746e86aa7d77e59f57e932b093c4`). Resolves the two P2 review threads without altering AUTH-ARCH-001 conclusions.
+- **WP reconciliation:** the authoritative `AUTH-MFA-003D-IMPL-001` work package now distinguishes Founder authorisation (VALID under `FD-AUTH-MFA-003D-IMPL-001`, preserved historically and constitutionally) from execution/programme state (**BLOCKED — DECISION REQUIRED — AUTHENTICATION ARCHITECTURE REASSESSMENT**; implementation NOT STARTED). Records: FEF Entry Gate provider-capability check failed; `AUTH-MFA-003D-PROVIDER-001` evidence (unmerged branch `codex/auth-mfa-003d-provider-001`, commit `618c6e5`, Result C) cited as evidence only, not authority; `AUTH-ARCH-001` (PR #234) is the current decision track; no resumption until Founder architecture/provider disposition; authorization does not override failed gates. R1–R10, AC-01–AC-23 and the approved recovery policy unchanged. Bounded agreeing note added to AUTH-ARCH-001 §14; dispositions unchanged (architecture CHANGE; provider NOT YET SELECTED; Auth0 VALIDATION REQUIRED; Cognito eliminated; Firebase unsuitable under R5/R7). Token-revocation cutoff preserved as candidate architecture requiring validation/authority, not approved.
+- **Link correction:** `documentation-changes-log.md` Entries 182/183 AUTH-ARCH-001 report links corrected from `../../05-implementation/...` to `../05-implementation/...` (verified resolving); unrelated historical links untouched.
+- **Files changed:** `AUTH-MFA-003D-IMPL-001-work-package-2026-09-07.md`; AUTH-ARCH-001 assessment (§14 note only); `docs/00-governance/documentation-changes-log.md` (link fixes + Entry 184); this record.
+- **Code/configuration/dependencies/migrations/live changes:** none. No `DEC-SEC-005` change. No new provider decision. `FD-COM-001` untouched.
+- **Validation:** relative-link validation; documentation diff; `git diff --check`. No production, provider, emulator or live credential mutation.
+- **Rollback:** revert this documentation commit only; no runtime/provider/data rollback is required.
+
+---
+
+## 2026-09-08 — AUTH-ARCH-001-CORR-001 — Correction to Authentication & Identity-Provider Architecture Reassessment
+
+- **Task / status:** Controlled documentation/research correction on PR #234 (pre-correction head `d17f94736405cc91f342ef9df2baf0a15458e090`; base `origin/main` `b0a039b2af2e4f869c5534ccb8d8705fdece661a`). **ASSESSMENT CORRECTED — AWAITING FOUNDER ARCHITECTURE-DIRECTION DISPOSITION — PROVIDER VALIDATION REQUIRED**. Stage 1/Stage 2/controlled-dependency/Firebase data-platform findings unchanged.
+- **Cognito correction:** eliminated on its actual TOTP administrative API, not `AdminSetUserMFAPreference` alone. `AdminDeleteSoftwareToken` (explicit lost-TOTP recovery operation) takes only `Username` + `UserPoolId`, exposes no immutable enrollment identifier, targets the current single software token, and has no documented precondition guard — a stale authorization can delete replacement F2. `AdminUserGlobalSignOut` narrows but does not close the race (residual validity; managed-login cookie not cleared; no session-empty confirmation). Still fails R7: **ELIMINATED for the exact-factor/replacement-factor reason**.
+- **Auth0 correction:** exact-factor finding preserved (`DELETE /api/v2/guardian/enrollments/{id}` → `204`). Session/refresh-token/bulk revocation all return `202 Accepted`, async, eventually consistent; session deletion does not revoke refresh tokens (separate Enterprise-only ops); issued JWT access tokens cannot be revoked. `202` ≠ confirmed. R5 **NOT PROVEN** — Auth0 reclassified **VALIDATION REQUIRED (leading candidate — NOT SELECTED)**. Domain-side token-revocation cutoff stated as explicit candidate-architecture element requiring Founder/security authority; not implemented.
+- **Dispositions:** architecture-direction **CHANGE** supportable now vs provider-selection **TARGET PROVIDER NOT YET SELECTED — VALIDATION REQUIRED**. V1–V5 rewritten (V1 exact-factor; V2 full revocation contract + JWT effect + fail-closed ordering; V3 product methods; V4 Functions/token/cutoff/transport; V5 commercial/operational). Founder Decision A/B split; future `AUTH-ARCH-002` validation-only programme recommended (no migration, production-config change, Firebase-service alteration, or MFA-implementation resumption).
+- **Files changed:** [`AUTH-ARCH-001 assessment`](../05-implementation/reports/AUTH-ARCH-001-authentication-identity-provider-architecture-reassessment-2026-09-07.md); `docs/00-governance/documentation-changes-log.md` (Entry 183); this record.
+- **Code/configuration/dependencies/migrations/live changes:** none. No `DEC-SEC-005` change. `AUTH-MFA-003D-IMPL-001` remains blocked. `FD-COM-001` untouched.
+- **Validation:** static documentation inspection plus current official AWS/Auth0 documentation research; documentation diff/relative-link validation. No production, provider, emulator or live credential mutation.
+- **Rollback:** revert this documentation commit only; no runtime/provider/data rollback is required.
+
+---
+
+## 2026-09-07 — AUTH-ARCH-001 — Authentication & Identity-Provider Architecture Reassessment
+
+- **Task / status:** Founder-authorised controlled architecture assessment — **ASSESSMENT COMPLETE — AWAITING FOUNDER ARCHITECTURE DISPOSITION**. Primary recommendation: **CHANGE** to an external managed IdP boundary while retaining Firebase Hosting, Cloud Functions, Firestore and Storage. This is not an approved migration or provider procurement.
+- **Evidence:** fetched `origin/main` `b0a039b2af2e4f869c5534ccb8d8705fdece661a`; inspected the merged `AUTH-MFA-003D`/Founder `DEC-SEC-005` R1–R10 chain, the current controlled work package, provider-feasibility evidence, application-wide Firebase dependencies, Rules/configuration/tests/CI, MTAIP project evidence and current official provider documentation.
+- **Finding:** Firebase Authentication / Identity Platform cannot satisfy the hard exact-factor administrative TOTP-recovery invariant. Its documented administrative update is whole-list and lacks an exact-factor conditional mutation; a stale recovery can remove a concurrent replacement factor. `AUTH-MFA-003D-IMPL-001` remains **BLOCKED — DECISION REQUIRED** and was not resumed.
+- **Target assessment:** Auth0 Customer Identity Enterprise was the best-qualified external candidate: documented named Guardian-enrollment deletion, M2M administration, signed-token MFA evidence and user-session administration. Non-production V1–V5 validation and Founder commercial/architecture direction remain required before any implementation. Cognito, WorkOS and self-hosted Keycloak were eliminated at qualification; Okta was technically credible but commercially disproportionate on published pricing.
+- **Architecture findings:** 11thONUS owns durable customer/business/authorization/audit semantics and its `TokenVerifierPort` is a real controlled seam. Firebase UID dependence has leaked into authentication-reference keying, same-principal linking, Platform Administrator record keys, verified-contact lookup and a legacy actor helper; these are controlled-programme migration requirements, not changes made here. Current Firestore/Storage Rules are deny-all and do not depend on `request.auth`, so Firebase data services need not migrate just because the IdP changes.
+- **Files changed:** this append-only record; `docs/00-governance/documentation-changes-log.md`; [`AUTH-ARCH-001 assessment`](../05-implementation/reports/AUTH-ARCH-001-authentication-identity-provider-architecture-reassessment-2026-09-07.md).
+- **Code/configuration/dependencies/migrations/live changes:** none.
+- **Validation:** static repository/history/configuration/Rules inspection and official provider-documentation research; documentation diff/relative-link validation. No production, provider, emulator or live credential mutation.
+- **Rollback:** revert this documentation commit only; no runtime/provider/data rollback is required.
+
+---
+
 ## 2026-07-17 — ENG-P0-001 — Repository, Tooling, Documentation Migration and Test-Framework Scaffold
 
 - **Date:** 2026-07-17
