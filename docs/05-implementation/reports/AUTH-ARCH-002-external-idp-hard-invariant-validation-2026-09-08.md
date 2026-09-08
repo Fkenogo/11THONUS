@@ -68,12 +68,12 @@ Auth0 JWT → 11thONUS TokenVerifierPort → signature/issuer/audience/expiry
 
 Assessment:
 
-- **Mechanism:** on recovery approval, record a domain-owned revocation epoch (per-user session version / security epoch with cut-off timestamp) in Firestore alongside the existing recovery lifecycle; the verifier adapter rejects any token whose `iat`/`auth_time` (verified from the signed token) precedes the epoch. Synchronous, fail-closed, provider-independent enforcement at the exact boundary that already exists (`TokenVerifierPort.verify()`).
+- **Mechanism:** on recovery approval, record a domain-owned revocation epoch (per-user session version / security epoch with cut-off timestamp) in Firestore alongside the existing recovery lifecycle; the verifier adapter rejects any token whose authenticated-session generation precedes the epoch. The comparison MUST use an immutable pre-cutoff session-generation signal — a validated `auth_time` (or session-creation equivalent) carried in the token — and MUST fail closed when that signal is absent. Comparing bare token `iat` is unsafe: a still-live refresh flow during Auth0's asynchronous revocation window can mint a JWT after the epoch write with a post-cutoff `iat` that would wrongly pass. Where the access-token shape does not natively carry the generation signal, the adapter design must source it (e.g. namespaced custom claim populated at authentication time — never trusting client input) or keep the user blocked server-side until fresh post-recovery authentication; which form the tenant supports is part of the V2/V4 bounded evidence.
 - **Security properties:** closes the already-issued-JWT gap that the provider cannot close; converts async provider revocation into a synchronous domain verdict; replay of pre-revocation tokens fails closed even while Auth0 converges.
 - **Concurrency:** epoch write is a single Firestore transaction with the recovery record; concurrent recovery attempts serialize on the same record (existing AC-09/10/18 ordering applies).
 - **Storage:** one small epoch document per recovery target (or a version field on the administrator/customer security record) — negligible.
-- **Per-request effect:** one Firestore read per verification (cacheable for short windows with fail-closed on cache failure); consistent with the current per-request `verifyIdToken(..., true)` cost model.
-- **Cache behavior:** short-TTL cache keyed by (user, epoch); any doubt → re-read or reject. Exact TTL is AUTH-ARCH-002-follow-on design detail, not decided here.
+- **Per-request effect:** one Firestore read per verification, consistent with the current per-request `verifyIdToken(..., true)` cost model.
+- **Cache behavior:** the epoch MUST be read strongly consistently on the enforcement path — single-document Firestore reads are strongly consistent; **no short-TTL caching of the epoch** (a stale cached epoch on any instance would keep accepting pre-revocation JWTs and contradicts fail-closed enforcement). Caching remains acceptable only for provider JWKS keys, never for the revocation verdict. The recovery barrier therefore needs the strongly consistent epoch read (or coordinated server-side blocking until fresh post-recovery authentication); an ordinary cache TTL is not safe for this R5 decision.
 - **Operational burden:** low — no new infrastructure, no new provider dependency; uses the existing Firestore emulator-tested repository seam.
 - **Controlled-dependency compatibility:** fully compatible — provider IDs stay opaque references; acceptance policy stays 11thONUS authority; no Auth0 roles/claims become domain authority.
 
@@ -180,9 +180,9 @@ Auth0 resolves the exact Firebase blocker: addressed per-enrollment administrati
 | R7/AC-09/10/18 exact-factor (F1 never removes F2) | **VALIDATION REQUIRED** | Addressed delete proven in docs; behavioral proof needs tenant test |
 | R5 fail-closed revocation before factor reset | **VALIDATION REQUIRED** | 202/async/JWT-non-revocation documented; confirmation contract + cutoff need proof + authority |
 | R1–R4/R6/R8–R10 (authorization, lifecycle, expiry, re-enrollment, audit, break-glass) | **PASS** | Primitives + admin APIs documented; domain lifecycle unchanged |
-| Customer methods + EN/FR (V3) | **PASS** | All native; phone economics gated at V6 |
+| Customer methods + EN/FR (V3) | **PASS (design) with tenant matrix in gate** | All native; phone economics gated at V6; non-production method/EN-FR matrix required in §16 evidence before transition |
 | Server-verifiable MFA evidence (V4) | **PASS** | `amr` contract + refresh-freshness semantics documented |
-| Functions/API boundary + App Check (V5/§8) | **PASS** | HTTPS+JWKS shape specifiable; App Check independent |
+| Functions/API boundary + App Check (V5/§8) | **PASS (design) with contract test in gate** | HTTPS+JWKS shape specifiable; callable-vs-HTTPS decision + end-to-end contract test required in §16 evidence; App Check independent |
 | Identity mapping + linking discipline (§§9–10) | **PASS** | Adapter-disciplined design preserves domain authority |
 | Admin operations (§11) | **PASS** | Full endpoint/scope coverage documented |
 | Testing strategy (§12) | **PASS** | Fixture-first, bounded tenant use |
@@ -198,15 +198,18 @@ Auth0 is not qualified merely for being stronger than Firebase; it independently
 
 1. V1: list F1/F2 TOTP enrollments → delete F1 by ID (`204`) → read back F1/F2 → prove F2 untouched; already-absent-F1 handling; idempotency determination; concurrent delete-vs-enroll ordering; record scopes, HTTP outcomes, audit logs.
 2. V2: session delete + refresh-token revoke sequencing → readback polling → determine the confirmation bound before F1 deletion; verify `preserve_refresh_tokens` behavior; record `202`-to-confirmed latency distribution.
-3. V4: confirm `amr` values, refresh omission, and namespaced access-token MFA claim behavior on the tenant.
-4. V6: Enterprise quote for the exact required APIs; SMS gateway pricing for Burundi/Rwanda pilot volumes.
-5. Authority: Founder/security confirmation of the §4 domain cutoff as revocation enforcement.
+3. V3: non-production authentication-method/EN-FR matrix (Google, email/password, verification/reset, optional phone, EN/FR experience, linking semantics) using test contacts only — the approved AUTH-ARCH-001 validation scope, not assumed from documentation.
+4. V4: confirm `amr` values, refresh omission, and namespaced access-token MFA claim behavior on the tenant.
+5. V5: external-token-to-Functions end-to-end contract test plus the callable-vs-HTTPS transport decision — likewise required before any transition, not assumed from documentation.
+6. V6: Enterprise quote for the exact required APIs; SMS gateway pricing for Burundi/Rwanda pilot volumes.
+7. Authority: Founder/security confirmation of the §4 domain cutoff as revocation enforcement.
 
 If that evidence passes, Auth0 returns as `QUALIFIED — READY FOR FOUNDER PROVIDER SELECTION`. If the tenant disproves exact-factor safety or no fail-closed revocation contract emerges, the result becomes `NOT QUALIFIED — PROVIDER SELECTION REOPENED` without revisiting the approved architecture direction.
 
 ## 17. Records and completion
 
 - Files: this assessment (new); documentation-changes-log; implementation-changes record.
+- Automated-review corrections (2026-09-08, same PR): §4 cutoff hardened — session-generation (`auth_time`-equivalent) comparison with fail-closed on absence instead of bare `iat`; strongly consistent epoch reads with no epoch caching; §16 gate extended with the V3 method/EN-FR matrix and the V5 contract test + transport decision. Recommendation unchanged (C).
 - Production/config/provider changes: **NONE**. No tenants/accounts created; no code/config/dependencies altered; `DEC-AUTH-002`/`DEC-SEC-005` untouched; `AUTH-MFA-003D-IMPL-001` still blocked.
 - Validation: documentation diff/link checks; `git diff --check`; CI on the PR head; automated-review inspection; no self-merge of the assessment PR (merge only per Founder instruction).
 
