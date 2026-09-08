@@ -1,6 +1,6 @@
 # DATA-ARCH-001 — Pre-Pilot Persistence Architecture Reassessment
 
-> **Status:** COMPLETE — assessment only; no implementation or migration authorized
+> **Status:** **FOUNDER-DISPOSED / APPROVED ARCHITECTURE DIRECTION — NOT IMPLEMENTED** (`FD-DATA-ARCH-001` / `DEC-DATA-008`; see §18)
 > **Date:** 2026-09-08
 > **Authoritative entry baseline:** `origin/main` `ee899032b4734260697c47635aaaa136aadf7cda`
 > **Scope:** durable operational persistence. This report does not select an identity provider, alter `DEC-AUTH-002`, approve a schema, provision an instance, or authorize a migration.
@@ -365,3 +365,17 @@ Current interfaces are partially substitution-friendly: many models are framewor
 - **Recommended next step:** Founder records or rejects this architecture direction. If accepted, authorize a bounded target-design package compatible with (but not dependent on selection under) `AUTH-ARCH-002`, covering PostgreSQL schema/invariants, API ingress, sizing/cost, security, migration and test strategy—still without migration until separately authorized.
 
 CHANGE — POSTGRESQL SHOULD BECOME AUTHORITATIVE DATASTORE
+
+## 18. Founder disposition — `FD-DATA-ARCH-001` / `DEC-DATA-008` (2026-09-08; recorded per `DATA-ARCH-001-FD-001`)
+
+Historical reasoning (§§1–17) and `DATA-ARCH-001-CORR-001` evidence are preserved above and are not rewritten. The Founder disposition is:
+
+- **Persistence architecture direction = APPROVED / CHANGE.** 11thONUS shall use PostgreSQL as the authoritative durable transactional datastore. Preferred target: server-governed Cloud SQL for PostgreSQL behind the 11thONUS Functions/API boundary.
+- **Firestore disposition:** not automatically removed, but no longer presumed the authoritative primary durable store. Bounded future workloads only if separately justified; no dual authority, sync, projection or cache strategy authorized.
+- **SQL Connect disposition:** assessed, not preferred as the target access architecture (Firebase Auth-coupled access layer; portability preferred).
+- **Controlled provider dependency preserved:** PostgreSQL = technology choice, Cloud SQL = preferred managed host; provider-managed, not provider-independent; no provisioning authorized.
+- **IdP compatibility:** direction remains compatible with `DEC-AUTH-002` (External managed IdP → Functions/API → domain → PostgreSQL). Auth0 not selected; `AUTH-MFA-003D` not resumed.
+- **FD-COM-001 exclusion preserved:** this direction does not depend on provisional commercial assumptions.
+- **Next step is a future combined target-design/transition package** (not instantiated; no migration started).
+
+**DATA-ARCH-001 = FOUNDER-DISPOSED / APPROVED ARCHITECTURE DIRECTION — NOT IMPLEMENTED** (merge closure recorded on PR #236).
