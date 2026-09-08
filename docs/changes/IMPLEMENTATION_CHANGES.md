@@ -7,6 +7,15 @@
 
 ---
 
+## 2026-09-08 — AUTH-ARCH-002-VAL-WP-001-AUTH-001 — Founder Execution Authorization for `AUTH-ARCH-002-VAL-002` (`FD-AUTH-ARCH-002-VAL-002`)
+
+- **Task / status:** Authorization recording on branch `docs/auth-arch-002-val-002-wp` at Founder-reviewed head `2e6e139b711f61747e555038ea707f883697ef00` (PR #238 OPEN/MERGEABLE/CLEAN at entry; base `origin/main` `375c145dbc63ff174e8682c8f055d50d1fda5e61` confirmed current; CI SUCCESS on the reviewed head; 4/4 CORR-001 threads resolved; no new findings). **VAL-002 = AUTHORISED — READY FOR CONTROLLED VALIDATION EXECUTION** (effective after merge).
+- **Authorization recorded:** `FD-AUTH-ARCH-002-VAL-002` — bounded to the WP-defined validation programme only. Does not select Auth0; does not authorize migration, production tenant, or production users/data; does not resume `AUTH-MFA-003D`; does not authorize PostgreSQL implementation; does not change R1–R10; does not make Google authentication mandatory for users (AC-17/AC-19 preserved); does not waive validation/commercial evidence or remaining Entry Gate/High-Risk checkpoints. AC-01–AC-36, invariants, requirements, qualification gates verified unchanged. Auth0 LEADING CANDIDATE — NOT SELECTED.
+- **Files changed:** [`AUTH-ARCH-002-VAL-002 work package`](../05-implementation/reports/AUTH-ARCH-002-VAL-002-work-package-2026-09-08.md) (status flip + authorization reference only); `docs/00-governance/documentation-changes-log.md` (Entry 191); this record. Entries 189/190 preserved.
+- **Code/configuration/dependencies/migrations/live changes:** none. No tenant/credentials created, no provider APIs contacted, no subscription/terms, no migration. Full-diff secret scan clean. `FD-COM-001` untouched.
+- **Validation:** `git diff --check`; Markdown relative-link validation; FEF structural/status consistency; `prettier --check` on changed files; CI SUCCESS required on the exact authorization head; regular merge with exact-head protection; post-merge CI SUCCESS required.
+- **Rollback:** revert the authorization commit(s) / the merge; WP returns to PENDING (Entries 189/190 preserved as history); no provider/data cleanup (nothing created).
+
 ## 2026-09-08 — AUTH-ARCH-002-VAL-WP-001-CORR-001 — Correct PR #238 Review Findings on `AUTH-ARCH-002-VAL-002`
 
 - **Task / status:** Bounded work-package correction on branch `docs/auth-arch-002-val-002-wp` at reviewed head `16eafb6b528a8d3ef49cfe48228ec19bbf0bd611` (PR #238 OPEN/MERGEABLE at entry; base `origin/main` `375c145dbc63ff174e8682c8f055d50d1fda5e61` confirmed current; CI SUCCESS on the reviewed head; four Codex findings inspected, no other reviews). **VAL-002 remains PENDING FOUNDER AUTHORISATION — NOT EXECUTABLE; Auth0 LEADING CANDIDATE — NOT SELECTED.**

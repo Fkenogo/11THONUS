@@ -5,12 +5,14 @@
 - **Template status:** APPROVED — ACTIVE companion template
 - **Template effective date:** 2026-09-07
 - **FEF source:** `Fkenogo/founder-engineering-framework`, branch `origin/docs/fef-ewpcs-001-companion-templates` at `2db8b7026382a288cfa7fa18483e60341d1fb052` (standard `docs/engineering/FEF-EWPCS-001-ENGINEERING-WORK-PACKAGE-CLOSURE-STANDARD.md`; templates `docs/templates/FEF-EWPCS-001-WORK-PACKAGE-TEMPLATE.md` and `docs/templates/FEF-EWPCS-001-COMPLETION-REPORT-TEMPLATE.md`). No custom structure is invented where the FEF template governs.
-- **Instantiation status:** **PENDING FOUNDER AUTHORISATION — NOT EXECUTABLE.** The Founder has authorised the validation environment in principle (`FD-AUTH-ARCH-002-VAL-001`); the exact FEF execution contract in this package still requires Founder review and authorisation before any execution.
-- **Founder execution authorization reference:** None — pending Founder authorisation of this exact package. Environment authority alone does not authorise execution (see Hard Authority Stop).
-- **Correction history:** CORR-001 (four PR #238 review findings corrected; see Entry 190). Status unchanged: PENDING FOUNDER AUTHORISATION — NOT EXECUTABLE.
+- **Instantiation status:** **AUTHORISED** under `FD-AUTH-ARCH-002-VAL-002` (Founder execution authorization recorded 2026-09-08; see Current programme state for execution state, which authorization plus the remaining Entry Gate and High-Risk Review Gate checkpoints determine).
+- **Founder authorization date:** 2026-09-08
+- **Founder-reviewed pre-authorization WP head:** `2e6e139b711f61747e555038ea707f883697ef00`
+- **Founder execution authorization reference:** `FD-AUTH-ARCH-002-VAL-002`
+- **Correction history:** CORR-001 (four PR #238 review findings corrected; see Entry 190). Authorization recorded after correction; no substantive acceptance criterion, security invariant, validation/cleanup requirement, or qualification gate changed by this recording.
 - **Provider selection state:** Auth0 remains **LEADING CANDIDATE — NOT SELECTED**; this package does not select a provider.
 
-> This is the sole authoritative project work package for `AUTH-ARCH-002-VAL-002`. It instantiates the official FEF template and records a controlled validation-execution contract only; it does not select Auth0, migrate authentication, amend product or security policy, authorise production state, or create any provider tenant, credential, or live validation result.
+> This is the sole authoritative project work package for `AUTH-ARCH-002-VAL-002`. It instantiates the official FEF template and records a controlled validation-execution contract with bounded Founder execution authorization; it does not select Auth0, migrate authentication, amend product or security policy, authorise production state, or create any provider tenant, credential, or live validation result.
 
 # Work Package
 
@@ -25,7 +27,7 @@
 - **Working branch / branch rule:** Create a dedicated `codex/`- or `docs/`-prefixed execution branch from the verified current `origin/main`; do not execute in a dirty primary worktree. This authoring task uses branch `docs/auth-arch-002-val-002-wp` in an isolated worktree.
 - **Governing authority:** `DEC-AUTH-002` / `FD-AUTH-ARCH-001` (external managed IdP direction; Auth0 NOT selected); `AUTH-ARCH-001` (closed assessment basis); `AUTH-ARCH-002` (recommendation C — validation incomplete, specific bounded evidence required); `AUTH-ARCH-002-VAL-001` (bounded evidence programme; authorised for bounded live validation, not yet executed); `DEC-SEC-005` / `FD-MFA-R` R1–R10 (fixed security invariants, unchanged); `DEC-SEC-004` / `FD-MFA-2` where still applicable; `DEC-DATA-008` / `FD-DATA-ARCH-001` (independently settled persistence direction, acknowledged and unchanged).
 - **Validation-environment authority:** `FD-AUTH-ARCH-002-VAL-001` (recorded per `AUTH-ARCH-002-VAL-AUTH-001`, Entry 188) — creation and/or controlled use of a segregated non-production Auth0 validation tenant solely for the bounded `AUTH-ARCH-002` hard-invariant validation. Authorization ≠ execution.
-- **Current programme state:** **PENDING FOUNDER AUTHORISATION — NOT EXECUTABLE.** This package must not be marked `AUTHORISED` merely because the provider-environment authority exists.
+- **Current programme state:** **AUTHORISED — READY FOR CONTROLLED VALIDATION EXECUTION.** Founder authorisation (`FD-AUTH-ARCH-002-VAL-002`) recorded 2026-09-08 against reviewed pre-authorization WP head `2e6e139b711f61747e555038ea707f883697ef00`. This bounded execution authority permits only the validation programme defined by this WP after merge; it does not select Auth0, authorize migration or a production tenant, authorize production users or data, resume `AUTH-MFA-003D`, authorize PostgreSQL implementation, change R1–R10, make Google authentication mandatory for users, waive any validation or commercial evidence requirement, or waive the remaining Entry Gate or High-Risk Review Gate checkpoints.
 - **Related blocked state (context only, unchanged):** `AUTH-MFA-003D-IMPL-001` remains authorisation-VALID / execution-BLOCKED (`FD-AUTH-MFA-003D-IMPL-001` VALID; BLOCKED — DECISION REQUIRED — AUTHENTICATION ARCHITECTURE REASSESSMENT). This package does not resume it.
 - **Work package owner / execution agent:** Future validation-execution agent, subject to Founder authorisation of this exact package and all remaining gates.
 - **Review authority:** Independent security/engineering reviewer on the exact execution head, plus Gate 1 / Gate 2 / final reviewers as defined in §13.
@@ -44,6 +46,7 @@ Confirm before validation execution:
 - [x] Dependencies checked (§5); satisfied vs remaining execution dependencies distinguished.
 - [x] `origin/main` CI verified healthy at authoring (recent main-branch CI runs SUCCESS, including PR #235/#236/#237 merges).
 - [x] No Auth0 tenant, credential, provider call, production code, configuration, dependency, or migration state created in this authoring task.
+- [x] Founder execution authorization for this exact bounded package recorded 2026-09-08 as `FD-AUTH-ARCH-002-VAL-002`, against reviewed pre-authorization WP head `2e6e139b711f61747e555038ea707f883697ef00`.
 - [ ] Future execution agent: fetch authoritative remote state and record the current `origin/main` SHA and branch ahead/behind state; stop if the base has materially drifted.
 - [ ] Future execution agent: use a clean, isolated worktree with no unresolved merge, rebase, or cherry-pick state.
 - [ ] Future execution agent: verify this exact FEF work package is merged and remains authoritative, and that Founder authorisation of this exact package is recorded.
@@ -310,7 +313,7 @@ Founder authorisation of this work package does not waive any checkpoint in this
 
 ## 14. Expected Completion State
 
-Current state: **PENDING FOUNDER AUTHORISATION — NOT EXECUTABLE.**
+Current state: **AUTHORISED — READY FOR CONTROLLED VALIDATION EXECUTION** (Founder authorization `FD-AUTH-ARCH-002-VAL-002` recorded 2026-09-08 against reviewed head `2e6e139b711f61747e555038ea707f883697ef00`; see Entry 191). Authorization permits only the bounded validation programme defined by this WP after merge. The remaining Entry Gate checks and High-Risk Review Gate checkpoints in §§1/13 remain mandatory before execution.
 
 The validation execution agent's maximum self-declared state is exactly one of:
 
