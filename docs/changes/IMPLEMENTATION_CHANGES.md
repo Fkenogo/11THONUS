@@ -7,6 +7,18 @@
 
 ---
 
+## 2026-09-08 — AUTH-ARCH-002 — External IdP Hard-Invariant Validation (Auth0 kill-or-qualify)
+
+- **Task / status:** Controlled validation on branch `codex/auth-arch-002-validation` from `origin/main` `ee89903`. **Recommendation C — `VALIDATION INCOMPLETE — SPECIFIC BOUNDED EVIDENCE REQUIRED`.**
+- **Evidence:** current official Auth0 documentation (Guardian/MFA APIs, session + refresh-token revocation, `amr`/step-up semantics, methods, tickets, linking, tenants/regions, fresh September-2026 pricing) plus read-only inspection of the current verifier, `AuthenticationReference` model, linking service, callable transport, deny-all Rules, web SDK flows and test suites.
+- **Finding:** no hard invariant FAILS on documentation — addressed per-enrollment delete resolves the Firebase blocker shape; full V3–V5/admin/testing surface is natively supportable with adapter discipline. But R7 behavioral proof (F1 delete with F2 present, idempotency, concurrency) and R5 fail-closed confirmation (`202`/async/eventual-consistency + non-revocable JWTs) require a bounded non-production tenant test; the §4 domain-owned cutoff is specified as design and needs Founder/security authority; Enterprise quote + Burundi/Rwanda SMS gateway economics are decision-material unknowns. Auth0 therefore not qualified; selection correctly remains deferred.
+- **Files changed:** [`AUTH-ARCH-002 assessment`](../05-implementation/reports/AUTH-ARCH-002-external-idp-hard-invariant-validation-2026-09-08.md); `docs/00-governance/documentation-changes-log.md` (Entry 186); this record.
+- **Code/configuration/dependencies/migrations/live changes:** none. No tenants/accounts/M2M credentials created. No `DEC-AUTH-002`/`DEC-SEC-005` change. `AUTH-MFA-003D-IMPL-001` remains blocked. `FD-COM-001` untouched.
+- **Validation:** static documentation + repository inspection; documentation diff/relative-link validation. No production, provider, emulator or live credential mutation.
+- **Rollback:** revert this documentation commit only; no runtime/provider/data rollback is required.
+
+---
+
 ## 2026-09-08 — AUTH-ARCH-001-FD-001 — Founder Authentication Architecture Direction (`DEC-AUTH-002` / `FD-AUTH-ARCH-001`)
 
 - **Task / status:** Founder-disposition recording on PR #234 (Founder-reviewed head `be4c1c7692a7293a0ba5bba0b6cf4700cc61bf5e`). **AUTH-ARCH-001 = COMPLETE / FOUNDER-DISPOSED / MERGED / CLOSED** (post-merge verification required).
