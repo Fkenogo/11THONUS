@@ -1,11 +1,11 @@
 # AUTH-ARCH-002-VAL-001 — Auth0 Bounded Provider Evidence Programme
 
-> **Status:** **EVIDENCE RECORDED — LIVE PORTION STOPPED (NO AUTHORISED TENANT)**
+> **Status:** **AUTHORISED FOR BOUNDED LIVE VALIDATION — NOT YET EXECUTED** (`FD-AUTH-ARCH-002-VAL-001`; see §13A)
 > **Classification:** Validation only — NO SELECTION / NO MIGRATION / NO IMPLEMENTATION
 > **Date:** 2026-09-08
 > **Repository:** `https://github.com/Fkenogo/11THONUS.git` (authoritative source of truth)
 > **Entry `origin/main`:** `ee899032b4734260697c47635aaaa136aadf7cda`
-> **Branch:** `codex/auth-arch-002-val-001` (isolated worktree; PR #235 remains the untouched assessment basis)
+> **Branch:** `codex/auth-arch-002-val-001` (isolated worktree; PR #235 remains the untouched assessment basis; branch aligned onto `origin/main` `9fd83f6` at authorization recording)
 > **Authority boundary:** this report records evidence; it does not select Auth0, migrate authentication, remove Firebase Authentication, resume `AUTH-MFA-003D-IMPL-001`, change R1–R10, create production configuration, migrate users, or decide persistence.
 
 ## 1. Governing authority (verified from repository evidence)
@@ -222,5 +222,23 @@ check('post-cutoff generation passes',
 console.log(`\nVAL-001 V5 harness: ${pass}/${total} checks passed`);
 process.exit(pass === total ? 0 : 1);
 ```
+
+## 13A. Founder validation-environment authorization — `FD-AUTH-ARCH-002-VAL-001` (recorded per `AUTH-ARCH-002-VAL-AUTH-001`, post-merge alignment onto `origin/main` `9fd83f6`)
+
+The earlier live-portion stop (§3) was correct at the time: no tenant and no creation authority existed. That gap is now closed by explicit Founder authority (this section); the stop itself is preserved as history and the findings above are unchanged — authorization upgrades nothing to PASS.
+
+**Authorized:** creation and/or controlled use of a segregated non-production Auth0 validation tenant for 11thONUS, solely to execute the bounded hard-invariant validation defined by `AUTH-ARCH-002` / this report — non-production tenant; no real customers; no production administrator identities; least-privilege M2M credentials; disposable validation identities; TOTP, session/revocation, token/claim, Functions/API contract, EN/FR, commercial/plan, and SMS/gateway evidence gathering.
+
+**Not authorized:** Auth0 selection as production IdP; authentication migration; Firebase Auth removal; production tenant creation; real-user migration; `AUTH-MFA-003D` implementation; PostgreSQL implementation.
+
+**FEF treatment:** the active framework was re-inspected; live provider-validation execution must begin through a formal controlled FEF work package after this PR merges, if FEF requires one. Authorization ≠ execution — no live validation is performed in this merge task.
+
+**Commercial/vendor contact:** bounded evidence gathering only — Enterprise quote, plan/M2M/API entitlement, region/data-location, Burundi/Rwanda SMS/gateway pricing. No contract commitment; no paid terms without separate Founder approval.
+
+**Secret boundary:** never commit client/Management/M2M secrets, access/refresh tokens, TOTP seeds/codes, or private keys. Validation secrets use secure local/provider handling only; the future live-validation report must include a secret-scan confirmation (as this one does).
+
+**Relationships:** `DEC-DATA-008` / `FD-DATA-ARCH-001` now approved and merged — the future combined architecture will likely follow External managed IdP → Functions/API → 11thONUS domain → PostgreSQL. Nothing here implements PostgreSQL, creates Cloud SQL, modifies `DATA-ARCH-001`, or starts combined transition work. `AUTH-MFA-003D-IMPL-001` stays authorised-valid / execution-blocked with R1–R10 unchanged; even a future Auth0 pass still requires separate provider-selection and re-baselining authority.
+
+**Resulting execution state: AUTH-ARCH-002-VAL-001 = AUTHORISED FOR BOUNDED LIVE VALIDATION — NOT YET EXECUTED.** The next task after this merge is the controlled tenant validation execution — not begun here.
 
 **`VALIDATION INCOMPLETE — SPECIFIC BOUNDED EVIDENCE STILL REQUIRED`**

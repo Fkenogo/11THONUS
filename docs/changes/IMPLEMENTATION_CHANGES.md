@@ -7,15 +7,61 @@
 
 ---
 
+## 2026-09-08 — AUTH-ARCH-002-VAL-AUTH-001 — Founder Validation-Environment Authorization (`FD-AUTH-ARCH-002-VAL-001`)
+
+- **Task / status:** Authorization recording on PR #237 (branch updated onto `origin/main` `9fd83f6` via merge, preserving reviewed commits `dad9127`/`4440ea0`; governance collisions resolved — AUTH-ARCH-002 remains canonical Entry 186, DATA-ARCH-001-FD-001 remains Entry 187, this track renumbered Entry 186 → Entry 188; both untouched). **AUTH-ARCH-002-VAL-001 = AUTHORISED FOR BOUNDED LIVE VALIDATION — NOT YET EXECUTED.**
+- **Authority recorded:** `FD-AUTH-ARCH-002-VAL-001` — segregated non-production Auth0 tenant may be created/used solely for the bounded `AUTH-ARCH-002` hard-invariant validation (TOTP/session/revocation/token/claim/contract/EN-FR/commercial/SMS evidence; disposable identities; least-privilege M2M; no real customers/production identities/production data; secrets outside source control with future secret-scan; disposable/cleanable resources). Supplier engagement for evidence only (no contract/paid terms without separate approval). No Auth0 selection, migration, Firebase Auth removal, production tenant, real-user migration, 003D implementation, or PostgreSQL implementation. Live validation NOT EXECUTED — execution begins through a controlled FEF WP after merge if required; authorization ≠ execution.
+- **Prior evidence (preserved unchanged):** V5 harness 11/11 (disposable, `/tmp`, script embedded in report appendix); bare-`iat` cutoff disproved insufficient; Guardian idempotency/concurrency UNRESOLVED; commercial quote requires vendor contact. No hard R5/R7 FAIL or PASS; Auth0 NOT SELECTED; 003D still blocked, R1–R10 unchanged; `DEC-DATA-008` acknowledged, unmodified.
+- **Files changed:** VAL-001 evidence report (authorization section; findings unchanged); `docs/00-governance/documentation-changes-log.md` (Entry 188); this record. No provider-selection decision created; unrelated records unmodified.
+- **Code/configuration/dependencies/migrations/live changes:** none. No tenants/accounts/credentials created. Full-diff secret scan clean. `FD-COM-001` untouched.
+- **Validation:** documentation diff/link checks; `git diff --check`; CI SUCCESS required on the exact final head; regular merge commit with expected-head protection; post-merge CI SUCCESS required.
+- **Rollback:** revert the authorization commit(s) / the merge; delete `/tmp/val001-v5-harness.cjs`; no provider/data cleanup (nothing created).
+
+---
+
 ## 2026-09-08 — AUTH-ARCH-002-VAL-001 — Auth0 Bounded Provider Evidence Programme
 
 - **Task / status:** Validation only on branch `codex/auth-arch-002-val-001` from `origin/main` `ee89903` (PR #235 untouched as assessment basis). **Live portion STOPPED at entry: no authorised segregated tenant exists and no creation authority — exact authorization specified in the report.**
 - **Executed without provider resources:** disposable V5 harness 11/11 (RS256/JWKS/issuer/audience/expiry/negatives/sub + session-generation cutoff seam incl. §9-race rejection; `/tmp` only, uncommitted); doc-level disproof attempts (bare-`iat` cutoff disproved insufficient — access tokens carry no `auth_time`/`sid`; Guardian idempotency/concurrency UNRESOLVED — no 404 contract); V3/V4/V6 confirmations; `COMMERCIAL VALIDATION INCOMPLETE — FOUNDER/ACCOUNT CONTACT REQUIRED`.
 - **Finding:** no hard R5/R7 failure observed, none cleared; behavioral evidence INCOMPLETE (blocked, not failed). 003D not resumed; R1–R10 unaltered; no persistence decisions.
-- **Files changed:** [`VAL-001 evidence report`](../05-implementation/reports/AUTH-ARCH-002-VAL-001-bounded-provider-evidence-2026-09-08.md); `docs/00-governance/documentation-changes-log.md` (Entry 186); this record.
+- **Files changed:** [`VAL-001 evidence report`](../05-implementation/reports/AUTH-ARCH-002-VAL-001-bounded-provider-evidence-2026-09-08.md); `docs/00-governance/documentation-changes-log.md` (Entry 188); this record.
 - **Code/configuration/dependencies/migrations/live changes:** none. No tenants/accounts/credentials created. Full-diff secret scan clean. `FD-COM-001` untouched.
 - **Validation:** V5 harness 11/11 (disposable); documentation diff/link checks; `git diff --check`; CI on the PR head. PR opened, not merged.
 - **Rollback/cleanup:** revert commit(s); delete `/tmp/val001-v5-harness.cjs`; no provider/data cleanup (nothing created).
+
+---
+
+## 2026-09-08 — DATA-ARCH-001-FD-001 — Founder Persistence Architecture Direction (`DEC-DATA-008` / `FD-DATA-ARCH-001`)
+
+- **Task / status:** Founder-disposition recording on PR #236 (branch updated onto `origin/main` `81eb9df` via merge, preserving reviewed commits `a303798`/`5a98da1`; governance collision resolved: DATA-ARCH-001 is Entry 187, AUTH-ARCH-002 remains canonical Entry 186). **DATA-ARCH-001 = FOUNDER-DISPOSED / APPROVED ARCHITECTURE DIRECTION — NOT IMPLEMENTED.**
+- **Direction recorded:** APPROVED — CHANGE: PostgreSQL shall become the authoritative durable transactional datastore; preferred target is server-governed Cloud SQL for PostgreSQL behind the 11thONUS Functions/API boundary. Firestore no longer presumed primary authoritative store (bounded future workloads only if separately justified — no dual authority, sync, projection or cache strategy authorized). Firebase SQL Connect not selected (Firebase Auth-coupled access layer; portability preferred). PostgreSQL = technology choice, Cloud SQL = preferred managed host (provider-managed, not provider-independent; no provisioning authorized). Compatible with `DEC-AUTH-002` external-IdP direction (External IdP → Functions/API → domain → PostgreSQL). FD-COM-001 excluded from the basis. Future combined target-design/transition programme noted only, not instantiated.
+- **Files changed:** `docs/00-governance/decisions/decision-register.md` (new `DEC-DATA-008`); DATA-ARCH-001 assessment (FOUNDER-DISPOSED status + disposition section; history preserved); `docs/00-governance/documentation-changes-log.md` (Entry 187); this record. No provider-selection decision created; unrelated decisions unmodified.
+- **Code/configuration/dependencies/migrations/live changes:** none. No Cloud SQL provisioning, schema, dependencies, data migration, repository/Functions changes, Data Connect, Firestore removal, hybrid, authentication/Auth0 change, or FD-COM-001 alteration.
+- **Validation:** documentation diff; `git diff --check`; Markdown/link validation; CI SUCCESS required on the exact final head; regular merge commit with expected-head protection; post-merge CI SUCCESS required.
+- **Rollback:** revert the disposition commit(s) / the merge; no runtime/provider/data rollback is required.
+
+---
+
+## 2026-09-08 — DATA-ARCH-001-CORR-001 — Correct Pre-Pilot Persistence Architecture Reassessment
+
+- **Task / status:** Controlled documentation/assessment correction on PR #236, correcting the original `DATA-ARCH-001` assessment at pre-correction head `a303798c5fd866de5d2222897645143843a762ae`. **ASSESSMENT CORRECTED — AWAITING FOUNDER PERSISTENCE-ARCHITECTURE DISPOSITION.** The original assessment history is preserved; this record does not portray the corrected state as the original state.
+- **Authority correction:** at assessed `origin/main` `ee899032b4734260697c47635aaaa136aadf7cda`, `FD-COM-001`, `CB-004` and `CB-008` are not governed repository material. The primary-worktree FD-COM-001 commercial work was not opened, copied, committed or consumed. It is recorded only as **PROVISIONAL / UNGOVERNED INPUT** and excluded from all decision support. The report now classifies material requirements/evidence explicitly as governed repository authority, implementation evidence, provisional/ungoverned input or inference.
+- **Governed-only re-test:** PostgreSQL remains recommended without FD-COM-001 assumptions: governed relationship ownership, lifecycle/history, uniqueness/idempotency, cross-entity atomicity, server authorization/audit and reporting/reconciliation requirements, together with verified present implementation protocols, support **CHANGE — POSTGRESQL SHOULD BECOME AUTHORITATIVE DATASTORE**. This is not a Firebase-lock-in conclusion. Cloud SQL, PostgreSQL portability, Firebase SQL Connect/Data Connect and Firestore dependencies are distinguished under controlled provider dependency; no provider-independence claim, IdP selection, SQL Connect selection, hybrid pre-selection or Firestore-removal mandate is made.
+- **Transaction/blast-radius correction:** the non-test production Functions inventory is **31 executable `runTransaction` calls across 22 files**, not 27. It includes async, non-async and generic callbacks, read-only authority transactions and executable transaction wrappers. Eleven test calls and the explicitly test-only `permissionAuditService` wrapper are excluded with recorded rationale. The corrected assessment calls the engineering transition cost moderate-to-significant, not a count-inflated set of independent migrations; user/data migration risk remains low but unverified, and architecture transition risk remains material/controllable.
+- **Files changed:** `docs/05-implementation/reports/DATA-ARCH-001-pre-pilot-persistence-architecture-reassessment-2026-09-08.md`; `docs/00-governance/documentation-changes-log.md` (Entry 187); this record.
+- **Code/configuration/dependencies/migrations/live changes:** none. No PostgreSQL implementation, schema/migration, Cloud SQL/Data Connect resource, Firestore/Rules/authentication change, IdP selection, provider operation or production/data change.
+- **Validation:** `git diff --check`; Markdown formatting/relative-link validation; repository documentation format validation. No production/database test or provider validation was performed.
+- **Rollback:** revert the single correction commit; no runtime/provider/data rollback is required.
+
+## 2026-09-08 — AUTH-ARCH-002 — External IdP Hard-Invariant Validation (Auth0 kill-or-qualify)
+
+- **Task / status:** Controlled validation on branch `codex/auth-arch-002-validation` from `origin/main` `ee89903`. **Recommendation C — `VALIDATION INCOMPLETE — SPECIFIC BOUNDED EVIDENCE REQUIRED`.**
+- **Evidence:** current official Auth0 documentation (Guardian/MFA APIs, session + refresh-token revocation, `amr`/step-up semantics, methods, tickets, linking, tenants/regions, fresh September-2026 pricing) plus read-only inspection of the current verifier, `AuthenticationReference` model, linking service, callable transport, deny-all Rules, web SDK flows and test suites.
+- **Finding:** no hard invariant FAILS on documentation — addressed per-enrollment delete resolves the Firebase blocker shape; full V3–V5/admin/testing surface is natively supportable with adapter discipline. But R7 behavioral proof (F1 delete with F2 present, idempotency, concurrency) and R5 fail-closed confirmation (`202`/async/eventual-consistency + non-revocable JWTs) require a bounded non-production tenant test; the §4 domain-owned cutoff is specified as design and needs Founder/security authority; Enterprise quote + Burundi/Rwanda SMS gateway economics are decision-material unknowns. Auth0 therefore not qualified; selection correctly remains deferred.
+- **Files changed:** [`AUTH-ARCH-002 assessment`](../05-implementation/reports/AUTH-ARCH-002-external-idp-hard-invariant-validation-2026-09-08.md); `docs/00-governance/documentation-changes-log.md` (Entry 186); this record.
+- **Code/configuration/dependencies/migrations/live changes:** none. No tenants/accounts/M2M credentials created. No `DEC-AUTH-002`/`DEC-SEC-005` change. `AUTH-MFA-003D-IMPL-001` remains blocked. `FD-COM-001` untouched.
+- **Validation:** static documentation + repository inspection; documentation diff/relative-link validation. No production, provider, emulator or live credential mutation.
+- **Rollback:** revert this documentation commit only; no runtime/provider/data rollback is required.
 
 ---
 
