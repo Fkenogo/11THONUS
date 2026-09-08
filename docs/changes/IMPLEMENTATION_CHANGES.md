@@ -7,6 +7,19 @@
 
 ---
 
+## 2026-09-08 — DATA-ARCH-001-CORR-001 — Correct Pre-Pilot Persistence Architecture Reassessment
+
+- **Task / status:** Controlled documentation/assessment correction on PR #236, correcting the original `DATA-ARCH-001` assessment at pre-correction head `a303798c5fd866de5d2222897645143843a762ae`. **ASSESSMENT CORRECTED — AWAITING FOUNDER PERSISTENCE-ARCHITECTURE DISPOSITION.** The original assessment history is preserved; this record does not portray the corrected state as the original state.
+- **Authority correction:** at assessed `origin/main` `ee899032b4734260697c47635aaaa136aadf7cda`, `FD-COM-001`, `CB-004` and `CB-008` are not governed repository material. The primary-worktree FD-COM-001 commercial work was not opened, copied, committed or consumed. It is recorded only as **PROVISIONAL / UNGOVERNED INPUT** and excluded from all decision support. The report now classifies material requirements/evidence explicitly as governed repository authority, implementation evidence, provisional/ungoverned input or inference.
+- **Governed-only re-test:** PostgreSQL remains recommended without FD-COM-001 assumptions: governed relationship ownership, lifecycle/history, uniqueness/idempotency, cross-entity atomicity, server authorization/audit and reporting/reconciliation requirements, together with verified present implementation protocols, support **CHANGE — POSTGRESQL SHOULD BECOME AUTHORITATIVE DATASTORE**. This is not a Firebase-lock-in conclusion. Cloud SQL, PostgreSQL portability, Firebase SQL Connect/Data Connect and Firestore dependencies are distinguished under controlled provider dependency; no provider-independence claim, IdP selection, SQL Connect selection, hybrid pre-selection or Firestore-removal mandate is made.
+- **Transaction/blast-radius correction:** the non-test production Functions inventory is **31 executable `runTransaction` calls across 22 files**, not 27. It includes async, non-async and generic callbacks, read-only authority transactions and executable transaction wrappers. Eleven test calls and the explicitly test-only `permissionAuditService` wrapper are excluded with recorded rationale. The corrected assessment calls the engineering transition cost moderate-to-significant, not a count-inflated set of independent migrations; user/data migration risk remains low but unverified, and architecture transition risk remains material/controllable.
+- **Files changed:** `docs/05-implementation/reports/DATA-ARCH-001-pre-pilot-persistence-architecture-reassessment-2026-09-08.md`; `docs/00-governance/documentation-changes-log.md` (Entry 186); this record.
+- **Code/configuration/dependencies/migrations/live changes:** none. No PostgreSQL implementation, schema/migration, Cloud SQL/Data Connect resource, Firestore/Rules/authentication change, IdP selection, provider operation or production/data change.
+- **Validation:** `git diff --check`; Markdown formatting/relative-link validation; repository documentation format validation. No production/database test or provider validation was performed.
+- **Rollback:** revert the single correction commit; no runtime/provider/data rollback is required.
+
+---
+
 ## 2026-09-08 — AUTH-ARCH-001-FD-001 — Founder Authentication Architecture Direction (`DEC-AUTH-002` / `FD-AUTH-ARCH-001`)
 
 - **Task / status:** Founder-disposition recording on PR #234 (Founder-reviewed head `be4c1c7692a7293a0ba5bba0b6cf4700cc61bf5e`). **AUTH-ARCH-001 = COMPLETE / FOUNDER-DISPOSED / MERGED / CLOSED** (post-merge verification required).

@@ -7,7 +7,7 @@
 
 ## 1. Executive decision
 
-The strongest pre-pilot fit is **Cloud SQL for PostgreSQL as the authoritative durable datastore, accessed only through 11thONUS server/API and repository ports**. This is not a conclusion from Firebase provider dependency alone. It follows from the approved system's relationship density, financial-like consumption ledger, lifecycle state, idempotent command processing, cross-entity atomicity, audit/recovery obligations, and reporting/reconciliation needs.
+**Answer to the correction question: yes.** PostgreSQL remains the recommended authoritative durable datastore when every provisional FD-COM-001 ledger, grace, top-up and related commercial input is excluded. The strongest pre-pilot fit is **Cloud SQL for PostgreSQL as the authoritative durable datastore, accessed only through 11thONUS server/API and repository ports**. This is not a conclusion from Firebase provider dependency alone. It follows from governed relationship ownership, lifecycle/state models, immutable historical records, idempotent command processing, cross-entity atomicity, authorization/audit obligations, and approved reporting/reconciliation requirements—reinforced by the implemented Firestore transaction and uniqueness protocols.
 
 Firestore remains a competent document store and the implemented server-mediated posture is healthy in important respects. It would, however, require 11thONUS to keep encoding a growing set of relational constraints, uniqueness reservations, concurrency protocols, denormalized read models, and reconciliation processes in application code. PostgreSQL makes the structural part of those obligations native while retaining the domain service as the authority for business policy. Pre-pilot timing means the migration is predominantly code and test migration rather than customer-data migration.
 
@@ -28,51 +28,52 @@ Firebase Hosting, Functions/runtime, Storage, App Check (subject to the separate
 1. Fetched `origin/main` and recorded `ee899032b4734260697c47635aaaa136aadf7cda` before assessment.
 2. Inspected the Constitution hierarchy via the Canonical Reference; PRDs; TRD 8, 10, 11, 12, 15, 17, 19, 20, 21, 22 and 23; Decision Register; traceability; current Functions and web implementation; Rules; indexes; tests; emulator configuration; and CI.
 3. Inspected `DEC-AUTH-002` / `FD-AUTH-ARCH-001` directly in the Decision Register. It confirms an external managed IdP boundary and expressly does **not** decide persistence.
-4. Read the Founder-controlled `FD-COM-001` source only. It was not altered. Its consumption-first decision supplies material transactional requirements: completed loyalty-cycle debit, grace debt, top-up settlement, and immutable commercial history.
+4. Verified that `FD-COM-001`, `CB-004` and `CB-008` are absent from `origin/main` at the entry baseline. The protected primary worktree contains uncommitted FD-COM-001 work; it was neither opened nor used. It is **PROVISIONAL / UNGOVERNED INPUT** only and is excluded from this decision basis.
 5. Created isolated worktree `/private/tmp/11thonus-data-arch-001` from the recorded SHA, on branch `codex/data-arch-001`. The shared checkout had unrelated, pre-existing changes; none were touched.
 6. Researched current official Firebase and Google Cloud documentation on 2026-09-08. Product references now call the service previously known as Firebase Data Connect **Firebase SQL Connect**; this report uses “SQL Connect (formerly Data Connect)” where precision matters.
 
 ### Authorities inspected
 
-| Authority | Relevance to this decision |
-| --- | --- |
-| [Platform Constitution / Canonical Reference](../../00-governance/canonical-reference.md) §§5–10 | Domain ownership, state models, MVP scope, hierarchy, and cross-domain terminology. |
-| [Decision Register](../../00-governance/decisions/decision-register.md) `DEC-AUTH-002` | External IdP is the approved direction; Firebase Auth is not target architecture; durable identity and authorization stay 11thONUS-owned. |
-| [TRD 10](../../02-technical/trd/10-firestore-data-architecture.md) §§10.2–10.35 | Current proposed data model, denormalization, transactional, migration, backup, cost and quality obligations. |
-| [TRD 11](../../02-technical/trd/11-cloud-functions-and-domain-services.md) §§11.14–11.30 | Idempotency, transaction boundaries, consistency, outbox, purchase/verification/cycle/redemption, concurrency, retries. |
-| [TRD 15](../../02-technical/trd/15-reporting-and-analytics.md) §§15.4–15.48 | Reporting, projections, reconciliation, exports and future warehouse readiness. |
-| [TRD 17](../../02-technical/trd/17-subscription-and-billing.md) and `FD-COM-001` | Financial and consumption lifecycle, historical price/receipt, trusted callbacks, reversals, grace and settlement. |
-| [TRD 19](../../02-technical/trd/19-quality-engineering.md) and [TRD 20](../../02-technical/trd/20-deployment-and-operational-resilience.md) | Emulator/CI, concurrency, migration, restore, monitoring and operational obligations. |
-| [TRD 12](../../02-technical/trd/12-security-and-access-control.md) and [TRD 21](../../02-technical/trd/21-privacy-and-data-protection.md) | Server authority, tenant isolation, audit, privacy, retention and recovery. |
+| Material source | Authority classification | Relevance to this decision |
+| --- | --- | --- |
+| [Platform Constitution / Canonical Reference](../../00-governance/canonical-reference.md) §§5–10 | **GOVERNED REPOSITORY AUTHORITY** | Domain ownership, state models, MVP scope, hierarchy, and cross-domain terminology. |
+| [Decision Register](../../00-governance/decisions/decision-register.md) `DEC-AUTH-002` | **GOVERNED REPOSITORY AUTHORITY** | External IdP is the approved direction; Firebase Auth is not target architecture; durable identity and authorization stay 11thONUS-owned. |
+| [TRD 10](../../02-technical/trd/10-firestore-data-architecture.md) §§10.2–10.35 | **GOVERNED REPOSITORY AUTHORITY** | Current proposed data model, denormalization, transaction, migration, backup, cost and quality obligations. Its prior Firestore selection is the architecture under reassessment, not a circular mandate. |
+| [TRD 11](../../02-technical/trd/11-cloud-functions-and-domain-services.md) §§11.14–11.30 | **GOVERNED REPOSITORY AUTHORITY** | Idempotency, transaction boundaries, consistency, outbox, purchase/verification/cycle/redemption, concurrency and retries. |
+| [TRD 15](../../02-technical/trd/15-reporting-and-analytics.md) §§15.4–15.48 | **GOVERNED REPOSITORY AUTHORITY** | Reporting, projections, reconciliation, exports and future warehouse readiness. |
+| [TRD 17](../../02-technical/trd/17-subscription-and-billing.md) | **GOVERNED REPOSITORY AUTHORITY** | Subscription/billing lifecycle, immutable history, payment confirmation, grace/suspension direction and provider-adapter separation. It does not establish FD-COM-001 requirements. |
+| [TRD 19](../../02-technical/trd/19-quality-engineering.md), [TRD 20](../../02-technical/trd/20-deployment-and-operational-resilience.md), [TRD 12](../../02-technical/trd/12-security-and-access-control.md) and [TRD 21](../../02-technical/trd/21-privacy-and-data-protection.md) | **GOVERNED REPOSITORY AUTHORITY** | Emulator/CI, concurrency, migration, restore, monitoring, server authority, tenant isolation, audit, privacy, retention and recovery. |
+| Current Functions/repository/test/configuration source at the entry SHA | **IMPLEMENTATION EVIDENCE** | Proves the present Firestore transaction, key-reservation, emulator and access-pattern footprint; it does not itself approve future commercial scope. |
+| Protected, uncommitted FD-COM-001 commercial/ledger work | **PROVISIONAL / UNGOVERNED INPUT** | May inform a future reassessment only after it is governed on `main`; excluded here. |
+| Comparative statement that relational constraints reduce application protocol burden | **INFERENCE** | Drawn from the governed requirements and verified implementation, not an independent approved requirement. |
 
-**Authority interpretation.** TRD10 names Firestore because it records the prior target architecture. It is technical authority for the requirements it expresses, not a circular reason to retain Firestore when this reassessment asks whether that target still fits. Where a Founder decision is more recent, it is applied; `FD-COM-001` is protected and not amended by this report.
+**Authority interpretation.** TRD10 names Firestore because it records the prior target architecture. It is technical authority for the requirements it expresses, not a circular reason to retain Firestore when this reassessment asks whether that target still fits. FD-COM-001 is not approved repository authority at this baseline and is not amended, copied, consumed or relied upon by this report.
 
 ## 3. Canonical persistence-requirements catalogue
 
-The table derives the needs before comparing providers. “Native” means a datastore can structurally enforce or efficiently express the concern; it never removes the domain-service responsibility for authorization or business policy.
+The table derives the needs before comparing providers. Every material input is classified by authority. “Native” means a datastore can structurally enforce or efficiently express the concern; it never removes the domain-service responsibility for authorization or business policy.
 
-| Requirement | Classification | Evidence / consequence |
+| Requirement | Authority classification | Evidence / consequence |
 | --- | --- | --- |
-| Durable Customer Identity separate from provider subject; opaque AuthenticationReference; no provider UID as business identity | **HARD INVARIANT** | `DEC-AUTH-002`; Canonical Reference §10; TRD10 §10.6. A customer can have references, recovery and lifecycle history. |
-| Business, Branch and Membership relationships; tenant boundary; one structural Owner at creation | **HARD INVARIANT** | TRD10 §§10.6.3–10.6.4; current business bootstrap. Branch and membership must not become orphaned or cross-business. |
-| Platform Administrator lifecycle and roles independent of credential provider | **HARD INVARIANT** | `DEC-AUTH-002`; TRD12; `platformAdministrators` implementation. |
-| Globally unique loyalty number, QR reference, AuthenticationReference, Business code and idempotency key | **HARD INVARIANT** | TRD10; TRD11 §11.14; current reservation/key documents and emulator tests. |
-| Purchase, dispute, correction and verified-unit history must be durable and reconstructable | **HARD INVARIANT** | TRD10 §§10.10–10.11; TRD11 §§11.18–11.24; TRD15 reconciliation. |
-| One active loyalty cycle per applicable customer/program, ordered allocation, exactly-once reward availability and redemption/reversal semantics | **HARD INVARIANT** | Canonical Reference §7; TRD10 §§10.11–10.12; TRD11 §§11.20–11.27; TRD19 concurrency/reward-uniqueness tests. |
-| Consumption Unit debit at most once per completed cycle; top-up credit at most once; grace debt settles before available capacity | **HARD INVARIANT** | `FD-COM-001` §§1–3, 9–10; traceability `CB-004`, `CB-008`; TRD17. This is ledger-like state, not a best-effort counter. |
-| Atomic command boundary: domain mutation + idempotency state + audit/outbox where required | **HARD INVARIANT** | TRD11 §§11.14–11.17; current outbox/idempotency implementation. |
-| Valid lifecycle transitions and non-destructive history for identity, Business, membership, payment, cycle, reward and redemption | **HARD INVARIANT** | Canonical Reference §7; TRD10; TRD17 §§17.35–17.45. |
-| Server-side authorization and Business/customer data isolation; no client-selected actor or tenant | **HARD INVARIANT** | `DEC-AUTH-002`; TRD11 §§11.2, 11.11–11.13; TRD12. |
-| Append-only/auditable administrative, trust, payment, recovery and correction records, with correlation IDs | **HARD INVARIANT** | TRD11 §§11.37; TRD12; TRD20 §§20.22–20.28; `FD-COM-001` §10. |
-| Cross-entity transactions with predictable concurrency and isolation | **HARD INVARIANT** | TRD10 §10.29; TRD11 §§11.15, 11.27; business bootstrap implementation. |
-| Queryable customer history, current cycle, Business context and staff state with deterministic pagination | **IMPORTANT** | TRD10 §10.19; TRD15 §§15.5–15.17; customer/Business server reads. |
-| Business operational/management reports, reward liability, financial reconciliation, audit export and controlled projections | **IMPORTANT** | TRD15 §§15.7–15.21, 15.36–15.48; TRD17 §17.55. These do not authorize new analytics features. |
-| Historical price/version, receipts, payment events, reversals and immutable references | **IMPORTANT** | `FD-COM-001`; TRD17 §§17.38–17.45, 17.57–17.59. |
-| Schema evolution with controlled, testable expand/contract migrations | **IMPORTANT** | TRD10 §§10.31–10.32; TRD19 migration tests; TRD20 §§20.19–20.21. |
-| Backup, restore proof, tiered retention, export and reconstruction of reporting/search projections | **IMPORTANT** | TRD10 §10.33; TRD19 restore exercise; TRD20 §§20.47–20.58. |
-| Provider-portable business IDs, model, relationships and exports | **IMPORTANT** | `DEC-AUTH-002` controlled-provider principle, applied analogously to durable data. |
-| Low-latency direct realtime client synchronization | **PREFERENCE** | Firebase is good at this, but current Rules explicitly deny all direct Firestore access and no approved requirement makes it a hard need. |
-| Dedicated warehouse, full-text/vector search, advanced analytics/benchmarking, multi-branch, POS/CRM integration | **FUTURE/DEFERRED** | TRD14, TRD15 §§15.41–15.43, Canonical Reference §10 / TRD22. Architecture must not preclude them; they are not a reason to add stores today. |
+| Durable Customer Identity separate from provider subject; opaque AuthenticationReference; no provider UID as business identity | **GOVERNED REPOSITORY AUTHORITY** | `DEC-AUTH-002`; Canonical Reference §10; TRD10 §10.6. A customer can have references, recovery and lifecycle history. |
+| Business, Branch and Membership relationships; tenant boundary; one structural Owner at creation | **GOVERNED REPOSITORY AUTHORITY** | TRD10 §§10.6.3–10.6.4; verified business bootstrap implementation. Branch and membership must not become orphaned or cross-business. |
+| Platform Administrator lifecycle and roles independent of credential provider | **GOVERNED REPOSITORY AUTHORITY** | `DEC-AUTH-002`; TRD12; verified `platformAdministrators` implementation. |
+| Globally unique loyalty number, QR reference, AuthenticationReference, Business code and idempotency key | **GOVERNED REPOSITORY AUTHORITY** for the requirement; **IMPLEMENTATION EVIDENCE** for the current reservation protocol | TRD10; TRD11 §11.14; current reservation/key documents and emulator tests. |
+| Purchase, dispute, correction and verified-unit history must be durable and reconstructable | **GOVERNED REPOSITORY AUTHORITY** | TRD10 §§10.10–10.11; TRD11 §§11.18–11.24; TRD15 reconciliation. |
+| One active loyalty cycle per applicable customer/program, ordered allocation, exactly-once reward availability and redemption/reversal semantics | **GOVERNED REPOSITORY AUTHORITY** | Canonical Reference §7; TRD10 §§10.11–10.12; TRD11 §§11.20–11.27; TRD19 concurrency/reward-uniqueness tests. |
+| Atomic command boundary: domain mutation + idempotency state + audit/outbox where required | **GOVERNED REPOSITORY AUTHORITY** for the requirement; **IMPLEMENTATION EVIDENCE** for 31 present transaction calls | TRD11 §§11.14–11.17; current outbox/idempotency implementation. |
+| Valid lifecycle transitions and non-destructive history for identity, Business, membership, subscription/payment, cycle, reward and redemption | **GOVERNED REPOSITORY AUTHORITY** | Canonical Reference §7; TRD10; TRD17 §§17.35–17.45. |
+| Server-side authorization and Business/customer data isolation; no client-selected actor or tenant | **GOVERNED REPOSITORY AUTHORITY** | `DEC-AUTH-002`; TRD11 §§11.2, 11.11–11.13; TRD12. |
+| Auditable administrative, trust, recovery, payment and correction records, with correlation IDs | **GOVERNED REPOSITORY AUTHORITY** | TRD11 §11.37; TRD12; TRD20 §§20.22–20.28; current audit/outbox records are **IMPLEMENTATION EVIDENCE**. |
+| Cross-entity transactions with predictable concurrency and isolation | **GOVERNED REPOSITORY AUTHORITY** | TRD10 §10.29; TRD11 §§11.15, 11.27; verified business bootstrap implementation. |
+| Queryable customer history, current cycle, Business context and staff state with deterministic pagination | **GOVERNED REPOSITORY AUTHORITY** | TRD10 §10.19; TRD15 §§15.5–15.17; current customer/Business server reads are **IMPLEMENTATION EVIDENCE**. |
+| Business operational/management reports, audit export and controlled projections | **GOVERNED REPOSITORY AUTHORITY** | TRD15 §§15.7–15.21, 15.36–15.48; TRD17 reporting/receipt requirements. These do not authorize new analytics features. |
+| Schema evolution with controlled, testable expand/contract migrations | **GOVERNED REPOSITORY AUTHORITY** | TRD10 §§10.31–10.32; TRD19 migration tests; TRD20 §§20.19–20.21. |
+| Backup, restore proof, tiered retention, export and reconstruction of reporting/search projections | **GOVERNED REPOSITORY AUTHORITY** | TRD10 §10.33; TRD19 restore exercise; TRD20 §§20.47–20.58. |
+| Provider-portable business IDs, model, relationships and exports | **INFERENCE** from `DEC-AUTH-002` controlled-provider principle, applied consistently to durable data | The approved principle does not make the target provider-independent; it requires deliberate ownership and exit controls. |
+| Low-latency direct realtime client synchronization | **IMPLEMENTATION EVIDENCE** plus **INFERENCE** | Firebase is capable here, but current Rules explicitly deny all direct Firestore access and no governed requirement makes it a hard need. |
+| Dedicated warehouse, full-text/vector search, advanced analytics/benchmarking, multi-branch, POS/CRM integration | **GOVERNED REPOSITORY AUTHORITY** (deferred) | TRD14, TRD15 §§15.41–15.43, Canonical Reference §10 / TRD22. Architecture must not preclude them; they are not a reason to add stores today. |
+| FD-COM-001 completed-cycle debit, grace-debt and top-up settlement rules | **PROVISIONAL / UNGOVERNED INPUT** | Absent from entry `origin/main`; excluded from the recommendation, comparison, sizing and blast-radius basis. If governed later, reassess rather than backfill authority into this report. |
 
 ## 4. Actual Firestore dependency map and coupling assessment
 
@@ -118,13 +119,28 @@ No defect is inferred merely because application code enforces an invariant. The
 | A branch belongs to the authorized Business, and classification references exist/are usable | `readBusinessBranchForBusiness` and bootstrap classification validation in a transaction | Foreign keys; checks; row locks where state must be inspected | Yes—tenant authorization and status eligibility. |
 | Outbox worker claim is exclusive, reclaimable after timeout, and stale owners cannot transition it | `shared/outbox/outboxProcessor.ts`; `claimedAt` comparison and emulator races | `SELECT … FOR UPDATE SKIP LOCKED`, conditional update/version or lease column, unique event id | Yes—retry classification, dead-letter policy and publisher side effects. |
 | Platform-administrator bootstrap/lifecycle is fail-closed and auditable | `platformAdministratorRepository.ts`, audit repository, emulator suites | PK/FK/enum/check constraints and atomic audit insert | Yes—role set and privileged transition policy. |
-| Future cycle/reward/consumption/payment exact-once and history-preserving rules | TRD10/11/17 and `FD-COM-001`; not yet fully implemented | FKs, unique constraints (e.g. debit per completed cycle), check constraints, row locks and SQL transaction | Yes—eligibility, threshold crossing, grace and reversal business semantics. |
+| Governed future cycle/reward/subscription/payment exact-once and history-preserving rules | **GOVERNED REPOSITORY AUTHORITY:** TRD10/11/17; not yet fully implemented | FKs, unique constraints, check constraints, row locks and SQL transaction | Yes—eligibility, threshold crossing and reversal business semantics. FD-COM-001 debit/grace/top-up rules are excluded as **PROVISIONAL / UNGOVERNED INPUT**. |
 
 PostgreSQL would not make invalid workflow transitions magically safe: a check constraint can restrict values, but “may transition from state X to Y under authority Z” remains a command/service responsibility unless deliberately encoded in stored procedures/triggers. The recommendation is *not* to move policy into the database indiscriminately. It is to use database constraints for structural facts and keep business decisions testable in 11thONUS services.
 
 ## 6. Current Firestore transaction analysis
 
-The production source has **27** `runTransaction` call sites across 22 non-test files (read-only authority reads included). The inventory below groups the meaningful patterns; emulator-only test calls are excluded.
+The production source has **31 executable** `runTransaction` call sites across **22 non-test files** (read-only authority reads and executable transactional wrappers included). This replaces the original, understated 27-call statement. The count is direct Firestore `db.runTransaction(...)` execution at the entry SHA; it is not a count of every `Transaction` parameter or helper that composes within another transaction.
+
+**Method.** The inventory starts with all TypeScript files under `functions/src`, excludes `*.test.ts` / `*.spec.ts` test source, and searches separately for ordinary, generic and non-`async` forms: `runTransaction(`, `runTransaction<T>(`, and callbacks returning expressions. Every hit was manually inspected to separate executable calls from comments and to identify wrappers. A supplementary search for `Transaction` imports/types, destructured/aliased transaction access and callers of transaction-capable helpers found no additional executable alias form. `authorizeAndExecute` is included because it executes its own `db.runTransaction`; `permissionAuditService` is excluded because its sole direct call is explicitly a test-only convenience wrapper. Eleven direct occurrences in test files are excluded as test fixtures, not production call sites.
+
+| Category | Calls | Files | Included executable forms |
+| --- | ---: | ---: | --- |
+| Identity, authentication references, QR and loyalty identifiers | 11 | 8 | Customer/profile/lifecycle/display-name, authentication-reference, lookup, QR, loyalty-number and authentication-event mutations. |
+| Idempotency and transactional outbox | 3 | 2 | Reservation plus outbox claim and owned-transition calls. |
+| Business and terms/authority reads | 3 | 3 | Bootstrap, terms acceptance and the non-`async`, read-only `businessCallerAuthority` call. |
+| Permission/staff lifecycle wrappers | 2 | 2 | `authorizeAndExecute` and staff-invitation acceptance. |
+| Commerce Knowledge | 7 | 3 | Node (3), tag (2) and translation (2) mutations. |
+| Platform Administration | 4 | 3 | Repository create/authorization, bootstrap and read-only authorization. |
+| Trust | 1 | 1 | Trust-record ingestion. |
+| **Total** | **31** | **22** | **All executable non-test direct Firestore transaction calls.** |
+
+**Exclusions.** Eleven test-source calls are fixtures and not production execution. One executable-looking call in `permissionAuditService.ts` is excluded after source inspection: the module labels it a test-only convenience for its emulator tests and production code composes `recordSensitiveDecision` through its caller transaction instead. Comments and report prose are not counted. No unclassified executable candidate remains.
 
 | Transaction family | Scope / sensitivity | Datastore-specific complexity |
 | --- | --- | --- |
@@ -140,7 +156,7 @@ The production source has **27** `runTransaction` call sites across 22 non-test 
 | Trust record ingestion | Cross-domain write plus outbox; audit-sensitive | Transaction joins durable trust record and emitted event without native referential constraints. |
 | Platform administrator creation/authorization | Single document/read mostly; lifecycle/audit-sensitive | Read-before-write existence and status checks are manual. |
 
-Firestore transactions themselves provide atomic multi-document operations and are not inadequate for the current code. The problem is the *accumulated protocol burden*: transactional retries, read-before-write discipline, document key reservations, denormalized duplicate maintenance, lease ownership and collection-level reconciliation. The future purchase-to-cycle-to-reward-to-consumption path will require more of the same, across precisely the records for which accounting-grade correctness matters.
+Firestore transactions themselves provide atomic multi-document operations and are not inadequate for the current code. The problem is the *accumulated protocol burden*: transactional retries, read-before-write discipline, document key reservations, denormalized duplicate maintenance, lease ownership and collection-level reconciliation. Governed purchase-to-cycle-to-reward and subscription/payment work will require more of the same across integrity-sensitive records. Any additional FD-COM-001 commercial mechanics are deliberately outside this conclusion.
 
 ## 7. Query and reporting assessment
 
@@ -153,7 +169,7 @@ Firestore transactions themselves provide atomic multi-document operations and a
 | Customer purchase/cycle/reward history | Approved MVP | Requires purpose-built collection/query/projection shapes and indexed denormalization | Natural joins, keyset pagination and filtered history queries. |
 | Current loyalty-cycle state and threshold crossing | Approved MVP | Achievable, but serialized transaction/counter/document design must avoid races/hot documents | Strong with locked rows, constraints and atomic ledger append. |
 | Business operational reports and reward liability | Approved MVP | TRD15 correctly requires projections and reconciliation; aggregation does not replace relational joins | Strong for operational SQL; projections still useful for dashboard latency. |
-| Consumption balances, top-up settlement, receipts, refund/reversal reconciliation | Approved through `FD-COM-001` / TRD17 | High implementation/reconciliation burden; immutable history must be assembled across documents | Strong: ledger/receipt/payment relations, atomic posting and report queries. |
+| Subscription/payment history, receipts, refund/reversal reconciliation | **GOVERNED REPOSITORY AUTHORITY:** TRD17 | High implementation/reconciliation burden; immutable history must be assembled across documents | Strong: payment/receipt relations, atomic posting and report queries. FD-COM-001 top-up/grace/debit mechanics are excluded. |
 | Cross-Business/customer/admin audit queries and controlled exports | Approved administrative need | Collection groups and projections possible; index and cost planning required | Strong with explicit authorization-scoped queries, joins and export views. |
 | Warehouse, advanced analytics, search/vector/benchmarking | Deferred | Do not add a store now; Firestore export/projections are possible | PostgreSQL does not replace a future warehouse or dedicated search service. |
 
@@ -165,13 +181,13 @@ TRD15 already forbids treating a dashboard projection as a substitute for truth:
 
 **Strengths:** minimal immediate code change; managed elasticity; no connection management; existing emulator, Rules and Functions investment; good point lookup/offline/realtime capability. Current client access is already server-mediated, reducing Rules complexity.
 
-**Limits:** the approved transactional/relational/commercial domain is growing in the wrong direction for document-first authority. Each additional invariant tends to create another reservation document, transaction protocol, denormalized field, index/projection or reconciliation path. Reporting and financial reconciliation remain deliberately indirect. It also leaves a continuing Firebase data-access model next to an external-IdP transition, even though direct client access is not used.
+**Limits:** the governed transactional/relational domain already requires reservation documents, transaction protocols, denormalized fields, indexes/projections and reconciliation paths. Each additional governed invariant can add more of those mechanisms. Reporting and operational reconciliation remain deliberately indirect. It also leaves a continuing Firebase data-access model next to an external-IdP transition, even though direct client access is not used.
 
 **Finding:** viable, but not strongest overall fit before pilot.
 
 ### B — Cloud SQL PostgreSQL authoritative through Functions/API
 
-**Strengths:** native primary/foreign keys, unique/partial indexes, check constraints, SQL transactions, row locks, isolation levels, relational query/reporting, conventional schema migrations and database-portable data. It directly supports the expected ledger-like consumption/payment/audit model and cleanly fits external-JWT→server API access.
+**Strengths:** native primary/foreign keys, unique/partial indexes, check constraints, SQL transactions, row locks, isolation levels, relational query/reporting, conventional schema migrations and database-portable data. It directly supports the governed identity, relationship, lifecycle, audit, purchase/cycle/reward and subscription/payment model and cleanly fits external-JWT→server API access.
 
 **Requirements/costs:** create a repository port boundary; write schema/migrations; select a Node PostgreSQL driver/query approach; apply a connection-pooling and max-instances plan; use Cloud SQL Connector and automatic IAM database authentication where validated; use IAM/least privilege, Secret Manager only where needed, backups/PITR, HA policy, monitoring, Docker PostgreSQL local development and ephemeral/managed CI databases. These are operational responsibilities, not free benefits.
 
@@ -192,12 +208,12 @@ No approved workload currently justifies two authoritative operational stores. �
 | Data class | Recommended owner in the selected target | Firestore role |
 | --- | --- | --- |
 | Identity, AuthenticationReferences, Businesses, Branches, memberships, administrators/roles | PostgreSQL authoritative | None. |
-| Purchase, verified units, cycles, rewards, redemptions, consumption ledger, top-ups, payment/reversal records | PostgreSQL authoritative | None. |
+| Purchase, verified units, cycles, rewards, redemptions, subscription/payment and reversal records | PostgreSQL authoritative | None. |
 | Idempotency, transactional outbox, audit/recovery/trust records, rules/knowledge configuration | PostgreSQL authoritative | None. |
 | Dashboard/read projection or cache (only if later proven useful) | PostgreSQL-derived, rebuildable projection | Optional derived cache only; never source of truth or dual-write peer. |
 | Storage objects | Cloud Storage/object store authoritative for blobs; metadata relation in PostgreSQL | Firestore not required. |
 
-**Finding:** hybrid is rejected for this decision. A future projection/cache must have one-way outbox/CDC-style derivation, idempotent consumer, replay/rebuild procedure, freshness monitoring, and no authority over workflows. It is not part of the recommended initial transition.
+**Finding:** hybrid is not selected for this decision. A future projection/cache must have one-way outbox/CDC-style derivation, idempotent consumer, replay/rebuild procedure, freshness monitoring, and no authority over workflows. It is not part of the recommended initial transition. This is a scope and integrity conclusion, not an assertion that Firestore must disappear from every future architecture.
 
 ### E — Other architecture
 
@@ -234,17 +250,18 @@ This separation also avoids treating database credentials or Cloud IAM identitie
 
 ### 11.1 Risk distinction
 
-**Data migration risk: low, but verify.** The repository's cloud-environment strategy records the current Firebase project as a development-stage environment with no production data/users/workloads. Before any migration, a separate read-only inventory/export verification must establish the actual record count and legal/retention status. This report does not make that verification or migrate any data.
+**User/data migration risk: low, but unverified.** The repository's cloud-environment strategy records the current Firebase project as a development-stage environment with no production data/users/workloads. Before any migration, a separate read-only inventory/export verification must establish the actual record count and legal/retention status. This report does not make that verification or migrate any data.
 
-**Code migration blast radius: significant.** At minimum it includes:
+**Engineering transition cost: moderate-to-significant.** At minimum it includes:
 
 - 80 production Functions files importing Firestore Admin APIs, 30 production files with collection calls, and Firestore types that cross repository/service boundaries;
+- 31 executable production `runTransaction` calls across 22 files. This is a material rewrite/test-design surface, but not 31 independent migrations: common unit-of-work, repository and test-harness changes can cover multiple sites;
 - 59 emulator suites, Firestore fixtures, 4 checked-in outbox indexes, `firebase.json` emulator configuration and the CI emulator-validation job;
 - Firestore document converters, document-ID generation/keying, collection paths, transaction retry semantics, query/pagination implementations and Rules tests;
-- callable/Functions request authentication, currently Firebase-token-based, and hosting CSP/client auth dependencies during the external-IdP transition;
+- callable/Functions request authentication and hosting/client-auth dependencies that must stay compatible with the separately controlled IdP direction, without choosing a provider here;
 - configuration/deployment/IAM, local development, monitoring, backup/restore and incident/runbook material.
 
-No production configuration, Firebase Rules, data or infrastructure is changed by this assessment.
+**Architecture transition risk: material and controllable.** The change replaces a managed document/emulator/Rules development model with schema migrations, SQL integration/concurrency testing, connection management, database backup/restore controls and a stronger repository/unit-of-work seam. It must preserve server-only authorization, durable 11thONUS identifiers, idempotency/outbox semantics and API contracts while `DEC-AUTH-002` is separately validated. No production configuration, Firebase Rules, data or infrastructure is changed by this assessment.
 
 ### 11.2 Avoiding double migration
 
@@ -262,9 +279,9 @@ Doing authentication first and persistence second would rewrite these surfaces t
 
 1. Record this architecture decision (Founder decision) and create one implementation programme, not a migration.
 2. Complete `AUTH-ARCH-002` provider hard-invariant validation; do not select an IdP here.
-3. Produce a combined external-IdP + PostgreSQL target design, threat model, schema/invariant catalogue, capacity/cost sizing and migration/test plan before coding.
-4. Establish PostgreSQL repository ports, migrations and test harness in an isolated non-production environment; migrate Identity/AuthenticationReference/authorization and server ingress together behind compatibility-tested APIs.
-5. Move the remaining implemented durable state, then build the not-yet-implemented loyalty/consumption workflows directly on PostgreSQL. Do not build those workflows in Firestore first.
+3. Produce a combined external-IdP-compatible + PostgreSQL target design, threat model, schema/invariant catalogue, capacity/cost sizing and migration/test plan before coding. This task does not select the IdP or authorize that programme.
+4. Establish PostgreSQL repository ports, migrations and test harness in an isolated non-production environment; migrate Identity/AuthenticationReference/authorization and server ingress only when separately authorized, behind compatibility-tested APIs.
+5. Move the remaining implemented durable state, then implement future governed loyalty/subscription workflows on the selected authoritative store. Do not create a dual-authoritative period.
 6. Verify counts, invariants, audit/outbox replay, backup/restore and cutover. Retire Firestore authority only after verification. No dual-authoritative period.
 
 ## 12. Cost analysis (official current sources, not a quote)
@@ -278,7 +295,7 @@ Prices vary by region, edition, machine size, storage, networking, discount mode
 | Hidden growth driver | Fan-out documents, denormalized projections, transaction rereads, index reads and listener reconnects | Oversized idle instance, insufficient connection control, HA/replicas, backups and slow queries | GraphQL/generated-access layer and Firebase Auth dependency; operation counts in addition to database |
 | Engineering/operational cost | Lowest initially; higher bespoke invariant/reconciliation burden as domain grows | Higher initial DBA/SRE discipline; lower custom relational/invariant/query burden | Adds product-specific schema/connector/SDK/auth tooling on top of PostgreSQL operations |
 
-Firestore can absolutely be least expensive for a very light pilot. That alone does not win where the core product needs exact financial-like state. Conversely, PostgreSQL is not automatically cheaper: its fixed baseline must be accepted as an intentional integrity/operability investment. Forecasting must use actual proposed requests—documents/index reads and writes per purchase/cycle/report for Firestore; connection, compute, IOPS/storage/backup, HA and query profile for PostgreSQL.
+Firestore can absolutely be least expensive for a very light pilot. That alone does not win where the core product needs exact integrity-sensitive relationship, lifecycle and history state. Conversely, PostgreSQL is not automatically cheaper: its fixed baseline must be accepted as an intentional integrity/operability investment. Forecasting must use actual proposed requests—documents/index reads and writes per purchase/cycle/report for Firestore; connection, compute, IOPS/storage/backup, HA and query profile for PostgreSQL.
 
 ## 13. Operational burden comparison
 
@@ -292,13 +309,20 @@ Firestore can absolutely be least expensive for a very light pilot. That alone d
 | Reporting | Projection-first and purpose-built index/query design | Relational operational reports easier; warehouse still future. |
 | Provider portability | Export/import possible but document model/application APIs are provider-shaped | PostgreSQL data/tools are broadly portable; Cloud SQL operational APIs remain provider-specific. |
 
-Firestore simplicity receives real weight. The decision nevertheless favors PostgreSQL because 11thONUS needs to carry its operational burden once, centrally, rather than repeatedly recreate relational guarantees inside commercial workflows.
+Firestore simplicity receives real weight. The decision nevertheless favors PostgreSQL because 11thONUS needs to carry its operational burden once, centrally, rather than repeatedly recreate relational guarantees inside governed integrity-sensitive workflows.
 
 ## 14. Controlled provider-dependency analysis
 
 11thONUS must own domain IDs, semantic relationships, state-transition rules, idempotency meaning, outbox event contracts, audit meaning and exportability. Infrastructure may own durable storage mechanics, backups, SQL execution and managed scale.
 
-Current interfaces are partially substitution-friendly: many models are framework-free; serializers isolate some Timestamp/undefined concerns; repositories exist; server-only access is established; `TransactionWriter` shows deliberate capability narrowing. They are not yet sufficiently bounded for a painless datastore swap because Firestore types, `runTransaction`, collection names and document-ID behavior enter services and command orchestration. A PostgreSQL migration should improve—not bypass—this boundary:
+| Dependency dimension | Controlled-provider-dependency assessment |
+| --- | --- |
+| **PostgreSQL portability** | PostgreSQL's standard relational model, SQL, schemas, migrations, constraints and conventional drivers are materially portable across self-managed PostgreSQL and compatible managed offerings. That lowers the cost of moving the *data and application model*; it does not make every extension, deployment configuration or operational procedure portable without work. |
+| **Cloud SQL dependency** | Cloud SQL retains Google Cloud dependencies for instance lifecycle, IAM/service accounts, networking/connectors, backups/PITR, monitoring, regional availability, quotas, billing and managed-operation runbooks. A Cloud SQL target is deliberately provider-managed, not provider-independent. |
+| **Firebase SQL Connect/Data Connect dependency** | In addition to Cloud SQL, SQL Connect introduces Firebase GraphQL schemas and directives, generated client SDKs, CLI/deployment flow, Firebase runtime integration and a client authorization model tied to Firebase Authentication. Server-only use avoids direct client auth coupling but still adds a Firebase-specific application access layer without reducing the repository rewrite. |
+| **Firestore dependency** | Retaining Firestore as authority retains document/collection-path modeling, document-ID uniqueness patterns, Admin SDK transactions and retry/read-before-write semantics, query/index and denormalization design, emulator fixtures, Rules tests, Functions repository/services and Firebase deployment/observability coupling. Existing Rules' deny-all posture limits direct-client coupling but does not remove those data-model and operational dependencies. |
+
+Current interfaces are partially substitution-friendly: many models are framework-free; serializers isolate some Timestamp/undefined concerns; repositories exist; server-only access is established; `TransactionWriter` shows deliberate capability narrowing. They are not yet sufficiently bounded for a painless datastore swap because Firestore types, `runTransaction`, collection names and document-ID behavior enter services and command orchestration. A separately authorized PostgreSQL programme should improve—not bypass—this boundary:
 
 - domain services depend on repository/unit-of-work ports, not `Firestore`/`Transaction`;
 - an application transaction port has semantic operations, not a Firestore-shaped writer;
@@ -306,7 +330,7 @@ Current interfaces are partially substitution-friendly: many models are framewor
 - constraints are duplicated deliberately: database structural backstop plus domain validation/authorization;
 - exports and backup validation are part of the data owner’s exit strategy.
 
-Cloud SQL remains a managed Google dependency, but PostgreSQL data, schema knowledge and SQL access patterns are materially more transferable than Firestore document APIs or SQL Connect generated client access. Controlled dependency means deliberate boundaries and recoverable data, not a claim that a managed service creates no dependency.
+**Conclusion:** controlled dependency means deliberate boundaries, recoverable data and a known exit path. It does not claim that Cloud SQL, Firebase SQL Connect or Firestore is provider-independent.
 
 ## 15. Risks and decision controls
 
@@ -332,12 +356,12 @@ Cloud SQL remains a managed Google dependency, but PostgreSQL data, schema knowl
 ## 17. Required report closure
 
 - **Entry main SHA:** `ee899032b4734260697c47635aaaa136aadf7cda`.
-- **Authorities inspected:** listed in §2; `DEC-AUTH-002` and `FD-COM-001` were applied without modification.
+- **Authorities inspected:** §2 classifies every material input. `DEC-AUTH-002` and the governed repository records were applied; FD-COM-001 was explicitly excluded as provisional/ungoverned.
 - **Persistence requirements, dependency map, leakage, manual invariants, transactions, reporting, candidate evaluation, external IdP, transition, cost, operations, controlled dependency and risks:** §§3–15.
 - **Final recommendation:** direct/server-governed Cloud SQL PostgreSQL; no SQL Connect/Data Connect client architecture; no hybrid.
-- **Files modified:** this assessment report only.
+- **Files modified:** this corrected assessment report; `docs/00-governance/documentation-changes-log.md`; `docs/changes/IMPLEMENTATION_CHANGES.md`.
 - **Production/config/data changes:** **NONE** expected or made. No dependency, schema, Cloud SQL, Data Connect, Rules, auth, Firestore, data, configuration or infrastructure change was made.
 - **Commit / PR / exact head:** completed only after the documentation-only report has been reviewed, committed and pushed; recorded in the delivery update for this assessment.
-- **Recommended next step:** Founder records or rejects this architecture direction; if accepted, authorize a bounded combined target-design package after `AUTH-ARCH-002` validates the external IdP, covering PostgreSQL schema/invariants, API ingress, sizing/cost, security, migration and test strategy—still without migration until separately authorized.
+- **Recommended next step:** Founder records or rejects this architecture direction. If accepted, authorize a bounded target-design package compatible with (but not dependent on selection under) `AUTH-ARCH-002`, covering PostgreSQL schema/invariants, API ingress, sizing/cost, security, migration and test strategy—still without migration until separately authorized.
 
 CHANGE — POSTGRESQL SHOULD BECOME AUTHORITATIVE DATASTORE
