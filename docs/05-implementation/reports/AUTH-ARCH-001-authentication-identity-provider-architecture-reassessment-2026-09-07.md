@@ -1,6 +1,6 @@
 # AUTH-ARCH-001 — Authentication & Identity-Provider Architecture Reassessment
 
-> **Status:** **ASSESSMENT CORRECTED — AWAITING FOUNDER ARCHITECTURE-DIRECTION DISPOSITION — PROVIDER VALIDATION REQUIRED**
+> **Status:** **COMPLETE / FOUNDER-DISPOSED — `FD-AUTH-ARCH-001` / `DEC-AUTH-002` (see §17)**
 > **Classification:** Controlled architecture assessment — no implementation
 > **Date:** 2026-09-07; corrected 2026-09-08 under `AUTH-ARCH-001-CORR-001`
 > **Repository authority assessed:** `origin/main` `b0a039b2af2e4f869c5534ccb8d8705fdece661a`
@@ -332,3 +332,17 @@ Create an **AUTH-ARCH-002 — External IdP Hard-Invariant Validation** package o
 **ASSESSMENT CORRECTED — AWAITING FOUNDER ARCHITECTURE-DIRECTION DISPOSITION — PROVIDER VALIDATION REQUIRED**
 
 > Architecture-class disposition: CHANGE is supportable now (external managed IdP boundary + retain Firebase app/data platform). Provider-selection disposition: TARGET PROVIDER NOT YET SELECTED — VALIDATION REQUIRED.
+
+## 17. Founder disposition — `FD-AUTH-ARCH-001` / `DEC-AUTH-002` (2026-09-08; recorded per `AUTH-ARCH-001-FD-001`)
+
+Historical research (§§1–16) and corrections (CORR-001, CORR-002) are preserved above and are not rewritten. The Founder disposition is:
+
+- **Architecture Decision A = APPROVED / CHANGE.** 11thONUS will adopt a separately controlled external managed identity-provider boundary for authentication. Firebase Authentication / Google Identity Platform is no longer the target authentication architecture under the currently approved requirements.
+- **Firebase application/data services retained pending separate reassessment.** Hosting, Cloud Functions, Firestore and Storage (and other separately justified infrastructure) may continue; no migration, perpetual retention, or redesign of those services is authorized by this disposition.
+- **Controlled provider dependency approved as architectural principle** (§§9/9.1 boundary; provider subject stays an opaque authentication reference, never durable domain authority).
+- **Auth0 NOT selected.** Provider selection is deferred: TARGET PROVIDER NOT YET SELECTED — VALIDATION REQUIRED (Auth0 leading candidate, validation required; Cognito eliminated; Firebase unsuitable under R5/R7).
+- **Next step is `AUTH-ARCH-002 — External IdP Hard-Invariant Validation`** (validation only; not started by this disposition).
+- **No migration authorized. `AUTH-MFA-003D-IMPL-001` remains blocked** (authorisation VALID, execution BLOCKED — DECISION REQUIRED — AUTHENTICATION ARCHITECTURE REASSESSMENT; to be re-baselined or replaced once the target IdP is selected; R1–R10 and `DEC-SEC-005` unchanged).
+- **`DATA-ARCH-001` is a separate future assessment** (programme handoff note only; no persistence decision, no PostgreSQL action).
+
+**AUTH-ARCH-001 = COMPLETE / FOUNDER-DISPOSED** (merge closure recorded on PR #234).

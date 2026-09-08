@@ -7,6 +7,18 @@
 
 ---
 
+## 2026-09-08 — AUTH-ARCH-001-FD-001 — Founder Authentication Architecture Direction (`DEC-AUTH-002` / `FD-AUTH-ARCH-001`)
+
+- **Task / status:** Founder-disposition recording on PR #234 (Founder-reviewed head `be4c1c7692a7293a0ba5bba0b6cf4700cc61bf5e`). **AUTH-ARCH-001 = COMPLETE / FOUNDER-DISPOSED / MERGED / CLOSED** (post-merge verification required).
+- **Direction recorded:** Decision A APPROVED — CHANGE to a separately controlled external managed IdP boundary; Firebase Authentication no longer the target architecture (product/provider-fit under fixed `DEC-SEC-005` R5/R7); Firebase Hosting/Functions/Firestore/Storage retained pending separate reassessment; controlled provider dependency + durable-identity boundary recorded as principle; provider subject stays an opaque reference.
+- **Explicitly not decided/started:** Auth0 NOT selected (leading candidate, validation required); provider selection deferred to future `AUTH-ARCH-002` (16-item validation scope noted, not started); `AUTH-MFA-003D-IMPL-001` remains authorised/blocked (no resumption, no R1–R10 change); `DATA-ARCH-001` noted as a separate future assessment (no PostgreSQL decision, provisioning, or persistence change).
+- **Files changed:** `docs/00-governance/decisions/decision-register.md` (new `DEC-AUTH-002`); AUTH-ARCH-001 assessment (COMPLETE status + §17); `docs/00-governance/documentation-changes-log.md` (Entry 185); this record. No provider-selection decision created; unrelated decisions unmodified.
+- **Code/configuration/dependencies/migrations/live changes:** none. `FD-COM-001` untouched.
+- **Validation:** documentation diff; `git diff --check`; relative-link validation; CI SUCCESS required on the exact final head; regular merge commit with expected-head protection; post-merge CI SUCCESS on the merge commit required.
+- **Rollback:** revert the disposition commit(s) / the merge; no runtime/provider/data rollback is required.
+
+---
+
 ## 2026-09-08 — AUTH-ARCH-001-CORR-002 — Reconcile AUTH-MFA-003D Work-Package State and Correct PR #234 Review Findings
 
 - **Task / status:** Controlled documentation/governance correction on PR #234 (pre-correction head `6dfee169fc5a746e86aa7d77e59f57e932b093c4`). Resolves the two P2 review threads without altering AUTH-ARCH-001 conclusions.
