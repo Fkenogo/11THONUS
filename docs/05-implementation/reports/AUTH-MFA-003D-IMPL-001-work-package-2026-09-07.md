@@ -4,7 +4,7 @@
 - **Parent standard:** FEF-EWPCS-001 — Engineering Work Package & Closure Standard v1.0
 - **Template status:** APPROVED — ACTIVE companion template
 - **Template effective date:** 2026-09-07
-- **Instantiation status:** **AUTHORISED — READY FOR IMPLEMENTATION**
+- **Instantiation status:** **AUTHORISED** under `FD-AUTH-MFA-003D-IMPL-001` (Founder authorization recorded 2026-09-07; VALID historically and constitutionally — see Current programme state for execution state, which authorization alone does not determine).
 - **Founder authorization date:** 2026-09-07
 - **Founder-reviewed pre-authorization WP head:** `b32eef5d576c4e9ad0bbea43d424f02ed6fba095`
 - **Founder execution authorization reference:** `FD-AUTH-MFA-003D-IMPL-001`
@@ -23,7 +23,8 @@
 - **Working branch / branch rule:** Create a dedicated `codex/`-prefixed implementation branch from the verified current `origin/main`; do not implement in a dirty primary worktree.
 - **Governing authority:** `DEC-SEC-005` / `FD-MFA-R` R1–R10; `DEC-SEC-004` / `FD-MFA-2` where still applicable; merged `AUTH-MFA-003D-DESIGN-001` and `AUTH-MFA-003D-DESIGN-001-CORR-001` (PR #232); existing `AUTH-03` server-authentication trust architecture.
 - **Founder / designated authorisation record:** **`FD-AUTH-MFA-003D-IMPL-001` — Founder execution authorization recorded 2026-09-07.** Founder reviewed pre-authorization WP head `b32eef5d576c4e9ad0bbea43d424f02ed6fba095` and authorizes this bounded work package under `FEF-EWPCS-001` v1.0 and `DEC-SEC-005` / `FD-MFA-R` R1–R10. This is execution authority only: it does not create a new security-policy decision, amend R1–R10, or permit engineering to redesign them.
-- **Current programme state:** **AUTHORISED — READY FOR IMPLEMENTATION.** Future execution remains subject to every remaining Entry Gate check and the High-Risk Review Gate.
+- **Current programme state:** **BLOCKED — DECISION REQUIRED — AUTHENTICATION ARCHITECTURE REASSESSMENT.** Founder authorisation (`FD-AUTH-MFA-003D-IMPL-001`) remains VALID; work-package execution is BLOCKED and implementation has NOT STARTED. Blocker: the FEF Entry Gate provider-capability check failed — no supported Firebase/Identity Platform administrative mechanism satisfies the exact-factor recovery invariant (see §14 and blocker references below). The current architecture decision track is `AUTH-ARCH-001` (PR #234); this work package must not resume until the Founder architecture/provider disposition resolves its blocker. Authorization alone does not override failed Entry/High-Risk gates.
+- **Blocker evidence (supporting the blocked state; none of it amends authority):** (a) `AUTH-MFA-003D-PROVIDER-001` provider-feasibility evidence (unmerged evidence branch `codex/auth-mfa-003d-provider-001`, commit `618c6e5`; Result C — NO SAFE PROVIDER MECHANISM AVAILABLE — RECOVERY DESIGN BLOCKED) — inspected as repository evidence, not merged authority and not elevated to Founder authority; (b) `AUTH-ARCH-001` authentication & identity-provider architecture reassessment (PR #234), which records `AUTH-MFA-003D-IMPL-001` as **BLOCKED — DECISION REQUIRED** at its provider-capability gate. R1–R10, AC-01–AC-23 and the approved recovery policy are unchanged by this state correction.
 - **Work package owner / execution agent:** Future implementation agent, subject to this recorded authorization and all remaining gates.
 - **Review authority:** Independent security/engineering reviewer on the exact implementation head.
 - **Approval authority:** Founder or an explicitly designated approval authority.
@@ -218,7 +219,7 @@ Founder authorization of this work package does not waive any checkpoint in this
 
 ## 14. Expected Completion State
 
-Current state: **AUTHORISED — READY FOR IMPLEMENTATION** under `FD-AUTH-MFA-003D-IMPL-001` (Founder authorization recorded 2026-09-07 against pre-authorization WP head `b32eef5d576c4e9ad0bbea43d424f02ed6fba095`). This authorization does not waive the remaining Entry Gate or High-Risk Review Gate checkpoints.
+Current state: **BLOCKED — DECISION REQUIRED — AUTHENTICATION ARCHITECTURE REASSESSMENT** (recorded 2026-09-08 under `AUTH-ARCH-001-CORR-002`; Founder authorization `FD-AUTH-MFA-003D-IMPL-001` recorded 2026-09-07 against pre-authorization WP head `b32eef5d576c4e9ad0bbea43d424f02ed6fba095` remains VALID). This is the normal result of an authorised FEF package encountering a hard Entry Gate blocker: it is not a revocation of Founder authority, not a cancellation of recovery, and not a policy amendment. This authorization does not waive the remaining Entry Gate or High-Risk Review Gate checkpoints, and authorization alone does not override the failed provider-capability gate. Substantive implementation did not begin.
 
 The maximum self-declared state for the implementation agent remains:
 

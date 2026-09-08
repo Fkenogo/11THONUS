@@ -7,6 +7,18 @@
 
 ---
 
+## 2026-09-08 — AUTH-ARCH-001-CORR-002 — Reconcile AUTH-MFA-003D Work-Package State and Correct PR #234 Review Findings
+
+- **Task / status:** Controlled documentation/governance correction on PR #234 (pre-correction head `6dfee169fc5a746e86aa7d77e59f57e932b093c4`). Resolves the two P2 review threads without altering AUTH-ARCH-001 conclusions.
+- **WP reconciliation:** the authoritative `AUTH-MFA-003D-IMPL-001` work package now distinguishes Founder authorisation (VALID under `FD-AUTH-MFA-003D-IMPL-001`, preserved historically and constitutionally) from execution/programme state (**BLOCKED — DECISION REQUIRED — AUTHENTICATION ARCHITECTURE REASSESSMENT**; implementation NOT STARTED). Records: FEF Entry Gate provider-capability check failed; `AUTH-MFA-003D-PROVIDER-001` evidence (unmerged branch `codex/auth-mfa-003d-provider-001`, commit `618c6e5`, Result C) cited as evidence only, not authority; `AUTH-ARCH-001` (PR #234) is the current decision track; no resumption until Founder architecture/provider disposition; authorization does not override failed gates. R1–R10, AC-01–AC-23 and the approved recovery policy unchanged. Bounded agreeing note added to AUTH-ARCH-001 §14; dispositions unchanged (architecture CHANGE; provider NOT YET SELECTED; Auth0 VALIDATION REQUIRED; Cognito eliminated; Firebase unsuitable under R5/R7). Token-revocation cutoff preserved as candidate architecture requiring validation/authority, not approved.
+- **Link correction:** `documentation-changes-log.md` Entries 182/183 AUTH-ARCH-001 report links corrected from `../../05-implementation/...` to `../05-implementation/...` (verified resolving); unrelated historical links untouched.
+- **Files changed:** `AUTH-MFA-003D-IMPL-001-work-package-2026-09-07.md`; AUTH-ARCH-001 assessment (§14 note only); `docs/00-governance/documentation-changes-log.md` (link fixes + Entry 184); this record.
+- **Code/configuration/dependencies/migrations/live changes:** none. No `DEC-SEC-005` change. No new provider decision. `FD-COM-001` untouched.
+- **Validation:** relative-link validation; documentation diff; `git diff --check`. No production, provider, emulator or live credential mutation.
+- **Rollback:** revert this documentation commit only; no runtime/provider/data rollback is required.
+
+---
+
 ## 2026-09-08 — AUTH-ARCH-001-CORR-001 — Correction to Authentication & Identity-Provider Architecture Reassessment
 
 - **Task / status:** Controlled documentation/research correction on PR #234 (pre-correction head `d17f94736405cc91f342ef9df2baf0a15458e090`; base `origin/main` `b0a039b2af2e4f869c5534ccb8d8705fdece661a`). **ASSESSMENT CORRECTED — AWAITING FOUNDER ARCHITECTURE-DIRECTION DISPOSITION — PROVIDER VALIDATION REQUIRED**. Stage 1/Stage 2/controlled-dependency/Firebase data-platform findings unchanged.

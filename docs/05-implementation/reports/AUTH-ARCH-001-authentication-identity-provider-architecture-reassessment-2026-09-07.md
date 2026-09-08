@@ -302,6 +302,8 @@ No new Founder decision is requested to weaken R1–R10, alter `DEC-SEC-005`, pe
 
 `AUTH-MFA-003D-IMPL-001` remains **BLOCKED — DECISION REQUIRED** at its provider-capability gate. It must not be resumed, reinterpreted, or implemented under Firebase.
 
+> **CORR-002 note (2026-09-08):** the authoritative work-package file (`AUTH-MFA-003D-IMPL-001-work-package-2026-09-07.md`) now records the same programme state explicitly — Founder authorisation `FD-AUTH-MFA-003D-IMPL-001` VALID, execution **BLOCKED — DECISION REQUIRED — AUTHENTICATION ARCHITECTURE REASSESSMENT**, implementation NOT STARTED — so the two records agree. No conclusion of this assessment is changed by that note.
+
 If the Founder accepts CHANGE, this work package is affected—not silently superseded. A future architecture programme must decide whether it is retired/replaced or explicitly re-baselined against the validated IdP after V1/V2. The approved R1–R10 policy remains fixed and transfers as a security requirement; only the provider adapter/architecture changes.
 
 ## 15. Recommended next controlled step
