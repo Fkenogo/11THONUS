@@ -7,6 +7,8 @@
 - **FEF source:** `Fkenogo/founder-engineering-framework`, branch `origin/docs/fef-ewpcs-001-companion-templates` at `2db8b7026382a288cfa7fa18483e60341d1fb052` (standard `docs/engineering/FEF-EWPCS-001-ENGINEERING-WORK-PACKAGE-CLOSURE-STANDARD.md`; templates `docs/templates/FEF-EWPCS-001-WORK-PACKAGE-TEMPLATE.md` and `docs/templates/FEF-EWPCS-001-COMPLETION-REPORT-TEMPLATE.md`). No custom structure is invented where the FEF template governs.
 - **Instantiation status:** **PENDING FOUNDER AUTHORISATION — NOT EXECUTABLE.** The Founder has authorised the validation environment in principle (`FD-AUTH-ARCH-002-VAL-001`); the exact FEF execution contract in this package still requires Founder review and authorisation before any execution.
 - **Founder execution authorization reference:** None — pending Founder authorisation of this exact package. Environment authority alone does not authorise execution (see Hard Authority Stop).
+- **Correction history:** CORR-001 (four PR #238 review findings corrected; see Entry 190). Status unchanged: PENDING FOUNDER AUTHORISATION — NOT EXECUTABLE.
+- **Provider selection state:** Auth0 remains **LEADING CANDIDATE — NOT SELECTED**; this package does not select a provider.
 
 > This is the sole authoritative project work package for `AUTH-ARCH-002-VAL-002`. It instantiates the official FEF template and records a controlled validation-execution contract only; it does not select Auth0, migrate authentication, amend product or security policy, authorise production state, or create any provider tenant, credential, or live validation result.
 
@@ -46,7 +48,7 @@ Confirm before validation execution:
 - [ ] Future execution agent: use a clean, isolated worktree with no unresolved merge, rebase, or cherry-pick state.
 - [ ] Future execution agent: verify this exact FEF work package is merged and remains authoritative, and that Founder authorisation of this exact package is recorded.
 - [ ] Future execution agent: verify `FD-AUTH-ARCH-002-VAL-001` still applies and no governing authority (`DEC-SEC-005`, R1–R10, `DEC-AUTH-002`) has changed.
-- [ ] Future execution agent: confirm access to Auth0 account/tenant-creation capability, required validation entitlement, M2M setup availability, Google/social test credentials if V3 requires them, commercial contact path, and SMS-evidence sources — or record the affected evidence as unavailable per §15 rather than assuming it.
+- [ ] Future execution agent: confirm access to Auth0 account/tenant-creation capability, required validation entitlement, M2M setup availability, Google/social test credentials (required for AC-19), commercial contact path, and SMS-evidence sources — or record the affected evidence as unavailable per §15 rather than assuming it.
 - [ ] Future execution agent: verify the secret-handling plan (§13-adjacent contract in Required Implementation) is in place before creating any provider state beyond minimal tenant setup.
 
 ### Hard Authority Stop
@@ -72,7 +74,7 @@ Once Founder-authorised, this work package may execute exactly the bounded live 
 - JWT lifecycle/claim tests (issued-JWT behaviour after revocation; `iss`/`sub`/`aud`/`azp`/`exp`/`iat`/`scope` shapes; no `auth_time`/`sid` assumption).
 - MFA evidence tests (`amr` values, refresh/silent omission, namespaced access-token MFA claim behaviour).
 - Email/password tests; verification/reset flows.
-- Google login tests, only if safely configured with test contacts.
+- Google tenant login tests with test contacts (required per AC-19; unavailable credentials ⇒ VALIDATION INCOMPLETE, not a pass).
 - EN/FR localization tests.
 - External JWT → Functions/API disposable contract validation (end-to-end contract test plus the callable-vs-HTTPS transport decision evidence).
 - App Check coexistence validation.
@@ -105,7 +107,7 @@ This work package must not decide, redesign, migrate, replace, or expand any of 
 
 ## 4. Deferred Decisions
 
-- Google/social test credentials: whether V3 product-method validation requires them and which test contacts may be used is determined at execution; nothing is assumed here.
+- Google/social test credential sourcing and test-contact selection are execution details; the Google tenant test itself is required (AC-19), not optional — nothing about its necessity is assumed or decided here beyond the cited authority.
 - Auth0 Enterprise-capable validation entitlement: if any required API or behaviour needs an entitlement the validation tenant lacks, the affected evidence is recorded as unavailable (VALIDATION INCOMPLETE), not as a failure — see §15.
 - Whether the validation tenant itself is retained as the standing non-production test tenant or cleaned up is a Founder/operational-plan decision (see Required Implementation, cleanup item); the execution agent does not decide retention.
 - The §4 domain-owned token/session revocation cutoff remains candidate architecture requiring validation evidence plus separate Founder/security authority; it is not approved here.
@@ -126,7 +128,7 @@ A deferred matter is not implementation authority.
 | Access to Auth0 account/tenant-creation capability | Execution prerequisite | Remaining — verify at execution | Without it, live execution cannot begin; report BLOCKED — DECISION REQUIRED. |
 | Auth0 Enterprise-capable validation entitlement, if required APIs need it | Execution prerequisite | Remaining — verify at execution | Missing entitlement is recorded as unavailable evidence (VALIDATION INCOMPLETE), never silently as failure. |
 | Least-privilege M2M setup | Execution prerequisite | Remaining — verify at execution | Required before validation API calls. |
-| Google/social test credentials, if V3 requires them | Execution prerequisite | Remaining — verify at execution | Google login tests proceed only if safely configured. |
+| Google/social test credentials | Execution prerequisite | Remaining — verify at execution | The Google tenant test is required (AC-19); if credentials cannot be sourced, record VALIDATION INCOMPLETE. |
 | Commercial contact path for the Enterprise quote | Execution prerequisite | Remaining — verify at execution | Quote outstanding is recorded, not assumed. |
 | SMS-gateway pricing evidence sources (Burundi/Rwanda) | Execution prerequisite | Remaining — verify at execution | Economics outstanding are recorded, not invented. |
 
@@ -140,18 +142,19 @@ When Founder-authorised, execute one bounded validation programme that consumes 
 2. Create and/or configure exactly one segregated non-production Auth0 validation tenant with disposable validation-only identities; no real customers, production administrator identities, or production data.
 3. Create one least-privilege M2M client; verify Management API scopes before use; record scopes with every finding.
 4. Pass Gate 2 (contract/test review, §13) before broader validation execution.
-5. Execute the exact-factor track (AC-01–AC-05): list F1/F2 TOTP enrollments; delete F1 by exact immutable ID; read back F1/F2; prove F2 untouched; test already-absent-F1 handling; determine idempotency; test concurrent delete-vs-enroll ordering; record scopes, HTTP outcomes, and audit logs.
-6. Execute the revocation track (AC-06–AC-10): session delete + refresh-token revoke sequencing; readback polling to determine the confirmation bound before any F1 deletion; verify `preserve_refresh_tokens` behaviour; record the 202-to-confirmed latency distribution; observe issued-JWT, session, and refresh-token behaviour separately.
-7. Execute the domain-cutoff track (AC-11–AC-13): prove or disprove the candidate generation/cutoff claim; test the post-cutoff mint race; test fail-closed missing-claim behaviour. The cutoff itself remains unapproved candidate architecture.
-8. Execute the MFA-evidence track (AC-14–AC-16): observe genuine TOTP sign-in evidence; observe silent/refresh behaviour; establish the access-token evidence path (including any namespaced Action claim).
-9. Execute the product-methods track (AC-17–AC-21): email/password, verification/reset, Google where safely configured, EN/FR matrix, and account-linking semantics — using test contacts only.
-10. Execute the Functions/API track (AC-22–AC-27): external-token-to-Functions end-to-end contract test; issuer/audience/expiry enforcement; JWKS rotation and unknown-`kid` handling; malformed / wrong-issuer / wrong-audience negatives; `AuthenticationReference` mapping (provider subject stays an opaque external reference, never durable identity/role/permission authority); App Check coexistence.
-11. Execute the operations/commercial track (AC-28–AC-32): identify the required plan; confirm Enterprise-only APIs; request/obtain the quote where possible; confirm region/data-location; record SMS/gateway economics. No contract commitment; no paid terms without separate Founder approval.
-12. Capture sanitized evidence for every criterion (AC-33): API operation names, HTTP statuses, enrollment IDs masked where appropriate, response structure, timing observations, readback, token-claim shapes with sensitive values redacted, test-case IDs/results, and cleanup evidence. Never store secrets, tokens, TOTP seeds, TOTP codes, private keys, or client secrets — in the repository or elsewhere outside the secure handling boundary.
-13. Apply the secret-handling contract (AC-34): secure environment/local secret storage only; no repository credential files; no `.env` commit; full final secret scan with confirmation recorded in the completion report; cleanup/revocation of validation credentials where appropriate.
-14. Apply the provider-resource cleanup contract (AC-35): remove test identities, M2M clients, refresh tokens, sessions, and temporary apps/connections; record cleanup evidence. The validation tenant itself may remain only if the Founder/operational plan explicitly retains it as the standing non-production test tenant; otherwise specify and execute its cleanup.
-15. Apply the provider-qualification rule (§15-adjacent): do not average security results. A failure of a hard R5/R7 invariant means **AUTH0 NOT QUALIFIED** unless a separately approved 11thONUS security architecture legitimately satisfies the invariant. Commercial failure may also disqualify even if technically suitable. Missing paid/Enterprise entitlement is recorded as unavailable evidence, never silently as failure.
-16. Close with the FEF completion report (AC-36) declaring exactly one of the §14 maximum states; claim no provider selection and no migration authority.
+5. Establish validation identity/factor state and create the controlled recovery scenario: enroll disposable F1/F2 TOTP factors on disposable validation identities and record immutable enrollment identifiers. No destructive factor call is permitted before the revocation barrier in item 6.
+6. Establish the validated revocation confirmation/cutoff barrier for the scenario (AC-06–AC-10): initiate session delete + refresh-token revoke sequencing; readback-poll to determine the confirmation bound; verify `preserve_refresh_tokens` behaviour; record the 202-to-confirmed latency distribution; observe issued-JWT, session, and refresh-token behaviour separately. `202 Accepted` is never treated as confirmation.
+7. Only after the item-6 barrier is established for the scenario: verify exact target-factor binding, then execute the exact-factor track (AC-01–AC-05) — delete F1 by exact immutable ID; read back F1/F2; prove F2 untouched; test already-absent-F1 handling; determine idempotency (an absent F1 never deletes another factor); test concurrent delete-vs-enroll ordering; record scopes, HTTP outcomes, and audit logs. Every F1 deletion is explicitly gated on the validated revocation barrier. Tenant experimentation with test identities is not exempt from R5: the validation must prove the approved architecture, not violate it. Then execute the domain-cutoff track (AC-11–AC-13): prove or disprove the candidate generation/cutoff claim; test the post-cutoff mint race; test fail-closed missing-claim behaviour. The cutoff itself remains unapproved candidate architecture.
+8. Where provider behaviour must be observed independently of a full approved recovery sequence, it may be characterized only as a **non-authoritative isolated provider experiment**: a disposable isolated-factor test that is explicitly not a valid 11thONUS recovery execution, cannot affect another factor or any real identity, yields evidence about provider semantics only, and from which no R5 qualification is inferred. Raw provider characterization must never be blurred with the approved recovery path.
+9. Execute the MFA-evidence track (AC-14–AC-16): observe genuine TOTP sign-in evidence; observe silent/refresh behaviour; establish the access-token evidence path (including any namespaced Action claim).
+10. Execute the product-methods track (AC-17–AC-21): email/password, verification/reset, Google on the tenant with test contacts, EN/FR matrix, and account-linking semantics.
+11. Execute the Functions/API track (AC-22–AC-27): external-token-to-Functions end-to-end contract test; issuer/audience/expiry enforcement; JWKS rotation and unknown-`kid` handling; malformed / wrong-issuer / wrong-audience negatives; `AuthenticationReference` mapping (provider subject stays an opaque external reference, never durable identity/role/permission authority); App Check coexistence.
+12. Execute the operations/commercial track (AC-28–AC-32): identify the required plan; confirm Enterprise-only APIs; request the Enterprise quote and obtain the decision-material commercial evidence (quote/pricing, entitlement confirmation, region/data-location, SMS economics). A sent request is not complete evidence. If the vendor has not supplied required evidence, record VALIDATION INCOMPLETE — COMMERCIAL EVIDENCE REQUIRED unless the Founder/designated approval authority explicitly waives the specific item; the execution agent cannot waive. No contract commitment; no paid terms without separate Founder approval.
+13. Capture sanitized evidence for every criterion (AC-33): API operation names, HTTP statuses, enrollment IDs masked where appropriate, response structure, timing observations, readback, token-claim shapes with sensitive values redacted, test-case IDs/results, and cleanup evidence. Never store secrets, tokens, TOTP seeds, TOTP codes, private keys, or client secrets — in the repository or elsewhere outside the secure handling boundary.
+14. Apply the secret-handling contract (AC-34): secure environment/local secret storage only; no repository credential files; no `.env` commit; full final secret scan with confirmation recorded in the completion report; cleanup/revocation of validation credentials where appropriate.
+15. Apply the provider-resource cleanup contract (AC-35): remove test identities, M2M clients, refresh tokens, sessions, temporary MFA enrollments, and temporary apps/connections; record which resources were created, removed, intentionally retained (with retention authority), and which secrets were revoked/rotated. The validation tenant itself is deleted only if the approved cleanup plan requires tenant deletion and provider/account permissions permit API deletion; otherwise state and execute the exact manual cleanup requirement. Unresolved mandatory cleanup yields VALIDATION INCOMPLETE — BOUNDED EVIDENCE / CLEANUP REQUIRED, not qualification.
+16. Apply the provider-qualification rule (§15-adjacent): do not average security results. A failure of a hard R5/R7 invariant means **AUTH0 NOT QUALIFIED** unless a separately approved 11thONUS security architecture legitimately satisfies the invariant. Commercial failure may also disqualify even if technically suitable. Missing paid/Enterprise entitlement is recorded as unavailable evidence, never silently as failure.
+17. Close with the FEF completion report (AC-36) declaring exactly one of the §14 maximum states; claim no provider selection and no migration authority.
 
 ## 7. Invariants / Constraints to Preserve
 
@@ -171,6 +174,10 @@ When Founder-authorised, execute one bounded validation programme that consumes 
 - No silent resolution of deferred or unresolved decisions.
 - No expansion beyond the stated work-package scope.
 - No selecting Auth0, no production tenant, no migration, no Firebase Auth removal, no real-user or real-administrator migration.
+- No F1 deletion before the validated revocation barrier for that scenario — no test-identity exemption from R5.
+- No blurring of non-authoritative isolated provider experiments with the approved recovery path; no R5 qualification inferred from raw provider characterization.
+- No qualification claim while mandatory cleanup is unresolved.
+- No waiving of decision-material commercial evidence by the execution agent.
 - No resuming `AUTH-MFA-003D-IMPL-001` and no changing R1–R10 or `DEC-SEC-005`.
 - No PostgreSQL implementation, Cloud SQL provisioning, combined architecture transition, or production Functions conversion.
 - No averaging of security results across criteria to dilute a hard-invariant failure.
@@ -200,7 +207,7 @@ When Founder-authorised, execute one bounded validation programme that consumes 
 | AC-16 | The access-token evidence path is understood (default claims vs any namespaced MFA claim). | Token-claim shapes (redacted). |
 | AC-17 | Email/password authentication works on the validation tenant. | Test-case IDs/results. |
 | AC-18 | Verification and reset flows work on the validation tenant. | Test-case IDs/results. |
-| AC-19 | Google login is tested where safely configured, or recorded as not applicable with rationale. | Test results or recorded non-applicability. |
+| AC-19 | Google login is tested on the validation tenant with test contacts. Google is an approved MVP provider per `DEC-AUTH-001` (D-A2 as amended) and `AUTH-ARCH-002` §16 requires it in the tenant V3 matrix, not assumed from documentation. If test credentials are unavailable or the tenant test cannot be executed, the result is VALIDATION INCOMPLETE, not a pass. A complete non-Google authentication path (email/password, AC-17) is proven for users who do not have or do not wish to use a Google account. | Tenant test results, or recorded VALIDATION INCOMPLETE with cause. |
 | AC-20 | EN/FR experience is verified. | Locale-matrix results. |
 | AC-21 | Account-linking semantics are validated. | Linking-test results. |
 | AC-22 | External JWT verification succeeds through the disposable Functions/API harness. | Harness results; verification method. |
@@ -211,12 +218,12 @@ When Founder-authorised, execute one bounded validation programme that consumes 
 | AC-27 | App Check coexistence is validated. | Coexistence test results. |
 | AC-28 | The required plan for the exact needed APIs is identified. | Plan/entitlement statement with source. |
 | AC-29 | Enterprise-only APIs among the required set are confirmed or ruled out. | API-by-API entitlement table. |
-| AC-30 | The commercial quote is requested, and obtained where possible (outstanding is recorded, not assumed). | Quote request/response record or outstanding statement. |
+| AC-30 | The required Enterprise quote/pricing is obtained. If the vendor has not supplied it, the result is VALIDATION INCOMPLETE — COMMERCIAL EVIDENCE REQUIRED unless the Founder/designated approval authority explicitly waives this specific item; the execution agent cannot waive. A sent request is not complete evidence. | Quote record, or recorded VALIDATION INCOMPLETE / explicit waiver reference. |
 | AC-31 | Region/data-location is confirmed. | Region statement with source. |
-| AC-32 | SMS/gateway economics for Burundi/Rwanda pilot volumes are recorded. | Pricing evidence or outstanding statement. |
+| AC-32 | SMS/gateway economics for Burundi/Rwanda pilot volumes are obtained and recorded. If unavailable, the result is VALIDATION INCOMPLETE — COMMERCIAL EVIDENCE REQUIRED unless explicitly waived by Founder/designated approval authority; no agent waiver. | Pricing evidence, or recorded VALIDATION INCOMPLETE / explicit waiver reference. |
 | AC-33 | Sanitized evidence is captured for every executed criterion with no secret material stored. | Evidence inventory; secret-scan confirmation. |
 | AC-34 | The secret-handling contract is followed end to end (secure storage only; no repo credential files; no `.env` commit; final scan). | Handling attestation; full final secret-scan result. |
-| AC-35 | Provider-resource cleanup is executed and evidenced (identities, M2M clients, tokens, sessions, temporary apps/connections; tenant retention only if explicitly retained). | Cleanup evidence; retention decision reference if retained. |
+| AC-35 | Provider-resource cleanup is executed and evidenced: every created resource is listed as removed or intentionally retained with retention authority; secrets revoked/rotated where applicable. Unresolved mandatory cleanup yields VALIDATION INCOMPLETE — BOUNDED EVIDENCE / CLEANUP REQUIRED, not qualification. Tenant deletion proceeds only if the approved cleanup plan requires it and provider/account permissions permit API deletion; otherwise the exact manual cleanup requirement is stated and executed. | Created/removed/retained inventory with authorities; cleanup readback; manual-cleanup statement if applicable. |
 | AC-36 | The completion report declares exactly one §14 maximum state and claims no selection or migration. | Completed FEF report; exact head for review. |
 
 ## 10. Required Tests and Validation
@@ -230,7 +237,7 @@ When Founder-authorised, execute one bounded validation programme that consumes 
 | MFA-evidence tenant tests (AC-14–AC-16) | Genuine TOTP sign-in + refresh-cycle observation | Evidence path stated with redacted excerpts. |
 | Product-method tests (AC-17–AC-21) | Tenant authentication matrix with test contacts only | Matrix results or recorded non-applicability (AC-19). |
 | Functions/API contract tests (AC-22–AC-27) | Disposable external-JWT → Functions/API harness (positives + negatives) | Contract verdict per AC. |
-| Operations/commercial evidence (AC-28–AC-32) | Plan/entitlement inspection; quote request; region + SMS evidence gathering | Recorded obtained or outstanding; nothing invented. |
+| Operations/commercial evidence (AC-28–AC-32) | Plan/entitlement inspection; quote request; region + SMS evidence gathering | Obtained, or recorded as VALIDATION INCOMPLETE — COMMERCIAL EVIDENCE REQUIRED unless the specific item is waived by Founder/designated authority; nothing invented; no agent waiver. |
 | Secret scan | Full-diff and final secret scan for secrets/tokens/seeds/codes/keys | Clean, with confirmation recorded. |
 | Cleanup verification | Post-execution provider readback of identities, clients, tokens, sessions, temporary resources | Cleaned, or explicitly retained tenant with decision reference. |
 | Full CI | Repository PR workflow on the exact execution-report head | Required checks successful. |
@@ -246,8 +253,8 @@ At minimum, preserve as applicable:
 - changed-file inventory and no-unrelated-change review;
 - Gate 1, Gate 2, and final review records with exact heads reviewed;
 - per-criterion sanitized evidence: API operation names; HTTP statuses; enrollment IDs masked where appropriate; response structure; timing observations; readback; token-claim shapes with sensitive values redacted; test-case IDs/results;
-- commercial/region/SMS evidence or outstanding statements with sources;
-- cleanup evidence (and tenant-retention decision reference if retained);
+- commercial/region/SMS evidence, waiver references for any Founder-waived item, or outstanding statements with sources (outstanding decision-material evidence forces VALIDATION INCOMPLETE per §14);
+- cleanup evidence: which resources were created, removed, and intentionally retained (with retention authority); secrets revoked/rotated where applicable; manual-cleanup statement if tenant deletion is not API-executable;
 - resulting commit SHA; remote branch / PR state; deviations and unresolved issues; decisions deliberately not taken.
 
 Additional evidence:
@@ -278,11 +285,18 @@ Provider actions, once this work package is Founder-authorised:
 | Create validation identities | YES |
 | Create least-privilege M2M app | YES |
 | Perform validation API calls | YES |
+| Delete validation users/identities created by this validation | YES |
+| Delete or disable the validation M2M client | YES |
+| Revoke/delete validation refresh tokens | YES |
+| Terminate/revoke validation sessions where supported | YES |
+| Remove temporary MFA enrollments | YES |
+| Delete temporary applications/connections created for validation | YES |
+| Delete the validation tenant | CONDITIONAL — YES only if the approved cleanup plan requires tenant deletion AND provider/account permissions permit API deletion; otherwise execute the exact manual cleanup requirement |
 | Create production tenant | NO |
 | Enter paid contract | NO |
 | Migrate users | NO |
 
-Do not infer provider permission from tool access. Any provider action not listed here is NOT authorised.
+Do not infer provider permission from tool access. Any provider action not listed here is NOT authorised. No broader provider administration is authorised.
 
 ## 13. High-Risk Review Gate
 
@@ -308,6 +322,8 @@ or
 
 **VALIDATION INCOMPLETE — BOUNDED EVIDENCE STILL REQUIRED**
 
+**AUTH0 QUALIFIED — AWAITING INDEPENDENT REVIEW** is available only when all of the following hold: all hard R5/R7 gates pass; required tenant behavioral tests pass; the Google tenant test passes (AC-19); required MFA claim evidence passes; required Functions/API contract evidence passes; mandatory cleanup is complete or explicitly authorized for retention (AC-35); and decision-material commercial evidence (AC-28–AC-32) is complete or explicitly waived by Founder/designated approval authority. Otherwise use **VALIDATION INCOMPLETE — BOUNDED EVIDENCE STILL REQUIRED** (including VALIDATION INCOMPLETE — COMMERCIAL EVIDENCE REQUIRED and VALIDATION INCOMPLETE — BOUNDED EVIDENCE / CLEANUP REQUIRED as applicable) or **AUTH0 NOT QUALIFIED — AWAITING INDEPENDENT REVIEW** as appropriate.
+
 The execution agent may not self-declare provider selected, migration authorised, `APPROVED`, `MERGED`, or `CLOSED`. A hard R5/R7 invariant failure means AUTH0 NOT QUALIFIED unless a separately approved 11thONUS security architecture legitimately satisfies the invariant; commercial failure may also disqualify even if technically suitable. If an authority, entitlement, validation, or scope blocker occurs, use **BLOCKED — DECISION REQUIRED**.
 
 ## 15. Stop / Escalation Conditions
@@ -321,6 +337,9 @@ Stop and report rather than assume if any of the following occurs:
 - scope cannot be completed without materially changing an out-of-scope area (production state, migration, 003D resumption, persistence work);
 - repository head or base state has materially drifted;
 - required validation cannot be performed (including missing tenant-creation capability — report BLOCKED, not failure);
+- the Google tenant test cannot be executed (AC-19) — record VALIDATION INCOMPLETE, not a pass;
+- required commercial evidence cannot be obtained and no Founder/designated waiver exists for the specific item — record VALIDATION INCOMPLETE — COMMERCIAL EVIDENCE REQUIRED;
+- mandatory cleanup cannot be completed and retention is not explicitly authorized — record VALIDATION INCOMPLETE — BOUNDED EVIDENCE / CLEANUP REQUIRED;
 - a required paid/Enterprise entitlement is unavailable — record the affected evidence as unavailable (VALIDATION INCOMPLETE), never silently as provider failure;
 - a destructive or irreversible action is required but not explicitly authorised (including production-adjacent state and paid commitments).
 
@@ -330,4 +349,4 @@ On validation completion, use:
 
 `FEF-EWPCS-001-COMPLETION-REPORT-TEMPLATE.md`
 
-The completion report must distinguish repository-verified facts from interpretation, and tenant-observed behaviour from documentation inference. It must record the exact head, authority used, scope reconciliation, files, per-criterion results under the §15-adjacent qualification rule stated in Required Implementation item 15, validation/CI state, secret-scan confirmation, cleanup evidence, deviations, unresolved issues, deliberate non-decisions, permission compliance, and independent-review handover. It must claim no provider selection and no migration authority.
+The completion report must distinguish repository-verified facts from interpretation, and tenant-observed behaviour from documentation inference. It must record the exact head, authority used, scope reconciliation, files, per-criterion results under the qualification rule stated in Required Implementation item 16 and §14, validation/CI state, secret-scan confirmation, cleanup evidence (created/removed/retained inventory with authorities), Founder waiver references for any waived commercial or retention item, deviations, unresolved issues, deliberate non-decisions, permission compliance, and independent-review handover. It must claim no provider selection and no migration authority.

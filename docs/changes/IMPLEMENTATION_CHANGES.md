@@ -7,6 +7,19 @@
 
 ---
 
+## 2026-09-08 — AUTH-ARCH-002-VAL-WP-001-CORR-001 — Correct PR #238 Review Findings on `AUTH-ARCH-002-VAL-002`
+
+- **Task / status:** Bounded work-package correction on branch `docs/auth-arch-002-val-002-wp` at reviewed head `16eafb6b528a8d3ef49cfe48228ec19bbf0bd611` (PR #238 OPEN/MERGEABLE at entry; base `origin/main` `375c145dbc63ff174e8682c8f055d50d1fda5e61` confirmed current; CI SUCCESS on the reviewed head; four Codex findings inspected, no other reviews). **VAL-002 remains PENDING FOUNDER AUTHORISATION — NOT EXECUTABLE; Auth0 LEADING CANDIDATE — NOT SELECTED.**
+- **P1-1:** explicit R5 ordering (identity/factor state → scenario → revocation ops → validated barrier → exact-binding verify → F1 removal → F2 safety → evidence → cleanup); every F1 deletion gated on the barrier; no test-identity exemption; raw characterization fenced as non-authoritative isolated provider experiment.
+- **P1-2:** explicit cleanup permissions (identities, M2M delete/disable, token revoke/delete, session terminate/revoke, temp enrollments/apps; conditional tenant deletion else exact manual cleanup); AC-35 closure semantics (`VALIDATION INCOMPLETE — BOUNDED EVIDENCE / CLEANUP REQUIRED`); no broader provider administration.
+- **P2-1:** AC-19 hardened — Google required per `DEC-AUTH-001`/`AUTH-ARCH-002` §16; missing creds or unexecuted test ⇒ VALIDATION INCOMPLETE; complete non-Google path (AC-17) proven.
+- **P2-2:** AC-30/AC-32 — request ≠ evidence; unsupplied commercial evidence ⇒ `VALIDATION INCOMPLETE — COMMERCIAL EVIDENCE REQUIRED` unless Founder/designated authority waives the specific item (no agent waiver); §14 qualification rule tightened to require hard gates + behavioral tests + Google + MFA claims + Functions/API contract + cleanup + commercial (or explicit waiver/retention authority).
+- **Authority preserved (all unchanged):** `DEC-AUTH-002`, `DEC-SEC-005`/R1–R10, `DEC-DATA-008`, `FD-AUTH-ARCH-002-VAL-001`, selection state.
+- **Files changed:** [`AUTH-ARCH-002-VAL-002 work package`](../05-implementation/reports/AUTH-ARCH-002-VAL-002-work-package-2026-09-08.md) (corrected in place); `docs/00-governance/documentation-changes-log.md` (Entry 190); this record.
+- **Code/configuration/dependencies/migrations/live changes:** none. No tenants/accounts/credentials created. Full-diff secret scan clean. `FD-COM-001` untouched.
+- **Validation:** `git diff --check`; Markdown relative-link validation; 16-section/template-field checklist; `prettier --check` on changed files; CI SUCCESS required on the exact corrected head. Threads replied/resolved after verified correction; PR left open, not self-merged.
+- **Rollback:** revert the correction commit(s); the pre-correction WP (Entry 189) remains history.
+
 ## 2026-09-08 — AUTH-ARCH-002-VAL-002 — Controlled FEF Work Package — Auth0 Live Hard-Invariant Validation
 
 - **Task / status:** Work-package authoring only on branch `docs/auth-arch-002-val-002-wp` from verified `origin/main` `375c145dbc63ff174e8682c8f055d50d1fda5e61` (expected handoff SHA confirmed current; clean isolated worktree). **AUTH-ARCH-002-VAL-002 = PENDING FOUNDER AUTHORISATION — NOT EXECUTABLE.** No Auth0 tenant/account/credential created; no provider validation executed; Auth0 NOT selected; no authentication migrated.
