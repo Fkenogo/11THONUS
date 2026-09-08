@@ -7,6 +7,18 @@
 
 ---
 
+## 2026-09-08 — AUTH-ARCH-002-VAL-001 — Auth0 Bounded Provider Evidence Programme
+
+- **Task / status:** Validation only on branch `codex/auth-arch-002-val-001` from `origin/main` `ee89903` (PR #235 untouched as assessment basis). **Live portion STOPPED at entry: no authorised segregated tenant exists and no creation authority — exact authorization specified in the report.**
+- **Executed without provider resources:** disposable V5 harness 11/11 (RS256/JWKS/issuer/audience/expiry/negatives/sub + session-generation cutoff seam incl. §9-race rejection; `/tmp` only, uncommitted); doc-level disproof attempts (bare-`iat` cutoff disproved insufficient — access tokens carry no `auth_time`/`sid`; Guardian idempotency/concurrency UNRESOLVED — no 404 contract); V3/V4/V6 confirmations; `COMMERCIAL VALIDATION INCOMPLETE — FOUNDER/ACCOUNT CONTACT REQUIRED`.
+- **Finding:** no hard R5/R7 failure observed, none cleared; behavioral evidence INCOMPLETE (blocked, not failed). 003D not resumed; R1–R10 unaltered; no persistence decisions.
+- **Files changed:** [`VAL-001 evidence report`](../05-implementation/reports/AUTH-ARCH-002-VAL-001-bounded-provider-evidence-2026-09-08.md); `docs/00-governance/documentation-changes-log.md` (Entry 186); this record.
+- **Code/configuration/dependencies/migrations/live changes:** none. No tenants/accounts/credentials created. Full-diff secret scan clean. `FD-COM-001` untouched.
+- **Validation:** V5 harness 11/11 (disposable); documentation diff/link checks; `git diff --check`; CI on the PR head. PR opened, not merged.
+- **Rollback/cleanup:** revert commit(s); delete `/tmp/val001-v5-harness.cjs`; no provider/data cleanup (nothing created).
+
+---
+
 ## 2026-09-08 — AUTH-ARCH-001-FD-001 — Founder Authentication Architecture Direction (`DEC-AUTH-002` / `FD-AUTH-ARCH-001`)
 
 - **Task / status:** Founder-disposition recording on PR #234 (Founder-reviewed head `be4c1c7692a7293a0ba5bba0b6cf4700cc61bf5e`). **AUTH-ARCH-001 = COMPLETE / FOUNDER-DISPOSED / MERGED / CLOSED** (post-merge verification required).
