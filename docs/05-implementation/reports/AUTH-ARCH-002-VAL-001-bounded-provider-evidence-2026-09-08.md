@@ -14,7 +14,7 @@
 | --- | --- | --- |
 | External managed IdP direction approved | `DEC-AUTH-002` / `FD-AUTH-ARCH-001` present on `origin/main` | Confirmed |
 | Firebase Authentication no longer the target | `DEC-AUTH-002` final decision text | Confirmed |
-| Auth0 leading candidate but NOT SELECTED | `AUTH-ARCH-002` (PR #235 basis), recommendation C | Confirmed |
+| Auth0 leading candidate but NOT SELECTED | `AUTH-ARCH-002` (PR #235 basis — pinned: branch `codex/auth-arch-002-validation`, immutable head `1f34a4e58dfccb6fde5d11221d8b6a821b4bf7b0`, artifact `docs/05-implementation/reports/AUTH-ARCH-002-external-idp-hard-invariant-validation-2026-09-08.md`; cited content verified at that commit: recommendation C status line, §4 hardened cutoff, §15 matrix, §16 seven-item gate), recommendation C | Confirmed |
 | Provider validation still required | `AUTH-ARCH-002` §16 bounded evidence | Confirmed |
 | `AUTH-MFA-003D-IMPL-001` remains blocked | WP file: authorisation VALID, execution BLOCKED — DECISION REQUIRED — AUTHENTICATION ARCHITECTURE REASSESSMENT | Confirmed |
 | R1–R10 fixed | `DEC-SEC-005` / `FD-MFA-R` present (7 references), unamended | Confirmed |
@@ -124,6 +124,103 @@ No hard R5/R7 failure observed; no behavioral PASS claimed where a tenant is req
 - `AUTH-MFA-003D-IMPL-001` not resumed (still blocked); R1–R10 unaltered.
 - Secret scan: full diff inspected — **no secrets** (no client/M2M secrets, tokens, TOTP material, keys, or credentials; only synthetic `auth0|test-subject-1` fixture identifiers inside `/tmp`, never committed).
 - Rollback/cleanup: revert the VAL-001 commit(s); delete `/tmp/val001-v5-harness.cjs`; close the PR unmerged if directed; no provider/data cleanup exists (nothing created).
-- Tests: V5 harness 11/11 (disposable, `/tmp`); repo CI on the PR head (below).
+- Tests: V5 harness 11/11 (disposable, `/tmp`; full script preserved in the Appendix below for reproducibility); repo CI on the PR head (below).
+
+## Appendix — V5 disposable harness (evidence artifact, not repo code)
+
+Executed `node /tmp/val001-v5-harness.cjs` (Node v22.23.2, zero dependencies, synthetic keys/tokens only) → `VAL-001 V5 harness: 11/11 checks passed`. Embedded verbatim so a future review can reproduce the result without the ephemeral `/tmp` file:
+
+```cjs
+// VAL-001 disposable contract harness (NOT repo code — /tmp only, never committed).
+// Validates the Architecture-A verification mechanics for an external IdP JWT:
+// RS256 via local JWKS, issuer/audience/expiry, negative cases, sub + session-generation
+// signal extraction, and the domain-cutoff comparison seam (auth_time-based, fail-closed).
+const { generateKeyPairSync, createSign, createVerify, createHash } = require('node:crypto');
+
+const b64url = (buf) => Buffer.from(buf).toString('base64url');
+const b64urlJson = (o) => b64url(JSON.stringify(o));
+
+// ---- keypair + JWKS (simulates Auth0 tenant signing key) ----
+const { publicKey, privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+const jwk = publicKey.export({ format: 'jwk' });
+const KID = 'val-001-test-key';
+const JWKS = { keys: [{ ...jwk, kid: KID, alg: 'RS256', use: 'sig' }] };
+
+const TENANT = 'https://val-001-test.us.auth0.com/';
+const AUD = 'https://api.11thonus.test';
+const NOW = Math.floor(Date.now() / 1000);
+
+function mint(payload, kid = KID, alg = 'RS256') {
+  const header = b64urlJson({ alg, typ: 'JWT', kid });
+  const body = b64urlJson(payload);
+  const sig = createSign('RSA-SHA256').update(`${header}.${body}`).sign(privateKey);
+  return `${header}.${body}.${b64url(sig)}`;
+}
+function basePayload(over = {}) {
+  return { iss: TENANT, aud: AUD, sub: 'auth0|test-subject-1', iat: NOW - 60, auth_time: NOW - 300, exp: NOW + 300, ...over };
+}
+// ---- verifier under test (mirrors the proposed TokenVerifierPort adapter logic) ----
+function verify(token, { jwks, iss, aud, cutoffEpoch }) {
+  const fail = (r) => ({ ok: false, reason: r });
+  const parts = token.split('.');
+  if (parts.length !== 3) return fail('malformed');
+  let h, p;
+  try { h = JSON.parse(Buffer.from(parts[0], 'base64url')); p = JSON.parse(Buffer.from(parts[1], 'base64url')); }
+  catch { return fail('malformed'); }
+  if (h.alg !== 'RS256') return fail('alg-not-allowlisted');
+  const key = (jwks.keys || []).find((k) => k.kid === h.kid);
+  if (!key) return fail('unknown-kid');
+  const keyObj = require('node:crypto').createPublicKey({ key, format: 'jwk' });
+  const sigOk = createVerify('RSA-SHA256').update(`${parts[0]}.${parts[1]}`).verify(keyObj, Buffer.from(parts[2], 'base64url'));
+  if (!sigOk) return fail('bad-signature');
+  if (p.iss !== iss) return fail('wrong-issuer');
+  if (p.aud !== aud) return fail('wrong-audience');
+  if (typeof p.exp !== 'number' || p.exp <= NOW) return fail('expired');
+  // cutoff seam: immutable session-generation signal only; fail closed when absent
+  if (typeof p.auth_time !== 'number' || !Number.isFinite(p.auth_time)) return fail('missing-auth-time');
+  if (p.auth_time < cutoffEpoch) return fail('pre-cutoff-generation');
+  return { ok: true, sub: p.sub, auth_time: p.auth_time };
+}
+
+const CUTOFF = NOW - 120; // revocation epoch: session generation older than this is dead
+let pass = 0, total = 0;
+function check(name, cond) { total++; if (cond) pass++; else console.log('FAIL:', name); }
+
+// 1. valid token (session generation after cutoff) passes, sub + auth_time extracted
+let r = verify(mint(basePayload({ iat: NOW - 50, auth_time: NOW - 50 })), { jwks: JWKS, iss: TENANT, aud: AUD, cutoffEpoch: CUTOFF });
+check('valid passes', r.ok && r.sub === 'auth0|test-subject-1' && r.auth_time === NOW - 50);
+// 2. wrong issuer
+check('wrong issuer', verify(mint(basePayload({ iss: 'https://evil.example.com/' })), { jwks: JWKS, iss: TENANT, aud: AUD, cutoffEpoch: CUTOFF }).reason === 'wrong-issuer');
+// 3. wrong audience
+check('wrong audience', verify(mint(basePayload({ aud: 'https://other.example/' })), { jwks: JWKS, iss: TENANT, aud: AUD, cutoffEpoch: CUTOFF }).reason === 'wrong-audience');
+// 4. expired
+check('expired', verify(mint(basePayload({ exp: NOW - 1 })), { jwks: JWKS, iss: TENANT, aud: AUD, cutoffEpoch: CUTOFF }).reason === 'expired');
+// 5. malformed
+check('malformed', verify('not.a.jwt.at.all.extra', { jwks: JWKS, iss: TENANT, aud: AUD, cutoffEpoch: CUTOFF }).reason === 'malformed');
+// 6. tampered payload (bad signature)
+{
+  const t = mint(basePayload()).split('.');
+  const evil = b64urlJson({ ...basePayload(), sub: 'auth0|attacker' });
+  check('tampered', verify(`${t[0]}.${evil}.${t[2]}`, { jwks: JWKS, iss: TENANT, aud: AUD, cutoffEpoch: CUTOFF }).reason === 'bad-signature');
+}
+// 7. alg confusion (alg=none)
+check('alg-none', verify(mint(basePayload(), KID, 'none'), { jwks: JWKS, iss: TENANT, aud: AUD, cutoffEpoch: CUTOFF }).reason === 'alg-not-allowlisted');
+// 8. unknown kid (rotation case → refresh path, fail closed here)
+check('unknown kid', verify(mint(basePayload(), 'unknown-kid'), { jwks: JWKS, iss: TENANT, aud: AUD, cutoffEpoch: CUTOFF }).reason === 'unknown-kid');
+// 9. pre-cutoff generation rejected even though iat is fresh (THE §9 race)
+check('post-cutoff iat + pre-cutoff auth_time rejected',
+  verify(mint(basePayload({ iat: NOW - 5, auth_time: NOW - 300 })), { jwks: JWKS, iss: TENANT, aud: AUD, cutoffEpoch: CUTOFF }).reason === 'pre-cutoff-generation');
+// 10. missing auth_time fails closed
+{
+  const { auth_time, ...noAT } = basePayload();
+  check('missing auth_time', verify(mint(noAT), { jwks: JWKS, iss: TENANT, aud: AUD, cutoffEpoch: CUTOFF }).reason === 'missing-auth-time');
+}
+// 11. fresh post-recovery session passes
+check('post-cutoff generation passes',
+  verify(mint(basePayload({ iat: NOW - 5, auth_time: NOW - 10 })), { jwks: JWKS, iss: TENANT, aud: AUD, cutoffEpoch: CUTOFF }).ok === true);
+
+console.log(`\nVAL-001 V5 harness: ${pass}/${total} checks passed`);
+process.exit(pass === total ? 0 : 1);
+```
 
 **`VALIDATION INCOMPLETE — SPECIFIC BOUNDED EVIDENCE STILL REQUIRED`**
