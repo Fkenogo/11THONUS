@@ -153,30 +153,30 @@ permitted only for stateless read-only observations.
 
 ## 6. Configuration baseline (fixed before execution)
 
-C-01. Tenant: non-production validation/test classification; EU region (operational choice, not a
+CFG-01. Tenant: non-production validation/test classification; EU region (operational choice, not a
 residency approval); disposable callbacks only; no production email/SMS sender (disposable test
 mailboxes); tenant logs retained as sanitized evidence.
-C-02. A-1 (if created): SPA public client; Authorization Code + PKCE S256; Refresh Token Rotation
+CFG-02. A-1 (if created): SPA public client; Authorization Code + PKCE S256; Refresh Token Rotation
 enabled with automatic reuse-detection; absolute + idle expiries recorded from tenant/application
 settings; `max_age=0` used on selected logins to force provider-native `auth_time` into ID tokens.
-C-03. A-2 (if created): identifier `https://api.11thonus.val`; access-token lifetime **300 s**
+CFG-03. A-2 (if created): identifier `https://api.11thonus.val`; access-token lifetime **300 s**
 (pinned to the MFA freshness window, Gate 1 §11.1).
-C-04. A-3 actions (if created): exact predicates in §§8/11 of this artifact (P-refresh exclusion,
+CFG-04. A-3 actions (if created): exact predicates in §§8/11 of this artifact (P-refresh exclusion,
 P-MFA 8 conditions); namespaced claims only (`https://11thonus.val/session_generation`,
 `https://11thonus.val/mfa`); no other claim, metadata write, or business logic.
-C-05. M2M: short-lived tokens (minimum lifetime the tenant supports; never standing); fresh token
+CFG-05. M2M: short-lived tokens (minimum lifetime the tenant supports; never standing); fresh token
 after every grant mutation; prior-scope renewal forbidden.
-C-06. JWKS verifier (harness): `RS256` allowlist only; JWKS URL
+CFG-06. JWKS verifier (harness): `RS256` allowlist only; JWKS URL
 `https://{tenant}/.well-known/jwks.json`; bounded cache TTL **10 minutes** + single on-demand
 refresh on unknown `kid` only (§9.4).
-C-07. Polling: fixed cadence **every 5 s up to 5 min** from the `202` timestamp; if converging
+CFG-07. Polling: fixed cadence **every 5 s up to 5 min** from the `202` timestamp; if converging
 (monotonic progress on readbacks), extended sampling up to **15 min**; then declare
 non-convergence (§8.5). Records the full 202-to-confirmed latency distribution.
-C-08. R7 races: minimum **3 repeated trials** per race; barrier + delays + correlation IDs +
+CFG-08. R7 races: minimum **3 repeated trials** per race; barrier + delays + correlation IDs +
 timestamps (§5.4); poll to stable provider state after every run.
-C-09. MFA freshness: `MFA_EVIDENCE_MAX_AGE_SECONDS = 300`; predicate
+CFG-09. MFA freshness: `MFA_EVIDENCE_MAX_AGE_SECONDS = 300`; predicate
 `0 <= token.iat - mfa_time <= 300` (no abs; fixed hypothesis, never re-tuned).
-C-10. Before-snapshots (§19 CL-10) captured for every modifiable setting before modification.
+CFG-10. Before-snapshots (§19 CL-10) captured for every modifiable setting before modification.
 
 ## 7. M2M phase ledger (executable; dashboard/operator grant-change protocol)
 
@@ -200,12 +200,20 @@ confirmation — an expected checkpoint, not a blocker. No standing aggregate gr
 inherits scopes it does not need. Simultaneous destructive-scope possession is limited to one
 subphase set at a time (F1–F5 never overlap).
 
+Per-identity C→D micro-transition (R7 track): each R7 destructive identity completes its
+`R5-BARRIER-R7` revocation part (§9.6) under the Phase C grant, then the operator narrows the
+grant C→D through the full checkpoint above (fresh Phase D token, scope-claim verified), and only
+then does the F1 binding verification + deletion + readback execute under Phase D. The grant never
+holds Phase C and Phase D destructive scopes simultaneously; six micro-transitions (one per
+`VAL-F-01a`–`VAL-F-01f` barrier) are planned checkpoints, not blockers. R5-12 follows the same
+micro-transition on `VAL-R-01`.
+
 | Phase | Purpose | Exact scope set held | Endpoint/method family | Expected status | Readback | Cleanup | Evidence |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | A — Read-only inventory / setup verification | Inventory tenant state; confirm plan/entitlement (AC-28/29); before-snapshots; §7.4 necessity decisions | `read:users`, `read:guardian_enrollments`, `read:sessions`, `read:refresh_tokens`, `read:logs`, `read:prompts`, `read:clients`, `read:resource_servers`, `read:actions`, `read:connections` | `GET` only (M-01/M-04/M-05/M-06/M-11/M-19/M-20 + client/resource-server/action/connection reads) | 200 (404 on by-ID absence reads is a valid absence oracle where §8.5/§5 defines it) | N/A (this phase is readback) | None | Entitlement table; snapshots; grant record |
 | B — Identity/MFA scenario setup | Create `VAL-*` users; enrollment tickets; verification tickets/jobs; enroll F1/F2; linking setup; genuine-login observations | `create:users`, `read:users`, `update:users` (M-15/M-16/M-18-job only), `create:guardian_enrollment_tickets`, `read:guardian_enrollments`, `create:user_tickets` | `POST /api/v2/users`; `POST /api/v2/guardian/enrollments/ticket`; `POST /api/v2/tickets/*`; `POST /api/v2/jobs/verification-email`; `PATCH /api/v2/users/{id}` (conditional); `POST /api/v2/users/{id}/identities` (`VAL-L-*` only) | 200/201/204 per contract | M-01/M-04 enrollment reads; user GET | Via Phase F | User IDs; enrollment IDs (masked); ticket outcomes |
-| C — Revocation tests | Session/refresh revocation + readback polling + old-context exercise (R5 suite) | `read:sessions`, `delete:sessions`, `read:refresh_tokens`, `delete:refresh_tokens` | `DELETE /api/v2/sessions/{sessionId}`; `DELETE /api/v2/users/{userId}/sessions` (conditional); `POST /api/v2/sessions/{id}/revoke`; `POST /api/v2/users/{id}/revoke-access` (body `{session_id?, preserve_refresh_tokens? default false}`); `DELETE /api/v2/refresh-tokens/{id}`; `POST /api/v2/refresh-tokens/revoke` (M-13, entitlement-gated) | 202 (async — never confirmation); then polling per C-07 | M-05/M-06 + M-11 polling to absence; failed exchange attempt as behavioral readback | None (new logins mint new sessions) | 202-to-confirmed latencies; 4-attempt exercise log |
-| D — Destructive exact-factor test | F1 deletion by exact ID + immediate readback only (R7 suite) | `delete:guardian_enrollments`, `read:guardian_enrollments` | `DELETE /api/v2/guardian/enrollments/{id}` (F1 ID only) | 204 (HTTP outcome, not safety verdict) | M-01 absence + user enrollment list without the ID | Re-enroll via M-03 where the protocol requires | HTTP outcome; audit-log excerpt; F2 usability proof |
+| C — Revocation tests | Session/refresh revocation + readback polling + old-context exercise (R5 suite) | `read:sessions`, `delete:sessions`, `read:refresh_tokens`, `delete:refresh_tokens`, `read:guardian_enrollments` (R5-06 M-01 factor-still-bound readback only; no guardian write) | `DELETE /api/v2/sessions/{sessionId}`; `DELETE /api/v2/users/{userId}/sessions` (R5-04e, conditional); `POST /api/v2/sessions/{id}/revoke`; `POST /api/v2/users/{id}/revoke-access` (body `{session_id?, preserve_refresh_tokens? default false}`); `DELETE /api/v2/refresh-tokens/{id}`; `POST /api/v2/refresh-tokens/revoke` (M-13, entitlement-gated); `GET /api/v2/guardian/enrollments/{id}` (R5-06 readback only) | 202 (async — never confirmation); then polling per CFG-07 | M-05/M-06 + M-11 polling to absence; M-01 factor-bound readback; failed exchange attempt as behavioral readback | None (new logins mint new sessions) | 202-to-confirmed latencies; 4-attempt exercise log |
+| D — Destructive exact-factor test | F1 deletion by exact ID + immediate readback only (R7 suite; R5-12 on `VAL-R-01`) | `delete:guardian_enrollments`, `read:guardian_enrollments`, `read:users` (M-04 user-enrollment-list readback; each Phase D token independently carries this exact set) | `DELETE /api/v2/guardian/enrollments/{id}` (F1 ID only); `GET /api/v2/guardian/enrollments/{id}`; `GET /api/v2/users/{id}/enrollments` (+ `authentication-methods` where the matrix requires) | 204 (HTTP outcome, not safety verdict) | M-01 absence + user enrollment list without the ID | Re-enroll via M-03 where the protocol requires (Phase B token, separate checkpoint) | HTTP outcome; audit-log excerpt; F2 usability proof |
 | E — API/Action contract validation | Read A-2/A-3 config; deploy Actions; JWKS rotation observation (J suite) | `read:resource_servers`, `read:actions`, `update:actions` (+ `create:actions`/`delete:actions` only in the exact creation/removal step) | Actions Management API; resource-server reads | 200/201/204 per contract | GET action/version; tenant-log deploy event | Unbind + delete versions/action | Deploy events; rotation log |
 | F1 — Cleanup identities/factors | Unlink (M-16), delete users (M-17), delete enrollments | `update:users` (unlink only), `delete:users`, `read:users`, `delete:guardian_enrollments`, `read:guardian_enrollments` | `DELETE /api/v2/users/{id}/identities/{provider}/{user_id}`; `DELETE /api/v2/users/{id}`; `DELETE /api/v2/guardian/enrollments/{id}` | 200/204 | GET 404/absent for every deleted object | — (is cleanup) | Absent-readbacks |
 | F2 — Cleanup sessions/tokens | Revoke/terminate sessions + refresh tokens | `delete:sessions`, `read:sessions`, `delete:refresh_tokens`, `read:refresh_tokens` | M-07–M-13 as applicable | 202 then absence | Session/token lists empty | — (is cleanup) | Empty-list readbacks |
@@ -230,25 +238,80 @@ subphase set at a time (F1–F5 never overlap).
 Unknown/unavailable scopes or endpoint contracts at execution: STOP / INCOMPLETE (§22). Authority
 is never widened during execution to compensate.
 
+### 7.5 Scope-consistency matrix (CORR-001 audit: zero tests requiring undeclared phase scopes)
+
+Each row binds a test (or sub-case) to its executing phase, exact endpoint, required scope, and the
+phase-grant membership verdict. Browser/Universal Login ceremonies carry no M2M scope (marked —).
+Phases are never broadened speculatively: C gains only the R5-06 M-01 read; D gains only the M-04
+read; R5-12's delete executes under Phase D via the §7 micro-transition.
+
+| Test | Phase | Endpoint (method) | Required scope | In phase grant? |
+| --- | --- | --- | --- | --- |
+| R5-01 setup | B | `POST /api/v2/users`; `POST /api/v2/guardian/enrollments/ticket`; `GET /api/v2/guardian/enrollments/{id}`; `GET /api/v2/users/{id}/enrollments` | `create:users`; `create:guardian_enrollment_tickets`; `read:guardian_enrollments`; `read:users` | Yes (all in B) |
+| R5-01 login | B | Universal Login (browser) | — | — |
+| R5-04a | C | `DELETE /api/v2/sessions/{sessionId}` | `delete:sessions` | Yes |
+| R5-04b | C | `POST /api/v2/sessions/{id}/revoke` | `delete:sessions` + `delete:refresh_tokens` | Yes |
+| R5-04c | C | `POST /api/v2/users/{id}/revoke-access` body `{preserve_refresh_tokens: false}` | `delete:sessions` + `delete:refresh_tokens` | Yes |
+| R5-04d | C | `POST /api/v2/users/{id}/revoke-access` body `{preserve_refresh_tokens: true}` | `delete:sessions` + `delete:refresh_tokens` | Yes |
+| R5-04e (conditional) | C | `DELETE /api/v2/users/{userId}/sessions` (only if M-07 path insufficient) | `delete:sessions` | Yes |
+| R5-05 (M-12) | C | `DELETE /api/v2/refresh-tokens/{id}` per token | `delete:refresh_tokens` | Yes |
+| R5-05 (M-13, gated) | C | `POST /api/v2/refresh-tokens/revoke` | `delete:refresh_tokens` | Yes |
+| R5-06 observer | C | `GET /api/v2/users/{id}/sessions`; `GET /api/v2/sessions/{id}`; `GET /api/v2/users/{user_id}/refresh-tokens`; `GET /api/v2/refresh-tokens/{id}`; `GET /api/v2/guardian/enrollments/{F1}` | `read:sessions`; `read:refresh_tokens`; `read:guardian_enrollments` | Yes (all in C) |
+| R5-08–R5-11 exercise | C | Silent `prompt=none` + refresh exchange via A-1 (browser) | — | — |
+| R5-12 binding re-read | D | `GET /api/v2/users/{id}/enrollments`; `GET /api/v2/guardian/enrollments/{F1}` | `read:users`; `read:guardian_enrollments` | Yes (both in D) |
+| R5-12 delete + readback | D | `DELETE /api/v2/guardian/enrollments/{F1}`; M-01/M-04 readbacks | `delete:guardian_enrollments`; `read:guardian_enrollments`; `read:users` | Yes (all in D) |
+| R5-BARRIER-R7 revocation part (×6) | C | R5-04a–R5-04d selection per §9.6 + R5-05 M-12 + R5-06 reads | As R5-04–R5-06 rows | Yes |
+| R5-BARRIER-R7 delete gate (×6) | D | Binding re-read + `DELETE …/{F1}` + readbacks (invoked only on barrier PASS) | `read:users`; `read:guardian_enrollments`; `delete:guardian_enrollments` | Yes |
+| R7-01–R7-07 deletes + readbacks | D | `DELETE /api/v2/guardian/enrollments/{F1}`; `GET /api/v2/guardian/enrollments/{id}`; `GET /api/v2/users/{id}/enrollments` | `delete:guardian_enrollments`; `read:guardian_enrollments`; `read:users` | Yes (all in D) |
+| R7 factor establishment | B | `POST /api/v2/guardian/enrollments/ticket`; M-01/M-04 reads | `create:guardian_enrollment_tickets`; `read:guardian_enrollments`; `read:users` | Yes (all in B) |
+| R7-10 / MFA-01 challenges | Any | Universal Login MFA challenge (browser) | — | — |
+| AM matrix (B) | B | `POST /api/v2/users`; `POST /api/v2/tickets/*`; `POST /api/v2/jobs/verification-email`; `PATCH /api/v2/users/{id}` (AM-06/09 conditional); `POST /api/v2/users/{id}/identities` (AM-07/08) | `create:users`; `create:user_tickets`; `update:users` (M-15/M-16/M-18-job only); `read:users` | Yes (all in B) |
+| AM logins / LOC / AP-01–AP-09 | Browser/harness | Universal Login; disposable HTTPS harness | — (App Check fixture token, not an Auth0 scope) | — |
+| J-02 rotation observation | E (+ dashboard) | Signing-key rotate-without-revoke (dashboard); JWKS `GET` (no scope) | — for JWKS fetch; `read:actions`/`read:resource_servers` for config reads | Yes |
+| F1–F6 cleanup | F1–F6 | Per §7 ledger rows | Per-subphase sets (F1–F5 never overlap) | Yes |
+
+Audit result: every test's every endpoint resolves to a scope held by its executing phase token.
+No test relies on a previous-phase token. **Zero tests requiring undeclared phase scopes.**
+
 ## 8. R5 test suite (R5-01–R5-12; AC-06–AC-10)
 
 Mandatory order for every authoritative recovery-style F1 deletion (Gate 1 §8; no test-identity
-exemption). `202 Accepted` is never confirmation — it only starts the C-07 clock.
+exemption). `202 Accepted` is never confirmation — it only starts the CFG-07 clock. Dispatch
+(R5-04/R5-05) plus the R5-07 barrier record is followed by two concurrent activities: Track A —
+convergence observer (R5-06 polling) and Track B — old-context attacker exercise (R5-08 first
+attempt immediately, pre-convergence). R5-09/R5-10/R5-11 are gated on their respective readbacks.
+No executor runtime selection: §8.4 fixes exactly which primitive each sub-case dispatches.
 
 | ID | Step (exact) | Operation / endpoint | Expected response | Readback / verdict |
 | --- | --- | --- | --- | --- |
 | R5-01 | Establish identity/factor/session state on `VAL-R-01` | Phase B: create user, TOTP enroll, genuine login; record session ID + enrollment ID | 200/201 creates; login succeeds | M-01/M-04 confirm enrollment; session listed |
 | R5-02 | Capture pre-cutoff browser/session context | Record cookie jar + session ID from readback | N/A (capture) | Context inventory stored (sanitized: IDs masked, no token values) |
 | R5-03 | Capture applicable refresh tokens | Record token identifiers + client/audience per token | N/A (capture) | Identifier inventory (no token values persisted) |
-| R5-04 | Execute session revocation | Phase C: `DELETE /api/v2/sessions/{sessionId}` (primary); `POST /api/v2/sessions/{id}/revoke` or `POST /api/v2/users/{id}/revoke-access` as the scenario assigns; `DELETE /api/v2/users/{userId}/sessions` only if the M-07 path is insufficient | 202 | Poll M-05/M-06 per C-07 |
-| R5-05 | Execute refresh-token revocation | `DELETE /api/v2/refresh-tokens/{id}` per token (primary); `POST /api/v2/refresh-tokens/revoke` only if Gate 2 entitlement check passes (M-13), else M-12 only; verify `preserve_refresh_tokens` behaviour on the M-10 path (default false) | Success / 202 | Poll M-11 per C-07 |
-| R5-06 | Poll/read back provider state | `GET /api/v2/users/{id}/sessions`, `GET /api/v2/sessions/{id}`, `GET /api/v2/users/{user_id}/refresh-tokens`, `GET /api/v2/refresh-tokens/{id}`, `GET /api/v2/guardian/enrollments/{F1}` | Converging reads | Full latency distribution recorded |
-| R5-07 | Establish the approved validation cutoff barrier | Record `user.revokedBefore` epoch (Contract T) / revoked generation set (Contract S) for `VAL-R-01`; strongly-consistent read on the enforcement path (no short-TTL verdict caching) | Barrier record | Barrier timestamp/sets fixed for R5-08–R5-11 |
-| R5-08 | Retry captured pre-cutoff context BEFORE provider readback completes | Silent `prompt=none` + refresh exchange with a captured pre-cutoff refresh token | Record provider response verbatim | Any minted token → verifier rule (§8.6) |
+| R5-04 | Execute session revocation — exact dispatched sub-cases per §8.4 (no scenario choice at runtime) | R5-04a M-07 primary; R5-04b M-09 combined; R5-04c M-10 `preserve_refresh_tokens: false`; R5-04d M-10 `preserve_refresh_tokens: true`; R5-04e M-08 conditional only | 202 per dispatch (each starts its own CFG-07 clock) | Poll M-05/M-06 per CFG-07; record `t_revoke_dispatch` per sub-case (§8.7) |
+| R5-05 | Execute refresh-token revocation | `DELETE /api/v2/refresh-tokens/{id}` per token (M-12, always); `POST /api/v2/refresh-tokens/revoke` (M-13) only if the §8.4 entitlement check passes, else M-12 only with the M-13 fallback recorded | Success / 202 | Poll M-11 per CFG-07 |
+| R5-06 | Track A — convergence observer: poll/read back provider state | `GET /api/v2/users/{id}/sessions`, `GET /api/v2/sessions/{id}`, `GET /api/v2/users/{user_id}/refresh-tokens`, `GET /api/v2/refresh-tokens/{id}`, `GET /api/v2/guardian/enrollments/{F1}` | Converging reads | Full latency distribution recorded; record `t_provider_converged` when §8.5 shapes hold |
+| R5-07 | Establish the approved validation cutoff barrier — recorded AT revocation dispatch, frozen thereafter | Record `user.revokedBefore` epoch (Contract T) / revoked generation set (Contract S) for the scenario identity at `t_revoke_dispatch`; strongly-consistent read on the enforcement path (no short-TTL verdict caching) | Barrier record | Barrier timestamp/sets fixed for R5-08–R5-11 and the §9.6 invocations |
+| R5-08 | Track B — retry captured pre-cutoff context IMMEDIATELY after dispatch, DURING convergence (concurrent with R5-06; never after polling completes) | Silent `prompt=none` + refresh exchange with a captured pre-cutoff refresh token; first attempt dispatched before convergence is established | Record provider response verbatim; record `t_old_context_attempt_1` | Valid only if `t_old_context_attempt_1 < t_provider_converged` (§8.7); else R5-08 = INCOMPLETE. Any minted token → verifier rule (§8.6) |
 | R5-09 | Retry AFTER session readback indicates absence | Same attempts as R5-08 | Record verbatim | Any minted token → verifier rule |
 | R5-10 | Retry AFTER refresh-token readback indicates absence | Same attempts as R5-08 | Record verbatim | Any minted token → verifier rule |
 | R5-11 | Retry AFTER the bounded convergence period ends | Same attempts as R5-08 | Record verbatim | Any minted token → verifier rule |
-| R5-12 | Verify exact F1 binding; F1 deletion allowed ONLY after provider + application barriers pass | Re-read enrollments immediately before delete; then `DELETE /api/v2/guardian/enrollments/{F1}` | 204 | M-01 absence + enrollment list without F1 |
+| R5-12 | Verify exact F1 binding; F1 deletion allowed ONLY after provider + application barriers pass — executes under Phase D via the §7 micro-transition | Re-read enrollments immediately before delete (Phase D token); then `DELETE /api/v2/guardian/enrollments/{F1}` | 204 | M-01 absence + enrollment list without F1 |
+
+### 8.4 R5 path matrix (CORR-001: every primitive has an exact test; no runtime selection)
+
+| R5 sub-case | Revocation primitive | Endpoint (method + body) | Scope | Session effect | Refresh-token effect | Required readback | Expected verdict |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| R5-04a | M-07 single-session delete (primary path) | `DELETE /api/v2/sessions/{sessionId}` (no body) | `delete:sessions` | Target session revoked (async) | None by this call | M-05 absent + M-06 list without the session | PASS if §8.5 session shape converges within CFG-07; else INCOMPLETE (observability) or FAIL (disproven contract) |
+| R5-04b | M-09 combined session+refresh revoke | `POST /api/v2/sessions/{id}/revoke` (no body) | `delete:sessions` + `delete:refresh_tokens` | Session revoked + associated refresh tokens revoked (async) | Associated refresh tokens revoked | M-05/M-06 + M-11 to absence | PASS if both shapes converge; else as R5-04a |
+| R5-04c | M-10 user-level revoke, `preserve_refresh_tokens: false` | `POST /api/v2/users/{id}/revoke-access` body `{"preserve_refresh_tokens": false}` (plus `session_id` where the scenario targets one session) | `delete:sessions` + `delete:refresh_tokens` | Sessions revoked | Refresh tokens NOT preserved (revoked) | M-05/M-06 empty + M-11 empty/404 + failed exchange | PASS if both converge; M-10 is explicitly exercised — never skipped because another path passes |
+| R5-04d | M-10 user-level revoke, `preserve_refresh_tokens: true` (distinguisher) | `POST /api/v2/users/{id}/revoke-access` body `{"preserve_refresh_tokens": true}` | `delete:sessions` + `delete:refresh_tokens` | Sessions revoked | Refresh tokens PRESERVED (still usable) — proves the flag's two behaviours differ | M-05/M-06 empty AND M-11 still lists the tokens AND a preserved-token exchange succeeds | PASS iff sessions are gone while refresh tokens survive (with the residual recorded as the exact R5 hazard the cutoff must close); if the provider does not support both values, INCOMPLETE with the exact limitation — never PASS by assumption |
+| R5-04e (conditional) | M-08 bulk session delete — only if the M-07 path is insufficient for the scenario | `DELETE /api/v2/users/{userId}/sessions` (no body) | `delete:sessions` | All user sessions revoked (async) | None by this call | M-06 empty | Executed only on recorded M-07 insufficiency; otherwise recorded NOT EXECUTED with cause (conditional path, not a verdict) |
+| R5-05 M-13 (gated) | M-13 bulk refresh revoke — only if GA release + validation entitlement confirmed on the tenant | `POST /api/v2/refresh-tokens/revoke` (bulk by ID list / user / user+client / user+client+audience; no Online Refresh Tokens) | `delete:refresh_tokens` | None by this call | Bulk revoked (202) | M-11 polling | Availability check: Phase A entitlement read + tenant behaviour probe; if unavailable, STOP this path and execute M-12 only; affected bulk-path evidence INCOMPLETE — never widened, never PASS |
+
+Four-attempt preservation: R5-08 (attempt 1, pre-convergence, Track B) → R5-09 (attempt 2, gated
+on session absence) → R5-10 (attempt 3, gated on refresh absence) → R5-11 (attempt 4, after full
+bounded convergence). Polling (Track A) never consumes the attempt phases before Track B runs:
+attempt 1 is concurrent with polling, attempts 2–4 are readback-gated, never polling-starved.
 
 ### 8.5 Confirmation shapes (exact; fixed here)
 
@@ -261,7 +324,7 @@ exemption). `202 Accepted` is never confirmation — it only starts the C-07 clo
 - Already-issued access/ID JWTs are non-revocable provider-side and remain valid until `exp` —
   documented provider behaviour, not a confirmation failure; the §8.6/§10 race determines the
   application boundary.
-- Non-convergence: if C-07 expires without confirmation, or readback is unavailable, the scenario
+- Non-convergence: if CFG-07 expires without confirmation, or readback is unavailable, the scenario
   STOPS — F1 is not deleted. Missing entitlement/observability ⇒ INCOMPLETE; disproven fail-closed
   contract ⇒ FAIL (POTENTIAL HARD AUTH0 BLOCKER where §10.2 applies). Never PASS by expiry.
 
@@ -281,9 +344,29 @@ exemption). `202 Accepted` is never confirmation — it only starts the C-07 clo
   generation AND the fresh post-cutoff authentication verifies, for every contract evaluated.
   Provider boundary (P) per §8.5. F1 deletion (R5-12) requires BOTH.
 
+### 8.7 Timing contract (CORR-001: pre-convergence validity is proven, never assumed)
+
+Timestamps (UTC ISO-8601 + local monotonic, correlation ID per dispatch):
+
+- `t_revoke_dispatch`: the moment each R5-04/R5-05 revocation request is sent (per sub-case).
+- `t_old_context_attempt_1`: the moment the Track B first attempt (R5-08) is sent.
+- `t_provider_converged`: the moment Track A first observes the full §8.5 confirmation shapes.
+- Subsequent attempts: `t_attempt_2/3/4` for R5-09/R5-10/R5-11 with their gating readbacks.
+- Token issuance/response timestamps for every provider response and every minted token.
+
+Validity rule: `t_old_context_attempt_1 < t_provider_converged` is REQUIRED for the
+pre-convergence test to be valid. If that ordering cannot be demonstrated (attempt 1 sent at or
+after observed convergence, or convergence time unobservable): R5-08 = INCOMPLETE — never PASS.
+A falsely serial executor (poll to convergence first, then "retry") violates this rule and yields
+INCOMPLETE, never a reassuring PASS. The same ordering rule governs every `R5-BARRIER-R7`
+invocation (§9.6).
+
 ## 9. R7 test suite (R7-01–R7-10; AC-01–AC-05)
 
-Preconditions for every case: the §8 barrier is established for the scenario first; F1/F2 IDs are
+Preconditions for every case: the §8 barrier is established for the scenario first — on the SAME
+identity that undergoes the destructive call (§9.6; no `VAL-R-01` inheritance, no test-identity
+exemption). Every destructive step in R7-01–R7-07 executes only after `R5-BARRIER-R7` PASS for
+that same identity; the Exact-steps column's delete is gated by it (§9.7). F1/F2 IDs are
 recorded from readback (never assumed); every destructive call is followed by readback; `204` is an
 HTTP outcome, not a safety verdict. R7 failure ⇒ AUTH0 NOT QUALIFIED (no averaging, §24).
 
@@ -314,6 +397,48 @@ If intended ordering/overlap cannot be demonstrated: INCOMPLETE — never PASS.
 
 R7 requires more than F2 remaining listed. Usability is proven ONLY by a genuine TOTP challenge
 using F2 that succeeds. No "closest" substitute. If unexecutable, R7 remains INCOMPLETE.
+
+### 9.6 `R5-BARRIER-R7` subprotocol (CORR-001: mandatory reusable barrier, invoked per identity)
+
+`R5-BARRIER-R7(i)` runs on R7 identity `i` (`VAL-F-01a`–`VAL-F-01f`) before that identity's
+destructive F1 call. It is not a new top-level numbered case: every invocation produces
+independent evidence (own timestamps, readbacks, verdict recorded under the invoking R7 case),
+and the invoking R7 PASS requires the barrier invocation to PASS for that identity (§9.7).
+Revocation steps run under the Phase C grant; the binding verification + delete gate runs under
+Phase D after the §7 micro-transition.
+
+| Step | Action (same identity `i`) | Phase/grant | Evidence |
+| --- | --- | --- | --- |
+| B-0 | Establish authenticated context: genuine login on `i` yielding at least one provider session and (where the flow issues one) a refresh token. R7 identities with no active session/refresh state are NOT exempt — this step creates the revocable state the barrier must exercise. If provider semantics genuinely make no revocable state available for `i`, record the exact observed state and apply the governed fail-closed oracle (STOP before delete; INCOMPLETE with cause) rather than inventing an exemption. | Browser via A-1 (no M2M scope) | Session/refresh inventory for `i` |
+| B-1 | Capture `i`'s active sessions (cookie jar + session IDs from readback). | Capture (+ `read:sessions` under C) | Sanitized context inventory |
+| B-2 | Capture all known refresh tokens/contexts for `i` (identifiers + client/audience; no values). | Capture (+ `read:refresh_tokens` under C) | Sanitized identifier inventory |
+| B-3 | Dispatch the applicable provider revocation path for `i` (§8.4 selection: R5-04a–R5-04d as the scenario requires, M-10 path included where §9.6 scope needs it; R5-05 M-12 per token; M-13 only if entitled). Record `t_revoke_dispatch` + R5-07 barrier epoch for `i`. | C | Dispatch log + barrier record |
+| B-4 | Begin provider readback (Track A, R5-06 reads incl. M-01 factor-bound read). | C | Polling log |
+| B-5 | Begin application-side old-context rejection exercise (Track B, R5-08 first attempt immediately, pre-convergence; §8.7 timing rule applies). | C (browser) | `t_old_context_attempt_1`; ordering proof |
+| B-6 | Establish the required Contract S/T application boundary for `i` (§§8.6/10.2). | Evaluation | Boundary record |
+| B-7 | Confirm the dual R5 oracle for `i` (P per §8.5 + A per §8.6 over attempts 1–4). | Evaluation | P+A verdict |
+| B-8 | Verify immutable F1 binding for `i` (re-read enrollments immediately before delete). | D (after micro-transition) | Binding record |
+| B-9 | ONLY then execute the invoking R7 case's F1 deletion. | D | 204 + readbacks per the R7 row |
+
+If the barrier cannot be established for `i` (non-convergence, unavailable readback, timing
+unprovable, missing entitlement): that R7 case is INCOMPLETE / STOP BEFORE F1 DELETE. Never
+proceed destructively. Barrier FAIL for `i` ⇒ invoking R7 case cannot PASS (§9.7).
+
+### 9.7 R7 result dependency (explicit)
+
+```text
+R7 test PASS
+requires
+R5 barrier PASS for same identity (R5-BARRIER-R7(i) PASS, or R5-01–R5-12 PASS on VAL-R-01
+for the VAL-R-01-scoped T/S/MFA observations only)
+AND
+R7 exact-factor/race assertions PASS
+```
+
+Barrier FAIL ⇒ R7 cannot PASS (FAIL). Barrier INCOMPLETE ⇒ R7 = INCOMPLETE. Barrier
+BLOCKED ⇒ R7 = BLOCKED. No destructive factor test may override the R5 verdict. R7-08/R7-09
+(meta-cases) inherit the barrier verdicts of their underlying race trials; R7-10 (challenge
+proof, non-destructive) requires no barrier but requires the surviving F2 state it proves.
 
 ## 10. Cutoff / generation experiment (T-01–T-06, S-01–S-08; AC-11–AC-13)
 
@@ -466,7 +591,7 @@ Product requirements are not expanded.
 | AM-12 | Step-up / fresh authentication | `VAL-A-01` | `max_age=0` (or `prompt=login`) login; ID-token `auth_time` renewed | Fresh-auth boundary observed |
 | AM-13 | EN experience (AC-20a) | A-1 Universal Login | Full login + MFA screens in EN; prompt text readback (`read:prompts`) | EN matrix green |
 | AM-14 | FR experience (AC-20b) | A-1 Universal Login | Full login + MFA screens in FR; prompt text readback | FR matrix green; EN/FR parity |
-| AM-15 | Passwordless SMS (where required by the matrix) | Per matrix | Only where the governed matrix requires; phone auth is optional/non-default pilot scope (Gate 1 §16) | Executed where required; else recorded NOT REQUIRED with matrix citation (not N/A to bypass AC-19) |
+| AM-15 | Passwordless SMS (where required by the matrix) | Per matrix | Only where the governed matrix requires; phone auth is optional/non-default pilot scope (Gate 1 §16) | Executed where required (PASS/FAIL/INCOMPLETE per outcome); where the governed matrix does not require it, no test executes and no verdict is recorded — scope note only, mapped in §21 (never N/A to bypass AC-19) |
 | AM-16 | Secondary linked/unlinked identity state | `VAL-L-02` | Recreated counterpart handling; final state per §19 CL-12 | States recorded; cleanup per §19 |
 
 ## 13. Functions/API contract (J-01–J-12; AC-22–AC-26)
@@ -499,7 +624,7 @@ order is fixed and failures are terminal at the first failing step:
 | J-06 | Wrong key type/use (`kty` non-RSA; `use` missing or not `sig`) | REJECT (fail closed for tokens requiring those keys) |
 | J-07 | Malformed JWKS | Fail closed for affected tokens; INCOMPLETE with cause where the provider itself serves the malformed set |
 | J-08 | JWKS endpoint failure/outage | Fail closed; affected checks INCOMPLETE (never bypass); last-good set preserved, misses fail closed |
-| J-09 | Bounded cache behaviour | TTL 10 min (C-06) + single on-demand refresh on unknown `kid` only; refresh failures preserve last-good set |
+| J-09 | Bounded cache behaviour | TTL 10 min (CFG-06) + single on-demand refresh on unknown `kid` only; refresh failures preserve last-good set |
 | J-10 | Removed old key | Tokens under the removed `kid` follow Case B after cache refresh |
 | J-11 | Wrong issuer / wrong audience / expired / malformed / tampered payload | Each REJECT (AC-23/AC-25 negatives) |
 | J-12 | `AuthenticationReference` mapping | Provider `sub` stays an opaque external reference — never durable identity/role/permission authority (AC-26) |
@@ -527,7 +652,7 @@ REQUIRED). App Check never substitutes for identity, authorization, or MFA.
 | AP-06 | valid | expired | DENY — 403 |
 | AP-07 | valid | wrong project/app | DENY — 403 |
 | AP-08 | neither | neither | DENY — 401 |
-| AP-09 | valid | replayed (past single-use/expiry window where testable) | DENY — 403; if untestable with the pinned fixture, NOT TESTABLE with cause (never assumed accept) |
+| AP-09 | valid | replayed (past single-use/expiry window where testable) | DENY — 403; if replay is not testable with the pinned fixture, INCOMPLETE with recorded cause (never assumed accept) |
 
 ## 15. Localization tests (LOC-01–LOC-04; AC-20 detail)
 
@@ -625,8 +750,10 @@ VALIDATION INCOMPLETE — CLEANUP REQUIRED (§24).
 
 Every test case terminates per §21. This matrix binds each case to its AC and Gate 1 section:
 
-E-01–E-10 → entry (§1). R5-01–R5-12 → AC-06–AC-10 (Gate 1 §8). R7-01–R7-10 → AC-01–AC-05
-(Gate 1 §7). S-01–S-08 → AC-11/13 Contract S (Gate 1 §10). T-01–T-06 → AC-11/12 Contract T
+E-01–E-10 → entry (§1). R5-01–R5-12 → AC-06–AC-10 (Gate 1 §8), with dispatched sub-cases
+R5-04a–R5-04e + M-13 gate (§8.4) and the concurrent Track A/B ordering (§§8.6/8.7). R7-01–R7-10 →
+AC-01–AC-05 (Gate 1 §7), each destructive case gated on its `R5-BARRIER-R7(i)` invocation (§§9.6/9.7).
+S-01–S-08 → AC-11/13 Contract S (Gate 1 §10). T-01–T-06 → AC-11/12 Contract T
 (Gate 1 §10). MFA-01–MFA-14 → AC-14–AC-16 (Gate 1 §11). AM-01–AM-16 → AC-17–AC-21
 (Gate 1 §§5/12). J-01–J-12 → AC-22–AC-26 (Gate 1 §12). AP-01–AP-09 → AC-27 (Gate 1 §13).
 LOC-01–LOC-04 → AC-20 (Gate 1 §12/AM). C-01–C-08 → AC-28–AC-32 (Gate 1 §16).
@@ -653,10 +780,31 @@ Every test terminates as exactly one of:
 - **POTENTIAL HARD PROVIDER BLOCKER** — only where the section explicitly allows it (§§8/10: R5
   boundary unclosable with any clean contract; R7 hard failure at provider level).
 
-Case counts: 109 exact test cases (E: 10, R5: 12, R7: 10, S: 8, T: 6, MFA: 14, AM: 16, J: 12,
-AP: 9, LOC: 4, C: 8). R5 cases: 12. R7 cases: 10. Contract S cases: 8. MFA cases: 14.
+Case counts: 109 exact numbered test cases (E: 10, R5: 12, R7: 10, S: 8, T: 6, MFA: 14,
+AM: 16, J: 12, AP: 9, LOC: 4, C: 8) — unchanged by CORR-001. Counting rule: only top-level
+numbered IDs count; lettered dispatched sub-cases (R5-04a–R5-04e, M-13 gate) are fixed variants
+inside R5-04/R5-05 producing independent evidence under the parent number, and `R5-BARRIER-R7`
+invocations produce independent per-identity evidence under the invoking R7 number. The canonical
+numbered matrix is unchanged, so the reconciled count remains 109. R5 cases: 12. R7 cases: 10.
+Contract S cases: 8. MFA cases: 14.
 Auth-method matrix: 16 (Google AM-03 supported-test only; non-Google AM-01 mandatory).
 Functions/JWKS cases: 12. App Check cases: 9. M2M phases: 11 (A/B/C/D/E/F1–F6).
+
+### 21.1 Vocabulary audit (CORR-001: closed vocabulary enforced artifact-wide)
+
+Searched terms reconciled — none terminates a case outside the §21 vocabulary:
+
+| Term | Occurrences | Status |
+| --- | --- | --- |
+| `NOT TESTABLE` | None remain (AP-09 corrected to INCOMPLETE with cause) | Removed as a verdict |
+| `N/A` | P-09/AM-03/§22 prose ("never N/A" prohibitions); Phase A/F6/R5-02/R5-03 table cells ("N/A (capture/readback)" field markers) | Prohibition text or non-verdict field marker only; never a case result |
+| `NOT REQUIRED` / scope note | AM-15 conditional (no test executes where the governed matrix does not require it) | Scope note, not a verdict; no case terminates with it |
+| `NOT EXECUTED with cause` | R5-04e conditional path only | Conditional-path record, not a verdict; the path executes or is recorded unexecuted with cause |
+| `SKIP` / `UNKNOWN` / `DEFERRED` | None as verdicts anywhere in the artifact | — |
+| `POTENTIAL HARD PROVIDER BLOCKER` | §§8/10 only, where explicitly authorized | Governed use only |
+
+Every numbered case terminates in exactly one of PASS / FAIL / INCOMPLETE /
+BLOCKED — AUTHORITY REQUIRED / POTENTIAL HARD PROVIDER BLOCKER (last only where authorized).
 
 ## 22. Stop conditions (STOP AND REPORT)
 
@@ -690,16 +838,20 @@ never PASS.
 E-01–E-10 (entry; §1) → P-01–P-10 (prerequisites; §3) → Phase A (inventory, entitlement,
 snapshots, N-A1/N-A2/N-A3 necessity; §7) → [Gate: A-1/A-2/A-3 created only as decided]
 → Phase B (identities, F1/F2, tickets, linking setup; §7) → MFA-12/MFA-01 observations,
-AM-01–AM-16 matrix, LOC-01–LOC-04 → Phase C (R5-01–R5-11 revocation + exercise; §8)
-→ T-*/S-* cutoff experiment (§10) → MFA-02–MFA-14 vectors (§11) → Phase D (R7-01–R7-10
-with R5-12 gating per scenario; §9) → Phase E (J-01–J-12, AP-01–AP-09; §§13/14)
+AM-01–AM-16 matrix, LOC-01–LOC-04 → Phase C (R5-01–R5-11: dispatch + barrier record, then
+CONCURRENT Track A observer (R5-06) + Track B attacker exercise (R5-08 attempt 1 pre-convergence),
+then readback-gated R5-09/R5-10/R5-11; §8) → T-*/S-* cutoff experiment (§10) →
+MFA-02–MFA-14 vectors (§11) → R7 track: per-identity R5-BARRIER-R7 under Phase C grant, §7
+C→D micro-transition, then binding + delete + readback under Phase D (R7-01–R7-07; R5-12 on
+VAL-R-01 follows the same micro-transition; §§9/9.6) → Phase E (J-01–J-12, AP-01–AP-09; §§13/14)
 → C-01–C-08 commercial capture (§16) → Phases F1–F6 (CL-01–CL-18; §19)
 → SEC-11/SEC-12 final scans (§18) → completion report AC-36 (§24)
 ```
 
 Gate 1 (approach) is approved; Gate 2 (this artifact) requires independent review before broader
 execution (Phase B setup beyond minimal tenant state waits for Gate 2 approval per WP §13).
-No F1 deletion before its scenario's validated revocation barrier (R5-12). F1–F5 never overlap.
+No F1 deletion before its scenario's validated revocation barrier (R5-12 / R5-BARRIER-R7 B-9).
+F1–F5 never overlap.
 Tenant experimentation with test identities is not exempt from R5.
 
 ## 24. Final qualification rules (AC-36 shape; decided by execution, not here)
@@ -720,32 +872,47 @@ No averaging of security results. No redesign of failed hypotheses during execut
 - New documentation-only Gate 2 contracts report (this file). Preserves every approved Gate 1
   contract without redesign: session-generation Contract S (§12 of this artifact; Gate 1 §10.1
   opaque branches, both-present equality, fail-closed absence/mismatch, equality-only operations);
-  R5 revocation sequence + dual oracle + four-attempt exercise + C-07 cadence (§8; Gate 1 §8);
+  R5 revocation sequence + dual oracle + four-attempt exercise + CFG-07 cadence (§8; Gate 1 §8);
   R7 six-identity isolation + three races + genuine F2 proof (§9; Gate 1 §§4/7); MFA `otp`
   allowlist + 300 s hypothesis + `0 <= iat - mfa_time <= 300` + P-MFA + T-MFA-SSO (§11; Gate 1
   §11); phase-scoped dashboard/operator ledger with pinned grant identity, no self-modification
-  (§7; Gate 1 §6); SPA + PKCE + rotation (§6 C-02; Gate 1 §5.2); HTTPS+Bearer+JWKS harness with
+  (§7; Gate 1 §6); SPA + PKCE + rotation (§6 CFG-02; Gate 1 §5.2); HTTPS+Bearer+JWKS harness with
   Case A/B distinction (§13; Gate 1 §12); App Check ENFORCE matrix (§14; Gate 1 §13); secret
   controls (§18; Gate 1 §14); cleanup lifecycle (§19; Gate 1 §15); commercial evidence-only plan
   (§16; Gate 1 §16).
-- Required tracking records: `docs/00-governance/documentation-changes-log.md` (Entry 199) and
-  `docs/changes/IMPLEMENTATION_CHANGES.md` (Gate 2 preparation entry).
+- Required tracking records: `docs/00-governance/documentation-changes-log.md` (Entries 199–200) and
+  `docs/changes/IMPLEMENTATION_CHANGES.md` (Gate 2 preparation + CORR-001 entries).
+- CORR-001 (this correction, bounded — no Gate 1 redesign): Phase C gains `read:guardian_enrollments`
+  for the R5-06 M-01 readback; Phase D gains `read:users` for the M-04 readback, each Phase D token
+  independently carrying the exact set (§7 + §7.5 audit: zero undeclared scopes); R5 paths assigned
+  exactly (R5-04a M-07 / R5-04b M-09 / R5-04c–d M-10 both `preserve_refresh_tokens` values /
+  R5-04e conditional M-08 / M-13 gated with M-12 fallback; §8.4 matrix); R5-08 runs concurrent with
+  R5-06 polling (Track A/B) with the `t_old_context_attempt_1 < t_provider_converged` validity rule
+  (§8.7), four attempts preserved and readback-gated; `R5-BARRIER-R7` invoked per R7 destructive
+  identity with the §7 C→D micro-transition and the §9.7 dependency (barrier FAIL/INCOMPLETE/BLOCKED
+  propagates); AP-09 corrected to INCOMPLETE with cause (§21.1 audit); numbered count reconciled at
+  109 (lettered sub-cases and barrier invocations produce independent evidence under parent numbers).
 - Production-code changes: **NONE**. Dependencies/config changes: **NONE**. Auth0 tenant/resources
   created: **NONE**. Live Auth0 API calls: **NONE**. `DEC-AUTH-002`, `DEC-SEC-005`/R1–R10,
   `DEC-DATA-008`, `FD-COM-001`, and the `AUTH-MFA-003D-IMPL-001` blocked state are consumed,
   unmodified. Auth0 remains LEADING CANDIDATE — NOT SELECTED.
 
-## 26. Gate 2 completion state (GATE-2-PREP-001: prepared, review pending)
+## 26. Gate 2 completion state (GATE-2-PREP-001 + CORR-001: prepared, review pending)
 
 **READY FOR FEF HIGH-RISK GATE 2 INDEPENDENT REVIEW — NOT APPROVED FOR LIVE EXECUTION**
 
-This artifact is internally complete: 109 exact test cases with per-case identity, phase,
+This artifact is internally complete: 109 exact numbered test cases with per-case identity, phase,
 endpoint, method, scope, request shape, expected status, readback, verdict rule, evidence fields,
-and cleanup; 11-phase M2M ledger; 24-section coverage per the task §16 list (entry, authority,
-prerequisites, resources, identities, baseline, ledger, method matrix, R5, R7, MFA, Contract S,
-Functions/JWKS, App Check, linking, localization, commercial, secrets, cleanup, evidence template,
-pass/fail matrix, stop conditions, execution order, qualification rules). Live execution introduces
-no material design decision beyond recording observed provider shapes against the fixed verdicts.
+and cleanup; exact R5 path assignment with the M-10 distinguisher; concurrent pre-convergence
+Track A/B with proven timing; per-identity R5 barriers with the C→D micro-transition; 11-phase M2M
+ledger with the §7.5 consistency audit; closed result vocabulary with the §21.1 audit; 24-section
+coverage per the task §16 list (entry, authority, prerequisites, resources, identities, baseline,
+ledger, method matrix, R5, R7, MFA, Contract S, Functions/JWKS, App Check, linking, localization,
+commercial, secrets, cleanup, evidence template, pass/fail matrix, stop conditions, execution order,
+qualification rules). Phase scopes reconcile exactly; all R5 paths are assigned; pre-convergence
+timing is executable; every destructive R7 identity invokes its own R5 barrier; verdict vocabulary
+is closed; no test-design choice remains for execution. Live execution introduces no material design
+decision beyond recording observed provider shapes against the fixed verdicts.
 Gate 2 approval, tenant creation, execution, qualification, and selection are all outstanding and
 separately governed. Auth0 is NOT SELECTED. Do not self-approve Gate 2. Do not merge unless
 separately instructed.

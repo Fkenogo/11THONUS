@@ -7,6 +7,22 @@
 
 ---
 
+## 2026-09-09 — AUTH-ARCH-002-VAL-002-GATE-2-PREP-001-CORR-001 — Bounded Gate 2 Contract Correction
+
+- **Task / status:** Bounded Gate 2 contract correction on branch `docs/auth-arch-002-val-002-gate2-prep-001` at reviewed PR #240 head `b2d53e69294acd202b2b34dc35d2afdfc78db10b` (PR OPEN/MERGEABLE; base `origin/main` `b6c2d23` current; CI SUCCESS on the reviewed head; five Codex findings P1×4/P2×1 inspected, no other substantive findings). **GATE 2 = READY FOR FEF HIGH-RISK GATE 2 INDEPENDENT REVIEW — NOT APPROVED FOR LIVE EXECUTION** (after correction; approval not declared). Auth0 NOT SELECTED.
+- **P1 scopes:** Phase C gains `read:guardian_enrollments` (R5-06 M-01 factor-bound readback); Phase D gains `read:users` (M-04 enrollment-list readback, independently carried by each Phase D token); per-identity C→D micro-transition planned; full A–E/F1–F6 scope-consistency matrix (§7.5) proves zero tests requiring undeclared scopes with no speculative broadening.
+- **P1 R5 paths:** exact assignment R5-04a (M-07) / R5-04b (M-09) / R5-04c–d (M-10 both `preserve_refresh_tokens` values, distinguisher with residual recorded) / R5-04e (conditional M-08) / M-13 gated with M-12 fallback (§8.4 matrix: endpoint, method, body, scope, status, readback, verdict per primitive; no runtime selection; M-10 never skippable).
+- **P1 ordering:** R5-08 concurrent with R5-06 polling (Track A observer + Track B attacker exercise); §8.7 timing contract requires `t_old_context_attempt_1 < t_provider_converged`, else INCOMPLETE; four attempts preserved and readback-gated (never polling-starved).
+- **P1 R7 barrier:** `R5-BARRIER-R7` subprotocol (§9.6 B-0–B-9, incl. authenticated-context preparation and fail-closed no-state rule) invoked per destructive identity `VAL-F-01a`–`VAL-F-01f`; §9.7 dependency (barrier FAIL/INCOMPLETE/BLOCKED propagates to the invoking R7 case; no override; INCOMPLETE/STOP BEFORE F1 DELETE if unestablishable).
+- **P2 vocabulary:** AP-09 corrected to INCOMPLETE with cause; §21.1 audit removes `NOT TESTABLE` and reconciles all `N/A`/conditional/scope-note occurrences as non-verdicts; closed vocabulary enforced.
+- **Counts:** numbered matrix unchanged — reconciled 109 (lettered sub-cases and barrier invocations carry independent evidence under parent numbers).
+- **Files changed:** [`AUTH-ARCH-002-VAL-002 Gate 2 contracts report`](../05-implementation/reports/AUTH-ARCH-002-VAL-002-gate2-contracts-2026-09-09.md) (corrected in place); `docs/00-governance/documentation-changes-log.md` (Entry 200); this record. Gate 1 contracts, R1–R10, Contracts S/T, MFA predicate, App Check AND, A-1/A-2/A-3 authority, operator grant model, selection state — all preserved without redesign.
+- **Code/configuration/dependencies/migrations/live changes:** none. No tenant/A-1/A-2/A-3/users/M2M credentials created, no provider APIs executed, no selection, no migration, no 003D resumption, no PostgreSQL work, no production/Firebase-auth change, no FD-COM-001 contact. Full-diff secret scan clean.
+- **Validation:** `git diff --check`; Markdown relative-link validation; `prettier --check` on changed files; append-only verification; test-count reconciliation (109); phase-scope reconciliation; result-vocabulary audit; CI on the exact corrected head required. Not self-approved; not merged; independent review pending.
+- **Rollback:** revert the CORR-001 commit(s); the Gate 2 preparation state (Entry 199) remains as history; no provider/data cleanup (nothing created).
+
+---
+
 ## 2026-09-09 — AUTH-ARCH-002-VAL-002-GATE-2-PREP-001 — FEF High-Risk Gate 2 Exact Validation Contracts
 
 - **Task / status:** Gate 2 preparation only on branch `docs/auth-arch-002-val-002-gate2-prep-001` from verified `origin/main` `b6c2d23f71a6aac2e6ee99f6eec2d129c406061d` (expected handoff SHA confirmed current; clean isolated worktree). Entry gate re-verified: merge `b6c2d23` present; Gate 1 APPROVED/MERGED/CLOSED (review `5154523016`); VAL-002 AUTHORISED (`FD-AUTH-ARCH-002-VAL-002` + AMEND-001 A-1/A-2/A-3); `DEC-AUTH-002` CONFIRMED; `DEC-SEC-005` R1–R10 unchanged; `DEC-DATA-008` unchanged; Auth0 LEADING CANDIDATE — NOT SELECTED; `AUTH-MFA-003D-IMPL-001` still VALID/BLOCKED; no tenant/resources/credentials; no live validation; FD-COM-001 untouched. **GATE 2 = READY FOR FEF HIGH-RISK GATE 2 INDEPENDENT REVIEW — NOT APPROVED FOR LIVE EXECUTION.** Auth0 NOT SELECTED.
