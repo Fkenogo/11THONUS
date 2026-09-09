@@ -7,6 +7,20 @@
 
 ---
 
+## 2026-09-09 — AUTH-ARCH-002-VAL-002-GATE-1-CORR-003 — Correct Focused Re-Review Findings (4 bounded issues)
+
+- **Task / status:** Bounded Gate 1 correction on branch `docs/auth-arch-002-val-002-gate1` at reviewed head `14f1dfcdf6fa6aee7693f90c0694d33fa3c2fec4` (PR #239 OPEN/MERGEABLE/CLEAN at entry; review `5153098758` applies to the exact head; base `origin/main` `8a918e02216bd01a40040aefa9bf62f463f91d76` confirmed current; CI SUCCESS on the entry head; prior threads resolved; no new findings). **VAL-002 Gate 1 = READY FOR FINAL FOCUSED FEF HIGH-RISK GATE 1 RE-REVIEW** (approval not declared; Gate 2 not begun). Auth0 LEADING CANDIDATE — NOT SELECTED.
+- **Issue 1:** §10.1 pins exact fields/types (G-1a `event.session.id` opaque string; G-1b `min(methods[*].timestamp)` → Unix seconds; G-2 `auth_time` NumericDate); §10.2 defines Contract T (strict `>`) and Contract S (equality-only sets) independently with PASS/FAIL-DISQUALIFIED/INCOMPLETE verdicts; key-inventory-as-selection removed; §8.1 verifier rule rewritten per contract. No mixed-type `gen` remains.
+- **Issue 2:** §6 pins dashboard-first grant mutation (exact navigation + checkboxes) with API-driven fallback (`GET`/`PATCH /client-grants/{id}`, M-22–M-24); 7-step lifecycle proves the standing grant narrowed before each token; Phase B reconciled with `update:users`; Phase F split into F1–F6 with per-subphase grants; F6 readback scopes complete (`read:users/guardian_enrollments/sessions/refresh_tokens/clients/resource_servers/actions/client_grants/logs`).
+- **Issue 3:** §11.1 replaced by exact predicate P-MFA (binding + absent `event.refresh_token` + interactive `protocol` allowlist + non-`none` `prompt` + `mfa` entry + TOTP detail) with T-MFA-SSO falsification and ID-token `amr` fallback; transaction-start concept removed; exact string claim shape with verifier F-MFA bound and T-MFA-REFRESH-CARRY; §11.3 mapping updated.
+- **Issue 4:** §13 ENFORCE (AND policy) with exact 9-row 200/401/403 matrix including replay; 401 identity vs 403 attestation separated. Closed areas (per review: R5 oracle, R7, SPA+PKCE, M-10/M-13, JWKS, secrets, AC-19) not reopened; reviews preserved with §22 as superseding record.
+- **Files changed:** [`AUTH-ARCH-002-VAL-002 Gate 1 approach report`](../05-implementation/reports/AUTH-ARCH-002-VAL-002-gate1-approach-2026-09-09.md) (§§6/6.1/8.1/10.1–10.2/11.1/11.3/13/18/19/22); `docs/00-governance/documentation-changes-log.md` (Entry 196); this record. WP untouched (AC-19 already fixed); settled authority, ACs, R1–R10, selection, prohibitions unchanged.
+- **Code/configuration/dependencies/migrations/live changes:** none. No tenant/A-1/A-2/A-3/users/M2M credentials created, no provider calls, no Gate 2, no selection, no 003D/PostgreSQL/production work. Full-diff secret scan clean. `FD-COM-001` untouched.
+- **Validation:** `git diff --check`; Markdown relative-link validation; `prettier --check` on changed files; append-only verification; CI on the exact corrected head. PR left open for final focused re-review; not self-approved; not merged.
+- **Rollback:** revert the CORR-003 commit(s); no provider/data cleanup (nothing created).
+
+---
+
 ## 2026-09-09 — AUTH-ARCH-002-VAL-002-GATE-1-CORR-002 — Correct Independent Gate 1 Review Findings (P1-1–P1-4/P2-1–P2-3)
 
 - **Task / status:** Bounded Gate 1 correction on branch `docs/auth-arch-002-val-002-gate1` at reviewed head `3d276f1d67e4845238028b0fe81d4c337ac29016` (PR #239 OPEN/MERGEABLE/CLEAN at entry; review `5152282071` applies to the exact head with disposition GATE 1 CORRECTION REQUIRED; base `origin/main` `8a918e02216bd01a40040aefa9bf62f463f91d76` confirmed current; CI SUCCESS on the entry head; both prior threads resolved; no new findings). **VAL-002 Gate 1 = READY FOR FOCUSED FEF HIGH-RISK GATE 1 RE-REVIEW** (approval not declared; Gate 2 not begun). Auth0 LEADING CANDIDATE — NOT SELECTED.
