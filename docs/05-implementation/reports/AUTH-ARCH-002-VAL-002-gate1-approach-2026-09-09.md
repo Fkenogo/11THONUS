@@ -1,8 +1,8 @@
 # AUTH-ARCH-002-VAL-002 — Gate 1 Approach (FEF High-Risk Review Gate 1)
 
-> **Status:** **READY FOR FEF HIGH-RISK GATE 1 INDEPENDENT REVIEW**
-> (AMEND-001, 2026-09-09: `FD-AUTH-ARCH-002-VAL-002-AMEND-001` grants bounded A-1/A-2/A-3 authority;
-> see §§19–20 — Gate 1 approval itself is the independent reviewer's disposition, not declared here)
+> **Status:** **READY FOR FOCUSED FEF HIGH-RISK GATE 1 RE-REVIEW**
+> (CORR-002, 2026-09-09: independent-review findings P1-1–P1-4/P2-1–P2-3 corrected; see §21 —
+> Gate 1 approval itself is the independent re-reviewer's disposition, not declared here)
 > **Classification:** Validation-approach review only — NO SELECTION / NO MIGRATION / NO IMPLEMENTATION / NO LIVE EXECUTION
 > **Date:** 2026-09-09
 > **Repository:** `https://github.com/Fkenogo/11THONUS.git` (authoritative source of truth)
@@ -97,7 +97,12 @@ needed for Gate 2 contract review may precede broader execution:
 | --- | --- | --- | --- | --- |
 | `VAL-U-01` | Ordinary email/password product path (AC-17/AC-18) | Email/password (database connection) | None | Never enrolled with TOTP; never used in factor/revocation tests |
 | `VAL-A-01` | MFA-enabled administrator-equivalent (AC-14/AC-15) | Email/password | TOTP enrolled, genuine challenge observed | Never the subject of a destructive factor test |
-| `VAL-F-01` | F1/F2 exact-factor identity (§6) | Email/password | F1, then F1+F2 per protocol | Dedicated; no other scenario touches it |
+| `VAL-F-01a` | F1-only baseline (§7 Scenario 1) | Email/password | F1 only, then deleted | Dedicated; destroyed after readback |
+| `VAL-F-01b` | F1+F2 exact deletion (§7 Scenario 2) | Email/password | F1, then F1+F2 | Dedicated; never shared with any retry/race variant |
+| `VAL-F-01c` | Already-absent F1 retry (§7 Scenario 3) | Email/password | F1 enrolled then deleted, then stale replay | Dedicated; prior end-state recreated fresh, never inherited |
+| `VAL-F-01d` | Confirmed-F2 stale retry (§7 Scenario 3 variant) | Email/password | F1+F2, F1 deleted, stale F1 replay against confirmed F2 | Dedicated |
+| `VAL-F-01e` | Delete-vs-pending-confirm race (§7 Race A) | Email/password | F1 + confirming F2 | Dedicated; single race use |
+| `VAL-F-01f` | Confirm-vs-delete race (§7 Race B) | Email/password | F1 + confirming F2 | Dedicated; single race use |
 | `VAL-R-01` | R5 revocation + cutoff-race identity (§§7/9) | Email/password | TOTP enrolled for the scenario | Dedicated; cutoff epoch applies to this identity only |
 | `VAL-L-01` (+ secondary `VAL-L-02`) | Account-linking semantics (AC-21) | Email/password primaries | As the linking matrix requires | Dedicated pair; never merged with any other test identity |
 | `VAL-G-01` | Google supported-method test (AC-19) | Google test contact | As the matrix requires | Test contact only; never a real personal/business account |
@@ -105,12 +110,16 @@ needed for Gate 2 contract review may precede broader execution:
 
 ### 4.2 Isolation principle
 
-One identity serves one stateful scenario. Sharing is permitted only for stateless read-only
-observations (e.g. JWKS fetch, plan/entitlement inspection). The F1/F2 identity (`VAL-F-01`), the
-revocation/cutoff identity (`VAL-R-01`), and the linking pair are never shared, because provider-side
-session, enrollment, and linking state could otherwise contaminate evidence. No real personal, business,
-or customer account is used anywhere; all addresses/contacts are synthetic test contacts created for
-this validation and destroyed in cleanup.
+One identity serves one stateful scenario — the six R7 variants (`VAL-F-01a`–`VAL-F-01f`) never share
+state, because provider session/enrollment state is security-critical evidence and inheritance across
+variants can produce false positives. The only permitted alternative to distinct identities is
+independently recreated-and-proven clean state (fresh enrollment IDs differing from every prior run,
+empty session/refresh readbacks before dispatch, recorded in evidence); Gate 2 uses distinct identities
+by default. Sharing is otherwise permitted only for stateless read-only observations (e.g. JWKS fetch,
+plan/entitlement inspection). The revocation/cutoff identity (`VAL-R-01`) and the linking pair are never
+shared. No real personal, business, or customer account is used anywhere; all addresses/contacts are
+synthetic test contacts created for this validation and destroyed in cleanup. Google may use a dedicated
+test account; no real identity is required for any track.
 
 ## 5. Google validation semantics (preserved)
 
@@ -150,13 +159,61 @@ Authority is now **BOUNDED GRANTED under `FD-AUTH-ARCH-002-VAL-002-AMEND-001`** 
 read-only inventory first: reuse a usable default app instead of creating where possible). Blocked is
 recorded where authority is absent, never passed, never waived.
 
-## 6. M2M design — least-privilege permission matrix (finalized approach)
+### 5.2 Validation application type and OAuth flow (Gate 1 decision — CORR-002)
 
-One M2M client, created after Gate 1 clearance, holding exactly the scopes below and nothing broader.
-Scopes are verified on the tenant before use and recorded with every finding. If the tenant shows a
-scope name differing from current documentation (e.g. `user-revoke-access`), the execution agent records
-the observed contract and Gate 2 re-reviews before broader use — scope drift is evidence, not an excuse
-to widen.
+Gate 2 does not choose SPA versus Regular Web Application. Gate 1 selects **Single-Page Application
+(public client, no client secret)** on the following evidence assessment:
+
+| Requirement | SPA verdict |
+| --- | --- |
+| Universal Login (email/password, Google, MFA enrolment/challenge) | Fully supported; identical ceremony to any confidential client |
+| Google login | Supported via the default connection |
+| Silent authorization (`prompt=none` hidden iframe) | Documented SPA pattern (`checkSession`/`getTokenSilently` iframe fallback) |
+| Refresh-token testing | Supported via Refresh Token Rotation (`offline_access`, `useRefreshTokens`); rotation + reuse-detection observable as revocation evidence |
+| Browser/session behavior | Session cookie + SSO/silent flows observable in the test browser |
+| Client-secret handling | **Decisive:** no secret exists, so none can leak, persist, or require rotation — minimal secret surface for a disposable harness |
+
+- **OAuth/OIDC flow:** Authorization Code + PKCE (S256) via Universal Login; `offline_access` scope for
+  rotation testing; `max_age=0` on selected logins to force provider-native `auth_time` into ID tokens.
+- **PKCE:** required (public client; S256 code challenge per authorization request).
+- **Refresh behavior:** rotating refresh tokens with automatic reuse-detection observation; absolute +
+  idle expiries recorded from tenant/application settings.
+- **Secret exposure model:** none — public client holds no secret; M2M secret handling stays confined to
+  the phase-scoped Management API client (§6).
+- **Callbacks/logout:** disposable origins only — `http://localhost:{port}/callback` for the local harness
+  plus one disposable `https://` test origin if the matrix requires it; logout/back-channel URLs from the
+  same allowlist. No production callback, domain, or secret. Exact values fixed at Gate 2 and restored at
+  cleanup (§15).
+- **Why SPA best represents the required evidence:** it exercises every required ceremony (interactive,
+  silent, refresh, MFA) with the smallest standing secret material, and matches the 11thONUS
+  PWA-style web client shape better than a server-side confidential client would.
+
+A-1 is not created in Gate 1.
+
+## 6. M2M design — phase-scoped least privilege (CORR-002 revision)
+
+No standing aggregate grant. The M2M client never holds the full M-01–M-21d scope set at once. Authority
+is issued per phase with short-lived Management API tokens carrying the smallest subset for that phase,
+and destructive grants are removed/revoked immediately after the phase closes. Scope reduction between
+phases is executed as: request a new token with only the next phase's scopes → verify the new token's
+`scope` claim lists exactly that subset → revoke/allow-expiry of the prior token → record both token
+scope sets in evidence. Dashboard operations are preferred wherever they remove an M2M scope entirely.
+
+| Phase | Purpose | M2M scopes held (only) | Dashboard-preferred (no M2M scope) |
+| --- | --- | --- | --- |
+| A — Read-only inventory / setup verification | Inventory tenant state (apps, connections, APIs, Actions, entitlements, signing keys); confirm plan/entitlement; take configuration before-snapshots | `read:users`, `read:guardian_enrollments`, `read:sessions`, `read:refresh_tokens`, `read:logs`, `read:prompts`, `read:clients`, `read:resource_servers`, `read:actions`, `read:connections` | Tenant/entitlement inspection; before-snapshots |
+| B — Identity/MFA scenario setup | Create `VAL-*` users; enrollment tickets; enroll F1/F2; genuine-login observations | `create:users`, `read:users`, `create:guardian_enrollment_tickets`, `read:guardian_enrollments`, `create:user_tickets` | A-1/A-2/A-3 creation; connection toggles; callbacks |
+| C — Revocation tests | Session/refresh revocation + readback polling + old-context exercise | `read:sessions`, `delete:sessions`, `read:refresh_tokens`, `delete:refresh_tokens` | — |
+| D — Destructive exact-factor test | F1 deletion by exact ID + immediate readback only | `delete:guardian_enrollments`, `read:guardian_enrollments` | — |
+| E — API/Action contract validation | Read A-2/A-3 configuration; deploy Actions; JWKS rotation observation | `read:resource_servers`, `read:actions`, `update:actions` (+ `create:actions`/`delete:actions` only in the exact creation/removal step) | A-2/A-3 creation/deletion; Action bind/unbind; signing-key rotation |
+| F — Cleanup | Delete users/enrollments/apps/APIs/Actions/grants; revoke tokens/sessions; final absent-readbacks | `delete:users`, `delete:guardian_enrollments`, `delete:clients`, `delete:resource_servers`, `delete:actions`, `delete:client_grants`, `delete:sessions`, `delete:refresh_tokens`, `read:logs` | Client deletion; trigger unbinding; settings restoration |
+
+Rules: short-lived tokens (minimum lifetime the tenant supports; never a standing token); after each
+phase the prior token is revoked where the API permits and otherwise expires unrenewed — renewal with
+the prior scope set is forbidden; no phase inherits destructive scopes it does not need (e.g. Phase C
+never holds `delete:guardian_enrollments`; Phase D never holds session/refresh delete); every token's
+granted scopes are recorded with every finding that uses it. The per-item ledger (§6.1) fixes the exact
+contracts Gate 2 instantiates per phase.
 
 | # | Operation | Endpoint | Scope | Why required | Read / destructive | Execution agent needs it | Cleanup operation |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -169,10 +226,10 @@ to widen.
 | M-07 | Delete session by ID | `DELETE /api/v2/sessions/{sessionId}` | `delete:sessions` | Session revocation sequencing (→ `202`) | Destructive-async | Yes | None (new logins mint new sessions) |
 | M-08 | Delete all user sessions | `DELETE /api/v2/users/{userId}/sessions` | `delete:sessions` | Bulk session revocation path | Destructive-async | Conditional (only if M-07 path is insufficient) | None |
 | M-09 | Revoke session + associated refresh tokens | `POST /api/v2/sessions/{id}/revoke` | `delete:sessions` + `delete:refresh_tokens` | Combined revoke path (→ `202`) | Destructive-async | Yes | None |
-| M-10 | Revoke selected user resources | `POST /api/v2/users/{id}/revoke-access` | Least observed scope at execution (documented family: session/refresh scopes) | User-level revoke path | Destructive-async | Conditional | None |
-| M-11 | Inspect refresh tokens | Refresh-token `GET`/list endpoints | `read:refresh_tokens` | Refresh readback (AC-07/AC-10) | Read | Yes | None |
+| M-10 | Revoke selected user resources | `POST /api/v2/users/{id}/revoke-access` (GA; body `{session_id?, preserve_refresh_tokens? default false}`) | `delete:sessions` + `delete:refresh_tokens` (exact, per official OpenAPI — no discovery needed) | User-level revoke path (→ `202`) | Destructive-async | Conditional (Phase C) | None |
+| M-11 | Inspect refresh tokens | `GET /api/v2/users/{user_id}/refresh-tokens` (200, paginated) and `GET /api/v2/refresh-tokens/{id}` (200 present / 404 absent) | `read:refresh_tokens` | Refresh readback + absence proof (AC-07/AC-10); 404 on the by-ID read is the absence oracle | Read | Yes (Phase C) | None |
 | M-12 | Delete refresh token by ID | `DELETE /api/v2/refresh-tokens/{id}` | `delete:refresh_tokens` | Targeted refresh revocation | Destructive-async | Yes | None |
-| M-13 | Bulk revoke refresh tokens | `POST /api/v2/refresh-tokens/revoke` | `delete:refresh_tokens` | Bulk path + `preserve_refresh_tokens` verification (→ `202`) | Destructive-async | Yes | None |
+| M-13 | Bulk revoke refresh tokens (conditional path) | `POST /api/v2/refresh-tokens/revoke` (scope `delete:refresh_tokens`, → `202`; bulk by ID list / user / user+client / user+client+audience; no Online Refresh Tokens) | `delete:refresh_tokens` | Bulk path ONLY if Gate 2 confirms GA release + validation entitlement on the tenant; otherwise this path STOPS and Phase C uses the authorized documented alternative (M-12 per-ID deletes). No scope widening to compensate | Destructive-async | Conditional (Phase C, entitlement-gated) | None |
 | M-14 | Validation-user lifecycle (create/read) | `POST /api/v2/users`, `GET /api/v2/users[/by-email]` | `create:users`, `read:users` | Create/dispose §4 identities | Write (create), read | Yes | M-17 |
 | M-15 | Validation-user update (block/password set) | `PATCH /api/v2/users/{id}` | `update:users` | Disablement + password-set observations | Write | Conditional (only where the matrix requires) | Restore-then-delete via M-17 |
 | M-16 | Account linking / unlinking | `POST /api/v2/users/{id}/identities`, `DELETE /api/v2/users/{id}/identities/{provider}/{user_id}` | `update:users` | Linking semantics (AC-21) | Write | Yes, on `VAL-L-*` only | Unlink + delete users |
@@ -189,6 +246,45 @@ Refused by default: any scope not in this matrix; any `update:users` use outside
 any production-tenant credential; any standing (non-expiring, non-rotated) secret. The M2M client
 secret is revoked/disabled and the client deleted at closure (§10).
 
+### 6.1 Per-item API contract ledger (fixed before Gate 2 — CORR-002)
+
+For every item: exact endpoint, exact scope, release/availability, entitlement, purpose, expected
+response, readback, cleanup, dashboard-vs-API decision. All Management API contracts below are GA per
+current official Auth0 OpenAPI unless noted; session/refresh-token endpoints additionally require
+Enterprise entitlement (Gate 2 verifies on the tenant; missing entitlement ⇒ affected evidence
+INCOMPLETE, never failure, never widening).
+
+| # | Exact endpoint(s) | Exact scope | Release / entitlement | Expected response | Readback | Cleanup | Dashboard vs API |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| M-01 | `GET /api/v2/guardian/enrollments/{id}` | `read:guardian_enrollments` | GA; any plan | 200 enrollment (`id`, `status` pending/confirmed, type) | Same call before/after | None | API (Phase A/B/D) |
+| M-02 | `DELETE /api/v2/guardian/enrollments/{id}` | `delete:guardian_enrollments` | GA; any plan | 204; documented errors 400/401/403 (no assumed 404 contract) | M-01 must show absence; user enrollment list must not contain the ID | Re-enroll via M-03 where protocol requires | API (Phase D only) |
+| M-03 | `POST /api/v2/guardian/enrollments/ticket` | `create:guardian_enrollment_tickets` | GA; any plan | Ticket (single-use); documented ~5-day expiry | Resulting enrollment via M-01 | Delete enrollment (M-02 on new ID) | API (Phase B) |
+| M-04 | `GET /api/v2/users/{id}/enrollments`, `GET /api/v2/users/{id}/authentication-methods` | `read:users` | GA; any plan | Enrollment inventory | Cross-check with M-01 | None | API (Phase A/B/D) |
+| M-05 | `GET /api/v2/sessions/{sessionId}` | `read:sessions` | GA; **Enterprise** | 200 session detail / 404 absent | Absence on introspection | None | API (Phase A/C) |
+| M-06 | `GET /api/v2/users/{userId}/sessions` | `read:sessions` | GA; **Enterprise** | 200 session list | Empty list = session confirmation | None | API (Phase A/C) |
+| M-07 | `DELETE /api/v2/sessions/{sessionId}` | `delete:sessions` | GA; **Enterprise** | 202 accepted (never confirmation) | M-05/M-06 polling to absence | None | API (Phase C) |
+| M-08 | `DELETE /api/v2/users/{userId}/sessions` | `delete:sessions` | GA; **Enterprise** | 202 | M-06 polling to empty | None | API (Phase C, only if M-07 path insufficient) |
+| M-09 | `POST /api/v2/sessions/{id}/revoke` | `delete:sessions` + `delete:refresh_tokens` | GA; **Enterprise** | 202 | M-05/M-06 + M-11 polling | None | API (Phase C) |
+| M-10 | `POST /api/v2/users/{id}/revoke-access` (body `{session_id?, preserve_refresh_tokens? default false}`) | `delete:sessions` + `delete:refresh_tokens` (exact per official OpenAPI) | GA; **Enterprise** | 202 | M-05/M-06 + M-11 polling | None | API (Phase C) |
+| M-11 | `GET /api/v2/users/{user_id}/refresh-tokens` (200 paginated); `GET /api/v2/refresh-tokens/{id}` (200 present / 404 absent) | `read:refresh_tokens` | GA; **Enterprise** | 200 list / 200 item / 404 absent | 404 on by-ID read = refresh absence oracle; plus behavioral readback (exchange attempt with revoked token must fail) | None | API (Phase A/C) |
+| M-12 | `DELETE /api/v2/refresh-tokens/{id}` | `delete:refresh_tokens` | GA; **Enterprise** | Success; token unusable thereafter | M-11 404 + failed exchange attempt | None | API (Phase C; primary per-token path) |
+| M-13 | `POST /api/v2/refresh-tokens/revoke` (bulk by ID list / user / user+client / user+client+audience; no Online Refresh Tokens) | `delete:refresh_tokens` | Endpoint + scope confirmed; **release/entitlement verified at Gate 2** — if unavailable or Early Access without validation entitlement, this path STOPS and Phase C uses M-12 only | 202 if usable | M-11 polling | None | API (Phase C, entitlement-gated) |
+| M-14 | `POST /api/v2/users`; `GET /api/v2/users`, `GET /api/v2/users-by-email` | `create:users`, `read:users` | GA; any plan | Created user / user record | GET present | M-17 | API (Phase B/F) |
+| M-15 | `PATCH /api/v2/users/{id}` | `update:users` | GA; any plan | Updated user | GET reflects change | Restore-then-delete via M-17 | API (Phase B, conditional) |
+| M-16 | `POST /api/v2/users/{id}/identities`; `DELETE /api/v2/users/{id}/identities/{provider}/{user_id}` | `update:users` | GA; any plan | Linked / unlinked identities | Identities array readback | Unlink + delete users | API (Phase B/F, `VAL-L-*` only) |
+| M-17 | `DELETE /api/v2/users/{id}` | `delete:users` | GA; any plan | Deleted | GET 404/absent | — (is cleanup) | API (Phase F) |
+| M-18 | `POST /api/v2/tickets/password-change`, verification tickets; `POST /api/v2/jobs/verification-email` | `create:user_tickets` (+ `update:users` for jobs) | GA; any plan | Ticket / job accepted | Ticket use / user record | Tickets expire | API (Phase B) |
+| M-19 | `GET /api/v2/logs`, `GET /api/v2/logs/{id}` | `read:logs` (+ `read:logs_users` if user-scoped) | GA; any plan | Log entries (rate-limited; retention-bounded) | N/A (evidence source) | None | API (Phase A–F) |
+| M-20 | Prompts read endpoints | `read:prompts` | GA; any plan | Prompt text | N/A | None | API (Phase B, observe-only; no text customization) |
+| M-21a | Application Connections tab; connection "Try" | None | N/A (tenant defaults) | Toggle state; Try returns profile | Toggle readback | Disable toggles (restore) | **Dashboard only** |
+| M-21b | Dashboard Create Application, or `POST /api/v2/clients` | `create:clients` (+ `read:clients`, `delete:clients`) | GA; any plan | Client record | GET client | `DELETE /api/v2/clients/{id}` + readback | **Dashboard preferred**; API only if operationally required |
+| M-21c | Dashboard Create API, or `POST /api/v2/resource-servers` | `create:resource_servers` (+ read/delete) | GA; any plan | Resource-server record | GET record | `DELETE /api/v2/resource-servers/{id}` + readback | **Dashboard preferred**; API only if required |
+| M-21d | Dashboard Create + Deploy Action, or Actions Management API | `create:actions`, `update:actions` (+ read/delete) | GA; any plan | Deployed action + version | GET action/version; tenant-log deploy event | Unbind trigger, delete versions/action + readback | **Dashboard preferred**; API only if required |
+
+No scope remains "to be discovered during execution": every scope above is fixed from official provider
+evidence. If the tenant contradicts any contract, Gate 2 marks the affected test INCOMPLETE until
+confirmed — never a widening, never a pass.
+
 ## 7. R7 F1/F2 exact-factor validation protocol (finalized approach)
 
 Preconditions for every scenario: the §8 R5 revocation barrier is established for the scenario first;
@@ -196,9 +292,9 @@ F1/F2 identifiers are recorded from readback (never assumed); every destructive 
 readback; all IDs are masked in evidence. `DELETE …/enrollments/{id}` returning `204` is an HTTP outcome,
 not yet a safety verdict — the verdict comes from readback.
 
-### Scenario 1 — F1 only (AC-01/AC-02 baseline)
+### Scenario 1 — F1 only (AC-01/AC-02 baseline, identity `VAL-F-01a`)
 
-1. On `VAL-F-01`, enroll TOTP factor F1 (via ticket/Universal Login as Gate 2 specifies).
+1. On `VAL-F-01a`, enroll TOTP factor F1 (via ticket/Universal Login as Gate 2 specifies).
 2. `GET /users/{id}/enrollments` → record immutable F1 enrollment ID (`totp|dev_…` shape expected).
 3. `GET /guardian/enrollments/{F1}` → verify `status: confirmed`, type metadata; record.
 4. `DELETE /guardian/enrollments/{F1}` → record HTTP outcome + scope used + audit-log excerpt.
@@ -207,47 +303,81 @@ not yet a safety verdict — the verdict comes from readback.
 6. **Pass:** F1 gone on readback; audit shows exactly one deletion bound to the F1 ID; no other factor
    named or affected. **Fail:** any other enrollment affected, F1 still present, or audit missing/ambiguous.
 
-### Scenario 2 — F1 + F2 replacement safety (AC-03 core)
+### Scenario 2 — F1 + F2 replacement safety (AC-03 core, identity `VAL-F-01b`)
 
-1. Establish F1 on a fresh `VAL-F-01` state; record F1 ID; confirm via readback.
+1. Establish F1 on fresh `VAL-F-01b`; record F1 ID; confirm via readback.
 2. Establish F2 (second TOTP enrollment; requires `allow_multiple_enrollments`/ticket path — Gate 2
    states the exact precondition; if the provider forbids a second TOTP factor, record that as
    blocking evidence for AC-03 rather than simulating it).
 3. Record F2 ID; `GET` both enrollments; confirm both `confirmed`.
 4. Execute deletion bound to F1 only (`DELETE …/{F1}`); record outcome + audit.
-5. Readback: F1 absent; **F2 still present, `confirmed`, and usable** (usability = a genuine TOTP
-   challenge against F2 succeeds, or the closest provider-supported proof Gate 2 defines).
-6. **Pass:** F1 absent AND F2 present-and-usable AND audit binds the deletion to F1 alone.
-   **Fail (hard R7):** F2 missing, altered, unusable, or replaced — result is
+5. Readback: F1 absent; **F2 still present, `confirmed`, and usable** — usability is proven ONLY by a
+   genuine TOTP challenge using F2 that succeeds (§7.5). No "closest" substitute may establish R7.
+6. **Pass:** F1 absent AND F2 present AND genuine F2 challenge succeeds AND audit binds the deletion to
+   F1 alone. **Fail (hard R7):** F2 missing, altered, unusable, or replaced — result is
    `AUTH0 NOT QUALIFIED` unless a separately approved 11thONUS architecture legitimately satisfies R7
-   (no averaging, no reinterpretation).
+   (no averaging, no reinterpretation). **INCOMPLETE (not pass):** a genuine F2 challenge cannot be
+   executed — R7 remains INCOMPLETE.
 
-### Scenario 3 — stale retry / already-absent F1 (AC-04/AC-05)
+### Scenario 3 — stale retry / already-absent F1 (AC-04/AC-05, identities `VAL-F-01c`/`VAL-F-01d`)
 
-1. Starting from Scenario 1 end-state (F1 already absent), replay `DELETE …/{old-F1-ID}`.
-2. Record the exact status code and error shape (400/401/403/404-or-idempotent — whatever the tenant
-   returns; the documented contract lists no 404, so Gate 2 must not assume one).
-3. With F2 present (Scenario 2 end-state variant), replay the stale F1 delete and prove no other factor
-   is affected (no aliasing, no positional delete).
+1. On fresh `VAL-F-01c`: enroll F1, delete F1, verify absence (fresh end-state, never inherited).
+2. Replay `DELETE …/{old-F1-ID}`; record the exact status code and error shape (whatever the tenant
+   returns; no 404 contract is assumed).
+3. On fresh `VAL-F-01d`: establish F1+F2, delete F1, then replay the stale F1 delete against confirmed
+   F2 and prove no other factor is affected (no aliasing, no positional delete).
 4. **Pass:** stale delete affects nothing; idempotency verdict stated with the observed status table.
    **Fail:** any other factor removed, disabled, or altered by the stale call.
 
-### Scenario 4 — concurrent/replacement race
+### Scenario 4 — genuine overlap races (CORR-002 revision)
 
-Approximation (no provider-side lock is assumed to exist):
+A controlled stale sequence (`B enrolls F2 → A deletes F1`) does NOT prove concurrency. Each race below
+forces genuine overlap and proves it; if the intended overlap/order cannot be demonstrated, the run is
+**VALIDATION INCOMPLETE**, never PASS.
 
-```text
-recovery bound to F1 → F2 appears (concurrent enrollment) → stale F1 operation executes → readback
-```
+Overlap apparatus (all races): synchronized start barrier across two separate clients/processes (operator
+A = deleter, operator B = enroller); controlled client-side delays where possible; per-run correlation
+IDs sent with (or logged alongside) each operation; local monotonic timestamps at dispatch and at
+observed completion; provider/tenant log timestamps where available; immutable F1/F2 IDs recorded
+*before* dispatch; minimum 3 repeated trials per race; poll to stable provider state after every run;
+replay the stale F1 deletion after stabilization; verify exact factor state; close every run with the
+genuine F2 TOTP challenge (§7.5).
 
-1. Operator A prepares an F1-bound deletion (ID recorded, revocation barrier established).
-2. Operator B (or an automated second path) enrolls/confirms F2 on the same identity before A's delete executes.
-3. A executes the stale F1 delete; both operators record timestamps; audit-log order is captured.
-4. Variants: delete-before-confirm (F2 mid-enrollment, `active: false`) and confirm-before-delete.
-5. **Pass:** in every variant F2 (confirmed or confirming) survives the stale F1 operation, or the
-   provider refuses the stale call without side effects. **Fail:** any variant removes or corrupts F2.
-   If the provider serializes the operations, the serialization evidence (ordering + error shape) is
-   recorded as the race verdict.
+### Race A — F1 delete dispatched while F2 enrollment confirmation is pending (`VAL-F-01e`)
+
+1. B begins F2 enrollment and holds it pre-confirmation; barrier-synchronized, A dispatches
+   `DELETE …/{F1}` while confirmation is still pending.
+2. Prove dispatch order (A-dispatch timestamp < B-confirm timestamp) and completion order from both
+   client timestamps and tenant logs.
+3. Poll to stable state; verify F1 absent and F2 (`confirmed` or still confirming) intact; replay stale
+   F1 delete; genuine F2 challenge on stabilization (if F2 never reaches `confirmed` through no fault
+   of the delete, record INCOMPLETE with cause rather than forcing the challenge).
+
+### Race B — F2 confirmation dispatched while F1 deletion is in flight (`VAL-F-01f`)
+
+1. A dispatches `DELETE …/{F1}`; barrier-synchronized, B dispatches F2 confirmation while the delete
+   has not yet observably completed.
+2. Prove the overlap window (B-dispatch timestamp < A-completion timestamp); record which operation
+   the provider completed first from tenant-log order.
+3. Poll to stable state; verify exact factor state; replay stale F1 delete; genuine F2 challenge.
+
+### Race C — stale F1 delete after F2 is confirmed (on `VAL-F-01d` end-state or a dedicated fresh pair)
+
+1. With F2 `confirmed` and F1 already deleted, replay `DELETE …/{old-F1-ID}`.
+2. Verify F2 untouched and still genuine-challenge-usable afterwards.
+
+**Pass (all races):** overlap demonstrated with timestamps AND losing/winning order proven AND F2
+survives every run with a genuine post-run challenge success, or the provider refuses the stale call
+without side effects (refusal + ordering evidence recorded). **Fail (hard R7):** any run removes or
+corrupts F2. **INCOMPLETE:** overlap cannot be demonstrated, trial count not met, or F2 usability
+cannot be genuinely challenged.
+
+### Scenario 5 — genuine F2 usability proof (§7.5, applies to Scenarios 2–4)
+
+R7 requires more than F2 remaining listed. After the relevant F1 deletion/race scenario, perform a
+genuine TOTP challenge using F2 (Universal Login MFA challenge against the surviving enrollment with a
+validator-generated code). Required result: F2 remains enrolled AND F2 successfully satisfies an actual
+second-factor challenge. If a genuine F2 challenge cannot be executed, R7 remains INCOMPLETE.
 
 Gate 1 performs none of these tests; it fixes the sequences, readbacks, and verdicts above so Gate 2
 reviews exact contracts without redesigning the architecture.
@@ -286,6 +416,44 @@ controlled recovery scenario
   scenario stops — F1 is not deleted, and the outcome is recorded (VALIDATION INCOMPLETE on missing
   entitlement/observability; NOT QUALIFIED on a disproven fail-closed contract — never a pass by expiry).
 
+### 8.1 R5 end-to-end confirmation oracle (CORR-002 — the testable fail-closed condition)
+
+F1 deletion is forbidden unless BOTH conditions hold:
+
+- **(P) Provider-side required readback:** session list empty AND session introspection absent for every
+  scenario session (M-05/M-06) AND refresh-token list empty AND by-ID refresh read 404 for every
+  scenario refresh token (M-11) AND revocation-window polling converged within the declared bound.
+- **(A) Application-side acceptance boundary:** the old-context exercise below passes AND the verifier
+  rule below holds on every observed token.
+
+**Old-context capture (before cutoff, on `VAL-R-01`):** record the active browser/session context
+(session cookie jar + session ID from readback), every refresh token issued for the scenario (token
+identifiers + which client/audience), and any other provider authentication context that can mint
+(ID-token/refresh pairs observed at login).
+
+**Old-context exercise (after the 11thONUS cutoff/barrier is established), all four attempts mandatory:**
+
+1. Attempt to use the pre-cutoff browser session (silent `prompt=none` + refresh exchange with a
+   captured pre-cutoff refresh token) BEFORE provider readback completes.
+2. Repeat AFTER session readback indicates absence.
+3. Repeat AFTER refresh-token readback/revocation indicates absence.
+4. Repeat AFTER the bounded provider convergence period ends.
+
+For each attempt record: what was attempted, provider response (new tokens minted vs error shape), and —
+for any token minted — the 11thONUS verifier verdict.
+
+**Verifier rule (applied to every token observed):** let `gen` be the token's session-generation value
+per §10 and `cutoff` the 11thONUS epoch. ACCEPT only if `gen` is present, unambiguous, ≥ `cutoff`, AND
+the token is cryptographically valid (signature/`iss`/`aud`/`exp`). REJECT (fail closed) if `gen` is
+missing or ambiguous, if `gen < cutoff` — even when `token.iat > cutoff` — or if the token mint came
+from a pre-cutoff authentication generation. A genuinely fresh post-cutoff primary authentication must
+produce distinguishable accepted evidence (`gen ≥ cutoff`, fresh challenge where MFA applies).
+
+**(A) passes** iff attempts 1–4 yield zero accepted tokens minted from the old generation AND the fresh
+post-cutoff authentication verifies. **If no trustworthy Auth0 signal can support the `gen` distinction
+(§10 tenant-verification fails), Gate 2 classifies this as a potential hard Auth0/R5 failure** — it
+does not invent another signal, weaken the oracle, or pass by expiry.
+
 ## 9. Separate raw provider experiments (boundary)
 
 Provider behaviour that must be characterized without representing a valid 11thONUS recovery is fenced
@@ -307,10 +475,52 @@ validation evidence plus separate Founder/security authority; Gate 1 specifies t
 - **Bare JWT `iat` is disproved as sufficient** (VAL-001 §8: a pre-revocation session/refresh can mint a
   JWT after the cutoff with a post-cutoff `iat`). The comparison must use an immutable pre-cutoff
   session-generation signal and fail closed when that signal is absent.
-- **Candidate signals to test on the tenant:** `auth_time` presence in tokens; session-generation
-  identifier; Action-emitted namespaced generation claim in access tokens (bare `amr` key is restricted —
-  custom claims must be namespaced); server-side blocked-until-fresh-auth state as the purely
-  domain-side closing.
+
+### 10.1 Narrowed candidate generation sources (CORR-002 — explicit testable mechanisms)
+
+Vague option lists are removed. Gate 2 tests exactly these candidates, in order. Documented Auth0 facts
+used: post-login Actions run on interactive login AND on refresh-token exchange; the post-login event
+exposes `event.authentication.methods` (session-completed methods; first-factor values include `pwd`,
+`federated`, `sms`; completed MFA appears as `{name: 'mfa', timestamp}`) and, on refresh flows,
+`event.refresh_token` (id, `created_at`, session binding for browser flows, `last_exchanged_at`);
+ID tokens carry provider-native `auth_time` when `max_age` (e.g. `max_age=0`) or `prompt=login` is
+requested; custom claims must be namespaced; the signed JWT is built after Actions run.
+
+- **G-1a (primary, Action-derived): namespaced generation claim sourced from the provider session.**
+  The Action reads the session identifier exposed in the post-login event for the current transaction
+  (candidate field: the session object/ID bound to the login; Gate 2 first dumps the sanitized event
+  key inventory — key names only, never values — to pin the exact field) and emits it as
+  `https://11thonus.val/generation`. Why generation, not mint time: the session identifier is created
+  once per interactive authentication and is identical across every token minted within that session,
+  changing only on genuinely fresh authentication. Tenant must verify: identical value across initial
+  login, silent, and refresh-derived tokens of one session; new value after fresh primary
+  authentication; field present in all three flows.
+- **G-1b (secondary, Action-derived): generation = earliest `event.authentication.methods[].timestamp`.**
+  The Action emits the minimum timestamp across the session-completed methods (the initial primary
+  factor time). Why generation: the first entry records when the session's authentication began, not
+  when any later token was minted. Tenant must verify: unchanged across silent/refresh exchanges; new
+  value on fresh authentication; `mfa`-entry timestamps distinguished from the minimum.
+- **G-2 (ID-token path only, provider-native): `auth_time` with `max_age=0` requested.** Tenant verifies
+  presence in ID tokens on forced re-authentication and stability semantics across refresh/silent
+  (expected: original-authentication time, not mint time). Access tokens cannot use G-2 (no `auth_time`
+  natively) — the API path requires G-1a/G-1b.
+- **Ruled out:** any Action-minted UUID persisted in user/app metadata or `api.cache`-style custom
+  state (relies on forbidden persisted state per §11.1); bare `iat`; any client-supplied value.
+
+**Stability matrix Gate 2 records per candidate** (initial interactive auth / silent `prompt=none` /
+refresh-token exchange / session continuation / post-cutoff mint from old context / genuinely fresh
+post-cutoff auth): emitted value, changed-or-stable verdict, present-or-absent verdict.
+**Absence behavior:** missing generation field in any flow ⇒ claim absent ⇒ verifier REJECTS.
+**Ambiguity behavior:** two different values for one session, or a value that changes on refresh ⇒
+candidate DISQUALIFIED, verifier REJECTS anything relying on it.
+**Verifier comparison rule:** per §8.1 (`gen` present, unambiguous, ≥ `cutoff`, else reject).
+**Fail-closed on unavailable event field:** if the required event field is absent in any required flow,
+the Action emits nothing for that flow (never a fallback value, never a cached value).
+**Uncertainty recorded:** whether `event.session`-family fields are exposed in the interactive (non-
+refresh) post-login event, and whether `methods` timestamps freeze at session start or update per
+exchange, is NOT established by documentation — Gate 2's key-inventory probe + stability matrix decides.
+If no candidate tenant-verifies, Gate 2 classifies a potential **hard Auth0/R5 failure**; no substitute
+signal is invented and no authority or guarantee is manufactured.
 - **Test race:**
   ```text
   pre-cutoff session/refresh context exists (VAL-R-01)
@@ -342,7 +552,65 @@ execution verifies and records:
 7. Absence-of-evidence handling: missing/ambiguous evidence fails closed (no privileged access).
 8. Mapping rule preserved: `verifiedSecondFactor = true` only from cryptographically verified genuine
    second-factor evidence on the current token — never from enrollment state, client flags, persisted
-   markers, or refresh-carried staleness.
+   markers, or refresh-carried staleness. Exact mapping in §11.3; Gate 2 tests it, never designs it.
+
+### 11.1 Namespaced MFA-claim derivation contract (CORR-002 — exact Action rule)
+
+Documented fact constraining the design: the post-login trigger runs on interactive login AND on
+refresh-token exchange, and `event.authentication.methods` accumulates session-completed methods — so a
+naive "methods contains `mfa` ⇒ satisfied" rule would manufacture stale satisfaction on refreshed
+tokens. The Action obeys this exact rule:
+
+**EMIT `https://11thonus.val/mfa = { method, mfa_time }` ONLY IF ALL hold:**
+
+1. The current transaction is an interactive login: `event.refresh_token` is ABSENT (its presence proves
+   a refresh-token exchange, which never contains a fresh second-factor challenge).
+2. `event.authentication.methods` contains an entry with `name === 'mfa'`.
+3. That entry's `timestamp` falls within the current transaction window (freshness: timestamp ≥ the
+   transaction start as observed in the event; Gate 2 pins the exact comparison against tenant
+   behavior — e.g. transaction/request time available in the event).
+4. `method` is drawn from the tenant-observed factor detail for the completed challenge (TOTP path
+   expected; Gate 2 pins the allowed value set from observation — values are allowlisted, never
+   open-ended).
+
+**FORBIDDEN sources (the Action must never read these for MFA satisfaction):** MFA enrollment state
+(`event.user.multifactor` enrollment array and equivalents); `user_metadata`; `app_metadata`;
+`client.metadata`; historical session metadata; prior authentication state; `event.stats` or other
+history; persisted custom state (`api.cache`-family, metadata round-trips); client flags or request
+parameters; refresh-carried values (`event.refresh_token.*` used for anything except proving
+refresh-ness); any value written by a previous Action run.
+
+**Consequences:** on silent authorization, refresh-token exchange, and normal token renewal the claim is
+ABSENT (post-login either does not run, or runs with `event.refresh_token` present, or runs without a
+fresh in-transaction `mfa` entry). If Auth0 does not expose sufficient provider-verified
+current-transaction evidence on the tenant, the claim stays absent. Absence ⇒
+`verifiedSecondFactor = false`. Ambiguity (multiple `mfa` entries with conflicting timestamps, or
+timestamp outside any sane transaction window) ⇒ absent ⇒ `false`.
+
+### 11.2 MFA negative cases (all mandatory at Gate 2; none may yield `verifiedSecondFactor = true`)
+
+1. Enrolled-but-not-challenged user (TOTP enrolled, primary-only login). 2. Client-supplied MFA boolean
+   (forged claim/SDK flag). 3. `user_metadata` MFA flag. 4. `app_metadata` MFA flag. 5. Old persisted
+   Action value replayed. 6. Refresh-token exchange token carrying a login-time claim value (stale by
+   construction — verifier must reject via freshness+generation rule). 7. Silent authorization token.
+8. Normal token renewal without fresh challenge. 9. Tampered namespaced claim (re-signed payload with
+   altered claim → signature failure). 10. Missing claim. 11. Malformed claim (wrong type/shape/value).
+
+### 11.3 Provider-neutral mapping (candidate mapping Gate 2 proves)
+
+```text
+verified Auth0 token (signature/iss/aud/exp valid)
+→ validated current-transaction MFA evidence:
+  (a) ID token: amr contains 'mfa' (fresh-login issuance; absent on silent/refresh by provider behavior), OR
+  (b) access token: namespaced claim present per §11.1 with allowlisted method AND mfa_time fresh
+      within the token's own generation AND generation ≥ cutoff (§§8.1/10.1)
+→ AuthenticatedCredential.verifiedSecondFactor (boolean, provider-neutral)
+```
+
+Auth0-specific claim names (`https://11thonus.val/mfa`, `amr`) never enter durable domain semantics —
+the adapter translates them to the boolean and discards them. `verifiedSecondFactor = true` requires the
+full chain; any break (bad signature, wrong iss/aud, expired, absent/ambiguous/stale evidence,
+generation < cutoff) yields `false`.
 
 ## 12. Functions/API validation architecture (finalized approach)
 
@@ -355,13 +623,36 @@ Disposable transport experiment only — no production Functions are implemented
   raw token re-verified server-side; `request.auth` is unused for authorization; no App Check wired).
   The callable-vs-HTTPS transport decision is design detail for a future migration programme, but the
   contract test plus the decision evidence are required here (AC-22–AC-27).
-- **Harness matrix (each with pass/fail fixed at Gate 2):** valid token verifies; unknown `kid`
-  (rotation) fails closed; expired rejected; wrong issuer rejected; wrong audience rejected; malformed
-  rejected; tampered payload (bad signature) rejected; `alg=none`/non-allowlisted `alg` rejected;
-  MFA-evidence mapping observed; revocation-cutoff seam enforced (`pre-cutoff-generation` and
-  `missing-generation-signal` rejections; post-cutoff acceptance); `AuthenticationReference` mapping
-  holds (provider subject stays an opaque external reference — never durable identity/role/permission
-  authority); App Check coexistence validated (attestation independent of user auth; never a substitute).
+- **Harness matrix (each with pass/fail fixed at Gate 2):** valid token verifies; expired rejected;
+  wrong issuer rejected; wrong audience rejected; malformed rejected; tampered payload (bad signature)
+  rejected; `alg=none`/non-allowlisted `alg` rejected; MFA-evidence mapping observed (§11.3);
+  revocation-cutoff seam enforced (`pre-cutoff-generation` and `missing-generation-signal` rejections;
+  post-cutoff acceptance); `AuthenticationReference` mapping holds (provider subject stays an opaque
+  external reference — never durable identity/role/permission authority); App Check coexistence validated
+  per §12.3 (attestation independent of user auth; never a substitute); JWKS rotation handled per §12.2
+  (Cases A/B distinguished — never conflated).
+
+### 12.2 JWKS rotation matrix (CORR-002 — Cases A/B distinguished)
+
+- **Allowed algorithms:** `RS256` only. `none`, `HS256`/`HS384`/`HS512`, and any non-allowlisted `alg`
+  are rejected before key lookup.
+- **Key expectations:** RSA keys with `use: 'sig'` and stable `kid`s from
+  `https://{tenant}/.well-known/jwks.json`.
+- **Case A — legitimate newly rotated key: MUST PASS.** Provider publishes the new key in JWKS; token
+  uses the new `kid`; verifier's cache initially misses → exactly ONE controlled JWKS refresh occurs →
+  key found → signature verifies against the allowlist → token PASSES (assuming all other checks pass).
+- **Case B — arbitrary unknown `kid`: MUST FAIL CLOSED.** After the one controlled refresh the key is
+  still absent → token REJECTED. No second refresh, no retry storm, no fallback key, and verification
+  is never disabled to "recover" from an unknown key.
+- **Old-key behavior:** a previously published key still listed in JWKS verifies normally (rotation
+  grace); once removed from JWKS, tokens under that `kid` follow Case B after cache refresh.
+- **Cache policy:** bounded TTL (Gate 2 fixes the value, order of minutes) + single on-demand refresh on
+  unknown `kid` only; refresh failures preserve the last good JWKS set and fail closed on misses.
+- **JWKS endpoint outage:** fail closed — no token verifies against a stale-miss; outage is recorded as
+  INCOMPLETE for the affected checks, never a bypass.
+- **Malformed JWKS / key-use violations** (`use` missing or not `sig`, non-RSA `kty`, malformed `n`/`e`):
+  fail closed for tokens requiring those keys; recorded as INCOMPLETE with cause where the provider
+  itself serves the malformed set.
 - **Mechanics precedent:** the VAL-001 disposable harness (11/11, `/tmp`, uncommitted) proves the
   verification mechanics pattern; the tenant harness proves provider behaviour. Mechanics results are
   never reported as tenant-observed behaviour.
@@ -390,14 +681,31 @@ under `FD-AUTH-ARCH-002-VAL-002-AMEND-001`** (A-1 + A-2, plus A-3 for namespaced
 Gate 2 deciding it is actually necessary). ID-token-only observations could proceed under prior authority
 but cannot satisfy the track alone. No unauthorized creation is performed to route around any blocker.
 
-## 13. App Check treatment
+## 13. App Check treatment (CORR-002 matrix)
 
 App Check (device/app attestation) is orthogonal to user authentication: it attests *which app instance*
 calls, never *which user* or *what they may do*. Firebase App Check can continue protecting
-Functions/API independently of Firebase Authentication. The experiment verifies coexistence (attested +
-unattested calls against the harness; App Check never substitutes for the bearer-user verification, and
-bearer verification never depends on App Check). Current gap noted for the future migration design only:
-no `enforceAppCheck` is wired today.
+Functions/API independently of Firebase Authentication. Current gap noted for the future migration
+design only: no `enforceAppCheck` is wired today.
+
+- **Pinned non-production environment:** existing DEV Firebase project `eleventh-on-us-dev` with its
+  already-authorized configuration, or a local/emulated App Check fixture (fixture preferred — zero
+  provider contact). No new Firebase/App Check resource is created in this task or Gate 2 without
+  separate authority; if conclusive testing requires one, Gate 2 stops for authority. Production
+  Firebase configuration is forbidden.
+- **Transport:** Auth0 JWT via `Authorization: Bearer <jwt>`; App Check token via `X-Firebase-AppCheck`.
+  The harness validates each independently and never lets one substitute for the other.
+- **Gate 2 coexistence matrix (each case: Auth0 verdict × App Check verdict × expected harness outcome):**
+  1. both valid → Auth0 verified per §§11–12, App Check valid → request evaluated on Auth0 identity;
+  2. valid Auth0 / missing App Check → Auth0 identity established, attestation absent (recorded);
+  3. missing Auth0 / valid App Check → REJECT (attestation never establishes user identity or MFA);
+  4. invalid Auth0 / valid App Check → REJECT;
+  5. valid Auth0 / invalid App Check → Auth0 identity established, attestation failed (recorded);
+  6. expired App Check → attestation failed; Auth0 evaluated independently;
+  7. wrong Firebase project/app in App Check token → attestation failed;
+  8. replayed App Check token where meaningful → attestation failed/flagged;
+  9. neither valid → REJECT.
+- App Check never establishes user identity, authorization, or MFA satisfaction under any case.
 
 ## 14. Secret-handling plan (finalized approach)
 
@@ -415,6 +723,27 @@ no `enforceAppCheck` is wired today.
 - **Closure revocation:** validation M2M secret revoked/rotated, client deleted/disabled; validation
   refresh tokens revoked; sessions terminated; temporary keys destroyed. Evidence required per §15.
 
+### 14.1 Operational secret controls (CORR-002 additions — all mandatory at Gate 2/live execution)
+
+- `umask 077` for any shell/process creating secret-bearing files; no `set -x` (or equivalent tracing)
+  in any session handling secrets; no secret literals in command arguments (environment/file-descriptor
+  passing only).
+- Shell-history suppression for the execution session (`HISTFILE` unset/redirected or equivalent; verify
+  no secret landed in history afterwards); minimum child-process environment (secrets exported only to
+  the exact command needing them, in the narrowest scope).
+- Cleanup traps: temporary secret-bearing files removed and environment variables unset on exit,
+  error, and signal (trap handlers verified, not assumed).
+- Trusted/local-only live provider execution by the authorized operator; no provider-secret execution
+  in untrusted PR CI (CI runs documentation checks only — it never receives tenant/M2M/TOTP/App Check
+  material).
+- Output sanitization before persistence: every captured log/response redacted (masks from the
+  evidence plan) before it touches disk, artifact, or report.
+- No screenshots, screen recordings, or pastes containing QR codes, TOTP seeds/codes, bearer tokens,
+  refresh tokens, client secrets, private keys, or service-account/App Check credentials — violation
+  triggers secret rotation plus evidence quarantine.
+- Final scans (both recorded): repository secret scan AND evidence/artifact secret scan (reports,
+  fixtures, logs, harness output) — clean verdicts required for both.
+
 ## 15. Cleanup plan (finalized approach)
 
 | Resource | Action | Classification |
@@ -424,7 +753,7 @@ no `enforceAppCheck` is wired today.
 | Sessions | Revoke/terminate where supported (M-07–M-10) | Mandatory revoke (best-effort + readback where API permits) |
 | Refresh tokens | Revoke/delete (M-12/M-13) | Mandatory revoke |
 | M2M client + secret | Disable/delete client; revoke secret | Mandatory delete + revoke |
-| Temporary app/connection | Delete | Mandatory delete |
+| Temporary app/connection | Delete A-1/A-2 objects (authorized creations); default connections are RESTORED, never deleted | Mandatory delete (created) / mandatory restore (defaults) |
 | Google validation configuration | Remove test connection config | Mandatory delete (or restore-to-absent) |
 | Validation tenant itself | Delete if the approved cleanup plan requires it AND provider/account permissions permit API deletion; otherwise execute the exact documented manual cleanup requirement | Conditional (Founder/operational-plan authority for any retention as a standing test tenant); manual cleanup if API unavailable |
 
@@ -432,6 +761,25 @@ no `enforceAppCheck` is wired today.
 per-resource readback (user `GET` absent, enrollment absent, session/token lists empty, client
 absent/disabled); secrets revoked/rotated attestation; manual-cleanup statement where applicable.
 Unresolved mandatory cleanup ⇒ `VALIDATION INCOMPLETE — BOUNDED EVIDENCE / CLEANUP REQUIRED`.
+
+### 15.1 Cleanup lifecycle additions (CORR-002 — all mandatory)
+
+- Sanitized before-snapshot of EVERY configuration item modified (Action trigger bindings, connection
+  enablement, application callbacks/settings, tenant settings, signing-key state, API grants,
+  email/prompt settings touched). Snapshots carry key names + non-secret values only.
+- A-3: unbind the Login Flow trigger BEFORE deleting Actions; restore the original trigger bindings
+  from the before-snapshot; delete action versions and the action itself where provider semantics
+  permit, with absent-readback.
+- Restore (not delete): connection enablement states, application callbacks/settings, tenant/signing
+  configuration, and default connection settings — defaults are restored to their snapshotted state,
+  never deleted.
+- Delete the secondary user recreated during unlink tests (`VAL-L-02` and any re-created counterpart).
+- Remove A-2 API client grants (`DELETE /api/v2/client-grants/{id}` or dashboard equivalent + readback).
+- Revoke all validation refresh tokens and terminate all validation sessions (M-07–M-13 as applicable).
+- Issued access/ID JWTs: handled through the tested cutoff/expiry semantics (§§8.1/10.1) — no provider
+  deletion exists for already-issued JWTs; record the residual-expiry window per token type.
+- Record Auth0 tenant-log retention limits (what evidence ages out and when) and the tenant
+  retention/deletion decision with its authority.
 
 ## 16. Commercial / vendor evidence plan (evidence only — no purchase, no terms)
 
@@ -469,25 +817,28 @@ yields `VALIDATION INCOMPLETE — COMMERCIAL EVIDENCE REQUIRED` (no agent waiver
 ## 18. Repository changes (this Gate 1 task)
 
 - New documentation-only Gate 1 approach report (this file), including CORR-001 (§5.1, §12.1,
-  M-21a–M-21d, §19–§20: provider-resource authority reassessment concluding
-  BLOCKED — BOUNDED PROVIDER RESOURCE AUTHORITY AMENDMENT REQUIRED).
-- Required tracking records: `docs/00-governance/documentation-changes-log.md` (Entries 192–193) and
-  `docs/changes/IMPLEMENTATION_CHANGES.md` (Gate 1 entry + CORR-001 entry, with the prior
-  `AUTH-ARCH-002-VAL-WP-001-AUTH-001` authorization record restored).
+  M-21a–M-21d, §19–§20: provider-resource authority reassessment and AMEND-001 grant) and CORR-002
+  (§21: independent-review corrections P1-1–P1-4/P2-1–P2-3 — R5 oracle, phase-scoped M2M, A-1 SPA
+  decision, R7 isolation/concurrency/usability, MFA-claim derivation, JWKS/App Check matrices, secret
+  and cleanup controls, AC-19 wording).
+- Bounded WP wording correction: Required Tests table AC-19 "non-applicability" → VALIDATION
+  INCOMPLETE with cause (no authority change).
+- Required tracking records: `docs/00-governance/documentation-changes-log.md` (Entries 192–195) and
+  `docs/changes/IMPLEMENTATION_CHANGES.md` (Gate 1 + CORR-001 + AMEND-001 + CORR-002 entries, with the
+  prior `AUTH-ARCH-002-VAL-WP-001-AUTH-001` authorization record restored).
 - Production-code changes: **NONE**. Dependencies/config changes: **NONE**. Auth0 resources created:
   **NONE**. Live Auth0 API calls: **NONE**. `DEC-AUTH-002`, `DEC-SEC-005`/R1–R10, `DEC-DATA-008`,
   `FD-COM-001`, and the `AUTH-MFA-003D-IMPL-001` blocked state are consumed, unmodified.
 
-## 19. Gate 1 completion state (AMEND-001: authority granted 2026-09-09)
+## 19. Gate 1 completion state (CORR-002: independent-review corrections applied 2026-09-09)
 
-**READY FOR FEF HIGH-RISK GATE 1 INDEPENDENT REVIEW**
+**READY FOR FOCUSED FEF HIGH-RISK GATE 1 RE-REVIEW**
 
-Founder amendment `FD-AUTH-ARCH-002-VAL-002-AMEND-001` grants the bounded A-1/A-2/A-3 authority requested
-in §20 (each subject to Gate 2 deciding the resource is actually necessary, with the A-1 read-only
-inventory relief). No other blocker exists. Gate 1 approval itself is not declared here; it is the
-independent reviewer's disposition on the exact head. Gate 2 is not begun. Auth0 is not selected.
-The validation requirements stand unweakened: Google (AC-19), the non-Google path (AC-17), and
-Functions/API contract validation (AC-16/AC-22–AC-25) remain mandatory.
+Independent review `AUTH-ARCH-002-VAL-002-GATE-1-REVIEW-001` (GitHub review `5152282071`,
+disposition GATE 1 CORRECTION REQUIRED) findings P1-1–P1-4 and P2-1–P2-3 are corrected in §§4–15
+per the §21 record; AMEND-001 authority is preserved and unchanged. Gate 1 approval itself is not
+declared here; it is the independent re-reviewer's disposition on the exact corrected head. Gate 2 is
+not begun. Auth0 is not selected. All validation requirements stand unweakened.
 
 ## 20. CORR-001 — provider-resource authority reassessment (2026-09-09)
 
@@ -551,3 +902,30 @@ project or production credentials. A-3 is validation-only: no cutoff or Action-c
 approved, and a failed validation may fail qualification without redesigning the requirement. Cleanup
 authority (client/resource-server/Action deletion with absent-readback, secret revocation) is part of the
 grant; qualification stays unavailable while mandatory cleanup is unresolved. Gate 1 state: see §19.
+
+## 21. CORR-002 — independent-review correction record (2026-09-09)
+
+Review basis preserved: `AUTH-ARCH-002-VAL-002-GATE-1-REVIEW-001` (GitHub review `5152282071` on PR #239
+head `3d276f1`, disposition GATE 1 CORRECTION REQUIRED). This record corrects — it does not delete,
+rewrite, or pretend the original approach passed. Settled authority preserved unchanged:
+`DEC-AUTH-002`, `FD-AUTH-ARCH-001`, `DEC-SEC-005`/R1–R10, `DEC-DATA-008`, `FD-AUTH-ARCH-002-VAL-002`,
+`FD-AUTH-ARCH-002-VAL-002-AMEND-001`; AC-01–AC-36 preserved (one WP wording fix: AC-19
+"non-applicability" → VALIDATION INCOMPLETE with cause — governed semantics, no authority change).
+Auth0 remains LEADING CANDIDATE — NOT SELECTED; no new Founder decision required or created.
+
+| Finding | Correction (section) |
+| --- | --- |
+| P1-1 R5 oracle + generation source | §8.1 dual-gate oracle (provider readback AND application boundary) with four-attempt old-context exercise and verifier rule; §10.1 narrowed candidates G-1a (session-ID claim)/G-1b (earliest-methods-timestamp)/G-2 (ID-token `auth_time` with `max_age=0`); tenant key-inventory probe + stability matrix; fail-closed absence/ambiguity; hard-blocker classification if none verifies; minted-persisted generation ruled out |
+| P1-2 phase-scoped least privilege | §6 Phases A–F with per-phase scope sets, short-lived tokens, inter-phase reduction protocol, dashboard preference; §6.1 full contract ledger (endpoint/scope/release/entitlement/response/readback/cleanup/dashboard-vs-API); M-10 scope resolved exact from official OpenAPI; M-13 entitlement-gated with M-12 fallback and no widening |
+| A-1 type/flow at Gate 1 | §5.2: SPA (public client, no secret) + Authorization Code + PKCE + rotation; silent/secret/callback/logout decisions fixed; not created |
+| P1-3 R7 isolation + concurrency + usability | §4: six dedicated identities `VAL-F-01a`–`VAL-F-01f` (clean-recreation alternative defined); §7 Scenario 4 replaced by Races A/B/C with barrier/delays/separate clients/correlation IDs/timestamps/repeats and INCOMPLETE-if-no-overlap rule; §7.5 genuine F2 TOTP challenge required, "closest" wording removed, INCOMPLETE if unexecutable |
+| P1-4 MFA-claim derivation | §11.1 exact emit rule (interactive-only via absent `event.refresh_token` + fresh in-transaction `mfa` entry + allowlisted method) with forbidden-source list; §11.2 eleven mandatory negatives; §11.3 provider-neutral mapping for Gate 2 to prove |
+| P2-1 JWKS | §12.2 Cases A (pass) / B (fail closed) with RS256-only, RSA/`use:sig`, old-key grace, bounded cache + single refresh, outage/malformed fail-closed, no verification disabling |
+| P2-1 App Check | §13 matrix (9 cases, separate transports, `eleventh-on-us-dev`/fixture pin, no new resources, never identity/MFA) |
+| P2-2 secrets | §14.1 operational controls (`umask 077`, no `set -x`, no CLI literals, history suppression, minimal env, traps, local-only execution, redaction, screenshot ban incl. App Check/service-account material, dual final scans) |
+| P2-2 cleanup | §15.1 lifecycle (trigger unbind + binding restoration, settings restoration, secondary-user deletion, API-grant removal, token/session revocation, JWT residual-expiry record, log/tenant retention records, defaults restored-not-deleted, before-snapshots) |
+| P2-3 AC-19 wording | WP Required Tests table corrected; zero "non-applicability" occurrences remain |
+
+Gate 2 readiness: Gate 2 now only writes exact test cases from this fixed design — generation source,
+oracle, MFA derivation, app type/flow, privilege schedule, concurrency method, secret and cleanup
+controls are all decided above. State: READY FOR FOCUSED FEF HIGH-RISK GATE 1 RE-REVIEW (§19).

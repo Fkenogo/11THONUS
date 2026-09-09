@@ -7,6 +7,22 @@
 
 ---
 
+## 2026-09-09 — AUTH-ARCH-002-VAL-002-GATE-1-CORR-002 — Correct Independent Gate 1 Review Findings (P1-1–P1-4/P2-1–P2-3)
+
+- **Task / status:** Bounded Gate 1 correction on branch `docs/auth-arch-002-val-002-gate1` at reviewed head `3d276f1d67e4845238028b0fe81d4c337ac29016` (PR #239 OPEN/MERGEABLE/CLEAN at entry; review `5152282071` applies to the exact head with disposition GATE 1 CORRECTION REQUIRED; base `origin/main` `8a918e02216bd01a40040aefa9bf62f463f91d76` confirmed current; CI SUCCESS on the entry head; both prior threads resolved; no new findings). **VAL-002 Gate 1 = READY FOR FOCUSED FEF HIGH-RISK GATE 1 RE-REVIEW** (approval not declared; Gate 2 not begun). Auth0 LEADING CANDIDATE — NOT SELECTED.
+- **P1-1:** §8.1 R5 dual-gate oracle (provider readback AND application boundary) with four-attempt old-context exercise and generation-based verifier rule; §10.1 narrowed candidates G-1a (session-ID claim)/G-1b (earliest-methods-timestamp)/G-2 (ID-token `auth_time` via `max_age=0`) with key-inventory probe + per-flow stability matrix, fail-closed absence/ambiguity, minted-persisted generation ruled out, and hard-blocker classification if none tenant-verifies. No cutoff architecture approved.
+- **P1-2:** §6 Phases A–F (per-phase scope sets, short-lived tokens, inter-phase reduction protocol, dashboard preference); §6.1 full contract ledger for M-01–M-21d (endpoint/scope/release/entitlement/response/readback/cleanup/dashboard-vs-API); M-10 exact scopes from official OpenAPI (GA); M-13 entitlement-gated with M-12 fallback and no widening. No scope left to be discovered.
+- **A-1:** §5.2 fixes SPA (public client, no secret) + Authorization Code + PKCE + rotation; silent/secret/callback/logout decisions recorded; not created.
+- **P1-3:** six dedicated R7 identities `VAL-F-01a`–`VAL-F-01f` (clean-recreation alternative defined); Scenario 4 replaced by Races A/B/C with barrier/delays/separate clients/correlation IDs/timestamps/repeats, overlap proof, and INCOMPLETE-if-no-overlap rule; §7.5 genuine F2 TOTP challenge required ("closest" wording removed; INCOMPLETE if unexecutable).
+- **P1-4:** §11.1 exact Action emit rule (interactive-only via absent `event.refresh_token` + fresh in-transaction `mfa` entry + allowlisted method) with forbidden-source list; §11.2 eleven mandatory negatives; §11.3 provider-neutral mapping for Gate 2 to prove (Auth0 names never durable).
+- **P2:** §12.2 JWKS Cases A/B + algorithm/key/cache/outage params; §13 nine-case App Check matrix pinned to `eleventh-on-us-dev`/fixture with no new resources; §14.1 secret controls; §15.1 cleanup lifecycle; WP AC-19 "non-applicability" → VALIDATION INCOMPLETE (zero occurrences remain). Review `5152282071` preserved; report §21 is the superseding correction record.
+- **Files changed:** [`AUTH-ARCH-002-VAL-002 Gate 1 approach report`](../05-implementation/reports/AUTH-ARCH-002-VAL-002-gate1-approach-2026-09-09.md) (§§4–15, §§18–19, §21); [`AUTH-ARCH-002-VAL-002 work package`](../05-implementation/reports/AUTH-ARCH-002-VAL-002-work-package-2026-09-08.md) (AC-19 wording only — authority, ACs, R1–R10, gates, selection, Merge = NO, prohibitions, history otherwise untouched); `docs/00-governance/documentation-changes-log.md` (Entry 195); this record.
+- **Code/configuration/dependencies/migrations/live changes:** none. No tenant/resources/users/credentials created, no Auth0 API calls, no Gate 2, no selection, no 003D resumption, no PostgreSQL work. Full-diff secret scan clean. `FD-COM-001` untouched.
+- **Validation:** `git diff --check`; Markdown relative-link validation; `prettier --check` on changed files; append-only verification; CI on the exact corrected head. PR left open for focused re-review; not self-approved; not merged.
+- **Rollback:** revert the CORR-002 commit(s); no provider/data cleanup (nothing created).
+
+---
+
 ## 2026-09-09 — AUTH-ARCH-002-VAL-002-AUTH-AMEND-001 — Founder Bounded Provider-Resource Authority Amendment (`FD-AUTH-ARCH-002-VAL-002-AMEND-001`)
 
 - **Task / status:** Authority recording on branch `docs/auth-arch-002-val-002-gate1` at head `b487c87403aa4ff9435d60aed8ab48fe46f00924` (PR #239 OPEN/MERGEABLE/CLEAN at entry; base `origin/main` `8a918e02216bd01a40040aefa9bf62f463f91d76` confirmed current; CI SUCCESS on the entry head; both CORR-001 threads resolved; no new findings). **VAL-002 Gate 1 = READY FOR FEF HIGH-RISK GATE 1 INDEPENDENT REVIEW** (approval not declared; Gate 2 not begun). Auth0 LEADING CANDIDATE — NOT SELECTED.

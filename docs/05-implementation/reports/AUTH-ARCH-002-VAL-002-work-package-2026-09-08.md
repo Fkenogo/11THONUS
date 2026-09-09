@@ -239,7 +239,7 @@ When Founder-authorised, execute one bounded validation programme that consumes 
 | Revocation tenant tests (AC-06–AC-10) | Session/refresh revoke sequencing with readback-polling timing | Confirmation bound measured or non-convergence declared. |
 | Cutoff tenant tests (AC-11–AC-13) | Candidate cutoff claim + mint-race + missing-claim harness | Claim proved or disproved; no assumed sufficiency. |
 | MFA-evidence tenant tests (AC-14–AC-16) | Genuine TOTP sign-in + refresh-cycle observation | Evidence path stated with redacted excerpts. |
-| Product-method tests (AC-17–AC-21) | Tenant authentication matrix with test contacts only | Matrix results or recorded non-applicability (AC-19). |
+| Product-method tests (AC-17–AC-21) | Tenant authentication matrix with test contacts only | Matrix results, or recorded VALIDATION INCOMPLETE with cause (AC-19). |
 | Functions/API contract tests (AC-22–AC-27) | Disposable external-JWT → Functions/API harness (positives + negatives) | Contract verdict per AC. |
 | Operations/commercial evidence (AC-28–AC-32) | Plan/entitlement inspection; quote request; region + SMS evidence gathering | Obtained, or recorded as VALIDATION INCOMPLETE — COMMERCIAL EVIDENCE REQUIRED unless the specific item is waived by Founder/designated authority; nothing invented; no agent waiver. |
 | Secret scan | Full-diff and final secret scan for secrets/tokens/seeds/codes/keys | Clean, with confirmation recorded. |
