@@ -7,6 +7,19 @@
 
 ---
 
+## 2026-09-09 — AUTH-ARCH-002-VAL-002-GATE-1-CORR-004 — Correct Final Three Bounded Issues
+
+- **Task / status:** Bounded Gate 1 correction on branch `docs/auth-arch-002-val-002-gate1` at reviewed head `2d0fa3e4aca6efa76cd71c7e388a97693ced75cc` (PR #239 OPEN/MERGEABLE/CLEAN at entry; review `5153676350` applies to the exact head; base `origin/main` `8a918e02216bd01a40040aefa9bf62f463f91d76` confirmed current; CI SUCCESS on the entry head; prior threads resolved; no new findings). **VAL-002 Gate 1 = READY FOR FINAL FEF HIGH-RISK GATE 1 APPROVAL REVIEW** (approval not declared; Gate 2 not begun). Auth0 LEADING CANDIDATE — NOT SELECTED.
+- **Issue 1:** §10.1 pins G-1a interactive branch (`event.session.id`, opaque, non-refresh only) and refresh branch (`event.refresh_token.session_id` where exposed, else no claim ⇒ INCOMPLETE); both-present equality with mismatch ⇒ no claim + safety failure; final absence rules per path and for ambiguous classification; Contract S strictly opaque (no `>`/`<`/parsing/coercion).
+- **Issue 2:** §6 retires the M-22–M-24 API fallback as superseded historical evidence (no privileged self-modification); dashboard/operator-only mutation with pinned grant identity (`client_id` + Management API audience + `subject_type="client"`); 6-step checkpoint emitting `PHASE GRANT CHANGE REQUIRED`; Phase B `update:users` reconfirmed with B-exit removal; F1–F6 operator-controlled with F5 closure verification and read-only F6 (grant state via token scope-claim + operator read).
+- **Issue 3:** §11.1 pins allowlist `name === "mfa" AND type === "otp"` (sms/phone/email/push/recovery/unknown/missing rejected; tenant mismatch ⇒ fail/INCOMPLETE, never silent expansion); `MFA_EVIDENCE_MAX_AGE_SECONDS = 300` stated once with justification (validation hypothesis; A-2 lifetime pinned to 300 s; never re-tuned); numeric predicate `0 <= iat - mfa_time <= 300` (no abs; future/missing/malformed/outside-window fail); 8-condition final P-MFA with explicit silent discriminator; T-MFA-SSO disqualification without bound-widening; claim shape `{"method": "otp", "mfa_time": "<provider timestamp>"}`; §11.3 mapping updated with domain-neutral boolean preserved.
+- **Files changed:** [`AUTH-ARCH-002-VAL-002 Gate 1 approach report`](../05-implementation/reports/AUTH-ARCH-002-VAL-002-gate1-approach-2026-09-09.md) (§§6/6.1/10.1–10.2/11.1/11.3/13-ref/18/19/23); `docs/00-governance/documentation-changes-log.md` (Entry 197); this record. WP untouched; settled authority, ACs, R1–R10, selection, prohibitions unchanged.
+- **Code/configuration/dependencies/migrations/live changes:** none. No tenant/users/M2M/A-1/A-2/A-3 created, no provider calls, no Gate 2, no selection, no 003D/PostgreSQL/production work. Full-diff secret scan clean. `FD-COM-001` untouched.
+- **Validation:** `git diff --check`; Markdown relative-link validation; `prettier --check` on changed files; append-only verification; CI on the exact corrected head. PR left open for final approval review; not self-approved; not merged.
+- **Rollback:** revert the CORR-004 commit(s); no provider/data cleanup (nothing created).
+
+---
+
 ## 2026-09-09 — AUTH-ARCH-002-VAL-002-GATE-1-CORR-003 — Correct Focused Re-Review Findings (4 bounded issues)
 
 - **Task / status:** Bounded Gate 1 correction on branch `docs/auth-arch-002-val-002-gate1` at reviewed head `14f1dfcdf6fa6aee7693f90c0694d33fa3c2fec4` (PR #239 OPEN/MERGEABLE/CLEAN at entry; review `5153098758` applies to the exact head; base `origin/main` `8a918e02216bd01a40040aefa9bf62f463f91d76` confirmed current; CI SUCCESS on the entry head; prior threads resolved; no new findings). **VAL-002 Gate 1 = READY FOR FINAL FOCUSED FEF HIGH-RISK GATE 1 RE-REVIEW** (approval not declared; Gate 2 not begun). Auth0 LEADING CANDIDATE — NOT SELECTED.

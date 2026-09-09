@@ -1,9 +1,9 @@
 # AUTH-ARCH-002-VAL-002 — Gate 1 Approach (FEF High-Risk Review Gate 1)
 
-> **Status:** **READY FOR FINAL FOCUSED FEF HIGH-RISK GATE 1 RE-REVIEW**
-> (CORR-003, 2026-09-09: focused re-review findings corrected — generation Contracts T/S, executable
-> grant narrowing, exact MFA predicate, App Check ENFORCE; see §22 — Gate 1 approval itself is the
-> independent re-reviewer's disposition, not declared here)
+> **Status:** **READY FOR FINAL FEF HIGH-RISK GATE 1 APPROVAL REVIEW**
+> (CORR-004, 2026-09-09: final three bounded issues corrected — G-1a branches, dashboard-only grant
+> control, exact MFA predicate; see §23 — Gate 1 approval itself is the independent reviewer's
+> disposition, not declared here)
 > **Classification:** Validation-approach review only — NO SELECTION / NO MIGRATION / NO IMPLEMENTATION / NO LIVE EXECUTION
 > **Date:** 2026-09-09
 > **Repository:** `https://github.com/Fkenogo/11THONUS.git` (authoritative source of truth)
@@ -191,35 +191,50 @@ Gate 2 does not choose SPA versus Regular Web Application. Gate 1 selects **Sing
 
 A-1 is not created in Gate 1.
 
-## 6. M2M design — phase-scoped least privilege (CORR-003 revision)
+## 6. M2M design — phase-scoped least privilege (CORR-004: dashboard/operator-only revision)
 
 No standing aggregate grant. Narrower tokens alone are insufficient: the standing client authorization
-itself is narrowed at every phase boundary. The grant lifecycle per phase is fixed:
+itself is narrowed at every phase boundary — by the designated operator in the Auth0 Dashboard, never
+by the execution agent modifying its own grant. The API-driven client-grant mutation fallback
+(M-22–M-24) is RETIRED: `update:client_grants` is highly privileged precisely because it can let an
+application grant further permissions to itself, which is unacceptable for this controlled programme.
+M-22–M-24 remain below as superseded historical evidence only — not executable validation-agent
+operations. No automatic escalation. No standing aggregate grant. No self-modifying client grant.
 
-1. Grant-before: the M2M client's Management API grant holds exactly the previous phase's scope set.
-2. Mutation operation: dashboard-first — the authorized operator opens Dashboard > Applications > APIs >
-   Auth0 Management API > Machine to Machine Applications, expands the validation client, and sets the
-   scope checkboxes to exactly the next phase's set (per the table below). API-driven fallback ONLY if
-   dashboard operation is impractical: `GET /api/v2/client-grants` (scope `read:client_grants`) to read
-   the grant → `PATCH /api/v2/client-grants/{id}` with `{scope: [...]}` (scope `update:client_grants`)
-   → `GET` the grant to verify the resulting scope array equals the phase set exactly.
-3. Token requested: fresh client-credentials token minted AFTER the mutation.
-4. Scope claim verified: the token's `scope` claim must list exactly the phase set — mismatch stops the
-   phase.
-5. Phase operations executed (no operation may rely on a scope outside its phase table).
-6. Destructive scopes removed before the next phase via the same mutation operation.
-7. Post-phase grant readback: `GET /client-grants` (or dashboard read) recorded in evidence proving the
-   narrowed standing grant.
+**Management API grant identity (pinned):** the one standing M2M grant is identified by the triple
+`client_id` = exact validation M2M client ID AND `audience` = Auth0 Management API audience for the
+validation tenant AND `subject_type = "client"`. Gate 2 verifies all three before each grant mutation;
+a grant matching only client ID/audience without the expected subject type is never used.
 
-The dashboard-first path needs no additional M2M scopes. The API-driven fallback needs
-`read:client_grants` + `update:client_grants` added to the Phase A bootstrap grant ONLY (used solely
-for grant mutation/readback, then removed in the first narrowing). Grant-object deletion at closure uses
-`delete:client_grants` only if an API-created grant must be removed; dashboard-created grants are
-removed via dashboard.
+**Operator-controlled phase transition (every boundary, fixed protocol):**
 
-| Phase | Purpose | Exact scope set held | Dashboard-preferred (no M2M scope) |
+1. Execution agent stops; records the exact current grant/scopes.
+2. Designated operator changes the grant in Auth0 Dashboard (Applications > APIs > Auth0 Management
+   API > Machine to Machine Applications > expand validation client) to exactly the next-phase scope
+   set; operator confirms completion with the resulting set.
+3. Execution agent performs read-only verification where authorized (dashboard readback recorded; token
+   scope-claim check needs no grant scope).
+4. A new Management API token is obtained AFTER the mutation.
+5. Token scope claim must exactly contain the required phase scopes and no prohibited destructive
+   scope — mismatch stops the phase.
+6. Only then may the phase continue.
+
+**Human/operator checkpoint semantics:** grant reduction is a planned Gate 2 contract checkpoint. At each
+boundary the execution agent outputs `PHASE GRANT CHANGE REQUIRED` with current phase, next phase,
+scopes to remove, scopes to add, and the expected resulting scope set — then pauses until operator
+confirmation is recorded. This is an expected controlled execution checkpoint, not a blocker.
+
+Grant lifecycle per phase (operator mutation → resulting set → token → scope-verify → ops → removal →
+post-phase readback) follows the protocol above at every boundary. No phase operation may rely on a
+scope outside its phase table.
+
+No additional M2M scopes exist for grant mutation: the operator path needs none, and the retired
+API-driven fallback is not available. Grant-object removal at closure is performed by the operator in
+the dashboard.
+
+| Phase | Purpose | Exact scope set held | Dashboard/operator (no M2M scope) |
 | --- | --- | --- | --- |
-| A — Read-only inventory / setup verification | Inventory tenant state; confirm plan/entitlement; before-snapshots; grant-mutation setup | `read:users`, `read:guardian_enrollments`, `read:sessions`, `read:refresh_tokens`, `read:logs`, `read:prompts`, `read:clients`, `read:resource_servers`, `read:actions`, `read:connections` (+ `read:client_grants`, `update:client_grants` ONLY for the API-driven fallback) | Tenant/entitlement inspection; before-snapshots; grant narrowing itself |
+| A — Read-only inventory / setup verification | Inventory tenant state; confirm plan/entitlement; before-snapshots; grant-mutation setup | `read:users`, `read:guardian_enrollments`, `read:sessions`, `read:refresh_tokens`, `read:logs`, `read:prompts`, `read:clients`, `read:resource_servers`, `read:actions`, `read:connections` | Tenant/entitlement inspection; before-snapshots; grant narrowing itself |
 | B — Identity/MFA scenario setup | Create `VAL-*` users; update/block where matrix requires; enrollment tickets; verification tickets/jobs; enroll F1/F2; linking setup; genuine-login observations | `create:users`, `read:users`, `update:users` (M-15/M-16/M-18-verification-job only — nothing broader), `create:guardian_enrollment_tickets`, `read:guardian_enrollments`, `create:user_tickets` | A-1/A-2/A-3 creation; connection toggles; callbacks |
 | C — Revocation tests | Session/refresh revocation + readback polling + old-context exercise | `read:sessions`, `delete:sessions`, `read:refresh_tokens`, `delete:refresh_tokens` | — |
 | D — Destructive exact-factor test | F1 deletion by exact ID + immediate readback only | `delete:guardian_enrollments`, `read:guardian_enrollments` | — |
@@ -227,15 +242,16 @@ removed via dashboard.
 | F1 — Cleanup identities/factors | Unlink (M-16), delete users (M-17), delete enrollments | `update:users` (unlink only), `delete:users`, `read:users`, `delete:guardian_enrollments`, `read:guardian_enrollments` | — |
 | F2 — Cleanup sessions/tokens | Revoke/terminate sessions + refresh tokens | `delete:sessions`, `read:sessions`, `delete:refresh_tokens`, `read:refresh_tokens` | — |
 | F3 — Cleanup Actions | Unbind trigger, restore bindings, delete versions/action | `delete:actions`, `read:actions` | Trigger unbind; binding restoration |
-| F4 — Cleanup resource server | Remove API grants, delete A-2 | `delete:resource_servers`, `read:resource_servers`, `delete:client_grants` (grant removal only) | Grant removal |
-| F5 — Cleanup client/application | Delete A-1/M2M clients, revoke secrets | `delete:clients`, `read:clients` | Client deletion; secret revocation |
-| F6 — Final read-only verification | Absent-readbacks for every deleted object; evidence inventory | `read:users`, `read:guardian_enrollments`, `read:sessions`, `read:refresh_tokens`, `read:clients`, `read:resource_servers`, `read:actions`, `read:client_grants`, `read:logs` | Settings-restoration verification |
+| F4 — Cleanup resource server | Remove API grants (operator, dashboard), delete A-2 | `delete:resource_servers`, `read:resource_servers` | Grant removal; grant-object removal |
+| F5 — Cleanup client/application | Delete A-1/M2M clients, revoke secrets | `delete:clients`, `read:clients` | Client deletion; secret revocation; final operator verification that the M2M Management API grant is removed or reduced to the authorized retained state |
+| F6 — Final read-only verification | Absent-readbacks for every deleted object; evidence inventory | `read:users`, `read:guardian_enrollments`, `read:sessions`, `read:refresh_tokens`, `read:clients`, `read:resource_servers`, `read:actions`, `read:logs` | Settings-restoration verification; grant-state confirmation via token scope-claim + operator dashboard read |
 
 Rules: short-lived tokens (minimum lifetime the tenant supports; never a standing token); renewal with
 a prior scope set is forbidden; no phase inherits scopes it does not need (Phase C never holds
 `delete:guardian_enrollments`; Phase D never holds session/refresh delete); every token's granted
 scopes are recorded with every finding that uses it; simultaneous destructive-scope possession is
-limited to one subphase set at a time (F1–F5 never overlap). The per-item ledger (§6.1) fixes the exact
+limited to one subphase set at a time (F1–F5 never overlap). Phase B exit explicitly removes
+`update:users` (Phase C does not require it — reconfirmed: no phase inherits it automatically). The per-item ledger (§6.1) fixes the exact
 contracts Gate 2 instantiates per phase.
 
 | # | Operation | Endpoint | Scope | Why required | Read / destructive | Execution agent needs it | Cleanup operation |
@@ -264,9 +280,9 @@ contracts Gate 2 instantiates per phase.
 | M-21b | Create login-capable test application (if no usable default app exists) | Dashboard Create Application, or `POST /api/v2/clients` | `create:clients` (+ `read:clients`, `delete:clients` for readback/cleanup) | Interactive Universal Login tests (AC-14/17/18/19/20) — an M2M app cannot perform interactive login | **BOUNDED AUTHORITY GRANTED under `FD-AUTH-ARCH-002-VAL-002-AMEND-001`** (A-1; subject to Gate 2 necessity + read-only inventory first) | Conditional on Gate 2 necessity | `DELETE /api/v2/clients/{id}` + readback |
 | M-21c | Register custom validation API (resource server, e.g. `https://api.11thonus.val`) | Dashboard Create API, or `POST /api/v2/resource-servers` | `create:resource_servers` (+ read/delete for readback/cleanup) | JWT access-token evidence path (AC-16) + Functions harness JWT verification (AC-22–AC-25) + cutoff race tokens (AC-11/12) — without a registered API, access tokens are opaque, not JWT | **BOUNDED AUTHORITY GRANTED under `FD-AUTH-ARCH-002-VAL-002-AMEND-001`** (A-2; subject to Gate 2 necessity) | Conditional on Gate 2 necessity | `DELETE /api/v2/resource-servers/{id}` + readback |
 | M-21d | Create/deploy Login Flow Action(s) for namespaced claims | Dashboard Create + Deploy Action, or Actions Management API | `create:actions`, `update:actions` (+ read/delete for readback/cleanup) | Emit `https://11thonus.val/session_generation` (G-1a) and `https://11thonus.val/mfa` (§11.1) — no native claim carries the generation signal | **BOUNDED AUTHORITY GRANTED under `FD-AUTH-ARCH-002-VAL-002-AMEND-001`** (A-3; at most two, one preferred; subject to Gate 2 necessity) | Conditional on Gate 2 necessity | Delete action versions/action + readback |
-| M-22 | Read M2M client grant (API-driven fallback only) | `GET /api/v2/client-grants` (filter by client/audience) | `read:client_grants` | Grant-before/after readback proving the standing authorization was narrowed | Read | Phase boundaries, API-fallback only (dashboard-first needs none) | None |
-| M-23 | Update M2M client grant scope set (API-driven fallback only) | `PATCH /api/v2/client-grants/{id}` with `{scope: [...]}` (200; 403 on insufficient scope; 404 on missing grant) | `update:client_grants` | Narrow the standing authorization itself to exactly the next phase set | Write | Phase boundaries, API-fallback only | Grant restored to minimal/removed at closure |
-| M-24 | Delete client grant object (closure only, if API-created) | `DELETE /api/v2/client-grants/{id}` | `delete:client_grants` | Remove API-created grant records at closure | Destructive | Phase F4/F5, only if fallback was used | Readback: grant absent |
+| M-22 | SUPERSEDED — Read M2M client grant (retired API fallback; historical evidence only) | `GET /api/v2/client-grants` was the fallback read | `read:client_grants` (never granted) | Would have proven grant narrowing; replaced by operator dashboard readback + token scope-claim check | — (not executable) | Never (dashboard-only) | None |
+| M-23 | SUPERSEDED — Update M2M client grant scope set (retired API fallback; historical evidence only) | `PATCH /api/v2/client-grants/{id}` was the fallback mutation | `update:client_grants` (never granted — retired as an unnecessary privileged self-modification path) | Would have narrowed the standing grant; replaced by operator dashboard mutation | — (not executable) | Never (dashboard-only) | None |
+| M-24 | SUPERSEDED — Delete client grant object (retired API fallback; historical evidence only) | `DELETE /api/v2/client-grants/{id}` was the fallback removal | `delete:client_grants` (never granted) | Would have removed API-created grants; replaced by operator dashboard removal at closure | — (not executable) | Never (dashboard-only) | None |
 
 Refused by default: any scope not in this matrix; any `update:users` use outside M-15/M-16;
 any production-tenant credential; any standing (non-expiring, non-rotated) secret. The M2M client
@@ -516,13 +532,30 @@ the post-login event exposes `event.session.id` (string, "ID of the current sess
 provider-native `auth_time` (NumericDate) when `max_age` (e.g. `max_age=0`) or `prompt=login` is
 requested; custom claims must be namespaced; the signed JWT is built after Actions run.
 
-- **G-1a (opaque session generation): exact field `event.session.id`, type string (opaque).**
-  The Action emits `https://11thonus.val/session_generation` = `event.session.id` verbatim (no parsing,
-  no mapping). Stability: same session ⇒ same value across initial login, silent, and refresh-derived
-  tokens; fresh primary authentication creates a new session ⇒ new value (tenant-verified). Refresh-flow
-  join: `event.refresh_token.session_id` names the same session on refresh exchanges (tenant-verified
-  where entitlement exposes it). Absence (no `event.session.id` in any required flow) ⇒ claim absent ⇒
-  REJECT; ambiguity (two values for one session) ⇒ candidate DISQUALIFIED.
+- **G-1a (opaque session generation, CORR-004 branches): exact fields pinned per flow.**
+  - *Interactive branch:* source `event.session.id`, type string (opaque). Emit
+    `https://11thonus.val/session_generation` = `event.session.id` ONLY when `event.session` exists
+    AND `event.session.id` is present and non-empty AND the transaction is not a refresh-token
+    exchange (per the P-refresh exclusion below). No parsing. No ordering. No numeric comparison.
+  - *Refresh branch:* source `event.refresh_token.session_id` (only if Auth0's documented event
+    contract exposes it for the relevant flow). Emit the claim = `event.refresh_token.session_id`
+    ONLY when the refresh-token context is positively identified (P-refresh: `event.refresh_token`
+    present) AND `event.refresh_token.session_id` exists and is non-empty. If the documented/runtime
+    field is unavailable ⇒ emit no session-generation claim ⇒ **Contract S INCOMPLETE / candidate
+    fails closed** for refresh-minted tokens. Do NOT substitute `event.session.id` during refresh when
+    the session object is unavailable (Auth0 documents the session object may be unavailable on
+    refresh-token grants — Gate 2 assumes nothing).
+  - *Both-present invariant:* if one transaction presents both `event.session.id` and
+    `event.refresh_token.session_id`, require `event.session.id === event.refresh_token.session_id`
+    before emitting. If they differ ⇒ emit no claim, fail closed, and record a Contract S safety
+    failure for that scenario. Gate 2 never chooses which ID "wins."
+  - *Absence rules (final):* interactive path without `event.session.id` ⇒ no Contract S claim ⇒
+    reject/incomplete; refresh path without `event.refresh_token.session_id` ⇒ no claim ⇒
+    reject/incomplete; ambiguous flow classification ⇒ no claim ⇒ reject; mismatch ⇒ no claim ⇒
+    Contract S safety failure. Gate 2 tests these rules but never redesigns them.
+  - *Stability/change proof:* Gate 2 proves whether Auth0 session identifiers provide the required
+    semantics (same session ⇒ same value across login/silent/refresh; fresh auth ⇒ new value). If
+    not, Contract S fails as an Auth0 candidate (FAIL-DISQUALIFIED or INCOMPLETE per §10.2).
 - **G-1b (ordered generation timestamp): exact field `min(event.authentication.methods[*].timestamp)`,
   type ISO-8601 string normalized by the Action to Unix seconds (Number).** Testable hypothesis: the
   minimum timestamp records the session's initial primary authentication (generation), unchanged by
@@ -557,10 +590,11 @@ token.sessionGenerationId ∈ user.acceptedGenerationIds
 AND token.sessionGenerationId ∉ user.revokedGenerationIds
 ```
 
-Types: opaque strings compared by equality only — never ordered, never parsed. `acceptedGenerationIds`
-is the set of session generations from genuinely fresh post-cutoff authentications (normally one);
-`revokedGenerationIds` accumulates pre-cutoff generations at revocation time. Both sets are
-strongly-consistently read; no caching of the verdict.
+Strictly opaque: no `>`, no `<`, no timestamp comparison, no parsing, no coercion — equality and set
+membership only. Types: opaque strings. `acceptedGenerationIds` is the set of session generations from
+genuinely fresh post-cutoff authentications (normally one); `revokedGenerationIds` accumulates
+pre-cutoff generations at revocation time. Both sets are strongly-consistently read; no caching of the
+verdict.
 
 **Stability matrix Gate 2 records per candidate** (initial interactive auth / silent `prompt=none` /
 refresh-token exchange / session continuation / post-cutoff mint from old context / genuinely fresh
@@ -619,7 +653,9 @@ refresh-token exchange; `event.authentication.methods` accumulates session-compl
 `event.refresh_token` (present on refresh exchanges), `event.transaction.protocol` (documented value
 set including `oauth2-refresh-token`), `event.transaction.prompt` (array of string), and
 `event.request.query` (authorization-request query parameters). No transaction-start timestamp exists —
-that concept is removed entirely and no freshness window is computed against an invented baseline.
+that concept is removed entirely and no window is computed against an invented transaction baseline
+(the fixed `MFA_EVIDENCE_MAX_AGE_SECONDS` bound below is 11thONUS validation policy, not a provider
+field).
 
 **Candidate predicate P-MFA (to prove or disprove in tenant validation — Gate 2 tests it, never
 invents it). EMIT `https://11thonus.val/mfa` ONLY IF ALL hold:**
@@ -633,22 +669,54 @@ invents it). EMIT `https://11thonus.val/mfa` ONLY IF ALL hold:**
    this allowlist and records any unlisted protocol as predicate-false).
 4. `event.transaction.prompt` is absent OR does not contain `'none'` (excludes silent `prompt=none`;
    corroborated by `event.request.query.prompt` where present).
-5. `event.authentication.methods` contains an entry with `name === 'mfa'` AND a present `timestamp`
-   (string, ISO-8601 as observed).
-6. The `mfa` entry's factor detail matches the tenant-pinned TOTP allowlist (exact strings pinned at
-   Gate 2 from genuine-challenge observation — allowlisted, never open-ended).
+5. `event.authentication.methods` contains an entry with `name === 'mfa'` AND `type === 'otp'` AND
+   a present `timestamp` (string, ISO-8601 as observed). `otp` is the Auth0 validation representation
+   for the TOTP factor candidate. Rejected without exception: `sms`, `phone`, `email`,
+   `push-notification`, recovery-code types, unknown types, missing types, and any entry accepted
+   merely because its name is `mfa`. Gate 2 verifies that actual TOTP completion produces exactly
+   `name === 'mfa' AND type === 'otp'`; if Auth0 represents TOTP differently in the tenant, the
+   candidate predicate FAILS and validation becomes INCOMPLETE until governed correction is made —
+   Gate 2 never silently expands the allowlist.
+6. `mfa_time` (the entry's timestamp, parsed ISO-8601 → Unix seconds) satisfies the fixed numeric
+   predicate below.
+7. Required generation-candidate evidence for the tested contract is acceptable (§§8.1/10.2).
 
-**Silent/session-continuation discriminator (explicit):** silent authorization is excluded by clauses 2
-(not a refresh exchange — silent without refresh may still run post-login) AND 4 (`prompt` contains
-`'none'`); existing-session continuation without a fresh challenge is excluded by clauses 3+4
-(non-interactive protocol or silent prompt) — with one documented residual: an *interactive*
-SSO continuation (no `prompt=none`, interactive protocol) that completes WITHOUT a fresh MFA challenge
-while `methods` still carries a session-old `mfa` entry satisfies clauses 1–6 structurally. That case is
-the tenant falsification test T-MFA-SSO: Gate 2 performs an interactive SSO second login with no fresh
-challenge and requires NO emission. If emission occurs, predicate P-MFA FAILS (disproved) — the
-access-token MFA path is then INCOMPLETE/potential provider limitation, and MFA evidence falls back to
-the provider-native ID-token `amr` path only (which Auth0 itself omits on silent/refresh: fail-closed
-by provider behavior). No fallback signal is invented.
+**Fixed freshness bound (validation hypothesis — CORR-004, not production policy):**
+
+```text
+MFA_EVIDENCE_MAX_AGE_SECONDS = 300
+```
+
+Stated once, fixed here, never derived dynamically and never re-tuned in Gate 2 to make a test pass.
+Justification: 300 s comfortably exceeds normal issuance latency (seconds to tens of seconds including
+clock skew between Auth0, the Action runtime, and the verifier), while being far shorter than any
+session, revocation-convergence, or attack-reuse window — so session-old MFA cannot masquerade as
+current-transaction evidence. A-2 access-token lifetime is pinned to the same 300 s as validation
+configuration (Gate 2 configures the value, never decides it), bounding every tested access token's
+usable life to the freshness window.
+
+**Numeric predicate (fixed):**
+
+```text
+0 <= token.iat - mfa_time <= MFA_EVIDENCE_MAX_AGE_SECONDS
+```
+
+No absolute-value comparison: future `mfa_time` (`iat - mfa_time < 0`) fails; missing timestamp fails;
+malformed/unparseable timestamp fails; outside-window timestamp fails. `mfa_time` is the parsed epoch
+of the ISO string copied verbatim into the claim.
+
+**Silent/session-continuation discriminator (exact documented fields):** refresh issuance is
+excluded by clause 2 (`event.refresh_token` present); silent authorization is excluded by clause 4
+(`event.transaction.prompt` containing `'none'`, corroborated by `event.request.query.prompt`);
+non-interactive continuations are excluded by clause 3 (protocol not in the interactive allowlist).
+These three documented fields are the complete discriminator set — no other signal is used.
+
+**Session reuse falsification (T-MFA-SSO, preserved):** explicitly test a session with prior
+successful MFA followed by later interactive-looking/silent reuse without a new TOTP challenge. If the
+fixed P-MFA predicate (clauses 1–7 above) emits the MFA claim without a genuine new challenge,
+**P-MFA is DISQUALIFIED** — the freshness bound is not widened or altered in Gate 2 to make the test
+pass; the access-token MFA path becomes INCOMPLETE with fallback to the provider-native ID-token `amr`
+path only.
 
 **FORBIDDEN sources (the Action must never read these for MFA satisfaction):** MFA enrollment state
 (`event.user.multifactor` enrollment array, `event.user.enrolledFactors`, and equivalents);
@@ -662,19 +730,23 @@ for anything except proving refresh-ness); any value written by a previous Actio
 
 ```json
 {
-  "method": "<tenant-pinned TOTP factor detail string>",
-  "mfa_time": "<ISO-8601 timestamp string, copied verbatim from the methods entry>"
+  "method": "otp",
+  "mfa_time": "<ISO-8601 timestamp string, copied verbatim from the qualifying methods entry>"
 }
 ```
 
+`method` is the fixed string `"otp"` — the claim never says `"totp"` or any other factor name, because
+`"otp"` is the Auth0 method representation being validated. `mfa_time` is the provider timestamp
+verbatim (string). The Action emits nothing unless all eight P-MFA conditions hold.
+
 Types: both strings, exactly as observed — no normalization into invented epochs at emission.
-Freshness rule (verifier-side, 11thONUS policy — not a provider field): ACCEPT as MFA evidence only if
-`0 ≤ token.iat − parse(mfa_time) ≤ F-MFA`, where F-MFA is the A-2 access-token lifetime pinned at
-Gate 2 (short lifetime configured on A-2; default-second choice documented in evidence), AND the
-token's generation satisfies the R5 acceptance boundary (§§8.1/10.2). A refresh-minted token carrying a
-login-time claim value is stale by construction and fails this rule; tenant test T-MFA-REFRESH-CARRY
-measures whether refreshed tokens even retain un-re-emitted claims (stripped ⇒ stronger; retained ⇒
-covered by F-MFA + short lifetime, residual recorded). Absence ⇒ `verifiedSecondFactor = false`.
+Verifier rule: ACCEPT as MFA evidence only if the numeric predicate
+`0 <= token.iat - mfa_time <= MFA_EVIDENCE_MAX_AGE_SECONDS` holds (parsed epoch; malformed ⇒ fail)
+AND the token's generation satisfies the R5 acceptance boundary (§§8.1/10.2). A refresh-minted token
+carrying a login-time claim value is stale by construction and fails this rule; tenant test
+T-MFA-REFRESH-CARRY measures whether refreshed tokens even retain un-re-emitted claims (stripped ⇒
+stronger; retained ⇒ covered by the 300 s bound + 300 s A-2 lifetime, residual recorded). Absence ⇒
+`verifiedSecondFactor = false`.
 Ambiguity (multiple conflicting `mfa` entries, unparseable timestamp) ⇒ absent ⇒ `false`.
 
 ### 11.2 MFA negative cases (all mandatory at Gate 2; none may yield `verifiedSecondFactor = true`)
@@ -692,9 +764,9 @@ Ambiguity (multiple conflicting `mfa` entries, unparseable timestamp) ⇒ absent
 verified Auth0 token (signature/iss/aud/exp valid)
 → validated current-transaction MFA evidence:
   (a) ID token: amr contains 'mfa' (fresh-login issuance; absent on silent/refresh by provider behavior), OR
-  (b) access token: namespaced claim present per the §11.1 P-MFA predicate with allowlisted method
-      AND verifier freshness 0 ≤ iat − mfa_time ≤ F-MFA AND generation accepted under Contract T
-      or Contract S (§§8.1/10.2)
+  (b) access token: namespaced claim present per the §11.1 P-MFA predicate with method exactly
+      "otp" AND numeric predicate 0 <= iat − mfa_time <= MFA_EVIDENCE_MAX_AGE_SECONDS (300) AND
+      generation accepted under Contract T or Contract S (§§8.1/10.2)
 → AuthenticatedCredential.verifiedSecondFactor (boolean, provider-neutral)
 ```
 
@@ -920,12 +992,13 @@ yields `VALIDATION INCOMPLETE — COMMERCIAL EVIDENCE REQUIRED` (no agent waiver
   M-21a–M-21d, §19–§20: provider-resource authority reassessment and AMEND-001 grant), CORR-002
   (§21: independent-review corrections P1-1–P1-4/P2-1–P2-3), and CORR-003 (§22: focused re-review
   corrections — Contracts T/S, executable grant narrowing with F1–F6, exact MFA predicate P-MFA,
-  App Check ENFORCE).
+  App Check ENFORCE), and CORR-004 (§23: final three bounded issues — G-1a branches, dashboard-only
+  grant control, exact `otp` allowlist with fixed freshness bound).
 - Bounded WP wording correction: Required Tests table AC-19 "non-applicability" → VALIDATION
   INCOMPLETE with cause (no authority change).
-- Required tracking records: `docs/00-governance/documentation-changes-log.md` (Entries 192–196) and
-  `docs/changes/IMPLEMENTATION_CHANGES.md` (Gate 1 + CORR-001 + AMEND-001 + CORR-002 + CORR-003 entries,
-  with the prior `AUTH-ARCH-002-VAL-WP-001-AUTH-001` authorization record restored).
+- Required tracking records: `docs/00-governance/documentation-changes-log.md` (Entries 192–197) and
+  `docs/changes/IMPLEMENTATION_CHANGES.md` (Gate 1 + CORR-001 + AMEND-001 + CORR-002 + CORR-003 +
+  CORR-004 entries, with the prior `AUTH-ARCH-002-VAL-WP-001-AUTH-001` authorization record restored).
 - Production-code changes: **NONE**. Dependencies/config changes: **NONE**. Auth0 resources created:
   **NONE**. Live Auth0 API calls: **NONE**. `DEC-AUTH-002`, `DEC-SEC-005`/R1–R10, `DEC-DATA-008`,
   `FD-COM-001`, and the `AUTH-MFA-003D-IMPL-001` blocked state are consumed, unmodified.
@@ -1051,3 +1124,25 @@ Gate 2 readiness: Gate 2 translates into executable test cases only — generati
 comparison, session-generation mapping, client-grant mutation mechanism, phase scopes, cleanup grant
 schedule, MFA current-transaction predicate, silent-flow discriminator, and App Check enforcement
 semantics are all decided above. State: READY FOR FINAL FOCUSED FEF HIGH-RISK GATE 1 RE-REVIEW (§19).
+
+## 23. CORR-004 — final focused correction record (2026-09-09)
+
+Review basis preserved: `AUTH-ARCH-002-VAL-002-GATE-1-REVIEW-003` (GitHub review `5153676350` on PR #239
+head `2d0fa3e`; prior reviews `5152282071`/`5153098758` and §§20–22 history preserved, not rewritten).
+This record corrects the final three bounded issues; closed areas (R5 dual oracle, Contracts T/S
+separation, G-1b, G-2, R7 isolation/concurrency, F2 usability, SPA + PKCE, M-10/M-13, JWKS, App Check,
+secrets, cleanup lifecycle, AC-19, bounded provider-resource authority) are not reopened. Settled
+authority preserved unchanged (`DEC-AUTH-002`, `DEC-SEC-005`/R1–R10, `DEC-DATA-008`,
+`FD-AUTH-ARCH-002-VAL-002`, `FD-AUTH-ARCH-002-VAL-002-AMEND-001`; AC-01–AC-36 unchanged). Auth0 remains
+LEADING CANDIDATE — NOT SELECTED; no new Founder authority required or created.
+
+| # | Remaining issue | Correction (section) |
+| --- | --- | --- |
+| 1 | G-1a refresh source + both-present + mismatch | §10.1 pins interactive branch (`event.session.id`, opaque string, non-refresh only) and refresh branch (`event.refresh_token.session_id` where exposed, else no claim ⇒ Contract S INCOMPLETE); both-present equality required with mismatch ⇒ no claim + safety failure; final absence rules per path; Contract S kept strictly opaque (no `>`/`<`/parsing/coercion) |
+| 2 | M2M standing-grant mutation executable | §6 retires the M-22–M-24 API fallback (superseded historical evidence, not executable — no privileged self-modification); dashboard/operator-only mutation with pinned grant identity (`client_id` + Management API audience + `subject_type="client"`); 6-step operator checkpoint with `PHASE GRANT CHANGE REQUIRED` output; Phase B `update:users` reconfirmed with B-exit removal; F1–F6 operator-controlled with F5 closure verification and read-only F6 |
+| 3 | MFA allowlist + freshness constant | §11.1 pins `name === "mfa" AND type === "otp"` (sms/phone/email/push/recovery/unknown/missing rejected; tenant mismatch ⇒ predicate fails/INCOMPLETE, never silent expansion); `MFA_EVIDENCE_MAX_AGE_SECONDS = 300` stated once with justification (validation hypothesis, never re-tuned); numeric predicate `0 <= iat - mfa_time <= 300` (no abs; future/missing/malformed/outside-window fail); A-2 lifetime pinned to 300 s; 8-condition final P-MFA; T-MFA-SSO disqualification rule without bound-widening; claim shape `{"method": "otp", "mfa_time": "<provider timestamp>"}`; domain stays provider-neutral boolean |
+
+Gate 2 readiness: Gate 2 tests only whether the fixed rules work — interactive vs refresh G-1a source,
+both-present/mismatch behavior, Contract S comparison, client-grant mutation mechanism, operator
+checkpoint, grant identity, MFA method allowlist, freshness constant and arithmetic are all decided
+above. State: READY FOR FINAL FEF HIGH-RISK GATE 1 APPROVAL REVIEW (§19).
