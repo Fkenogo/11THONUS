@@ -1,7 +1,8 @@
 # AUTH-ARCH-002-VAL-002 — Gate 1 Approach (FEF High-Risk Review Gate 1)
 
-> **Status:** **BLOCKED — BOUNDED PROVIDER RESOURCE AUTHORITY AMENDMENT REQUIRED**
-> (CORR-001, 2026-09-09; see §20 — required provider-object creations exceed the WP permission table)
+> **Status:** **READY FOR FEF HIGH-RISK GATE 1 INDEPENDENT REVIEW**
+> (AMEND-001, 2026-09-09: `FD-AUTH-ARCH-002-VAL-002-AMEND-001` grants bounded A-1/A-2/A-3 authority;
+> see §§19–20 — Gate 1 approval itself is the independent reviewer's disposition, not declared here)
 > **Classification:** Validation-approach review only — NO SELECTION / NO MIGRATION / NO IMPLEMENTATION / NO LIVE EXECUTION
 > **Date:** 2026-09-09
 > **Repository:** `https://github.com/Fkenogo/11THONUS.git` (authoritative source of truth)
@@ -144,8 +145,10 @@ this validation and destroyed in cleanup.
    combined evidence, which the MFA track covers separately via email/password + TOTP.
 
 Result: the connection-level AC-19 check can proceed under current authority; the app-level AC-19 login
-test is **BLOCKED FOR AC-19 — ADDITIONAL PROVIDER RESOURCE AUTHORITY REQUIRED** (M-21b) until the §20
-amendment is granted. Blocked is recorded, never passed, never waived.
+test was **BLOCKED FOR AC-19 — ADDITIONAL PROVIDER RESOURCE AUTHORITY REQUIRED** (M-21b) until amendment.
+Authority is now **BOUNDED GRANTED under `FD-AUTH-ARCH-002-VAL-002-AMEND-001`** (A-1, subject to Gate 2
+read-only inventory first: reuse a usable default app instead of creating where possible). Blocked is
+recorded where authority is absent, never passed, never waived.
 
 ## 6. M2M design — least-privilege permission matrix (finalized approach)
 
@@ -178,9 +181,9 @@ to widen.
 | M-19 | Tenant log readback (audit evidence) | Tenant logs endpoints | `read:logs` | Audit-log excerpts per AC (sanitized) | Read | Yes | None |
 | M-20 | Prompt text read (EN/FR matrix) | Prompts endpoints | `read:prompts` | AC-20 evidence | Read | Conditional | None |
 | M-21a | Enable default connections on the test application (dashboard only) | Dashboard: application Connections tab | None (no M2M scope; human-operator dashboard toggle) | AC-19 + login-matrix prerequisites | Configuration of already-authorized resources | Yes, dashboard-only | Disable on cleanup |
-| M-21b | Create login-capable test application (if no usable default app exists) | Dashboard Create Application, or `POST /api/v2/clients` | `create:clients` (+ `read:clients`, `delete:clients` for readback/cleanup) | Interactive Universal Login tests (AC-14/17/18/19/20) — an M2M app cannot perform interactive login | **Creation — REQUIRES ADDITIONAL AUTHORITY (see §20)** | Conditional on §20 amendment | `DELETE /api/v2/clients/{id}` + readback |
-| M-21c | Register custom validation API (resource server, e.g. `https://api.11thonus.val`) | Dashboard Create API, or `POST /api/v2/resource-servers` | `create:resource_servers` (+ read/delete for readback/cleanup) | JWT access-token evidence path (AC-16) + Functions harness JWT verification (AC-22–AC-25) + cutoff race tokens (AC-11/12) — without a registered API, access tokens are opaque, not JWT | **Creation — REQUIRES ADDITIONAL AUTHORITY (see §20)** | Conditional on §20 amendment | `DELETE /api/v2/resource-servers/{id}` + readback |
-| M-21d | Create/deploy Login Flow Action(s) for namespaced claims | Dashboard Create + Deploy Action, or Actions Management API | `create:actions`, `update:actions` (+ read/delete for readback/cleanup) | Emit `https://11thonus.val/*` namespaced session-generation claim (AC-11) and MFA claim (AC-16) — no native token claim carries the generation signal | **Creation — REQUIRES ADDITIONAL AUTHORITY (see §20)** | Conditional on §20 amendment | Delete action versions/action + readback |
+| M-21b | Create login-capable test application (if no usable default app exists) | Dashboard Create Application, or `POST /api/v2/clients` | `create:clients` (+ `read:clients`, `delete:clients` for readback/cleanup) | Interactive Universal Login tests (AC-14/17/18/19/20) — an M2M app cannot perform interactive login | **BOUNDED AUTHORITY GRANTED under `FD-AUTH-ARCH-002-VAL-002-AMEND-001`** (A-1; subject to Gate 2 necessity + read-only inventory first) | Conditional on Gate 2 necessity | `DELETE /api/v2/clients/{id}` + readback |
+| M-21c | Register custom validation API (resource server, e.g. `https://api.11thonus.val`) | Dashboard Create API, or `POST /api/v2/resource-servers` | `create:resource_servers` (+ read/delete for readback/cleanup) | JWT access-token evidence path (AC-16) + Functions harness JWT verification (AC-22–AC-25) + cutoff race tokens (AC-11/12) — without a registered API, access tokens are opaque, not JWT | **BOUNDED AUTHORITY GRANTED under `FD-AUTH-ARCH-002-VAL-002-AMEND-001`** (A-2; subject to Gate 2 necessity) | Conditional on Gate 2 necessity | `DELETE /api/v2/resource-servers/{id}` + readback |
+| M-21d | Create/deploy Login Flow Action(s) for namespaced claims | Dashboard Create + Deploy Action, or Actions Management API | `create:actions`, `update:actions` (+ read/delete for readback/cleanup) | Emit `https://11thonus.val/*` namespaced session-generation claim (AC-11) and MFA claim (AC-16) — no native token claim carries the generation signal | **BOUNDED AUTHORITY GRANTED under `FD-AUTH-ARCH-002-VAL-002-AMEND-001`** (A-3; at most two, one preferred; subject to Gate 2 necessity) | Conditional on Gate 2 necessity | Delete action versions/action + readback |
 
 Refused by default: any scope not in this matrix; any `update:users` use outside M-15/M-16;
 any production-tenant credential; any standing (non-expiring, non-rotated) secret. The M2M client
@@ -381,10 +384,11 @@ must verify*, however, do:
 4. ID-token evidence (audience = test-application client ID) needs no API but does need the M-21b
    test application.
 
-Result: the Functions/API track is **BLOCKED FOR AC-16/AC-22–AC-25 (JWT access-token parts) —
-ADDITIONAL PROVIDER RESOURCE AUTHORITY REQUIRED** until the §20 amendment is granted. ID-token-only
-observations could proceed under current authority but cannot satisfy the track; the track as a whole is
-blocked, never passed by omission. No unauthorized creation is performed to route around the blocker.
+Result: the Functions/API track was **BLOCKED FOR AC-16/AC-22–AC-25 (JWT access-token parts) —
+ADDITIONAL PROVIDER RESOURCE AUTHORITY REQUIRED** until amendment. Authority is now **BOUNDED GRANTED
+under `FD-AUTH-ARCH-002-VAL-002-AMEND-001`** (A-1 + A-2, plus A-3 for namespaced claims — each subject to
+Gate 2 deciding it is actually necessary). ID-token-only observations could proceed under prior authority
+but cannot satisfy the track alone. No unauthorized creation is performed to route around any blocker.
 
 ## 13. App Check treatment
 
@@ -474,14 +478,16 @@ yields `VALIDATION INCOMPLETE — COMMERCIAL EVIDENCE REQUIRED` (no agent waiver
   **NONE**. Live Auth0 API calls: **NONE**. `DEC-AUTH-002`, `DEC-SEC-005`/R1–R10, `DEC-DATA-008`,
   `FD-COM-001`, and the `AUTH-MFA-003D-IMPL-001` blocked state are consumed, unmodified.
 
-## 19. Gate 1 completion state (CORR-001 revised)
+## 19. Gate 1 completion state (AMEND-001: authority granted 2026-09-09)
 
-**BLOCKED — BOUNDED PROVIDER RESOURCE AUTHORITY AMENDMENT REQUIRED**
+**READY FOR FEF HIGH-RISK GATE 1 INDEPENDENT REVIEW**
 
-Gate 1 approval is not declared here; it is the independent reviewer's disposition on the exact head.
-Gate 2 is not begun. Auth0 is not selected. The validation requirements themselves are not weakened:
-Google (AC-19), the non-Google path (AC-17), and Functions/API contract validation (AC-16/AC-22–AC-25)
-remain mandatory — missing authority means INCOMPLETE/BLOCKED, never PASS.
+Founder amendment `FD-AUTH-ARCH-002-VAL-002-AMEND-001` grants the bounded A-1/A-2/A-3 authority requested
+in §20 (each subject to Gate 2 deciding the resource is actually necessary, with the A-1 read-only
+inventory relief). No other blocker exists. Gate 1 approval itself is not declared here; it is the
+independent reviewer's disposition on the exact head. Gate 2 is not begun. Auth0 is not selected.
+The validation requirements stand unweakened: Google (AC-19), the non-Google path (AC-17), and
+Functions/API contract validation (AC-16/AC-22–AC-25) remain mandatory.
 
 ## 20. CORR-001 — provider-resource authority reassessment (2026-09-09)
 
@@ -531,3 +537,17 @@ validation") once their *creation* is authorized.
 - Everything executable under current authority (F1/F2, revocation, ID-token observations, product
   methods except app-level Google login, commercial evidence) is unaffected by this blocker. No Founder
   decision is broadened by Gate 1 itself; the amendment above is a request, not an authorization.
+
+### 20.4 Amendment grant (AMEND-001, 2026-09-09 — recorded on PR #239)
+
+Founder amendment `FD-AUTH-ARCH-002-VAL-002-AMEND-001` grants items A-1–A-3 exactly as specified in
+§20.2 (same resource types, purposes, minimum scopes, creation/cleanup actions), each subject to Gate 2
+deciding the resource is actually necessary — including the A-1 read-only tenant-inventory relief
+(reuse a usable default app instead of creating where possible) and the A-3 one-preferred/two-max rule.
+The authoritative WP permission table now carries this authority; M-21b/c/d above reflect the grant.
+Google semantics preserved: supported-method validation only (AC-19), complete non-Google path mandatory
+(AC-17), no `DEC-AUTH-001` change; default `google-oauth2` + developer keys only, no Google Cloud
+project or production credentials. A-3 is validation-only: no cutoff or Action-claim architecture is
+approved, and a failed validation may fail qualification without redesigning the requirement. Cleanup
+authority (client/resource-server/Action deletion with absent-readback, secret revocation) is part of the
+grant; qualification stays unavailable while mandatory cleanup is unresolved. Gate 1 state: see §19.

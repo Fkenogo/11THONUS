@@ -7,6 +7,17 @@
 
 ---
 
+## 2026-09-09 — AUTH-ARCH-002-VAL-002-AUTH-AMEND-001 — Founder Bounded Provider-Resource Authority Amendment (`FD-AUTH-ARCH-002-VAL-002-AMEND-001`)
+
+- **Task / status:** Authority recording on branch `docs/auth-arch-002-val-002-gate1` at head `b487c87403aa4ff9435d60aed8ab48fe46f00924` (PR #239 OPEN/MERGEABLE/CLEAN at entry; base `origin/main` `8a918e02216bd01a40040aefa9bf62f463f91d76` confirmed current; CI SUCCESS on the entry head; both CORR-001 threads resolved; no new findings). **VAL-002 Gate 1 = READY FOR FEF HIGH-RISK GATE 1 INDEPENDENT REVIEW** (approval not declared; Gate 2 not begun). Auth0 LEADING CANDIDATE — NOT SELECTED.
+- **Amendment recorded:** `FD-AUTH-ARCH-002-VAL-002-AMEND-001` (verified unused and repository-compatible before recording). Grants only A-1 (at most one login-capable validation application, Gate 2 inventory-first relief, no production callbacks/domains/secrets), A-2 (exactly one custom validation API, default configuration preferred), A-3 (at most two Login Flow Actions, one preferred, candidate-evidence purposes only — no cutoff/Action-claim architecture approval), default-connection/callback/test-setting configuration (default `google-oauth2` + developer keys only; no new Google connection, Cloud project, or production credentials), and full cleanup authority with absent-readback and secret revocation. Each creation subject to Gate 2 necessity. Google semantics preserved (supported-method validation AC-19; mandatory non-Google path AC-17; no `DEC-AUTH-001` change).
+- **Files changed:** [`AUTH-ARCH-002-VAL-002 work package`](../05-implementation/reports/AUTH-ARCH-002-VAL-002-work-package-2026-09-08.md) (AMEND-001 note + six permission-table rows; AC-01–AC-36, R1–R10, gates, selection state, Merge = NO, prohibitions, and original history untouched); [`AUTH-ARCH-002-VAL-002 Gate 1 approach report`](../05-implementation/reports/AUTH-ARCH-002-VAL-002-gate1-approach-2026-09-09.md) (M-21b/c/d, §§5.1/12.1/19, new §20.4); `docs/00-governance/documentation-changes-log.md` (Entry 194); this record.
+- **Code/configuration/dependencies/migrations/live changes:** none. No tenant/A-1/A-2/A-3/users/credentials created, no Auth0 API calls, no Gate 2, no live validation. Full-diff secret scan clean. `FD-COM-001` untouched. `AUTH-MFA-003D-IMPL-001` still blocked.
+- **Validation:** `git diff --check`; Markdown relative-link validation; `prettier --check` on changed files; append-only verification; CI on the exact amendment head. PR left open for independent review; not self-approved; not merged without separate Founder authorization after review.
+- **Rollback:** revert the amendment commit(s); WP returns to pre-amendment authority (Entries 186–193 preserved as history); no provider/data cleanup (nothing created).
+
+---
+
 ## 2026-09-09 — AUTH-ARCH-002-VAL-002-GATE-1-CORR-001 — Correct PR #239 Review Findings (P1 authority boundary, P2 history restoration)
 
 - **Task / status:** Bounded Gate 1 correction on branch `docs/auth-arch-002-val-002-gate1` at reviewed head `87923dce762900eefe9ab179db3f30216ff67d7c` (PR #239 OPEN/MERGEABLE/CLEAN at entry; base `origin/main` `8a918e02216bd01a40040aefa9bf62f463f91d76` confirmed current; CI SUCCESS on the reviewed head; two review threads inspected, no other substantive findings). **VAL-002 Gate 1 = BLOCKED — BOUNDED PROVIDER RESOURCE AUTHORITY AMENDMENT REQUIRED** (see the corrected approach report §20). Auth0 LEADING CANDIDATE — NOT SELECTED.
