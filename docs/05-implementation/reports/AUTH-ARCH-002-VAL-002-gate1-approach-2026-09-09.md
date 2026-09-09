@@ -1,6 +1,7 @@
 # AUTH-ARCH-002-VAL-002 — Gate 1 Approach (FEF High-Risk Review Gate 1)
 
-> **Status:** **GATE 1 APPROACH — AWAITING INDEPENDENT REVIEW**
+> **Status:** **BLOCKED — BOUNDED PROVIDER RESOURCE AUTHORITY AMENDMENT REQUIRED**
+> (CORR-001, 2026-09-09; see §20 — required provider-object creations exceed the WP permission table)
 > **Classification:** Validation-approach review only — NO SELECTION / NO MIGRATION / NO IMPLEMENTATION / NO LIVE EXECUTION
 > **Date:** 2026-09-09
 > **Repository:** `https://github.com/Fkenogo/11THONUS.git` (authoritative source of truth)
@@ -122,6 +123,30 @@ this validation and destroyed in cleanup.
   `VALIDATION INCOMPLETE` (AC-19) — never a pass, never a waiver, and never a conversion of Google into
   a universal user requirement.
 
+### 5.1 Google resource boundary (CORR-001 reassessment, current official Auth0 documentation)
+
+1. The validation tenant ships a usable Google social connection by default: every new tenant has the
+   `google-oauth2` connection present, and Auth0 developer keys permit testing a social IdP without
+   registering own Google OAuth credentials (testing only, never production). Classification:
+   **ALREADY EXISTS BY TENANT DEFAULT**. No Google Cloud project, OAuth client, or new Auth0 connection
+   is required for AC-19 — creating any of those is **NOT REQUIRED** and must not be done to widen scope.
+2. Enabling the default `google-oauth2` connection for the test application (dashboard toggle) and the
+   dashboard-level "Try Connection" check are **CONFIGURATION OF ALREADY-AUTHORIZED RESOURCE**
+   (controlled use of the authorized tenant; M-21a, no M2M scope).
+3. App-level Google login (Universal Login with `VAL-G-01`) additionally requires a login-capable
+   Auth0 application. Official documentation documents application creation as an explicit setup step
+   (Dashboard Create Application / `POST /api/v2/clients`) with no guaranteed usable default, and an
+   M2M application cannot perform interactive login. Classification: **NEW PROVIDER RESOURCE CREATION
+   REQUIRED** (M-21b) — not in the WP permission table, therefore an authority gap (see §20).
+4. Developer-keys limitations are recorded as evidence caveats (Auth0 branding on consent, no custom
+   domains, degraded SSO/federated-logout/`prompt=none`/redirect-Actions behaviour, and no reliable
+   MFA over a dev-keys session). AC-19 therefore proves login compatibility only — never Google+MFA
+   combined evidence, which the MFA track covers separately via email/password + TOTP.
+
+Result: the connection-level AC-19 check can proceed under current authority; the app-level AC-19 login
+test is **BLOCKED FOR AC-19 — ADDITIONAL PROVIDER RESOURCE AUTHORITY REQUIRED** (M-21b) until the §20
+amendment is granted. Blocked is recorded, never passed, never waived.
+
 ## 6. M2M design — least-privilege permission matrix (finalized approach)
 
 One M2M client, created after Gate 1 clearance, holding exactly the scopes below and nothing broader.
@@ -152,7 +177,10 @@ to widen.
 | M-18 | Password-change / verification tickets + jobs | `POST /api/v2/tickets/password-change`, verification tickets, `POST /api/v2/jobs/verification-email` | `create:user_tickets` (+ `update:users` for jobs) | AC-18 flows | Write, non-destructive | Yes | None (tickets expire) |
 | M-19 | Tenant log readback (audit evidence) | Tenant logs endpoints | `read:logs` | Audit-log excerpts per AC (sanitized) | Read | Yes | None |
 | M-20 | Prompt text read (EN/FR matrix) | Prompts endpoints | `read:prompts` | AC-20 evidence | Read | Conditional | None |
-| M-21 | Test connection / app setup (Google, tickets) | Connections/clients endpoints | Least observed (`create:connections`, `update:connections`, `create:clients` family) | AC-19 + harness prerequisites only | Write, scoped to the validation tenant | Conditional, minimal | Delete temporary app/connection |
+| M-21a | Enable default connections on the test application (dashboard only) | Dashboard: application Connections tab | None (no M2M scope; human-operator dashboard toggle) | AC-19 + login-matrix prerequisites | Configuration of already-authorized resources | Yes, dashboard-only | Disable on cleanup |
+| M-21b | Create login-capable test application (if no usable default app exists) | Dashboard Create Application, or `POST /api/v2/clients` | `create:clients` (+ `read:clients`, `delete:clients` for readback/cleanup) | Interactive Universal Login tests (AC-14/17/18/19/20) — an M2M app cannot perform interactive login | **Creation — REQUIRES ADDITIONAL AUTHORITY (see §20)** | Conditional on §20 amendment | `DELETE /api/v2/clients/{id}` + readback |
+| M-21c | Register custom validation API (resource server, e.g. `https://api.11thonus.val`) | Dashboard Create API, or `POST /api/v2/resource-servers` | `create:resource_servers` (+ read/delete for readback/cleanup) | JWT access-token evidence path (AC-16) + Functions harness JWT verification (AC-22–AC-25) + cutoff race tokens (AC-11/12) — without a registered API, access tokens are opaque, not JWT | **Creation — REQUIRES ADDITIONAL AUTHORITY (see §20)** | Conditional on §20 amendment | `DELETE /api/v2/resource-servers/{id}` + readback |
+| M-21d | Create/deploy Login Flow Action(s) for namespaced claims | Dashboard Create + Deploy Action, or Actions Management API | `create:actions`, `update:actions` (+ read/delete for readback/cleanup) | Emit `https://11thonus.val/*` namespaced session-generation claim (AC-11) and MFA claim (AC-16) — no native token claim carries the generation signal | **Creation — REQUIRES ADDITIONAL AUTHORITY (see §20)** | Conditional on §20 amendment | Delete action versions/action + readback |
 
 Refused by default: any scope not in this matrix; any `update:users` use outside M-15/M-16;
 any production-tenant credential; any standing (non-expiring, non-rotated) secret. The M2M client
@@ -335,6 +363,29 @@ Disposable transport experiment only — no production Functions are implemented
   verification mechanics pattern; the tenant harness proves provider behaviour. Mechanics results are
   never reported as tenant-observed behaviour.
 
+### 12.1 Harness resource boundary (CORR-001 reassessment)
+
+The disposable harness (local code, JWKS fixtures) itself requires no provider resource. The *tokens it
+must verify*, however, do:
+
+1. JWT access tokens exist only for a registered custom API (without an audience, Auth0 issues opaque
+   access tokens, which cannot be JWKS-verified; Management API audience tokens are M2M-scoped and are
+   not user tokens). Registering the validation API is **NEW PROVIDER RESOURCE CREATION REQUIRED**
+   (M-21c) — not in the WP permission table, therefore an authority gap (see §20).
+2. The namespaced access-token MFA claim (AC-16) and the Action-emitted generation claim (AC-11) each
+   require creating and deploying a Login Flow Action — **NEW PROVIDER RESOURCE CREATION REQUIRED**
+   (M-21d), likewise a gap. The purely domain-side server-block closing needs no provider object and
+   stays authorized; it cannot substitute for the Action-emitted claim evidence.
+3. Tenant signing-key rotation for the unknown-`kid` test (rotate-without-revoke only) is
+   **CONFIGURATION OF ALREADY-AUTHORIZED RESOURCE** (tenant settings; reversible; no new object).
+4. ID-token evidence (audience = test-application client ID) needs no API but does need the M-21b
+   test application.
+
+Result: the Functions/API track is **BLOCKED FOR AC-16/AC-22–AC-25 (JWT access-token parts) —
+ADDITIONAL PROVIDER RESOURCE AUTHORITY REQUIRED** until the §20 amendment is granted. ID-token-only
+observations could proceed under current authority but cannot satisfy the track; the track as a whole is
+blocked, never passed by omission. No unauthorized creation is performed to route around the blocker.
+
 ## 13. App Check treatment
 
 App Check (device/app attestation) is orthogonal to user authentication: it attests *which app instance*
@@ -413,16 +464,70 @@ yields `VALIDATION INCOMPLETE — COMMERCIAL EVIDENCE REQUIRED` (no agent waiver
 
 ## 18. Repository changes (this Gate 1 task)
 
-- New documentation-only Gate 1 approach report (this file).
-- Required tracking records: `docs/00-governance/documentation-changes-log.md` (new Entry 192) and
-  `docs/changes/IMPLEMENTATION_CHANGES.md` (Gate 1 entry).
+- New documentation-only Gate 1 approach report (this file), including CORR-001 (§5.1, §12.1,
+  M-21a–M-21d, §19–§20: provider-resource authority reassessment concluding
+  BLOCKED — BOUNDED PROVIDER RESOURCE AUTHORITY AMENDMENT REQUIRED).
+- Required tracking records: `docs/00-governance/documentation-changes-log.md` (Entries 192–193) and
+  `docs/changes/IMPLEMENTATION_CHANGES.md` (Gate 1 entry + CORR-001 entry, with the prior
+  `AUTH-ARCH-002-VAL-WP-001-AUTH-001` authorization record restored).
 - Production-code changes: **NONE**. Dependencies/config changes: **NONE**. Auth0 resources created:
   **NONE**. Live Auth0 API calls: **NONE**. `DEC-AUTH-002`, `DEC-SEC-005`/R1–R10, `DEC-DATA-008`,
   `FD-COM-001`, and the `AUTH-MFA-003D-IMPL-001` blocked state are consumed, unmodified.
 
-## 19. Gate 1 completion state
+## 19. Gate 1 completion state (CORR-001 revised)
 
-**READY FOR FEF HIGH-RISK GATE 1 INDEPENDENT REVIEW**
+**BLOCKED — BOUNDED PROVIDER RESOURCE AUTHORITY AMENDMENT REQUIRED**
 
 Gate 1 approval is not declared here; it is the independent reviewer's disposition on the exact head.
-Gate 2 is not begun. Auth0 is not selected.
+Gate 2 is not begun. Auth0 is not selected. The validation requirements themselves are not weakened:
+Google (AC-19), the non-Google path (AC-17), and Functions/API contract validation (AC-16/AC-22–AC-25)
+remain mandatory — missing authority means INCOMPLETE/BLOCKED, never PASS.
+
+## 20. CORR-001 — provider-resource authority reassessment (2026-09-09)
+
+Prompted by independent review (P1: the M-21 row implied creating Auth0 connections and non-M2M
+clients outside the WP permission table, which authorizes only the tenant, validation identities, one
+least-privilege M2M app, validation API calls, and the listed deletes — "any provider action not listed
+here is NOT authorised"). Gate 1 was reassessed against current official Auth0 documentation without
+broadening the WP. Rule applied: *creating* a new provider object needs explicit authority; *using or
+configuring* what the authorized tenant (or an authorized creation) already provides does not.
+
+### 20.1 Authorized-resource classification
+
+| Resource | Verdict | Basis |
+| --- | --- | --- |
+| Validation tenant | Authorized (creation YES) | WP permission table |
+| Validation identities (`VAL-*` users) | Authorized (creation YES) | WP permission table |
+| Least-privilege M2M application | Authorized (creation YES) | WP permission table |
+| Guardian/session/refresh-token/user/ticket/log Management API calls (M-01–M-20) | Authorized | "Perform validation API calls: YES" |
+| Default `Username-Password-Authentication` database connection | **ALREADY EXISTS BY TENANT DEFAULT** — use as-is | Tenant default user store; no creation step documented |
+| Default `google-oauth2` social connection + Auth0 developer keys (AC-19) | **ALREADY EXISTS BY TENANT DEFAULT** — test without own Google credentials | Every new tenant ships the Google connection; dev keys support testing (non-production only) |
+| Enabling default connections per application; dashboard "Try Connection"; callbacks; tenant settings; signing-key rotate-without-revoke; default email provider | **CONFIGURATION OF ALREADY-AUTHORIZED RESOURCE** (M-21a) | Controlled use of the authorized tenant; no new provider object; no M2M scope |
+| Login-capable test application (M-21b) | **NEW PROVIDER RESOURCE CREATION REQUIRED** — gap | Creation is a documented setup step; no usable default guaranteed; M2M apps cannot do interactive login |
+| Custom validation API / resource server (M-21c) | **NEW PROVIDER RESOURCE CREATION REQUIRED** — gap | JWT access tokens exist only for registered APIs; otherwise opaque |
+| Login Flow Action(s) for namespaced claims (M-21d) | **NEW PROVIDER RESOURCE CREATION REQUIRED** — gap | No native claim carries the generation signal; Actions must be created and deployed |
+| Google Cloud project / production Google OAuth keys | **NOT REQUIRED** — must not be created | Dev-keys default connection suffices for AC-19 login compatibility |
+
+### 20.2 Bounded authority amendment required (exact)
+
+| # | Resource type | Purpose (AC) | Minimum scope | Creation action | Cleanup action | Why existing authority is insufficient |
+| --- | --- | --- | --- | --- | --- | --- |
+| A-1 | One login-capable test application (SPA or Regular Web App, e.g. `11thonus-val-harness`) | Interactive Universal Login tests: genuine TOTP sign-in (AC-14), email/password (AC-17), verification/reset (AC-18), Google login (AC-19), EN/FR matrix (AC-20); ID-token audience for AC-16/AC-22 | `create:clients`, `read:clients`, `delete:clients` (or dashboard creation by the authorized operator; M2M holds only read/delete if dashboard creates) | Dashboard Create Application, or `POST /api/v2/clients` | `DELETE /api/v2/clients/{id}` + absent-readback | WP authorizes only M2M-app creation; M2M apps use client-credentials grant and cannot perform interactive login; no usable default app is guaranteed by documentation. Conditional relief: if Gate 2's tenant inventory (read-only) finds a usable default app, use it as configuration-only and A-1 falls away — Gate 1 does not assume it. |
+| A-2 | One custom validation API / resource server (e.g. identifier `https://api.11thonus.val`, 24 h default lifetime acceptable) | JWT access-token evidence path (AC-16), Functions harness verification incl. negatives (AC-22–AC-25), cutoff race tokens (AC-11/12) | `create:resource_servers`, `read:resource_servers`, `delete:resource_servers` (`update:resource_servers` only if lifetime tuning is needed) | Dashboard Create API, or `POST /api/v2/resource-servers` | `DELETE /api/v2/resource-servers/{id}` + absent-readback | JWT access tokens are issued only for registered custom APIs; without one, tokens are opaque and the AC-16/AC-22–AC-25 JWT contract cannot be executed at all. Unlisted action under the WP rule. |
+| A-3 | At most two Login Flow Actions (namespaced session-generation claim + namespaced MFA claim, e.g. `https://11thonus.val/*`) | Action-emitted generation claim for the cutoff race (AC-11) and namespaced access-token MFA claim (AC-16) | `create:actions`, `update:actions`, `read:actions`, `delete:actions` (deploy + remove) | Dashboard Create + Deploy Action, or Actions Management API equivalents | Delete action versions and the action + absent-readback | No native access-token claim carries the session-generation signal (VAL-001 §§7–8); the claim must be emitted by a created extensibility object. Unlisted action under the WP rule. |
+
+Connection enablement for A-1 stays dashboard-only (no `update:connections`/`update:clients` M2M scope
+granted). No production keys, custom domains, email-provider overrides, Organizations, roles, or
+standing credentials are requested. All three objects are disposable, validation-tenant-scoped, and
+covered by the existing WP delete permission ("Delete temporary applications/connections created for
+validation") once their *creation* is authorized.
+
+### 20.3 Blocked tracks (requirements preserved, not weakened)
+
+- AC-19 app-level login: **BLOCKED FOR AC-19** pending A-1 (connection-level "Try" may proceed now).
+- AC-16/AC-22–AC-25 JWT access-token parts: **BLOCKED** pending A-1 + A-2 (+ A-3 for namespaced claims).
+- AC-11 cutoff race: **BLOCKED** pending A-1 + A-2 + A-3 (server-side block design work, needing no
+  provider object, may proceed as documentation-only).
+- Everything executable under current authority (F1/F2, revocation, ID-token observations, product
+  methods except app-level Google login, commercial evidence) is unaffected by this blocker. No Founder
+  decision is broadened by Gate 1 itself; the amendment above is a request, not an authorization.

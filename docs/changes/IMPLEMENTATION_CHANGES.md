@@ -7,6 +7,18 @@
 
 ---
 
+## 2026-09-09 — AUTH-ARCH-002-VAL-002-GATE-1-CORR-001 — Correct PR #239 Review Findings (P1 authority boundary, P2 history restoration)
+
+- **Task / status:** Bounded Gate 1 correction on branch `docs/auth-arch-002-val-002-gate1` at reviewed head `87923dce762900eefe9ab179db3f30216ff67d7c` (PR #239 OPEN/MERGEABLE/CLEAN at entry; base `origin/main` `8a918e02216bd01a40040aefa9bf62f463f91d76` confirmed current; CI SUCCESS on the reviewed head; two review threads inspected, no other substantive findings). **VAL-002 Gate 1 = BLOCKED — BOUNDED PROVIDER RESOURCE AUTHORITY AMENDMENT REQUIRED** (see the corrected approach report §20). Auth0 LEADING CANDIDATE — NOT SELECTED.
+- **P1 (provider-action boundary):** the M-21 row implied creating Auth0 connections and non-M2M clients outside the WP permission table (tenant + validation identities + one M2M app + validation API calls + listed deletes only; unlisted actions NOT authorised). Reassessed against current official Auth0 documentation without broadening the WP: default DB connection, default `google-oauth2` + developer keys, and tenant-settings/dashboard toggles are tenant-default use/configuration (M-21a, no new object, no M2M scope); a login-capable test application (M-21b), a custom validation API (M-21c), and Login Flow Actions (M-21d) each require genuine provider-object creation and are recorded as bounded amendment items A-1–A-3 with exact resource type, purpose, minimum scopes, creation/cleanup actions, and rationale. Google Cloud project/production keys explicitly NOT REQUIRED. Blocked tracks recorded (AC-19 app-level login; AC-16/AC-22–AC-25 JWT parts; AC-11 race) with requirements preserved — blocked/incomplete, never pass.
+- **P2 (append-only history):** the prior `AUTH-ARCH-002-VAL-WP-001-AUTH-001` Founder authorization record replaced by the Gate 1 edit is restored byte-identical below the Gate 1 entry; sequence Gate 1 → AUTH-001 → CORR-001 preserved; no prior entry rewritten.
+- **Files changed:** [`AUTH-ARCH-002-VAL-002 Gate 1 approach report`](../05-implementation/reports/AUTH-ARCH-002-VAL-002-gate1-approach-2026-09-09.md) (§5.1, §12.1, M-21a–M-21d, §§18–20); `docs/00-governance/documentation-changes-log.md` (Entry 193); this record.
+- **Code/configuration/dependencies/migrations/live changes:** none. No tenant/credentials/users created, no provider APIs contacted, no selection, no Gate 2. Full-diff secret scan clean. `FD-COM-001` untouched.
+- **Validation:** `git diff --check`; Markdown relative-link validation; `prettier --check` on changed files; append-only verification (restoration diff clean); CI on the exact corrected head. Review threads replied with exact evidence and resolved after verified correction.
+- **Rollback:** revert the CORR-001 commit(s); no provider/data cleanup (nothing created).
+
+---
+
 ## 2026-09-09 — AUTH-ARCH-002-VAL-002-GATE-1 — FEF High-Risk Review Gate 1: Auth0 Live Validation Approach
 
 - **Task / status:** Gate 1 approach review on branch `docs/auth-arch-002-val-002-gate1` from verified `origin/main` `8a918e02216bd01a40040aefa9bf62f463f91d76` (expected handoff SHA confirmed current; clean isolated worktree). Entry Gate re-verified: WP AUTHORISED under `FD-AUTH-ARCH-002-VAL-002`; R1–R10 unchanged; Auth0 LEADING CANDIDATE — NOT SELECTED; no tenant/credentials created; no migration started. **GATE 1 APPROACH — AWAITING INDEPENDENT REVIEW.**
@@ -15,6 +27,15 @@
 - **Code/configuration/dependencies/migrations/live changes:** none. No tenant/credentials/users created, no provider APIs contacted, no subscription/terms, no selection, no Gate 2. Full-diff secret scan clean. `FD-COM-001` untouched. `AUTH-MFA-003D-IMPL-001` still blocked; R1–R10 unchanged.
 - **Validation:** `git diff --check`; Markdown relative-link validation; `prettier --check` on changed files; CI on the PR head. PR opened for independent review, not self-merged.
 - **Rollback:** revert the Gate 1 commit(s); no provider/data cleanup (nothing created).
+
+## 2026-09-08 — AUTH-ARCH-002-VAL-WP-001-AUTH-001 — Founder Execution Authorization for `AUTH-ARCH-002-VAL-002` (`FD-AUTH-ARCH-002-VAL-002`)
+
+- **Task / status:** Authorization recording on branch `docs/auth-arch-002-val-002-wp` at Founder-reviewed head `2e6e139b711f61747e555038ea707f883697ef00` (PR #238 OPEN/MERGEABLE/CLEAN at entry; base `origin/main` `375c145dbc63ff174e8682c8f055d50d1fda5e61` confirmed current; CI SUCCESS on the reviewed head; 4/4 CORR-001 threads resolved; no new findings). **VAL-002 = AUTHORISED — READY FOR CONTROLLED VALIDATION EXECUTION** (effective after merge).
+- **Authorization recorded:** `FD-AUTH-ARCH-002-VAL-002` — bounded to the WP-defined validation programme only. Does not select Auth0; does not authorize migration, production tenant, or production users/data; does not resume `AUTH-MFA-003D`; does not authorize PostgreSQL implementation; does not change R1–R10; does not make Google authentication mandatory for users (AC-17/AC-19 preserved); does not waive validation/commercial evidence or remaining Entry Gate/High-Risk checkpoints. AC-01–AC-36, invariants, requirements, qualification gates verified unchanged. Auth0 LEADING CANDIDATE — NOT SELECTED.
+- **Files changed:** [`AUTH-ARCH-002-VAL-002 work package`](../05-implementation/reports/AUTH-ARCH-002-VAL-002-work-package-2026-09-08.md) (status flip + authorization reference only); `docs/00-governance/documentation-changes-log.md` (Entry 191); this record. Entries 189/190 preserved.
+- **Code/configuration/dependencies/migrations/live changes:** none. No tenant/credentials created, no provider APIs contacted, no subscription/terms, no migration. Full-diff secret scan clean. `FD-COM-001` untouched.
+- **Validation:** `git diff --check`; Markdown relative-link validation; FEF structural/status consistency; `prettier --check` on changed files; CI SUCCESS required on the exact authorization head; regular merge with exact-head protection; post-merge CI SUCCESS required.
+- **Rollback:** revert the authorization commit(s) / the merge; WP returns to PENDING (Entries 189/190 preserved as history); no provider/data cleanup (nothing created).
 
 ## 2026-09-08 — AUTH-ARCH-002-VAL-WP-001-CORR-001 — Correct PR #238 Review Findings on `AUTH-ARCH-002-VAL-002`
 
