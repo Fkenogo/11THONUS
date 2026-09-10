@@ -7,6 +7,20 @@
 
 ---
 
+## 2026-09-10 — AUTH-ARCH-002-VAL-002-EXEC-001-STOP-001-CORR-002 — Final Bounded Correction: Evidence-Provenance Narrowing, Editorial Fix, PR Body Sync
+
+- **Task / status:** Final bounded correction of PR #241, on the existing branch `docs/auth-arch-002-val-002-exec-001-stop-001` at reviewed head `be86ce6580a5e58ed37dc0a07bdb29e82f7b4f2c` (PR OPEN/MERGEABLE; base `origin/main` `a2c80d1f` current, zero drift). No Auth0/provider activity, no production code, no unrelated file modified, FD-COM-001 untouched.
+- **Provenance narrowing:** four over-claiming `REPOSITORY VERIFIED` labels in §8 of the stop report corrected. Repository evidence proves only what is/isn't committed; it cannot prove operational facts about shell/browser conduct or live production state. Test-execution count and secret-handling claims split into `EXECUTOR-REPORTED OPERATIONAL FACT` + narrower `REPOSITORY VERIFIED` corroboration; production-change and Firebase-Authentication-unchanged claims narrowed similarly, with the live-Firebase-Auth state additionally marked `NOT INDEPENDENTLY REPRODUCIBLE FROM REPOSITORY` since no live check was performed. No new evidence added; no claim's substance changed, only its provenance attribution.
+- **Editorial correction:** "Entry 201 preserved above" → "preserved below" (spatially accurate — Entry 201 sits below Entry 202 in the newest-first log). Entry 201's own text not rewritten.
+- **PR body synchronization:** PR #241 body updated from the stale pre-CORR-001 disposition to `BLOCKED — DECISION REQUIRED`, with `AUTH0 TECHNICAL QUALIFICATION — INCOMPLETE`, `AUTH0 NOT SELECTED`, and `0 / 109 canonical cases executed — executor-reported operational fact` stated separately; E-01 SHA mismatch and Gate 2 §22 STOP made explicit; commercial/environment constraint noted as an additional observation, not a technical disqualification; future-execution requirement noted.
+- **Preserved without change:** Gate 2 (text/E-01 not rewritten), Gate 1, `DEC-AUTH-002`, `DEC-SEC-004`, `DEC-SEC-005` R1–R10, `DEC-DATA-008` (PostgreSQL NOT STARTED), `AUTH-MFA-003D-IMPL-001` (VALID/BLOCKED, no resumption). No replacement provider selected.
+- **Files changed:** [`AUTH-ARCH-002-VAL-002-EXEC-001 stop report`](../05-implementation/reports/AUTH-ARCH-002-VAL-002-EXEC-001-stop-2026-09-10.md) (corrected in place); `docs/00-governance/documentation-changes-log.md` (Entry 203); this record; PR #241 body (GitHub metadata only).
+- **Code/configuration/dependencies/migrations/live changes:** none. Zero canonical cases executed or resumed; zero new provider resources; zero secrets/credentials touched; full-diff secret scan clean.
+- **Validation:** `git diff --check`; full-diff secret scan; append-only verification; Markdown relative-link validation; CI on the exact corrected head required. Not self-approved; not merged; final independent re-review pending.
+- **Rollback:** revert the CORR-002 commit(s); Entries 201–202's text remain as history (unrewritten beyond the one editorial pointer fix); no provider/data cleanup (nothing created). PR body can be reverted to its prior text if needed (GitHub retains edit history).
+
+---
+
 ## 2026-09-10 — AUTH-ARCH-002-VAL-002-EXEC-001-STOP-001-CORR-001 — Bounded Correction: E-01 FAIL, Disposition Corrected to BLOCKED — DECISION REQUIRED
 
 - **Task / status:** Bounded correction of PR #241 in response to independent review, on the existing branch `docs/auth-arch-002-val-002-exec-001-stop-001` at reviewed head `69afff53d2c6a1340b13eaadcb6d60ed8c02cf26` (PR OPEN/MERGEABLE; base `origin/main` `a2c80d1f` current, zero drift). No Auth0/provider activity, no production code, no unrelated file modified, FD-COM-001 untouched.

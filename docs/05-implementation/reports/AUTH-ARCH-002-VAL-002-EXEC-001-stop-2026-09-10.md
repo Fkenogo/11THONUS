@@ -261,18 +261,29 @@ determination was made or implied.
    Free-plan single-tenant policy, independently confirmed).
 8. Founder explicitly declined paid commitment at this stage. `FOUNDER CONFIRMED` — a Founder decision,
    not an executor inference (§5).
-9. Zero live canonical validation cases executed (0 of 109). `REPOSITORY VERIFIED` (no execution
-   evidence, no canonical test artifacts).
+9. `EXECUTOR-REPORTED OPERATIONAL FACT`: 0 of 109 canonical tests were executed. Repository
+    corroboration is limited to `REPOSITORY VERIFIED`: no committed canonical test-result artifact
+    exists in this PR's diff or elsewhere on the branch — the repository cannot, by itself, prove
+    that no test was operationally run outside of what was committed.
 10. Zero validation-scoped provider resources created (no new tenant, application, API, connection,
     M2M client, Action, or user). `LIVE PROVIDER OBSERVATION — EXECUTOR REPORTED` for the inventory
-    baseline (§3) + affirmative absence of any subsequent creation action in this task's own command
-    history.
-11. No production change of any kind. `REPOSITORY VERIFIED` (full diff scope of this task).
-12. No secret, token, password, MFA code, recovery code, or credential was retrieved, handled, or
-    persisted anywhere in this repository, the execution shell, or any evidence file. `REPOSITORY
-    VERIFIED` (full-diff secret scan).
-13. No authentication migration begun; `AUTH-MFA-003D` remains blocked; Firebase Authentication
-    remains the current production authentication system, unchanged. `REPOSITORY VERIFIED`.
+    baseline (§3) + `EXECUTOR-REPORTED OPERATIONAL FACT` for the affirmative absence of any subsequent
+    creation action in this task's own command history — not something the repository diff alone can
+    establish.
+11. `REPOSITORY VERIFIED`: this PR's diff contains no production code or configuration change of any
+    kind. This does not by itself prove no live production system was operationally touched during the
+    task; separately, `EXECUTOR-REPORTED OPERATIONAL FACT`: no live production action was taken.
+12. `EXECUTOR-REPORTED OPERATIONAL FACT`: no secret, token, password, MFA code, recovery code, or
+    credential was intentionally retrieved, copied, or persisted during the bounded inspection —
+    a claim about shell/browser-session conduct that the repository cannot independently verify.
+    Separately, `REPOSITORY VERIFIED`: a full-diff secret scan shows no credential material committed
+    to the repository.
+13. No authentication migration begun; `AUTH-MFA-003D` remains blocked (`REPOSITORY VERIFIED` — WP
+    block-state record unchanged). Whether the live production Firebase Authentication system itself
+    remained unchanged is `NOT INDEPENDENTLY REPRODUCIBLE FROM REPOSITORY` — no live production system
+    check was performed in this task; `REPOSITORY VERIFIED` establishes only that this PR contains no
+    Firebase/Auth implementation or configuration change, and `EXECUTOR-REPORTED OPERATIONAL FACT`
+    that no action was taken against production Firebase Authentication during this task.
 
 No sensitive screenshot was stored — a deliberate choice: every observation in §3/§4 is recordable as
 plain sanitized text (tenant name, region code, environment label, resource counts, quoted UI message)
@@ -315,3 +326,16 @@ analysis relabeled as post-entry operator analysis with corrected Gate 2 section
 executor-verified. Gate 2 itself, its E-01 wording, `DEC-AUTH-002`, `DEC-SEC-004`, `DEC-SEC-005`,
 `DEC-DATA-008`, `AUTH-MFA-003D` block state, and the PostgreSQL NOT-STARTED state are unchanged by this
 correction. No canonical validation was executed or resumed by this correction. Not merged.
+
+This report was further corrected by `AUTH-ARCH-002-VAL-002-EXEC-001-STOP-001-CORR-002` (2026-09-10)
+in response to further independent review at head `be86ce6580a5e58ed37dc0a07bdb29e82f7b4f2c`. §8 items
+9, 10, 11, 12, and 13 narrowed several `REPOSITORY VERIFIED` labels that had over-claimed what a
+repository diff/secret scan can independently prove: absence of committed test-result artifacts,
+committed production/Firebase-auth changes, and committed credential material remain `REPOSITORY
+VERIFIED`; but that zero tests were *operationally* run, that no secret was *ever handled* in a shell
+or browser session, and that the *live* production authentication system remained unchanged are now
+correctly attributed as `EXECUTOR-REPORTED OPERATIONAL FACT` and, where no live check was performed at
+all, `NOT INDEPENDENTLY REPRODUCIBLE FROM REPOSITORY`. No new evidence was added; no claim's substance
+changed — only its attributed provenance. Gate 2, Gate 1, `DEC-AUTH-002`, `DEC-SEC-004`,
+`DEC-SEC-005`, `DEC-DATA-008`, `AUTH-MFA-003D` block state, and the PostgreSQL NOT-STARTED state remain
+unchanged. No canonical validation was executed or resumed. Not merged.
