@@ -1,0 +1,567 @@
+# AUTH-ARCH-003 — Authentication Architecture & Candidate Reassessment
+
+**Status:** `AUTH-ARCH-003 ASSESSMENT COMPLETE — AWAITING INDEPENDENT REVIEW`
+**Task type:** RESEARCH / ARCHITECTURE ASSESSMENT ONLY. Not implementation, not provider selection, not migration.
+**Entry `origin/main` SHA:** `e7030f57dc5679ee62bfbdde9fa5577867e092b5` (PR #242 administrative closure merge commit) — confirmed as expected starting point.
+**Working environment:** isolated worktree `/Volumes/PRODUCTION/Projects/11THONUS-worktrees/auth-arch-003` on branch `docs/auth-arch-003`, created from `origin/main` at the SHA above. The primary worktree at `/Volumes/PRODUCTION/Projects/11THONUS` was dirty with unrelated FD-COM-001 work and was not touched.
+**Author:** Claude (AI agent), 2026-09-10.
+**Do not merge.** Founder decision requested in §Y only.
+
+---
+
+## A. Current Authority and Programme State
+
+This section reconstructs, from repository evidence only, the exact authentication-programme state at `origin/main@e7030f5`. All citations are `file:line` against this worktree. No document below has been silently reconciled against another; §A.8 lists two citation traps found and how to avoid them.
+
+### A.1 `DEC-AUTH-002` — Authentication Architecture Direction (`decision-register.md:742-753`)
+
+**REPOSITORY AUTHORITY.** Status: **CONFIRMED, Priority D1**. Decision date 2026-09-08, approved by Founder.
+
+- APPROVED: **CHANGE** — 11thONUS adopts a separately controlled external managed identity-provider boundary; Firebase Authentication / Google Identity Platform is no longer the target authentication architecture under currently approved requirements.
+- Firebase application/data services (Hosting, Functions, Firestore, Storage) are unaffected by this decision.
+- **No replacement identity provider is approved.** Provider qualification stands as: Firebase Authentication unsuitable under R5/R7; Cognito eliminated under exact-factor/replacement-factor analysis; **Auth0 leading candidate, validation required, NOT selected**; other candidates as recorded in `AUTH-ARCH-001`.
+- The next provider decision requires `AUTH-ARCH-002` (already executed — see A.3) and its downstream validation (already stopped — see A.4).
+- `AUTH-MFA-003D-IMPL-001` stays AUTHORISED-VALID / BLOCKED-execution; no resumption is authorized by this decision.
+- Implementation consequences (line 752): "authorises no migration, no provider procurement, no implementation, and no resumption of `AUTH-MFA-003D-IMPL-001`."
+
+### A.2 `DEC-SEC-004` and `DEC-SEC-005` (`decision-register.md:676-716`)
+
+**REPOSITORY AUTHORITY.** Both CONFIRMED.
+
+- `DEC-SEC-004` (`FD-MFA-2`): dev-only Identity Platform TOTP upgrade authorized (staging/production not authorized); TOTP-only MFA factor policy, no SMS, no customer/Business MFA; controlled auditable non-bypassable recovery required in principle (approver model left open at this entry).
+- `DEC-SEC-005` (`FD-MFA-R`): the approver/initiation model is resolved here as R1–R10 (below), approved as one package 2026-09-07.
+
+### A.3 R1–R10 MFA Recovery Requirements — Authoritative Text
+
+**REPOSITORY AUTHORITY**, canonical source `decision-register.md:701-710` (`DEC-SEC-005`), cross-confirmed (not superseded) by `AUTH-MFA-003D-IMPL-001-work-package-2026-09-07.md` §§6–7 and `AUTH-ARCH-001-...-2026-09-07.md` §4.
+
+| Req | Summary |
+|---|---|
+| R1 | Recovery is initiated by an independent authorised Platform Administrator on behalf of the affected admin, presenting server-verified MFA evidence. No target-initiated pre-MFA proof mechanism at MVP. Absent an eligible independent admin, Founder-authorised break-glass applies. |
+| R2 | Self-approval is prohibited without exception (target ≠ approver ≠ executor-with-approval-authority). |
+| R3 | Normal recovery requires exactly one independent, MFA-verified active Platform Administrator approver (not two-person). Approver's MFA satisfaction must trace the full chain `verified Firebase token → firebase.sign_in_second_factor → AuthenticatedCredential.verifiedSecondFactor → deriveVerifiedMfaSatisfied() → verifiedMfaSatisfied === true`; active status alone is insufficient. |
+| R4 | Sole-administrator recovery uses Founder-authorised break-glass with backend/service-account execution; service-account capability is execution-only, never standing approval authority. Fully attributable, fully audited. No public break-glass endpoint. |
+| R5 | **Session revocation.** Every recovery revokes the target's sessions **before** the approved factor is removed. Mandatory and **fail-closed**: if revocation cannot be confirmed, factor reset must not proceed. Required order: `approved recovery → revoke target sessions → revocation succeeds → verify approved factor binding → remove approved factor`. Natural token expiry may never substitute for confirmed revocation. |
+| R6 | Recovery does not change Platform Administrator lifecycle state (`invited→active→suspended→removed`); recovery state is tracked separately; recovery must not activate/reactivate/re-role a suspended or removed administrator. |
+| R7 | **Exact-factor binding.** A persistent recovery-request record binds to the exact original MFA factor enrollment being reset (an immutable provider factor identifier equivalent to `targetFactorEnrollmentId`); retries must never remove a replacement factor; the record must never store TOTP secrets/codes/credentials. |
+| R8 | Approved recovery authorization expires **one hour** after approval if execution has not begun; expired authorizations are not revived or extended, only re-approved. |
+| R9 | Recovery is not complete on factor removal/re-enrollment alone. Required sequence before privileged access resumes: `old factor reset → fresh TOTP enrollment → end enrollment session → fresh primary sign-in → genuine TOTP challenge → Firebase MFA-resolved session → server verifies firebase.sign_in_second_factor`. No shortcut authorized. |
+| R10 | Extend audit vocabulary with `mfa_recovery_requested/approved/executed/denied/expired`. Do not add `mfa_recovery_failed` without separately approved justification; failure state lives in the persistent record instead. |
+
+**R5 operational meaning:** revocation must be *confirmed*, not merely requested, before any factor mutation begins; the order above is a hard invariant, and the fail-closed rule means an unconfirmed revocation blocks the reset rather than proceeding on a best-effort basis. Natural token/session expiry is explicitly insufficient — a still-live access/refresh token issued before revocation must not remain usable to perform privileged actions during the recovery window.
+
+**R7 operational meaning:** the recovery record is keyed to an immutable provider-issued factor-enrollment identifier captured at request time. If, between request and execution, the target enrolls a *new* factor (F2) while the original (F1) is what the recovery targets, only F1 may ever be deleted by that recovery record — a stale or retried execution must not be able to reach F2. No TOTP secret or code is ever persisted in the recovery record itself.
+
+### A.4 `DEC-DATA-008` — PostgreSQL Selection (`decision-register.md:1145-1155`)
+
+**REPOSITORY AUTHORITY.** CONFIRMED, D1, 2026-09-08.
+
+- APPROVED: PostgreSQL is the authoritative durable transactional datastore; preferred infrastructure/access direction is Cloud SQL for PostgreSQL, accessed server-side through the Functions/API boundary. **No provisioning authorized.**
+- Firestore is no longer presumed authoritative-primary but is not removed.
+- Firebase SQL Connect explicitly rejected as the target access pattern — reason given is that it couples client authorization to Firebase Authentication, which conflicts with the approved external-IdP direction; this is **not** a general defect finding against SQL Connect.
+- Explicitly compatible with `DEC-AUTH-002`: "External managed IdP → Functions/API → 11thONUS domain → PostgreSQL."
+- Explicitly disclaims authorizing "authentication change" or "Auth0 selection" (line 1155).
+
+### A.5 `AUTH-MFA-003D-IMPL-001` — Why It Stays Blocked
+
+**REPOSITORY AUTHORITY**, `AUTH-MFA-003D-IMPL-001-work-package-2026-09-07.md:14-30, 220-222`.
+
+State: **BLOCKED — DECISION REQUIRED — AUTHENTICATION ARCHITECTURE REASSESSMENT.** Founder authorization `FD-AUTH-MFA-003D-IMPL-001` (2026-09-07) remains valid; execution has not started. The blocker is that the FEF Entry Gate's provider-capability check failed: no supported Firebase/Identity Platform administrative mechanism satisfies the exact-factor recovery invariant (R5/R7), per `AUTH-MFA-003D-PROVIDER-001` evidence, Result C — "NO SAFE PROVIDER MECHANISM AVAILABLE — RECOVERY DESIGN BLOCKED." `DEC-AUTH-002` (A.1) reconfirms no resumption is authorized. Codebase inspection (A.12) confirms no recovery-service code exists.
+
+### A.6 `AUTH-ARCH-001` — Firebase Unsuitability Conclusion
+
+**REPOSITORY AUTHORITY**, `AUTH-ARCH-001-...-2026-09-07.md:3,7,16,172,249,336-348`. Status: COMPLETE / FOUNDER-DISPOSED (`FD-AUTH-ARCH-001` → `DEC-AUTH-002`).
+
+Conclusion: Firebase Authentication / Google Identity Platform is **ELIMINATED** as target provider. Exact mechanism (line 16, corroborated line 249): Firebase's service-account administrative MFA update is **whole-list replacement** — there is no factor-addressed delete, no ETag/version/compare-and-swap guard. An admin mutation intended to remove one factor can, in the presence of a concurrently enrolled replacement factor, erase the replacement instead of (or in addition to) the intended target. This is a direct, hard failure of R5/R7 — not a cost or convenience judgment. Client/v2 withdrawal paths exist but require the locked-out user's own session, which is unavailable by definition during an admin-initiated recovery. Auth0 was **not selected**, only identified as leading candidate requiring validation.
+
+### A.7 `AUTH-ARCH-002` and its Validation Chain (VAL-001, VAL-002, Gate 1, Gate 2)
+
+**REPOSITORY AUTHORITY.**
+
+- **`AUTH-ARCH-002`** (`...2026-09-08.md:3,44,58,195,213`): documentation-only kill-or-qualify pass against Auth0. V1 (exact-factor): Auth0's `DELETE /api/v2/guardian/enrollments/{id}` is factor-addressed by API shape (unlike Firebase) — **API shape PASS; behavioral proof VALIDATION REQUIRED**. V2 (revocation contract): session/refresh-token deletion is async (`202 Accepted`), eventually consistent, and already-issued JWTs cannot be revoked and remain valid until `exp` — **VALIDATION REQUIRED**, no documented synchronous confirmation point. Overall recommendation: `VALIDATION INCOMPLETE — SPECIFIC BOUNDED EVIDENCE REQUIRED`. No tenants/accounts created.
+- **`AUTH-ARCH-002-VAL-001`** (`...2026-09-08.md:3,28-36,77-84,226-244`): documentation-level disproof attempts (V1–V6) plus a disposable, never-committed local harness proving only token-verification/cutoff-comparison *mechanics*, not live provider behavior. Founder authority to use a segregated non-production Auth0 tenant was later recorded, but execution itself did not occur. Final state: `AUTHORISED FOR BOUNDED LIVE VALIDATION — NOT YET EXECUTED`; `VALIDATION INCOMPLETE — SPECIFIC BOUNDED EVIDENCE STILL REQUIRED`.
+- **`AUTH-ARCH-002-VAL-002`** (work package, `...2026-09-08.md:8,14,31,310-318,326-334`): `FD-AUTH-ARCH-002-VAL-002` authorized 2026-09-08. Auth0 remains "LEADING CANDIDATE — NOT SELECTED." Defines 36 acceptance criteria and a two-gate FEF High-Risk Review process (Gate 1 = approach review; Gate 2 = contract/tests review) that must both pass before any live execution.
+- **Gate 1** (`...gate1-approach-2026-09-09.md:3`): APPROVED — "READY FOR FEF HIGH-RISK GATE 2," closed via `GATE-1-CLOSE-001`, independent review `5154523016`, head `897cad7`.
+- **Gate 2** (`...gate2-contracts-2026-09-09.md:3`, cross-referenced from the EXEC-001-stop report `:27-34`): the file's own header still reads "NOT APPROVED FOR LIVE EXECUTION" because it was never rewritten post-approval (see the citation trap at A.8.2) — but it **was** independently approved: review `PRR_kwDOTaQe388AAAABM1V6PQ` (2026-09-09) concluded "GATE 2 APPROVED — READY FOR CONTROLLED LIVE VALIDATION EXECUTION," merged as PR #240 (`a2c80d1f...`). Gate 2 defines 109 canonical validation test cases.
+
+### A.8 PR #241 — Stop, and PR #242 — Administrative Closure
+
+**REPOSITORY AUTHORITY**, primary source `AUTH-ARCH-002-VAL-002-EXEC-001-stop-2026-09-10.md`, corroborated by `documentation-changes-log.md:5-10,70-114` and `git log`.
+
+PR #241 carried the Founder-authorized live-validation execution attempt (`AUTH-ARCH-002-VAL-002-EXEC-001`) against a real Auth0 tenant, after both gates passed. It stopped for two independent reasons:
+
+1. **Contract-entry blocker (proximate trigger).** Gate 2's entry check E-01 froze the required `origin/main` SHA to Gate 2's own pre-merge branch point (`b6c2d23f...`). By execution time, `origin/main` had necessarily advanced past that value (to the commit that merged Gate 2 itself). E-01 = FAIL, which under Gate 2 §22 requires an unconditional STOP with disposition `BLOCKED — DECISION REQUIRED`.
+2. **Provider/commercial blocker (independent).** The Founder-controlled Auth0 account held only one US region Development tenant; the approved validation required an EU-locality tenant; provisioning a second tenant required a paid-plan upgrade; the Founder explicitly declined that commitment ("Do not upgrade Auth0 or enter billing information during this provider-validation stage. No paid Auth0 commitment is authorized.").
+
+**Final, corrected disposition** (after in-PR corrections CORR-001/002/003):
+- Canonical execution state: `BLOCKED — DECISION REQUIRED`.
+- Technical provider qualification: **`AUTH0 TECHNICAL QUALIFICATION — INCOMPLETE`**.
+- Selection state: **`AUTH0 NOT SELECTED`**.
+- Live validation: **`0 / 109 canonical cases executed`** — the report explicitly states it does not establish and does not claim Auth0 fails any frozen R1–R10/R5/R7/MFA invariant. No disqualification was established; none of Gate 2's 109 test cases ran.
+- PR #241 merged 2026-09-10T11:29:06Z (`f389e52`) carrying the corrected disposition, not the original mis-framed one.
+
+PR #242 (`e7030f5`, HEAD of this worktree) is a single-file, documentation-only administrative closure: it adds `documentation-changes-log.md` Entry 205, formally records that PR #241 merged cleanly with passing CI, and closes the execution-record housekeeping task while explicitly reiterating that no auth-architecture fact changed: `DEC-AUTH-002`, `DEC-SEC-004/005` R1–R10, `DEC-DATA-008`, Gate 1, Gate 2 remain unchanged; `AUTH-MFA-003D-IMPL-001` stays blocked; PostgreSQL implementation has not started; no replacement provider is selected.
+
+**Net effect at HEAD `e7030f5`:** external-managed-IdP direction is approved; Firebase Authentication is disqualified for MFA recovery specifically; Auth0 is the sole leading, unselected candidate whose live validation stopped before any of its 109 canonical test cases executed; `AUTH-MFA-003D-IMPL-001` remains not implemented; PostgreSQL direction is approved but not implemented.
+
+**A.8.1 and A.8.2 — Citation traps found (not contradictions).** Documented explicitly per the task's "do not silently reconcile, report contradictions" instruction:
+1. PR #241's *own* intermediate commits (e.g. `69afff5`) carry a stale disposition (`VALIDATION INCOMPLETE — COMMERCIAL/ENVIRONMENT CONSTRAINT...`) that CORR-001 superseded before merge. Only the merged head (`f389e52`) carries the corrected `BLOCKED — DECISION REQUIRED` framing — cite the merged head, not an intermediate commit.
+2. Gate 2's own file header (`...gate2-contracts-2026-09-09.md:3`) was frozen at authoring time and never rewritten after approval; read in isolation it wrongly suggests Gate 2 was never approved. The correct status is only recoverable from the EXEC-001-stop report's governing-authority chain or `documentation-changes-log.md`.
+
+No contradiction was found regarding the status of `DEC-AUTH-002`, `DEC-SEC-004/005`, `DEC-DATA-008`, or `AUTH-MFA-003D-IMPL-001` — all cross-references agree as of HEAD.
+
+### A.9 Existing Architecture/Code Documentation
+
+**REPOSITORY AUTHORITY.** `docs/05-implementation/roadmap/AUTH-BP-authentication-blueprint-2026-08-08.md` (Authentication Blueprint); `docs/02-technical/trd/18-platform-governance-and-administration.md` (Platform Administration TRD); TRD10 §§10.2–10.35, TRD11 §§11.14–11.30, TRD15, TRD17 (persistence/identity authority); `docs/05-implementation/roadmap/ENG-P2-ARCH-001-customer-identity-architecture.md` (Customer Identity architecture). No TRD has yet been corrected to reflect the post-`DEC-AUTH-002` external-IdP direction — TRD10/12/18 still describe the pre-decision Firebase-based architecture. There is no separate `ADR-*` naming convention in this repository; the `AUTH-ARCH-*` report series plus `decision-register.md` function as the de facto ADR sequence.
+
+### A.10 Actual Authentication Abstractions in the Codebase
+
+**CURRENT CODE REALITY**, `functions/src/domains/authentication/` and `.../platformAdministration/`.
+
+- `ports/tokenVerifierPort.ts:12-27` — a provider-neutral port (`TokenVerifierPort.verify(raw: RawProviderCredential): Promise<AuthenticatedCredential>`), explicitly documented as Firebase-free.
+- `services/firebaseTokenVerifier.ts` — the sole Firebase-coupled adapter implementing that port; contains the closed provider→reference-type mapping and derives `verifiedSecondFactor` from `decoded.firebase?.sign_in_second_factor`.
+- `models/authenticatedCredential.ts` — provider-neutral `AuthenticatedCredential`, never carries credential material, `verifiedSecondFactor` is never accepted from client input.
+- `identity/models/customerIdentityId.ts` — a plain, provider-independent durable identity string type, used pervasively as the domain identity key.
+- `platformAdministration/services/deriveVerifiedMfaSatisfied.ts` — the single seam converting a verified `AuthenticatedCredential.verifiedSecondFactor` into the `verifiedMfaSatisfied` boolean consumed by authorization (this is the R3 trust chain).
+- **No MFA recovery implementation exists** — no recovery-request repository, callable, or audit-vocabulary extension. Consistent with A.5.
+- **No Auth0 or any external-IdP code exists** — `grep` for "auth0" returns only unrelated test-fixture ID substrings ("auth05"). `firebaseTokenVerifier.ts` is the only `TokenVerifierPort` implementation. All AUTH-ARCH-002/VAL work is validation/documentation-only; zero migration code has been written.
+
+---
+
+## B. Firebase Lessons and Exact Failure
+
+### B.A MFA recovery target
+
+An independent authorized Platform Administrator must be able to: verify their own MFA satisfaction (R3's trust chain), initiate recovery on behalf of a locked-out peer (R1), have that recovery routed through single-approver sign-off (R3) or Founder-authorised break-glass if no independent approver exists (R4), have the system revoke the target's sessions and confirm that revocation *before* touching any factor (R5), remove **exactly** the target's original enrolled factor and nothing else (R7), and require the target to complete a full fresh-authentication + fresh-MFA-challenge cycle before privileged access resumes (R9) — all fully audited (R10).
+
+### B.B Exact-factor requirement (R7), operationally
+
+R7 requires the recovery record to bind, at request time, to an immutable provider-issued identifier for the specific factor enrollment being reset — not "the user's TOTP factor" as a loose concept, but a specific enrollment instance. This matters because a locked-out administrator's factor-loss event and a legitimate re-enrollment attempt can race: if the target manages to enroll a *new* factor (F2) between the recovery request and its execution, a stale recovery record targeting the original factor (F1) must be incapable of deleting F2. This requires the underlying provider operation to accept a specific factor/credential ID as its removal target, not "remove all TOTP for this user" or "replace the user's factor list."
+
+### B.C Session requirement (R5), operationally
+
+Every recovery must revoke the target's existing sessions, and that revocation must be **confirmed successful** before the factor-removal step is allowed to proceed — the order is fixed (`revoke → confirm → verify binding → remove`), and it is fail-closed: an unconfirmed revocation halts the whole recovery rather than proceeding on a best-effort basis. Natural token expiry is explicitly stated as insufficient — a live access token issued moments before revocation must not remain usable for privileged actions through its remaining natural lifetime. This is a stronger requirement than "eventually the user is logged out"; it requires either (a) a synchronous, provider-confirmed revocation primitive, or (b) an 11thONUS-owned mechanism (e.g., a revocation-epoch cutoff checked on every privileged request) that closes the gap the provider's own revocation contract leaves open.
+
+### B.D Recovery lifecycle (R1–R10)
+
+Reconstructed in full in §A.3 above; not repeated here.
+
+### B.E Firebase's exact limitation
+
+Firebase Admin SDK / Identity Platform's administrative MFA-factor mutation is a **whole-list replace** operation: the admin API can set a user's entire list of second factors, but there is no factor-addressed delete, and no ETag/version/compare-and-swap guard to make a replace operation safe against concurrent enrollment. Concretely: if an admin intends to remove factor F1 and the user has meanwhile (or concurrently) enrolled F2, an admin mutation constructed from a stale read of the factor list can silently omit F2 from the replacement list, deleting it along with F1 — a direct violation of R7. This is a **hard security-invariant failure**, independently confirmed in `AUTH-ARCH-001`, not a convenience or cost-based judgment, and not merely "awkward."
+
+---
+
+## C. Auth0 Lessons
+
+Auth0 was, and remains, the only external candidate to have undergone structured hard-invariant analysis against R5/R7 in this repository (`AUTH-ARCH-002`). Its factor-removal API (`DELETE /api/v2/guardian/enrollments/{id}`) is **factor-addressed by shape** — unlike Firebase, it targets a specific enrollment ID rather than replacing a whole list — so it is the first candidate documented as clearing the R7 API-shape bar. However:
+
+- **R5 (session revocation) is the unresolved gap.** Auth0's session/refresh-token deletion is asynchronous (`202 Accepted`, eventually consistent) with no documented synchronous provider-side confirmation point, and already-issued JWTs cannot be revoked — they remain valid until their `exp` claim, by protocol design. `AUTH-ARCH-002` proposed a candidate mitigation (a domain-owned revocation-epoch cutoff checked at token-verification time) but explicitly flagged it as requiring new architectural authority not granted by that document.
+- **Behavioral proof of R7 was never obtained.** The factor-removal API's shape passed static review, but whether it behaves correctly under the specific concurrency scenario R7 cares about (a stale recovery record targeting F1 while F2 exists) was never demonstrated against a live tenant.
+- **Live validation was authorized twice (VAL-001, VAL-002/Gate 1/Gate 2) and executed zero times.** The single attempt (PR #241) stopped on a contract-entry technicality (a frozen SHA in Gate 2's own entry check going stale by the time execution was attempted) compounded by a commercial constraint (the Founder declining a paid-plan tenant upgrade needed for EU locality). **Zero of the 109 canonical test cases defined by Gate 2 have ever run.**
+- **Net position:** Auth0 is neither qualified nor disqualified. `AUTH0 TECHNICAL QUALIFICATION — INCOMPLETE`; `AUTH0 NOT SELECTED`. The absence of live evidence is itself the governing fact — this document must not, and does not, treat Auth0's incomplete validation as either a pass or a fail.
+- **Founder constraint carried forward into this assessment:** the Founder does not want to make a paid Auth0 (or any provider) commitment merely to continue development-stage validation. This shapes §Q (Commercial) and §U (Live Validation) below — any live-validation plan for any candidate must be evaluated against whether it can be completed within a free/low-commitment tier before being proposed as a next step.
+
+---
+
+## D. Non-Negotiable Authentication Requirements
+
+Provider-independent baseline, derived from R1–R10, `DEC-DATA-008`, and the task's own requirement list. A provider/architecture combination must satisfy every item marked **(hard invariant)** to remain a finalist; the rest are quality/fit dimensions scored later (§T).
+
+**Identity and authentication**
+- Secure identification of the intended user; password authentication where authorized; federated/social authentication where authorized.
+- Stable provider-issued subject identifier, mappable to an 11thONUS-owned `customerIdentityId` (never the reverse).
+- OIDC/OAuth standard flows where applicable; secure token verification (signature, issuer, audience, expiry).
+- Refresh/session lifecycle management; secure password reset/recovery.
+
+**MFA — Platform Administrators**
+- Mandatory MFA for the Platform Administrator role specifically (not necessarily all users) **(hard invariant)**.
+- TOTP support at minimum **(hard invariant)**.
+- Ability to enumerate a specific user's enrolled factors with **per-factor identifiers**, not just factor types **(hard invariant — R7 discovery leg)**.
+- Factor-specific administrative removal/reset targeting exactly one enrollment, with protection against a stale/replacement-factor being caught by a concurrent or retried action **(hard invariant — direct R7 requirement)**.
+- Session revocation that is either synchronously confirmable by the provider, or closeable by an 11thONUS-owned mechanism, before the factor-removal step proceeds, with a fail-closed posture **(hard invariant — direct R5 requirement)**.
+- Controlled, administrator-triggerable reenrollment; fresh primary authentication and a genuine MFA challenge required before privileged authorization resumes **(hard invariant — R9)**.
+- Auditability sufficient to attribute admin-initiated recovery actions distinctly from self-service actions **(hard invariant — R10)**.
+
+**MFA — ordinary users:** no assumption that Platform Administrator MFA policy applies; existing product authority (TRD/PRD) governs ordinary-user MFA posture, not this document.
+
+**Application identity**
+- A stable, 11thONUS-owned durable identity (`customerIdentityId`) must remain independent of any provider-issued subject identifier **(hard invariant)**.
+- The provider must never become authoritative for 11thONUS customer/business identity, tenant/business membership, workforce relationships, Platform Administrator lifecycle semantics, application roles/permissions, loyalty/business state, customer lifecycle, or business authorization policy **(hard invariant)**.
+
+**Environments:** a realistic dev/preview/production model without commercially unreasonable development-stage commitment **(hard invariant, per Founder constraint in §C)**.
+
+**Portability:** assessed, not required to be perfect — export/migration path, credential/MFA portability limits, identifier migration, progressive/dual-provider migration risk.
+
+**Operations:** patching, upgrades, backups, HA/DR, observability, secret/key rotation, abuse protection, email deliverability, incident response, staffing burden — all assessed as fit criteria, not hard invariants (an operationally heavier candidate is not automatically eliminated).
+
+**Commercial:** assessed per environment tier (dev/pilot/early-production/scale) using only evidence gathered; no enterprise-pricing assumptions without a citation.
+
+---
+
+## E. Proposed Provider-Independent Identity Boundary
+
+The target architecture is a three-layer boundary:
+
+```
+11thONUS application/domain (roles, permissions, business state, lifecycle, authorization policy)
+        ↑ normalized identity + normalized MFA evidence
+11thONUS-owned authentication/identity integration boundary (adapter, verifier, mapper, recovery orchestrator)
+        ↑ provider-native tokens/sessions/factors
+authentication provider (credential storage, primary ceremony, MFA mechanics, session/token issuance)
+```
+
+PostgreSQL, under `DEC-DATA-008`, sits beneath the domain layer as the durable store for identity, authorization, membership, and recovery-workflow *state* — never for credentials. This section states the target; §F allocates responsibilities in detail; §N covers the PostgreSQL interaction specifically without implementing it.
+
+**Why this shape, not a two-layer "app talks to provider directly" shape:** the codebase already has the seam (`TokenVerifierPort` / `AuthenticatedCredential`, §A.10) — it is a Firebase-only adapter today, but the *port* is already provider-neutral. The architecture question this document answers is whether to keep and extend that seam (making a future provider swap a matter of writing a new adapter) or to let provider concepts leak further into the domain, which is precisely the mistake `AUTH-ARCH-001`'s Firebase elimination and this task's own framing (§9 of the task) warn against.
+
+---
+
+## F. Responsibility Allocation
+
+### F.1 Authentication provider should own
+Credential/password-hash storage; the primary authentication ceremony; social/federated identity brokering; TOTP secret generation and storage; MFA challenge verification; provider-native sessions and refresh tokens; token issuance (access/ID tokens); the mechanics of credential recovery (e.g., password-reset emails) for ordinary users.
+
+*Not automatically included:* the provider does **not** own 11thONUS's decision of *when* MFA is required for which role, nor the recovery-authorization policy (who may approve, self-approval prohibition, break-glass) — those are domain policy (F.3) merely *executed through* provider primitives.
+
+### F.2 11thONUS authentication adapter/integration layer should own
+Provider abstraction (the existing `TokenVerifierPort` pattern, extended); token verification interface; mapping provider subject → `customerIdentityId`; normalized authentication evidence (`AuthenticatedCredential`); normalized MFA evidence (`verifiedSecondFactor`-equivalent, provider-agnostic); provider error mapping; provider administrative API calls (factor listing, factor-specific removal, session revocation); recovery **orchestration** (the sequencing engine that executes R1–R10's required order, calling provider primitives but enforcing the order and fail-closed behavior itself, since no researched provider natively guarantees that exact sequencing — see §G); provider capability translation (e.g., closing an eventual-consistency revocation gap via a domain-owned cutoff, as `AUTH-ARCH-002` proposed for Auth0); the migration seam for any future provider swap.
+
+### F.3 11thONUS application/domain should own
+`customerIdentityId` and its lifecycle; Platform Administrator lifecycle (`invited→active→suspended→removed`, R6); business memberships; roles; permissions; authorization; business/customer state; recovery **authorization policy** (who may request/approve, self-approval prohibition (R2), break-glass authorization (R4), approval expiry (R8)); audit semantics (R10's vocabulary); all business rules.
+
+### F.4 PostgreSQL, under `DEC-DATA-008`, may own (not implemented here)
+Durable identity records (`customerIdentityId` and its provider-subject mappings); application authorization and business-membership state; security state (Platform Administrator role, MFA-required flag); recovery-workflow state (the persistent recovery-request record required by R7, including its immutable target-factor identifier, approval/expiry timestamps, and lifecycle status — but never TOTP secrets, per R7's explicit prohibition); audit references (pointers/foreign keys into the audit trail, not necessarily the full event log itself); provider-generation/version/cutoff records if a revocation-epoch mechanism (§C, §G) is adopted. No schema or migration is proposed or authorized by this document.
+
+---
+
+## G. Hard-Invariant Qualification Matrix
+
+Legend: `PASS-DOC` = PASS, documented; `PASS-VER` = PASS, repository/live verified; `UNPROVEN` = live validation required; `FAIL-DOC` = FAIL, documented limitation; `N/A` = not applicable.
+
+| Invariant | Firebase Auth | Auth0 | ZITADEL | Supabase Auth (self-hosted GoTrue) | Keycloak |
+|---|---|---|---|---|---|
+| Exact-factor discovery (per-credential ID, not just type) | FAIL-DOC — whole-list read/replace, no per-ID delete guard (`AUTH-ARCH-001`) | PASS-DOC (API shape) / UNPROVEN (behavior) | UNPROVEN — `ListAuthenticationMethodTypes` returns types; per-credential-ID exposure for multi-instance factors (e.g. multiple U2F/passkeys) not confirmed from docs. TOTP itself is singular per user by design, so TOTP discovery specifically is effectively PASS-DOC. | PASS-DOC — `admin.mfa.listFactors`-equivalent path and `auth.mfa_factors` both expose per-factor `id`; admin-scoped "list arbitrary user's factors via a single documented call" not fully confirmed (UNPROVEN for that specific call shape) | PASS-VER — `GET /admin/realms/{realm}/users/{id}/credentials` confirmed directly against source code, returns per-credential `id`, `type`, `userLabel`; multiple OTP credentials per user are supported |
+| Exact-factor removal (one enrollment, not all) | FAIL-DOC — whole-list replace, no compare-and-swap (`AUTH-ARCH-001`) | PASS-DOC (API shape) / UNPROVEN (behavior under concurrency) | PASS-DOC for TOTP (`RemoveTOTP`, type-scoped, TOTP is singular) / UNPROVEN for multi-instance U2F (exact-ID targeting not confirmed) | PASS-DOC — `auth.admin.mfa.deleteFactor({id, userId})` takes a specific factor ID and target user; documented to log the user out of active sessions if the deleted factor was verified | PASS-VER — `DELETE /admin/realms/{realm}/users/{id}/credentials/{credentialId}` confirmed directly against source code, scoped to one credential ID |
+| Concurrency-safe recovery behavior (stale approval cannot remove a replacement factor) | FAIL-DOC — same whole-list mechanism creates exactly this failure mode | UNPROVEN — never behaviorally tested | UNPROVEN — not addressed in docs | UNPROVEN — `deleteFactor` is ID-scoped so it is structurally resistant to this failure mode by design, but no end-to-end race test was performed | UNPROVEN — ID-scoped delete is structurally resistant by design; no end-to-end race test performed |
+| Session revocation, confirmable before factor removal | FAIL-DOC (implied by whole-list mutation model; not independently re-tested here — treat as inherited from the eliminated-provider finding rather than freshly re-verified) | UNPROVEN — async/eventually-consistent (`202 Accepted`); no documented synchronous confirmation point; already-issued JWTs cannot be revoked (`AUTH-ARCH-002`) | UNPROVEN — mechanical two-step (`search` then `delete` session) exists; no documented ordering/consistency guarantee; ZITADEL's own architecture is explicitly eventually-consistent for reads/projections; open community issue (#8288) on this exact gap | UNPROVEN — `admin.signOut()`/session delete stops new token issuance, but access tokens are stateless JWTs valid until natural `exp`; not instantaneously effective platform-wide | UNPROVEN — `POST .../logout` is a synchronous REST call for the session-invalidation step itself, but already-issued access tokens remain valid until natural expiry since Keycloak revokes at session level, not token level; no formal ordering guarantee documented for the immediately-following credential-delete call |
+| Controlled reenrollment | N/A (moot — provider eliminated) | PASS-DOC, composed (delete + app-side AAL gate) | PASS-DOC — Login Policy "Multi-factor Init Lifetime" + `force_mfa`, composed with factor removal | PASS-DOC, composed (`deleteFactor` + app-side `aal2` gate via RLS/hook; no single "force reenroll" call) | PASS-DOC — native `requiredActions` mechanism (`CONFIGURE_TOTP`), directly admin-settable via REST API; strongest native fit |
+| Mandatory Platform-Admin-only MFA | N/A | UNPROVEN — not independently re-verified in this pass | UNPROVEN — `force_mfa` is Instance/Org-scoped, not confirmed role/group-scoped | PASS-DOC, composed (Custom Access Token Hook + RLS check on role, not a single toggle) | PASS-DOC, composed (`ConditionalOtpFormAuthenticator` in a custom Authentication Flow bound to a role/group — official SPI, community-documented recipe) |
+| Reliable MFA evidence (server-verified, not client-asserted) | PASS-DOC (this part of Firebase was never the problem) | PASS-DOC (standard OIDC/AMR-style claims) | PASS-DOC (OIDC-certified) | PASS-DOC (session `aal` claim, server-issued) | PASS-DOC (server-issued tokens/session state) |
+| Stable provider subject identifier | PASS-DOC | PASS-DOC | PASS-DOC | PASS-DOC (`auth.users.id`) | PASS-DOC |
+| Provider-independent 11thONUS identity mapping (`customerIdentityId` never provider-owned) | PASS-DOC — already true today (§A.10); this is an 11thONUS-side property, not a provider property, for every candidate | PASS-DOC | PASS-DOC | PASS-DOC — documented FK-to-`id`-only pattern is exactly this | PASS-DOC |
+| Environment separation | PASS-DOC | PASS-DOC (managed projects/tenants) | PASS-DOC (managed projects or self-hosted instances/orgs) | PASS-DOC (self-hosted: one GoTrue + one Postgres per environment, inferred from config model, not an explicit official recommendation — UNPROVEN as an *official* pattern statement) | PASS-DOC (separate self-hosted instances per environment; explicitly not realm-per-environment on shared instance) |
+| Realistic development cost (no unreasonable paid commitment) | N/A | FAIL-DOC for continued *validation* under current constraint (§C) — EU tenant required a paid upgrade the Founder declined; not a claim about steady-state dev cost | PASS-DOC — Free tier: unlimited users/orgs, 100 DAU, 3 IdPs, all security features, self-hosted option always free (AGPL) | PASS-DOC — self-hosted GoTrue: no Supabase billing at all; only infrastructure cost | PASS-DOC — Apache 2.0, no per-user fees, minimal viable self-hosted footprint is small (§J.16) |
+| Export/migration | N/A | Not independently re-assessed in this pass | PASS-DOC — `/admin/v1/export`; dedicated import tooling from Auth0 and Keycloak; a documented "migrate away from ZITADEL" guide exists | PASS-DOC for schema (plain Postgres) / UNPROVEN for credential-hash export path specifically on **managed** Supabase (community-sourced restriction); self-hosted should not inherit that restriction (inference, UNPROVEN) | PASS-DOC — native `kc.sh export`/`import`; UNPROVEN whether credential secrets are included by default |
+| API automation (service-account/PAT auth for admin operations) | PASS-DOC (pre-existing) | PASS-DOC (pre-existing) | PASS-DOC — Private Key JWT, Client Credentials, PAT (PAT explicitly dev/test-only per ZITADEL's own guidance) | PASS-DOC — `service_role` key, server-side only | PASS-DOC — OAuth2 client-credentials service-account clients |
+| Self-host option where claimed | N/A | N/A (Auth0 has no self-host option — noted for completeness, not a failure since self-hosting was never claimed) | PASS-VER — confirmed via official self-hosting docs and Helm chart | PASS-VER — confirmed via GitHub repo, standalone Docker/binary path | PASS-VER — confirmed via official docs, this is Keycloak's primary deployment model |
+
+**Reading the matrix:** Firebase is the only candidate with a `FAIL-DOC` on the two most load-bearing invariants (exact-factor discovery and removal) — this is a genuine, documented disqualification, not an artifact of stricter scrutiny applied elsewhere. No other candidate carries a `FAIL-DOC` on any hard invariant; every other gap is `UNPROVEN`, meaning documentation does not establish the behavior either way and live testing is required before any of ZITADEL, Supabase Auth (self-hosted), or Keycloak can be called qualified. Per the task's own rule, `UNPROVEN` must never be silently converted to `FAIL` — none of these three is eliminated by this matrix. Auth0 is likewise not eliminated, but remains where PR #241 left it: technically incomplete, not selected.
+
+---
+
+## H. ZITADEL Assessment
+
+**Architecture.** Event-sourced/CQRS; commands strongly consistent, queries (reads/projections) eventually consistent by design (OFFICIAL DOCS). Two deployment models on the same codebase: managed Cloud (EU/US/CH/AU data residency) or self-hosted "All-in-One" binary needing managed compute + managed Postgres.
+
+**PostgreSQL relationship.** PostgreSQL required, ≥14 (this version figure sourced via an agent-summarized GitHub read, **UNPROVEN — recommend direct re-verification** before citing as fact). CockroachDB support was **dropped in v3** — current ZITADEL is Postgres-only, which is directly compatible with `DEC-DATA-008`'s direction, though ZITADEL would run its own Postgres instance/schema, separate from 11thONUS's application Postgres.
+
+**OIDC/OAuth, TOTP, WebAuthn/passkeys.** OIDC-certified; Authorization Code + PKCE, Client Credentials, Refresh Token, Device Authorization flows. TOTP, SMS-OTP, Email-OTP, and U2F/WebAuthn all supported as second factors; **passkeys are a separate, distinct object** from U2F-as-second-factor even though both use WebAuthn — this distinction matters for factor-targeting precision (see matrix).
+
+**Admin factor visibility / exact removal.** `ListAuthenticationMethodTypes` (User Service v2) lists factor *types* for an arbitrary user; whether per-credential IDs are exposed for multi-instance factor types (multiple U2F keys, multiple passkeys) is UNPROVEN. `RemoveTOTP` is type-scoped and, because ZITADEL allows only one TOTP generator per user, this is unambiguous for the TOTP case central to 11thONUS's current TOTP-only policy (`DEC-SEC-004`) — **PASS-DOC for the specific factor type 11thONUS currently uses**. U2F-specific removal (`RemoveU2F`) exists but its exact ID-scoping could not be confirmed from documentation in this pass.
+
+**Session revocation / reenrollment / admin MFA enforcement.** Sessions revoked via a two-step `search` then `DELETE /sessions/{id}` under Session Service v2; no documented synchronous ordering guarantee, and ZITADEL's own eventually-consistent architecture plus an open community issue (#8288) on token-revocation consistency both corroborate this as a genuine open question rather than an oversight in research. Reenrollment is time-based (`Multi-factor Init Lifetime`) plus a `force_mfa`/`force_mfa_local_only` boolean at Login Policy level (Instance or Organization scope) — role/group-scoped mandatory MFA specifically for Platform Administrators is not confirmed as a native capability.
+
+**Organization/multitenancy risk.** This is the most important qualitative finding for ZITADEL specifically: its Organization construct is explicitly marketed and designed as *the* multi-tenancy primitive for B2B SaaS ("an organization typically represents a business partner"). A naive integration is likely to be nudged toward mapping 11thONUS's own `Business` domain entity 1:1 onto ZITADEL Organizations — exactly the leak §9 of the task warns against. This is manageable (treat Organization as an ZITADEL-internal auth-domain detail behind the adapter, never as 11thONUS's tenant system of record) but requires deliberate architectural discipline, not a default-safe integration.
+
+**API/management, audit, export.** Broad API surface (System/Admin/Management v1/User v2/Session v2/Auth APIs, gRPC+REST); service-account auth via Private Key JWT, Client Credentials, or dev-only PAT. Audit is structural (event-sourced by construction), retrievable via `ListEvents`, with documented SIEM/SOC streaming support — the strongest audit story of the three candidates, by architecture rather than by add-on. Export tooling exists (`/admin/v1/export`) plus dedicated Auth0- and Keycloak-source import tooling, and even a "migrate away from ZITADEL" guide.
+
+**Environment separation, self-hosting, upgrades, HA, licensing.** Minimum viable test deployment: ~1 CPU/512MB. Self-hosting via Linux/macOS/Docker Compose/Kubernetes; HA via Kubernetes + official Helm chart. Upgrade process and backup/restore mechanics were **not confirmed** in this pass (pointed to by a separate "Production Setup" guide not independently fetched — UNPROVEN, flag for follow-up). License is **AGPL-3.0** with stated Apache-2.0/MIT exceptions for specific directories — AGPL carries real legal implications for 11thONUS depending on how deeply ZITADEL would be modified/integrated, and should be reviewed by counsel before adoption, not assumed benign.
+
+**Commercial.** Free tier: $0, unlimited users/orgs, 100 DAU, 3 IdPs, "all security features," self-hosted always free regardless of tier. Pro: $100/month, 25,000 DAU included (one sourced figure showed a discrepancy between 99.5% and 99.95% uptime SLA language — **flagged, not resolved**, re-check the live pricing page before citing a number externally). Enterprise: custom, includes "commercial license" as a line item, whose exact scope beyond AGPL compliance is UNPROVEN.
+
+---
+
+## I. Supabase Auth Assessment
+
+**Scope discipline.** Assessed strictly as the standalone GoTrue auth component, not adoption of the full Supabase platform, per the task's explicit instruction.
+
+**Architecture / standalone viability.** GoTrue is a self-standing Go API service requiring only `DATABASE_URL` against any Postgres instance — no other Supabase service is a hard runtime dependency. Confirmed via the GoTrue GitHub repo's own standalone `make dev`/`docker` path and migration command.
+
+**`auth.users` coupling.** `auth.users` is a native Postgres table, owned and migrated by GoTrue. Supabase's own documented best practice is to **never** treat it as a general-purpose store — extend identity via a separate app table (e.g. `customer_identity`) carrying `customerIdentityId`, foreign-keyed only to `auth.users.id` (the one column Supabase explicitly documents as stable across versions). This is a first-class, officially documented pattern, not a workaround, and it maps directly onto §E/§F's target boundary: `auth.users.id` is the provider subject; everything else — including `customerIdentityId` — lives in 11thONUS's own schema. Direct dependence on any other `auth.*` internal table shape (e.g., querying `auth.mfa_factors` directly instead of through the admin API) is explicitly discouraged and would reintroduce coupling risk on GoTrue version upgrades.
+
+**MFA discovery/removal — the strongest documented match found across all three candidates.** `auth.admin.mfa.deleteFactor({ id, userId })` takes both a specific factor ID and a target user ID, deletes only that factor, and is explicitly documented to log the user out of active sessions **if the deleted factor was verified** — a single call that partially composes R5 and R7 together. The precise admin-scoped call to *list* an arbitrary target user's factors with IDs (distinct from the end-user's own session-scoped `listFactors()`) was not conclusively confirmed from documentation text — flagged UNPROVEN, though direct SQL access to `auth.mfa_factors` is available as a fallback on a self-hosted instance (bypassing the API layer, which is a coupling trade-off worth naming explicitly rather than treating as free).
+
+**Session revocation.** `auth.admin.signOut()` (default `scope: 'global'`) revokes refresh tokens, preventing new access-token issuance — but access tokens are **stateless JWTs**; an already-issued token remains valid until its `exp` claim regardless of signOut. This is architecturally identical in effect to Auth0's gap (§C) and Keycloak's gap (§J): revocation is not instantaneously effective platform-wide, and the mitigation is the same across all three — short admin-role token TTL plus an app-side check on privileged endpoints, i.e., something the 11thONUS adapter layer (§F.2) must own regardless of which candidate is chosen.
+
+**Reenrollment / role-scoped MFA enforcement.** No single "force reenroll" call; composed from `deleteFactor` plus an app-side `aal2`-gate (via RLS policy or the Custom Access Token Hook injecting a role claim). Role-scoped mandatory MFA (Platform Administrators only) is achievable the same composed way — a documented pattern, not a toggle.
+
+**Hooks, audit, export, self-hosting.** Six documented hook points; two of them (MFA Verification Attempt, Password Verification Attempt) are gated to Team/Enterprise **on managed Supabase** — whether that gate applies to self-hosted GoTrue at all is UNPROVEN and should be checked directly, since self-hosted open-source binaries typically do not enforce commercial-plan gates. `auth.audit_log_entries` is a native Postgres table capturing signups/logins/password changes/etc.; whether an admin-initiated factor deletion is attributed with sufficient actor/target distinction for a compliance-grade trail was not confirmed (UNPROVEN). Export/migration of non-secret user data is straightforward SQL; a documented restriction on exporting password hashes from **managed** Supabase (community-sourced, not official) should not apply to a self-hosted instance where the operator has direct database access — but this is an inference, UNPROVEN, and should be re-verified.
+
+**Commercial (managed).** Free: $0, 50,000 MAU, "basic MFA" (TOTP) included on paid tiers per pricing page language; Pro: $25/mo + $0.00325/MAU overage; Team: $599/mo; Advanced (phone/SMS) MFA add-on: $75/mo first project + $10/mo per additional project — **this add-on appears to gate phone/SMS MFA specifically, not TOTP**, per the pricing page as read, but this nuance should be re-verified against the live page before being stated as settled fact given 11thONUS's TOTP-only policy (`DEC-SEC-004`) would likely sidestep it entirely if confirmed. Self-hosted: **no Supabase billing applies at all** — only 11thONUS's own infrastructure cost, and this is the more relevant number given the task's scope discipline (standalone component, not managed platform).
+
+---
+
+## J. Keycloak Assessment
+
+**Architecture, database, realm concept.** Quarkus-based since v17 (no first-party managed cloud offering — self-hosted-first by design). PostgreSQL is a current, fully supported first-class database. Realm is the isolation primitive: "manages a set of users, credentials, roles, and groups... isolated from one another."
+
+**Password/social/OIDC, TOTP, WebAuthn/passkeys.** Full native support for all three. Notably, **dedicated passkey support only shipped in Keycloak 26.4.0 (September 2025)** — recent, and disabled by default; any deployed version pinned before that would lack it. This is a concrete version-pin check 11thONUS would need to perform before relying on passkey support, not an assumption.
+
+**Credentials API — the strongest verified match of any candidate on this specific point.** `GET /admin/realms/{realm}/users/{id}/credentials` was confirmed **directly against the live source code** (`UserResource.java`, `keycloak/keycloak` main branch, not merely summarized documentation) to return a JSON array where each `CredentialRepresentation` carries a unique `id`, `type` (`"otp"`, `"webauthn"`, `"password"`), and a settable `userLabel` — a user can hold multiple OTP credentials simultaneously, each independently identifiable. This is `PASS-VER`, the highest confidence tier used in this document, because it was verified against source rather than inferred from prose documentation.
+
+**Exact-factor removal — likewise source-verified.** `DELETE /admin/realms/{realm}/users/{id}/credentials/{credentialId}` was confirmed directly in the same source file to delete only the matching credential ID, with no cascade to other credentials of the same type. This is the single strongest, most directly verified match in this entire assessment to 11thONUS's stated requirement — it is architecturally identical in shape to what Firebase was found to lack.
+
+**Session revocation — the same open gap as every other candidate.** `POST /admin/realms/{realm}/users/{id}/logout` was confirmed via source to invalidate sessions/refresh tokens synchronously as a REST call, but Keycloak does not maintain a server-side revocation list for already-issued access tokens — they remain valid for their natural TTL. No official documentation states a formal ordering/consistency guarantee for `logout` immediately followed by `credentials/{id}` deletion; this must be treated as UNPROVEN and mitigated the same way as for every other candidate (short admin-role access-token TTL + introspection on privileged endpoints, owned by the 11thONUS adapter, not assumed from the provider).
+
+**Required Actions — the cleanest native reenrollment mechanism found.** `CONFIGURE_TOTP` is a built-in Required Action; setting a user's `requiredActions` via the Admin REST API (`PUT /admin/realms/{realm}/users/{id}`) forces re-enrollment on next login before further account use — a first-party, single-purpose mechanism, more direct than the composed hook/RLS patterns needed for Auth0/ZITADEL/Supabase.
+
+**Role-scoped mandatory MFA.** Achievable via a "Conditional OTP Form" authenticator bound to a role/group inside a custom Authentication Flow — an officially shipped SPI class (`ConditionalOtpFormAuthenticator`), configured through a well-established community recipe rather than a single toggle, but genuinely supported, not a hack.
+
+**Realm-model tenant risk.** Same class of risk as ZITADEL's Organization concept: realms are an identity/security isolation boundary, and using realm-per-business/tenant is a documented anti-pattern (poor scaling, no cross-realm reporting). Keycloak's newer "Organizations" feature (realm-scoped) is the officially sanctioned mechanism for B2B tenant segmentation *within* a realm, avoiding this leak — but its exact GA version was not confirmed in this pass (UNPROVEN). Recommendation: realms should map to environments/security domains only, never to individual 11thONUS businesses.
+
+**Audit, export, environment isolation, backup/restore.** Login events and Admin events are two distinct, separately toggled streams (both **off by default** — must be explicitly enabled); an Event Listener SPI allows shipping events externally. Native `kc.sh export`/`import` exists; whether credential secrets are included by default in export was not confirmed (UNPROVEN — community discussion flags this as version-dependent, not a settled fact). **Backup/restore has no first-party Keycloak tooling** — community discussion directly engaging Keycloak maintainers states "the official Keycloak site doesn't have clear documentation regarding backup and restore"; the operational reality is that backup/restore is entirely a function of however 11thONUS manages its PostgreSQL layer, not a Keycloak capability at all — a materially different situation from ZITADEL and Supabase Auth, where the durable state is likewise "just Postgres" but at least the *export* story is clearer.
+
+**HA, upgrade friction, security patching — the largest operational-burden finding of this assessment.** HA requires Infinispan (embedded or external) with a documented **<10ms required, <5ms suggested** cross-site latency requirement for multi-site deployment — a demanding infrastructure constraint far beyond early-stage need, but also not required at 11thONUS's likely scale (single-instance/single-region is a legitimate, documented minimum). The Quarkus cutover (v17, 2022) is documented by the project itself as the largest breaking change in its history, with no automated migration tool. Most significantly: **community-edition Keycloak has no LTS branch** — only the latest minor release receives security fixes, and a version stops receiving patches the moment the next minor ships (a concretely cited example: 26.7.3 shipped 20 CVE fixes with no backport to 26.4–26.6). Red Hat's commercially supported build (RHBK) extends support to 2–3 years, but that is a paid commercial relationship. **This means self-hosted community Keycloak imposes a de facto near-continuous (roughly quarterly) upgrade obligation to remain patched** — a recurring engineering-time cost distinct from, and larger than, any of the other candidates' documented burden.
+
+**Minimum deployment / cost profile.** Official sizing: ~1250MB baseline RAM for a single instance with 10,000 cached sessions; ~1 vCPU per 15 password logins/sec. At 11thONUS's likely early-stage login volume, a single small container (1-2 vCPU/2-4GB) plus a small managed Postgres instance is a realistic minimum — tens of dollars/month, well below the documented HA/multi-site architecture, which is not needed yet.
+
+**Licensing.** Apache 2.0, confirmed directly against the repository's `LICENSE` file — no dual-licensing carve-out found in the license file itself. Whether any *functional* capability (as opposed to support SLA/patch timeline) is gated to the commercial RHBK build was not confirmed either way (UNPROVEN) — recommend a direct feature-diff check before asserting "no gating" as settled fact.
+
+**Is the operational complexity justified for early-stage 11thONUS?** On the evidence gathered: Keycloak has the most directly source-verified match to the exact admin-recovery API shape R5/R7 require, at zero licensing cost, with a genuinely small minimum deployment footprint. Against that: the community-edition patch-cadence obligation, the historically severe upgrade-friction precedent, and the complete absence of first-party backup/restore tooling together represent a real, ongoing operational tax that a lean early-stage team must consciously choose to carry (self-hosted infrastructure ownership) rather than something a managed SaaS candidate would absorb. **Conclusion: justified only if 11thONUS treats Keycloak as infrastructure it owns and operates on a recurring basis, not as "deploy once and forget."** If the team has near-zero spare capacity for IAM-specific ops work, that operational-burden finding should weigh heavily against Keycloak relative to ZITADEL Cloud or managed Supabase Auth, independent of Keycloak's stronger API-shape match.
+
+---
+
+## K. Optional Fourth Candidate Assessment
+
+**Not included.** No fourth candidate is added. Justification for exclusion, per the task's instruction to explain first why any addition would deserve inclusion: the three assessed candidates already span the relevant design space — a Postgres-native, event-sourced managed-or-self-hosted platform purpose-built for exactly this kind of exact-factor/audit requirement (ZITADEL); a minimal, Postgres-native standalone component with the single strongest composed factor-removal primitive found (Supabase Auth); and the highest-control, most operationally demanding, most API-verified self-hosted benchmark (Keycloak). Cognito was already eliminated under the corrected exact-factor/replacement-factor analysis recorded in `DEC-AUTH-002` (§A.1) and no new evidence surfaced in this task's research to reopen that elimination — including it again would not be materially justified. Ory, FusionAuth, SuperTokens, and Clerk were considered as candidates per the task's own suggested list but none surfaced during research as offering evidence materially different from the three already assessed, and adding one without a specific trigger would constitute exactly the "unrestricted provider survey" the task instructs against.
+
+---
+
+## L. Managed vs Self-Hosted Architecture
+
+| Dimension | Managed (ZITADEL Cloud, Supabase managed) | Self-hosted (ZITADEL, Supabase GoTrue, Keycloak) |
+|---|---|---|
+| Operational simplicity | High — provider owns patching, HA, backups | Low — 11thONUS owns all of it |
+| Cost model | Predictable subscription/DAU-based; can hit paid tiers faster than expected | Infrastructure cost only, but non-zero engineering time cost |
+| Environment model | Provider's project/tenant abstraction; usually one paid tier gate away from full flexibility (e.g., Supabase's per-project MFA add-on) | Full control — as many environments as infrastructure allows, no per-environment vendor fee |
+| Vendor dependency | Real — API/SLA/roadmap dependency on the vendor | Lower vendor dependency, but real *software-project* dependency (patch cadence, breaking changes) remains |
+| SLA | Vendor-stated (e.g., ZITADEL Pro's disputed 99.5%/99.95% figure, flagged above) | Self-owned — whatever 11thONUS's own infrastructure delivers |
+| Control | Limited to what the admin API exposes | Full — including direct database access as a fallback, with attendant coupling risk (§I) |
+| API availability | Full documented API surface, same as self-hosted in ZITADEL's and Supabase's case (same codebase) | Same |
+| Migration | Managed-platform export sometimes more restricted (e.g., Supabase's documented password-hash export restriction on the managed platform specifically) | Full data access simplifies migration but places the burden of doing it correctly entirely on 11thONUS |
+
+**Software lock-in vs. infrastructure lock-in — assessed separately, per the task's instruction not to conflate them.** Self-hosting Keycloak or ZITADEL removes *infrastructure* lock-in (11thONUS controls the servers) but does **not** remove *software* lock-in to that project's API/data model, upgrade cadence, and breaking-change history — Keycloak's Quarkus migration (§J) is the clearest evidence this risk is real even in a fully self-hosted, zero-vendor-billing posture. Conversely, managed Supabase Auth or ZITADEL Cloud carries both infrastructure *and* commercial/vendor lock-in, but the same underlying open-source software (GoTrue, ZITADEL) can, per this research, be later self-hosted using the documented export/migration paths — meaning the *software* lock-in for these two is lower than for a genuinely closed-source managed service, even though the *commercial* lock-in while on the managed tier is real. Keycloak has no managed-tier lock-in at all by construction (no first-party cloud), but carries the largest documented self-hosted operational-burden lock-in (patch cadence, §J).
+
+---
+
+## M. Custom-Built Authentication Assessment
+
+**A. Custom-built authentication** (11thONUS itself owning password hashes, login, MFA secrets, MFA verification, recovery, session/token issuance, credential security) is architecturally distinct from **B. self-hosting an established identity platform** (Keycloak, ZITADEL) in one decisive respect: in (B), 11thONUS operates infrastructure running audited, widely-deployed open-source security code with a public CVE process, external security researchers, and (for Keycloak specifically) a decade-plus production track record; in (A), 11thONUS would be solely responsible for getting password hashing, TOTP generation/verification, session/token cryptography, and recovery-flow race conditions correct, with no external review process beyond whatever 11thONUS builds itself. The security failure mode this entire task exists to prevent — Firebase's whole-list-replace factor mutation silently deleting a replacement factor — is exactly the class of subtle, concurrency-shaped bug that custom-built authentication is most likely to reproduce, not avoid, absent equivalent engineering investment to what an established identity platform already carries.
+
+**Assessment: custom-built authentication is not justified.** Every hard invariant in §G that any of ZITADEL, Supabase Auth, or Keycloak passes or is merely unproven on is achievable through documented, existing, reviewed APIs in those platforms; nothing in R1–R10 requires a capability that mandates building credential storage or MFA cryptography from scratch. "More control" does not, by default, mean "build it ourselves" — self-hosting an established platform (B) already delivers the control 11thONUS needs (full data access, no vendor gatekeeping, self-owned infrastructure) without taking on cryptographic and protocol-implementation risk that none of R1–R10 actually requires 11thONUS to own. This is an architecture-level conclusion only; no custom-authentication code is proposed or should be built.
+
+---
+
+## N. PostgreSQL / DEC-DATA-008 Interaction
+
+No PostgreSQL implementation is proposed here; this section answers the task's specific questions at the architecture level only.
+
+- **Which identity concepts should become PostgreSQL-authoritative?** `customerIdentityId` and its lifecycle; the mapping from provider subject identifier to `customerIdentityId`; Platform Administrator role/lifecycle state; business membership/authorization; the persistent recovery-request record (R7) including its immutable target-factor identifier and lifecycle status; audit references.
+- **Which credentials must remain provider-authoritative?** Password hashes, TOTP secrets, WebAuthn/passkey credential material, and provider-native session/refresh tokens — these must never be duplicated into or reconstructed from PostgreSQL, consistent with R7's explicit prohibition on storing TOTP secrets/codes in the recovery record.
+- **How should provider subject mappings be stored?** As a row in an 11thONUS-owned table keyed by `customerIdentityId`, carrying the provider's stable subject identifier (e.g., `auth.users.id` for Supabase, `sub` for ZITADEL/Auth0/Keycloak) as a foreign-key-shaped value — never the reverse, and never as the primary key of any 11thONUS domain table.
+- **Should provider-specific user IDs ever become primary application keys?** No. This is the central discipline this whole document argues for (§E, §F.2) — `customerIdentityId` is the primary key; the provider subject ID is a mapped, replaceable attribute.
+- **How would changing authentication providers affect PostgreSQL data?** Under the proposed boundary, changing providers means re-populating the provider-subject-mapping table (one row per user, new provider subject value) and re-pointing the adapter layer — the domain tables (`customerIdentityId`, roles, memberships, business state) are untouched, because they never depended on the old provider's subject format.
+- **What data migration would be necessary?** Users would need to be re-created (or migrated, where the new provider supports password/credential import — ZITADEL and Keycloak both have documented import tooling, including from each other and from Auth0) in the new provider, and the mapping table updated; MFA factors would generally need re-enrollment given no candidate researched here documented cross-provider TOTP secret portability.
+- **How should recovery workflow state be persisted?** As the R7-required persistent recovery-request record in PostgreSQL, referencing `customerIdentityId` (not a provider-specific ID directly) for the target and approver, with the immutable provider factor-enrollment identifier stored as an opaque reference value — never a secret.
+- **What should happen if the provider is unavailable?** Authentication (login) necessarily fails closed if the provider cannot verify a credential — there is no safe fallback. Read-only application functionality *not* requiring fresh authentication may continue against already-valid, unexpired sessions where the domain layer's own authorization check does not require a live provider round-trip, but this needs its own future design and is not decided here.
+- **Should application authorization continue when provider admin APIs are unavailable?** Ordinary request-time authorization (verifying an already-issued token) should be able to continue, since it depends on token verification (a local, cryptographic operation against the provider's public keys) rather than a live admin-API call. Administrative operations that call the provider's admin API directly — including MFA recovery execution — must fail closed, consistent with R5's own fail-closed rule.
+- **Which operations must fail closed?** Token verification failure; any step of MFA recovery where session-revocation confirmation cannot be obtained (R5, already a hard invariant); any factor-removal call where the target factor's identity cannot be confirmed against the persistent recovery record (R7); any privileged operation where recent-enough MFA evidence cannot be confirmed (R3/R9).
+- **Avoiding dual authority for credentials.** The provider remains the sole source of truth for whether a presented credential/MFA proof is valid; PostgreSQL never stores or re-derives that judgment — it stores only the *result* (verified evidence, `customerIdentityId` mapping, recovery-workflow state), consistent with the existing `AuthenticatedCredential` model's explicit "never carries credential material" rule (§A.10).
+
+---
+
+## O. Firebase Migration Implications
+
+Assessed at the architecture level; nothing here is implemented or begun.
+
+- **Current Firebase UID references.** `firebaseTokenVerifier.ts` derives `AuthenticatedCredential` from a decoded Firebase ID token; `customerIdentityId` is already the durable domain key (§A.10), meaning the codebase is already positioned reasonably well for this migration — the Firebase UID is not, per current code, used as a primary application key anywhere the research in this task surfaced.
+- **Provider subject mapping / stable `customerIdentityId`.** Consistent with §N: a mapping table from new-provider-subject to existing `customerIdentityId` would need to be populated for every existing user.
+- **Existing users, password migration limitations.** None of the three researched candidates documented a way to import a Firebase-hashed password directly (Firebase uses a proprietary scrypt-variant hash) — a staged migration would likely require either a forced password reset on next login, or a one-time "verify against old provider, then set new provider credential" bridge during a coexistence window.
+- **Social identities, MFA enrollments, session migration, token transition.** Social/federated identities would need to be re-linked per new-provider mechanics; MFA (TOTP) factors would need re-enrollment (no cross-provider TOTP secret portability was documented for any candidate); Firebase sessions/tokens cannot be carried over — users would need to re-authenticate against the new provider at cutover.
+- **Staged migration, forced reauthentication, account linking, rollback, coexistence window.** A staged approach (dual-write mapping table, gradual cutover per user cohort, forced reauthentication at first post-cutover login) is the standard pattern implied by every candidate's own migration tooling (ZITADEL's Auth0/Keycloak importers, Keycloak's own export/import, Supabase's SQL-based migration guide) — but a **dual-auth-authority coexistence window is a real risk** flagged explicitly by the task and corroborated by this research: running two providers simultaneously, even briefly, reintroduces exactly the kind of "which system is authoritative for this user's credential state right now" ambiguity this whole architecture is designed to avoid. Any coexistence window should be as short as possible and gated by the adapter layer (§F.2), not by ad hoc dual-provider logic in application code.
+- **Areas of the codebase that would eventually change (not modified here):** `functions/src/domains/authentication/services/firebaseTokenVerifier.ts` (replaced by a new adapter implementing the same `TokenVerifierPort`); anything constructing `RawProviderCredential` with Firebase-specific shape; the platform-administration MFA trust chain (`deriveVerifiedMfaSatisfied.ts` and its callers) would need a new evidence source but not necessarily a changed interface, since it already consumes the provider-neutral `AuthenticatedCredential.verifiedSecondFactor`.
+
+---
+
+## P. Environment Strategy
+
+Minimum viable separation for local development, preview/development, and production is proposed; staging is not assessed as immediately necessary given no evidence in this repository indicates a staging-specific requirement beyond what preview/development already covers — this should be confirmed, not assumed, before a target-design package is authorized.
+
+- **Separate logical tenant/project/realm per environment**, not a shared one with logical partitioning: dev, preview, and production should each have their own provider-side project/organization/realm (managed candidates) or their own instance (self-hosted candidates), consistent with §J's and §H's own "environment isolation = separate instances, not realm-per-environment on shared infrastructure" findings for Keycloak and analogous reasoning for ZITADEL/Supabase.
+- **Separate database/schema** per environment follows automatically from separate-instance isolation for self-hosted candidates (each instance owns its own Postgres, or its own schema within a shared Postgres server if cost requires it at the earliest dev stage — a shared-server-separate-schema compromise is acceptable for local/dev only, never for production).
+- **Separate configuration, isolated redirect URLs, isolated signing keys, isolated clients, test identities** — standard per-environment hygiene, achievable with every candidate researched.
+- **Promotion strategy.** Configuration (auth flows, MFA policy, required actions) should be defined as code/config wherever the candidate supports it (Keycloak realm export/import; ZITADEL's export tooling) and promoted through environments via that mechanism rather than manual re-entry, to avoid dev/prod configuration drift.
+- **Backup/restore implications differ materially by candidate** and should inform the environment strategy: Keycloak's documented absence of first-party backup/restore tooling (§J) means production backup strategy is entirely a function of however 11thONUS's Postgres layer is backed up, with no Keycloak-specific safety net; ZITADEL and Supabase Auth's data being "just Postgres" gives the same baseline, but neither was confirmed to add materially more safety net either — this is a wash across self-hosted candidates and should not be treated as a differentiator without further evidence.
+- **Managed candidates avoid one paid tenant per environment being commercially necessary** in at least one case: ZITADEL's Free tier explicitly supports unlimited organizations, meaning dev/preview could plausibly live on a Free-tier project without immediate cost — this should be verified directly against current ZITADEL Cloud onboarding before being relied on, but it directly addresses the Founder's stated constraint (§C) better than Auth0's tenant-per-region paid-upgrade requirement that stopped PR #241.
+- **Self-hosted shared-infrastructure question.** For self-hosted candidates, a single shared infrastructure host with logically separated environments (e.g., separate Docker containers/Kubernetes namespaces on the same cluster, separate Postgres databases) is a reasonable, lower-cost posture for dev/preview, but **production should not share infrastructure with dev/preview** for any of the three candidates — none of the research surfaced a documented "safe to share" claim, and the operational-burden findings (patch cadence for Keycloak in particular) make isolating production's blast radius from experimental dev/preview changes a straightforward risk-reduction step.
+
+---
+
+## Q. Commercial Assessment
+
+All figures below are as captured on 2026-09-10 and are explicitly flagged where the underlying research noted a discrepancy or an unconfirmed detail; none should be treated as a locked-in quote.
+
+| | ZITADEL | Supabase Auth (self-hosted) | Keycloak |
+|---|---|---|---|
+| License | AGPL-3.0 core (with stated Apache-2.0/MIT exceptions in specific directories) | Apache-licensed GoTrue/`supabase/auth` (open source) | Apache 2.0, confirmed directly against `LICENSE` |
+| Managed SaaS pricing | Free: $0, unlimited orgs/users, 100 DAU, all security features. Pro: $100/mo, 25,000 DAU. Enterprise: custom. (Pro-tier uptime SLA figure has a documented discrepancy — 99.5% vs 99.95% — unresolved, re-check live page.) | Free: $0, 50,000 MAU. Pro: $25/mo + $0.00325/MAU overage. Team: $599/mo. Phone/SMS MFA add-on: $75/mo + $10/mo per additional project (does **not** appear to gate TOTP specifically, per pricing-page wording — re-verify before relying on this). | No first-party managed SaaS offering exists; Red Hat build of Keycloak (RHBK) is the commercial-support path, priced/contracted separately and not captured here (out of scope — no pricing page was researched for RHBK in this pass). |
+| Infrastructure hosting cost (self-hosted, early stage) | Minimum test footprint ~1 CPU/512MB; realistic small-scale self-hosted cost is low but not independently priced in this pass. | Minimum viable: one small container + small managed Postgres instance; low. | ~1250MB RAM baseline, ~1 vCPU/15 logins-per-sec; realistic minimum self-hosted cost is low (tens of dollars/month order of magnitude, per sizing formula, not an official published figure). |
+| Email/SMS cost | Not independently researched in this pass. | SMTP/Twilio-style costs apply only if email/phone flows are used; not needed for the TOTP-only policy 11thONUS currently holds (`DEC-SEC-004`). | Not independently researched in this pass; email delivery is the operator's responsibility either way. |
+| Enterprise-only capabilities | Custom support SLA, Technical Account Manager, volume discounts, "commercial license" (exact scope beyond AGPL UNPROVEN), custom security questionnaires, 99.99% uptime. | MFA/Password Verification Attempt hooks gated to Team/Enterprise on **managed** Supabase; SAML/SSO and phone MFA are paid add-ons on managed Supabase. Self-hosted gating for these hooks specifically is UNPROVEN. | No official feature-gating list found distinguishing community vs. RHBK; only support-SLA/patch-timeline differences were confirmed. |
+| Development restrictions | None found — Free tier explicitly includes "all security features." | None found for self-hosted; managed Free tier is generous (50,000 MAU) but the phone-MFA add-on and hook-gating above are managed-platform-specific restrictions. | None — Apache 2.0, self-hosted, no usage restriction found. |
+
+**Founder constraint applied.** Per the task's framing and §C above, the central commercial lesson from the Auth0 episode is that *validation itself* must not require a paid commitment. On the evidence gathered: **ZITADEL's Free tier and both Supabase Auth's and Keycloak's self-hosted paths all appear capable of supporting bounded live validation without a paid-plan commitment** — this is a materially better starting position than Auth0's tenant-region-gated Development tier. This should be confirmed as part of any live-validation planning (§U), not assumed from pricing-page text alone.
+
+---
+
+## R. Provider Lock-In and Portability
+
+- **Password portability.** No candidate documented cross-provider password-hash import from Firebase's proprietary hash; all three would require a forced-reset or a bridge-verification step at migration (§O). Among the three candidates *themselves*, ZITADEL documents dedicated import tooling from both Auth0 and Keycloak (bidirectionally with Keycloak, since Keycloak also has generic export/import), suggesting inter-candidate portability is better developed than portability *from* Firebase specifically.
+- **MFA portability.** No candidate documented TOTP-secret export/import across providers — MFA re-enrollment should be assumed necessary on any future provider change, for any of the three candidates, and this should be treated as a standing migration cost rather than something to be engineered away.
+- **User identifier migration.** Handled cleanly by design in the proposed boundary (§E/§N) — `customerIdentityId` never changes; only the provider-subject-mapping row is updated.
+- **Session invalidation during migration.** A provider cutover necessarily invalidates all existing sessions (new provider, new tokens) — this should be planned as a scheduled, communicated event, not something to minimize away.
+- **Progressive migration, dual-provider transition risk.** As flagged in §O, a dual-authority coexistence window is the single largest architectural risk in any future migration and should be minimized in duration and strictly gated by the adapter layer.
+- **Vendor-specific claims/configuration leakage.** ZITADEL's Organization construct (§H) and Keycloak's realm construct (§J) both carry a documented, real risk of becoming an unwanted source of tenant truth if 11thONUS's domain model is mapped onto them directly rather than treated as an implementation detail behind the adapter (§F.2) — this is the primary containment discipline this document recommends regardless of which candidate is eventually selected.
+- **Software lock-in vs. infrastructure lock-in**, assessed separately per §L: self-hosting reduces infrastructure/commercial lock-in but not software lock-in to that project's API surface and upgrade cadence (most acute for Keycloak, per its Quarkus-migration precedent).
+
+---
+
+## S. Operational Burden
+
+Ranked qualitatively from the evidence gathered, lightest to heaviest at 11thONUS's likely early-stage scale:
+
+1. **ZITADEL Cloud (managed)** — provider owns patching, HA, backups, DR entirely; 11thONUS's operational burden is limited to configuration and API integration.
+2. **Supabase Auth, managed** — same profile as ZITADEL Cloud, with the caveat that managed-platform-specific feature gating (hooks, phone MFA) needs to be designed around.
+3. **ZITADEL, self-hosted** — small minimum footprint, Kubernetes/Helm-based HA path is well documented, but upgrade/backup mechanics were not independently confirmed in this pass (UNPROVEN) — provisionally placed here on the strength of the rest of the operational documentation, subject to that gap being closed in live validation.
+4. **Supabase Auth (GoTrue), self-hosted** — small minimum footprint, standalone deployability confirmed, but Supabase's own documentation explicitly flags that self-hosters take on the ongoing security-patch-monitoring burden themselves (their words: "implement a process to promptly apply security patches").
+5. **Keycloak, self-hosted** — smallest minimum-footprint cost among the three at low scale, most source-verified API match to the exact requirement, but carries the single largest confirmed recurring operational tax found in this research: no community LTS branch, roughly quarterly mandatory patch-following cadence, a documented history of severe breaking-change events (Quarkus), and no first-party backup/restore tooling at all.
+
+This ranking should inform, not dictate, §T's weighted comparison — a heavier operational burden is a real cost, not a disqualifying one, and Keycloak's stronger API verification is a genuine offsetting factor.
+
+---
+
+## T. Weighted Comparison of Surviving Candidates
+
+No candidate is eliminated by §G's hard-invariant matrix except Firebase (already eliminated by prior governance, not re-litigated here) — Auth0 remains neither qualified nor disqualified per its own governing state (§C). ZITADEL, Supabase Auth (self-hosted), and Keycloak all survive to this comparison; Auth0 is included for completeness since it remains the Founder's prior leading candidate, with its incomplete-validation status carried forward honestly rather than scored as if it were fully evidenced.
+
+Qualitative scoring (evidence-grounded, not numeric point-scoring, per the task's instruction not to let weighted scores override a failed hard invariant — none of these four has one, so this section is genuinely comparative):
+
+- **Security fit / MFA recovery fit.** Keycloak has the strongest *source-verified* API match (§J). Supabase Auth has the strongest *single-call composed* match (`deleteFactor` combining ID-scoping and conditional session logout). ZITADEL has the strongest *structural audit* story (event-sourced by construction) but the least-confirmed multi-instance-factor targeting. Auth0's fit is unresolved by design (incomplete validation).
+- **Architecture fit** (compatibility with the proposed boundary in §E/§F). All three self-hostable candidates fit equally well — none requires the domain layer to depend on provider-specific concepts beyond the adapter, provided the Organization/realm containment discipline (§R) is followed.
+- **Provider independence.** Keycloak (no managed-tier vendor relationship possible even if wanted) > self-hosted ZITADEL/Supabase Auth (open-source, but a managed-tier exists as a future option, which is a feature not a flaw) > Auth0 (no self-host option at all, confirmed for completeness though not central to this comparison).
+- **Migration effort (from Firebase).** Roughly comparable across all three — none documented Firebase-hash import, all require re-enrollment of MFA.
+- **PostgreSQL compatibility.** ZITADEL requires and is built around Postgres; Supabase Auth *is* Postgres-native (same database, even); Keycloak fully supports Postgres as a first-class backend. All three are compatible with `DEC-DATA-008`'s direction; Supabase Auth's same-database colocation is the tightest integration, which is a double-edged property (§I's coupling-risk discussion) rather than an unambiguous win.
+- **Self-host portability.** All three confirmed self-hostable; Keycloak is self-host-only by design (no managed tier to be tempted by or accidentally lock into).
+- **Managed option.** ZITADEL and Supabase Auth both offer one (relevant to §Q's Founder-constraint finding that ZITADEL's Free tier may support commitment-free live validation); Keycloak does not.
+- **Operational burden.** See §S — Keycloak heaviest, ZITADEL/Supabase Auth lighter, especially if the managed tier is used for validation.
+- **Development environment practicality.** ZITADEL Free tier and both self-hosted OSS paths all appear practical without paid commitment (§Q); this is the dimension most directly shaped by the Founder's stated constraint and the Auth0 lesson.
+- **Pilot / production maturity.** Keycloak has the longest production track record of the three; ZITADEL is younger but rapidly maturing with a clear commercial backer; Supabase Auth (GoTrue) is mature as a component but its standalone (non-Supabase-platform) usage pattern is less battle-tested in this research than the other two's primary use case.
+- **Documentation/API quality.** All three have adequate official API references; Keycloak's was the only one independently verified against live source code in this research (a methodological note, not necessarily evidence Keycloak's docs are worse — the other two's docs were simply sufficient without needing a source-code cross-check).
+- **Commercial fit.** See §Q — all three plausibly commitment-free for validation; ongoing costs differ mainly by operational-burden translation into engineering time (Keycloak highest), not license fees (all comparable/free at entry).
+
+**No single candidate dominates every dimension.** This is the expected and correct outcome of a genuine hard-invariant-first, evidence-first process — it is the basis for the shortlist in §W, not a forced single winner.
+
+---
+
+## U. Required Live Validation
+
+For every surviving finalist (ZITADEL, Supabase Auth self-hosted, Keycloak), the following cannot be established from documentation alone and must be tested live before any provider is selected. No validation is performed by this document.
+
+**Common to all three:**
+1. **Session-revocation-then-factor-removal ordering (R5).** Exact test: issue an admin session-revoke call, then immediately attempt a privileged action using a token/session obtained just before revocation; separately confirm the subsequent factor-removal call succeeds only after revocation is provably complete. Why docs are insufficient: none of the three provider's official documentation states a synchronous ordering/consistency guarantee for this exact sequence. Environment: a disposable free-tier/self-hosted dev instance for each candidate; no paid plan required for any of the three based on current evidence (§Q). Cleanup: delete the test instance/tenant and its test users. Expected decision supported: whether the provider's native revocation call alone satisfies R5, or whether 11thONUS must build its own revocation-epoch cutoff (as `AUTH-ARCH-002` proposed for Auth0) regardless of candidate.
+2. **Full R9 sequence, end-to-end.** Exact test: execute the full required order (`old factor reset → fresh TOTP enrollment → end enrollment session → fresh primary sign-in → genuine TOTP challenge → provider-resolved MFA session → server verifies second-factor claim`) against a real test user and confirm no shortcut path exists. Why docs insufficient: each step is documented individually; the composed sequence was not found demonstrated end-to-end for any candidate. Environment/cost: same as above.
+
+**ZITADEL-specific:**
+3. Confirm minimum required PostgreSQL version directly against the primary repo (source cited in §H was an agent-summarized secondary read).
+4. Confirm whether `ListAuthenticationMethodTypes`/related v2 calls expose per-credential IDs for multi-instance factor types (U2F/passkeys) — not required for 11thONUS's current TOTP-only policy, but relevant if that policy changes.
+5. Confirm the U2F removal endpoint's exact ID-scoping.
+6. Resolve the 99.5%/99.95% Pro-tier uptime SLA discrepancy against the live pricing page.
+7. Confirm exact scope of the Enterprise "commercial license" line item.
+No paid plan needed for items 3–5, 7 (Free tier/self-hosted suffices); item 6 needs no live testing, just a page re-read.
+
+**Supabase Auth-specific:**
+8. Confirm the exact admin-scoped call (if one exists) to list an arbitrary target user's MFA factors with IDs, versus relying on direct SQL against `auth.mfa_factors` on a self-hosted instance.
+9. Confirm whether the MFA/Password Verification Attempt hook plan-gating applies to self-hosted GoTrue.
+10. Confirm whether self-hosted GoTrue exposes credential secrets via direct SQL without the managed-platform's documented dump-request restriction.
+11. Confirm `auth.audit_log_entries` payload fidelity for an admin-initiated `deleteFactor` action specifically (actor vs. target attribution).
+Self-hosting can validate all of 8–11 with no paid plan.
+
+**Keycloak-specific:**
+12. Confirm default event retention and exact admin-event payload granularity with "Include representation" enabled, for a credential-delete action specifically.
+13. Confirm whether realm export includes credential secrets by default.
+14. Confirm the exact GA version of the "Organizations" feature, to know whether it's available in whatever version 11thONUS would deploy.
+15. Confirm whether passkey support (26.4+) is present in the intended deployment version.
+No paid plan needed for any of 12–15 — self-hosting a free, current Keycloak instance validates all of them.
+
+**Auth0 (for completeness, not a new authorization to resume):** the 109 canonical test cases already defined and Gate-2-approved under `AUTH-ARCH-002-VAL-002` remain the correct next step *if* Auth0 is to be reconsidered — but per §C and the Founder's stated constraint, that path requires either an EU-region-capable free/dev tier becoming available, or the Founder accepting a bounded paid commitment, neither of which this document authorizes or recommends resolving unilaterally.
+
+**Preferred next step for all of the above:** a single bounded validation work package (structurally similar to `AUTH-ARCH-002-VAL-002`'s two-gate model) scoped to items 1–15 above, run against free-tier/self-hosted instances of all three candidates in parallel where practical, producing a single qualify/disqualify verdict per candidate — not implementation of any candidate.
+
+---
+
+## V. Recommended Authentication Architecture
+
+Regardless of which candidate is eventually selected, the architecture recommendation is: adopt the three-layer boundary in §E, with responsibilities allocated per §F. Concretely:
+
+1. Extend, not replace, the existing `TokenVerifierPort`/`AuthenticatedCredential` seam (§A.10) — it is already provider-neutral and was clearly designed for exactly this kind of provider swap.
+2. Keep `customerIdentityId` as the sole primary application identity key, under PostgreSQL per `DEC-DATA-008`, with every provider's subject identifier stored only as a mapped attribute (§N).
+3. Build the MFA-recovery **orchestration** (the R1–R10 sequencing engine, including any revocation-epoch cutoff needed to close a provider's eventual-consistency gap) as an 11thONUS-owned component in the adapter layer — no candidate researched here natively guarantees R5's exact ordering, so this component is required under every candidate, not just the weaker ones.
+4. Treat any provider's own multi-tenancy construct (ZITADEL Organization, Keycloak realm) as an internal implementation detail of the adapter layer, never as 11thONUS's tenant/business system of record (§R).
+5. Do not build custom authentication (§M) — every hard invariant is achievable through an established platform's existing, reviewed APIs.
+
+---
+
+## W. Preferred Candidate(s), If Any
+
+**Architecture recommendation** (independent of provider): §V, above — adopt now, as an architectural direction, regardless of which candidate the eventual live validation qualifies.
+
+**Candidate recommendation — finalist shortlist:** ZITADEL, Supabase Auth (self-hosted), and Keycloak all remain finalists. None is eliminated by the hard-invariant matrix (§G); each has a genuine, differentiated strength (ZITADEL: structural audit trail + Postgres-native + generous free tier; Supabase Auth: single strongest composed factor-removal call + tightest Postgres colocation; Keycloak: only source-verified exact match to both discovery and removal invariants, zero licensing cost) and a genuine, differentiated cost (ZITADEL: AGPL legal-review need + unresolved SLA figure; Supabase Auth: managed-platform hook-gating uncertainty + tighter schema coupling risk if misused; Keycloak: heaviest documented operational/patch-cadence burden).
+
+**Eliminated candidates:**
+- **Firebase Authentication / Google Identity Platform** — eliminated by prior governance (`AUTH-ARCH-001`, `DEC-AUTH-002`), reconfirmed, not re-litigated: whole-list factor replacement is a hard R5/R7 failure.
+- **AWS Cognito** — eliminated by prior governance (`DEC-AUTH-002`) under the corrected exact-factor/replacement-factor analysis; no new evidence in this task reopens that finding.
+- **Custom-built authentication** — not eliminated by a hard-invariant failure (it is not a provider with invariants to fail), but assessed and found not justified (§M) given every requirement is achievable through an existing, reviewed platform.
+
+**Unproven candidates:**
+- **Auth0** — neither qualified nor disqualified; `AUTH0 TECHNICAL QUALIFICATION — INCOMPLETE`, `AUTH0 NOT SELECTED`, 0/109 canonical test cases executed. Remains eligible for reconsideration only if its commercial/environment blocker (§C) is separately resolved.
+- **ZITADEL, Supabase Auth (self-hosted), Keycloak** — each has multiple `UNPROVEN` cells in §G's matrix; none is disqualified, but none should be selected without the live validation in §U.
+
+**Implementation recommendation (only after Founder approval, not authorized by this document):** author a single bounded live-validation work package covering §U's 15 common/candidate-specific items across the three finalists, structured with the same two-gate independent-review discipline used for `AUTH-ARCH-002-VAL-002`, explicitly designed to complete within free-tier/self-hosted resources so it does not repeat the Auth0 commercial-blocker outcome (§C).
+
+---
+
+## X. Risks and Unresolved Questions
+
+- **The single largest unresolved technical risk is common to every candidate, including a hypothetically re-validated Auth0**: none has a documented, provider-native, synchronously-confirmable session-revocation guarantee ahead of factor removal. R5 as written may be unsatisfiable by *any* external provider's native primitives alone — meaning 11thONUS should plan, now, to own a revocation-epoch/short-TTL mitigation in the adapter layer regardless of which provider is eventually selected, rather than treating this as a provider-selection criterion that some future candidate will simply "pass" outright.
+- **AGPL licensing risk (ZITADEL)** has not been reviewed by counsel in this task and should be, before ZITADEL self-hosting is seriously pursued, particularly regarding whether any 11thONUS-side modification or tight integration would trigger AGPL's network-use disclosure provisions.
+- **Keycloak's patch-cadence obligation** is a real, recurring engineering-time cost that was not quantified in engineering-hours terms in this research and should be estimated before Keycloak is weighted equally against the lower-maintenance managed-capable alternatives.
+- **Realm/Organization containment discipline (§R)** is a design responsibility, not a technical guarantee from any candidate — if not actively enforced during adapter implementation, both ZITADEL and Keycloak carry a real risk of their own tenancy construct becoming a de facto second source of truth for 11thONUS's `Business` entity.
+- **Several `UNPROVEN` cells in §G rest on documentation gaps this research could not close** (e.g., ZITADEL's U2F removal ID-scoping, Supabase's admin-scoped arbitrary-user factor listing, Keycloak's exact revocation-ordering guarantee) — §U's live-validation plan exists specifically to close these before any selection, and none should be assumed to resolve favorably.
+- **Staging necessity (§P)** was assessed as "not clearly required by current evidence" rather than confirmed either way — this should be revisited against actual product/compliance requirements, not left as an assumption baked into the eventual environment design.
+- **This document itself has not been independently reviewed** — per §26 of the task, it must undergo independent technical review before any of its recommendations are acted on.
+
+---
+
+## Y. Exact Founder Decision Required — `FD-AUTH-ARCH-003`
+
+This document requests a Founder decision on the following points only. It does not record approval, and no provider is selected by this document.
+
+1. **Approve the provider-independent authentication architecture** in §E/§V (three-layer boundary; `customerIdentityId` remains 11thONUS-owned; provider subject identifiers are mapped attributes, never primary keys).
+2. **Approve the responsibility allocation** in §F (provider owns credential/MFA mechanics and native sessions; 11thONUS adapter owns orchestration, mapping, and provider-capability translation including any revocation-epoch mitigation; 11thONUS domain owns lifecycle, authorization, and recovery policy; PostgreSQL, under `DEC-DATA-008`, owns durable identity/authorization/recovery-workflow state, never credentials).
+3. **Approve the finalist shortlist**: ZITADEL, Supabase Auth (self-hosted), and Keycloak, per §W — with Auth0 remaining eligible only if its separate commercial/environment blocker is independently resolved.
+4. **Approve a bounded live-validation work package** (§U) covering the 15 identified items across the three finalists, structured for completion without a paid-plan commitment, before any provider is selected.
+5. **Defer final provider selection** until that validation work package produces a qualify/disqualify verdict per candidate.
+6. **Confirm whether managed, self-hosted, or both deployment models remain eligible** for each finalist — this assessment found no evidence to exclude either model for any of the three candidates, but the choice has direct commercial and operational-burden consequences (§L, §Q, §S) that are properly the Founder's to weigh.
+
+**Maximum completion state of this task:** `AUTH-ARCH-003 ASSESSMENT COMPLETE — AWAITING INDEPENDENT REVIEW`. This report has not been independently reviewed, is not self-approved, and must not be merged without separate authorization.
