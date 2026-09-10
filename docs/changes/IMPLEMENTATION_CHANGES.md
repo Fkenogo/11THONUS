@@ -7,6 +7,18 @@
 
 ---
 
+## 2026-09-10 — AUTH-ARCH-002-VAL-002-EXEC-001-STOP-001-CORR-003 — Provenance-Label Correction Only: E-08/E-10
+
+- **Task / status:** Provenance-label correction only, on the existing branch `docs/auth-arch-002-val-002-exec-001-stop-001` at reviewed head `96e4208668dbdc505de99d8df4cdee4956868123` (PR #241 OPEN/MERGEABLE; base `origin/main` `a2c80d1f` current, zero drift). No Auth0/provider activity, no production code, no unrelated file modified, FD-COM-001 untouched.
+- **Correction:** stop report §1 entry-verification table rows E-08 ("no live validation started") and E-10 ("FD-COM-001 untouched") were still bare `REPOSITORY VERIFIED` after CORR-002. Narrowed: E-08 → `REPOSITORY VERIFIED` (no committed execution-result artifacts) + `EXECUTOR-REPORTED OPERATIONAL FACT` (0/109 executed); E-10 → `REPOSITORY VERIFIED` (no `FD-COM-001` file modified in this PR's diff) + `EXECUTOR-REPORTED OPERATIONAL FACT` (primary worktree never accessed/contacted). E-02–E-07/E-09 unchanged (genuinely repository-observable). PR #241 body's equivalent "FD-COM-001 untouched" phrase corrected the same way.
+- **Preserved without change:** E-01 FAIL, `BLOCKED — DECISION REQUIRED`, `AUTH0 TECHNICAL QUALIFICATION — INCOMPLETE`, `AUTH0 NOT SELECTED`, post-entry-operator-analysis framing, time-bounded candidate wording, future-execution requirement. Gate 2 (text/E-01 not rewritten), Gate 1, `DEC-AUTH-002`, `DEC-SEC-004`, `DEC-SEC-005` R1–R10, `DEC-DATA-008` (PostgreSQL NOT STARTED), `AUTH-MFA-003D-IMPL-001` (VALID/BLOCKED). No replacement provider selected.
+- **Files changed:** [`AUTH-ARCH-002-VAL-002-EXEC-001 stop report`](../05-implementation/reports/AUTH-ARCH-002-VAL-002-EXEC-001-stop-2026-09-10.md) (corrected in place); `docs/00-governance/documentation-changes-log.md` (Entry 204); this record; PR #241 body (GitHub metadata, minimal edit).
+- **Code/configuration/dependencies/migrations/live changes:** none. Zero canonical cases executed or resumed; zero new provider resources; zero secrets/credentials touched; full-diff secret scan clean.
+- **Validation:** `git diff --check`; full-diff secret scan; append-only verification; Markdown relative-link validation; CI on the exact corrected head required. Not self-approved; not merged; final independent review pending.
+- **Rollback:** revert the CORR-003 commit(s); Entries 201–203's text remain as history, unrewritten; no provider/data cleanup (nothing created). PR body can be reverted via GitHub's edit history if needed.
+
+---
+
 ## 2026-09-10 — AUTH-ARCH-002-VAL-002-EXEC-001-STOP-001-CORR-002 — Final Bounded Correction: Evidence-Provenance Narrowing, Editorial Fix, PR Body Sync
 
 - **Task / status:** Final bounded correction of PR #241, on the existing branch `docs/auth-arch-002-val-002-exec-001-stop-001` at reviewed head `be86ce6580a5e58ed37dc0a07bdb29e82f7b4f2c` (PR OPEN/MERGEABLE; base `origin/main` `a2c80d1f` current, zero drift). No Auth0/provider activity, no production code, no unrelated file modified, FD-COM-001 untouched.

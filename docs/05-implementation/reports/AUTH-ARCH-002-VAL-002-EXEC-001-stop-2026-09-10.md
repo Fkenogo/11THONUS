@@ -81,9 +81,9 @@ remaining checks. Accordingly:
 | E-05 (`DEC-SEC-005` R1–R10 unchanged) | Would independently PASS | `REPOSITORY VERIFIED` |
 | E-06 (`DEC-DATA-008` unchanged) | Would independently PASS | `REPOSITORY VERIFIED` |
 | E-07 (`AUTH-MFA-003D` blocked) | Would independently PASS | `REPOSITORY VERIFIED` |
-| E-08 (no live validation started) | Would independently PASS | `REPOSITORY VERIFIED` |
+| E-08 (no live validation started) | Would independently PASS | `REPOSITORY VERIFIED`: no committed canonical/live-validation execution-result artifacts are present for `AUTH-ARCH-002-VAL-002` beyond this stop record. Separately, `EXECUTOR-REPORTED OPERATIONAL FACT`: 0 / 109 canonical cases were executed — repository absence of artifacts does not by itself prove no live operational activity occurred. |
 | E-09 (no Auth0 tenant/resources in repo) | Would independently PASS | `REPOSITORY VERIFIED` |
-| E-10 (FD-COM-001 untouched) | Would independently PASS | `REPOSITORY VERIFIED` |
+| E-10 (FD-COM-001 untouched) | Would independently PASS | `REPOSITORY VERIFIED`: no `FD-COM-001` file was modified in this PR's diff. Separately, `EXECUTOR-REPORTED OPERATIONAL FACT`: the primary `FD-COM-001` worktree was not accessed or contacted during this task — the repository diff cannot by itself prove absence of reads, access, or operational contact. |
 
 E-02–E-10 are recorded for completeness only. **Because E-01 alone FAILs, the overall entry gate
 verdict is FAIL, and per §22 item 1 no canonical validation execution was authorized beyond this
@@ -339,3 +339,20 @@ all, `NOT INDEPENDENTLY REPRODUCIBLE FROM REPOSITORY`. No new evidence was added
 changed — only its attributed provenance. Gate 2, Gate 1, `DEC-AUTH-002`, `DEC-SEC-004`,
 `DEC-SEC-005`, `DEC-DATA-008`, `AUTH-MFA-003D` block state, and the PostgreSQL NOT-STARTED state remain
 unchanged. No canonical validation was executed or resumed. Not merged.
+
+This report was further corrected by `AUTH-ARCH-002-VAL-002-EXEC-001-STOP-001-CORR-003` (2026-09-10),
+a provenance-label correction only, in response to further independent review at head
+`96e4208668dbdc505de99d8df4cdee4956868123`. The §1 entry-verification table's E-08 and E-10 rows still
+labeled operational claims as bare `REPOSITORY VERIFIED`: E-08 ("no live validation started") is
+narrowed to what a repository scan actually shows (no committed execution-result artifacts), with the
+0/109-executed claim separately attributed `EXECUTOR-REPORTED OPERATIONAL FACT`; E-10 ("FD-COM-001
+untouched") is narrowed to "no `FD-COM-001` file modified in this PR's diff" (`REPOSITORY VERIFIED`),
+with the broader claim that the primary `FD-COM-001` worktree was never accessed or contacted
+separately attributed `EXECUTOR-REPORTED OPERATIONAL FACT`. No other row required correction — E-02–
+E-07 and E-09 are genuinely repository-observable facts (decision-register status, work-package
+records, repository-wide credential/tenant scans) and are unchanged. The PR #241 body's one equivalent
+bare "FD-COM-001 untouched" phrase was corrected the same way. No new evidence added; no claim's
+substance changed; the overall entry-gate FAIL and `BLOCKED — DECISION REQUIRED` disposition are
+unaffected. Gate 2, Gate 1, `DEC-AUTH-002`, `DEC-SEC-004`, `DEC-SEC-005`, `DEC-DATA-008`,
+`AUTH-MFA-003D` block state, and the PostgreSQL NOT-STARTED state remain unchanged. No canonical
+validation was executed or resumed. Not merged.
