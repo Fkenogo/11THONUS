@@ -7,7 +7,28 @@
 
 ---
 
+## 2026-09-10 — AUTH-ARCH-002-VAL-002-EXEC-001-STOP-001-CORR-001 — Bounded Correction: E-01 FAIL, Disposition Corrected to BLOCKED — DECISION REQUIRED
+
+- **Task / status:** Bounded correction of PR #241 in response to independent review, on the existing branch `docs/auth-arch-002-val-002-exec-001-stop-001` at reviewed head `69afff53d2c6a1340b13eaadcb6d60ed8c02cf26` (PR OPEN/MERGEABLE; base `origin/main` `a2c80d1f` current, zero drift). No Auth0/provider activity, no production code, no unrelated file modified, FD-COM-001 untouched.
+- **E-01 correction:** Gate 2 §1 froze E-01's PASS condition to the exact hardcoded value `b6c2d23f71a6aac2e6ee99f6eec2d129c406061d`; the execution attempt observed `a2c80d1f...` (the PR #240 merge commit carrying Gate 2 itself, which can never equal Gate 2's own pre-merge base). **E-01 corrected to FAIL**; per Gate 2 §22 item 1 this alone required STOP with disposition BLOCKED — DECISION REQUIRED / AUTHORITY REQUIRED. Gate 2 and its E-01 wording not rewritten.
+- **Disposition correction:** central disposition corrected from `VALIDATION INCOMPLETE — COMMERCIAL/ENVIRONMENT CONSTRAINT PREVENTS REQUIRED LIVE VALIDATION` to **`BLOCKED — DECISION REQUIRED`** (Gate 2 §22 items 1 and 8; §24 closed vocabulary). `AUTH0 TECHNICAL QUALIFICATION — INCOMPLETE` and `AUTH0 NOT SELECTED` preserved distinctly; not a technical disqualification; 0/109 executed.
+- **Blocker separation:** contract-entry blocker (E-01 mismatch) and provider/commercial blocker (US-5-only tenant, EU required, tenant limit reached, Founder declined paid upgrade) now recorded as two distinct, independently sufficient blockers.
+- **Section-reference correction:** the A–D region-assessment framework relabeled as post-entry operator analysis (it originates from the task prompt, not Gate 2 — the original "Gate 2 §2" citation was incorrect; §2 is "Authority (consumed, never created)"); corrected citations to Gate 2 §4/§7/§22/§23/§24.
+- **Evidence provenance / Founder-decision framing / candidate wording:** every account-specific claim now labeled (`REPOSITORY VERIFIED` / `PROVIDER DOCUMENTATION VERIFIED` / `LIVE PROVIDER OBSERVATION — EXECUTOR REPORTED` / `FOUNDER CONFIRMED` / `NOT INDEPENDENTLY REPRODUCIBLE FROM REPOSITORY`); Founder commercial decision marked explicitly Founder-stated, not executor-verified; Auth0 candidate-state wording time-qualified to the execution-attempt date, not carried forward as a standing preference. `DEC-AUTH-002` not reopened.
+- **Preserved without change:** Gate 2 (text/E-01 not rewritten), Gate 1, `DEC-AUTH-002`, `DEC-SEC-004`, `DEC-SEC-005` R1–R10, `DEC-DATA-008` (PostgreSQL NOT STARTED), `AUTH-MFA-003D-IMPL-001` (VALID/BLOCKED, no resumption).
+- **Files changed:** [`AUTH-ARCH-002-VAL-002-EXEC-001 stop report`](../05-implementation/reports/AUTH-ARCH-002-VAL-002-EXEC-001-stop-2026-09-10.md) (corrected in place); `docs/00-governance/documentation-changes-log.md` (Entry 202); this record. Entry 201 preserved as historical record, marked superseded.
+- **Code/configuration/dependencies/migrations/live changes:** none. Zero canonical cases executed or resumed; zero new provider resources; zero secrets/credentials touched; full-diff secret scan clean.
+- **Validation:** `git diff --check`; full-diff secret scan; append-only verification; Markdown relative-link validation; CI on the exact corrected head required. Not self-approved; not merged; independent re-review pending.
+- **Rollback:** revert the CORR-001 commit(s); Entry 201's original text remains as history (marked superseded, not deleted); no provider/data cleanup (nothing created).
+
+---
+
 ## 2026-09-10 — AUTH-ARCH-002-VAL-002-EXEC-001-STOP-001 — Controlled Live Validation Execution, Stopped at Commercial/Environment Checkpoint
+
+> **Superseded by `EXEC-001-STOP-001-CORR-001` above** — disposition corrected from `VALIDATION
+> INCOMPLETE — COMMERCIAL/ENVIRONMENT CONSTRAINT PREVENTS REQUIRED LIVE VALIDATION` to `BLOCKED —
+> DECISION REQUIRED` after independent review identified an E-01 entry-gate FAIL. Record below
+> preserved unrewritten as historical.
 
 - **Task / status:** Controlled live-validation execution (`AUTH-ARCH-002-VAL-002-EXEC-001`) attempted on branch `docs/auth-arch-002-val-002-exec-001-stop-001` from verified `origin/main` `a2c80d1f36ca39000af33deb4426c08f1c4b20fd` (PR #240 merge commit; zero commits after it; isolated worktree; primary FD-COM-001 worktree untouched). Independent authority re-verification performed first: PR #240 MERGED, post-merge CI `34376459956` SUCCESS on the exact merge commit, Gate 1 APPROVED (Entry 198), Gate 2 independent-review approval located and verified in PR #240 review `PRR_kwDOTaQe388AAAABM1V6PQ` (Founder/OWNER, `COMMENTED` state per no-self-approval policy, concluding GATE 2 APPROVED — READY FOR CONTROLLED LIVE VALIDATION EXECUTION), merged after that review. **STOPPED before any canonical test case at a Founder-declined commercial checkpoint. VALIDATION INCOMPLETE — COMMERCIAL/ENVIRONMENT CONSTRAINT PREVENTS REQUIRED LIVE VALIDATION — AUTH0 NOT SELECTED.**
 - **Inventory performed:** read-only inspection of the Founder's own authenticated Auth0 dashboard session (browser automation reading the live session, not description alone). One Development tenant, region US-5, Free-plan trial (22 days remaining); one default confidential-client "Default App" (not SPA); only system-default Management API (no custom validation API); default database + social (`google-oauth2`) connections only; zero custom Actions/Organizations/Users. No client secret revealed or recorded.
