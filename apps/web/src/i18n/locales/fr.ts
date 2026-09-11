@@ -350,4 +350,45 @@ export const fr = {
       errorGeneric: "La connexion n'a pas abouti. Veuillez réessayer.",
     },
   },
+  customer: {
+    entry: {
+      loading: "Chargement…",
+      signInTitle: "Se connecter",
+      errorBody: "Une erreur s'est produite. Veuillez réessayer.",
+      retry: "Réessayer",
+    },
+    nav: {
+      label: "Navigation client",
+      home: "Accueil",
+      scan: "Scanner",
+      rewards: "Récompenses",
+      activity: "Activité",
+      account: "Compte",
+      openMenu: "Ouvrir la navigation",
+      closeMenu: "Fermer la navigation",
+    },
+    home: {
+      title: "Votre identité de fidélité",
+      loyaltyNumberLabel: "Numéro de fidélité",
+      notYetIssued: "Vous n'avez pas encore de numéro de fidélité.",
+      qrLabel: "Code QR de fidélité",
+      qrNotYetIssued: "Votre code QR de fidélité n'est pas encore disponible.",
+    },
+    scan: {
+      title: "Scanner",
+      notYetAvailable: "La numérisation n'est pas encore disponible.",
+    },
+    rewards: {
+      title: "Récompenses",
+      notYetAvailable: "Vous n'avez encore aucune récompense.",
+    },
+    activity: {
+      title: "Activité",
+      notYetAvailable: "Votre activité n'est pas encore disponible.",
+    },
+    account: {
+      title: "Compte",
+      notYetAvailable: "Les paramètres du compte ne sont pas encore disponibles.",
+    },
+  },
 } as const;
