@@ -21,6 +21,10 @@ import { checkPlatformFoundationReadiness } from "./platformFoundationReadiness"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const fixturesDir = path.join(__dirname, "__fixtures__", "migrations");
+// The package's actual shipped migrations directory (intentionally empty of
+// `.sql` files — see migrations/README.md). Used to prove the empty-shipped-
+// set behaviour, not just the throwaway fixture directory.
+const shippedMigrationsDir = path.join(__dirname, "migrations");
 
 const firestoreStub = {} as Firestore;
 
@@ -114,5 +118,39 @@ describe("checkPlatformFoundationReadiness — migration state against a real Po
     const migration = result.checks.find((c) => c.name === "migration_state");
     expect(migration?.ready).toBe(false);
     expect(migration?.reason).toMatch(/pending migration/);
+  });
+});
+
+describe("checkPlatformFoundationReadiness — actual shipped (empty) migrations directory", () => {
+  function shippedReadinessDeps() {
+    return {
+      postgresPool: pool,
+      migrationsDir: shippedMigrationsDir,
+      firestore: firestoreStub,
+      checkPlatformAdministratorEstablished: async () => true,
+      checkCommerceKnowledgeBaselineEstablished: async () => true,
+    };
+  }
+
+  it("Case A: a fresh database with an empty shipped migration set is NOT ready (schema_migrations absent) and stays read-only", async () => {
+    const result = await checkPlatformFoundationReadiness(shippedReadinessDeps());
+
+    expect(result.ready).toBe(false);
+    const migration = result.checks.find((c) => c.name === "migration_state");
+    expect(migration?.ready).toBe(false);
+    expect(migration?.reason).toMatch(/not established/);
+
+    const probe = await pool.query("SELECT to_regclass('schema_migrations') AS t");
+    expect(probe.rows[0].t).toBeNull();
+  });
+
+  it("Case B: after the explicit bootstrap path creates schema_migrations, an empty migration set reports ready", async () => {
+    const bootstrapped = await migrateUp(pool, shippedMigrationsDir);
+    expect(bootstrapped.applied).toEqual([]);
+
+    const result = await checkPlatformFoundationReadiness(shippedReadinessDeps());
+
+    const migration = result.checks.find((c) => c.name === "migration_state");
+    expect(migration?.ready).toBe(true);
   });
 });

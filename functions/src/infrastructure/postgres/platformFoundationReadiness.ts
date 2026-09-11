@@ -69,16 +69,14 @@ async function checkMigrationState(
 ): Promise<PlatformFoundationReadinessCheck> {
   try {
     const files = await discoverMigrationFiles(migrationsDir);
-    // Strictly read-only: never creates `schema_migrations`. On a fresh
-    // database the table does not exist and the migration foundation is
-    // reported not-established rather than silently bootstrapped.
+    // Strictly read-only: never creates `schema_migrations`. If the
+    // bookkeeping table does not exist the migration foundation has not
+    // been established, and this is reported not-ready even when the
+    // discovered migration set is empty — a fresh database with no
+    // `schema_migrations` is never "ready", because the explicit
+    // migration/bootstrap path (`migrateUp`) has not yet run.
     const applied = await readAppliedMigrations(pool);
     if (applied === null) {
-      if (files.length === 0) {
-        // A package that declares no migrations has no migration foundation
-        // to establish — trivially ready (a supported, valid state).
-        return { name: "migration_state", ready: true };
-      }
       return {
         name: "migration_state",
         ready: false,

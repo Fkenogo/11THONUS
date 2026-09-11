@@ -17,7 +17,19 @@ const firestoreStub = {} as Firestore;
 
 describe("checkPlatformFoundationReadiness", () => {
   it("reports ready when every check passes and no migrations are pending", async () => {
-    const pool = stubPool();
+    // `schema_migrations` exists (bootstrap path already ran) and is empty,
+    // matching a shipped migration set with no pending migrations.
+    const pool = stubPool({
+      query: vi.fn().mockImplementation(async (sql: string) => {
+        if (/to_regclass/.test(sql)) {
+          return { rows: [{ t: "schema_migrations" }] };
+        }
+        if (/FROM schema_migrations/.test(sql)) {
+          return { rows: [] };
+        }
+        return { rows: [] };
+      }),
+    });
     const result = await checkPlatformFoundationReadiness({
       postgresPool: pool,
       migrationsDir: "/nonexistent-empty-migrations-dir",
