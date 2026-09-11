@@ -182,3 +182,28 @@ export function topologicallySortSeedManifest(
 
   return [...manifest.nodes].sort((a, b) => depthOf(a) - depthOf(b));
 }
+
+/**
+ * Single source of truth for the manifest's governed immutable node
+ * identity (`nodeType`, `parentId`, `slug`, `canonicalName` — design §O
+ * "idempotency/conflict semantics"). Shared by the seed loader (which
+ * fails closed on a mismatch) and the read-only Commerce Knowledge
+ * baseline readiness check (which reports not-ready on a mismatch), so
+ * neither duplicates the other's comparison semantics.
+ */
+export function seedNodeImmutableIdentityMatches(
+  entry: SeedNodeManifestEntry,
+  persisted: {
+    nodeType: KnowledgeNodeType;
+    parentId: string | null;
+    slug: string;
+    canonicalName: string;
+  },
+): boolean {
+  return (
+    entry.nodeType === persisted.nodeType &&
+    entry.parentId === persisted.parentId &&
+    entry.slug === persisted.slug &&
+    entry.canonicalName === persisted.canonicalName
+  );
+}

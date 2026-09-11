@@ -17,8 +17,24 @@ jobs:
     name: Build, Lint, Test, Emulator Validation
     runs-on: ubuntu-latest
     # This pipeline requires zero secrets: the Firebase Emulator Suite runs
-    # against the fake `demo-11thonus` project ID, and nothing else in the
-    # pipeline talks to any external or authenticated service.
+    # against the fake `demo-11thonus` project ID, and the PostgreSQL
+    # integration tests run against an isolated, ephemeral, in-job service
+    # container (`postgres:16-alpine`) with a well-known dev credential —
+    # nothing talks to any external, hosted, or authenticated service.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: eleventhonus_platform_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -53,6 +69,16 @@ jobs:
 
       - name: Unit / component tests
         run: pnpm test
+
+      # PostgreSQL integration tests run against the in-job service container
+      # above (no Docker Compose, no external database, no secret). The
+      # runner waits for the container's `pg_isready` health check before
+      # reaching this step.
+      - name: PostgreSQL integration tests
+        env:
+          PLATFORM_ENV: test
+          PLATFORM_POSTGRES_URL: postgres://postgres:postgres@localhost:5432/eleventhonus_platform_test
+        run: PLATFORM_ENV=test pnpm --filter functions test:postgres
 
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium

@@ -1,0 +1,1 @@
+ALTER TABLE platform_baseline_001_migration_fixture_widgets DROP COLUMN color;

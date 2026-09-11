@@ -404,6 +404,12 @@ export default tseslint.config(
       // — same exemption reasoning, not a new exception category.
       "functions/src/domains/commerceKnowledge/services/commerceKnowledgeReadService.ts",
       "functions/src/domains/commerceKnowledge/services/commerceKnowledgeReadService.emulator.test.ts",
+      // `PLATFORM-BASELINE-001`: the Commerce Knowledge baseline readiness
+      // check composes `knowledgeNodeRepository` (already
+      // Firebase-adapter-capable) to answer a read-only readiness question
+      // — same exemption reasoning, not a new exception category.
+      "functions/src/domains/commerceKnowledge/services/checkCommerceKnowledgeBaselineEstablished.ts",
+      "functions/src/domains/commerceKnowledge/services/checkCommerceKnowledgeBaselineEstablished.emulator.test.ts",
     ],
     languageOptions: {
       ecmaVersion: 2023,

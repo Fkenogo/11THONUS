@@ -1,0 +1,1 @@
+DROP TABLE platform_baseline_001_migration_fixture_widgets;
