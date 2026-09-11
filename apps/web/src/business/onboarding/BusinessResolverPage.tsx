@@ -6,11 +6,25 @@
 
 import { Navigate, Link } from "react-router-dom";
 import { useTranslation } from "../../i18n";
-import { useOwnedBusinessesQuery } from "../hooks/businessQueries";
+import { useAccessibleBusinessesQuery } from "../hooks/businessQueries";
+
+function businessDestination(business: {
+  businessId: string;
+  role: "owner" | "manager" | "staff";
+  status: string;
+}): string {
+  if (
+    business.role === "owner" &&
+    (business.status === "draft" || business.status === "pending_verification")
+  ) {
+    return `/business/${business.businessId}`;
+  }
+  return `/business/${business.businessId}/dashboard`;
+}
 
 export function BusinessResolverPage() {
   const { t } = useTranslation("business");
-  const query = useOwnedBusinessesQuery();
+  const query = useAccessibleBusinessesQuery();
 
   if (query.status === "pending") {
     return (
@@ -34,21 +48,25 @@ export function BusinessResolverPage() {
     return <Navigate to="/business/new" replace />;
   }
 
-  if (businesses.length === 1) {
-    return <Navigate to={`/business/${businesses[0].businessId}`} replace />;
-  }
-
   return (
     <main className="mx-auto max-w-md p-8">
-      <h1 className="mb-4 text-xl font-semibold">{t("resolve.chooseBusiness")}</h1>
+      <h1 className="mb-4 text-xl font-semibold">{t("resolve.chooseContext")}</h1>
       <ul className="flex flex-col gap-2">
+        <li>
+          <Link
+            to="/customer"
+            className="block rounded-md border border-[var(--color-border)] px-4 py-3 hover:bg-[var(--color-muted)]"
+          >
+            {t("resolve.personal")}
+          </Link>
+        </li>
         {businesses.map((business) => (
           <li key={business.businessId}>
             <Link
-              to={`/business/${business.businessId}`}
+              to={businessDestination(business)}
               className="block rounded-md border border-[var(--color-border)] px-4 py-3 hover:bg-[var(--color-muted)]"
             >
-              {business.displayName}
+              {business.displayName} — {t(`resolve.roles.${business.role}`)}
             </Link>
           </li>
         ))}

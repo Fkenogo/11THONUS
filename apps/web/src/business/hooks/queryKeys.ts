@@ -2,6 +2,7 @@
 
 export const businessQueryKeys = {
   owned: () => ["business", "owned"] as const,
+  accessible: () => ["business", "accessible"] as const,
   context: (businessId: string) => ["business", businessId] as const,
   branch: (businessId: string) => ["businessBranch", businessId] as const,
   categories: () => ["commerceKnowledge", "businessCategories"] as const,

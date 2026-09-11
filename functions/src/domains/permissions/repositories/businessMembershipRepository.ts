@@ -104,6 +104,28 @@ export async function listMembershipsByBusiness(
   return memberships;
 }
 
+/**
+ * Actor-scoped membership discovery for product-context routing. The caller
+ * supplies the already server-resolved Customer Identity id; no transport
+ * field can select a different person. Every matching document is parsed and
+ * the complete read fails closed if any one is malformed.
+ */
+export async function listMembershipsByUser(
+  db: Firestore,
+  userId: string,
+): Promise<EvaluationBusinessMembership[]> {
+  const snapshot = await db.collection(COLLECTION).where("userId", "==", userId).get();
+  const memberships: EvaluationBusinessMembership[] = [];
+  for (const doc of snapshot.docs) {
+    const membership = fromBusinessMembershipDocument(doc.id, doc.data());
+    if (!membership) {
+      throw staffRosterCorruptedError();
+    }
+    memberships.push(membership);
+  }
+  return memberships;
+}
+
 export async function getBusinessMembershipById(
   db: Firestore,
   membershipId: string,

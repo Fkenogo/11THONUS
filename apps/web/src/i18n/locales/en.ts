@@ -48,6 +48,13 @@ export const en = {
     resolve: {
       loading: "Loading your business…",
       chooseBusiness: "Choose a business",
+      chooseContext: "Choose how to continue",
+      personal: "Personal",
+      roles: {
+        owner: "Owner",
+        manager: "Manager",
+        staff: "Staff",
+      },
       startNew: "Start your business",
     },
     steps: {
@@ -342,6 +349,47 @@ export const en = {
       cancel: "Cancel",
       errorInvalid: "That code didn't work. Check your app and try again.",
       errorGeneric: "We couldn't complete sign-in. Please try again.",
+    },
+  },
+  customer: {
+    entry: {
+      loading: "Loading…",
+      signInTitle: "Sign in",
+      errorBody: "Something went wrong. Please try again.",
+      retry: "Try again",
+    },
+    nav: {
+      label: "Customer navigation",
+      home: "Home",
+      scan: "Scan",
+      rewards: "Rewards",
+      activity: "Activity",
+      account: "Account",
+      openMenu: "Open navigation",
+      closeMenu: "Close navigation",
+    },
+    home: {
+      title: "Your loyalty identity",
+      loyaltyNumberLabel: "Loyalty number",
+      notYetIssued: "You don't have a loyalty number yet.",
+      qrLabel: "Loyalty QR code",
+      qrNotYetIssued: "Your loyalty QR code isn't available yet.",
+    },
+    scan: {
+      title: "Scan",
+      notYetAvailable: "Scanning isn't available yet.",
+    },
+    rewards: {
+      title: "Rewards",
+      notYetAvailable: "You don't have any rewards yet.",
+    },
+    activity: {
+      title: "Activity",
+      notYetAvailable: "Your activity isn't available yet.",
+    },
+    account: {
+      title: "Account",
+      notYetAvailable: "Account settings aren't available yet.",
     },
   },
 } as const;

@@ -10,6 +10,7 @@ import {
   parseSetDisplayNameRequest,
   parseGetMyDisplayNameRequest,
   parseDiscoverPlatformAdministratorRequest,
+  parseAccessibleBusinessesRequest,
 } from "./index";
 
 /**
@@ -410,5 +411,19 @@ describe("parseDiscoverPlatformAdministratorRequest (mass-assignment boundary â€
 
   it("rejects a missing/unsupported referenceType", () => {
     expect(() => parseDiscoverPlatformAdministratorRequest({ rawToken: "raw-token" })).toThrow();
+  });
+});
+
+describe("parseAccessibleBusinessesRequest (actor-scoped mass-assignment boundary)", () => {
+  it("keeps only credential fields and drops client-supplied identity selectors", () => {
+    expect(
+      parseAccessibleBusinessesRequest({
+        rawToken: "raw-token",
+        referenceType: "email",
+        userId: "another-person",
+        customerIdentityId: "another-person",
+        businessId: "attacker-selected-business",
+      }),
+    ).toEqual({ rawToken: "raw-token", referenceType: "email" });
   });
 });

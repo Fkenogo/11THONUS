@@ -1,6 +1,5 @@
 import { lazy, Suspense } from "react";
 import { Route, Routes } from "react-router-dom";
-import { ShieldCheck } from "lucide-react";
 import type { Auth } from "firebase/auth";
 import type { Functions } from "firebase/functions";
 import { useTranslation } from "./i18n";
@@ -12,6 +11,8 @@ import { BusinessWizardPage } from "./business/onboarding/BusinessWizardPage";
 import { BusinessDashboardBoundaryPage } from "./business/dashboard/BusinessDashboardBoundaryPage";
 import { DisplayNameProfile } from "./identity/DisplayNameProfile";
 import { MfaEnrollmentPage } from "./authentication/mfa/MfaEnrollmentPage";
+import { RootEntry } from "./RootEntry";
+import { CustomerRoutes } from "./customer/CustomerRoutes";
 
 // Guarded directly on the literal `import.meta.env.DEV` (not via an
 // intermediate function call) so Vite's production build statically
@@ -87,18 +88,6 @@ const FounderQaPreviewSignInRoute = FOUNDER_QA_PREVIEW_ENABLED
     )
   : null;
 
-function AppShell() {
-  return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-3 p-8 text-center">
-      <ShieldCheck className="h-10 w-10 text-[var(--color-primary)]" aria-hidden="true" />
-      <h1 className="text-2xl font-medium">11thONUS — Engineering Foundation</h1>
-      <p className="text-[var(--color-muted-foreground)]">
-        Phase 0 infrastructure scaffold. No product features are implemented yet.
-      </p>
-    </main>
-  );
-}
-
 function SignInRequired() {
   const { t } = useTranslation("business");
   return (
@@ -114,7 +103,15 @@ function App({ auth, functions }: AppProps) {
   return (
     <BusinessApiProvider platform={{ auth, functions }}>
       <Routes>
-        <Route path="/" element={<AppShell />} />
+        <Route path="/" element={<RootEntry auth={auth} functions={functions} />} />
+        <Route
+          path="/customer/*"
+          element={
+            <RequireAuthenticatedUser auth={auth} renderUnauthenticated={() => <SignInRequired />}>
+              <CustomerRoutes />
+            </RequireAuthenticatedUser>
+          }
+        />
         <Route
           path="/business"
           element={

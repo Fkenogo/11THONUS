@@ -34,6 +34,7 @@ export const resources = {
     business: en.business,
     identity: en.identity,
     mfa: en.mfa,
+    customer: en.customer,
   },
   fr: {
     common: fr.common,
@@ -41,6 +42,7 @@ export const resources = {
     business: fr.business,
     identity: fr.identity,
     mfa: fr.mfa,
+    customer: fr.customer,
   },
 } as const;
 

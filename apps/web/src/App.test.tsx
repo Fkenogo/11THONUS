@@ -15,16 +15,34 @@ const fakeSignedOutAuth = {
 const fakeFunctions = {} as Functions;
 
 describe("App shell", () => {
-  it("renders the Phase 0 engineering foundation heading", () => {
+  it("never renders a blank root route while auth state is resolving (PRODUCT-ALIGN-002)", () => {
     render(
       <BrowserRouter>
         <App auth={fakeAuth} functions={fakeFunctions} />
       </BrowserRouter>,
     );
 
-    expect(
-      screen.getByRole("heading", { name: /11thONUS — Engineering Foundation/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("status")).toBeInTheDocument();
+  });
+
+  it("renders the real sign-in surface at / for an unauthenticated visitor (PRODUCT-ALIGN-002)", async () => {
+    render(
+      <BrowserRouter>
+        <App auth={fakeSignedOutAuth} functions={fakeFunctions} />
+      </BrowserRouter>,
+    );
+
+    expect(await screen.findByRole("heading", { name: "Sign in" })).toBeInTheDocument();
+  });
+
+  it("guards /customer/* behind authentication, routing a signed-out visitor to the sign-in-required fallback", async () => {
+    render(
+      <MemoryRouter initialEntries={["/customer"]}>
+        <App auth={fakeSignedOutAuth} functions={fakeFunctions} />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Please sign in to continue.")).toBeInTheDocument();
   });
 
   it("wires the EXT-TECH-001 phone-auth harness at a dev-only, lazily-loaded route (build-time exclusion verified separately against a real production build)", async () => {

@@ -75,6 +75,7 @@ import { PermissionDomainError } from "./domains/permissions/models/permissionEr
 import { CommerceKnowledgeDomainError } from "./domains/commerceKnowledge/models/commerceKnowledgeErrors";
 import { PlatformAdministrationDomainError } from "./domains/platformAdministration/models/platformAdministrationErrors";
 import {
+  getAccessibleBusinesses as getAccessibleBusinessesRead,
   getOwnedBusinesses as getOwnedBusinessesRead,
   getBusinessContext as getBusinessContextRead,
 } from "./domains/business/services/businessReadService";
@@ -627,6 +628,13 @@ function parseActorRequest(
   };
 }
 
+export function parseAccessibleBusinessesRequest(
+  data: unknown,
+): ResolveAuthenticatedBusinessActorParams {
+  const value = (data ?? {}) as Record<string, unknown>;
+  return parseActorRequest(value);
+}
+
 function parseBusinessId(value: unknown): string {
   return parseNonEmptyString(value);
 }
@@ -866,6 +874,20 @@ export const getOwnedBusinesses = onCall(async (request) => {
       verifier: firebaseAdminTokenVerifier(),
     });
     return await getOwnedBusinessesRead(db, userId);
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+/** Actor-scoped, server-authoritative and read-only Business-context discovery. */
+export const getAccessibleBusinesses = onCall(async (request) => {
+  const parsed = parseAccessibleBusinessesRequest(request.data);
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId } = await resolveAuthenticatedIdentityActorReadOnly(db, parsed, {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    return await getAccessibleBusinessesRead(db, userId);
   } catch (error) {
     throw toHttpsError(error);
   }
