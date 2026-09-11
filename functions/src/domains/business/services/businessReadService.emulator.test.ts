@@ -1,7 +1,11 @@
 import { deleteApp, getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { getOwnedBusinesses, getBusinessContext } from "./businessReadService";
+import {
+  getAccessibleBusinesses,
+  getOwnedBusinesses,
+  getBusinessContext,
+} from "./businessReadService";
 import { createBusiness } from "../models/business";
 import { createBusinessBranch } from "../models/businessBranch";
 import { toBusinessDocumentFields } from "../models/businessDocument";
@@ -147,6 +151,107 @@ describe("getOwnedBusinesses", () => {
     expect(dto["createdAt"]).toBeUndefined();
     expect(dto["updatedAt"]).toBeUndefined();
     expect(dto["subscriptionId"]).toBeUndefined();
+  });
+});
+
+describe("getAccessibleBusinesses — actor-scoped product-context discovery", () => {
+  it("returns active owner, manager and staff memberships with only routing fields", async () => {
+    await seedBusiness("biz-owner", "cust_actor", "draft", "BIZ23456X");
+    await seedBusiness("biz-manager", "cust_other", "active", "BIZ23457X");
+    await seedBusiness("biz-staff", "cust_other", "trial", "BIZ23458X");
+    await seedMembership({
+      membershipId: "mem-owner",
+      userId: "cust_actor",
+      businessId: "biz-owner",
+      role: "owner",
+    });
+    await seedMembership({
+      membershipId: "mem-manager",
+      userId: "cust_actor",
+      businessId: "biz-manager",
+      role: "manager",
+    });
+    await seedMembership({
+      membershipId: "mem-staff",
+      userId: "cust_actor",
+      businessId: "biz-staff",
+      role: "staff",
+    });
+
+    const result = await getAccessibleBusinesses(db, "cust_actor");
+
+    expect(result).toEqual([
+      {
+        businessId: "biz-manager",
+        displayName: "Read Test Cafe",
+        status: "active",
+        role: "manager",
+      },
+      { businessId: "biz-owner", displayName: "Read Test Cafe", status: "draft", role: "owner" },
+      { businessId: "biz-staff", displayName: "Read Test Cafe", status: "trial", role: "staff" },
+    ]);
+  });
+
+  it("does not grant access for invited, suspended or removed memberships", async () => {
+    await seedBusiness("biz-invited", "cust_other", "active", "BIZ23456X");
+    await seedBusiness("biz-suspended", "cust_other", "active", "BIZ23457X");
+    await seedBusiness("biz-removed", "cust_other", "active", "BIZ23458X");
+    await seedMembership({
+      membershipId: "m1",
+      userId: "cust_actor",
+      businessId: "biz-invited",
+      role: "staff",
+      status: "invited",
+    });
+    await seedMembership({
+      membershipId: "m2",
+      userId: "cust_actor",
+      businessId: "biz-suspended",
+      role: "manager",
+      status: "suspended",
+    });
+    await seedMembership({
+      membershipId: "m3",
+      userId: "cust_actor",
+      businessId: "biz-removed",
+      role: "staff",
+      status: "removed",
+    });
+
+    await expect(getAccessibleBusinesses(db, "cust_actor")).resolves.toEqual([]);
+  });
+
+  it("fails closed when the actor has duplicate memberships for one Business", async () => {
+    await seedBusiness("biz-a", "cust_other", "active");
+    await seedMembership({
+      membershipId: "m1",
+      userId: "cust_actor",
+      businessId: "biz-a",
+      role: "staff",
+    });
+    await seedMembership({
+      membershipId: "m2",
+      userId: "cust_actor",
+      businessId: "biz-a",
+      role: "manager",
+    });
+
+    await expect(getAccessibleBusinesses(db, "cust_actor")).rejects.toMatchObject({
+      category: "VALIDATION_FAILED",
+    });
+  });
+
+  it("fails closed when an active membership references a missing Business", async () => {
+    await seedMembership({
+      membershipId: "m1",
+      userId: "cust_actor",
+      businessId: "biz-missing",
+      role: "staff",
+    });
+
+    await expect(getAccessibleBusinesses(db, "cust_actor")).rejects.toMatchObject({
+      category: "VALIDATION_FAILED",
+    });
   });
 });
 

@@ -25,6 +25,7 @@
 import type { Firestore } from "firebase-admin/firestore";
 import {
   listBusinessesByOwner,
+  readBusinessByIdForRouting,
   readDefaultBranchForBusiness,
 } from "../repositories/businessRepository";
 import { readBusinessTermsAcceptance } from "../repositories/businessTermsAcceptanceRepository";
@@ -33,6 +34,9 @@ import { getCurrentlyRequiredBusinessTermsVersion } from "../repositories/busine
 import type { Business } from "../models/business";
 import type { BusinessBranch } from "../models/businessBranch";
 import type { BusinessStatus } from "../models/businessStatus";
+import type { Role } from "../../permissions/models/role";
+import { listMembershipsByUser } from "../../permissions/repositories/businessMembershipRepository";
+import { BusinessDomainError } from "../models/businessErrors";
 
 /** §9/Phase E's bounded summary DTO — used by `getOwnedBusinesses`. */
 export type OwnedBusinessSummary = {
@@ -67,6 +71,54 @@ export async function getOwnedBusinesses(
 ): Promise<OwnedBusinessSummary[]> {
   const businesses = await listBusinessesByOwner(db, ownerUserId);
   return businesses.map(toOwnedBusinessSummary);
+}
+
+export type AccessibleBusinessSummary = {
+  businessId: string;
+  displayName: string;
+  status: BusinessStatus;
+  role: Role;
+};
+
+/**
+ * Returns the active Business contexts available to one server-resolved
+ * identity. Membership state remains the sole live authority; this read
+ * creates no audit, outbox, membership or domain state.
+ */
+export async function getAccessibleBusinesses(
+  db: Firestore,
+  userId: string,
+): Promise<AccessibleBusinessSummary[]> {
+  const memberships = await listMembershipsByUser(db, userId);
+  const activeMemberships = memberships.filter((membership) => membership.status === "active");
+  const seenBusinessIds = new Set<string>();
+  const contexts: AccessibleBusinessSummary[] = [];
+
+  for (const membership of activeMemberships) {
+    if (seenBusinessIds.has(membership.businessId)) {
+      throw new BusinessDomainError(
+        "VALIDATION_FAILED",
+        `Identity "${userId}" has duplicate memberships for Business "${membership.businessId}"; product context cannot be resolved safely.`,
+      );
+    }
+    seenBusinessIds.add(membership.businessId);
+
+    const business = await readBusinessByIdForRouting(db, membership.businessId);
+    if (!business) {
+      throw new BusinessDomainError(
+        "VALIDATION_FAILED",
+        `Active membership "${membership.id}" references a missing or malformed Business; product context cannot be resolved safely.`,
+      );
+    }
+    contexts.push({
+      businessId: business.id,
+      displayName: business.displayName,
+      status: business.status,
+      role: membership.role,
+    });
+  }
+
+  return contexts.sort((left, right) => left.businessId.localeCompare(right.businessId));
 }
 
 export type BusinessContextBranch = {

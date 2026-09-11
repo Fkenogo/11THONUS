@@ -8,19 +8,20 @@
  *  2. Unauthenticated → the real production sign-in surface (`SignInPage`,
  *     composing the existing `SignInPanel` + `createSignInActions`) — not a
  *     bare "please sign in" stub.
- *  3. Authenticated → resolve business access. The only confirmed
- *     client-visible signal for "does this user have business access" is
- *     `useOwnedBusinessesQuery` (`getOwnedBusinesses`). `listStaffMemberships`
- *     exists but requires a `businessId` the client doesn't yet have — there
- *     is no callable to list a user's memberships *across* businesses, so a
- *     Staff member who does not own a business (has access via membership
- *     only) has no client-visible signal here and falls through to the
- *     customer shell along with every other non-owning authenticated user.
- *     This gap is pre-existing (no such callable exists server-side either)
- *     and is not created or resolved by this change.
- *  4. Owns ≥1 business → `<Navigate to="/business" />` (the existing,
- *     untouched Business resolver).
- *  5. Otherwise → the Customer shell (`/customer`).
+ *  3. Authenticated → resolve business access via `useAccessibleBusinessesQuery`
+ *     (`getAccessibleBusinesses`), which is actor-scoped server-side and
+ *     returns every business the caller can act in — as owner, or via any
+ *     `status === "active"` manager/staff membership — by querying
+ *     memberships by `userId` across *all* businesses, not just owned ones.
+ *     Invited/removed/revoked memberships are excluded. A read failure
+ *     surfaces as an explicit error+retry state below; it never silently
+ *     falls through to the customer shell.
+ *  4. ≥1 accessible business (owner or active membership, in any role) →
+ *     `<Navigate to="/business" />`, the Business resolver, which itself
+ *     offers "Personal" alongside each business+role per AP-003/§3.3
+ *     (a person may hold both a personal and one or more business
+ *     identities concurrently).
+ *  5. Zero accessible businesses → the Customer shell (`/customer`).
  */
 
 import type { Auth } from "firebase/auth";
@@ -30,7 +31,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Navigate } from "react-router-dom";
 import { useTranslation } from "./i18n";
 import { SignInPage } from "./authentication/SignInPage";
-import { useOwnedBusinessesQuery } from "./business/hooks/businessQueries";
+import { useAccessibleBusinessesQuery } from "./business/hooks/businessQueries";
 
 function CenteredMessage({ children }: { children: ReactNode }) {
   return (
@@ -42,7 +43,7 @@ function CenteredMessage({ children }: { children: ReactNode }) {
 
 function AuthenticatedEntry() {
   const { t } = useTranslation("customer");
-  const query = useOwnedBusinessesQuery();
+  const query = useAccessibleBusinessesQuery();
 
   if (query.status === "pending") {
     return (

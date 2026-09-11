@@ -48,6 +48,13 @@ export const fr = {
     resolve: {
       loading: "Chargement de votre entreprise…",
       chooseBusiness: "Choisissez une entreprise",
+      chooseContext: "Choisissez comment continuer",
+      personal: "Personnel",
+      roles: {
+        owner: "Propriétaire",
+        manager: "Responsable",
+        staff: "Personnel",
+      },
       startNew: "Créer votre entreprise",
     },
     steps: {

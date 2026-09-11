@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useBusinessApiPlatform } from "../BusinessApiContext";
 import { useAuthenticatedActor } from "./useAuthenticatedActor";
 import { makeCallGetOwnedBusinesses } from "../api/ownedBusinesses";
+import { makeCallGetAccessibleBusinesses } from "../api/accessibleBusinesses";
 import { makeCallGetBusinessContext } from "../api/businessContextCallable";
 import {
   makeCallListBusinessCategories,
@@ -22,6 +23,23 @@ export function useOwnedBusinessesQuery() {
     queryKey: businessQueryKeys.owned(),
     queryFn: () =>
       makeCallGetOwnedBusinesses(functions)(
+        actorState.status === "ready"
+          ? actorState.actor
+          : (() => {
+              throw new Error("actor not ready");
+            })(),
+      ),
+    enabled: actorState.status === "ready",
+  });
+}
+
+export function useAccessibleBusinessesQuery() {
+  const { auth, functions } = useBusinessApiPlatform();
+  const actorState = useAuthenticatedActor(auth);
+  return useQuery({
+    queryKey: businessQueryKeys.accessible(),
+    queryFn: () =>
+      makeCallGetAccessibleBusinesses(functions)(
         actorState.status === "ready"
           ? actorState.actor
           : (() => {

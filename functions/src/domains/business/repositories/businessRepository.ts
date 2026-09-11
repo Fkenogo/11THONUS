@@ -328,6 +328,16 @@ export async function listBusinessesByOwner(
   return businesses;
 }
 
+/** Read one Business for an actor-scoped routing projection. */
+export async function readBusinessByIdForRouting(
+  db: Firestore,
+  businessId: string,
+): Promise<Business | null> {
+  const snapshot = await db.collection(BUSINESSES_COLLECTION).doc(businessId).get();
+  if (!snapshot.exists) return null;
+  return fromBusinessDocument(businessId, snapshot.data());
+}
+
 /**
  * `ENG-P3-002A` addendum (§9, §37.7), corrected by the `ENG-P3-002A`
  * independent review (Phase K/L — priority integrity finding).

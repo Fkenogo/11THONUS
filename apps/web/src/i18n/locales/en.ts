@@ -48,6 +48,13 @@ export const en = {
     resolve: {
       loading: "Loading your business…",
       chooseBusiness: "Choose a business",
+      chooseContext: "Choose how to continue",
+      personal: "Personal",
+      roles: {
+        owner: "Owner",
+        manager: "Manager",
+        staff: "Staff",
+      },
       startNew: "Start your business",
     },
     steps: {

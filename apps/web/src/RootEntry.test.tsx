@@ -7,9 +7,9 @@ import type { Functions } from "firebase/functions";
 import { RootEntry } from "./RootEntry";
 import { BusinessApiProvider } from "./business/BusinessApiContext";
 
-const mockUseOwnedBusinessesQuery = vi.fn();
+const mockUseAccessibleBusinessesQuery = vi.fn();
 vi.mock("./business/hooks/businessQueries", () => ({
-  useOwnedBusinessesQuery: () => mockUseOwnedBusinessesQuery(),
+  useAccessibleBusinessesQuery: () => mockUseAccessibleBusinessesQuery(),
 }));
 
 const fakeFunctions = {} as Functions;
@@ -68,8 +68,8 @@ describe("RootEntry", () => {
     expect(await screen.findByRole("heading", { name: "Sign in" })).toBeInTheDocument();
   });
 
-  it("redirects an authenticated user who owns a business to /business", async () => {
-    mockUseOwnedBusinessesQuery.mockReturnValue({
+  it("routes an authenticated user with an active Business context to the explicit selector", async () => {
+    mockUseAccessibleBusinessesQuery.mockReturnValue({
       status: "success",
       data: [{ businessId: "b-1", displayName: "Acme" }],
     });
@@ -78,13 +78,13 @@ describe("RootEntry", () => {
   });
 
   it("routes an authenticated user with no business access to the customer shell", async () => {
-    mockUseOwnedBusinessesQuery.mockReturnValue({ status: "success", data: [] });
+    mockUseAccessibleBusinessesQuery.mockReturnValue({ status: "success", data: [] });
     renderRoot(signedInAuth());
     expect(await screen.findByText("customer shell screen")).toBeInTheDocument();
   });
 
   it("shows actionable recovery text when business-access resolution fails", async () => {
-    mockUseOwnedBusinessesQuery.mockReturnValue({
+    mockUseAccessibleBusinessesQuery.mockReturnValue({
       status: "error",
       error: new Error("boom"),
       refetch: vi.fn(),
@@ -95,7 +95,7 @@ describe("RootEntry", () => {
   });
 
   it("shows a loading state (never blank) while business-access resolution is pending", () => {
-    mockUseOwnedBusinessesQuery.mockReturnValue({ status: "pending", data: undefined });
+    mockUseAccessibleBusinessesQuery.mockReturnValue({ status: "pending", data: undefined });
     renderRoot(signedInAuth());
     expect(screen.getByRole("status")).toHaveTextContent("Loading…");
   });
