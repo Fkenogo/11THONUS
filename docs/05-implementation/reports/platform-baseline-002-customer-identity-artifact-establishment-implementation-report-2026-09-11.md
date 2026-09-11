@@ -98,7 +98,7 @@ Full suite: **62 files passed, 789 tests passed, 2 skipped, 0 failed** (run via 
 
 ## 18. CI run/result
 
-_To be recorded after the PR is opened and exact-head CI completes._
+_To be recorded after exact-head CI completes on the PR head below._
 
 ## 19. Dependencies added
 
@@ -134,11 +134,11 @@ None: no new collection, no new field, no new index (single-field queries need n
 
 ## 26. PR number
 
-_To be recorded after opening._
+[#247](https://github.com/Fkenogo/11THONUS/pull/247) — opened after successful local validation. Not merged, per instruction.
 
 ## 27. Exact PR head SHA
 
-_To be recorded after opening._
+`f1af56ff4df43574f0e71222983d1d62a19df939`.
 
 ## 28. Markdown implementation report
 
