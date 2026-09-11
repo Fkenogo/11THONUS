@@ -34,7 +34,10 @@ import {
 } from "../services/loyaltyNumberIssuanceService";
 import type { LoyaltyNumberCandidateGenerator } from "../services/loyaltyNumberGenerator";
 import type { LoyaltyNumberUniquenessPort } from "../services/loyaltyNumberUniquenessPort";
-import { LoyaltyNumberDomainError } from "../models/loyaltyNumberErrors";
+import {
+  LoyaltyNumberDomainError,
+  malformedLoyaltyNumberRecordError,
+} from "../models/loyaltyNumberErrors";
 import { toLoyaltyNumberDocument, fromLoyaltyNumberDocument } from "./loyaltyNumberDocument";
 
 const LOYALTY_NUMBERS_COLLECTION = "loyaltyNumbers";
@@ -225,4 +228,37 @@ export async function getLoyaltyNumberAssignmentByValue(
   }
 
   return fromLoyaltyNumberDocument(snapshot.data());
+}
+
+/**
+ * Lists every `loyaltyNumbers` record owned by one Customer Identity
+ * (`PLATFORM-BASELINE-002`, `FD-CUST-ID-ART-001` — the artifact-establishment
+ * orchestration's duplicate detector). A single-field equality query, so no
+ * composite index is required. Strictly a read: never creates, repairs, or
+ * rewrites anything.
+ *
+ * Fails closed (`malformedLoyaltyNumberRecordError`) on any record that does
+ * not parse or whose document id disagrees with its stored value — the
+ * doc-ID-as-value pattern makes such a record corrupt by construction.
+ */
+export async function listLoyaltyNumberAssignmentsForIdentity(
+  db: Firestore,
+  customerIdentityId: string,
+): Promise<LoyaltyNumberAssignment[]> {
+  const snapshot = await db
+    .collection(LOYALTY_NUMBERS_COLLECTION)
+    .where("customerIdentityId", "==", customerIdentityId)
+    .get();
+
+  const assignments: LoyaltyNumberAssignment[] = [];
+  for (const doc of snapshot.docs) {
+    const assignment = fromLoyaltyNumberDocument(doc.data());
+    if (doc.id !== assignment.loyaltyNumber) {
+      throw malformedLoyaltyNumberRecordError(doc.id);
+    }
+    assignments.push(assignment);
+  }
+
+  assignments.sort((a, b) => a.loyaltyNumber.localeCompare(b.loyaltyNumber));
+  return assignments;
 }

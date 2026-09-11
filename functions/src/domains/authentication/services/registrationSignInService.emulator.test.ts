@@ -261,4 +261,47 @@ describe("AUTH-03 — registration / sign-in orchestration (emulator)", () => {
       }
     }
   });
+
+  it("PLATFORM-BASELINE-002: registration establishes exactly one Loyalty Number and one current QR", async () => {
+    const outcome = await registerOrSignIn(
+      db,
+      credentialFor("authuid_art1"),
+      envelopeFor("art1"),
+      commandFor("key_art1"),
+      { generateCustomerIdentityId: () => "cust_art1" },
+    );
+
+    expect(outcome.mode).toBe("registered");
+    expect(await count("loyaltyNumbers")).toBe(1);
+    const qrRecords = await db
+      .collection("qrIdentityRecords")
+      .where("customerIdentityId", "==", "cust_art1")
+      .get();
+    expect(qrRecords.size).toBe(1);
+    expect(qrRecords.docs[0]?.data()["status"]).toBe("active");
+    const profile = await db.collection("customerProfiles").doc("cust_art1").get();
+    expect(profile.data()?.["loyaltyNumber"]).toBe(qrRecords.docs[0]?.data()["loyaltyNumber"]);
+    expect(profile.data()?.["qrReference"]).toBe(qrRecords.docs[0]?.id);
+  });
+
+  it("PLATFORM-BASELINE-002: repeat sign-in re-entry reuses the same artifacts without duplicates", async () => {
+    await registerOrSignIn(
+      db,
+      credentialFor("authuid_art2"),
+      envelopeFor("art2a"),
+      commandFor("key_art2a"),
+      { generateCustomerIdentityId: () => "cust_art2" },
+    );
+    const second = await registerOrSignIn(
+      db,
+      credentialFor("authuid_art2"),
+      envelopeFor("art2b"),
+      commandFor("key_art2b"),
+      { generateCustomerIdentityId: () => "cust_art2_SHOULD_NOT_BE_USED" },
+    );
+
+    expect(second.mode).toBe("signed_in");
+    expect(await count("loyaltyNumbers")).toBe(1);
+    expect(await count("qrIdentityRecords")).toBe(1);
+  });
 });

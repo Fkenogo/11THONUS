@@ -68,6 +68,7 @@ import {
   getCustomerIdentityById,
 } from "../../identity/repositories/customerIdentityRepository";
 import { linkAuthenticationReferenceForIdentity } from "../../identity/repositories/authenticationReferenceRepository";
+import { ensureCustomerIdentityArtifacts } from "../../identity/services/customerIdentityArtifactEstablishment";
 import type { CustomerIdentity } from "../../identity/models/customerIdentity";
 import {
   checkAndReserveIdempotencyKey,
@@ -118,6 +119,12 @@ export type RegistrationSignInDeps = {
   completeIdempotencyKey?: typeof completeIdempotencyKey;
   failIdempotencyKey?: typeof failIdempotencyKey;
   peekIdempotencyKey?: typeof checkIdempotency;
+  /**
+   * `PLATFORM-BASELINE-002` (`FD-CUST-ID-ART-001`): server-side artifact
+   * establishment, run on registration and on sign-in re-entry. Defaults to
+   * the real implementation; injectable so unit tests stay Firestore-free.
+   */
+  ensureArtifacts?: typeof ensureCustomerIdentityArtifacts;
 };
 
 /** The cached command result replayed on a same-key retry. */
@@ -273,6 +280,21 @@ async function resolveAndRegisterOrSignIn(
   if (resolution.outcome === "resolved") {
     const identity = await getIdentityById(db, resolution.customerIdentityId);
     assertMaySignIn(identity);
+    // `PLATFORM-BASELINE-002` (`FD-CUST-ID-ART-001`): re-entry into the
+    // operating flow re-runs establishment — a safe no-op when artifacts
+    // already exist, and the repair path for an identity whose prior
+    // establishment was interrupted (including pre-package active
+    // identities that never passed through registration again).
+    const ensureArtifacts = deps.ensureArtifacts ?? ensureCustomerIdentityArtifacts;
+    await ensureArtifacts(db, {
+      eventId: `${envelope.eventId}:artifacts`,
+      correlationId: envelope.correlationId,
+      actor: envelope.actor,
+      occurredAt: envelope.occurredAt,
+      customerIdentityId: identity.id,
+      now: command.issuedAt,
+      createdBy: identity.id,
+    });
     return {
       mode: "signed_in",
       customerIdentityId: identity.id,
@@ -353,6 +375,21 @@ async function register(
     linkedBy: createdBy,
     idempotencyKey: linkKey,
     requestHash: linkHash,
+  });
+
+  // `PLATFORM-BASELINE-002` (`FD-CUST-ID-ART-001`): the governed trigger —
+  // this identity just entered canonical `active` — so establish its
+  // Loyalty Number and current QR Identity now, through the one shared
+  // operation (never duplicated here).
+  const ensureArtifacts = deps.ensureArtifacts ?? ensureCustomerIdentityArtifacts;
+  await ensureArtifacts(db, {
+    eventId: `${envelope.eventId}:artifacts`,
+    correlationId: envelope.correlationId,
+    actor: envelope.actor,
+    occurredAt: envelope.occurredAt,
+    customerIdentityId,
+    now: command.issuedAt,
+    createdBy,
   });
 
   return {

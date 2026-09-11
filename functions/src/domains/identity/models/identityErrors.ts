@@ -243,6 +243,21 @@ export function recoveryNotPermittedError(customerIdentityId: string): IdentityD
 }
 
 /**
+ * Artifact-establishment boundary error (`PLATFORM-BASELINE-002`,
+ * `FD-CUST-ID-ART-001` — the governed trigger is entering canonical
+ * `active`; establishment on any other status fails closed).
+ */
+export function identityNotActiveError(
+  customerIdentityId: string,
+  status: string,
+): IdentityDomainError {
+  return new IdentityDomainError(
+    "INVALID_STATE_TRANSITION",
+    `Customer identity "${customerIdentityId}" is not active (currently "${status}"); artifact establishment requires an active identity.`,
+  );
+}
+
+/**
  * Recovery-proof boundary errors (ENG-P2-001-07).
  *
  * Reuses this same `IdentityDomainError` class for the recovery-proof

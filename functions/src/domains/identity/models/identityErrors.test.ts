@@ -19,6 +19,7 @@ import {
   invalidTransitionReasonError,
   staleIdentityStatusError,
   recoveryNotPermittedError,
+  identityNotActiveError,
   recoveryProofMissingError,
   recoveryProofRejectedError,
   recoveryProofExpiredError,
@@ -258,5 +259,15 @@ describe("identityLookupPurposeNotPermittedError", () => {
       identityLookupPurposeNotPermittedError("merchant_transaction", "customer_identity_id")
         .category,
     ).toBe("AUTH_FORBIDDEN");
+  });
+});
+
+describe("identityNotActiveError", () => {
+  it("returns an INVALID_STATE_TRANSITION error naming the identity and status", () => {
+    const error = identityNotActiveError("cust_1", "suspended");
+    expect(error).toBeInstanceOf(IdentityDomainError);
+    expect(error.category).toBe("INVALID_STATE_TRANSITION");
+    expect(error.message).toContain("cust_1");
+    expect(error.message).toContain("suspended");
   });
 });

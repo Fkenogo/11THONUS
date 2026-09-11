@@ -71,6 +71,23 @@ export function conflictingLoyaltyNumberAssignmentError(
   );
 }
 
+/**
+ * Artifact-establishment boundary error (`PLATFORM-BASELINE-002`,
+ * `FD-CUST-ID-ART-001` — exactly one Loyalty Number per active Customer
+ * Identity; more than one is contradictory state for investigation, never
+ * silently resolved). Per the `F9B-DEC-001` mapping recorded above, a
+ * non-idempotency conflict maps to `VALIDATION_FAILED`.
+ */
+export function multipleLoyaltyNumberAssignmentsError(
+  customerIdentityId: string,
+  count: number,
+): LoyaltyNumberDomainError {
+  return new LoyaltyNumberDomainError(
+    "VALIDATION_FAILED",
+    `Customer identity "${customerIdentityId}" has ${count} loyalty number assignments; exactly one is required — failing closed for investigation rather than choosing one.`,
+  );
+}
+
 export function identityNotEligibleForIssuanceError(
   customerIdentityId: string,
 ): LoyaltyNumberDomainError {

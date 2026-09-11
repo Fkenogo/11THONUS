@@ -22,10 +22,22 @@ import { AuthenticationDomainError } from "../models/authenticationErrors";
 import type { AuthenticationReferenceType } from "../../identity/models/authenticationReference";
 import type { CustomerIdentity } from "../../identity/models/customerIdentity";
 import type { EventActor } from "../../../shared/events/domainEvent";
+import type { CustomerIdentityArtifactEstablishment } from "../../identity/services/customerIdentityArtifactEstablishment";
 
 const db = {} as never;
 const actor: EventActor = { actorType: "user", actorId: "authuid_1" };
 const at = new Date("2026-08-10T12:00:00.000Z");
+
+// `PLATFORM-BASELINE-002`: artifact establishment is a no-op fake here —
+// the real operation is proven against the emulator, not mocks.
+const establishedArtifacts: CustomerIdentityArtifactEstablishment = {
+  customerIdentityId: "cust_1",
+  loyaltyNumber: "ABC234",
+  qrReference: "qr_ref_1",
+  status: "established",
+};
+
+const ensureArtifacts = vi.fn().mockResolvedValue(establishedArtifacts);
 
 function credential(referenceType: AuthenticationReferenceType, referenceId: string) {
   return createAuthenticatedCredential({
@@ -60,7 +72,7 @@ describe("recoverAuthenticatedIdentity", () => {
       credential("phone_otp", "authuid_1"),
       envelope(),
       command(),
-      { resolve, recover },
+      { resolve, recover, ensureArtifacts },
     );
 
     expect(outcome).toEqual({
@@ -93,7 +105,7 @@ describe("recoverAuthenticatedIdentity", () => {
       credential("google_sign_in", "authuid_2"),
       envelope(),
       command("idem_2"),
-      { resolve, recover },
+      { resolve, recover, ensureArtifacts },
     );
 
     expect(outcome.methodCategory).toBe("linked_provider");
@@ -111,7 +123,7 @@ describe("recoverAuthenticatedIdentity", () => {
       credential("email", "authuid_3"),
       envelope(),
       command("idem_3"),
-      { resolve, recover },
+      { resolve, recover, ensureArtifacts },
     );
 
     expect(outcome.methodCategory).toBe("linked_provider");
@@ -151,6 +163,7 @@ describe("recoverAuthenticatedIdentity", () => {
         {
           resolve,
           recover,
+          ensureArtifacts,
         },
       ),
     ).rejects.toBeInstanceOf(Error);
@@ -173,6 +186,7 @@ describe("recoverAuthenticatedIdentity", () => {
         {
           resolve,
           recover,
+          ensureArtifacts,
         },
       ),
     ).rejects.toThrow("recovery_not_permitted");
@@ -193,6 +207,7 @@ describe("recoverAuthenticatedIdentity", () => {
         {
           resolve,
           recover,
+          ensureArtifacts,
         },
       );
     await run();
@@ -219,12 +234,32 @@ describe("recoverAuthenticatedIdentity", () => {
       credential("phone_otp", "authuid_5"),
       envelope(),
       command("idem_5", "authrec:opaque_digest"),
-      { resolve, recover },
+      { resolve, recover, ensureArtifacts },
     );
 
     const proof = recover.mock.calls[0][1].recoveryProof;
     const serialised = JSON.stringify(proof);
     expect(serialised).not.toContain("rawToken");
     expect(proof.proofReference).toBe("authrec:opaque_digest");
+  });
+
+  it("runs artifact establishment after a successful recovery, on the recovered identity id (PLATFORM-BASELINE-002)", async () => {
+    const resolve = vi
+      .fn()
+      .mockResolvedValue(resolvedAuthResult("cust_6", credential("phone_otp", "authuid_6")));
+    const recover = vi.fn().mockResolvedValue(identity("cust_6"));
+    const ensure = vi.fn().mockResolvedValue(establishedArtifacts);
+
+    const outcome = await recoverAuthenticatedIdentity(
+      db,
+      credential("phone_otp", "authuid_6"),
+      envelope(),
+      command("idem_6"),
+      { resolve, recover, ensureArtifacts: ensure },
+    );
+
+    expect(outcome.customerIdentityId).toBe("cust_6");
+    expect(ensure).toHaveBeenCalledTimes(1);
+    expect(ensure.mock.calls[0][1].customerIdentityId).toBe("cust_6");
   });
 });

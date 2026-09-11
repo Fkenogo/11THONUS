@@ -24,6 +24,7 @@ import {
   type RegistrationSignInDeps,
 } from "./registrationSignInService";
 import type { CustomerIdentity } from "../../identity/models/customerIdentity";
+import type { CustomerIdentityArtifactEstablishment } from "../../identity/services/customerIdentityArtifactEstablishment";
 
 const db = {} as Firestore;
 
@@ -59,6 +60,13 @@ function identityWithStatus(id: string, status: CustomerIdentity["status"]): Cus
   } as unknown as CustomerIdentity;
 }
 
+const establishedArtifacts: CustomerIdentityArtifactEstablishment = {
+  customerIdentityId: "cust_1",
+  loyaltyNumber: "ABC234",
+  qrReference: "qr_ref_1",
+  status: "established",
+};
+
 /** Default idempotency seams: the request key is freshly acquired; no create record yet. */
 function idem(overrides: Partial<RegistrationSignInDeps> = {}): RegistrationSignInDeps {
   return {
@@ -66,6 +74,9 @@ function idem(overrides: Partial<RegistrationSignInDeps> = {}): RegistrationSign
     completeIdempotencyKey: vi.fn().mockResolvedValue(undefined),
     failIdempotencyKey: vi.fn().mockResolvedValue(undefined),
     peekIdempotencyKey: vi.fn().mockResolvedValue({ outcome: "new" }),
+    // `PLATFORM-BASELINE-002`: artifact establishment is a no-op fake here —
+    // the real operation is proven against the emulator, not mocks.
+    ensureArtifacts: vi.fn().mockResolvedValue(establishedArtifacts),
     ...overrides,
   };
 }
@@ -222,6 +233,60 @@ describe("registerOrSignIn — new user (unregistered)", () => {
       conflict,
     );
     expect(deps.failIdempotencyKey).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("registerOrSignIn — artifact establishment wiring (PLATFORM-BASELINE-002)", () => {
+  it("runs establishment after registration, on the new identity id", async () => {
+    const ensureArtifacts = vi.fn().mockResolvedValue(establishedArtifacts);
+    const deps = idem({
+      resolve: vi.fn().mockResolvedValue({ outcome: "unregistered", credential: credential() }),
+      createIdentity: vi.fn().mockResolvedValue(identityWithStatus("cust_new", "active")),
+      linkReference: vi.fn().mockResolvedValue(identityWithStatus("cust_new", "active")),
+      generateCustomerIdentityId: () => "cust_new",
+      ensureArtifacts,
+    });
+
+    await registerOrSignIn(db, credential(), envelope, command, deps);
+
+    expect(ensureArtifacts).toHaveBeenCalledTimes(1);
+    expect(ensureArtifacts.mock.calls[0]![1].customerIdentityId).toBe("cust_new");
+  });
+
+  it("runs establishment on sign-in re-entry, on the resolved identity id", async () => {
+    const ensureArtifacts = vi.fn().mockResolvedValue(establishedArtifacts);
+    const deps = idem({
+      resolve: vi.fn().mockResolvedValue({
+        outcome: "resolved",
+        customerIdentityId: "cust_1",
+        credential: credential(),
+      }),
+      getIdentityById: vi.fn().mockResolvedValue(identityWithStatus("cust_1", "active")),
+      ensureArtifacts,
+    });
+
+    await registerOrSignIn(db, credential(), envelope, command, deps);
+
+    expect(ensureArtifacts).toHaveBeenCalledTimes(1);
+    expect(ensureArtifacts.mock.calls[0]![1].customerIdentityId).toBe("cust_1");
+  });
+
+  it("does not run establishment when sign-in is refused (non-active identity)", async () => {
+    const ensureArtifacts = vi.fn().mockResolvedValue(establishedArtifacts);
+    const deps = idem({
+      resolve: vi.fn().mockResolvedValue({
+        outcome: "resolved",
+        customerIdentityId: "cust_s",
+        credential: credential(),
+      }),
+      getIdentityById: vi.fn().mockResolvedValue(identityWithStatus("cust_s", "suspended")),
+      ensureArtifacts,
+    });
+
+    await expect(registerOrSignIn(db, credential(), envelope, command, deps)).rejects.toSatisfy(
+      (e: unknown) => e instanceof AuthenticationDomainError,
+    );
+    expect(ensureArtifacts).not.toHaveBeenCalled();
   });
 });
 

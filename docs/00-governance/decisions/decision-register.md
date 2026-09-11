@@ -718,6 +718,18 @@ Legend: fields with **—** are intentionally blank (OPEN records have no Final 
 - Dependencies: `DEC-SEC-004` (base factor/DEV-bootstrap policy, unchanged), `DEC-SEC-002` (MFA-for-all-administrators, unchanged) · Risks if unresolved: n/a — resolved within its stated scope by this entry
 - Implementation consequences: **this decision records policy only and does not itself authorize implementation.** A future implementation package (`AUTH-MFA-003D-IMPL-001` or the Founder-supplied equivalent identifier) must consume R1–R10 as fixed governing authority — engineering has no discretion to redesign R1–R10 without a new Founder decision. Recovery remains TOTP-only; normal recovery and break-glass authorities are recorded separately above; session revocation (R5) and post-reset MFA re-establishment (R9) are mandatory invariants · Document corrections required: the AUTH-MFA-003D design assessment updated from "awaiting disposition" to final approved design state and closed (performed by task `AUTH-MFA-003D-FD-001`) · Notes: no new Platform Administrator role is activated by this recording. This task does not authorize AUTH-MFA-003D implementation, no implementation work package/code/stubs are created, and no live Firebase action is authorized.
 
+**DEC-CUST-ID-ART-001 — Customer Identity Artifact Establishment (`FD-CUST-ID-ART-001`)**
+- Category: Identity · Status: **CONFIRMED** · Priority: **D1**
+- Decision question: When a Customer Identity enters canonical `active`, what Loyalty Number / QR Identity artifacts must exist, and with what idempotency, repair, and contradiction semantics?
+- Context: `DEC-DATA-007` governs identifier generation, uniqueness, collision handling, and the at-most-one-assignment idempotency invariant, but no register entry governs the lifecycle trigger or integrity requirements binding artifacts to an `active` Customer Identity. `PLATFORM-BASELINE-002` implements this decision only.
+- Options identified: the Founder disposition below as stated (no alternative evaluated in-register; engineering implements it as recorded).
+- Current confirmed position: **Approved as stated in Final decision.**
+- Founder decision required: Yes (recorded) · Decision owner: Founder · Required by phase: Phase 2 (Customer Identity operational completion, before Business participation depends upon it) · Blocks: unblocks `PLATFORM-BASELINE-002` implementation within its stated scope exclusions
+- Affected documents: none amended by this recording · Affected domains: Identity, Loyalty Number, QR Identity
+- Source references: `PLATFORM-BASELINE-002` task brief (`FD-CUST-ID-ART-001`) · Dependencies: `DEC-DATA-007` (generation/uniqueness semantics, unchanged), `DEC-IDENTITY-001` (Standard Participation — registration enters `active` directly, unchanged), `DEC-AUTH-002` (provider independence — artifacts keyed by `CustomerIdentityId`, unchanged) · Risks if unresolved: n/a — resolved by this entry
+- Final decision: *"When a Customer Identity enters the canonical `active` state, 11thONUS shall ensure that the Customer Identity has exactly one Loyalty Number and exactly one current QR Identity representing that Customer Identity/Loyalty Number relationship. Establishment is server-authoritative and idempotent. Repeated execution, retry, authentication, refresh, or re-entry into the operating flow must not create duplicate Loyalty Numbers or duplicate current QR Identities. Read operations must remain read-only and must never create or repair these artifacts. If an active Customer Identity is missing an expected artifact because a prior establishment operation was interrupted, an explicit server-side establishment/repair operation may deterministically restore the missing artifact without changing the Customer Identity itself. Contradictory state, including multiple Loyalty Numbers for one Customer Identity, incompatible bindings, or another state from which one correct relationship cannot be determined, must fail closed for investigation rather than being silently rewritten. Loyalty Number is the stable loyalty identifier. QR Identity is the presentation/recognition artifact associated with that identity and may be reissued according to governed QR lifecycle rules without changing the Loyalty Number. This decision establishes the lifecycle trigger and integrity requirements only. It does not authorize Reward Program, Purchase, Verification, Verified Unit, Loyalty Cycle, Reward, Redemption, or Business activation implementation."* · Decision date: 2026-09-11 · Approved by: Founder
+- Implementation consequences: authorises `PLATFORM-BASELINE-002` implementation within the decision's own scope exclusions (no Reward Program, Purchase, Verification, Verified Unit, Loyalty Cycle, Reward, Redemption, or Business activation) · Document corrections required: none beyond this entry · Notes: history preserved, not rewritten.
+
 ---
 
 ### AUTHENTICATION (DEC-AUTH)
@@ -1375,7 +1387,7 @@ Legend: fields with **—** are intentionally blank (OPEN records have no Final 
 
 | Status | Count |
 |---|---|
-| CONFIRMED | 47 |
+| CONFIRMED | 48 |
 | OPEN_FOUNDER | 22 |
 | OPEN_ENGINEERING | 12 |
 | OPEN_PROVIDER | 5 |
@@ -1383,7 +1395,7 @@ Legend: fields with **—** are intentionally blank (OPEN records have no Final 
 | DEFERRED | 10 |
 | SUPERSEDED | 4 |
 | REJECTED | 0 (no option in the suite was explicitly considered and rejected outright; exclusions are DEFERRED per TRD22) |
-| **Total records** | **107** (adds `DEC-SEC-005`, recorded 2026-09-07 per `AUTH-MFA-003D-FD-001`; adds `DEC-SEC-004`, recorded 2026-09-04 per `AUTH-MFA-002-CLOSE-001`; previously added `DEC-AUTH-001`, 2026-08-07 per `AUTH-P0-001`; `DEC-PROV-004` and `DEC-SEC-001` remain CONFIRMED and are not double-counted — they were amended in place, not superseded) |
+| **Total records** | **108** (adds `DEC-CUST-ID-ART-001`, recorded 2026-09-11 per `PLATFORM-BASELINE-002`; previously added `DEC-SEC-005`, recorded 2026-09-07 per `AUTH-MFA-003D-FD-001`; adds `DEC-SEC-004`, recorded 2026-09-04 per `AUTH-MFA-002-CLOSE-001`; previously added `DEC-AUTH-001`, 2026-08-07 per `AUTH-P0-001`; `DEC-PROV-004` and `DEC-SEC-001` remain CONFIRMED and are not double-counted — they were amended in place, not superseded) |
 
 Freeze blockers (D0 × 4): DEC-GOV-001 (document hierarchy), DEC-GOV-006 (ID renumbering approval), DEC-LOY-010 (batch rejection), DEC-DATA-003 (Purchase Record monetary fields).
 

@@ -62,6 +62,7 @@ import {
 } from "./credentialResolutionService";
 import { assertSafeIdempotencyKey } from "./registrationSignInService";
 import { recoverCustomerIdentityByReference } from "../../identity/repositories/identityRecoveryRepository";
+import { ensureCustomerIdentityArtifacts } from "../../identity/services/customerIdentityArtifactEstablishment";
 import type { AuthenticationReferenceType } from "../../identity/models/authenticationReference";
 import type {
   RecoveryProof,
@@ -132,6 +133,12 @@ export type IdentityRecoveryOutcome = {
 export type IdentityRecoveryDeps = {
   resolve?: typeof resolveAuthenticatedCredential;
   recover?: typeof recoverCustomerIdentityByReference;
+  /**
+   * `PLATFORM-BASELINE-002` (`FD-CUST-ID-ART-001`): server-side artifact
+   * establishment, run after a successful recovery to `active`. Defaults to
+   * the real implementation; injectable so unit tests stay Firestore-free.
+   */
+  ensureArtifacts?: typeof ensureCustomerIdentityArtifacts;
 };
 
 /** A deterministic, credential-bound request hash (equal across retries). */
@@ -157,6 +164,7 @@ export async function recoverAuthenticatedIdentity(
 
   const resolve = deps.resolve ?? resolveAuthenticatedCredential;
   const recover = deps.recover ?? recoverCustomerIdentityByReference;
+  const ensureArtifacts = deps.ensureArtifacts ?? ensureCustomerIdentityArtifacts;
 
   // Provider proof → recovery method category (fails closed for a deferred provider).
   const methodCategory = recoveryMethodCategoryFor(recoveryCredential.referenceType);
@@ -190,6 +198,21 @@ export async function recoverAuthenticatedIdentity(
     recoveredBy: customerIdentityId,
     idempotencyKey: `${RECOVER_OPERATION}:${command.idempotencyKey}`,
     requestHash: bindRequest(customerIdentityId, recoveryCredential),
+  });
+
+  // `PLATFORM-BASELINE-002` (`FD-CUST-ID-ART-001`): the governed trigger —
+  // this identity just re-entered canonical `active` — so establish its
+  // Loyalty Number and current QR Identity now (a safe no-op when already
+  // established, the repair path when a prior establishment was
+  // interrupted), through the one shared operation.
+  await ensureArtifacts(db, {
+    eventId: `${envelope.eventId}:artifacts`,
+    correlationId: envelope.correlationId,
+    actor: envelope.actor,
+    occurredAt: envelope.occurredAt,
+    customerIdentityId: identity.id,
+    now: command.requestedAt,
+    createdBy: identity.id,
   });
 
   return { operation: "recovered", customerIdentityId: identity.id, methodCategory };
