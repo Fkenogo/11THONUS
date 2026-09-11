@@ -24,12 +24,23 @@
 // be mistaken for, or accidentally match, a real governed Terms version
 // string (no `"v1"`/date-stamped/semver-looking value is used).
 //
-// Fail-loud emulator guard: refuses to run (exit 1) unless it detects
-// `FIRESTORE_EMULATOR_HOST` and/or a Firebase project id equal to the known
-// demo project id (`demo-11thonus`) — mirrors the guard `firebase-admin`
-// itself needs to talk to the emulator rather than a real project, made
-// explicit and checked up front so a misconfigured environment fails loudly
-// instead of silently doing nothing or, worse, touching a real project.
+// Fail-loud emulator guard (`PRODUCT-ALIGN-002-CORR-001` hardening): refuses
+// to run (exit 1) unless EVERY one of the following is explicitly true, with
+// no `??`/`||`/default-parameter fallback anywhere in the check — an empty,
+// missing, or wrong value always fails closed, never silently substitutes
+// the known-good demo value:
+//   1. `FIRESTORE_EMULATOR_HOST` is set, non-empty, and its host is loopback
+//      (`127.0.0.1` or `localhost`) — any other host is rejected.
+//   2. `FIREBASE_AUTH_EMULATOR_HOST`, if set at all, is also loopback-only
+//      (this script does not require it to be set, but if present it must
+//      not point anywhere but the emulator).
+//   3. The resolved project id (`GCLOUD_PROJECT` or `VITE_FIREBASE_PROJECT_ID`
+//      — whichever is set) is set, non-empty, and is *exactly*
+//      `demo-11thonus` — not merely "starts with demo-", not "empty is fine".
+// This mirrors the guard `firebase-admin` itself needs to talk to the
+// emulator rather than a real project, made explicit and checked up front so
+// a misconfigured environment fails loudly instead of silently doing
+// nothing or, worse, touching a real project.
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -37,26 +48,64 @@ import path from "node:path";
 const DEMO_PROJECT_ID = "demo-11thonus";
 export const TEST_ONLY_FIXTURE_TERMS_VERSION = "TEST_ONLY_FIXTURE_BUSINESS_TERMS_v0";
 
-const projectId = process.env.GCLOUD_PROJECT ?? process.env.VITE_FIREBASE_PROJECT_ID ?? "";
-const emulatorHostSet = Boolean(process.env.FIRESTORE_EMULATOR_HOST);
-const isDemoProject = projectId === "" || projectId === DEMO_PROJECT_ID;
+function isLoopbackHost(hostAndPort) {
+  const host = hostAndPort.split(":")[0];
+  return host === "127.0.0.1" || host === "localhost";
+}
 
-if (!emulatorHostSet) {
-  // No emulator host at all — this must never run against a real project.
-  console.error(
-    "seedTestOnlyTermsFixture: refusing to run — FIRESTORE_EMULATOR_HOST is not set. " +
-      "This script only ever seeds the Firebase Firestore Emulator, never a real project. " +
-      "Start the emulator suite first (see README.md's clean-checkout local startup flow).",
-  );
+function fail(message) {
+  console.error(`seedTestOnlyTermsFixture: refusing to run — ${message}`);
   process.exit(1);
 }
 
-if (!isDemoProject) {
-  console.error(
-    `seedTestOnlyTermsFixture: refusing to run — resolved project id "${projectId}" is not the ` +
-      `known demo project ("${DEMO_PROJECT_ID}"). This script only ever seeds the demo emulator project.`,
+const firestoreEmulatorHost = process.env.FIRESTORE_EMULATOR_HOST;
+if (typeof firestoreEmulatorHost !== "string" || firestoreEmulatorHost.length === 0) {
+  fail(
+    "FIRESTORE_EMULATOR_HOST is not set. This script only ever seeds the Firebase " +
+      "Firestore Emulator, never a real project. Start the emulator suite first " +
+      "(see README.md's clean-checkout local startup flow).",
   );
-  process.exit(1);
+}
+if (!isLoopbackHost(firestoreEmulatorHost)) {
+  fail(
+    `FIRESTORE_EMULATOR_HOST ("${firestoreEmulatorHost}") is not a loopback address. ` +
+      "This script refuses to talk to any non-local Firestore endpoint.",
+  );
+}
+
+const authEmulatorHost = process.env.FIREBASE_AUTH_EMULATOR_HOST;
+if (typeof authEmulatorHost === "string" && authEmulatorHost.length > 0 && !isLoopbackHost(authEmulatorHost)) {
+  fail(
+    `FIREBASE_AUTH_EMULATOR_HOST ("${authEmulatorHost}") is not a loopback address. ` +
+      "This script refuses to run alongside a non-local Auth emulator endpoint.",
+  );
+}
+
+// Deliberately no `??`/`||` fallback chain: each candidate var is checked in
+// isolation and only an explicit, non-empty, exact match is accepted.
+const gcloudProjectId = process.env.GCLOUD_PROJECT;
+const viteProjectId = process.env.VITE_FIREBASE_PROJECT_ID;
+const hasGcloudProjectId = typeof gcloudProjectId === "string" && gcloudProjectId.length > 0;
+const hasViteProjectId = typeof viteProjectId === "string" && viteProjectId.length > 0;
+
+if (!hasGcloudProjectId && !hasViteProjectId) {
+  fail(
+    "no project id is set (checked GCLOUD_PROJECT and VITE_FIREBASE_PROJECT_ID). " +
+      `This script only ever seeds the known demo project ("${DEMO_PROJECT_ID}") and never ` +
+      "substitutes a default when the project id is empty or missing.",
+  );
+}
+if (hasGcloudProjectId && gcloudProjectId !== DEMO_PROJECT_ID) {
+  fail(
+    `GCLOUD_PROJECT ("${gcloudProjectId}") is not exactly the known demo project id ` +
+      `("${DEMO_PROJECT_ID}"). This script only ever seeds the demo emulator project.`,
+  );
+}
+if (hasViteProjectId && viteProjectId !== DEMO_PROJECT_ID) {
+  fail(
+    `VITE_FIREBASE_PROJECT_ID ("${viteProjectId}") is not exactly the known demo project id ` +
+      `("${DEMO_PROJECT_ID}"). This script only ever seeds the demo emulator project.`,
+  );
 }
 
 // Resolve `require` against the `functions` package directory (not this
@@ -66,8 +115,13 @@ if (!isDemoProject) {
 const functionsDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "../../../functions");
 const require = createRequire(path.join(functionsDir, "package.json"));
 
-process.env.FIRESTORE_EMULATOR_HOST = process.env.FIRESTORE_EMULATOR_HOST ?? "127.0.0.1:8080";
-process.env.GCLOUD_PROJECT = DEMO_PROJECT_ID;
+// No substitution/default here either — both env vars were already verified
+// above to be exactly what this script requires; GCLOUD_PROJECT is set only
+// when it wasn't already the verified value, never overwritten with a
+// silently-substituted default.
+if (!hasGcloudProjectId) {
+  process.env.GCLOUD_PROJECT = DEMO_PROJECT_ID;
+}
 
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore } = require("firebase-admin/firestore");

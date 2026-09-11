@@ -293,7 +293,7 @@ Each profile below follows the same structure: Phase ID, Name, Purpose, Primary 
 | Deployment Required | Yes (staging) | Yes (staging) |
 | Manual QA Required | Yes | Yes |
 | Status | Blocked | Blocked |
-| Blocking Reason | DEC-LOY-009 OPEN_FOUNDER | Depends on ENG-P4-001 |
+| Blocking Reason | Depends on Phase 3 exit (DEC-LOY-009 resolved CONFIRMED 2026-09-11, `PRODUCT-ALIGN-002-CORR-001` — no longer blocking) | Depends on ENG-P4-001 |
 | Implementation Report | *(future link)* | *(future link)* |
 | Commit Hash | *(future placeholder)* | *(future placeholder)* |
 | Deployment Reference | *(future placeholder)* | *(future placeholder)* |
