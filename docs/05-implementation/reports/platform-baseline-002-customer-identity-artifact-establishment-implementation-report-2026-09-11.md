@@ -138,7 +138,7 @@ None: no new collection, no new field, no new index (single-field queries need n
 
 ## 27. Exact PR head SHA
 
-`f1af56ff4df43574f0e71222983d1d62a19df939`.
+Substantive implementation commit: `f1af56ff4df43574f0e71222983d1d62a19df939`. Any commit after it contains only this report's PR-number/head-SHA/CI notes (no code change); the exact reviewed head is the branch tip at review time.
 
 ## 28. Markdown implementation report
 
