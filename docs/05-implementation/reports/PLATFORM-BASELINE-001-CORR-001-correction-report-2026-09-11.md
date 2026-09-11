@@ -13,7 +13,7 @@
 
 ## 2. Final head SHA
 
-_Recorded after the correction commit is pushed (see §9 CI / final disposition)._
+`71ae63c4b79cf4ded6b3ef9e23abcf5ce9d01a7b` (pushed to `feat/platform-baseline-001-postgres-foundation`; PR #246 head).
 
 ## 3. Files modified
 
@@ -87,11 +87,11 @@ First run had one pre-existing flake (`knowledgeNodeRepository` concurrency time
 
 ## 9. Exact-head CI result
 
-_To be recorded after push — see final disposition. Not merged._
+Green on the exact head `71ae63c4b79cf4ded6b3ef9e23abcf5ce9d01a7b` — "Build, Lint, Test, Emulator Validation" workflow `SUCCESS` (run 34613245262). Not merged.
 
 ## 10. Review-thread state
 
-Six P2 inline review threads (all `chatgpt-codex-connector`): each was re-inspected against the corrected head, corrected as in §5, and is **resolved** by the correction (no longer applies to the code). Thread IDs and per-thread confirmation are listed in §5.
+Six P2 inline review threads (all `chatgpt-codex-connector`): each was re-inspected against the corrected head, corrected as in §5, and is now **outdated** (GitHub marks the comment `original_line` as no longer on the current diff: the code at every referenced line changed). Thread IDs and per-thread confirmation are listed in §5. No unresolved material review thread remains.
 
 ## 11. Commands executed
 
