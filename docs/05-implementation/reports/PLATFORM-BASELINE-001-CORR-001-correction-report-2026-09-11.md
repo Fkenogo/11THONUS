@@ -13,7 +13,7 @@
 
 ## 2. Final head SHA
 
-`71ae63c4b79cf4ded6b3ef9e23abcf5ce9d01a7b` (pushed to `feat/platform-baseline-001-postgres-foundation`; PR #246 head).
+`71ae63c4b79cf4ded6b3ef9e23abcf5ce9d01a7b` — the substantive correction commit (all code/test changes). The report-record commit that follows it (`0566565…` and its successors) contains only this `.md` report and the final-SHA/CI notes, so it carries no code change.
 
 ## 3. Files modified
 
@@ -87,7 +87,7 @@ First run had one pre-existing flake (`knowledgeNodeRepository` concurrency time
 
 ## 9. Exact-head CI result
 
-Green on the exact head `71ae63c4b79cf4ded6b3ef9e23abcf5ce9d01a7b` — "Build, Lint, Test, Emulator Validation" workflow `SUCCESS` (run 34613245262). Not merged.
+Green on the exact PR head — "Build, Lint, Test, Emulator Validation" workflow `SUCCESS` (run 34613245262). The two heads `71ae63c` and `0566565` are identical in every code/test path (the second only appends this report's final-SHA note), so CI green on the latter applies to the correction as a whole. Not merged.
 
 ## 10. Review-thread state
 
