@@ -74,7 +74,11 @@ if (!isLoopbackHost(firestoreEmulatorHost)) {
 }
 
 const authEmulatorHost = process.env.FIREBASE_AUTH_EMULATOR_HOST;
-if (typeof authEmulatorHost === "string" && authEmulatorHost.length > 0 && !isLoopbackHost(authEmulatorHost)) {
+if (
+  typeof authEmulatorHost === "string" &&
+  authEmulatorHost.length > 0 &&
+  !isLoopbackHost(authEmulatorHost)
+) {
   fail(
     `FIREBASE_AUTH_EMULATOR_HOST ("${authEmulatorHost}") is not a loopback address. ` +
       "This script refuses to run alongside a non-local Auth emulator endpoint.",

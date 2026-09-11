@@ -62,6 +62,30 @@ describe("BusinessResolverPage", () => {
     expect(screen.getByRole("link", { name: /Acme/ })).toHaveAttribute("href", "/business/b-1");
   });
 
+  it("routes an active staff member to the Business dashboard alongside Personal", async () => {
+    mockUseAccessibleBusinessesQuery.mockReturnValue({
+      status: "success",
+      data: [
+        {
+          businessId: "b-3",
+          displayName: "Corner Store",
+          status: "active",
+          role: "staff",
+        },
+      ],
+    });
+    renderResolver();
+    expect(await screen.findByRole("link", { name: "Personal" })).toHaveAttribute(
+      "href",
+      "/customer",
+    );
+    expect(screen.getByRole("link", { name: /Corner Store/ })).toHaveAttribute(
+      "href",
+      "/business/b-3/dashboard",
+    );
+    expect(screen.getByText(/Staff/)).toBeInTheDocument();
+  });
+
   it("shows a bounded selection list when the owner has multiple businesses", async () => {
     mockUseAccessibleBusinessesQuery.mockReturnValue({
       status: "success",
