@@ -13,7 +13,7 @@
 
 ## 2. Final head
 
-_Recorded after the correction commit is pushed (see §8 CI)._
+`60727b9fb91013c0b4ef9feac8d94aaa4b7c75ce` — the substantive CORR-002 commit (code + CI + tests). Any commit after it contains only this report's final-SHA/CI notes (no code change).
 
 ## 3. Exact files modified
 
@@ -89,11 +89,20 @@ All executed locally (disposable `postgres:16-alpine` via `docker-compose.postgr
 
 ## 8. Exact-head CI run
 
-_To be recorded after push. The CI run must itself include and pass the "PostgreSQL integration tests" step._
+Run **34618735630** — "Build, Lint, Test, Emulator Validation" workflow `SUCCESS` on the exact head `60727b9fb91013c0b4ef9feac8d94aaa4b7c75ce`. The run **included and passed** the new "PostgreSQL integration tests" step.
 
 ## 9. Confirmation that Postgres integration tests passed IN CI
 
-_To be recorded after the exact-head CI run completes (see §8)._
+Yes. In run 34618735630, the "PostgreSQL integration tests" step executed `PLATFORM_ENV=test pnpm --filter functions test:postgres` against the in-job `postgres:16-alpine` service container and passed:
+
+```
+platformFoundationReadiness.postgres.test.ts  (7 tests)
+migrationRunner.postgres.test.ts              (10 tests)
+postgresTransaction.postgres.test.ts          (6 tests)
+Test Files 3 passed (3); Tests 23 passed (23)
+```
+
+Service-container lifecycle was also confirmed in the run logs ("Initialize containers" → success; Postgres 16.15 started; "Stop containers" → success).
 
 ## 10. Review-thread state
 
