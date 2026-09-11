@@ -117,4 +117,44 @@ describe("migrateUp / migrateDown against a real PostgreSQL instance", () => {
     const applied = await getAppliedMigrations(pool);
     expect(applied.map((a) => a.version)).toEqual(["0001", "0002"]);
   });
+
+  it("fails closed when an earlier migration is missing from history (gap — never applies the missing one out of order)", async () => {
+    await migrateUp(pool, fixturesDir);
+    await pool.query("DELETE FROM schema_migrations WHERE version = $1", ["0001"]);
+
+    await expect(migrateUp(pool, fixturesDir)).rejects.toThrow(/exact ordered prefix/);
+
+    const applied = await getAppliedMigrations(pool);
+    expect(applied.map((a) => a.version)).toEqual(["0002"]);
+  });
+
+  it("fails closed on an unknown applied migration", async () => {
+    await migrateUp(pool, fixturesDir);
+    await pool.query(
+      "INSERT INTO schema_migrations (version, name, checksum) VALUES ($1, $2, $3)",
+      ["9999", "ghost", "deadbeef"],
+    );
+
+    await expect(migrateUp(pool, fixturesDir)).rejects.toThrow(/Unknown applied migration/);
+  });
+
+  it("fails closed on a checksum mismatch (an applied migration edited after application)", async () => {
+    await migrateUp(pool, fixturesDir);
+    await pool.query("UPDATE schema_migrations SET checksum = $1 WHERE version = $2", [
+      "deadbeef",
+      "0001",
+    ]);
+
+    await expect(migrateUp(pool, fixturesDir)).rejects.toThrow(/checksum mismatch/);
+  });
+
+  it("fails closed on a migration identity/name mismatch", async () => {
+    await migrateUp(pool, fixturesDir);
+    await pool.query("UPDATE schema_migrations SET name = $1 WHERE version = $2", [
+      "renamed",
+      "0001",
+    ]);
+
+    await expect(migrateUp(pool, fixturesDir)).rejects.toThrow(/does not match/);
+  });
 });

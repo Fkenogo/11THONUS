@@ -46,6 +46,7 @@ import {
 } from "../repositories/knowledgeTranslationRepository";
 import { seedContentConflictError } from "../models/commerceKnowledgeErrors";
 import {
+  seedNodeImmutableIdentityMatches,
   topologicallySortSeedManifest,
   validateSeedManifest,
   type CommerceKnowledgeSeedManifest,
@@ -70,19 +71,6 @@ export type SeedLoaderResult = {
    */
   reconciled: string[];
 };
-
-function immutableIdentityMatches(
-  entry: SeedNodeManifestEntry,
-  persistedParentId: string | null,
-  persisted: { nodeType: string; parentId: string | null; slug: string; canonicalName: string },
-): boolean {
-  return (
-    entry.nodeType === persisted.nodeType &&
-    persistedParentId === persisted.parentId &&
-    entry.slug === persisted.slug &&
-    entry.canonicalName === persisted.canonicalName
-  );
-}
 
 /**
  * Runs the given seed manifest against `db`. Validates the entire
@@ -109,7 +97,7 @@ export async function runCommerceKnowledgeSeed(
     let nodeReconciled = false;
     if (existing) {
       if (
-        !immutableIdentityMatches(entry, entry.parentId, {
+        !seedNodeImmutableIdentityMatches(entry, {
           nodeType: existing.nodeType,
           parentId: existing.parentId,
           slug: existing.slug,

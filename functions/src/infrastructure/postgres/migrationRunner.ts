@@ -52,6 +52,14 @@ async function ensureMigrationsTable(pool: PlatformPostgresPool): Promise<void> 
   `);
 }
 
+/** Read-only existence probe for `schema_migrations` — never creates the table (unlike `ensureMigrationsTable`). */
+async function migrationsTableExists(pool: PlatformPostgresPool): Promise<boolean> {
+  const result = await pool.query<{ t: string | null }>(
+    `SELECT to_regclass('${SCHEMA_MIGRATIONS_TABLE}') AS t`,
+  );
+  return result.rows[0]?.t != null;
+}
+
 function checksumOf(sql: string): string {
   return createHash("sha256").update(sql).digest("hex");
 }
@@ -96,11 +104,7 @@ export async function discoverMigrationFiles(migrationsDir: string): Promise<Mig
   return files;
 }
 
-/** Reads the current migration state from `schema_migrations`, creating that bookkeeping table first if it does not yet exist (a fresh/empty database is a valid starting state, not an error). */
-export async function getAppliedMigrations(
-  pool: PlatformPostgresPool,
-): Promise<AppliedMigration[]> {
-  await ensureMigrationsTable(pool);
+async function readMigrationsTableRows(pool: PlatformPostgresPool): Promise<AppliedMigration[]> {
   const result = await pool.query<{
     version: string;
     name: string;
@@ -117,6 +121,107 @@ export async function getAppliedMigrations(
   }));
 }
 
+/**
+ * Reads the current migration state from `schema_migrations`, creating
+ * that bookkeeping table first if it does not yet exist (a fresh/empty
+ * database is a valid starting state, not an error). This is the
+ * mutation-capable inspection used by the migration runner itself — the
+ * read-only readiness probe must use `readAppliedMigrations` instead.
+ */
+export async function getAppliedMigrations(
+  pool: PlatformPostgresPool,
+): Promise<AppliedMigration[]> {
+  await ensureMigrationsTable(pool);
+  return readMigrationsTableRows(pool);
+}
+
+/**
+ * Strictly read-only migration-state inspection. Never creates
+ * `schema_migrations` and never mutates the database. Returns `null` when
+ * the bookkeeping table does not exist (a fresh database whose migration
+ * foundation has not been established), and the applied rows otherwise.
+ */
+export async function readAppliedMigrations(
+  pool: PlatformPostgresPool,
+): Promise<AppliedMigration[] | null> {
+  if (!(await migrationsTableExists(pool))) {
+    return null;
+  }
+  return readMigrationsTableRows(pool);
+}
+
+export type MigrationHistoryValidation =
+  | { ok: true; pending: MigrationFile[]; applied: AppliedMigration[] }
+  | { ok: false; reason: string };
+
+/**
+ * Shared migration-integrity validation used by both the migration runner
+ * (before it executes any SQL) and the read-only readiness probe. The
+ * persisted applied migrations must form an **exact ordered prefix** of
+ * the deterministically-sorted discovered files, with every applied row's
+ * `name` and `checksum` matching the corresponding checked-in file:
+ *
+ * - no gap (a later migration applied while an earlier one is missing);
+ * - no unknown applied version (a row with no matching discovered file);
+ * - no version/name inconsistency;
+ * - no checksum mismatch (an applied file edited after application).
+ *
+ * Returns `{ ok: false, reason }` on the first violation without mutating
+ * anything — callers fail closed and make no schema change.
+ */
+export async function validateMigrationHistory(
+  files: MigrationFile[],
+  applied: AppliedMigration[],
+): Promise<MigrationHistoryValidation> {
+  const sortedFiles = [...files].sort((a, b) => a.version.localeCompare(b.version));
+  const sortedApplied = [...applied].sort((a, b) => a.version.localeCompare(b.version));
+  const filesByVersion = new Map(sortedFiles.map((f) => [f.version, f] as const));
+
+  for (let i = 0; i < sortedApplied.length; i++) {
+    const row = sortedApplied[i];
+    const file = filesByVersion.get(row.version);
+    if (!file) {
+      return {
+        ok: false,
+        reason: `Unknown applied migration "${row.version}_${row.name}" — it is not present in the discovered migration files.`,
+      };
+    }
+    const expectedAtPosition = sortedFiles[i];
+    if (!expectedAtPosition || expectedAtPosition.version !== row.version) {
+      return {
+        ok: false,
+        reason:
+          `Migration history is not an exact ordered prefix: version "${row.version}" is applied ` +
+          `while the earlier migration "${expectedAtPosition?.version ?? "unknown"}" is missing.`,
+      };
+    }
+    if (file.name !== row.name) {
+      return {
+        ok: false,
+        reason:
+          `Applied migration "${row.version}" records name "${row.name}" but the ` +
+          `discovered file is named "${file.name}" — the migration identity does not match.`,
+      };
+    }
+    const sql = await readFile(file.upPath, "utf8");
+    const checksum = checksumOf(sql);
+    if (row.checksum !== checksum) {
+      return {
+        ok: false,
+        reason:
+          `Migration ${file.version}_${file.name}.sql has changed since it was applied ` +
+          `(checksum mismatch). Migrations must never be edited after being applied; ` +
+          `author a new migration instead.`,
+      };
+    }
+  }
+
+  const appliedVersions = new Set(sortedApplied.map((a) => a.version));
+  const pending = sortedFiles.filter((f) => !appliedVersions.has(f.version));
+
+  return { ok: true, pending, applied: sortedApplied };
+}
+
 export type MigrationRunResult = {
   applied: string[];
   alreadyApplied: string[];
@@ -126,10 +231,16 @@ export type MigrationRunResult = {
  * Applies every pending migration in `migrationsDir`, in version order,
  * each in its own transaction. Re-running against an already-migrated
  * database is a safe no-op for every already-applied version — never a
- * destructive reset. A checksum mismatch between an already-applied
- * migration's recorded checksum and its current file content fails closed
- * rather than silently proceeding: migrations must never be edited after
- * being applied.
+ * destructive reset.
+ *
+ * Before executing any SQL, the persisted applied migrations are validated
+ * as an exact ordered prefix of the discovered sequence (via
+ * `validateMigrationHistory`) — no gap, no unknown version, no
+ * version/name inconsistency, no checksum mismatch — and the run fails
+ * closed, making no schema change, if that validation does not hold. A
+ * checksum mismatch (an applied migration edited after application) is
+ * likewise rejected rather than silently proceeding: migrations must never
+ * be edited after being applied.
  */
 export async function migrateUp(
   pool: PlatformPostgresPool,
@@ -138,28 +249,17 @@ export async function migrateUp(
   await ensureMigrationsTable(pool);
   const files = await discoverMigrationFiles(migrationsDir);
   const applied = await getAppliedMigrations(pool);
-  const appliedByVersion = new Map(applied.map((a) => [a.version, a]));
+
+  const validation = await validateMigrationHistory(files, applied);
+  if (!validation.ok) {
+    throw new Error(validation.reason);
+  }
 
   const appliedNow: string[] = [];
-  const alreadyApplied: string[] = [];
 
-  for (const file of files) {
+  for (const file of validation.pending) {
     const sql = await readFile(file.upPath, "utf8");
     const checksum = checksumOf(sql);
-    const existing = appliedByVersion.get(file.version);
-
-    if (existing) {
-      if (existing.checksum !== checksum) {
-        throw new Error(
-          `Migration ${file.version}_${file.name}.sql has changed since it was applied ` +
-            `(checksum mismatch). Migrations must never be edited after being applied; ` +
-            `author a new migration instead.`,
-        );
-      }
-      alreadyApplied.push(file.version);
-      continue;
-    }
-
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
@@ -178,7 +278,7 @@ export async function migrateUp(
     appliedNow.push(file.version);
   }
 
-  return { applied: appliedNow, alreadyApplied };
+  return { applied: appliedNow, alreadyApplied: validation.applied.map((a) => a.version) };
 }
 
 export type MigrationRollbackResult = { rolledBack: string[] };

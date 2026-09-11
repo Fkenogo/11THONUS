@@ -68,10 +68,57 @@ describe("loadPostgresConfig", () => {
   it("rejects a non-positive-integer pool size", () => {
     expect(() =>
       loadPostgresConfig({ PLATFORM_ENV: "local", PLATFORM_POSTGRES_POOL_MAX: "0" }),
-    ).toThrow(/must be a positive integer/);
+    ).toThrow(/must be a positive base-10 integer/);
     expect(() =>
       loadPostgresConfig({ PLATFORM_ENV: "local", PLATFORM_POSTGRES_POOL_MAX: "abc" }),
-    ).toThrow(/must be a positive integer/);
+    ).toThrow(/must be a positive base-10 integer/);
+  });
+
+  it("rejects a numeric value with a suffix instead of silently truncating it", () => {
+    expect(() =>
+      loadPostgresConfig({ PLATFORM_ENV: "local", PLATFORM_POSTGRES_POOL_MAX: "3workers" }),
+    ).toThrow(/must be a positive base-10 integer/);
+    expect(() =>
+      loadPostgresConfig({
+        PLATFORM_ENV: "local",
+        PLATFORM_POSTGRES_CONNECTION_TIMEOUT_MS: "1000ms",
+      }),
+    ).toThrow(/must be a positive base-10 integer/);
+  });
+
+  it("rejects a numeric value with a prefix", () => {
+    expect(() =>
+      loadPostgresConfig({ PLATFORM_ENV: "local", PLATFORM_POSTGRES_POOL_MAX: "workers3" }),
+    ).toThrow(/must be a positive base-10 integer/);
+  });
+
+  it("rejects decimals, negatives, zero, and leading zeros", () => {
+    expect(() =>
+      loadPostgresConfig({ PLATFORM_ENV: "local", PLATFORM_POSTGRES_POOL_MAX: "1.5" }),
+    ).toThrow(/must be a positive base-10 integer/);
+    expect(() =>
+      loadPostgresConfig({ PLATFORM_ENV: "local", PLATFORM_POSTGRES_POOL_MAX: "-3" }),
+    ).toThrow(/must be a positive base-10 integer/);
+    expect(() =>
+      loadPostgresConfig({ PLATFORM_ENV: "local", PLATFORM_POSTGRES_POOL_MAX: "0" }),
+    ).toThrow(/must be a positive base-10 integer/);
+    expect(() =>
+      loadPostgresConfig({ PLATFORM_ENV: "local", PLATFORM_POSTGRES_POOL_MAX: "007" }),
+    ).toThrow(/must be a positive base-10 integer/);
+  });
+
+  it("rejects a whitespace-only numeric value (explicit but malformed, not silently defaulted)", () => {
+    expect(() =>
+      loadPostgresConfig({ PLATFORM_ENV: "local", PLATFORM_POSTGRES_POOL_MAX: "   " }),
+    ).toThrow(/must be a positive base-10 integer/);
+  });
+
+  it("accepts a plain positive integer after trimming surrounding whitespace", () => {
+    const config = loadPostgresConfig({
+      PLATFORM_ENV: "local",
+      PLATFORM_POSTGRES_POOL_MAX: " 5 ",
+    });
+    expect(config.poolMax).toBe(5);
   });
 
   it("applies documented numeric defaults when not overridden", () => {
@@ -79,5 +126,49 @@ describe("loadPostgresConfig", () => {
     expect(config.poolMax).toBe(3);
     expect(config.idleTimeoutMillis).toBe(10_000);
     expect(config.connectionTimeoutMillis).toBe(5_000);
+  });
+});
+
+describe("loadPostgresConfig — SSL validation", () => {
+  it("accepts an explicit SSL true", () => {
+    expect(loadPostgresConfig({ PLATFORM_ENV: "local", PLATFORM_POSTGRES_SSL: "true" }).ssl).toBe(
+      true,
+    );
+  });
+
+  it("accepts an explicit SSL false", () => {
+    expect(
+      loadPostgresConfig({
+        PLATFORM_ENV: "production",
+        PLATFORM_POSTGRES_URL: "postgres://x/db",
+        PLATFORM_POSTGRES_SSL: "false",
+      }).ssl,
+    ).toBe(false);
+  });
+
+  it("uses the governed environment default when SSL is absent", () => {
+    expect(loadPostgresConfig({ PLATFORM_ENV: "local" }).ssl).toBe(false);
+    expect(
+      loadPostgresConfig({ PLATFORM_ENV: "production", PLATFORM_POSTGRES_URL: "postgres://x/db" })
+        .ssl,
+    ).toBe(true);
+  });
+
+  it("treats an empty SSL value as unset (existing convention)", () => {
+    expect(loadPostgresConfig({ PLATFORM_ENV: "local", PLATFORM_POSTGRES_SSL: "" }).ssl).toBe(
+      false,
+    );
+  });
+
+  it("rejects a typo'd SSL value instead of silently disabling SSL", () => {
+    expect(() =>
+      loadPostgresConfig({ PLATFORM_ENV: "local", PLATFORM_POSTGRES_SSL: "treu" }),
+    ).toThrow(/PLATFORM_POSTGRES_SSL/);
+  });
+
+  it("rejects a casing variant not in the documented contract", () => {
+    expect(() =>
+      loadPostgresConfig({ PLATFORM_ENV: "local", PLATFORM_POSTGRES_SSL: "TRUE" }),
+    ).toThrow(/PLATFORM_POSTGRES_SSL/);
   });
 });

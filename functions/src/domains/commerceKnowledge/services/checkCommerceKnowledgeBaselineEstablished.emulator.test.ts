@@ -49,6 +49,9 @@ beforeEach(async () => {
 });
 
 describe("checkCommerceKnowledgeBaselineEstablished", () => {
+  const nodeId = "industry-test-readiness";
+  const translationId = `knowledge_node_${nodeId}_en`;
+
   it("returns false when the manifest's node does not exist", async () => {
     await expect(checkCommerceKnowledgeBaselineEstablished(db, manifest)).resolves.toBe(false);
   });
@@ -62,5 +65,41 @@ describe("checkCommerceKnowledgeBaselineEstablished", () => {
     await checkCommerceKnowledgeBaselineEstablished(db, manifest);
     const snapshot = await db.collection(KNOWLEDGE_NODES_COLLECTION).get();
     expect(snapshot.empty).toBe(true);
+  });
+
+  it("returns false when the governed node is not active", async () => {
+    await runCommerceKnowledgeSeed(db, manifest, { now: new Date("2026-09-11T00:00:00.000Z") });
+    await db.collection(KNOWLEDGE_NODES_COLLECTION).doc(nodeId).update({ status: "draft" });
+    await expect(checkCommerceKnowledgeBaselineEstablished(db, manifest)).resolves.toBe(false);
+  });
+
+  it("returns false when a governed immutable field diverges from the manifest", async () => {
+    await runCommerceKnowledgeSeed(db, manifest, { now: new Date("2026-09-11T00:00:00.000Z") });
+    await db.collection(KNOWLEDGE_NODES_COLLECTION).doc(nodeId).update({ slug: "divergent-slug" });
+    await expect(checkCommerceKnowledgeBaselineEstablished(db, manifest)).resolves.toBe(false);
+  });
+
+  it("returns false when the required EN translation is missing", async () => {
+    await runCommerceKnowledgeSeed(db, manifest, { now: new Date("2026-09-11T00:00:00.000Z") });
+    await db.collection(KNOWLEDGE_TRANSLATIONS_COLLECTION).doc(translationId).delete();
+    await expect(checkCommerceKnowledgeBaselineEstablished(db, manifest)).resolves.toBe(false);
+  });
+
+  it("returns false when the required EN translation is not published", async () => {
+    await runCommerceKnowledgeSeed(db, manifest, { now: new Date("2026-09-11T00:00:00.000Z") });
+    await db
+      .collection(KNOWLEDGE_TRANSLATIONS_COLLECTION)
+      .doc(translationId)
+      .update({ status: "draft" });
+    await expect(checkCommerceKnowledgeBaselineEstablished(db, manifest)).resolves.toBe(false);
+  });
+
+  it("returns false when the required EN translation content diverges from the manifest", async () => {
+    await runCommerceKnowledgeSeed(db, manifest, { now: new Date("2026-09-11T00:00:00.000Z") });
+    await db
+      .collection(KNOWLEDGE_TRANSLATIONS_COLLECTION)
+      .doc(translationId)
+      .update({ displayName: "A different label" });
+    await expect(checkCommerceKnowledgeBaselineEstablished(db, manifest)).resolves.toBe(false);
   });
 });

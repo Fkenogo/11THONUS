@@ -23,7 +23,11 @@
 
 import type { Firestore } from "firebase-admin/firestore";
 import type { PlatformPostgresPool } from "./postgresPool";
-import { discoverMigrationFiles, getAppliedMigrations } from "./migrationRunner";
+import {
+  discoverMigrationFiles,
+  readAppliedMigrations,
+  validateMigrationHistory,
+} from "./migrationRunner";
 
 export type PlatformFoundationReadinessCheck = {
   name: string;
@@ -65,14 +69,37 @@ async function checkMigrationState(
 ): Promise<PlatformFoundationReadinessCheck> {
   try {
     const files = await discoverMigrationFiles(migrationsDir);
-    const applied = await getAppliedMigrations(pool);
-    const appliedVersions = new Set(applied.map((a) => a.version));
-    const pending = files.filter((f) => !appliedVersions.has(f.version));
-    if (pending.length > 0) {
+    // Strictly read-only: never creates `schema_migrations`. On a fresh
+    // database the table does not exist and the migration foundation is
+    // reported not-established rather than silently bootstrapped.
+    const applied = await readAppliedMigrations(pool);
+    if (applied === null) {
+      if (files.length === 0) {
+        // A package that declares no migrations has no migration foundation
+        // to establish — trivially ready (a supported, valid state).
+        return { name: "migration_state", ready: true };
+      }
       return {
         name: "migration_state",
         ready: false,
-        reason: `${pending.length} pending migration(s): ${pending.map((f) => f.version).join(", ")}`,
+        reason: "migration foundation not established (schema_migrations table does not exist)",
+      };
+    }
+
+    // Verifies integrity, not just version presence: applied migrations
+    // must form an exact ordered prefix of the discovered files with
+    // matching names and checksums (same shared validation the runner uses).
+    const validation = await validateMigrationHistory(files, applied);
+    if (!validation.ok) {
+      return { name: "migration_state", ready: false, reason: validation.reason };
+    }
+    if (validation.pending.length > 0) {
+      return {
+        name: "migration_state",
+        ready: false,
+        reason:
+          `${validation.pending.length} pending migration(s): ` +
+          validation.pending.map((f) => f.version).join(", "),
       };
     }
     return { name: "migration_state", ready: true };

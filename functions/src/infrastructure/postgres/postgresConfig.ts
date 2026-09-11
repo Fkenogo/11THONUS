@@ -69,25 +69,44 @@ function resolveConnectionString(env: NodeJS.ProcessEnv, environment: PlatformEn
   return environment === "test" ? TEST_DEFAULT_URL : LOCAL_DEFAULT_URL;
 }
 
+/**
+ * A positive base-10 integer with no leading zeros, sign, decimal point,
+ * or any other character. An explicitly set value must match this in full
+ * (after trimming surrounding whitespace) — `Number.parseInt`'s partial
+ * parsing of strings like `3workers`, `1000ms`, or `1.5` is deliberately
+ * not used, so malformed explicit configuration fails closed instead of
+ * silently normalising to a different value.
+ */
+const POSITIVE_INT_PATTERN = /^[1-9][0-9]*$/;
+
 function resolvePositiveInt(env: NodeJS.ProcessEnv, key: string, fallback: number): number {
   const raw = env[key];
-  if (raw === undefined || raw.trim().length === 0) {
+  if (raw === undefined) {
     return fallback;
   }
-  const parsed = Number.parseInt(raw, 10);
-  if (!Number.isInteger(parsed) || parsed <= 0) {
-    throw new Error(`${key} must be a positive integer; received "${raw}".`);
+  const trimmed = raw.trim();
+  if (!POSITIVE_INT_PATTERN.test(trimmed)) {
+    throw new Error(`${key} must be a positive base-10 integer; received "${raw}".`);
   }
-  return parsed;
+  return Number.parseInt(trimmed, 10);
 }
 
 function resolveSsl(env: NodeJS.ProcessEnv, environment: PlatformEnvironment): boolean {
   const raw = env.PLATFORM_POSTGRES_SSL;
+  // Absent or empty/whitespace-only: use the governed environment default
+  // (production requires SSL; local/test default to none).
+  if (raw === undefined || raw.trim().length === 0) {
+    return environment === "production";
+  }
+  // An explicitly supplied value must be exactly the documented lowercase
+  // "true" or "false" — any other value (including casing variants such as
+  // "TRUE" or a typo like "treu") is a malformed explicit setting and
+  // fails closed rather than silently selecting the environment default.
   if (raw === "true") return true;
   if (raw === "false") return false;
-  // No explicit override: production defaults to requiring SSL; local/test
-  // default to no SSL (matching an unencrypted local Docker Postgres).
-  return environment === "production";
+  throw new Error(
+    `PLATFORM_POSTGRES_SSL must be "true" or "false" (lowercase); received "${raw}".`,
+  );
 }
 
 /**

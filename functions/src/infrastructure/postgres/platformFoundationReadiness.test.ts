@@ -1,4 +1,7 @@
-import { describe, expect, it, vi } from "vitest";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Firestore } from "firebase-admin/firestore";
 import { checkPlatformFoundationReadiness } from "./platformFoundationReadiness";
 import type { PlatformPostgresPool } from "./postgresPool";
@@ -117,7 +120,116 @@ describe("checkPlatformFoundationReadiness", () => {
     });
 
     for (const sql of queries) {
-      expect(sql.trim().toUpperCase()).not.toMatch(/^(INSERT|UPDATE|DELETE|DROP|ALTER)/);
+      expect(sql.trim().toUpperCase()).not.toMatch(/^(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE)/);
     }
+  });
+});
+
+describe("checkPlatformFoundationReadiness — read-only migration foundation", () => {
+  let dir: string;
+
+  beforeEach(async () => {
+    dir = await mkdtemp(path.join(tmpdir(), "platform-baseline-001-readiness-"));
+  });
+
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  function baseDeps(pool: PlatformPostgresPool) {
+    return {
+      postgresPool: pool,
+      migrationsDir: dir,
+      firestore: firestoreStub,
+      checkPlatformAdministratorEstablished: async () => true,
+      checkCommerceKnowledgeBaselineEstablished: async () => true,
+    };
+  }
+
+  it("reports not-ready and performs no CREATE on a fresh database with migrations present", async () => {
+    await writeFile(path.join(dir, "0001_first.sql"), "SELECT 1;");
+    const queries: string[] = [];
+    // The `to_regclass` probe returns an empty row set → schema_migrations absent.
+    const pool = stubPool({
+      query: vi.fn().mockImplementation(async (sql: string) => {
+        queries.push(sql);
+        return { rows: [] };
+      }),
+    });
+
+    const result = await checkPlatformFoundationReadiness(baseDeps(pool));
+
+    expect(result.ready).toBe(false);
+    const migration = result.checks.find((c) => c.name === "migration_state");
+    expect(migration?.ready).toBe(false);
+    expect(migration?.reason).toMatch(/not established/);
+
+    for (const sql of queries) {
+      expect(sql.trim().toUpperCase()).not.toMatch(/^(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE)/);
+    }
+    expect(queries.some((q) => /create table/i.test(q))).toBe(false);
+  });
+
+  it("reports not-ready when an applied migration's checksum does not match its file", async () => {
+    await writeFile(path.join(dir, "0001_first.sql"), "SELECT 1;");
+    const pool = stubPool({
+      query: vi.fn().mockImplementation(async (sql: string) => {
+        if (/to_regclass/.test(sql)) {
+          // schema_migrations exists.
+          return { rows: [{ t: "schema_migrations" }] };
+        }
+        if (/FROM schema_migrations/.test(sql)) {
+          return {
+            rows: [
+              {
+                version: "0001",
+                name: "first",
+                checksum: "0000000000000000000000000000000000000000000000000000000000000000",
+                applied_at: new Date("2026-09-11T00:00:00.000Z"),
+              },
+            ],
+          };
+        }
+        return { rows: [] };
+      }),
+    });
+
+    const result = await checkPlatformFoundationReadiness(baseDeps(pool));
+
+    expect(result.ready).toBe(false);
+    const migration = result.checks.find((c) => c.name === "migration_state");
+    expect(migration?.ready).toBe(false);
+    expect(migration?.reason).toMatch(/checksum mismatch/);
+  });
+
+  it("reports not-ready when an applied migration's name does not match its file", async () => {
+    await writeFile(path.join(dir, "0001_first.sql"), "SELECT 1;");
+    const pool = stubPool({
+      query: vi.fn().mockImplementation(async (sql: string) => {
+        if (/to_regclass/.test(sql)) {
+          return { rows: [{ t: "schema_migrations" }] };
+        }
+        if (/FROM schema_migrations/.test(sql)) {
+          return {
+            rows: [
+              {
+                version: "0001",
+                name: "renamed",
+                checksum: "0000000000000000000000000000000000000000000000000000000000000000",
+                applied_at: new Date("2026-09-11T00:00:00.000Z"),
+              },
+            ],
+          };
+        }
+        return { rows: [] };
+      }),
+    });
+
+    const result = await checkPlatformFoundationReadiness(baseDeps(pool));
+
+    expect(result.ready).toBe(false);
+    const migration = result.checks.find((c) => c.name === "migration_state");
+    expect(migration?.ready).toBe(false);
+    expect(migration?.reason).toMatch(/does not match/);
   });
 });
