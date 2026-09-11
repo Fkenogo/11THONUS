@@ -73,6 +73,22 @@ Running log of all controlled changes to the documentation suite. Every consolid
 
 ---
 
+## Entry 212 — `PRODUCT-ALIGN-002-CORR-002`: PR #244 CI Correction — Format Fix, Stale E2E Assertion Fix, Explicit Staff-Role Routing Proof
+
+- **Date:** 2026-09-11
+- **Performed by:** Claude (AI agent), same isolated worktree/branch as `PRODUCT-ALIGN-002-CORR-001`.
+- **Purpose:** make PR #244 (approved-review head `d5515f317b8c9b2e6f77b5d3002f57795407a8e3`) reviewable by clearing the CI failure blocking it, plus adding one requested test-coverage gap. No architecture, decision, or routing-policy change.
+- **`pnpm format:check` failure fixed.** `tests/e2e/emulator/seedTestOnlyTermsFixture.mjs` had one Prettier line-wrap violation (a multi-line boolean condition collapsed to one line). Reformatted with `prettier --write` only — zero semantic change to the fail-closed guard logic added in CORR-001.
+- **Explicit staff-role routing proof added.** `functions/src/domains/business/services/businessReadService.emulator.test.ts` already covered `role: "staff"` at the service layer, but `BusinessResolverPage.test.tsx` (the client routing layer) only exercised `"manager"`. Added a focused test proving an active `staff` membership is included by `getAccessibleBusinesses` and routed to `/business/:id/dashboard` alongside the governed "Personal" option — no new routing policy, no role-model change.
+- **A second, deeper CI failure surfaced and was fixed.** Once `format:check` cleared, CI reached the Playwright e2e step for the first time on this PR and failed: `tests/e2e/app-shell.spec.ts` still asserted the literal `"11thONUS — Engineering Foundation"` `AppShell` placeholder heading that `PRODUCT-ALIGN-002` had already removed from `/` (replaced by the `RootEntry` resolver). This assertion was never previously reached because `format:check` ran first and always failed before it. Corrected the assertion to check for the real current unauthenticated entry point: the `SignInPage`'s `"Sign in"` heading. No `/` behavior changed — only a leftover test assertion corrected to match already-shipped, already-reviewed behavior.
+- **Files modified:** `tests/e2e/emulator/seedTestOnlyTermsFixture.mjs` (formatting only), `apps/web/src/business/onboarding/BusinessResolverPage.test.tsx` (+1 test), `tests/e2e/app-shell.spec.ts` (assertion updated), this log, and a new implementation report.
+- **Commands executed:** `pnpm format:check` (pass), `pnpm typecheck` (pass, functions+web), `pnpm lint` (pass, 1 pre-existing unrelated warning), `pnpm --filter web test` (748/748 passing, 106 files), `pnpm --filter functions test` (1652/1652 passing), `pnpm emulators:validate` (760 passed, 2 pre-existing disclosed skips), `pnpm --filter web build` (pass), `pnpm exec playwright test --project=chromium tests/e2e/app-shell.spec.ts` (pass), `pnpm test:e2e` (32/32 passing). GitHub Actions CI run [34587413161](https://github.com/Fkenogo/11THONUS/actions/runs/34587413161) on head `40c595d412dc18638da7b06f632db75af2d72c4c`: **`Build, Lint, Test, Emulator Validation` — SUCCESS**, all 17 executed steps green.
+- **Dependencies/config/provider/environment:** none added.
+- **Review state:** no PR review comments/threads present at time of this entry. Two commits pushed (`beb342a`, `40c595d`) on top of the CORR-001 head; branch not merged.
+- **Disposition:** `PRODUCT-ALIGN-002-CORR-002` complete, CI green on exact head `40c595d412dc18638da7b06f632db75af2d72c4c`. Not self-merged; PR #244 left open for final independent review. See the [implementation report](../05-implementation/reports/PRODUCT-ALIGN-002-CORR-002-ci-correction-staff-role-proof-2026-09-11.md).
+
+---
+
 ## Entry 211 — `PRODUCT-ALIGN-002-CORR-001`: Business-Access Discovery Completion, `DEC-LOY-009` Resolution, Terms Fixture Hardening
 
 - **Date:** 2026-09-11
