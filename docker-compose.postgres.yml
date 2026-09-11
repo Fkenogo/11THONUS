@@ -1,0 +1,37 @@
+# Disposable local PostgreSQL for engineering validation (PLATFORM-BASELINE-001).
+#
+# Provides an ordinary, unmanaged, self-hosted local PostgreSQL container —
+# not Cloud SQL, not Neon/Railway/Supabase, no hosted service coupling of
+# any kind. This is purely a local development/CI convenience so
+# `functions/src/infrastructure/postgres/**` and its `*.postgres.test.ts`
+# suite can be exercised without any network dependency.
+#
+# Usage:
+#   docker compose -f docker-compose.postgres.yml up -d
+#   PLATFORM_ENV=test pnpm --filter functions test:postgres
+#   docker compose -f docker-compose.postgres.yml down -v   # disposable — safe to discard
+#
+# Not used by production. Not referenced by any deployment configuration.
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: "no"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_MULTIPLE_DATABASES: "eleventhonus_platform_local,eleventhonus_platform_test"
+    ports:
+      # A dedicated, non-default host port (not 5432) — this machine may
+      # already run other, unrelated local Postgres containers on 5432.
+      - "54329:5432"
+    volumes:
+      - platform-baseline-001-postgres-data:/var/lib/postgresql/data
+      - ./scripts/postgres/init-multiple-databases.sh:/docker-entrypoint-initdb.d/init-multiple-databases.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  platform-baseline-001-postgres-data:
