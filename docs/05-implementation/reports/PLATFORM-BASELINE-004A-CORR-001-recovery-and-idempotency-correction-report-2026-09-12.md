@@ -132,11 +132,20 @@ Revert this correction's commit(s) on `feat/platform-baseline-004a-workforce-int
 
 ## 15. PR number and final head
 
-PR #249 — branch `feat/platform-baseline-004a-workforce-integration`. Final head SHA and exact-head CI result are recorded once pushed (§16, updated after push).
+PR #249 — branch `feat/platform-baseline-004a-workforce-integration`. Final head: `e27e2b929760f3ffab31f53c09c6d17df6fa98e6`, pushed to the existing branch (no new branch, no force-push).
 
 ## 16. Exact-head CI run/result
 
-To be recorded after push, once GitHub Actions reports on the exact final commit.
+GitHub Actions "Build, Lint, Test, Emulator Validation" workflow on exact head `e27e2b929760f3ffab31f53c09c6d17df6fa98e6`: **SUCCESS** (6m38s, `https://github.com/Fkenogo/11THONUS/actions/runs/34707528531/job/103590177360`), confirmed via `gh pr checks 249` against the exact head returned by `gh pr view 249 --json headRefOid` at the time of the check. No new automated-review run posted against this head after the push (`gh api .../pulls/249/comments` and the GraphQL review-threads query both checked directly after CI completed) — the two Codex threads from the entry head remain the only ones on the PR, and both are now resolved (§ replies below). A final, low-contention local re-run of the full Firebase Emulator Suite (after an earlier full run in the same session showed transient, non-reproducing timeouts under heavy shared-machine load — diagnosed in §9, all affected files individually reconfirmed clean) recorded **65 files / 833 passed / 3 pre-existing disclosed skips / 0 failed**, matching the original package's own baseline exactly.
+
+## 16a. Review-thread disposition
+
+Both Codex findings (§4) were replied to directly on their threads with the fix commit (`e27e2b9`) and the specific corrected files/tests, then formally resolved via the GitHub review-thread API:
+
+- P1 thread (`PRRT_kwDOTaQe386hwg4D`) — reply posted, **RESOLVED**.
+- P2 thread (`PRRT_kwDOTaQe386hwg4I`) — reply posted, **RESOLVED**.
+
+Re-checked after CI completed: no new review or comment has been posted on the PR since the correction was pushed.
 
 ## 17. `.md` tracking/change record
 
