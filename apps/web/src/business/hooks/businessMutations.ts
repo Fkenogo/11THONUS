@@ -62,6 +62,35 @@ export function settleKeyOnError(
   }
 }
 
+/**
+ * Scopes one `IdempotencyKeyHolder` to whichever request signature it was
+ * last used for (`PLATFORM-BASELINE-004A-CORR-001`, Codex review P2).
+ *
+ * A hook instance shared across every row of a list (one
+ * `useSuspendStaffMembershipMutation()` call serving the whole Team table,
+ * for example) holds exactly one key across retries — correct when every
+ * call targets the same row, wrong the moment the operator acts on a
+ * *different* row while a retryable failure's key is still held: the
+ * server-side request hash binds the key to the full request (e.g.
+ * `targetMembershipId`), so replaying it against a different target
+ * deterministically returns a conflict instead of performing the newly
+ * requested action. Rotating the key whenever the signature changes keeps
+ * retry semantics intact for the same target while never leaking a stale
+ * key onto a different one. Exported only for the rotation regression test
+ * in `businessMutations.test.ts`.
+ */
+export function keyForRequest(
+  holder: ReturnType<typeof createIdempotencyKeyHolder>,
+  lastSignature: { current: string | null },
+  signature: string,
+): string {
+  if (lastSignature.current !== null && lastSignature.current !== signature) {
+    holder.clear();
+  }
+  lastSignature.current = signature;
+  return holder.getKey();
+}
+
 export function useCreateBusinessMutation() {
   const { auth, functions } = useBusinessApiPlatform();
   const actorState = useAuthenticatedActor(auth);
@@ -251,6 +280,7 @@ function useStaffMembershipLifecycleMutation(
   const actorState = useAuthenticatedActor(auth);
   const queryClient = useQueryClient();
   const holderRef = useRef(createIdempotencyKeyHolder());
+  const lastTargetRef = useRef<string | null>(null);
   const call =
     action === "suspend"
       ? makeCallSuspendStaffMembership
@@ -263,7 +293,7 @@ function useStaffMembershipLifecycleMutation(
       call(functions)(requireReadyActor(actorState), {
         businessId,
         targetMembershipId,
-        idempotencyKey: holderRef.current.getKey(),
+        idempotencyKey: keyForRequest(holderRef.current, lastTargetRef, targetMembershipId),
       }),
     onSuccess: () => {
       holderRef.current.clear();
@@ -290,16 +320,19 @@ export function useChangeStaffMembershipRoleMutation(businessId: string) {
   const actorState = useAuthenticatedActor(auth);
   const queryClient = useQueryClient();
   const holderRef = useRef(createIdempotencyKeyHolder());
+  const lastRequestRef = useRef<string | null>(null);
 
   return useMutation({
     mutationFn: (
       payload: Omit<ChangeStaffMembershipRoleRequest, "businessId" | "idempotencyKey">,
-    ) =>
-      makeCallChangeStaffMembershipRole(functions)(requireReadyActor(actorState), {
+    ) => {
+      const requestSignature = `${payload.targetMembershipId}:${payload.fromRole}:${payload.toRole}`;
+      return makeCallChangeStaffMembershipRole(functions)(requireReadyActor(actorState), {
         ...payload,
         businessId,
-        idempotencyKey: holderRef.current.getKey(),
-      }),
+        idempotencyKey: keyForRequest(holderRef.current, lastRequestRef, requestSignature),
+      });
+    },
     onSuccess: () => {
       holderRef.current.clear();
       queryClient.invalidateQueries({ queryKey: businessQueryKeys.staffMemberships(businessId) });

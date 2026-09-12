@@ -132,6 +132,12 @@ type ExistingMembershipRead =
   | { status: "transient_failure" }
   | { status: "active" | "suspended" | "removed"; id: string };
 
+/** Duck-types a Firestore `Timestamp` (mirrors `customerProfileDocument.ts`'s `fromTimestampLike`). */
+function fromTimestampLike(value: unknown): Date {
+  const candidate = value as { toDate?: () => Date };
+  return typeof candidate?.toDate === "function" ? candidate.toDate() : (value as Date);
+}
+
 /**
  * `getBusinessMembershipByUserAndBusiness` (`ENG-P2-004B`) is a
  * `(userId, businessId)` query with no `status` filter — it returns
@@ -180,7 +186,12 @@ export async function acceptStaffInvitation(
   });
 
   if (reservation.outcome === "duplicate") {
-    return reservation.record.responseSnapshot as AcceptInvitationResult;
+    const snapshot = reservation.record.responseSnapshot as AcceptInvitationResult;
+    // Firestore round-trips `acceptedAt` as a `Timestamp` (no `.toISOString()`),
+    // not the `Date` the type declares — normalize the replay exactly like a
+    // fresh result before returning it (`customerProfileDocument.ts`'s
+    // `fromTimestampLike` established the same Date<->Timestamp seam).
+    return { ...snapshot, acceptedAt: fromTimestampLike(snapshot.acceptedAt) };
   }
   if (reservation.outcome === "in_progress") {
     throw new PermissionDomainError(

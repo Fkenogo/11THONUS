@@ -213,6 +213,16 @@ describe("acceptStaffInvitation atomic idempotency completion (PLATFORM-BASELINE
     expect(replay.businessId).toBe(first.businessId);
     expect(replay.userId).toBe(first.userId);
 
+    // `PLATFORM-BASELINE-004A-CORR-001` (Codex review, P1): Firestore
+    // round-trips the stored snapshot's `acceptedAt` as a `Timestamp`, not
+    // the `Date` the type declares. The callable transport unconditionally
+    // calls `.toISOString()` on this field, which a `Timestamp` does not
+    // implement — a real replay must come back as a genuine `Date` so that
+    // call cannot throw.
+    expect(replay.acceptedAt).toBeInstanceOf(Date);
+    expect(() => replay.acceptedAt.toISOString()).not.toThrow();
+    expect(replay.acceptedAt.toISOString()).toBe(first.acceptedAt.toISOString());
+
     const memberships = await db
       .collection("businessMemberships")
       .where("businessId", "==", "biz_atomic_2")
