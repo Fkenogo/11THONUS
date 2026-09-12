@@ -115,7 +115,9 @@ Full suite: **64 files passed, 822 tests passed, 3 skipped, 0 failed** (run with
 
 ## 23. Exact-head CI run/result
 
-_To be recorded after the PR is opened and exact-head CI completes. Post-fix note: the first CI run on the PR failed on exactly one test — the concurrent-activation timing test exceeded vitest's 5s default under the loaded CI runner (comparable in-repo concurrency tests take 2.5–3.5s there). Corrected with an explicit 30s timeout on that test only (assertions unchanged; established `}, 15000/20000/30000)` precedent), and CI re-run._
+Run **34687152427** — "Build, Lint, Test, Emulator Validation" workflow `SUCCESS` on the exact head `58e3f29b82d3cfdff87ea1a0b76fb95d10eb0414`, including the "PostgreSQL integration tests", "Playwright e2e", and "Firebase Emulator Suite validation" steps (the concurrent-activation test passed in CI in 2883ms).
+
+Post-fix note (preserved as history): the first CI run on the PR failed on exactly one test — the concurrent-activation timing test exceeded vitest's 5s default under the loaded CI runner (comparable in-repo concurrency tests take 2.5–3.5s there). Corrected with an explicit 30s timeout on that test only (assertions unchanged; established `}, 15000/20000/30000)` precedent), and CI re-run green.
 
 ## 24. Automated/manual review findings and disposition
 
@@ -163,7 +165,7 @@ None: no new collection/field/index; no PostgreSQL table; no dual-write. Reuses 
 
 ## 33. Exact PR head SHA
 
-Substantive implementation commit: `869d5f5260a5602e4c0a8088ab0dbdd321df11fd`. Any commit after it contains only this report's PR-number/head-SHA/CI notes (no code change); the exact reviewed head is the branch tip at review time.
+Substantive implementation commit: `869d5f5260a5602e4c0a8088ab0dbdd321df11fd`; review-findings correction commit: `801dab6…`; CI-timing correction commit: `58e3f29b82d3cfdff87ea1a0b76fb95d10eb0414`. Any commit after the last contains only this report's PR-number/head-SHA/CI notes (no code change); the exact reviewed head is the branch tip at review time.
 
 ## 34. Markdown implementation report
 
