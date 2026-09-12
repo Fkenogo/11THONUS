@@ -46,6 +46,7 @@ function credentialFor(
   referenceType: AuthenticationReferenceType,
   referenceId: string,
   verifiedSecondFactor: boolean,
+  authenticatedAt: Date = new Date("2026-09-10T23:59:00.000Z"),
 ) {
   return createAuthenticatedCredential({
     referenceType,
@@ -53,6 +54,7 @@ function credentialFor(
     verifiedAt: NOW,
     providerSignals: { signInProvider: "phone" },
     verifiedSecondFactor,
+    authenticatedAt,
   });
 }
 
@@ -181,6 +183,7 @@ describe("handleActivateBusinessAfterVerification (emulator)", () => {
       },
       {
         verifier: { verify: async () => credentialFor("phone_otp", "authuid_admin", true) },
+        now: () => NOW,
       },
     );
 
@@ -203,10 +206,42 @@ describe("handleActivateBusinessAfterVerification (emulator)", () => {
       },
       {
         verifier: { verify: async () => credentialFor("phone_otp", "authuid_admin2", false) },
+        now: () => NOW,
       },
     );
 
     expect(outcome).toEqual({ outcome: "denied", reason: "NOT_PLATFORM_ADMINISTRATOR" });
+    expect(await businessStatus()).toBe("pending_verification");
+  });
+
+  it("rejects a stale MFA-satisfying credential before the command runs (freshness gate)", async () => {
+    await registerIdentity("authuid_admin3", "cust_admin3", "admin3");
+    await seedAdmin("cust_admin3");
+    await seedPendingBusiness();
+
+    await expect(
+      handleActivateBusinessAfterVerification(
+        db,
+        {
+          rawToken: "verified-admin-token-stale",
+          referenceType: "phone_otp",
+          businessId: "biz-1",
+          idempotencyKey: "actep_key_stale",
+        },
+        {
+          verifier: {
+            verify: async () =>
+              credentialFor(
+                "phone_otp",
+                "authuid_admin3",
+                true,
+                new Date("2026-09-10T23:00:00.000Z"),
+              ),
+          },
+          now: () => NOW,
+        },
+      ),
+    ).rejects.toMatchObject({ category: "AUTH_REQUIRED" });
     expect(await businessStatus()).toBe("pending_verification");
   });
 
@@ -256,6 +291,7 @@ describe("handleActivateBusinessAfterVerification (emulator)", () => {
       },
       {
         verifier: { verify: async () => credentialFor("phone_otp", "authuid_plain", true) },
+        now: () => NOW,
       },
     );
 

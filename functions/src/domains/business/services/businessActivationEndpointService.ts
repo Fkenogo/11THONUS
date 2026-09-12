@@ -9,8 +9,11 @@
  * to the caller's Customer Identity through the existing
  * `resolveAuthenticatedIdentityActor` (never a client-supplied id), derive
  * genuinely-verified second-factor evidence from that same credential via
- * `deriveVerifiedMfaSatisfied`, and hand all three server-derived facts to
- * `activateBusinessAfterVerificationCommand`. Adds no authority of its own.
+ * `deriveVerifiedMfaSatisfied`, enforce privileged-action freshness via
+ * `assertFreshAuthentication` (AUTH-BP §9 / TRD12 §12.29 — even an
+ * MFA-satisfying credential must evidence recent authentication), and hand
+ * all server-derived facts to `activateBusinessAfterVerificationCommand`.
+ * Adds no authority of its own.
  *
  * Single verification: the credential is verified once here, then reused
  * for both actor resolution (through an injected pass-through verifier —
@@ -26,6 +29,10 @@ import type { Firestore } from "firebase-admin/firestore";
 import type { TokenVerifierPort } from "../../authentication/ports/tokenVerifierPort";
 import type { AuthenticationReferenceType } from "../../identity/models/authenticationReference";
 import type { AuthenticatedCredential } from "../../authentication/models/authenticatedCredential";
+import {
+  DEFAULT_PRIVILEGED_REAUTH_MAX_AGE_MS,
+  assertFreshAuthentication,
+} from "../../authentication/models/privilegedReauthentication";
 import {
   resolveAuthenticatedIdentityActor,
   type AuthenticatedIdentityActor,
@@ -49,7 +56,9 @@ export type ActivateBusinessAfterVerificationDeps = {
   verifier: TokenVerifierPort;
   resolveActor?: typeof resolveAuthenticatedIdentityActor;
   activate?: typeof activateBusinessAfterVerificationCommand;
-  /** Clock/correlation id generator seams (CSPRNG-backed by default). */
+  /** Clock seam — the server-controlled comparison instant for the freshness gate. */
+  now?: () => Date;
+  /** Event/correlation id generator seam (CSPRNG-backed by default). */
   newId?: () => string;
 };
 
@@ -59,6 +68,7 @@ export async function handleActivateBusinessAfterVerification(
   deps: ActivateBusinessAfterVerificationDeps,
 ): Promise<ActivateBusinessAfterVerificationOutcome> {
   const newId = deps.newId ?? randomUUID;
+  const now = deps.now ?? (() => new Date());
   const resolveActor = deps.resolveActor ?? resolveAuthenticatedIdentityActor;
   const activate = deps.activate ?? activateBusinessAfterVerificationCommand;
 
@@ -82,6 +92,13 @@ export async function handleActivateBusinessAfterVerification(
     { verifier: passThroughVerifier },
   );
 
+  // Privileged-action freshness gate (`AUTH-07`, AUTH-BP §9 / TRD12
+  // §12.29): even an MFA-satisfying credential must evidence *recent*
+  // authentication (platform default 5 minutes) — a stale administrator
+  // session cannot change Business lifecycle state. Missing or anomalous
+  // evidence fails closed (`AUTH_REQUIRED`) before the command ever runs.
+  assertFreshAuthentication(credential, now(), DEFAULT_PRIVILEGED_REAUTH_MAX_AGE_MS);
+
   return activate(db, {
     adminUserId: actor.userId,
     verifiedMfaSatisfied: deriveVerifiedMfaSatisfied(credential),
@@ -92,7 +109,7 @@ export async function handleActivateBusinessAfterVerification(
     // conflict, never a cross-actor replay.
     requestHash: `business.activateAfterVerification:${request.businessId}:${actor.userId}`,
     correlationId: newId(),
-    now: new Date(),
+    now: now(),
     newId,
   });
 }

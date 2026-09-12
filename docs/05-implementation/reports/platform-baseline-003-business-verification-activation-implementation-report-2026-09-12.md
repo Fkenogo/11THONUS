@@ -32,7 +32,7 @@ No material contradiction or gap was found, so implementation proceeded (no STOP
 2. **Separate platform model is used, Business RBAC untouched** — the command reads zero memberships/permissions and adds nothing to the ordinary catalogue; no role or permission invented (only Knowledge roles are activated; further role-scoping awaits its own Founder disposition — disclosed, not inferred).
 3. **No trial metadata required** — status flip only; `DEC-SUB-003` unchanged.
 4. New `activateBusinessAfterVerificationCommand` (fixed `trial` target; admin gate first in-tx; exact-status check; in-tx Terms revalidation via the exported shared helper; transition + lifecycle event with admin actor; executed/denied/duplicate/in_progress outcomes mirroring the sibling lifecycle contract).
-5. New `handleActivateBusinessAfterVerification` endpoint composition (verify-once → server-resolved actor via pass-through verifier → derived MFA → command) and one callable (`activateBusinessAfterVerification`) with whitelist parsing; `index.ts` error mapping unchanged.
+5. New `handleActivateBusinessAfterVerification` endpoint composition (verify-once → server-resolved actor via pass-through verifier → derived MFA → privileged-action freshness gate → command) and one callable (`activateBusinessAfterVerification`) with whitelist parsing; `index.ts` error mapping unchanged.
 
 ## 5. Exact Platform Administrator authorization mechanism reused
 
@@ -85,8 +85,8 @@ See §4. Net: one fixed-target command, one endpoint composition, one callable, 
 ## 16. Tests added
 
 - `businessActivationCommand.emulator.test.ts` (27 tests + 1 disclosed skip): happy path; 11-case authorization matrix (owner/manager/staff/customer/unknown/ghost-business/suspended/invited/MFA-less/malformed, incl. no-leakage denial); 7-state lifecycle matrix; missing business; missing/unaccepted/stale Terms; fresh acceptance; same-key replay/conflict; concurrent activation; fresh-key-on-trial.
-- `businessActivationEndpointService.test.ts` (4 unit tests, mocked seams).
-- `businessActivationEndpointService.emulator.test.ts` (4 tests: MFA happy path, MFA-false denial, unverifiable token, spoofed-field resistance).
+- `businessActivationEndpointService.test.ts` (6 unit tests, mocked seams: wiring, MFA passthrough, verifier/actor failure propagation, stale + missing freshness evidence).
+- `businessActivationEndpointService.emulator.test.ts` (5 tests: MFA happy path, MFA-false denial, stale-credential freshness rejection, unverifiable token, spoofed-field resistance).
 
 ## 17. Authorization test results
 
@@ -119,7 +119,10 @@ _To be recorded after the PR is opened and exact-head CI completes._
 
 ## 24. Automated/manual review findings and disposition
 
-_To be recorded after review._
+Two automated findings were raised on the PR; both were inspected against the code:
+
+- **P1 — Privileged-action freshness gate (VALID, CORRECTED):** the endpoint resolved the actor and derived MFA but never enforced `assertFreshAuthentication`, so a stale MFA-satisfying session could activate. Corrected by wiring the governed freshness assertion (AUTH-BP §9 / TRD12 §12.29, platform-default 5 minutes) into the endpoint composition after actor resolution with a `now` seam; stale/missing/anomalous evidence throws `AUTH_REQUIRED` before the command runs. Proven by 2 new unit tests + 1 new emulator test; production pathway verified (`firebaseTokenVerifier` derives `authenticatedAt` from the verified `auth_time` claim).
+- **P2 — Idempotency completion atomicity (mechanics accurate; prescription declined with evidence):** it is true that a commit followed by a failed `completeIdempotencyKey` leaves a same-key retry failing closed (`INVALID_STATE_TRANSITION`) instead of replaying success. This is the uniform, documented behavior of the shared reserve/commit/complete architecture used identically by `authorizeAndExecute` (complete outside the transaction; denied/completed keys replay as bare outcomes), `bootstrapBusiness`, and the identity recovery/transition repositories — not a defect of this command. A same-key retry in that window writes nothing (the throw precedes all writes: no double transition, no duplicate event — both proven by count assertions). Recognizing the committed transition on retry would require protocol-level machinery distinguishing "this request committed" from "another key committed since" (indistinguishable from the failed record alone); inventing it here would diverge from every sibling command's governed convention. Documented as a known shared property (§29); no action.
 
 ## 25. Dependencies added
 
@@ -141,6 +144,7 @@ None: no new collection/field/index; no PostgreSQL table; no dual-write. Reuses 
 
 - Authority breadth (disclosed): until a Founder disposition activates a business-operations administrator role, any active platform administrator with verified MFA can activate. No Business-RBAC confusion is possible (memberships never consulted), but role-narrowing remains future governance.
 - Denied attempts complete their idempotency key (sibling convention): a denied key replays as `duplicate`, never as a second evaluation.
+- Ambiguous commit/complete failure (shared property, see §24): if the activation transaction commits but the separate idempotency-completion write fails, a same-key retry fails closed (`INVALID_STATE_TRANSITION`) instead of replaying success. No double transition and no duplicate event can result (the throw precedes all writes); the client must treat that response as unknown-outcome and investigate. Identical across all sibling commands using the shared facility.
 - Sign-in/session and read paths are untouched: no implicit activation exists anywhere.
 
 ## 30. Known limitations

@@ -15,13 +15,18 @@ import { createAuthenticatedCredential } from "../../authentication/models/authe
 
 const db = {} as never;
 
-function credential(verifiedSecondFactor: boolean) {
+const NOW = new Date("2026-09-12T00:00:00.000Z");
+const FRESH_AUTHENTICATED_AT = new Date("2026-09-11T23:59:00.000Z");
+const STALE_AUTHENTICATED_AT = new Date("2026-09-11T23:00:00.000Z");
+
+function credential(verifiedSecondFactor: boolean, authenticatedAt?: Date) {
   return createAuthenticatedCredential({
     referenceType: "phone_otp",
     referenceId: "authuid_admin",
     verifiedAt: new Date("2026-09-11T00:00:00.000Z"),
     providerSignals: { signInProvider: "phone" },
     verifiedSecondFactor,
+    ...(authenticatedAt === undefined ? {} : { authenticatedAt }),
   });
 }
 
@@ -36,7 +41,9 @@ function request() {
 
 describe("handleActivateBusinessAfterVerification", () => {
   it("verifies once, resolves the actor from the verified credential, and delegates with server-derived authority", async () => {
-    const verifier = { verify: vi.fn().mockResolvedValue(credential(true)) };
+    const verifier = {
+      verify: vi.fn().mockResolvedValue(credential(true, FRESH_AUTHENTICATED_AT)),
+    };
     const resolveActor = vi.fn().mockResolvedValue({ userId: "cust_admin" });
     const activate = vi.fn().mockResolvedValue({ outcome: "executed", result: {} });
 
@@ -44,6 +51,7 @@ describe("handleActivateBusinessAfterVerification", () => {
       verifier,
       resolveActor,
       activate,
+      now: () => NOW,
     });
 
     expect(verifier.verify).toHaveBeenCalledTimes(1);
@@ -59,7 +67,9 @@ describe("handleActivateBusinessAfterVerification", () => {
   });
 
   it("passes verifiedMfaSatisfied:false through without deciding (the command denies)", async () => {
-    const verifier = { verify: vi.fn().mockResolvedValue(credential(false)) };
+    const verifier = {
+      verify: vi.fn().mockResolvedValue(credential(false, FRESH_AUTHENTICATED_AT)),
+    };
     const resolveActor = vi.fn().mockResolvedValue({ userId: "cust_admin" });
     const activate = vi.fn().mockResolvedValue({ outcome: "denied", reason: "X" });
 
@@ -67,9 +77,44 @@ describe("handleActivateBusinessAfterVerification", () => {
       verifier,
       resolveActor,
       activate,
+      now: () => NOW,
     });
 
     expect(activate.mock.calls[0]![1].verifiedMfaSatisfied).toBe(false);
+  });
+
+  it("rejects a stale authenticatedAt before the command runs (privileged freshness gate)", async () => {
+    const verifier = {
+      verify: vi.fn().mockResolvedValue(credential(true, STALE_AUTHENTICATED_AT)),
+    };
+    const resolveActor = vi.fn().mockResolvedValue({ userId: "cust_admin" });
+    const activate = vi.fn();
+
+    await expect(
+      handleActivateBusinessAfterVerification(db, request(), {
+        verifier,
+        resolveActor,
+        activate,
+        now: () => NOW,
+      }),
+    ).rejects.toMatchObject({ category: "AUTH_REQUIRED" });
+    expect(activate).not.toHaveBeenCalled();
+  });
+
+  it("rejects missing authenticatedAt evidence before the command runs", async () => {
+    const verifier = { verify: vi.fn().mockResolvedValue(credential(true)) };
+    const resolveActor = vi.fn().mockResolvedValue({ userId: "cust_admin" });
+    const activate = vi.fn();
+
+    await expect(
+      handleActivateBusinessAfterVerification(db, request(), {
+        verifier,
+        resolveActor,
+        activate,
+        now: () => NOW,
+      }),
+    ).rejects.toMatchObject({ category: "AUTH_REQUIRED" });
+    expect(activate).not.toHaveBeenCalled();
   });
 
   it("propagates verifier failure before actor resolution or activation", async () => {
