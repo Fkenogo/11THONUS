@@ -492,7 +492,12 @@ describe("activateBusinessAfterVerificationCommand — idempotency", () => {
     expect(executed).toHaveLength(1);
     expect(await businessStatus("biz-1")).toBe("trial");
     expect(await lifecycleChangedEvents()).toHaveLength(1);
-  });
+    // Timing-sensitive under loaded CI runners (two concurrent multi-read
+    // transactions plus Firestore contention retries): the assertions above
+    // are unchanged, only the timeout is extended, per the established
+    // `}, 15000)` / `}, 20000)` / `}, 30000)` precedent in other emulator
+    // concurrency tests.
+  }, 30000);
 
   it("a fresh key against an already-trial business fails closed (no arbitrary success)", async () => {
     await seedAdmin();

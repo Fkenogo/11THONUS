@@ -115,7 +115,7 @@ Full suite: **64 files passed, 822 tests passed, 3 skipped, 0 failed** (run with
 
 ## 23. Exact-head CI run/result
 
-_To be recorded after the PR is opened and exact-head CI completes._
+_To be recorded after the PR is opened and exact-head CI completes. Post-fix note: the first CI run on the PR failed on exactly one test — the concurrent-activation timing test exceeded vitest's 5s default under the loaded CI runner (comparable in-repo concurrency tests take 2.5–3.5s there). Corrected with an explicit 30s timeout on that test only (assertions unchanged; established `}, 15000/20000/30000)` precedent), and CI re-run._
 
 ## 24. Automated/manual review findings and disposition
 
