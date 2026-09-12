@@ -107,7 +107,7 @@ Two P2 findings were raised by automated review on the PR and both were verified
 
 ## 18. CI run/result
 
-_To be recorded after exact-head CI completes on the PR head below._
+Run **34681372666** — "Build, Lint, Test, Emulator Validation" workflow `SUCCESS` on the exact head `57597dc54f262086521484e56f0b0c348d875890`, including the "PostgreSQL integration tests" and "Firebase Emulator Suite validation" steps.
 
 ## 19. Dependencies added
 
@@ -148,7 +148,7 @@ None: no new collection, no new field, no new index (single-field queries need n
 
 ## 27. Exact PR head SHA
 
-Substantive implementation commit: `f1af56ff4df43574f0e71222983d1d62a19df939`. Any commit after it contains only this report's PR-number/head-SHA/CI notes (no code change); the exact reviewed head is the branch tip at review time.
+Substantive implementation commit: `f1af56ff4df43574f0e71222983d1d62a19df939`; review-findings correction commit: `57597dc54f262086521484e56f0b0c348d875890`. Any commit after the latter contains only this report's PR-number/head-SHA/CI notes (no code change); the exact reviewed head is the branch tip at review time.
 
 ## 28. Markdown implementation report
 
