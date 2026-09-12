@@ -98,8 +98,19 @@ export default tseslint.config(
     // Folder Standards §4, it is the one subfolder in each domain whose
     // whole purpose is bridging to Firestore — the error message below
     // already named it as where persistence-layer mapping belongs.
+    //
+    // `PLATFORM-BASELINE-002`: the Customer Identity artifact-establishment
+    // service composes the already Firebase-adapter-capable identity /
+    // Loyalty Number / QR Identity repositories to run the explicit
+    // server-side ensure operation (`FD-CUST-ID-ART-001`) — same exemption
+    // reasoning as the `repositories/` carve-out, not a new exception
+    // category. Pure `models/` stay framework-independent.
     files: ["functions/src/domains/identity/**/*.ts"],
-    ignores: ["functions/src/domains/identity/repositories/**"],
+    ignores: [
+      "functions/src/domains/identity/repositories/**",
+      "functions/src/domains/identity/services/customerIdentityArtifactEstablishment.ts",
+      "functions/src/domains/identity/services/customerIdentityArtifactEstablishment.emulator.test.ts",
+    ],
     languageOptions: {
       ecmaVersion: 2023,
       globals: globals.node,

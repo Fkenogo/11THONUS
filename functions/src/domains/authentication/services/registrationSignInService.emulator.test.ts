@@ -4,6 +4,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { registerOrSignIn, type RegistrationSignInCommand } from "./registrationSignInService";
 import { linkAuthenticationReferenceForIdentity } from "../../identity/repositories/authenticationReferenceRepository";
 import { createAuthenticatedCredential } from "../models/authenticatedCredential";
+import type { CustomerIdentityArtifactEstablishment } from "../../identity/services/customerIdentityArtifactEstablishment";
 import type { EventActor } from "../../../shared/events/domainEvent";
 
 // AUTH-03 — registration / sign-in orchestration against the real Firebase
@@ -260,5 +261,92 @@ describe("AUTH-03 — registration / sign-in orchestration (emulator)", () => {
         }
       }
     }
+  });
+
+  it("PLATFORM-BASELINE-002: registration establishes exactly one Loyalty Number and one current QR", async () => {
+    const outcome = await registerOrSignIn(
+      db,
+      credentialFor("authuid_art1"),
+      envelopeFor("art1"),
+      commandFor("key_art1"),
+      { generateCustomerIdentityId: () => "cust_art1" },
+    );
+
+    expect(outcome.mode).toBe("registered");
+    expect(await count("loyaltyNumbers")).toBe(1);
+    const qrRecords = await db
+      .collection("qrIdentityRecords")
+      .where("customerIdentityId", "==", "cust_art1")
+      .get();
+    expect(qrRecords.size).toBe(1);
+    expect(qrRecords.docs[0]?.data()["status"]).toBe("active");
+    const profile = await db.collection("customerProfiles").doc("cust_art1").get();
+    expect(profile.data()?.["loyaltyNumber"]).toBe(qrRecords.docs[0]?.data()["loyaltyNumber"]);
+    expect(profile.data()?.["qrReference"]).toBe(qrRecords.docs[0]?.id);
+  });
+
+  it("PLATFORM-BASELINE-002: repeat sign-in re-entry reuses the same artifacts without duplicates", async () => {
+    await registerOrSignIn(
+      db,
+      credentialFor("authuid_art2"),
+      envelopeFor("art2a"),
+      commandFor("key_art2a"),
+      { generateCustomerIdentityId: () => "cust_art2" },
+    );
+    const second = await registerOrSignIn(
+      db,
+      credentialFor("authuid_art2"),
+      envelopeFor("art2b"),
+      commandFor("key_art2b"),
+      { generateCustomerIdentityId: () => "cust_art2_SHOULD_NOT_BE_USED" },
+    );
+
+    expect(second.mode).toBe("signed_in");
+    expect(await count("loyaltyNumbers")).toBe(1);
+    expect(await count("qrIdentityRecords")).toBe(1);
+  });
+
+  it("PLATFORM-BASELINE-002: an establishment failure before link still replays registered on same-key retry (never signed_in)", async () => {
+    let ensureCalls = 0;
+    const flakyEnsure = async (): Promise<CustomerIdentityArtifactEstablishment> => {
+      ensureCalls += 1;
+      if (ensureCalls === 1) {
+        throw new Error("simulated establishment failure");
+      }
+      throw new Error("flaky ensure must only be injected on the first attempt");
+    };
+
+    // First attempt: identity commits, establishment fails, the link never
+    // runs — the whole request fails.
+    await expect(
+      registerOrSignIn(
+        db,
+        credentialFor("authuid_mode"),
+        envelopeFor("mode1"),
+        commandFor("key_mode"),
+        {
+          generateCustomerIdentityId: () => "cust_art_mode",
+          ensureArtifacts: flakyEnsure,
+        },
+      ),
+    ).rejects.toThrow("simulated establishment failure");
+    expect(ensureCalls).toBe(1);
+
+    // Same-key retry: the credential is still unresolvable (no link ran), so
+    // the request resumes through the register path with the real
+    // establishment and replays the original `registered` outcome.
+    const retried = await registerOrSignIn(
+      db,
+      credentialFor("authuid_mode"),
+      envelopeFor("mode2"),
+      commandFor("key_mode"),
+      { generateCustomerIdentityId: () => "cust_art_mode_WRONG" },
+    );
+
+    expect(retried.mode).toBe("registered");
+    expect(retried.customerIdentityId).toBe("cust_art_mode");
+    expect(await count("users")).toBe(1);
+    expect(await count("loyaltyNumbers")).toBe(1);
+    expect(await count("qrIdentityRecords")).toBe(1);
   });
 });

@@ -5,6 +5,7 @@ import {
   invalidCustomerIdentityIdForLoyaltyNumberError,
   loyaltyNumberIssuanceExhaustedError,
   conflictingLoyaltyNumberAssignmentError,
+  multipleLoyaltyNumberAssignmentsError,
   identityNotEligibleForIssuanceError,
   loyaltyNumberUniquenessCheckFailedError,
   duplicateLoyaltyNumberRecordError,
@@ -84,5 +85,15 @@ describe("malformedLoyaltyNumberRecordError", () => {
 describe("loyaltyNumberRepositoryUnavailableError", () => {
   it("returns an INTEGRATION_FAILED error", () => {
     expect(loyaltyNumberRepositoryUnavailableError("cust_1").category).toBe("INTEGRATION_FAILED");
+  });
+});
+
+describe("multipleLoyaltyNumberAssignmentsError", () => {
+  it("returns a VALIDATION_FAILED error naming the identity and count", () => {
+    const error = multipleLoyaltyNumberAssignmentsError("cust_1", 2);
+    expect(error).toBeInstanceOf(LoyaltyNumberDomainError);
+    expect(error.category).toBe("VALIDATION_FAILED");
+    expect(error.message).toContain("cust_1");
+    expect(error.message).toContain("2");
   });
 });

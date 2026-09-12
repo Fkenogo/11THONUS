@@ -34,6 +34,8 @@ import type { AuthenticationReferenceType } from "../../identity/models/authenti
 import type { EventActor } from "../../../shared/events/domainEvent";
 import { transitionCustomerIdentityStatus } from "../../identity/repositories/identityLifecycleRepository";
 import { getCustomerIdentityById } from "../../identity/repositories/customerIdentityRepository";
+import { createCustomerIdentity } from "../../identity/repositories/customerIdentityRepository";
+import { linkAuthenticationReferenceForIdentity } from "../../identity/repositories/authenticationReferenceRepository";
 
 const app = initializeApp({ projectId: "demo-11thonus" }, "identityRecoveryServiceEmulatorTest");
 const db = getFirestore(app);
@@ -291,5 +293,63 @@ describe("AUTH-06 — identity recovery credential proof (emulator)", () => {
     ).rejects.toMatchObject({ category: "VALIDATION_FAILED" });
 
     expect(await statusOf("cust_x")).toBe("suspended");
+  });
+
+  it("PLATFORM-BASELINE-002: recovery to active establishes missing artifacts (no bypass)", async () => {
+    // An artifact-less suspended identity: created directly (never through
+    // registration), so no establishment has ever run for it. The
+    // authentication reference IS linked (as registration would) so the
+    // recovery credential resolves — only the artifacts are missing.
+    await createCustomerIdentity(db, {
+      eventId: "evt_auth06_seed_art",
+      correlationId: "corr_auth06_seed_art",
+      actor,
+      occurredAt: at.toISOString(),
+      customerIdentityId: "cust_art",
+      initialAuthenticationReference: {
+        referenceId: "uid_art",
+        referenceType: "phone_otp",
+        createdAt: at,
+        createdBy: "cust_art",
+      },
+      createdAt: at,
+      createdBy: "cust_art",
+      idempotencyKey: "seed_cust_art",
+      requestHash: "hash_seed_cust_art",
+    });
+    await linkAuthenticationReferenceForIdentity(db, {
+      eventId: "evt_auth06_link_art",
+      correlationId: "corr_auth06_link_art",
+      actor,
+      occurredAt: at.toISOString(),
+      customerIdentityId: "cust_art",
+      referenceId: "uid_art",
+      referenceType: "phone_otp",
+      authority: "customer_initiated",
+      reason: "customer_request",
+      linkedAt: at,
+      linkedBy: "cust_art",
+      idempotencyKey: "link_cust_art",
+      requestHash: "hash_link_cust_art",
+    });
+    await suspend("cust_art", "art");
+    expect((await db.collection("loyaltyNumbers").get()).size).toBe(0);
+
+    const outcome = await recoverAuthenticatedIdentity(
+      db,
+      credential("phone_otp", "uid_art"),
+      envelope("art"),
+      recoverCommand("recover_art"),
+    );
+
+    expect(outcome.customerIdentityId).toBe("cust_art");
+    expect(await statusOf("cust_art")).toBe("active");
+    expect((await db.collection("loyaltyNumbers").get()).size).toBe(1);
+    const qrRecords = await db
+      .collection("qrIdentityRecords")
+      .where("customerIdentityId", "==", "cust_art")
+      .get();
+    expect(qrRecords.size).toBe(1);
+    expect(qrRecords.docs[0]?.data()["status"]).toBe("active");
   });
 });

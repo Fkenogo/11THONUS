@@ -42,9 +42,11 @@ import type { QrReferenceGenerator } from "../services/qrReferenceGenerator";
 import {
   QrIdentityDomainError,
   invalidatedQrReferenceError,
+  malformedQrIdentityRecordError,
   unknownQrReferenceError,
   qrRegenerationTransactionConflictError,
 } from "../models/qrIdentityErrors";
+import { createQrReference } from "../models/qrReference";
 import {
   toQrIdentityRecordDocument,
   fromQrIdentityRecordDocument,
@@ -370,4 +372,40 @@ export async function getQrIdentityRecordForAudit(
   }
 
   return fromQrIdentityRecordDocument(snapshot.data());
+}
+
+/**
+ * Lists every `qrIdentityRecords` record owned by one Customer Identity
+ * (`PLATFORM-BASELINE-002`, `FD-CUST-ID-ART-001` — the artifact-establishment
+ * orchestration's current-QR detector). A single-field equality query, so no
+ * composite index is required; callers partition by `status` themselves.
+ * Strictly a read: never creates, repairs, or rewrites anything.
+ *
+ * Fails closed (`malformedQrIdentityRecordError`, thrown by the converter)
+ * on any record that does not parse, whose document id disagrees with its
+ * stored reference (corrupt by the doc-ID-as-value construction, mirroring
+ * the Loyalty Number helper), or whose reference falls outside the governed
+ * value-object format.
+ */
+export async function listQrIdentityRecordsForIdentity(
+  db: Firestore,
+  customerIdentityId: string,
+): Promise<QrIdentityAssociation[]> {
+  const snapshot = await db
+    .collection(QR_IDENTITY_RECORDS_COLLECTION)
+    .where("customerIdentityId", "==", customerIdentityId)
+    .get();
+
+  const records: QrIdentityAssociation[] = [];
+  for (const doc of snapshot.docs) {
+    const record = fromQrIdentityRecordDocument(doc.data());
+    if (doc.id !== record.qrReference) {
+      throw malformedQrIdentityRecordError(doc.id);
+    }
+    createQrReference(record.qrReference);
+    records.push(record);
+  }
+
+  records.sort((a, b) => a.qrReference.localeCompare(b.qrReference));
+  return records;
 }
