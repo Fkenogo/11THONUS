@@ -41,12 +41,21 @@
  * Administrator, from/to statuses, timestamps, correlation/event ids) —
  * no platform-audit-vocabulary change (that vocabulary is closed) and no
  * second audit system.
+ *
+ * `PLATFORM-BASELINE-003-CORR-001`: a successful activation's idempotency
+ * completion (`completeIdempotencyKeyInTransaction`) is staged inside the
+ * same transaction as the Business transition and its lifecycle event, so
+ * the three commit or abort together — a same-key retry after a committed
+ * activation can only ever observe "duplicate", never a false
+ * "failed"/retryable state from a bookkeeping write that happened to run
+ * after a Business mutation had already landed.
  */
 
 import type { Firestore, Transaction } from "firebase-admin/firestore";
 import {
   checkAndReserveIdempotencyKey,
   completeIdempotencyKey,
+  completeIdempotencyKeyInTransaction,
   failIdempotencyKey,
 } from "../../../shared/idempotency/idempotencyService";
 import { AuthorizeAndExecuteError } from "../../permissions/service/authorizeAndExecute";
@@ -84,6 +93,15 @@ export type ActivateBusinessAfterVerificationParams = {
    * by the transport layer (mirrors `submitBusinessForVerification`'s seam).
    */
   testOnlyAfterTermsVersionReadHook?: () => Promise<void>;
+  /**
+   * Test-only hook (`PLATFORM-BASELINE-003-CORR-001`) that fires after the
+   * Business transition, its lifecycle event, and the idempotency
+   * completion have all been staged in this transaction but before it
+   * returns — never supplied by the transport layer. Throwing here aborts
+   * the transaction, proving the atomic-completion invariant: none of the
+   * three staged writes survive independently of the others.
+   */
+  testOnlyBeforeCommitHook?: () => Promise<void>;
 };
 
 export type ActivateBusinessAfterVerificationResult = {
@@ -183,7 +201,12 @@ export async function activateBusinessAfterVerificationCommand(
         params.testOnlyAfterTermsVersionReadHook,
       );
 
-      // Phase 4 — writes only: the transition plus its audit event.
+      // Phase 4 — writes only: the transition, its audit event, and the
+      // idempotency completion, all staged in this one transaction
+      // (`PLATFORM-BASELINE-003-CORR-001`) so a commit makes all three
+      // durable together and an abort makes none of them durable — a
+      // same-key retry after a committed activation can therefore only ever
+      // observe "duplicate", never a false "failed"/retryable state.
       const actor: EventActor = { actorType: "user", actorId: params.adminUserId };
       const { business: updated } = transitionBusinessStatus(business, TARGET_STATUS, {
         updatedAt: params.now,
@@ -202,6 +225,11 @@ export async function activateBusinessAfterVerificationCommand(
           toStatus: updated.status,
         }),
       );
+      completeIdempotencyKeyInTransaction(transaction, db, params.idempotencyKey);
+
+      if (params.testOnlyBeforeCommitHook) {
+        await params.testOnlyBeforeCommitHook();
+      }
 
       return {
         outcome: "executed",
@@ -213,9 +241,18 @@ export async function activateBusinessAfterVerificationCommand(
       } as const;
     });
 
-    await completeIdempotencyKey(db, params.idempotencyKey);
+    if (result.outcome === "denied") {
+      // Denial never mutates Business state, so this bookkeeping write
+      // carries none of the atomicity concern Phase 4 addresses above —
+      // unchanged from before this correction.
+      await completeIdempotencyKey(db, params.idempotencyKey);
+    }
     return result;
   } catch (error) {
+    // Reached only when the activation transaction itself failed to
+    // commit (including a thrown `testOnlyBeforeCommitHook`) — a
+    // committed success can no longer land here, since its idempotency
+    // completion is now staged inside that same transaction.
     await failIdempotencyKey(db, params.idempotencyKey);
     throw error;
   }

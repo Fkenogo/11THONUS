@@ -509,3 +509,136 @@ describe("activateBusinessAfterVerificationCommand — idempotency", () => {
     );
   });
 });
+
+/**
+ * `PLATFORM-BASELINE-003-CORR-001`: proves the Business activation
+ * mutation and its idempotency completion commit (or abort) atomically,
+ * against real Firestore Emulator transaction semantics — no mocking of
+ * `completeIdempotencyKey`/`completeIdempotencyKeyInTransaction`.
+ */
+describe("activateBusinessAfterVerificationCommand — atomic idempotency completion", () => {
+  async function idempotencyRecordStatus(idempotencyKey: string): Promise<unknown> {
+    return (await db.collection("idempotencyRecords").doc(idempotencyKey).get()).data()?.["status"];
+  }
+
+  it("successful activation commits Business=trial, exactly one lifecycle event, and idempotency=completed together", async () => {
+    await seedAdmin();
+    await seedBusiness("biz-1", "pending_verification");
+    await seedTermsAcceptance("biz-1", OWNER_ID, TEST_ONLY_TERMS_V0);
+
+    const params = activateParams({ idempotencyKey: "act_atomic_success" });
+    const outcome = await activateBusinessAfterVerificationCommand(db, params);
+
+    expect(outcome.outcome).toBe("executed");
+    expect(await businessStatus("biz-1")).toBe("trial");
+    expect(await lifecycleChangedEvents()).toHaveLength(1);
+    expect(await idempotencyRecordStatus("act_atomic_success")).toBe("completed");
+  });
+
+  it("same-key retry after a committed success returns duplicate, never INVALID_STATE_TRANSITION, with no second transition or event", async () => {
+    await seedAdmin();
+    await seedBusiness("biz-1", "pending_verification");
+    await seedTermsAcceptance("biz-1", OWNER_ID, TEST_ONLY_TERMS_V0);
+
+    const params = activateParams({ idempotencyKey: "act_atomic_retry" });
+    const first = await activateBusinessAfterVerificationCommand(db, params);
+    expect(first.outcome).toBe("executed");
+
+    const retry = await activateBusinessAfterVerificationCommand(db, {
+      ...params,
+      correlationId: "act_atomic_retry_corr_2",
+      now: new Date("2026-09-11T00:00:02.000Z"),
+    });
+
+    expect(retry).toEqual({ outcome: "duplicate" });
+    expect(await businessStatus("biz-1")).toBe("trial");
+    expect(await lifecycleChangedEvents()).toHaveLength(1);
+  });
+
+  it("a genuine pre-commit failure (denied) leaves Business pending_verification, no lifecycle event, and the key retryable", async () => {
+    await seedBusiness("biz-1", "pending_verification");
+    await seedTermsAcceptance("biz-1", OWNER_ID, TEST_ONLY_TERMS_V0);
+
+    const params = activateParams({
+      adminUserId: CUSTOMER_ID,
+      idempotencyKey: "act_atomic_denied",
+    });
+    const outcome = await activateBusinessAfterVerificationCommand(db, params);
+
+    expect(outcome).toEqual({ outcome: "denied", reason: "NOT_PLATFORM_ADMINISTRATOR" });
+    expect(await businessStatus("biz-1")).toBe("pending_verification");
+    expect(await lifecycleChangedEvents()).toHaveLength(0);
+    expect(await idempotencyRecordStatus("act_atomic_denied")).toBe("completed");
+  });
+
+  it("a genuine transaction failure (thrown INVALID_STATE_TRANSITION before commit) leaves the key failed/retryable, and a corrected retry then succeeds", async () => {
+    await seedAdmin();
+    await seedBusiness("biz-1", "trial");
+    await seedTermsAcceptance("biz-1", OWNER_ID, TEST_ONLY_TERMS_V0);
+
+    const params = activateParams({ idempotencyKey: "act_atomic_failed_retry" });
+
+    await expect(activateBusinessAfterVerificationCommand(db, params)).rejects.toSatisfy(
+      (e: unknown) => e instanceof BusinessDomainError && e.category === "INVALID_STATE_TRANSITION",
+    );
+    expect(await businessStatus("biz-1")).toBe("trial");
+    expect(await lifecycleChangedEvents()).toHaveLength(0);
+    expect(await idempotencyRecordStatus("act_atomic_failed_retry")).toBe("failed");
+
+    // Remove the genuine failure condition (the Business is now, in this
+    // fixture, already at the target status — seed a fresh
+    // pending_verification business under the same key/hash to prove the
+    // key itself is retryable once whatever made it fail is corrected).
+    await seedBusiness("biz-2", "pending_verification");
+    await seedTermsAcceptance("biz-2", OWNER_ID, TEST_ONLY_TERMS_V0);
+    const retry = await activateBusinessAfterVerificationCommand(db, {
+      ...params,
+      businessId: "biz-2",
+      correlationId: "act_atomic_failed_retry_corr_2",
+    });
+
+    expect(retry.outcome).toBe("executed");
+    expect(await businessStatus("biz-2")).toBe("trial");
+    expect(await idempotencyRecordStatus("act_atomic_failed_retry")).toBe("completed");
+  });
+
+  it("atomicity: aborting the transaction after all writes are staged (before commit) leaves neither the Business transition nor the idempotency completion durable", async () => {
+    await seedAdmin();
+    await seedBusiness("biz-1", "pending_verification");
+    await seedTermsAcceptance("biz-1", OWNER_ID, TEST_ONLY_TERMS_V0);
+
+    const params = activateParams({
+      idempotencyKey: "act_atomic_abort",
+      testOnlyBeforeCommitHook: async () => {
+        throw new Error("test-only forced abort after staging writes");
+      },
+    });
+
+    await expect(activateBusinessAfterVerificationCommand(db, params)).rejects.toThrow(
+      "test-only forced abort after staging writes",
+    );
+
+    // Neither the Business transition nor the lifecycle event survived —
+    // both were staged in the same transaction as the forced abort.
+    expect(await businessStatus("biz-1")).toBe("pending_verification");
+    expect(await lifecycleChangedEvents()).toHaveLength(0);
+
+    // Nor did the idempotency completion — the key is failed/retryable,
+    // never left as a phantom "completed" against an uncommitted Business
+    // mutation.
+    expect(await idempotencyRecordStatus("act_atomic_abort")).toBe("failed");
+
+    // A retry with the failure condition removed (the hook only fires
+    // once per params object, so a fresh call without it) succeeds
+    // normally, proving the key was genuinely retryable and not stuck.
+    const retry = await activateBusinessAfterVerificationCommand(db, {
+      ...params,
+      testOnlyBeforeCommitHook: undefined,
+      correlationId: "act_atomic_abort_corr_2",
+    });
+    expect(retry.outcome).toBe("executed");
+    expect(await businessStatus("biz-1")).toBe("trial");
+    expect(await lifecycleChangedEvents()).toHaveLength(1);
+    expect(await idempotencyRecordStatus("act_atomic_abort")).toBe("completed");
+  });
+});

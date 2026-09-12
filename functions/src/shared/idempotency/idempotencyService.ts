@@ -31,9 +31,14 @@
  *
  * `checkIdempotency` remains as a read-only, non-claiming peek (e.g. for a
  * future status-check use) built on the same pure `evaluateIdempotency`.
+ *
+ * `completeIdempotencyKeyInTransaction` (`PLATFORM-BASELINE-003-CORR-001`)
+ * is a transaction-scoped sibling of `completeIdempotencyKey` for callers
+ * that must commit their own domain writes and idempotency completion
+ * atomically — see its own doc comment below.
  */
 
-import type { Firestore } from "firebase-admin/firestore";
+import type { Firestore, Transaction } from "firebase-admin/firestore";
 import type { PlatformErrorResponse } from "../errors/platformError";
 import { createPlatformError } from "../errors/platformError";
 import { serverTimestamp } from "../metadata/serverTimestamp";
@@ -150,6 +155,32 @@ export async function completeIdempotencyKey(
       ...(resultReference !== undefined ? { resultReference } : {}),
       ...(responseSnapshot !== undefined ? { responseSnapshot } : {}),
     });
+}
+
+/**
+ * Transaction-scoped sibling of `completeIdempotencyKey` (`PLATFORM-BASELINE-003-CORR-001`).
+ *
+ * Stages the same "completed" write `completeIdempotencyKey` performs, but
+ * via `transaction.update` so it commits or aborts together with whatever
+ * else the caller staged in that same transaction — for a command whose
+ * successful completion must be atomic with its own domain writes (so a
+ * committed success can never be observed as a "failed" idempotency record
+ * by a same-key retry). Callers that don't need that atomicity keep using
+ * `completeIdempotencyKey` unchanged.
+ */
+export function completeIdempotencyKeyInTransaction(
+  transaction: Transaction,
+  db: Firestore,
+  idempotencyKey: string,
+  resultReference?: string,
+  responseSnapshot?: unknown,
+): void {
+  transaction.update(db.collection(COLLECTION).doc(idempotencyKey), {
+    status: "completed",
+    completedAt: serverTimestamp(),
+    ...(resultReference !== undefined ? { resultReference } : {}),
+    ...(responseSnapshot !== undefined ? { responseSnapshot } : {}),
+  });
 }
 
 export async function failIdempotencyKey(db: Firestore, idempotencyKey: string): Promise<void> {
