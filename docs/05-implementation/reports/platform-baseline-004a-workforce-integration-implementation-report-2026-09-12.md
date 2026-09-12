@@ -210,11 +210,11 @@ Revert the PR branch merge (single PR, no migration, no config, no data-shape ch
 
 ## 36. PR number
 
-To be filled on push (see §37).
+PR #249 — `PLATFORM-BASELINE-004A — Workforce Integration Completion (IMPLEMENTED / AWAITING INDEPENDENT REVIEW)` (open, not merged, not self-approved).
 
 ## 37. Exact PR head
 
-To be filled on push.
+`7b31f7dbcf6c83c2e4405bcc8cd1edbeb39c289f` (single implementation commit on `feat/platform-baseline-004a-workforce-integration`, parented directly on entry `origin/main` `6d2446c918f293270bb173a18582bcd80c97d431`).
 
 ## 38. Markdown implementation report
 
