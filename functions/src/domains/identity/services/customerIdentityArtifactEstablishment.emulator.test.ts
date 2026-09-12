@@ -456,6 +456,56 @@ describe("ensureCustomerIdentityArtifacts — fail-closed contradictions", () =>
     );
   });
 
+  it("a QR record whose document id disagrees with its stored reference fails closed", async () => {
+    await seedIdentity("cust_art_mm", "mm");
+    await issueLoyaltyNumberDirect("cust_art_mm", "mm", "ABC234");
+    await db.collection("qrIdentityRecords").doc("qr_art_mm").set({
+      id: "qr_art_mm",
+      status: "active",
+      qrReference: "qr_art_other",
+      customerIdentityId: "cust_art_mm",
+      loyaltyNumber: "ABC234",
+      issuedAt: NOW,
+      replacedByReference: null,
+      createdAt: NOW,
+      createdBy: "cust_art_mm",
+      updatedAt: NOW,
+      updatedBy: "cust_art_mm",
+    });
+
+    await expect(
+      ensureCustomerIdentityArtifacts(db, ensureParams("cust_art_mm", "mm")),
+    ).rejects.toSatisfy(
+      (e: unknown) => e instanceof QrIdentityDomainError && e.category === "VALIDATION_FAILED",
+    );
+
+    expect(await count("qrIdentityRecords")).toBe(1);
+  });
+
+  it("a QR record outside the governed reference format fails closed", async () => {
+    await seedIdentity("cust_art_badref", "badref");
+    await issueLoyaltyNumberDirect("cust_art_badref", "badref", "ABC234");
+    await db.collection("qrIdentityRecords").doc("qr bad ref").set({
+      id: "qr bad ref",
+      status: "active",
+      qrReference: "qr bad ref",
+      customerIdentityId: "cust_art_badref",
+      loyaltyNumber: "ABC234",
+      issuedAt: NOW,
+      replacedByReference: null,
+      createdAt: NOW,
+      createdBy: "cust_art_badref",
+      updatedAt: NOW,
+      updatedBy: "cust_art_badref",
+    });
+
+    await expect(
+      ensureCustomerIdentityArtifacts(db, ensureParams("cust_art_badref", "badref")),
+    ).rejects.toSatisfy(
+      (e: unknown) => e instanceof QrIdentityDomainError && e.category === "VALIDATION_FAILED",
+    );
+  });
+
   it("a non-active identity fails closed with no artifact creation", async () => {
     await seedIdentity("cust_art_susp", "susp");
     await suspendIdentity("cust_art_susp", "susp");

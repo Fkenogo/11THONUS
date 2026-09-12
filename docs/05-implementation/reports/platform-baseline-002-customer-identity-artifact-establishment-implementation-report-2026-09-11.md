@@ -23,9 +23,9 @@ No file outside these was touched.
 ## 4. Code diff summary
 
 - New `ensureCustomerIdentityArtifacts` orchestration (identity `services/`, Firebase-adapter-capable via a precedented eslint exemption): validate-first, repair-only-what-is-missing, fail-closed contradictions, deterministic per-identity issue keys, bounded `IDEMPOTENCY_CONFLICT` retry (3 attempts), `CustomerIdentityId`-only inputs.
-- Two read-only single-field list helpers in the owning LN/QR repositories (no composite index required).
+- Two read-only single-field list helpers in the owning LN/QR repositories (no composite index required). The QR helper additionally enforces doc-ID==reference and the governed reference format (mirroring the LN helper) — added for automated review finding P2-2.
 - Two new error factories in the existing closed 14-category taxonomy (no new category).
-- Wiring at the three shared service boundaries (registration, sign-in re-entry, recovery) via `ensureArtifacts?` deps seams; no transport/handler copies, no new callable, no `index.ts` change.
+- Wiring at the three shared service boundaries (registration, sign-in re-entry, recovery) via `ensureArtifacts?` deps seams; no transport/handler copies, no new callable, no `index.ts` change. In `register()`, establishment runs **before** the link step so a same-key retry after any in-`register()` failure re-enters the register path and replays `registered` (added for automated review finding P2-1; see §7).
 - Governance: `DEC-CUST-ID-ART-001` recorded verbatim (CONFIRMED, Founder, 2026-09-11); register summary CONFIRMED 47→48, Total 107→108; changes-log Entry 212.
 
 ## 5. Existing architecture analysis
@@ -50,6 +50,8 @@ Every production-reachable path into canonical `active` (verified by grep, non-t
 ## 7. Artifact establishment architecture
 
 `Customer Identity becomes active → ensureCustomerIdentityArtifacts (shared) → ensure Loyalty Number → ensure current QR Identity.` The orchestration runs **after** the committing transition (never inside the identity transaction), so a transition commit never rolls back on artifact failure and establishment stays independently retryable/repairable. All three triggers call the one shared operation; logic is never copied into transport handlers; `index.ts` is unchanged.
+
+Within `register()`, the order is create → establish → link (not create → link → establish): establishment depends only on the identity id, and placing every fallible step before the credential becomes resolvable preserves the request-level replay contract — a same-key retry after a create/establish/link failure re-enters through the register path and replays `registered`, never slipping into sign-in as `signed_in` (automated review finding P2-1, verified by a dedicated emulator test). The residual pre-existing edge (a failure of the final request-key completion after link) is unchanged by this package and would need protocol-level phase tracking to address — recorded as a known limitation (§24).
 
 ## 8. Loyalty Number invariant implementation
 
@@ -77,14 +79,21 @@ Existing taxonomy only (closed 14 categories): not-found → `unknownCustomerIde
 
 ## 14. Tests added
 
-- `customerIdentityArtifactEstablishment.emulator.test.ts` (14 tests): fresh, idempotent-rerun (write-nothing proof), repair A, repair B/interrupted-run retry, 6 contradiction cases (duplicate LNs, wrong-LN QR, multiple active QRs, cross-identity pointer, malformed LN, malformed QR), non-active, unknown identity, simultaneous concurrency, read purity.
+- `customerIdentityArtifactEstablishment.emulator.test.ts` (16 tests): fresh, idempotent-rerun (write-nothing proof), repair A, repair B/interrupted-run retry, 8 contradiction cases (duplicate LNs, wrong-LN QR, multiple active QRs, cross-identity pointer, malformed LN, malformed QR, QR doc-id/reference mismatch, QR invalid reference format), non-active, unknown identity, simultaneous concurrency, read purity.
 - Wiring unit tests: 3 (register/sign-in/refused-sign-in) in `registrationSignInService.test.ts`, 1 (post-recovery) in `identityRecoveryService.test.ts`.
 - Error-factory unit cases: `identityNotActiveError`, `multipleLoyaltyNumberAssignmentsError`.
-- Integration emulator tests: registration-establishes + sign-in-reuse (2), recovery-establishes (1).
+- Integration emulator tests: registration-establishes + sign-in-reuse + same-key mode preservation after establishment failure (3), recovery-establishes (1).
 
 ## 15. Emulator test results
 
-Full suite: **62 files passed, 789 tests passed, 2 skipped, 0 failed** (run via `firebase emulators:exec` with firestore 8180/auth 9299 alternate-port config — port 8080 was held by another session's unrelated emulator; same suites and assertions as canonical `emulators:validate`).
+Full suite: **62 files passed, 792 tests passed, 2 skipped, 0 failed** (run via `firebase emulators:exec` with firestore 8180/auth 9299 alternate-port config — port 8080 was held by another session's unrelated emulator; same suites and assertions as canonical `emulators:validate`).
+
+## 30. Automated review findings and dispositions
+
+Two P2 findings were raised by automated review on the PR and both were verified valid against the code and corrected (no silent ignores):
+
+- **P2-1 — Preserve registration mode after artifact failures** (`registrationSignInService.ts`): establishment was the first fallible step after link-commit, so an establishment failure flipped a same-key retry from `registered` to `signed_in`. Corrected by running establishment before the link step (create → establish → link); proven by a new emulator test (establishment failure → same-key retry replays `registered` with converged artifacts, no duplicates).
+- **P2-2 — Validate QR document IDs and reference values** (`qrIdentityRepository.ts`): the new QR list helper accepted doc-ID/reference mismatches and off-format references that the LN helper rejects. Corrected by enforcing doc-ID==reference and the governed reference value object in the helper; proven by two new emulator tests.
 
 ## 16. Full regression results
 
@@ -126,6 +135,7 @@ None: no new collection, no new field, no new index (single-field queries need n
 
 - `transitionCustomerIdentityStatus` has no production caller, so no generic post-transition hook was added; if a future production caller transitions identities to `active` outside registration/recovery, it must invoke the shared ensure operation (documented in the service header).
 - No transport (callable) exposes ensure directly; repair is via the three wired flows or explicit server-side invocation.
+- Residual pre-existing edge (not introduced here): if the final request-key completion write itself fails after link-commit, a same-key retry resolves through sign-in as `signed_in` rather than replaying `registered`. Fixing that requires protocol-level phase tracking in the request idempotency record — out of scope for this package.
 - No CI job change; the new emulator file runs in the existing `test:emulator` suite.
 
 ## 25. Rollback instructions

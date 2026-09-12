@@ -42,9 +42,11 @@ import type { QrReferenceGenerator } from "../services/qrReferenceGenerator";
 import {
   QrIdentityDomainError,
   invalidatedQrReferenceError,
+  malformedQrIdentityRecordError,
   unknownQrReferenceError,
   qrRegenerationTransactionConflictError,
 } from "../models/qrIdentityErrors";
+import { createQrReference } from "../models/qrReference";
 import {
   toQrIdentityRecordDocument,
   fromQrIdentityRecordDocument,
@@ -380,7 +382,10 @@ export async function getQrIdentityRecordForAudit(
  * Strictly a read: never creates, repairs, or rewrites anything.
  *
  * Fails closed (`malformedQrIdentityRecordError`, thrown by the converter)
- * on any record that does not parse.
+ * on any record that does not parse, whose document id disagrees with its
+ * stored reference (corrupt by the doc-ID-as-value construction, mirroring
+ * the Loyalty Number helper), or whose reference falls outside the governed
+ * value-object format.
  */
 export async function listQrIdentityRecordsForIdentity(
   db: Firestore,
@@ -393,7 +398,12 @@ export async function listQrIdentityRecordsForIdentity(
 
   const records: QrIdentityAssociation[] = [];
   for (const doc of snapshot.docs) {
-    records.push(fromQrIdentityRecordDocument(doc.data()));
+    const record = fromQrIdentityRecordDocument(doc.data());
+    if (doc.id !== record.qrReference) {
+      throw malformedQrIdentityRecordError(doc.id);
+    }
+    createQrReference(record.qrReference);
+    records.push(record);
   }
 
   records.sort((a, b) => a.qrReference.localeCompare(b.qrReference));

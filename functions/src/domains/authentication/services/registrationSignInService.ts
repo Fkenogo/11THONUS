@@ -307,10 +307,20 @@ async function resolveAndRegisterOrSignIn(
 
 /**
  * Registration path (new credential): create the identity (`-01`, embeds the
- * initial reference) then establish the authoritative reference (`-08`). Both
- * operations are keyed by the *credential* so concurrent registrations for the
- * same reference serialise (loser fails closed, no orphan), and the identity id
- * is recovered from the durable create record on retry (stable resume).
+ * initial reference), establish its Loyalty Number / current QR artifacts
+ * (`PLATFORM-BASELINE-002`), then establish the authoritative reference
+ * (`-08`). Both identity operations are keyed by the *credential* so
+ * concurrent registrations for the same reference serialise (loser fails
+ * closed, no orphan), and the identity id is recovered from the durable
+ * create record on retry (stable resume).
+ *
+ * Establishment runs BEFORE the link step deliberately: every fallible step
+ * of `register()` then precedes the moment the credential becomes resolvable,
+ * so a same-key retry after any of them re-enters through the register path
+ * and replays the original `registered` outcome — it can never slip into the
+ * sign-in branch and complete as `signed_in` (the request-level replay
+ * contract above). Establishment itself depends only on the identity id, so
+ * it needs nothing the link step produces.
  */
 async function register(
   db: Firestore,
@@ -363,6 +373,24 @@ async function register(
     requestHash: createHash,
   });
 
+  // `PLATFORM-BASELINE-002` (`FD-CUST-ID-ART-001`): the governed trigger —
+  // this identity just entered canonical `active` — so establish its
+  // Loyalty Number and current QR Identity now, through the one shared
+  // operation (never duplicated here). Placed before the link step so a
+  // same-key retry after an establishment failure still re-enters through
+  // this register path (the credential is not yet resolvable) and replays
+  // `registered` — see the function header.
+  const ensureArtifacts = deps.ensureArtifacts ?? ensureCustomerIdentityArtifacts;
+  await ensureArtifacts(db, {
+    eventId: `${envelope.eventId}:artifacts`,
+    correlationId: envelope.correlationId,
+    actor: envelope.actor,
+    occurredAt: envelope.occurredAt,
+    customerIdentityId,
+    now: command.issuedAt,
+    createdBy,
+  });
+
   const identity = await linkReference(db, {
     ...requestContext,
     eventId: `${envelope.eventId}:${LINK_OPERATION}`,
@@ -375,21 +403,6 @@ async function register(
     linkedBy: createdBy,
     idempotencyKey: linkKey,
     requestHash: linkHash,
-  });
-
-  // `PLATFORM-BASELINE-002` (`FD-CUST-ID-ART-001`): the governed trigger —
-  // this identity just entered canonical `active` — so establish its
-  // Loyalty Number and current QR Identity now, through the one shared
-  // operation (never duplicated here).
-  const ensureArtifacts = deps.ensureArtifacts ?? ensureCustomerIdentityArtifacts;
-  await ensureArtifacts(db, {
-    eventId: `${envelope.eventId}:artifacts`,
-    correlationId: envelope.correlationId,
-    actor: envelope.actor,
-    occurredAt: envelope.occurredAt,
-    customerIdentityId,
-    now: command.issuedAt,
-    createdBy,
   });
 
   return {

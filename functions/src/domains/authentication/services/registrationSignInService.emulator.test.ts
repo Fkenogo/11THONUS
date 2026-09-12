@@ -4,6 +4,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { registerOrSignIn, type RegistrationSignInCommand } from "./registrationSignInService";
 import { linkAuthenticationReferenceForIdentity } from "../../identity/repositories/authenticationReferenceRepository";
 import { createAuthenticatedCredential } from "../models/authenticatedCredential";
+import type { CustomerIdentityArtifactEstablishment } from "../../identity/services/customerIdentityArtifactEstablishment";
 import type { EventActor } from "../../../shared/events/domainEvent";
 
 // AUTH-03 — registration / sign-in orchestration against the real Firebase
@@ -301,6 +302,50 @@ describe("AUTH-03 — registration / sign-in orchestration (emulator)", () => {
     );
 
     expect(second.mode).toBe("signed_in");
+    expect(await count("loyaltyNumbers")).toBe(1);
+    expect(await count("qrIdentityRecords")).toBe(1);
+  });
+
+  it("PLATFORM-BASELINE-002: an establishment failure before link still replays registered on same-key retry (never signed_in)", async () => {
+    let ensureCalls = 0;
+    const flakyEnsure = async (): Promise<CustomerIdentityArtifactEstablishment> => {
+      ensureCalls += 1;
+      if (ensureCalls === 1) {
+        throw new Error("simulated establishment failure");
+      }
+      throw new Error("flaky ensure must only be injected on the first attempt");
+    };
+
+    // First attempt: identity commits, establishment fails, the link never
+    // runs — the whole request fails.
+    await expect(
+      registerOrSignIn(
+        db,
+        credentialFor("authuid_mode"),
+        envelopeFor("mode1"),
+        commandFor("key_mode"),
+        {
+          generateCustomerIdentityId: () => "cust_art_mode",
+          ensureArtifacts: flakyEnsure,
+        },
+      ),
+    ).rejects.toThrow("simulated establishment failure");
+    expect(ensureCalls).toBe(1);
+
+    // Same-key retry: the credential is still unresolvable (no link ran), so
+    // the request resumes through the register path with the real
+    // establishment and replays the original `registered` outcome.
+    const retried = await registerOrSignIn(
+      db,
+      credentialFor("authuid_mode"),
+      envelopeFor("mode2"),
+      commandFor("key_mode"),
+      { generateCustomerIdentityId: () => "cust_art_mode_WRONG" },
+    );
+
+    expect(retried.mode).toBe("registered");
+    expect(retried.customerIdentityId).toBe("cust_art_mode");
+    expect(await count("users")).toBe(1);
     expect(await count("loyaltyNumbers")).toBe(1);
     expect(await count("qrIdentityRecords")).toBe(1);
   });
