@@ -23,6 +23,9 @@ const mockRefetchInvitations = vi.fn();
 vi.mock("../hooks/businessQueries", () => ({
   useStaffMembershipsQuery: () => membershipsResult,
   useStaffInvitationsQuery: () => invitationsResult,
+  // Default: viewer role unknown → no management controls render, so every
+  // pre-existing assertion below observes the unchanged read-only surface.
+  useAccessibleBusinessesQuery: () => ({ data: [], status: "success" as const }),
 }));
 
 const mockInvite = vi.fn();
@@ -42,6 +45,18 @@ vi.mock("../hooks/businessMutations", () => ({
     mutate: mockRevoke,
     isPending: revokePending,
     error: revokeError,
+  }),
+  useSuspendStaffMembershipMutation: () => ({ mutate: vi.fn(), isPending: false, error: null }),
+  useReactivateStaffMembershipMutation: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+    error: null,
+  }),
+  useRemoveStaffMembershipMutation: () => ({ mutate: vi.fn(), isPending: false, error: null }),
+  useChangeStaffMembershipRoleMutation: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+    error: null,
   }),
 }));
 

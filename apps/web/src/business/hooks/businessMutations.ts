@@ -26,6 +26,14 @@ import {
   makeCallRevokeStaffInvitation,
   type CreateStaffInvitationRequest,
 } from "../api/staffInvitationMutations";
+import {
+  makeCallAcceptStaffInvitation,
+  makeCallChangeStaffMembershipRole,
+  makeCallReactivateStaffMembership,
+  makeCallRemoveStaffMembership,
+  makeCallSuspendStaffMembership,
+  type ChangeStaffMembershipRoleRequest,
+} from "../api/staffMembershipMutations";
 import { businessQueryKeys } from "./queryKeys";
 
 function requireReadyActor(actorState: ReturnType<typeof useAuthenticatedActor>) {
@@ -195,6 +203,106 @@ export function useRevokeStaffInvitationMutation(businessId: string) {
     onSuccess: () => {
       holderRef.current.clear();
       queryClient.invalidateQueries({ queryKey: businessQueryKeys.staffInvitations(businessId) });
+    },
+    onError: (error) => settleKeyOnError(holderRef.current, error),
+  });
+}
+
+/**
+ * Invitation acceptance (`PLATFORM-BASELINE-004A`) — self-service: no
+ * `businessId` is supplied (the Business binding comes from the
+ * authoritative invitation server-side). On success the caller has gained a
+ * membership, so the accessible-businesses roster is refetched alongside
+ * the staff lists.
+ */
+export function useAcceptStaffInvitationMutation() {
+  const { auth, functions } = useBusinessApiPlatform();
+  const actorState = useAuthenticatedActor(auth);
+  const queryClient = useQueryClient();
+  const holderRef = useRef(createIdempotencyKeyHolder());
+
+  return useMutation({
+    mutationFn: (payload: { invitationReference: string }) =>
+      makeCallAcceptStaffInvitation(functions)(requireReadyActor(actorState), {
+        invitationReference: payload.invitationReference,
+        idempotencyKey: holderRef.current.getKey(),
+      }),
+    onSuccess: (result) => {
+      holderRef.current.clear();
+      queryClient.invalidateQueries({ queryKey: businessQueryKeys.accessible() });
+      if (result) {
+        queryClient.invalidateQueries({
+          queryKey: businessQueryKeys.staffMemberships(result.businessId),
+        });
+        queryClient.invalidateQueries({
+          queryKey: businessQueryKeys.staffInvitations(result.businessId),
+        });
+      }
+    },
+    onError: (error) => settleKeyOnError(holderRef.current, error),
+  });
+}
+
+function useStaffMembershipLifecycleMutation(
+  businessId: string,
+  action: "suspend" | "reactivate" | "remove",
+) {
+  const { auth, functions } = useBusinessApiPlatform();
+  const actorState = useAuthenticatedActor(auth);
+  const queryClient = useQueryClient();
+  const holderRef = useRef(createIdempotencyKeyHolder());
+  const call =
+    action === "suspend"
+      ? makeCallSuspendStaffMembership
+      : action === "reactivate"
+        ? makeCallReactivateStaffMembership
+        : makeCallRemoveStaffMembership;
+
+  return useMutation({
+    mutationFn: (targetMembershipId: string) =>
+      call(functions)(requireReadyActor(actorState), {
+        businessId,
+        targetMembershipId,
+        idempotencyKey: holderRef.current.getKey(),
+      }),
+    onSuccess: () => {
+      holderRef.current.clear();
+      queryClient.invalidateQueries({ queryKey: businessQueryKeys.staffMemberships(businessId) });
+    },
+    onError: (error) => settleKeyOnError(holderRef.current, error),
+  });
+}
+
+export function useSuspendStaffMembershipMutation(businessId: string) {
+  return useStaffMembershipLifecycleMutation(businessId, "suspend");
+}
+
+export function useReactivateStaffMembershipMutation(businessId: string) {
+  return useStaffMembershipLifecycleMutation(businessId, "reactivate");
+}
+
+export function useRemoveStaffMembershipMutation(businessId: string) {
+  return useStaffMembershipLifecycleMutation(businessId, "remove");
+}
+
+export function useChangeStaffMembershipRoleMutation(businessId: string) {
+  const { auth, functions } = useBusinessApiPlatform();
+  const actorState = useAuthenticatedActor(auth);
+  const queryClient = useQueryClient();
+  const holderRef = useRef(createIdempotencyKeyHolder());
+
+  return useMutation({
+    mutationFn: (
+      payload: Omit<ChangeStaffMembershipRoleRequest, "businessId" | "idempotencyKey">,
+    ) =>
+      makeCallChangeStaffMembershipRole(functions)(requireReadyActor(actorState), {
+        ...payload,
+        businessId,
+        idempotencyKey: holderRef.current.getKey(),
+      }),
+    onSuccess: () => {
+      holderRef.current.clear();
+      queryClient.invalidateQueries({ queryKey: businessQueryKeys.staffMemberships(businessId) });
     },
     onError: (error) => settleKeyOnError(holderRef.current, error),
   });

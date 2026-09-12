@@ -17,6 +17,7 @@ import type { Functions } from "firebase/functions";
 import { BusinessApiProvider } from "../../business/BusinessApiContext";
 import { BusinessDashboardRoutes } from "../../business/dashboard/BusinessDashboardRoutes";
 import { businessQueryKeys } from "../../business/hooks/queryKeys";
+import type { AccessibleBusinessSummary } from "../../business/api/accessibleBusinesses";
 import type { BusinessContext } from "../../business/api/businessContext";
 import type { StaffInvitationSummary, StaffMembershipSummary } from "../../business/api/staffLists";
 
@@ -100,6 +101,24 @@ harnessQueryClient.setQueryData(
   businessQueryKeys.staffInvitations(HARNESS_CONTEXT.businessId),
   HARNESS_INVITATIONS,
 );
+/**
+ * `PLATFORM-BASELINE-004A` — the harness viewer is the Business Owner, so
+ * the Team route renders its real, authorization-driven management
+ * controls (role-change + lifecycle on non-owner rows) exactly as
+ * production would for an Owner. The query itself stays disabled (see
+ * above), so this remains zero-network; the mutation callables behind the
+ * controls are inert here (harness specs assert visibility, layout, and
+ * the pre-mutation confirm gate — never a mutation outcome).
+ */
+const HARNESS_ACCESSIBLE: AccessibleBusinessSummary[] = [
+  {
+    businessId: HARNESS_CONTEXT.businessId,
+    displayName: HARNESS_CONTEXT.displayName,
+    status: HARNESS_CONTEXT.status,
+    role: "owner",
+  },
+];
+harnessQueryClient.setQueryData(businessQueryKeys.accessible(), HARNESS_ACCESSIBLE);
 
 export function DashboardHarnessPage() {
   return (

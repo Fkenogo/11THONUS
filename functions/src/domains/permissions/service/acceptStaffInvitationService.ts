@@ -40,13 +40,18 @@
  * an effect-free no-op and the caller still observes a clean, fail-closed
  * error. No partial success is possible either way: a membership is never
  * created without the invitation being marked `accepted` in the same
- * transaction, and vice versa (Phase O).
+ *   transaction, and vice versa (Phase O).
+ *
+ * **Idempotency completion (`PLATFORM-BASELINE-004A`).** A successful
+ * acceptance's idempotency completion is staged inside that same
+ * transaction, so domain writes and bookkeeping commit or abort together
+ * (see `completeIdempotencyKeyInTransaction` at the `ok` return below).
  */
 
 import type { Firestore, Transaction } from "firebase-admin/firestore";
 import {
   checkAndReserveIdempotencyKey,
-  completeIdempotencyKey,
+  completeIdempotencyKeyInTransaction,
   failIdempotencyKey,
 } from "../../../shared/idempotency/idempotencyService";
 import { writeOutboxEntry } from "../../../shared/outbox/outboxWriter";
@@ -103,6 +108,17 @@ export type AcceptStaffInvitationParams = {
   newId: () => string;
   /** Injection seam for testing (real Firebase Auth by default). */
   verifiedContactLookup?: VerifiedContactLookup;
+  /**
+   * Test-only hook (`PLATFORM-BASELINE-004A`) that fires after the
+   * membership, the invitation consumption, the outbox evidence, and the
+   * idempotency completion have all been staged in this transaction but
+   * before it returns — never supplied by the transport layer. Throwing
+   * here aborts the transaction, proving the atomic-completion invariant:
+   * none of the staged writes survive independently of the others
+   * (mirrors `businessActivationCommand.ts`'s
+   * `testOnlyBeforeCommitHook`, `PLATFORM-BASELINE-003-CORR-001`).
+   */
+  testOnlyBeforeCommitHook?: () => Promise<void>;
 };
 
 const OPERATION_TYPE = "staffInvitation.accept";
@@ -343,6 +359,25 @@ export async function acceptStaffInvitation(
         role: invitation.role,
         acceptedAt: params.now,
       };
+      // `PLATFORM-BASELINE-004A`: the successful idempotency completion is
+      // staged inside this same transaction as the membership creation, the
+      // invitation consumption, and the outbox evidence, so the four commit
+      // or abort together — a same-key retry after a committed acceptance
+      // can only ever observe "duplicate", never a false
+      // "failed"/retryable state from a bookkeeping write that happened to
+      // run after the domain mutation had already landed (the shared
+      // post-commit pattern `PLATFORM-BASELINE-003-CORR-001` corrected for
+      // Business activation via `completeIdempotencyKeyInTransaction`).
+      completeIdempotencyKeyInTransaction(
+        transaction,
+        db,
+        params.idempotencyKey,
+        `businessMemberships/${resolvedMembershipId}`,
+        result,
+      );
+      if (params.testOnlyBeforeCommitHook) {
+        await params.testOnlyBeforeCommitHook();
+      }
       return { kind: "ok", result };
     });
 
@@ -350,14 +385,16 @@ export async function acceptStaffInvitation(
       throw outcome.error;
     }
 
-    await completeIdempotencyKey(
-      db,
-      params.idempotencyKey,
-      `businessMemberships/${outcome.result.membershipId}`,
-      outcome.result,
-    );
+    // The successful completion was already staged atomically inside the
+    // transaction above — no post-commit bookkeeping write remains, so a
+    // committed success can no longer land in the `catch` below.
     return outcome.result;
   } catch (error) {
+    // Reached only when the acceptance transaction itself failed to commit
+    // (including a thrown `testOnlyBeforeCommitHook`) or the attempt failed
+    // closed before/without staging a success — a committed success is
+    // never observed here, since its idempotency completion is now staged
+    // inside that same transaction.
     await failIdempotencyKey(db, params.idempotencyKey);
     throw error;
   }

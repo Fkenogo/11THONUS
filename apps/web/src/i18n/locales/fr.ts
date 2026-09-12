@@ -223,6 +223,8 @@ export const fr = {
       statusAccepted: "A rejoint",
       statusRevoked: "Annulée",
       statusExpired: "Expirée",
+      statusSuspended: "Suspendu",
+      statusRemoved: "Retiré",
       deliveryTypeLabel: "Comment souhaitez-vous envoyer l'invitation ?",
       emailLabel: "E-mail",
       phoneLabel: "Numéro de téléphone",
@@ -231,10 +233,36 @@ export const fr = {
       revoke: "Annuler l'invitation",
       confirmRevokeBody: "Annuler cette invitation ? Elle ne pourra plus être acceptée.",
       confirmRevokeAction: "Oui, annuler l'invitation",
+      copyInviteLink: "Copier le lien d'invitation",
+      inviteLinkCopied: "Lien d'invitation copié.",
+      suspend: "Suspendre",
+      reactivate: "Réactiver",
+      remove: "Retirer",
+      confirmSuspendBody:
+        "Suspendre ce membre de l'équipe ? Il perdra l'accès jusqu'à sa réactivation.",
+      confirmSuspendAction: "Oui, suspendre",
+      confirmRemoveBody:
+        "Retirer ce membre de l'équipe ? Cela met fin à son accès et ne peut pas être annulé ici.",
+      confirmRemoveAction: "Oui, retirer",
+      changeRoleAction: "Changer le rôle",
+      newRoleLabel: "Nouveau rôle",
       readError: {
         title: "Impossible de charger votre équipe",
         body: "Une erreur s'est produite lors du chargement de votre équipe. Veuillez réessayer.",
       },
+    },
+    invitationAccept: {
+      title: "Invitation à l'équipe",
+      description: "Acceptez votre invitation à rejoindre l'équipe de cette entreprise.",
+      acceptAction: "Accepter l'invitation",
+      accepting: "Acceptation de votre invitation…",
+      successTitle: "Vous faites partie de l'équipe",
+      successBody:
+        "Votre invitation a été acceptée. Vous pouvez maintenant ouvrir le tableau de bord de l'entreprise.",
+      openDashboard: "Ouvrir le tableau de bord",
+      missingReferenceTitle: "Ce lien d'invitation est incomplet",
+      missingReferenceBody:
+        "Le lien d'invitation ne contient pas sa référence. Veuillez vérifier le lien et réessayer.",
     },
     integrityError: {
       title: "Un problème est survenu",
