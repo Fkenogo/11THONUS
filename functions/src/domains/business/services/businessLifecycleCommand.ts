@@ -92,8 +92,13 @@ import { getCurrentlyRequiredBusinessTermsVersionInTransaction } from "../reposi
  * one (`DEC-LEGAL-002` remains open, Phase Q) — and
  * (`currentBusinessTermsNotAcceptedError`) if the Business's owner has
  * never accepted the current version, or only accepted an older one.
+ *
+ * Exported for reuse by `businessActivationCommand.ts`
+ * (`PLATFORM-BASELINE-003`): activation revalidates the same precondition
+ * in its own transaction rather than duplicating the version/acceptance
+ * reads or their TOCTOU shape.
  */
-async function assertCurrentBusinessTermsAccepted(
+export async function assertCurrentBusinessTermsAccepted(
   transaction: Transaction,
   db: Firestore,
   business: Business,

@@ -5,6 +5,7 @@ import {
   checkAndReserveIdempotencyKey,
   checkIdempotency,
   completeIdempotencyKey,
+  completeIdempotencyKeyInTransaction,
   failIdempotencyKey,
 } from "./idempotencyService";
 
@@ -176,5 +177,49 @@ describe("checkAndReserveIdempotencyKey — atomic claim", () => {
     // ("in_progress", since the winner hasn't completed yet by the time
     // both transactions have settled).
     expect(outcomes).toEqual(["acquired", "in_progress"]);
+  });
+});
+
+describe("completeIdempotencyKeyInTransaction — atomic completion (PLATFORM-BASELINE-003-CORR-001)", () => {
+  it("commits the completion when the enclosing transaction commits", async () => {
+    await checkAndReserveIdempotencyKey(db, {
+      idempotencyKey: "key-txn-commit",
+      operationType: "business.activateAfterVerification",
+      actorId: "actor-1",
+      requestHash: "hash-1",
+      correlationId: "corr-1",
+    });
+
+    await db.runTransaction(async (transaction) => {
+      completeIdempotencyKeyInTransaction(transaction, db, "key-txn-commit", "businesses/biz-1", {
+        businessId: "biz-1",
+      });
+    });
+
+    const stored = await db.collection("idempotencyRecords").doc("key-txn-commit").get();
+    expect(stored.data()?.["status"]).toBe("completed");
+    expect(stored.data()?.["resultReference"]).toBe("businesses/biz-1");
+    expect(stored.data()?.["responseSnapshot"]).toEqual({ businessId: "biz-1" });
+  });
+
+  it("stages nothing durable when the enclosing transaction aborts after staging the write", async () => {
+    await checkAndReserveIdempotencyKey(db, {
+      idempotencyKey: "key-txn-abort",
+      operationType: "business.activateAfterVerification",
+      actorId: "actor-1",
+      requestHash: "hash-1",
+      correlationId: "corr-1",
+    });
+
+    await expect(
+      db.runTransaction(async (transaction) => {
+        completeIdempotencyKeyInTransaction(transaction, db, "key-txn-abort");
+        throw new Error("forced-abort-after-staging");
+      }),
+    ).rejects.toThrow("forced-abort-after-staging");
+
+    const stored = await db.collection("idempotencyRecords").doc("key-txn-abort").get();
+    expect(stored.data()?.["status"]).toBe("processing");
+    expect(stored.data()?.["completedAt"]).toBeUndefined();
   });
 });

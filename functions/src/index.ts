@@ -70,6 +70,10 @@ import {
   submitBusinessForVerificationCommand,
   closeBusinessCommand,
 } from "./domains/business/services/businessLifecycleCommand";
+import {
+  handleActivateBusinessAfterVerification,
+  type ActivateBusinessAfterVerificationRequest,
+} from "./domains/business/services/businessActivationEndpointService";
 import { AuthorizeAndExecuteError } from "./domains/permissions/service/authorizeAndExecute";
 import { PermissionDomainError } from "./domains/permissions/models/permissionErrors";
 import { CommerceKnowledgeDomainError } from "./domains/commerceKnowledge/models/commerceKnowledgeErrors";
@@ -847,6 +851,49 @@ export const closeBusiness = onCall(async (request) => {
       correlationId: randomUUID(),
       now: new Date(),
       newId: randomUUID,
+    });
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+/**
+ * Whitelist parser (`PLATFORM-BASELINE-003`, mass-assignment boundary):
+ * only `rawToken`/`referenceType`/`businessId`/`idempotencyKey` are read off
+ * `data` — any other key a client sends (`adminUserId`, `role`,
+ * `targetStatus`, or anything else) is silently dropped here, never
+ * reaching the endpoint service. The activating administrator is always
+ * the server-resolved caller and the target status is always `trial`;
+ * neither is expressible in this request by construction.
+ */
+function parseActivateBusinessAfterVerificationRequest(
+  data: unknown,
+): ActivateBusinessAfterVerificationRequest {
+  const value = (data ?? {}) as Record<string, unknown>;
+  return {
+    rawToken: parseRawToken(value.rawToken),
+    referenceType: parseReferenceType(value.referenceType),
+    businessId: parseBusinessId(value.businessId),
+    idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+  };
+}
+
+/**
+ * `activateBusinessAfterVerification` (`PLATFORM-BASELINE-003`,
+ * `FD-BUS-ACT-001`) — the sole `pending_verification → trial` integration.
+ * No target-status parameter exists on the request — the transition is
+ * fixed server-side. Authority is Platform-Administrator-only (active
+ * administrator record + verified second-factor evidence, both resolved
+ * server-side from the verified credential); Business owner/manager/staff
+ * roles confer nothing here. Returns the command's own outcome contract
+ * (`executed`/`denied`/`duplicate`/`in_progress`) unchanged.
+ */
+export const activateBusinessAfterVerification = onCall(async (request) => {
+  const parsed = parseActivateBusinessAfterVerificationRequest(request.data);
+  const db = getFirestore(getAdminApp());
+  try {
+    return await handleActivateBusinessAfterVerification(db, parsed, {
+      verifier: firebaseAdminTokenVerifier(),
     });
   } catch (error) {
     throw toHttpsError(error);
