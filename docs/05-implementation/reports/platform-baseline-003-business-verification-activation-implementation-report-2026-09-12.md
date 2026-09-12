@@ -155,11 +155,11 @@ None: no new collection/field/index; no PostgreSQL table; no dual-write. Reuses 
 
 ## 32. PR number
 
-_To be recorded after opening._
+[#248](https://github.com/Fkenogo/11THONUS/pull/248) — opened after successful local validation. Not merged, per instruction.
 
 ## 33. Exact PR head SHA
 
-_To be recorded after opening._
+Substantive implementation commit: `869d5f5260a5602e4c0a8088ab0dbdd321df11fd`. Any commit after it contains only this report's PR-number/head-SHA/CI notes (no code change); the exact reviewed head is the branch tip at review time.
 
 ## 34. Markdown implementation report
 
