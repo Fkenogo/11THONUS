@@ -383,6 +383,18 @@ Legend: fields with **—** are intentionally blank (OPEN records have no Final 
 - Risks if unresolved: none for MVP · Final decision: — · Decision date: — · Approved by: —
 - Implementation consequences: none now · Document corrections required: none now · Notes: founder agenda Batch D
 
+**DEC-BUS-ACT-001 — Business Verification and Activation Authority (`FD-BUS-ACT-001`)**
+- Category: Product · Status: **CONFIRMED** · Priority: **D1**
+- Decision question: Who may move a Business from `pending_verification` to `trial`, under what preconditions, and with what attestation/idempotency/audit semantics?
+- Context: the `pending_verification → trial` structural edge exists (`businessStatus.ts`) but no production path executed it and no register entry governed the trigger or authority; trial mechanics themselves remain ungoverned (`DEC-SUB-003`, OPEN_FOUNDER).
+- Options identified: the Founder disposition below as stated (no alternative evaluated in-register; engineering implements it as recorded).
+- Current confirmed position: **Approved as stated in Final decision.**
+- Founder decision required: Yes (recorded) · Decision owner: Founder · Required by phase: Phase 2 (Business onboarding/activation, before Business participation depends upon it) · Blocks: unblocks `PLATFORM-BASELINE-003` implementation within its stated scope exclusions
+- Affected documents: none amended by this recording · Affected domains: Business, Platform Administration, Identity
+- Source references: `PLATFORM-BASELINE-003` task brief (`FD-BUS-ACT-001`) · Dependencies: `DEC-IDENTITY-001` (identity lifecycle, unchanged), `DEC-AUTH-002` (provider-independent authentication, unchanged), `DEC-SEC-002` (platform-administrator MFA requirement, unchanged), `DEC-SUB-003` (trial mechanics — explicitly out of scope here, unchanged) · Risks if unresolved: n/a — resolved by this entry
+- Final decision: *"Only an authorized Platform Administrator may activate a Business from `pending_verification` to `trial`. Business self-activation (owner/manager/staff) is prohibited, as is activation by any ordinary customer identity. The administrator's explicit activation action is the MVP verification attestation — no documentary, registry, provider, scoring, or workflow mechanism is authorized. Activation requires the Business to exist in exactly `pending_verification` and the current owner to have accepted the currently-required Business Terms version (rechecked at activation time, including across Terms-version changes). The operation is idempotent, auditable (actor, Business, from/to statuses, timestamps, correlation), and fail-closed. Target is fixed to `trial`. Trial commercial mechanics (duration, allowances, plans, expiry automation) remain out of scope."* · Decision date: 2026-09-12 · Approved by: Founder
+- Implementation consequences: authorises `PLATFORM-BASELINE-003` implementation within the decision's own scope exclusions (no trial mechanics, Reward Program, Purchase, verification/Verified Units, Loyalty Cycle, Reward, Redemption, subscription enforcement, or UI beyond a minimal admin surface if needed) · Document corrections required: none beyond this entry · Notes: history preserved, not rewritten; role-scoping activation to a future business-operations administrator role awaits its own Founder disposition and is not inferred here.
+
 ---
 
 ### LOYALTY AND REWARDS (DEC-LOY)
@@ -1387,7 +1399,7 @@ Legend: fields with **—** are intentionally blank (OPEN records have no Final 
 
 | Status | Count |
 |---|---|
-| CONFIRMED | 48 |
+| CONFIRMED | 49 |
 | OPEN_FOUNDER | 22 |
 | OPEN_ENGINEERING | 12 |
 | OPEN_PROVIDER | 5 |
@@ -1395,7 +1407,7 @@ Legend: fields with **—** are intentionally blank (OPEN records have no Final 
 | DEFERRED | 10 |
 | SUPERSEDED | 4 |
 | REJECTED | 0 (no option in the suite was explicitly considered and rejected outright; exclusions are DEFERRED per TRD22) |
-| **Total records** | **108** (adds `DEC-CUST-ID-ART-001`, recorded 2026-09-11 per `PLATFORM-BASELINE-002`; previously added `DEC-SEC-005`, recorded 2026-09-07 per `AUTH-MFA-003D-FD-001`; adds `DEC-SEC-004`, recorded 2026-09-04 per `AUTH-MFA-002-CLOSE-001`; previously added `DEC-AUTH-001`, 2026-08-07 per `AUTH-P0-001`; `DEC-PROV-004` and `DEC-SEC-001` remain CONFIRMED and are not double-counted — they were amended in place, not superseded) |
+| **Total records** | **109** (adds `DEC-BUS-ACT-001`, recorded 2026-09-12 per `PLATFORM-BASELINE-003`; previously added `DEC-CUST-ID-ART-001`, recorded 2026-09-11 per `PLATFORM-BASELINE-002`; previously added `DEC-SEC-005`, recorded 2026-09-07 per `AUTH-MFA-003D-FD-001`; adds `DEC-SEC-004`, recorded 2026-09-04 per `AUTH-MFA-002-CLOSE-001`; previously added `DEC-AUTH-001`, 2026-08-07 per `AUTH-P0-001`; `DEC-PROV-004` and `DEC-SEC-001` remain CONFIRMED and are not double-counted — they were amended in place, not superseded) |
 
 Freeze blockers (D0 × 4): DEC-GOV-001 (document hierarchy), DEC-GOV-006 (ID renumbering approval), DEC-LOY-010 (batch rejection), DEC-DATA-003 (Purchase Record monetary fields).
 

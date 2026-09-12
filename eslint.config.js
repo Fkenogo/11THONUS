@@ -365,6 +365,16 @@ export default tseslint.config(
       // — same precedent as the emulator tests immediately above, an
       // emulator test file, not a new exception category.
       "functions/src/domains/business/services/businessOnboardingJourney.emulator.test.ts",
+      // `PLATFORM-BASELINE-003`: the Platform-Administrator-authorized
+      // Business activation command, its endpoint composition, and its
+      // emulator test — each composes the repositories above (already
+      // Firebase-adapter-capable) to run a server-side Firestore
+      // transaction — same exemption reasoning, not a new exception
+      // category.
+      "functions/src/domains/business/services/businessActivationCommand.ts",
+      "functions/src/domains/business/services/businessActivationCommand.emulator.test.ts",
+      "functions/src/domains/business/services/businessActivationEndpointService.ts",
+      "functions/src/domains/business/services/businessActivationEndpointService.emulator.test.ts",
     ],
     languageOptions: {
       ecmaVersion: 2023,
