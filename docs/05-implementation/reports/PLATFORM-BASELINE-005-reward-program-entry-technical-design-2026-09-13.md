@@ -354,7 +354,7 @@ Minimum governed MVP fields (TRD10 §10.9.2, cross-checked against §6's matrix)
 | `business_id` | `TEXT NOT NULL` | Firestore Business id; indexed, not FK (cross-store) |
 | `display_name` | `TEXT NOT NULL` | Business-authored free text |
 | `reward_program_category_id` | `TEXT NOT NULL` | Firestore `KnowledgeNode` id, type `reward_program_category`; indexed |
-| `shared_loyalty_number_allowed` | `BOOLEAN NOT NULL DEFAULT false` | Program-level policy fact |
+| `shared_loyalty_number_allowed` | `BOOLEAN NOT NULL DEFAULT false` | **[Corrected by `REVIEW-FINDINGS-001`]** Current-value convenience projection only — **not the historical authority**. Mirrors whatever value is in force in the program's `current_version_id` row at the time of the last projection update. Never read by any command that needs the value that governed a specific historical Purchase/Cycle — see `reward_program_versions.shared_loyalty_number_allowed` below for that. |
 | `status` | `TEXT NOT NULL CHECK (status IN ('draft','active','paused','retired','archived'))` | §12 enum |
 | `current_version_id` | `UUID NULL REFERENCES reward_program_versions(id)` | Nullable until first publish; FK deferred/nullable to avoid a circular-creation ordering problem (create program row without a version first, then the version references the program, then update this pointer) |
 | `created_at` | `TIMESTAMPTZ NOT NULL DEFAULT now()` | |
@@ -375,6 +375,7 @@ Minimum governed MVP fields (TRD10 §10.9.2, cross-checked against §6's matrix)
 | `version` | `INTEGER NOT NULL` | Monotonic per program |
 | `required_verified_units` | `INTEGER NOT NULL CHECK (required_verified_units = 10)` | Fixed platform rule, enforced at the database layer, not merely application-layer (§6) |
 | `reward_quantity` | `INTEGER NOT NULL CHECK (reward_quantity = 1)` | Fixed platform rule, enforced at the database layer |
+| `shared_loyalty_number_allowed` | `BOOLEAN NOT NULL` | **[Added by `REVIEW-FINDINGS-001`]** Authoritative, immutable per-version snapshot — matches TRD10 §10.9.2's `RewardProgramVersionDocument.sharedLoyaltyNumberAllowed`. A historical Purchase/Loyalty Cycle referencing this version reads the policy from here, never from `reward_programs`'s current-value projection. |
 | `reward_description` | `TEXT NOT NULL` | |
 | `standard_reward_node_id` | `TEXT NULL` | Optional Commerce Knowledge reference |
 | `multiple_units_allowed` | `BOOLEAN NOT NULL DEFAULT true` | |
@@ -786,7 +787,7 @@ Together, these two already-canonical facts entail "at most one active version p
 
 - **Draft creation:** every qualifying node reference and the category/reward-node reference must be `active` and of the correct type at the moment they are added (`isEligibleForNewReference`, reused unmodified). A reference to a non-`active` or wrong-type node is rejected at creation.
 - **Draft editing:** the same `active`-type check applies **only to node references being newly added or changed in that specific edit** — an edit to an unrelated field (e.g. `rewardDescription`) does **not** force re-validation of node references that were already present and untouched. The draft is not yet a durable historical fact, so a node quietly going stale in an untouched, already-selected slot is inert until the draft reaches the one operation that actually matters:
-- **Publish (the authoritative operation boundary):** every qualifying node, the category node, and the optional reward node in the version being published are **re-validated as `active`** at that instant, regardless of whether they were touched since the draft was created. This closes the exact TOCTOU gap `businessProfileCommand.ts` already closes for Business-level Commerce Knowledge references. **If any referenced node is not `active` at publish time, the publish is rejected** (fail-closed) — the Business must update the draft (remove or replace the stale reference) before publishing successfully.
+- **Publish (the authoritative operation boundary):** every qualifying node, the category node, and the optional reward node in the version being published are **re-validated as `active`** via an authoritative Firestore read immediately before publication. **[Corrected by `REVIEW-FINDINGS-001` — see that section below for the exact, honestly-scoped semantic contract. The Firestore read is NOT part of the PostgreSQL transaction's conflict set — do not read this bullet as claiming atomic, distributed fail-closed consistency; it is server-authoritative validation with a disclosed, bounded cross-store race window.]** If any referenced node is not `active` at the moment of that validation read, the publish is rejected — the Business must update the draft (remove or replace the stale reference) before publishing successfully.
 - **Historical read:** once published, a version's node references remain valid and resolvable forever via `isResolvableForExistingReference` (`active`/`retired`/`archived` all resolve) — **a historical published version is never invalidated merely because a referenced node later becomes inactive**, exactly as the task requires and exactly as TRD10's Version Integrity Rule already implies.
 
 **No cross-store PostgreSQL foreign key is required or proposed** — every check above is a synchronous Firestore read performed by the command layer at the two moments that matter (add-time, publish-time), never a database-level constraint spanning two heterogeneous stores.
@@ -871,8 +872,74 @@ Both dispositions **confirm, rather than alter,** the exact `PLATFORM-BASELINE-0
 
 ---
 
+# Final PR Review Findings Resolution — `PLATFORM-BASELINE-005-REVIEW-FINDINGS-001` (2026-09-13)
+
+PR #250's automated review (`chatgpt-codex-connector[bot]`, against head `a6a6dac`) raised three findings, all confirmed valid against actual repository code/authority before correcting. This section is the disposition record; the specific inaccurate claims in §14/§22/CORR-001.6/CORR-001.7 above have also been corrected in place (see the inline `[Corrected by REVIEW-FINDINGS-001]` markers).
+
+## RF-1 — Permission evaluator integration (P1, CONFIRMED VALID)
+
+**Verified directly against `functions/src/domains/permissions/evaluator/evaluatePermission.ts`:** `classifyPermission` returns exactly `"sensitive" | "ordinary" | "unknown"` via `isSensitivePermission`/`isOrdinaryPermission`; the Owner floor (line ~279) is gated on `isSensitivePermission` specifically, not on any third class; the ordinary branch (line ~304) only recognizes `isOrdinaryPermission`; every other permission falls through to the final `NO_APPLICABLE_GRANT` deny. **A `rewardProgram.manage` permission declared in a brand-new, separate catalogue module, exactly as originally designed, would therefore be denied for every actor, including the Owner** — the finding is correct as stated.
+
+**Resolution — actual code determines the answer, not convenience:** `rewardProgram.manage`'s finalized shape (Owner: allow, Manager: deny, Staff: deny, no explicit-grant/override path, per-permission `eligibleBusinessStatuses`) is **structurally identical** to `ordinaryPermissionCatalogue.ts`'s existing four entries. However, that specific table is a closed set the Founder previously approved to hold exactly those four ids (`FD-CORR-3`) — appending to it would re-open that specific closed instrument for an unrelated purpose, which is exactly the friction the original design's separate-catalogue choice was trying to avoid (CORR-001.6). **The corrected design keeps the separate `rewardProgramPermissionCatalogue.ts` module, and adds the smallest possible third classification path to the evaluator, mirroring the existing ordinary-permission branch's own logic exactly (no new algorithm, no new evaluation order, no broad redesign):**
+
+1. **Declaration:** `functions/src/domains/permissions/models/rewardProgramPermissionCatalogue.ts` (new file) — same entry shape as `OrdinaryPermissionCatalogueEntry` (`id`, `roleDefaults: Record<Role, boolean>`, `eligibleBusinessStatuses: readonly BusinessLifecycleStatus[]`), containing exactly one entry: `rewardProgram.manage` (`roleDefaults: {owner: true, manager: false, staff: false}`, `eligibleBusinessStatuses: ["trial", "active"]`). **Correction to this design's own earlier assumption:** `permissionId.ts` defines `PermissionId` as `string`, validated only by shape (`PERMISSION_ID_PATTERN`, a dot-namespaced lowercase-leading identifier) — it is deliberately *not* a closed enum (its own header comment: "not a closed universal enum ... would invent identifiers no governed document defines"). `rewardProgram.manage` already satisfies that shape; **no change to `permissionId.ts` is needed at all**, only to the evaluator and the new catalogue module.
+2. **Classification:** `evaluatePermission.ts`'s `classifyPermission` gains a third branch returning `"rewardProgram"` when `isRewardProgramPermission(permission)` is true (a new exported predicate on the new catalogue module, mirroring `isOrdinaryPermission`'s exact shape).
+3. **Recognition/authorization:** a new branch is inserted immediately after the existing ordinary-permission branch (both have no override/inheritance mechanism, so both resolve and return before the override-resolution steps below them): `if (isRewardProgramPermission(permission)) { look up the entry; if roleDefaults[role] is true, allow with reasonCode "ROLE_DEFAULT_ALLOW"; otherwise deny with "NO_APPLICABLE_GRANT" }` — this is a verbatim structural copy of the existing ordinary-permission branch (lines ~304–315), not a new authorization algorithm.
+4. **Owner-only enforcement:** since `roleDefaults.owner = true` and `roleDefaults.manager = roleDefaults.staff = false`, only the Owner is ever allowed — matching `CORR-001.5`'s disposition exactly, enforced the same mechanical way `business.updateProfile`'s Owner-only shape already is.
+5. **Unknown permissions still fail closed:** the final fallthrough `deny(now, "NO_APPLICABLE_GRANT", ...)` at the end of `evaluatePermission.ts` is completely untouched — a permission that is none of sensitive, ordinary, or reward-program still denies exactly as it does today. The structural-separation invariant (`ordinaryPermissionCatalogue.ts`'s own module-load-time check that no id is claimed by two catalogues) is mirrored for the new module against both existing catalogues.
+
+**This is a small, mechanical, three-branch addition to an existing pure function — not a permission-framework redesign.** `PLATFORM-BASELINE-005A`'s scope now explicitly includes this evaluator change as a required deliverable (§CORR-001.11 is updated by reference — see the final scope below).
+
+## RF-2 — Version-level snapshot of `sharedLoyaltyNumberAllowed` (P1, CONFIRMED VALID)
+
+**Verified directly against TRD10 §10.9.2:** `RewardProgramVersionDocument` includes `sharedLoyaltyNumberAllowed: boolean` as one of its fields — the original design's §11 "minor simplification" (keeping it program-level only) was a genuine, undisclosed departure from the cited authority, not a neutral simplification. The finding is correct: without a version-level snapshot, a historical Purchase/Loyalty Cycle referencing an old version could not recover the policy that actually governed it once a Business changes the policy for a later version — the current-program-row value would incorrectly retroactively apply.
+
+**Resolution:** `shared_loyalty_number_allowed` is now **authoritatively owned by `reward_program_versions`** (added to the schema table above, matching TRD10 exactly), snapshotted immutably at each version's creation. The `reward_programs` table retains its own `shared_loyalty_number_allowed` column, but it is now explicitly labeled a **current-value convenience projection only** (updated whenever a new version publishes, for cheap "does this program currently allow shared numbers" reads) — **no command in this design reads it as historical authority; every command needing the value that governed a specific version reads `reward_program_versions.shared_loyalty_number_allowed` for that version's row.**
+
+**Re-audit of every other field for the same class of error, per the task's explicit instruction:** every other version-level field already listed in §22's `reward_program_versions` table (`required_verified_units`, `reward_quantity`, `reward_description`, `standard_reward_node_id`, `multiple_units_allowed`, `bulk_review_threshold`, `effective_from`, `effective_until`, plus the qualifying-nodes junction table) was already correctly version-scoped in the original design — cross-checked against TRD10 §10.9.2's full field list, `sharedLoyaltyNumberAllowed` was the **only** field TRD10 places on `RewardProgramVersionDocument` that this design had incorrectly left off it. `display_name` and `reward_program_category_id` remain correctly program-level-only, matching TRD10 §10.9.1 exactly (TRD10 itself does not version either field — they are identity/display metadata, not commercial terms a historical Purchase/Cycle needs to reinterpret). **No other field required correction; this re-audit does not broaden into a schema redesign.**
+
+## RF-3 — Cross-store publication race — accurate semantic contract (P2, CONFIRMED VALID)
+
+**Verified directly:** a Firestore read performed by application code before or during a PostgreSQL transaction is not part of that PostgreSQL transaction's conflict-detection/isolation mechanism — the two systems have no shared transaction coordinator. The original design's §15/CORR-001.7 language ("closes the exact TOCTOU gap `businessProfileCommand.ts` already closes") was inaccurate: `businessClassificationValidation.ts`'s pattern reads and writes **inside one Firestore transaction**, so Firestore's own optimistic-concurrency retry genuinely closes that gap — the cross-store case has no equivalent mechanism, so the finding is correct that the original claim overstated what publish-time re-validation actually guarantees.
+
+**Resolution — the minimum truthful contract, no new coordination mechanism, no distributed transaction or lock, per the task's explicit instruction:**
+
+- **(A)** Before publishing a Reward Program version, the server performs an authoritative Firestore read of every Commerce Knowledge reference required for publication (every qualifying node, the category node, the optional reward node).
+- **(B)** The server validates the governed conditions against that read — correct `nodeType` and `active` status (`isEligibleForNewReference`, reused unmodified) — for every reference.
+- **(C)** Where the Firestore repository layer makes it available, the validation captures the read's evidence (e.g. the document's `updatedAt`/version field, and the server's own authoritative-read timestamp) as part of the command's audit/outbox payload — for diagnostic/reconciliation traceability only, not as a distributed-consistency mechanism.
+- **(D)** Only after every reference passes validation does the server begin the PostgreSQL publication transaction.
+- **(E)** That PostgreSQL transaction atomically owns exactly: the version's `draft → active` transition, the prior version's `active → superseded` transition, the `current_version_id` pointer update, idempotency completion, and the audit/outbox write — all in one `withPlatformTransaction` call, unchanged from §26/§27's design.
+- **(F)** The Firestore validation read is explicitly **not** part of that PostgreSQL transaction's conflict set — this design makes no claim otherwise.
+- **(G)** **The bounded cross-store race is explicitly documented:** a Commerce Knowledge node may be retired between the authoritative validation read (A) and the PostgreSQL commit (E). This window is real, is not eliminated by this design, and is disclosed rather than hidden.
+- **(H)** **Semantic boundary, consistent with the design's own already-adopted historical-immutability rule (CORR-001.7's last bullet):** a version that passed authoritative validation at its publication-validation point is **not retroactively invalidated** merely because the referenced node was retired microseconds later, during the race window, or at any point after publication. This is not a special case invented for the race window — it is the exact same rule this design already applies to every published version's entire remaining lifetime (a node retiring the day after publication has never been treated as invalidating that version, per §15/CORR-001.7); the race window is simply the earliest possible instant that same already-accepted rule could apply.
+- **(I)** This is accurately described as **"server-authoritative publish-time validation with a disclosed bounded cross-store race window"** — not strict distributed fail-closed consistency, and this design makes no claim to the contrary anywhere after this correction.
+- **(J)** **No conflict with existing authority was found** requiring a STOP — this semantic contract is fully consistent with TRD10's own Version Integrity Rule and this design's own historical-immutability principle; it does not weaken either, it simply describes accurately what a cross-store validation-then-write pattern can and cannot guarantee. No distributed transaction, distributed lock, or new coordination service is introduced.
+
+## Review-thread disposition
+
+All three findings were verified against actual repository code/authority before the report was corrected (not accepted or dismissed on their text alone), the specific inaccurate claims were fixed in place (§14/§22/CORR-001.6/CORR-001.7, plus this section), replies were posted on each thread citing the exact correction, and each thread was marked resolved only after the report change was pushed — never before.
+
+## Updated `PLATFORM-BASELINE-005A` scope (supersedes `CORR-001.11`'s list, same shape, three additions)
+
+- PostgreSQL Reward Program schema (`reward_programs`) — unchanged.
+- PostgreSQL Reward Program **version** schema (`reward_program_versions`), **now including `shared_loyalty_number_allowed` as an authoritative version-level snapshot** (RF-2).
+- Qualifying-node junction table — unchanged.
+- **`rewardProgramPermissionCatalogue.ts` + the corresponding three-branch `evaluatePermission.ts` classification/authorization addition (RF-1)** — now an explicit, required part of 005A's scope, not assumed.
+- Owner-only first-cut management (`rewardProgram.manage`, enforced via the RF-1 evaluator path).
+- Membership-gated reads (`getRewardProgram`/`listRewardPrograms`) — unchanged, no permission entry.
+- `createRewardProgram`, `updateRewardProgramDraft`, `publishRewardProgramVersion`, `createNextRewardProgramVersion` — unchanged command set (still excludes pause/retire/archive per `FOUNDER-DISPOSITION-001`/FD-2).
+- Publish-time Commerce Knowledge validation, **now documented with the accurate RF-3 semantic contract** (server-authoritative, disclosed bounded race window — not distributed-atomic).
+- PostgreSQL-atomic idempotency and audit/outbox — unchanged.
+- Minimal Business configuration UI — unchanged.
+- Tests per §33, extended to cover the RF-1 evaluator branch and RF-2's version-vs-projection distinction.
+- Local Founder preview using Firebase emulators + local PostgreSQL — unchanged.
+
+**Still excluded, unchanged:** pause, retire, archive, Purchase, Verification, Verified Units, Loyalty Cycle, Reward issuance, Redemption, overflow handling, plan-capacity enforcement, billing/commercial accounting.
+
+---
+
 ## FINAL DISPOSITION
 
-**PLATFORM-BASELINE-005 — DESIGN APPROVED / MERGED / CLOSED**
+**PLATFORM-BASELINE-005 — DESIGN APPROVED / REVIEW FINDINGS CLOSED / MERGED / CLOSED**
 
-No implementation was performed by this design package. No decision-register modification. `PLATFORM-BASELINE-005A` may now proceed exactly within the scope recorded in `CORR-001.11` and reconfirmed by `FOUNDER-DISPOSITION-001` above, in a separate, future implementation task.
+No implementation was performed by this design package. No decision-register modification. No CORR-002 was created — this section resolves standing PR review findings against the existing report in place. `PLATFORM-BASELINE-005A` may now proceed exactly within the scope recorded above, in a separate, future implementation task.
