@@ -114,6 +114,21 @@ import {
   type InvitationStatus,
 } from "./domains/permissions/models/invitationStatus";
 import { discoverPlatformAdministrator as discoverPlatformAdministratorRead } from "./domains/platformAdministration/services/discoverPlatformAdministrator";
+import { loadPostgresConfig } from "./infrastructure/postgres/postgresConfig";
+import {
+  createPostgresPool,
+  type PlatformPostgresPool,
+} from "./infrastructure/postgres/postgresPool";
+import { RewardProgramDomainError } from "./domains/rewardProgram/models/rewardProgramErrors";
+import { createRewardProgram as createRewardProgramCommand } from "./domains/rewardProgram/services/createRewardProgramCommand";
+import { updateRewardProgramDraft as updateRewardProgramDraftCommand } from "./domains/rewardProgram/services/updateRewardProgramDraftCommand";
+import { publishRewardProgramVersion as publishRewardProgramVersionCommand } from "./domains/rewardProgram/services/publishRewardProgramVersionCommand";
+import { createNextRewardProgramVersion as createNextRewardProgramVersionCommand } from "./domains/rewardProgram/services/createNextRewardProgramVersionCommand";
+import {
+  getRewardProgram as getRewardProgramQuery,
+  listRewardPrograms as listRewardProgramsQuery,
+} from "./domains/rewardProgram/services/rewardProgramQueries";
+import type { QualifyingNode } from "./domains/rewardProgram/models/rewardProgram";
 
 setGlobalOptions({ region: PLATFORM_REGION, maxInstances: 10 });
 
@@ -121,6 +136,21 @@ setGlobalOptions({ region: PLATFORM_REGION, maxInstances: 10 });
 // domain service added in later work packages can call `getAdminApp()`
 // and reuse the same instance rather than re-initializing.
 getAdminApp();
+
+// Lazy PostgreSQL pool singleton (`PLATFORM-BASELINE-005A`) -- mirrors
+// `getAdminApp()`'s own lazy-singleton convention above. Not created at
+// module load (unlike the Admin SDK app) because `loadPostgresConfig()`
+// throws in a misconfigured `production` environment with no
+// `PLATFORM_POSTGRES_URL` -- deferred to first actual use so a Functions
+// instance that never calls a Reward Program callable never pays that
+// cost or that fail-closed check.
+let rewardProgramPostgresPool: PlatformPostgresPool | undefined;
+function getRewardProgramPostgresPool(): PlatformPostgresPool {
+  if (!rewardProgramPostgresPool) {
+    rewardProgramPostgresPool = createPostgresPool(loadPostgresConfig());
+  }
+  return rewardProgramPostgresPool;
+}
 
 export const ping = onRequest((_request, response) => {
   response.status(200).json({ status: "ok" });
@@ -206,6 +236,14 @@ function toHttpsError(error: unknown): HttpsError {
     return new HttpsError(
       CATEGORY_TO_HTTPS[error.category] ?? "internal",
       "platform_administration_failed",
+    );
+  }
+  if (error instanceof RewardProgramDomainError) {
+    // Never echoes the domain message (same posture as every other domain
+    // mapping above) -- a single stable client message per code.
+    return new HttpsError(
+      CATEGORY_TO_HTTPS[error.category] ?? "internal",
+      "reward_program_command_failed",
     );
   }
   return new HttpsError("internal", "authentication_failed");
@@ -1479,6 +1517,260 @@ export const acceptBusinessTerms = onCall(async (request) => {
       correlationId: randomUUID(),
       now: new Date(),
       newId: randomUUID,
+    });
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Reward Program (`PLATFORM-BASELINE-005A`).
+//
+// PostgreSQL-authoritative (Founder-confirmed,
+// `PLATFORM-BASELINE-005-FOUNDER-DISPOSITION-001` FD-1) -- these six
+// callables are the transport boundary only; every domain command lives in
+// `domains/rewardProgram/services/`. Every whitelist parser below reads
+// exactly the fields the approved design governs -- no fixed value
+// (`requiredVerifiedUnits`/`rewardQuantity`), server-generated id, or actor
+// field is ever accepted from client input.
+// ---------------------------------------------------------------------------
+
+function parseIsoDate(value: unknown, field: string): Date {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new HttpsError("invalid-argument", "reward_program_command_failed", { field });
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new HttpsError("invalid-argument", "reward_program_command_failed", { field });
+  }
+  return parsed;
+}
+
+function parseOptionalIsoDate(value: unknown, field: string): Date | undefined {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  return parseIsoDate(value, field);
+}
+
+function parseQualifyingNodes(value: unknown): QualifyingNode[] {
+  if (!Array.isArray(value)) {
+    throw new HttpsError("invalid-argument", "reward_program_command_failed", {
+      field: "qualifyingNodes",
+    });
+  }
+  return value.map((entry) => {
+    const record = (entry ?? {}) as Record<string, unknown>;
+    return {
+      knowledgeNodeId: parseNonEmptyString(record.knowledgeNodeId),
+      businessDisplayName:
+        record.businessDisplayName === undefined || record.businessDisplayName === null
+          ? null
+          : parseNonEmptyString(record.businessDisplayName),
+    };
+  });
+}
+
+function parseRewardProgramDraftFields(value: Record<string, unknown>): {
+  rewardDescription: string;
+  standardRewardNodeId?: string | null;
+  multipleUnitsAllowed: boolean;
+  sharedLoyaltyNumberAllowed: boolean;
+  bulkReviewThreshold?: number | null;
+  effectiveFrom: Date;
+  effectiveUntil?: Date | null;
+  qualifyingNodes: QualifyingNode[];
+} {
+  return {
+    rewardDescription: parseNonEmptyString(value.rewardDescription),
+    standardRewardNodeId:
+      value.standardRewardNodeId === undefined || value.standardRewardNodeId === null
+        ? null
+        : parseNonEmptyString(value.standardRewardNodeId),
+    multipleUnitsAllowed: Boolean(value.multipleUnitsAllowed),
+    sharedLoyaltyNumberAllowed: Boolean(value.sharedLoyaltyNumberAllowed),
+    bulkReviewThreshold:
+      value.bulkReviewThreshold === undefined || value.bulkReviewThreshold === null
+        ? null
+        : Number(value.bulkReviewThreshold),
+    effectiveFrom: parseIsoDate(value.effectiveFrom, "effectiveFrom"),
+    effectiveUntil: parseOptionalIsoDate(value.effectiveUntil, "effectiveUntil") ?? null,
+    qualifyingNodes: parseQualifyingNodes(value.qualifyingNodes ?? []),
+  };
+}
+
+/**
+ * Whitelist parser (`PLATFORM-BASELINE-005A`): only `businessId`,
+ * `displayName`, `rewardProgramCategoryId`, and the draft-editable fields
+ * are read off `data`. `requiredVerifiedUnits`/`rewardQuantity`/`status`/
+ * any server-generated id are structurally absent -- the command derives
+ * the two fixed values server-side (`FIXED_REQUIRED_VERIFIED_UNITS`,
+ * `FIXED_REWARD_QUANTITY`) regardless of anything the client sends.
+ * Exported only for the mass-assignment regression test in `index.test.ts`.
+ */
+export function parseCreateRewardProgramRequest(value: Record<string, unknown>) {
+  return {
+    businessId: parseBusinessId(value.businessId),
+    displayName: parseNonEmptyString(value.displayName),
+    rewardProgramCategoryId: parseNonEmptyString(value.rewardProgramCategoryId),
+    ...parseRewardProgramDraftFields(value),
+  };
+}
+
+export const createRewardProgram = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId } = await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    const parsedRequest = parseCreateRewardProgramRequest(value);
+    return await createRewardProgramCommand(db, getRewardProgramPostgresPool(), {
+      userId,
+      request: parsedRequest,
+      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+      correlationId: randomUUID(),
+    });
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+/**
+ * Whitelist parser: `businessId`, `rewardProgramId`, `versionId`,
+ * `expectedRowVersion` (optimistic-concurrency token, PLATFORM-BASELINE-
+ * 005 design Section 19) plus the same draft-editable fields as create.
+ * Exported only for the mass-assignment regression test.
+ */
+export function parseUpdateRewardProgramDraftRequest(value: Record<string, unknown>) {
+  return {
+    businessId: parseBusinessId(value.businessId),
+    rewardProgramId: parseNonEmptyString(value.rewardProgramId),
+    versionId: parseNonEmptyString(value.versionId),
+    expectedRowVersion: Number(value.expectedRowVersion),
+    ...parseRewardProgramDraftFields(value),
+  };
+}
+
+export const updateRewardProgramDraft = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId } = await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    const parsedRequest = parseUpdateRewardProgramDraftRequest(value);
+    return await updateRewardProgramDraftCommand(db, getRewardProgramPostgresPool(), {
+      userId,
+      request: parsedRequest,
+      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+      correlationId: randomUUID(),
+    });
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+/**
+ * Whitelist parser: exactly `businessId`, `rewardProgramId`, `versionId` --
+ * no draft content, since publish activates the draft's already-stored
+ * content, it never accepts new content in the same call. Exported only
+ * for the mass-assignment regression test.
+ */
+export function parsePublishRewardProgramVersionRequest(value: Record<string, unknown>) {
+  return {
+    businessId: parseBusinessId(value.businessId),
+    rewardProgramId: parseNonEmptyString(value.rewardProgramId),
+    versionId: parseNonEmptyString(value.versionId),
+  };
+}
+
+export const publishRewardProgramVersion = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId } = await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    const parsedRequest = parsePublishRewardProgramVersionRequest(value);
+    return await publishRewardProgramVersionCommand(db, getRewardProgramPostgresPool(), {
+      userId,
+      request: parsedRequest,
+      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+      correlationId: randomUUID(),
+    });
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+/**
+ * Whitelist parser: `businessId`, `rewardProgramId`, and the draft-editable
+ * fields for the new version -- no client-selected version number (the
+ * command derives it server-side as `currentVersion + 1`). Exported only
+ * for the mass-assignment regression test.
+ */
+export function parseCreateNextRewardProgramVersionRequest(value: Record<string, unknown>) {
+  return {
+    businessId: parseBusinessId(value.businessId),
+    rewardProgramId: parseNonEmptyString(value.rewardProgramId),
+    ...parseRewardProgramDraftFields(value),
+  };
+}
+
+export const createNextRewardProgramVersion = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId } = await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    const parsedRequest = parseCreateNextRewardProgramVersionRequest(value);
+    return await createNextRewardProgramVersionCommand(db, getRewardProgramPostgresPool(), {
+      userId,
+      request: parsedRequest,
+      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+      correlationId: randomUUID(),
+    });
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+/**
+ * `getRewardProgram` / `listRewardPrograms` -- membership-gated reads, no
+ * `rewardProgram.manage` permission required (`PLATFORM-BASELINE-005-
+ * REVIEW-FINDINGS-001`'s permission-model correction: reads are gated on
+ * active Business membership only, matching this codebase's existing read
+ * precedent, not a catalogue entry).
+ */
+export const getRewardProgram = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId } = await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    return await getRewardProgramQuery(db, getRewardProgramPostgresPool(), {
+      userId,
+      businessId: parseBusinessId(value.businessId),
+      rewardProgramId: parseNonEmptyString(value.rewardProgramId),
+    });
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+export const listRewardPrograms = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId } = await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    return await listRewardProgramsQuery(db, getRewardProgramPostgresPool(), {
+      userId,
+      businessId: parseBusinessId(value.businessId),
     });
   } catch (error) {
     throw toHttpsError(error);

@@ -15,6 +15,10 @@ import {
   parseGetMyDisplayNameRequest,
   parseDiscoverPlatformAdministratorRequest,
   parseAccessibleBusinessesRequest,
+  parseCreateRewardProgramRequest,
+  parseUpdateRewardProgramDraftRequest,
+  parsePublishRewardProgramVersionRequest,
+  parseCreateNextRewardProgramVersionRequest,
 } from "./index";
 
 /**
@@ -569,5 +573,131 @@ describe("parseAccessibleBusinessesRequest (actor-scoped mass-assignment boundar
         businessId: "attacker-selected-business",
       }),
     ).toEqual({ rawToken: "raw-token", referenceType: "email" });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PLATFORM-BASELINE-005A — Reward Program mass-assignment boundary.
+// ---------------------------------------------------------------------------
+
+function baseDraftFields() {
+  return {
+    rewardDescription: "One free coffee",
+    multipleUnitsAllowed: true,
+    sharedLoyaltyNumberAllowed: false,
+    effectiveFrom: "2026-09-13T00:00:00.000Z",
+    qualifyingNodes: [{ knowledgeNodeId: "node-1" }],
+  };
+}
+
+describe("parseCreateRewardProgramRequest (mass-assignment boundary, PLATFORM-BASELINE-005A)", () => {
+  it("drops fixed-value/server-generated fields a client might try to inject", () => {
+    const malicious = {
+      businessId: "biz-1",
+      displayName: "Buy 10 Coffees",
+      rewardProgramCategoryId: "cat-1",
+      ...baseDraftFields(),
+      requiredVerifiedUnits: 1,
+      rewardQuantity: 999,
+      status: "active",
+      id: "attacker-chosen-id",
+      currentVersionId: "attacker-chosen-version",
+      createdBy: "attacker-chosen-actor",
+    };
+    const parsed = parseCreateRewardProgramRequest(malicious);
+    expect(parsed).not.toHaveProperty("requiredVerifiedUnits");
+    expect(parsed).not.toHaveProperty("rewardQuantity");
+    expect(parsed).not.toHaveProperty("status");
+    expect(parsed).not.toHaveProperty("id");
+    expect(parsed).not.toHaveProperty("currentVersionId");
+    expect(parsed).not.toHaveProperty("createdBy");
+  });
+
+  it("rejects missing required fields", () => {
+    expect(() => parseCreateRewardProgramRequest({})).toThrow();
+    expect(() =>
+      parseCreateRewardProgramRequest({ businessId: "biz-1", ...baseDraftFields() }),
+    ).toThrow();
+  });
+
+  it("rejects a malformed effectiveFrom date", () => {
+    expect(() =>
+      parseCreateRewardProgramRequest({
+        businessId: "biz-1",
+        displayName: "x",
+        rewardProgramCategoryId: "cat-1",
+        ...baseDraftFields(),
+        effectiveFrom: "not-a-date",
+      }),
+    ).toThrow();
+  });
+
+  it("accepts a well-formed request", () => {
+    const parsed = parseCreateRewardProgramRequest({
+      businessId: "biz-1",
+      displayName: "Buy 10 Coffees",
+      rewardProgramCategoryId: "cat-1",
+      ...baseDraftFields(),
+    });
+    expect(parsed.businessId).toBe("biz-1");
+    expect(parsed.effectiveFrom).toBeInstanceOf(Date);
+    expect(parsed.qualifyingNodes).toEqual([
+      { knowledgeNodeId: "node-1", businessDisplayName: null },
+    ]);
+  });
+});
+
+describe("parseUpdateRewardProgramDraftRequest (mass-assignment boundary, PLATFORM-BASELINE-005A)", () => {
+  it("keeps only editable fields plus targeting/concurrency fields", () => {
+    const malicious = {
+      businessId: "biz-1",
+      rewardProgramId: "rp-1",
+      versionId: "v-1",
+      expectedRowVersion: 1,
+      ...baseDraftFields(),
+      requiredVerifiedUnits: 1,
+      rewardQuantity: 999,
+      status: "active",
+      createdBy: "attacker",
+    };
+    const parsed = parseUpdateRewardProgramDraftRequest(malicious);
+    expect(parsed).not.toHaveProperty("requiredVerifiedUnits");
+    expect(parsed).not.toHaveProperty("rewardQuantity");
+    expect(parsed).not.toHaveProperty("status");
+    expect(parsed).not.toHaveProperty("createdBy");
+    expect(parsed.expectedRowVersion).toBe(1);
+  });
+});
+
+describe("parsePublishRewardProgramVersionRequest (mass-assignment boundary, PLATFORM-BASELINE-005A)", () => {
+  it("accepts only businessId/rewardProgramId/versionId, drops everything else", () => {
+    const parsed = parsePublishRewardProgramVersionRequest({
+      businessId: "biz-1",
+      rewardProgramId: "rp-1",
+      versionId: "v-1",
+      status: "active",
+      approvedAt: "2026-01-01T00:00:00.000Z",
+    });
+    expect(Object.keys(parsed).sort()).toEqual(["businessId", "rewardProgramId", "versionId"]);
+  });
+
+  it("rejects missing fields", () => {
+    expect(() => parsePublishRewardProgramVersionRequest({})).toThrow();
+  });
+});
+
+describe("parseCreateNextRewardProgramVersionRequest (mass-assignment boundary, PLATFORM-BASELINE-005A)", () => {
+  it("does not accept a client-selected version number", () => {
+    const parsed = parseCreateNextRewardProgramVersionRequest({
+      businessId: "biz-1",
+      rewardProgramId: "rp-1",
+      ...baseDraftFields(),
+      version: 999,
+      requiredVerifiedUnits: 1,
+      rewardQuantity: 999,
+    });
+    expect(parsed).not.toHaveProperty("version");
+    expect(parsed).not.toHaveProperty("requiredVerifiedUnits");
+    expect(parsed).not.toHaveProperty("rewardQuantity");
   });
 });
