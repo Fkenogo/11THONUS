@@ -263,15 +263,15 @@ Revert this package's commit(s) on `feat/platform-baseline-005a-reward-program-f
 
 ## 37. PR number
 
-To be recorded once opened (§13 of the final report below).
+[Fkenogo/11THONUS#251](https://github.com/Fkenogo/11THONUS/pull/251)
 
 ## 38. Exact PR head
 
-To be recorded once opened.
+`faee1a5a2002c40b08562143fbbb4b445f83312f` (branch `feat/platform-baseline-005a-reward-program-foundation`)
 
 ## 39. CI status
 
-To be recorded once the PR's CI run completes.
+Pending at PR open — check `gh pr checks 251` for current status. Not merged; awaiting independent review per this package's stop instruction.
 
 ## 40. Final disposition
 
