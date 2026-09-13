@@ -42,7 +42,7 @@ This is exactly the SHA named in the task as "PLATFORM-BASELINE-004A merge commi
 - `docs/02-technical/trd/10-firestore-data-architecture.md` §§10.7 (Commerce Knowledge), 10.9 (Reward Program), 10.10 (Purchase), 10.11 (Loyalty), 10.12 (Reward)
 - `docs/03-standards/commerce-knowledge-standard.md` (full document)
 - `docs/05-implementation/reports/DATA-ARCH-001-pre-pilot-persistence-architecture-reassessment-2026-09-08.md` (PostgreSQL authority recommendation table)
-- `docs/05-implementation/reports/platform-baseline-001-postgres-foundation-implementation-report-2026-09-11.md` and its `-CORR-001` (PostgreSQL infrastructure actually built; explicit reward-table reservations)
+- `docs/05-implementation/reports/platform-baseline-001-postgres-foundation-implementation-report-2026-09-11.md` and its `-CORR-001` (PostgreSQL infrastructure actually built; re-read closely under `CORR-001` below — it ships an empty migrations directory and creates no loyalty-spine table, and its mention of `reward_programs`/`reward_program_versions` is a disclaimer of what it explicitly did *not* build, not a reservation of those names as authoritative)
 - `docs/05-implementation/reports/platform-baseline-004a-workforce-integration-implementation-report-2026-09-12.md` and `-CORR-001` (idempotency-correction precedent to avoid repeating)
 - `docs/05-implementation/roadmap/CDR-001-capability-delivery-roadmap.md`, `docs/05-implementation/change-tracking/engineering-implementation-programme.md` (Phase 4 / `ENG-P4-001`/`002` status)
 - Code: `functions/src/config/loyaltyInvariants.ts`; `functions/src/domains/business/models/businessStatus.ts`; `functions/src/domains/permissions/models/{sensitivePermissionCatalogue,ordinaryPermissionCatalogue}.ts`; `functions/src/domains/permissions/evaluator/evaluatePermission.ts`; `functions/src/domains/permissions/service/authorizeAndExecute.ts`; `functions/src/domains/commerceKnowledge/models/{knowledgeNodeType,referenceEligibility}.ts`; `functions/src/infrastructure/postgres/{postgresTransaction,migrationRunner,postgresConfig}.ts` and `migrations/README.md`
@@ -129,12 +129,15 @@ This mirrors AP-RP-001 (PRD6 §27): "Reward Programs are commercial configuratio
 
 ## 8. PostgreSQL Authority Decision
 
-**Verdict: Reward Program configuration/version data should be PostgreSQL-authoritative.** Evidence, not invention:
+**[Corrected by `CORR-001`, 2026-09-13 — see the CORR-001 section near the end of this document for the full re-verification. The paragraph below is the corrected version; the original claim in item 3 below has been fixed in place rather than left standing, per `CORR-001`'s instruction to correct this everywhere it appears.]**
 
-1. `DEC-DATA-008` (CONFIRMED) establishes PostgreSQL as the platform's target authoritative durable transactional datastore, with the caveat that the decision itself "authorises no provisioning, schema, dependencies, data migration... or combined-programme start."
-2. `DATA-ARCH-001`'s recommendation table (the evidentiary basis for `DEC-DATA-008`) assigns "Purchase, verified units, cycles, rewards, redemptions" and "rules/knowledge configuration" to PostgreSQL. It does not name "Reward Program" by that literal string, but Reward Programs is structurally the same *kind* of domain as "Rules" in canonical-reference.md's own ownership table (both: "definitions, versions, assignments/effective-resolution"), which the table does explicitly assign to PostgreSQL.
-3. **Direct, concrete evidence closing this gap:** `PLATFORM-BASELINE-001`'s own committed artifacts (`functions/src/infrastructure/postgres/migrations/README.md`, and the `PLATFORM-BASELINE-001` implementation report's §5/§9) explicitly reserve `reward_programs` and `reward_program_versions` as named future PostgreSQL tables, citing a later Founder-approved design (`PLATFORM-BASELINE-DESIGN-001-CORR-001`) as authority. That design document is not itself a tracked file in this repository (confirmed absent by repo-wide search), but its content is evidenced concretely by these committed artifacts, not merely asserted.
-4. **No dual authority is proposed.** Firestore remains authoritative for Business, Branch, Identity, Membership, and Commerce Knowledge exactly as it is today — nothing in this design touches those collections or their repositories. Reward Program data does not exist in Firestore today (confirmed: zero hits for any Reward Program model/schema anywhere in `functions/src/` or `apps/web/src/`), so there is no migration-from-Firestore concern, no dual-write period, and no copy to reconcile.
+**Verdict: Reward Program configuration/version data should be PostgreSQL-authoritative — as an architectural direction, confirmed by evidence below. The specific table names and schema in §22 are a new proposal of this design, not an inherited or previously-reserved schema.** Evidence, not invention:
+
+1. `DEC-DATA-008` (CONFIRMED) establishes PostgreSQL as the platform's target authoritative durable transactional datastore, with the caveat that the decision itself "authorises no provisioning, schema, dependencies, data migration... or combined-programme start." This is general architectural direction, not a domain-by-domain assignment.
+2. `DATA-ARCH-001`'s recommendation table (the evidentiary basis for `DEC-DATA-008`) assigns "Purchase, verified units, cycles, rewards, redemptions" and "rules/knowledge configuration" to PostgreSQL. **It does not name "Reward Program(s)" by that literal string anywhere in the document** (confirmed by direct grep — zero matches). The analogy to "Rules" (both domains being "definitions, versions, assignments/effective-resolution" per canonical-reference.md's ownership table) is a reasonable structural inference this design draws, not a direct statement of the source document.
+3. **Corrected (was inaccurate in the original version of this report):** `PLATFORM-BASELINE-001`'s implementation report and its `migrations/README.md` do **not** reserve or create `reward_programs`/`reward_program_versions`. Re-read directly: "**None**, beyond the migration mechanism's own `schema_migrations` bookkeeping table... The package's real `migrations/` directory ships empty... No `reward_programs`, `reward_program_versions`, ... was created" (`PLATFORM-BASELINE-001` report §9) — this is an explicit, complete disclaimer of non-creation, listing those names only as examples of what this package's scope excluded, not as a schema it defined or reserved. The report does attribute its own build-the-transaction-seam authority to a "Founder-approved design," `PLATFORM-BASELINE-DESIGN-001-CORR-001`, and uses those same table names when describing what it did not build — but that design document is **not itself a tracked, readable file in this repository** (confirmed absent by repo-wide search), so its exact content, and whether it truly assigned those specific names, cannot be independently verified here. This is **second-hand, unverifiable naming provenance**, correctly distinguished from primary canonical text (TRD10, the decision register, the PRD) throughout the rest of this report. The architectural *direction* (PostgreSQL-authoritative for this cluster of domains, which `PLATFORM-BASELINE-001` itself consistently calls the "loyalty spine") is corroborated by this same evidence and is retained; the specific *table names* are not inherited from it.
+4. **Conclusion: PostgreSQL architectural authority for Reward Program is retained** (item 1 direction + item 2's structural analogy + item 3's corroborating, if unverifiable-in-full, "loyalty spine" framing, together are sufficient — none of them alone would be, but they are consistent and no contrary authority was found anywhere in the reviewed source chain). Per this task's own instruction to distinguish architectural authority from schema naming: **the table names `reward_programs`, `reward_program_versions`, `reward_program_version_qualifying_nodes` in §22 are PROPOSED BY PLATFORM-BASELINE-005** — new naming from this design task, informed by TRD10 §10.9's already-canonical Firestore field names converted to `snake_case` convention, not inherited, reserved, or previously assigned by any other package.
+5. **No dual authority is proposed.** Firestore remains authoritative for Business, Branch, Identity, Membership, and Commerce Knowledge exactly as it is today — nothing in this design touches those collections or their repositories. Reward Program data does not exist in Firestore today (confirmed: zero hits for any Reward Program model/schema anywhere in `functions/src/` or `apps/web/src/`), so there is no migration-from-Firestore concern, no dual-write period, and no copy to reconcile.
 
 **Cross-store reference boundary** (§9 elaborates): PostgreSQL `reward_programs`/`reward_program_versions` reference Firestore-owned ids (`businessId`, `createdBy` = a Customer Identity id, `qualifyingKnowledgeNodeIds`) as opaque, indexed, non-FK-constrained string columns, validated server-side at write time against the live Firestore state — the same pattern `businessClassificationValidation.ts` already uses for Business→Commerce-Knowledge references, just crossing a store boundary instead of a collection boundary.
 
@@ -179,6 +182,8 @@ Answering the task's exact questions:
 - **Does archive affect historical references?** No — archiving the *program* (§14) does not delete or alter any version row; historical Purchase/Cycle references remain valid forever, consistent with PRD6 §5 "Archived: Historical reporting only."
 
 ## 12. Lifecycle State Model
+
+**[REFINED by `CORR-001`'s §"Version/Active-State Invariant" — the state enums below (both levels) are retained unchanged, but `CORR-001` narrows the *operations* 005A implements: the `pause`/`retire`/`archive` transitions are excluded from 005A's command set, since `DEC-LOY-013` leaves the pause-preserves-progress guarantee formally unconfirmed at the decision-register level even though PRD6 §5 states it. The states remain structurally defined in the schema `CHECK` constraint for forward-compatibility; only the commands that would invoke `paused`/`retired`/`archived` are deferred.]**
 
 **Program-level states** (canonical, from canonical-reference.md §7 and PRD6 §5 — exactly 5, verbatim, no invention):
 
@@ -232,6 +237,8 @@ Per §5's authority-matrix row and the existing `ordinaryPermissionCatalogue.ts`
 DEC-LEGAL-002 does not change this table — it determines whether a **real** Business can ever legitimately be in `trial` at all, not which statuses are eligible once a Business is there (§21 elaborates).
 
 ## 14. Permission Design
+
+**[SUPERSEDED by `CORR-001`'s §"Manager Authority" and §"Permission Model Refinement" — the two-permission, Manager-override-eligible design below is replaced by a single Owner-only `rewardProgram.manage` permission with reads gated by membership, not a catalogue entry. Retained below for record-keeping; do not implement against this section.]**
 
 **No existing `rewardProgram.*` permission entry exists in either catalogue** (confirmed by direct code read — the sensitive catalogue's 9 entries and the ordinary catalogue's 4 entries were both enumerated and neither contains one).
 
@@ -336,6 +343,8 @@ Minimum governed MVP fields (TRD10 §10.9.2, cross-checked against §6's matrix)
 **Nothing is recommended for retirement** — no abandoned or superseded Reward Program implementation exists to retire.
 
 ## 22. Proposed PostgreSQL Schema (design only — no migration created)
+
+**Naming provenance (corrected by `CORR-001`): every table/column name below is PROPOSED BY PLATFORM-BASELINE-005.** None of these names was reserved, created, or authoritatively assigned by `PLATFORM-BASELINE-001` or any other prior package (§8 item 3) — they are new naming choices of this design, informed by TRD10 §10.9's canonical Firestore field names.
 
 ### `reward_programs`
 
@@ -495,6 +504,8 @@ Not implemented here — design only.
 
 ## 27. API/Command Design
 
+**[SUPERSEDED by `CORR-001`'s §"Final 005A Entry Verdict and Scope" — `retireRewardProgram`/`archiveRewardProgram` are removed from the 005A command set (their governed semantics remain open under `DEC-LOY-013`); `getRewardProgram`/`listRewardPrograms` no longer carry a `rewardProgram.view` permission check (reads are membership-gated only, per `CORR-001`'s permission-model correction). The four remaining commands' shapes are otherwise unchanged. Retained below for record-keeping; the corrected six-item list (four commands + two membership-gated reads) is in `CORR-001`.]**
+
 Six commands, each bounded, mirroring the existing `whitelist parser → server-resolved actor → domain command → existing error taxonomy` convention this codebase already uses consistently (most recently for `PLATFORM-BASELINE-004A`'s five callables):
 
 | Command | Actor | Authorization | Business gate | Inputs | Fixed server values | Cross-store validation | PG transaction | Idempotency | Audit/outbox | Response |
@@ -607,6 +618,8 @@ Not implemented here — this is the required test inventory for the future impl
 
 ## 34. Genuine Founder Decision Gates
 
+**[REFINED by `CORR-001` — item 1 (Manager authority) is resolved outright, not left as a discussion item: 005A excludes Manager access entirely rather than picking a default. Items 2 and 3 are resolved by narrowing scope (defer the operation) rather than by picking a default behavior. See `CORR-001`'s corresponding sections for the firmer disposition of each.]**
+
 Applying the task's own instruction to avoid governance inflation and not reopen `threshold=10`, `rewardQuantity=1`, PostgreSQL target, provider-independent identity, or single-branch MVP:
 
 **None of the following block starting `PLATFORM-BASELINE-005A` implementation.** They are recorded here as light, non-blocking discussion items the Founder/technical reviewer may want to weigh in on, each with a safe default this design already adopts so implementation is not stalled waiting for an answer:
@@ -630,13 +643,17 @@ Applying the task's own instruction to avoid governance inflation and not reopen
 
 ## 35. Implementation-Entry Verdict
 
-**YES — IMPLEMENTATION READY.**
+**[SUPERSEDED by `CORR-001` — see the CORR-001 section near the end of this document for the corrected, final verdict and the narrowed exact scope. The verdict direction below (YES) is retained, but the scope is narrower after re-verification — do not treat the paragraph below alone as current.]**
 
-Every field, state, and rule this design specifies traces to already-governed authority (PRD6, TRD10 §10.9, the Commerce Knowledge Standard, `DEC-LOY-001`/`009`, `DEC-DATA-008` plus its concrete `PLATFORM-BASELINE-001` evidentiary follow-through, `DEC-ID-003`). The two genuinely open decisions in this domain (`DEC-LOY-008`, `DEC-LOY-013`) govern strictly downstream/adjacent concerns (Loyalty Cycle overflow mechanics; cross-program migration and seasonal variants) that this design's recommended scope does not touch. `DEC-LEGAL-002` blocks live/real-Business operation, not schema/implementation validated against fixture state — exactly the distinction this task's own framing draws. The three discussion items in §34 each have a safe, non-blocking default already built into this design.
+**YES — IMPLEMENTATION READY** (original disposition; narrowed by `CORR-001`).
+
+Every field, state, and rule this design specifies traces to already-governed authority (PRD6, TRD10 §10.9, the Commerce Knowledge Standard, `DEC-LOY-001`/`009`, `DEC-DATA-008` plus the corroborating-but-second-hand `PLATFORM-BASELINE-001` "loyalty spine" framing corrected in §8, `DEC-ID-003`). The two genuinely open decisions in this domain (`DEC-LOY-008`, `DEC-LOY-013`) govern strictly downstream/adjacent concerns (Loyalty Cycle overflow mechanics; cross-program migration and seasonal variants) that this design's recommended scope does not touch. `DEC-LEGAL-002` blocks live/real-Business operation, not schema/implementation validated against fixture state — exactly the distinction this task's own framing draws. The discussion items originally in §34 are resolved more precisely in `CORR-001` (Manager authority, permission count, Knowledge Node retirement rule, and plan-capacity boundary all received a firmer disposition than "safe non-blocking default").
 
 ## 36. Recommended `PLATFORM-BASELINE-005A` Scope
 
-**PLATFORM-BASELINE-005A — Reward Program Foundation**
+**[SUPERSEDED by `CORR-001`'s §"Final 005A Entry Verdict and Scope" — the scope below includes `retireRewardProgram`/`archiveRewardProgram` and a two-permission catalogue, both narrowed by `CORR-001`. Retained below for record-keeping; the corrected scope is in `CORR-001`.]**
+
+**PLATFORM-BASELINE-005A — Reward Program Foundation** (original scope; narrowed by `CORR-001`)
 
 - PostgreSQL migrations for `reward_programs`, `reward_program_versions`, `reward_program_version_qualifying_nodes`, `idempotency_keys`, `reward_program_outbox` (§22, §25, §26) — the first real schema this codebase's migration mechanism will apply.
 - Domain model/repository layer over those tables, using `withPlatformTransaction` throughout.
@@ -712,8 +729,128 @@ If this report is pushed for review, standard PR revert/close applies — no oth
 
 ---
 
+# CORR-001 — Design Authority Correction (2026-09-13)
+
+**Type:** Documentation/design correction only. No implementation performed. This section corrects and tightens the design above wherever it overstated authority or picked an unnecessary "safe default" instead of either finding the true governed answer or narrowing scope to avoid the question.
+
+## CORR-001.1 — Recovered entry state
+
+Isolated worktree `/private/tmp/11thonus-pb005-design` inspected before any change: branch `docs/platform-baseline-005-reward-program-entry-design`, `HEAD` = `452236e` exactly, working tree clean, zero divergence from `origin/main` (re-fetched, still `5ee3bcd8c157ae62416e5822f4270e96584a04d0` — `main` has not moved since the original design was written). The existing report was not recreated; every correction below is an edit against the existing document plus this appended section.
+
+## CORR-001.2 — PB001 provenance correction (item 2)
+
+**Corrected everywhere it appeared** (§8 item 3, §22's schema-section header, §35's verdict paragraph — all edited in place above, not merely footnoted). The original report's §8 item 3 claimed `PLATFORM-BASELINE-001` "explicitly reserve[d] `reward_programs` and `reward_program_versions` as named future PostgreSQL tables." Re-reading `PLATFORM-BASELINE-001`'s own report §9 directly: it states its shipped `migrations/` directory is empty and explicitly lists `reward_programs`/`reward_program_versions` (among others) as tables that were **not** created — a disclaimer of non-creation, not a reservation or schema definition. This has been corrected in place. **`reward_programs`, `reward_program_versions`, and `reward_program_version_qualifying_nodes` are PROPOSED BY PLATFORM-BASELINE-005** — new naming choices of this design task, not inherited, reserved, or previously assigned by `PLATFORM-BASELINE-001` or any other prior package.
+
+## CORR-001.3 — PostgreSQL authority re-verification (item 3)
+
+**Distinguished, per the task's instruction: ARCHITECTURAL AUTHORITY vs. SCHEMA NAMING PROPOSAL.**
+
+- **Architectural authority — retained, confirmed by:** (a) `DEC-DATA-008` (CONFIRMED): general direction that PostgreSQL is the platform's target authoritative durable transactional datastore; (b) `DATA-ARCH-001`'s recommendation table (the evidentiary basis for `DEC-DATA-008`), which assigns "Purchase, verified units, cycles, rewards, redemptions" and "rules/knowledge configuration" to PostgreSQL — confirmed by direct re-read that it does **not** name "Reward Program(s)" by that literal string anywhere (zero grep matches), so the read-across to Reward Programs is this design's own structural analogy (both domains share the same "definitions/versions/assignments" shape per canonical-reference.md's ownership table), not a direct statement; (c) `PLATFORM-BASELINE-001`'s own report consistently uses the term "loyalty spine" to describe the cluster of domains its infrastructure work exists to eventually serve, and explicitly treats `reward_programs`/`reward_program_versions` as belonging to "a separately authorized future implementation package" rather than as fictional or out-of-scope-forever — this is corroborating context, not primary proof, since the design document it cites (`PLATFORM-BASELINE-DESIGN-001-CORR-001`) is not itself a tracked, independently-readable file in this repository.
+- **Schema naming — new proposal, not inherited (corrected, CORR-001.2 above).**
+- **No contrary authority was found anywhere in the reviewed source chain** (canonical-reference.md, PRD6, TRD10, DATA-ARCH-001, the decision register) suggesting Reward Program should remain Firestore-authoritative or split-authoritative. Per the task's instruction ("if not explicitly supported, STOP rather than infer") — this is a case of *reasonable, disclosed inference from consistent corroborating evidence*, not fabrication from silence; it is retained, but its evidentiary weakness (item (c)'s unverifiable second-hand citation) is now stated plainly rather than presented as "direct, concrete evidence" as the original report overstated.
+
+## CORR-001.4 — Version/active-state invariant re-check (item 4)
+
+**Re-inspected TRD10 §10.9.2 directly: `status: "draft" | "active" | "superseded"` is the literal, already-canonical enum for `RewardProgramVersionDocument`.** This answers the task's question (A) directly: **`active` is already a governed Reward Program Version state** (TRD10, not an inferred implementation state). This part of the original design was correct and is retained unchanged.
+
+**The partial-unique-index invariant ("at most one active version") is a structural derivation from two independently governed facts, made explicit here rather than left implicit as in the original report:**
+1. `rewardPrograms.currentVersionId: string` (TRD10 §10.9.1) is **singular**, not an array or set — the schema itself only ever points at one version as current.
+2. The version-status enum's third value, `superseded`, is semantically only meaningful as "the version that *was* active before a newer one became active" — a version cannot coherently be both `active` and `superseded` at once, and TRD10's own state model has no "co-active" concept anywhere else in the document.
+
+Together, these two already-canonical facts entail "at most one active version per program at any instant" as a matter of internal consistency with TRD10's own schema — not an invented business rule, and not something `DEC-LOY-013` bears on at all (that decision concerns cross-*program* migration and seasonal *variants*, never within-program version concurrency). **The partial unique index is retained, database-enforced, and its justification is now explicit rather than asserted.**
+
+**State separation, per the task's explicit request:**
+- **Draft/editable state:** version `status = 'draft'` — freely mutable by its owning command until published.
+- **Published/effective version:** version `status = 'active'` — the one `current_version_id` on the program points to; immutable from the instant it is set.
+- **Historical immutable version:** version `status = 'superseded'` — permanently retained, never deleted, resolvable forever.
+- **Future scheduled version:** **not governed, not implemented.** No `scheduled` state exists in TRD10 or the PRD; `effectiveFrom`/`effectiveUntil` remain informational fields only (§11), not a scheduling mechanism.
+- **Pause/seasonal/migration behavior:** governed by `DEC-LOY-013`, left explicitly unresolved and unimplemented — see CORR-001.9 below for the exact operational consequence this now has for 005A's command scope (narrower than the original report's, which defined the states but incorrectly implied their triggering commands were also safe to build now).
+
+## CORR-001.5 — Manager authority disposition (item 5)
+
+**Re-inspected PRD6 (the Reward Program PRD section) end-to-end and TRD10 §10.9 end-to-end: neither mentions Owner, Manager, Staff, or any role/actor-authority concept anywhere.** `DEC-ID-003` governs the general permission-inheritance *model* (confirmed), not any Reward-Program-specific role assignment. No decision-register entry, PRD statement, or TRD field addresses whether a Manager may view, create, edit, publish, or version a Reward Program.
+
+**Per the task's explicit instruction ("avoid creating governance if Manager capability can simply be excluded... while Owner-only behavior is already governed"): this design now excludes Manager (and Staff) access entirely from 005A, rather than picking an "override-eligible by default" recommendation as the original report did.** Owner authority as an implicit floor over every permission in this codebase is a confirmed, structural pattern (`evaluatePermission.ts`) requiring no new governance to rely on. **Corrected disposition: `rewardProgram.manage` is Owner-only in 005A — no Manager-override path is built, modeled, or recommended.** This is not "materially unresolved and required for 005A" (the task's third option) — it is *not required at all*, because a working, fully-governed Owner-only Reward Program capability is achievable without answering the Manager question, and Manager access can be added later as a pure additive extension (a new override-eligibility flag) without any redesign. **No Founder decision is flagged for this item.**
+
+## CORR-001.6 — Permission model refinement (item 6)
+
+**Re-examined whether `rewardProgram.view` should exist as a catalogue permission at all, against actual existing architecture rather than by analogy to the sensitive catalogue's inheritable-read entries.** Direct precedent check: this codebase's existing Business-domain reads (`getOwnedBusinesses`, `getAccessibleBusinesses`, `getBusinessContext`, `listStaffInvitations`, `listStaffMemberships`) are **never** gated through `authorizeAndExecute`/the permission evaluator — they are gated purely on "is the caller an active member of this Business," resolved directly from membership state, with no permission-catalogue entry involved at all. **This is the actual, consistent architectural pattern for reads in this codebase — the original report's `rewardProgram.view` catalogue entry was not a representation of existing product authority; it was new, unnecessary policy invention, modeled on the sensitive catalogue's inheritable-read shape (which exists for a different reason: gating a *sensitive* data field, `customer.viewProtectedProfile`, not a general domain read).**
+
+**Corrected: exactly one permission is required — `rewardProgram.manage` (Owner-only, per CORR-001.5).** `getRewardProgram`/`listRewardPrograms` are gated by active-membership resolution only, matching `getBusinessContext`'s own pattern exactly — no `rewardProgram.view` entry exists.
+
+**Catalogue/module boundary — why architectural, not governance-driven:** a new, dedicated `rewardProgramPermissionCatalogue.ts` module (rather than appending to `ordinaryPermissionCatalogue.ts`) is retained, for a reason distinct from any governance concern: `ordinaryPermissionCatalogue.ts`'s own header comment states it is a **closed set of exactly the four entries a specific past Founder disposition (`FD-CORR-3`) approved**, and appending to it would require re-opening that already-closed instrument for an unrelated purpose. A new module for a new domain is the same *structural* pattern the codebase already uses to keep the sensitive and ordinary catalogues "structurally separate, disjoint tables" (the ordinary catalogue's own explicit design principle) — extending that separation one further time for a third, unrelated domain is an architectural consistency choice, not an attempt to invent or bypass governance. The new module still requires the same kind of routine engineering sign-off any new permission needs; it does not manufacture new authority, it just avoids re-litigating an unrelated closed set.
+
+## CORR-001.7 — Knowledge Node retirement rule (item 7)
+
+**Corrected from a "safe non-blocking default" to an exact rule, per the task's explicit demand, using the stated principle ("cross-store mutable authority is revalidated at the authoritative operation boundary where it matters"):**
+
+- **Draft creation:** every qualifying node reference and the category/reward-node reference must be `active` and of the correct type at the moment they are added (`isEligibleForNewReference`, reused unmodified). A reference to a non-`active` or wrong-type node is rejected at creation.
+- **Draft editing:** the same `active`-type check applies **only to node references being newly added or changed in that specific edit** — an edit to an unrelated field (e.g. `rewardDescription`) does **not** force re-validation of node references that were already present and untouched. The draft is not yet a durable historical fact, so a node quietly going stale in an untouched, already-selected slot is inert until the draft reaches the one operation that actually matters:
+- **Publish (the authoritative operation boundary):** every qualifying node, the category node, and the optional reward node in the version being published are **re-validated as `active`** at that instant, regardless of whether they were touched since the draft was created. This closes the exact TOCTOU gap `businessProfileCommand.ts` already closes for Business-level Commerce Knowledge references. **If any referenced node is not `active` at publish time, the publish is rejected** (fail-closed) — the Business must update the draft (remove or replace the stale reference) before publishing successfully.
+- **Historical read:** once published, a version's node references remain valid and resolvable forever via `isResolvableForExistingReference` (`active`/`retired`/`archived` all resolve) — **a historical published version is never invalidated merely because a referenced node later becomes inactive**, exactly as the task requires and exactly as TRD10's Version Integrity Rule already implies.
+
+**No cross-store PostgreSQL foreign key is required or proposed** — every check above is a synchronous Firestore read performed by the command layer at the two moments that matter (add-time, publish-time), never a database-level constraint spanning two heterogeneous stores.
+
+## CORR-001.8 — Plan-capacity boundary (item 8)
+
+**Re-verified `DEC-SUB-004` (CONFIRMED): "Plan capacity limits count active Reward Programs, not individual mapped products."** This confirms a *counting mechanism* exists at the product-decision level, but the actual numeric limits depend on `DEC-SUB-008` (plan catalogue/prices/limits), which is outside this task's reviewed decision set and was independently flagged `OPEN_FOUNDER` by the prior `PLATFORM-BASELINE-004` assessment.
+
+**Corrected disposition, per the task's explicit instruction not to invent a numeric limit and not to "pretend one exists":** `PLATFORM-BASELINE-005A` **does not implement any plan-capacity check at all** — neither a fail-open "unlimited" policy nor a fail-closed "deny all publish attempts" policy, since either would be inventing a behavior current authority does not specify. This is a **clean scope exclusion**, exactly like Purchase or Verified Units — capacity *enforcement* is a distinct, separately-dependent operation to be added once `DEC-SUB-008` resolves, not a policy this package should simulate. Reward Program **schema/CRUD**, **draft creation/editing**, and **publication/activation** all proceed with no capacity gate in 005A. **Counting** "active Reward Programs" (the mechanism `DEC-SUB-004` refers to) and **billing enforcement** against a real limit are both out of scope, to be added by whichever future package first has a real number to enforce.
+
+## CORR-001.9 — `DEC-LOY-008` impact matrix (item 9, corrected from a blanket statement)
+
+| Operation | Blocked by `DEC-LOY-008`? | Reasoning |
+|---|---|---|
+| Schema (tables, columns, constraints) | **No** | Threshold/quantity are stored as fixed facts on the version row; the schema does not implement overflow logic |
+| Create draft | **No** | No overflow-allocation logic is invoked |
+| Edit draft | **No** | Same |
+| Publish first version | **No** | Publishing sets fixed, governed facts; does not compute or allocate anything |
+| Create next version | **No** | Same reasoning as create |
+| Transaction applicability (a future Purchase referencing this program) | **N/A to 005A** (Purchase not built); when built, `DEC-LOY-008` will govern how *that* domain allocates overflow units, not whether a Purchase may reference a program version |
+| Loyalty Cycle | **Yes — directly blocks** | Loyalty Cycle progress/overflow computation cannot be finalized until this decision resolves (a separate, not-yet-built domain) |
+| Overflow behavior | **Yes — this is exactly what the decision is about** | The decision question itself |
+| Pause/migration/seasonal operations | **No** | Governed by `DEC-LOY-013`, a different decision (see below) |
+
+## CORR-001.10 — `DEC-LOY-013` impact matrix (item 9, corrected from a blanket statement)
+
+| Operation | Blocked by `DEC-LOY-013`? | Reasoning |
+|---|---|---|
+| Schema (the 5-state program / 3-state version enums) | **No** | The states themselves are canonical (canonical-reference.md §7, TRD10 §10.9.2) independent of `DEC-LOY-013`'s resolution — the enum's existence commits to nothing the decision might resolve differently |
+| Create draft | **No** | Not implicated |
+| Edit draft | **No** | Not implicated |
+| Publish first version | **No** | Not implicated |
+| Create next version | **No** | PRD6 §6's ordinary "description/mapping/display" version-update use case is explicitly distinct from `DEC-LOY-013`(b)'s "migrate customers between different programs" question — creating a new version of the *same* program is not customer migration |
+| Transaction applicability | **N/A to 005A** | Not built |
+| Loyalty Cycle | **Partially blocks** | Whether pause preserves accumulated in-cycle progress is `DEC-LOY-013`(a), formally `OPEN_FOUNDER` at the decision-register level (even though PRD6 §5 states the intended outcome) — a future Loyalty Cycle implementation cannot rely on this being settled yet |
+| Overflow behavior | **No** | Governed by `DEC-LOY-008`, a different decision |
+| **Pause/migration/seasonal operations (the actual commands)** | **Yes — directly blocks, corrected disposition** | All three of `DEC-LOY-013`'s open questions concern exactly these operations. **Corrected from the original report:** the original design treated the `paused`/`retired`/`archived` *states* and their *triggering commands* as equally safe to implement now ("STATE RESERVED / STRUCTURAL, not BLOCKED... the basic transition... is safe to implement"). Re-examined more carefully: `DEC-LOY-013`(a) explicitly asks the Founder to "confirm" that pause preserves accumulated progress — meaning this specific guarantee is **not yet Founder-confirmed** at the decision-register level, only stated as product intent in the PRD. Per canonical-reference.md's own document-hierarchy rule ("where the register overrides a PRD/TRD statement, the register entry is the governed correction mechanism"), an unconfirmed register-level question about a state's core behavioral guarantee means **the *command* that transitions a program into that state carries open semantics, even though the *state value* itself is safely definable in a closed enum.** `PLATFORM-BASELINE-005A` therefore **excludes `pauseRewardProgram`, `retireRewardProgram`, and `archiveRewardProgram` from its command set** — the states remain in the schema `CHECK` constraint (forward-compatible, harmless to declare), but no command reachable in 005A ever sets them. |
+
+## CORR-001.11 — Final 005A entry verdict and scope (item 10)
+
+**YES — IMPLEMENTATION READY**, for a scope narrower than the original report's:
+
+**`PLATFORM-BASELINE-005A` corrected exact scope:**
+- PostgreSQL schema: `reward_programs`, `reward_program_versions`, `reward_program_version_qualifying_nodes` (table/column names PROPOSED BY PLATFORM-BASELINE-005, per CORR-001.2), plus `idempotency_keys` and `reward_program_outbox` — schema unchanged from §22 except naming-provenance labeling; the `status` enums retain all 5/3 states structurally (CORR-001.4), even though not every state is reachable by a 005A command.
+- Domain model/repository layer using `withPlatformTransaction` throughout — unchanged.
+- **One** permission, `rewardProgram.manage`, Owner-only, no Manager/Staff path (CORR-001.5, CORR-001.6) — in its own new catalogue module (architectural reasoning per CORR-001.6).
+- **Four** commands only: `createRewardProgram`, `updateRewardProgramDraft`, `publishRewardProgramVersion` (draft → active, first version only reachable initially since no prior active version exists to supersede), `createNextRewardProgramVersion`. **`retireRewardProgram`/`archiveRewardProgram`/`pauseRewardProgram` are excluded** (CORR-001.10).
+- **Two** reads, `getRewardProgram`/`listRewardPrograms`, gated by active Business membership only — **no `rewardProgram.view` permission** (CORR-001.6).
+- Knowledge Node validation per the exact rule in CORR-001.7 (active-type check at add-time for new/changed references; full re-validation at publish; no re-check of untouched draft fields; historical versions never invalidated).
+- **No plan-capacity check of any kind** (CORR-001.8) — clean scope exclusion, not a fail-open/fail-closed simulation.
+- Minimal Business Dashboard UI: list + create/edit-draft + publish action only — no pause/retire/archive controls (since no such commands exist to call).
+- Test suite per §33, narrowed to the four commands and two reads actually in scope.
+- The synthetic `trial`-status Business emulator fixture (§29), unchanged.
+
+**Explicitly deferred to a later, separate package** (not 005A): pause/retire/archive operations (pending `DEC-LOY-013`'s formal confirmation, or a decision that the PRD's stated intent is itself sufficient authority — a Founder/product call this design does not make); Manager/Staff access to Reward Program (pending a future, purely additive decision); plan-capacity enforcement (pending `DEC-SUB-008`).
+
+## CORR-001.12 — Genuine Founder decisions, corrected
+
+**None required to start `PLATFORM-BASELINE-005A`** as narrowed above — the same conclusion as the original report, but reached by *narrowing scope to avoid open questions* (Manager access excluded entirely; pause/retire/archive deferred; plan-capacity check omitted) rather than by *picking unstated "safe defaults" for open questions and calling them non-blocking*. This is a materially different and more conservative justification for the same top-line verdict.
+
+---
+
 ## FINAL DISPOSITION
 
-**PLATFORM-BASELINE-005 — DESIGN COMPLETE / READY FOR FOUNDER & TECHNICAL REVIEW**
+**PLATFORM-BASELINE-005-CORR-001 — DESIGN CORRECTED / AWAITING INDEPENDENT REVIEW**
 
-No implementation was started. No merge was performed. Stopping for independent review, as instructed. Do not start the next package.
+No implementation was performed. No decision-register modification. No new Founder decision recorded. No code, migration, permission, or UI file was touched. Do not implement `PLATFORM-BASELINE-005A` yet. Do not merge. Stopping for independent review, as instructed.
