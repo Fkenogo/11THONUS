@@ -81,9 +81,24 @@ export type RewardProgramVersionRow = {
   readonly qualifyingNodes: readonly QualifyingNode[];
 };
 
-export type RewardProgramWithCurrentVersion = {
+/**
+ * The management read model (`PLATFORM-BASELINE-005A-CORR-001` Finding 1):
+ * represents the published/current version and the one editable draft as
+ * two EXPLICIT, independent concepts.
+ *
+ * `currentVersion` is sourced from `reward_programs.current_version_id`
+ * (nullable until first publication -- the pointer's definition is
+ * unchanged). `draftVersion` is the program's latest version when that
+ * latest version is still a draft; the database enforces at most one
+ * draft per program (partial unique index), so this is never an arbitrary
+ * historical draft. The UI's edit/save/publish affordances gate on
+ * `draftVersion`; `currentVersion` is only the published display plus
+ * create-next-version eligibility.
+ */
+export type RewardProgramWithVersions = {
   readonly program: RewardProgramRow;
   readonly currentVersion: RewardProgramVersionRow | null;
+  readonly draftVersion: RewardProgramVersionRow | null;
 };
 
 /** Draft-editable fields on a version -- excludes fixed values, ids, timestamps, status. */

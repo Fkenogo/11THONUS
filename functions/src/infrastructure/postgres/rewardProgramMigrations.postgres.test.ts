@@ -57,14 +57,14 @@ afterAll(async () => {
 });
 
 describe("Reward Program migrations against a real PostgreSQL instance", () => {
-  it("discovers all five migrations in version order", async () => {
+  it("discovers all six migrations in version order", async () => {
     const files = await discoverMigrationFiles(migrationsDir);
-    expect(files.map((f) => f.version)).toEqual(["0001", "0002", "0003", "0004", "0005"]);
+    expect(files.map((f) => f.version)).toEqual(["0001", "0002", "0003", "0004", "0005", "0006"]);
   });
 
   it("bootstraps a clean empty database and applies all migrations in order", async () => {
     const result = await migrateUp(pool, migrationsDir);
-    expect(result.applied).toEqual(["0001", "0002", "0003", "0004", "0005"]);
+    expect(result.applied).toEqual(["0001", "0002", "0003", "0004", "0005", "0006"]);
 
     for (const table of [
       "reward_programs",
@@ -82,12 +82,12 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
     await migrateUp(pool, migrationsDir);
     const second = await migrateUp(pool, migrationsDir);
     expect(second.applied).toEqual([]);
-    expect(second.alreadyApplied).toEqual(["0001", "0002", "0003", "0004", "0005"]);
+    expect(second.alreadyApplied).toEqual(["0001", "0002", "0003", "0004", "0005", "0006"]);
   });
 
   it("rolls back the full migration set and re-applies cleanly", async () => {
     await migrateUp(pool, migrationsDir);
-    await migrateDown(pool, migrationsDir, 5);
+    await migrateDown(pool, migrationsDir, 6);
 
     for (const table of [
       "reward_programs",
@@ -100,9 +100,9 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
     }
 
     const reapplied = await migrateUp(pool, migrationsDir);
-    expect(reapplied.applied).toEqual(["0001", "0002", "0003", "0004", "0005"]);
+    expect(reapplied.applied).toEqual(["0001", "0002", "0003", "0004", "0005", "0006"]);
     const applied = await getAppliedMigrations(pool);
-    expect(applied.map((a) => a.version)).toEqual(["0001", "0002", "0003", "0004", "0005"]);
+    expect(applied.map((a) => a.version)).toEqual(["0001", "0002", "0003", "0004", "0005", "0006"]);
   });
 
   describe("schema constraints", () => {
@@ -221,6 +221,71 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         );
       await insertNode();
       await expect(insertNode()).rejects.toThrow(/duplicate key/i);
+    });
+
+    it("rejects a current_version_id pointing at another program's version (same-program composite FK, PLATFORM-BASELINE-005A-CORR-001)", async () => {
+      const programA = await insertProgram({ businessId: "biz-A" });
+      const programB = await insertProgram({ businessId: "biz-B" });
+      const versionB = await pool.query<{ id: string }>(
+        `INSERT INTO reward_program_versions
+           (reward_program_id, version, required_verified_units, reward_quantity, shared_loyalty_number_allowed, reward_description, effective_from, status, created_by)
+         VALUES ($1, 1, 10, 1, false, 'desc', now(), 'active', 'user-1') RETURNING id`,
+        [programB],
+      );
+      // The old single-column FK accepted this; the composite
+      // (current_version_id, id) FK must reject it at the database layer.
+      await expect(
+        pool.query("UPDATE reward_programs SET current_version_id = $1 WHERE id = $2", [
+          versionB.rows[0].id,
+          programA,
+        ]),
+      ).rejects.toThrow(/foreign key/i);
+
+      // The SAME program's own version remains acceptable.
+      const versionA = await pool.query<{ id: string }>(
+        `INSERT INTO reward_program_versions
+           (reward_program_id, version, required_verified_units, reward_quantity, shared_loyalty_number_allowed, reward_description, effective_from, status, created_by)
+         VALUES ($1, 1, 10, 1, false, 'desc', now(), 'active', 'user-1') RETURNING id`,
+        [programA],
+      );
+      await pool.query("UPDATE reward_programs SET current_version_id = $1 WHERE id = $2", [
+        versionA.rows[0].id,
+        programA,
+      ]);
+      const check = await pool.query<{ current_version_id: string }>(
+        "SELECT current_version_id FROM reward_programs WHERE id = $1",
+        [programA],
+      );
+      expect(check.rows[0].current_version_id).toBe(versionA.rows[0].id);
+    });
+
+    it("enforces at most one editable draft per program (partial unique index, PLATFORM-BASELINE-005A-CORR-001 Finding 1)", async () => {
+      const programId = await insertProgram();
+      const insertDraft = (version: number) =>
+        pool.query(
+          `INSERT INTO reward_program_versions
+             (reward_program_id, version, required_verified_units, reward_quantity, shared_loyalty_number_allowed, reward_description, effective_from, status, created_by)
+           VALUES ($1, $2, 10, 1, false, 'desc', now(), 'draft', 'user-1')`,
+          [programId, version],
+        );
+      await insertDraft(1);
+      await expect(insertDraft(2)).rejects.toThrow(/duplicate key/i);
+
+      // A published program's superseded history does not collide with the
+      // single-draft rule: supersede v1, publish v2, then one new draft is
+      // allowed.
+      await pool.query("UPDATE reward_program_versions SET status = 'active' WHERE version = 1");
+      await insertDraft(2);
+      await pool.query(
+        "UPDATE reward_program_versions SET status = 'superseded' WHERE version = 1",
+      );
+      await pool.query("UPDATE reward_program_versions SET status = 'active' WHERE version = 2");
+      await insertDraft(3);
+      const drafts = await pool.query<{ count: string }>(
+        "SELECT count(*) FROM reward_program_versions WHERE reward_program_id = $1 AND status = 'draft'",
+        [programId],
+      );
+      expect(Number(drafts.rows[0].count)).toBe(1);
     });
   });
 });

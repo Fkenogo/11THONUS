@@ -46,13 +46,44 @@ type IdempotencyDbRow = {
 
 /**
  * Reserves `params.idempotencyKey` for the caller's domain mutation inside
- * the caller's own transaction, row-locked (`FOR UPDATE`) so two
- * concurrent requests for the same key serialize rather than race.
+ * the caller's own transaction.
+ *
+ * First-use reservation is ATOMIC (corrected by
+ * `PLATFORM-BASELINE-005A-CORR-001`): the key row is claimed with
+ * `INSERT ... ON CONFLICT (idempotency_key) DO NOTHING RETURNING ...`, the
+ * only race-free PostgreSQL pattern for a key that does not exist yet --
+ * PostgreSQL cannot row-lock a row that is not there, so the previous
+ * `SELECT ... FOR UPDATE`-then-`INSERT` shape let two concurrent first
+ * attempts both observe "absent" and then race on `INSERT`, handing the
+ * loser a raw unique-key violation. `DO NOTHING` collapses that race into
+ * a deterministic "this transaction lost the claim" outcome inside the
+ * same transaction. Only when the claim is lost does this function
+ * `SELECT ... FOR UPDATE` the (now guaranteed-existing) row -- which is
+ * where row locking is meaningful -- to serialize evaluation of the
+ * winner's committed reservation. See the concurrent first-use regression
+ * tests in `rewardProgramCommands.postgres.test.ts`.
  */
 export async function checkAndReserveIdempotencyKey(
   tx: PlatformPostgresTransaction,
   params: CheckAndReserveParams,
 ): Promise<IdempotencyReservationResult> {
+  const inserted = await tx.query<IdempotencyDbRow>(
+    `INSERT INTO idempotency_keys (idempotency_key, operation_type, actor_id, request_hash, status, correlation_id)
+     VALUES ($1, $2, $3, $4, 'processing', $5)
+       ON CONFLICT (idempotency_key) DO NOTHING
+     RETURNING request_hash, status, response_snapshot`,
+    [
+      params.idempotencyKey,
+      params.operationType,
+      params.actorId,
+      params.requestHash,
+      params.correlationId,
+    ],
+  );
+  if (inserted.rows.length > 0) {
+    return { outcome: "acquired" };
+  }
+
   const existing = await tx.query<IdempotencyDbRow>(
     `SELECT request_hash, status, response_snapshot FROM idempotency_keys WHERE idempotency_key = $1 FOR UPDATE`,
     [params.idempotencyKey],

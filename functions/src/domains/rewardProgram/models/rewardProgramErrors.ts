@@ -117,3 +117,35 @@ export function staleDraftUpdateError(): RewardProgramDomainError {
     "This draft was modified by another request since it was last read; reload and retry.",
   );
 }
+
+/**
+ * A same-key idempotent retry whose request hash differs from the key's
+ * original reservation (`PLATFORM-BASELINE-005A-CORR-001` Finding 6). The
+ * closed 14-category taxonomy (`errorCategories.ts`) already owns
+ * `IDEMPOTENCY_CONFLICT` for exactly this; mapping it here -- instead of
+ * the plain `Error` this package first threw -- guarantees the callable
+ * boundary surfaces the governed `aborted` code, never a raw/internal
+ * error.
+ */
+export function rewardProgramIdempotencyConflictError(): RewardProgramDomainError {
+  return new RewardProgramDomainError(
+    "IDEMPOTENCY_CONFLICT",
+    "This idempotency key was already reserved for a materially different request.",
+  );
+}
+
+/**
+ * The key is still held by a first attempt that has not yet produced a
+ * known outcome (`PLATFORM-BASELINE-005A-CORR-001` Finding 6). The closed
+ * category taxonomy has no dedicated in-progress category, so the
+ * established vocabulary is `TEMPORARY_UNAVAILABLE` -- the same
+ * retryable/unavailable mapping (`unavailable` on the wire) every other
+ * domain's in-progress reservation already uses, and the same code the
+ * client-side `settleKeyOnError` convention retains a key on.
+ */
+export function rewardProgramIdempotencyInProgressError(): RewardProgramDomainError {
+  return new RewardProgramDomainError(
+    "TEMPORARY_UNAVAILABLE",
+    "This idempotency key is currently reserved by a request that is still in progress; retry.",
+  );
+}

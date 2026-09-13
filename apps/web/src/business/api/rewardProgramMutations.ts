@@ -58,9 +58,12 @@ export type RewardProgramVersionWire = {
   qualifyingNodes: QualifyingNodeWire[];
 };
 
-export type RewardProgramWithCurrentVersionWire = {
+export type RewardProgramWithVersionsWire = {
   program: RewardProgramWire;
+  /** Published/current version (from the program's current_version_id pointer) -- nullable until first publication. */
   currentVersion: RewardProgramVersionWire | null;
+  /** The ONE editable draft (latest version while still draft) -- nullable when no draft exists. */
+  draftVersion: RewardProgramVersionWire | null;
 };
 
 export type RewardProgramDraftFieldsRequest = {
@@ -149,13 +152,13 @@ export function makeCallCreateNextRewardProgramVersion(functions: Functions) {
 }
 
 export function makeCallGetRewardProgram(functions: Functions) {
-  return adapt<GetRewardProgramRequest, RewardProgramWithCurrentVersionWire>(
+  return adapt<GetRewardProgramRequest, RewardProgramWithVersionsWire>(
     httpsCallable(functions, "getRewardProgram"),
   );
 }
 
 export function makeCallListRewardPrograms(functions: Functions) {
-  return adapt<ListRewardProgramsRequest, RewardProgramWithCurrentVersionWire[]>(
+  return adapt<ListRewardProgramsRequest, RewardProgramWithVersionsWire[]>(
     httpsCallable(functions, "listRewardPrograms"),
   );
 }

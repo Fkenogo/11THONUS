@@ -45,6 +45,9 @@ import { updateRewardProgramDraft } from "./updateRewardProgramDraftCommand";
 import { publishRewardProgramVersion } from "./publishRewardProgramVersionCommand";
 import { createNextRewardProgramVersion } from "./createNextRewardProgramVersionCommand";
 import { getRewardProgram, listRewardPrograms } from "./rewardProgramQueries";
+import { rewardProgramRequestHash } from "./rewardProgramRequestHash";
+import { withPlatformTransaction } from "../../../infrastructure/postgres/postgresTransaction";
+import { publishVersion } from "../repositories/rewardProgramRepository";
 import { RewardProgramDomainError } from "../models/rewardProgramErrors";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -305,14 +308,21 @@ describe("Reward Program commands — cross-store integration", () => {
       correlationId: nextId("corr"),
     });
 
-    await expect(
-      createRewardProgram(db, pool, {
+    // Post-CORR-001 (Finding 6): the conflict is a `RewardProgramDomainError`
+    // with an `IDEMPOTENCY_CONFLICT` category, not a plain `Error` whose
+    // message contains the category name.
+    try {
+      await createRewardProgram(db, pool, {
         userId: "owner-1",
         request: baseDraftRequest(businessId, { displayName: "Different Program" }) as never,
         idempotencyKey,
         correlationId: nextId("corr"),
-      }),
-    ).rejects.toThrow("IDEMPOTENCY_CONFLICT");
+      });
+      expect.unreachable("conflicting request must reject");
+    } catch (error) {
+      expect(error).toBeInstanceOf(RewardProgramDomainError);
+      expect((error as RewardProgramDomainError).category).toBe("IDEMPOTENCY_CONFLICT");
+    }
   });
 
   it("createRewardProgram: Manager is denied", async () => {
@@ -764,5 +774,593 @@ describe("Reward Program commands — cross-store integration", () => {
         rewardProgramId: created.program.id,
       }),
     ).rejects.toThrow(RewardProgramDomainError);
+  });
+});
+
+/**
+ * Corrected-workflow regressions (`PLATFORM-BASELINE-005A-CORR-001`).
+ * Every read assertion here goes through the real read boundary
+ * (`getRewardProgram` / `listRewardPrograms` querying PostgreSQL fresh),
+ * never through a command's return payload.
+ */
+describe("Reward Program corrected workflows (PLATFORM-BASELINE-005A-CORR-001)", () => {
+  it("Finding 1 flow A: a fresh read after create returns currentVersion=null and the v1 draft as draftVersion", async () => {
+    const businessId = nextId("biz");
+    await seedBusiness(businessId);
+    await seedMembership({
+      membershipId: nextId("mem"),
+      userId: "owner-1",
+      businessId,
+      role: "owner",
+    });
+
+    await createRewardProgram(db, pool, {
+      userId: "owner-1",
+      request: baseDraftRequest(businessId) as never,
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+
+    // Re-query from persistence via the read boundary (both list and get).
+    const listed = await listRewardPrograms(db, pool, { userId: "owner-1", businessId });
+    expect(listed).toHaveLength(1);
+    expect(listed[0].program.currentVersionId).toBeNull();
+    expect(listed[0].currentVersion).toBeNull();
+    expect(listed[0].draftVersion).not.toBeNull();
+    expect(listed[0].draftVersion?.version).toBe(1);
+    expect(listed[0].draftVersion?.status).toBe("draft");
+
+    const fetched = await getRewardProgram(db, pool, {
+      userId: "owner-1",
+      businessId,
+      rewardProgramId: listed[0].program.id,
+    });
+    expect(fetched.currentVersion).toBeNull();
+    expect(fetched.draftVersion?.status).toBe("draft");
+    // The UI can edit and publish the draft the read boundary returned.
+    const updated = await updateRewardProgramDraft(db, pool, {
+      userId: "owner-1",
+      request: {
+        businessId,
+        rewardProgramId: fetched.program.id,
+        versionId: fetched.draftVersion?.id ?? "",
+        expectedRowVersion: fetched.draftVersion?.rowVersion ?? 0,
+        rewardDescription: "Edited from the refetched read model",
+        multipleUnitsAllowed: true,
+        sharedLoyaltyNumberAllowed: false,
+        effectiveFrom: fetched.draftVersion?.effectiveFrom ?? new Date(),
+        qualifyingNodes: fetched.draftVersion?.qualifyingNodes ?? [],
+      } as never,
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+    expect(updated.rewardDescription).toBe("Edited from the refetched read model");
+
+    const published = await publishRewardProgramVersion(db, pool, {
+      userId: "owner-1",
+      request: {
+        businessId,
+        rewardProgramId: fetched.program.id,
+        versionId: fetched.draftVersion?.id ?? "",
+      },
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+    expect(published.status).toBe("active");
+  });
+
+  it("Finding 1 flow B: after publish v1 + create v2 draft, a fresh read returns currentVersion=v1 (active) and draftVersion=v2, which the UI can edit and publish", async () => {
+    const businessId = nextId("biz");
+    await seedBusiness(businessId);
+    await seedMembership({
+      membershipId: nextId("mem"),
+      userId: "owner-1",
+      businessId,
+      role: "owner",
+    });
+
+    const created = await createRewardProgram(db, pool, {
+      userId: "owner-1",
+      request: baseDraftRequest(businessId) as never,
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+    await publishRewardProgramVersion(db, pool, {
+      userId: "owner-1",
+      request: { businessId, rewardProgramId: created.program.id, versionId: created.version.id },
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+    await createNextRewardProgramVersion(db, pool, {
+      userId: "owner-1",
+      request: {
+        businessId,
+        rewardProgramId: created.program.id,
+        rewardDescription: "Version 2 draft",
+        multipleUnitsAllowed: true,
+        sharedLoyaltyNumberAllowed: false,
+        effectiveFrom: created.version.effectiveFrom,
+        qualifyingNodes: created.version.qualifyingNodes,
+      } as never,
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+
+    // Fresh read from persistence: currentVersion must STILL be v1, the
+    // editable draft must be v2 -- both visible at once.
+    const refetched = await getRewardProgram(db, pool, {
+      userId: "owner-1",
+      businessId,
+      rewardProgramId: created.program.id,
+    });
+    expect(refetched.currentVersion?.id).toBe(created.version.id);
+    expect(refetched.currentVersion?.version).toBe(1);
+    expect(refetched.currentVersion?.status).toBe("active");
+    expect(refetched.draftVersion?.version).toBe(2);
+    expect(refetched.draftVersion?.status).toBe("draft");
+
+    const listed = await listRewardPrograms(db, pool, { userId: "owner-1", businessId });
+    const entry = listed.find((p) => p.program.id === created.program.id);
+    expect(entry?.currentVersion?.version).toBe(1);
+    expect(entry?.draftVersion?.version).toBe(2);
+
+    // The UI can edit and publish the N+1 draft from the refetched read.
+    const updated = await updateRewardProgramDraft(db, pool, {
+      userId: "owner-1",
+      request: {
+        businessId,
+        rewardProgramId: created.program.id,
+        versionId: refetched.draftVersion?.id ?? "",
+        expectedRowVersion: refetched.draftVersion?.rowVersion ?? 0,
+        rewardDescription: "Version 2 edited",
+        multipleUnitsAllowed: true,
+        sharedLoyaltyNumberAllowed: false,
+        effectiveFrom: refetched.draftVersion?.effectiveFrom ?? new Date(),
+        qualifyingNodes: refetched.draftVersion?.qualifyingNodes ?? [],
+      } as never,
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+    expect(updated.rewardDescription).toBe("Version 2 edited");
+
+    const published = await publishRewardProgramVersion(db, pool, {
+      userId: "owner-1",
+      request: {
+        businessId,
+        rewardProgramId: created.program.id,
+        versionId: refetched.draftVersion?.id ?? "",
+      },
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+    expect(published.version).toBe(2);
+    expect(published.status).toBe("active");
+
+    const afterPublish = await getRewardProgram(db, pool, {
+      userId: "owner-1",
+      businessId,
+      rewardProgramId: created.program.id,
+    });
+    expect(afterPublish.currentVersion?.version).toBe(2);
+    expect(afterPublish.draftVersion).toBeNull();
+  });
+
+  it("Finding 2 test 1: concurrent first attempts with the same key + same request resolve with a governed outcome and exactly one program", async () => {
+    const businessId = nextId("biz");
+    await seedBusiness(businessId);
+    await seedMembership({
+      membershipId: nextId("mem"),
+      userId: "owner-1",
+      businessId,
+      role: "owner",
+    });
+
+    const key = nextId("key");
+    const request = baseDraftRequest(businessId);
+    const [first, second] = await Promise.allSettled([
+      createRewardProgram(db, pool, {
+        userId: "owner-1",
+        request: { ...request } as never,
+        idempotencyKey: key,
+        correlationId: nextId("corr"),
+      }),
+      createRewardProgram(db, pool, {
+        userId: "owner-1",
+        request: { ...request } as never,
+        idempotencyKey: key,
+        correlationId: nextId("corr"),
+      }),
+    ]);
+
+    // No raw database error anywhere: every fulfilled result is a real
+    // result; every rejected reason is the governed domain error (the
+    // losing reservation observes the winner and reports in-progress),
+    // never a unique-violation stack or an ambiguous committed-success.
+    for (const attempt of [first, second]) {
+      if (attempt.status === "rejected") {
+        expect(attempt.reason).toBeInstanceOf(RewardProgramDomainError);
+      }
+    }
+
+    // Exactly one domain mutation happened: one program, one v1 draft.
+    const programCount = await pool.query<{ count: string }>(
+      "SELECT count(*) FROM reward_programs WHERE business_id = $1",
+      [businessId],
+    );
+    expect(Number(programCount.rows[0].count)).toBe(1);
+    const programIds = await pool.query<{ id: string }>(
+      "SELECT id FROM reward_programs WHERE business_id = $1",
+      [businessId],
+    );
+    const programId = programIds.rows[0].id;
+    if (first.status === "fulfilled") expect(first.value.program.id).toBe(programId);
+    if (second.status === "fulfilled") expect(second.value.program.id).toBe(programId);
+    const versionCount = await pool.query<{ count: string }>(
+      "SELECT count(*) FROM reward_program_versions WHERE reward_program_id = $1",
+      [programId],
+    );
+    expect(Number(versionCount.rows[0].count)).toBe(1);
+  });
+
+  it("Finding 2 test 2: concurrent first attempts with the same key + different requests let exactly one acquire and resolve with governed outcomes", async () => {
+    const businessId = nextId("biz");
+    await seedBusiness(businessId);
+    await seedMembership({
+      membershipId: nextId("mem"),
+      userId: "owner-1",
+      businessId,
+      role: "owner",
+    });
+
+    const key = nextId("key");
+    const request = baseDraftRequest(businessId);
+    const [first, second] = await Promise.allSettled([
+      createRewardProgram(db, pool, {
+        userId: "owner-1",
+        request: { ...request, displayName: "Display A" } as never,
+        idempotencyKey: key,
+        correlationId: nextId("corr"),
+      }),
+      createRewardProgram(db, pool, {
+        userId: "owner-1",
+        request: { ...request, displayName: "Display B" } as never,
+        idempotencyKey: key,
+        correlationId: nextId("corr"),
+      }),
+    ]);
+
+    // Exactly one request owns the key; the loser receives a governed
+    // idempotency outcome, never a raw database error.
+    for (const attempt of [first, second]) {
+      if (attempt.status === "rejected") {
+        expect(attempt.reason).toBeInstanceOf(RewardProgramDomainError);
+      }
+    }
+
+    const programCount = await pool.query<{ count: string }>(
+      "SELECT count(*) FROM reward_programs WHERE business_id = $1",
+      [businessId],
+    );
+    expect(Number(programCount.rows[0].count)).toBe(1);
+  });
+
+  it("Finding 2 test 4: a failed domain mutation rolls back the reservation, domain state, and outbox together, and a same-key retry proceeds", async () => {
+    const businessId = nextId("biz");
+    await seedBusiness(businessId);
+    await seedMembership({
+      membershipId: nextId("mem"),
+      userId: "owner-1",
+      businessId,
+      role: "owner",
+    });
+
+    const created = await createRewardProgram(db, pool, {
+      userId: "owner-1",
+      request: baseDraftRequest(businessId) as never,
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+
+    // One successful edit advances the row version (1 -> 2).
+    await updateRewardProgramDraft(db, pool, {
+      userId: "owner-1",
+      request: {
+        businessId,
+        rewardProgramId: created.program.id,
+        versionId: created.version.id,
+        expectedRowVersion: created.version.rowVersion,
+        rewardDescription: "First edit",
+        multipleUnitsAllowed: true,
+        sharedLoyaltyNumberAllowed: false,
+        effectiveFrom: created.version.effectiveFrom,
+        qualifyingNodes: created.version.qualifyingNodes,
+      } as never,
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+
+    // A second edit issued with the STALE row version fails inside the
+    // transaction, AFTER its reservation -> reservation, domain state, and
+    // outbox roll back together.
+    await expect(
+      updateRewardProgramDraft(db, pool, {
+        userId: "owner-1",
+        request: {
+          businessId,
+          rewardProgramId: created.program.id,
+          versionId: created.version.id,
+          expectedRowVersion: created.version.rowVersion,
+          rewardDescription: "Second edit",
+          multipleUnitsAllowed: true,
+          sharedLoyaltyNumberAllowed: false,
+          effectiveFrom: created.version.effectiveFrom,
+          qualifyingNodes: created.version.qualifyingNodes,
+        } as never,
+        idempotencyKey: nextId("key"),
+        correlationId: nextId("corr"),
+      }),
+    ).rejects.toThrow(RewardProgramDomainError);
+
+    const versionRow = await pool.query<{ reward_description: string; row_version: number }>(
+      "SELECT reward_description, row_version FROM reward_program_versions WHERE id = $1",
+      [created.version.id],
+    );
+    expect(versionRow.rows[0].reward_description).toBe("First edit");
+    expect(Number(versionRow.rows[0].row_version)).toBe(2);
+    const outboxCount = await pool.query<{ count: string }>(
+      "SELECT count(*) FROM reward_program_outbox",
+    );
+    const keysCount = await pool.query<{ count: string }>("SELECT count(*) FROM idempotency_keys");
+    // Nothing from the failed attempt persisted; only the completed
+    // reservations of the successful commands remain.
+    expect(Number(outboxCount.rows[0].count)).toBe(1);
+    expect(Number(keysCount.rows[0].count)).toBe(2);
+
+    // A retry with the now-current row version proceeds: the failed
+    // attempt's reservation is gone, so the key can be (re)acquired.
+    const retried = await updateRewardProgramDraft(db, pool, {
+      userId: "owner-1",
+      request: {
+        businessId,
+        rewardProgramId: created.program.id,
+        versionId: created.version.id,
+        expectedRowVersion: 2,
+        rewardDescription: "Second edit",
+        multipleUnitsAllowed: true,
+        sharedLoyaltyNumberAllowed: false,
+        effectiveFrom: created.version.effectiveFrom,
+        qualifyingNodes: created.version.qualifyingNodes,
+      } as never,
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+    expect(retried.rewardDescription).toBe("Second edit");
+  });
+
+  it("Finding 6: an in-progress reservation with the same request hash surfaces the governed TEMPORARY_UNAVAILABLE domain error", async () => {
+    const businessId = nextId("biz");
+    await seedBusiness(businessId);
+    await seedMembership({
+      membershipId: nextId("mem"),
+      userId: "owner-1",
+      businessId,
+      role: "owner",
+    });
+
+    const created = await createRewardProgram(db, pool, {
+      userId: "owner-1",
+      request: baseDraftRequest(businessId) as never,
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+
+    const draftRequest = {
+      businessId,
+      rewardProgramId: created.program.id,
+      versionId: created.version.id,
+      expectedRowVersion: created.version.rowVersion,
+      rewardDescription: "Hashed request",
+      multipleUnitsAllowed: true,
+      sharedLoyaltyNumberAllowed: false,
+      effectiveFrom: created.version.effectiveFrom,
+      qualifyingNodes: created.version.qualifyingNodes,
+    };
+    // The exact hash this request deterministically produces (the pure
+    // helper the command itself uses), seeded as an in-flight reservation.
+    const requestHash = rewardProgramRequestHash(
+      "updateDraft",
+      "owner-1",
+      businessId,
+      created.version.id,
+      JSON.stringify({
+        rewardDescription: draftRequest.rewardDescription,
+        standardRewardNodeId: null,
+        multipleUnitsAllowed: draftRequest.multipleUnitsAllowed,
+        sharedLoyaltyNumberAllowed: draftRequest.sharedLoyaltyNumberAllowed,
+        bulkReviewThreshold: null,
+        effectiveFrom: draftRequest.effectiveFrom,
+        effectiveUntil: null,
+        qualifyingNodes: draftRequest.qualifyingNodes,
+      }),
+    );
+    // The reservation must be held under the SAME idempotency key the call
+    // below reuses -- reservations are looked up by key, not by hash, so a
+    // matching hash under a DIFFERENT key can never trigger "in_progress".
+    const heldKey = nextId("key");
+    await pool.query(
+      `INSERT INTO idempotency_keys (idempotency_key, operation_type, actor_id, request_hash, status, correlation_id)
+       VALUES ($1, 'rewardProgram.updateDraft', 'owner-1', $2, 'processing', 'corr')`,
+      [heldKey, requestHash],
+    );
+
+    try {
+      await updateRewardProgramDraft(db, pool, {
+        userId: "owner-1",
+        request: draftRequest as never,
+        idempotencyKey: heldKey,
+        correlationId: nextId("corr"),
+      });
+      expect.unreachable("in-progress reservation must reject");
+    } catch (error) {
+      expect(error).toBeInstanceOf(RewardProgramDomainError);
+      expect((error as RewardProgramDomainError).category).toBe("TEMPORARY_UNAVAILABLE");
+    }
+  });
+
+  it("Finding 6: a same-key reservation held for a different request surfaces the governed IDEMPOTENCY_CONFLICT domain error", async () => {
+    const businessId = nextId("biz");
+    await seedBusiness(businessId);
+    await seedMembership({
+      membershipId: nextId("mem"),
+      userId: "owner-1",
+      businessId,
+      role: "owner",
+    });
+
+    const created = await createRewardProgram(db, pool, {
+      userId: "owner-1",
+      request: baseDraftRequest(businessId) as never,
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+
+    const heldKey = nextId("key");
+    // The key is held by a materially DIFFERENT request (different hash).
+    await pool.query(
+      `INSERT INTO idempotency_keys (idempotency_key, operation_type, actor_id, request_hash, status, correlation_id)
+       VALUES ($1, 'rewardProgram.updateDraft', 'owner-1', 'rewardProgram.updateDraft:other-request', 'processing', 'corr')`,
+      [heldKey],
+    );
+
+    try {
+      await updateRewardProgramDraft(db, pool, {
+        userId: "owner-1",
+        request: {
+          businessId,
+          rewardProgramId: created.program.id,
+          versionId: created.version.id,
+          expectedRowVersion: created.version.rowVersion,
+          rewardDescription: "Different request",
+          multipleUnitsAllowed: true,
+          sharedLoyaltyNumberAllowed: false,
+          effectiveFrom: created.version.effectiveFrom,
+          qualifyingNodes: created.version.qualifyingNodes,
+        } as never,
+        idempotencyKey: heldKey,
+        correlationId: nextId("corr"),
+      });
+      expect.unreachable("conflicting reservation must reject");
+    } catch (error) {
+      expect(error).toBeInstanceOf(RewardProgramDomainError);
+      expect((error as RewardProgramDomainError).category).toBe("IDEMPOTENCY_CONFLICT");
+    }
+  });
+
+  it("Finding 5: publishing a changed shared-number version updates the program projection in the same transaction, and a failed publication leaves the projection unchanged", async () => {
+    const businessId = nextId("biz");
+    await seedBusiness(businessId);
+    await seedMembership({
+      membershipId: nextId("mem"),
+      userId: "owner-1",
+      businessId,
+      role: "owner",
+    });
+
+    const created = await createRewardProgram(db, pool, {
+      userId: "owner-1",
+      request: baseDraftRequest(businessId, { sharedLoyaltyNumberAllowed: false }) as never,
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+    await publishRewardProgramVersion(db, pool, {
+      userId: "owner-1",
+      request: { businessId, rewardProgramId: created.program.id, versionId: created.version.id },
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+
+    // Create v2 with the shared-number value FLIPPED to true.
+    const v2 = await createNextRewardProgramVersion(db, pool, {
+      userId: "owner-1",
+      request: {
+        businessId,
+        rewardProgramId: created.program.id,
+        rewardDescription: "v2 with shared numbers",
+        multipleUnitsAllowed: true,
+        sharedLoyaltyNumberAllowed: true,
+        effectiveFrom: created.version.effectiveFrom,
+        qualifyingNodes: created.version.qualifyingNodes,
+      } as never,
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+    expect(v2.sharedLoyaltyNumberAllowed).toBe(true);
+
+    // Rollback simulation: the repository publish writes everything inside
+    // the caller's transaction; aborting that transaction must leave the
+    // projection (and every other publication write) untouched.
+    await withPlatformTransaction(pool, async (tx) => {
+      await publishVersion(tx, {
+        programId: created.program.id,
+        versionId: v2.id,
+        actorUpdatedBy: "owner-1",
+      });
+      throw new Error("simulated publication failure");
+    }).catch(() => undefined);
+
+    const afterRollback = await pool.query<{
+      shared_loyalty_number_allowed: boolean;
+      current_version_id: string | null;
+    }>(
+      "SELECT shared_loyalty_number_allowed, current_version_id FROM reward_programs WHERE id = $1",
+      [created.program.id],
+    );
+    expect(afterRollback.rows[0].shared_loyalty_number_allowed).toBe(false);
+    expect(afterRollback.rows[0].current_version_id).toBe(created.version.id);
+    const v2AfterRollback = await pool.query<{ status: string }>(
+      "SELECT status FROM reward_program_versions WHERE id = $1",
+      [v2.id],
+    );
+    expect(v2AfterRollback.rows[0].status).toBe("draft");
+
+    // Real publication: v1 snapshot stays false, v2 snapshot is true, the
+    // program projection follows v2, and the pointer moves to v2.
+    await publishRewardProgramVersion(db, pool, {
+      userId: "owner-1",
+      request: { businessId, rewardProgramId: created.program.id, versionId: v2.id },
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+
+    const v1Row = await pool.query<{ shared_loyalty_number_allowed: boolean; status: string }>(
+      "SELECT shared_loyalty_number_allowed, status FROM reward_program_versions WHERE id = $1",
+      [created.version.id],
+    );
+    expect(v1Row.rows[0].shared_loyalty_number_allowed).toBe(false);
+    expect(v1Row.rows[0].status).toBe("superseded");
+
+    const v2Row = await pool.query<{ shared_loyalty_number_allowed: boolean; status: string }>(
+      "SELECT shared_loyalty_number_allowed, status FROM reward_program_versions WHERE id = $1",
+      [v2.id],
+    );
+    expect(v2Row.rows[0].shared_loyalty_number_allowed).toBe(true);
+    expect(v2Row.rows[0].status).toBe("active");
+
+    const programRow = await pool.query<{
+      shared_loyalty_number_allowed: boolean;
+      current_version_id: string;
+    }>(
+      "SELECT shared_loyalty_number_allowed, current_version_id FROM reward_programs WHERE id = $1",
+      [created.program.id],
+    );
+    expect(programRow.rows[0].shared_loyalty_number_allowed).toBe(true);
+    expect(programRow.rows[0].current_version_id).toBe(v2.id);
+
+    const readModel = await getRewardProgram(db, pool, {
+      userId: "owner-1",
+      businessId,
+      rewardProgramId: created.program.id,
+    });
+    expect(readModel.currentVersion?.id).toBe(v2.id);
   });
 });

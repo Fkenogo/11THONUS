@@ -30,9 +30,20 @@ import { MutationError } from "../onboarding/MutationError";
 import type { BusinessContext } from "../api/businessContext";
 import type {
   QualifyingNodeWire,
-  RewardProgramWithCurrentVersionWire,
+  RewardProgramWithVersionsWire,
 } from "../api/rewardProgramMutations";
 
+/**
+ * The edit form round-trips the COMPLETE version snapshot
+ * (`PLATFORM-BASELINE-005A-CORR-001` Finding 4): the server normalizes
+ * omitted optional values to `null` and a draft update replaces the full
+ * draft snapshot, so the form must carry `standardRewardNodeId`,
+ * `bulkReviewThreshold`, and `effectiveUntil` through every edit even
+ * though they are not (yet) exposed as editable controls -- the UI must
+ * never silently clear configuration it does not own. The three fields
+ * are loaded from the draft on `startEdit` and sent back unchanged until
+ * product scope exposes them.
+ */
 type DraftFormState = {
   displayName: string;
   rewardProgramCategoryId: string;
@@ -41,6 +52,12 @@ type DraftFormState = {
   multipleUnitsAllowed: boolean;
   sharedLoyaltyNumberAllowed: boolean;
   effectiveFrom: string;
+  /** Preserved, not yet product-exposed: round-tripped unchanged (Finding 4). */
+  standardRewardNodeId: string | null;
+  /** Preserved, not yet product-exposed: round-tripped unchanged (Finding 4). */
+  bulkReviewThreshold: number | null;
+  /** Preserved, not yet product-exposed: round-tripped unchanged (Finding 4). */
+  effectiveUntil: string | null;
 };
 
 function emptyDraftForm(): DraftFormState {
@@ -52,6 +69,9 @@ function emptyDraftForm(): DraftFormState {
     multipleUnitsAllowed: true,
     sharedLoyaltyNumberAllowed: false,
     effectiveFrom: new Date().toISOString().slice(0, 10),
+    standardRewardNodeId: null,
+    bulkReviewThreshold: null,
+    effectiveUntil: null,
   };
 }
 
@@ -103,18 +123,22 @@ export function RewardProgramManagementPage({ context }: { context: BusinessCont
 
   const programs = rewardProgramsQuery.data ?? [];
 
-  function startEdit(entry: RewardProgramWithCurrentVersionWire) {
+  function startEdit(entry: RewardProgramWithVersionsWire) {
+    const draft = entry.draftVersion;
+    if (!draft) return;
     setEditingProgramId(entry.program.id);
     setEditForm({
       displayName: entry.program.displayName,
       rewardProgramCategoryId: entry.program.rewardProgramCategoryId,
-      rewardDescription: entry.currentVersion?.rewardDescription ?? "",
-      qualifyingNodeIds:
-        entry.currentVersion?.qualifyingNodes.map((n) => n.knowledgeNodeId).join(", ") ?? "",
-      multipleUnitsAllowed: entry.currentVersion?.multipleUnitsAllowed ?? true,
-      sharedLoyaltyNumberAllowed: entry.currentVersion?.sharedLoyaltyNumberAllowed ?? false,
-      effectiveFrom:
-        entry.currentVersion?.effectiveFrom.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
+      rewardDescription: draft.rewardDescription,
+      qualifyingNodeIds: draft.qualifyingNodes.map((n) => n.knowledgeNodeId).join(", "),
+      multipleUnitsAllowed: draft.multipleUnitsAllowed,
+      sharedLoyaltyNumberAllowed: draft.sharedLoyaltyNumberAllowed,
+      effectiveFrom: draft.effectiveFrom.slice(0, 10),
+      // Finding 4: preserve the optional fields the form does not own.
+      standardRewardNodeId: draft.standardRewardNodeId,
+      bulkReviewThreshold: draft.bulkReviewThreshold,
+      effectiveUntil: draft.effectiveUntil,
     });
   }
 
@@ -139,17 +163,21 @@ export function RewardProgramManagementPage({ context }: { context: BusinessCont
     );
   }
 
-  function handleEditSubmit(entry: RewardProgramWithCurrentVersionWire) {
-    if (!entry.currentVersion) return;
+  function handleEditSubmit(entry: RewardProgramWithVersionsWire) {
+    const draft = entry.draftVersion;
+    if (!draft) return;
     updateDraftMutation.mutate(
       {
         rewardProgramId: entry.program.id,
-        versionId: entry.currentVersion.id,
-        expectedRowVersion: entry.currentVersion.rowVersion,
+        versionId: draft.id,
+        expectedRowVersion: draft.rowVersion,
         rewardDescription: editForm.rewardDescription,
+        standardRewardNodeId: editForm.standardRewardNodeId,
         multipleUnitsAllowed: editForm.multipleUnitsAllowed,
         sharedLoyaltyNumberAllowed: editForm.sharedLoyaltyNumberAllowed,
+        bulkReviewThreshold: editForm.bulkReviewThreshold,
         effectiveFrom: new Date(editForm.effectiveFrom).toISOString(),
+        effectiveUntil: editForm.effectiveUntil,
         qualifyingNodes: parseQualifyingNodeIds(editForm.qualifyingNodeIds),
       },
       { onSuccess: () => setEditingProgramId(null) },
@@ -249,6 +277,8 @@ export function RewardProgramManagementPage({ context }: { context: BusinessCont
               </span>
             </div>
 
+            {/* Published display always comes from currentVersion; the
+                editable draft is a separate concept (Finding 1). */}
             {entry.currentVersion && editingProgramId !== entry.program.id && (
               <div className="mt-2 text-sm">
                 <p>{entry.currentVersion.rewardDescription}</p>
@@ -259,9 +289,23 @@ export function RewardProgramManagementPage({ context }: { context: BusinessCont
               </div>
             )}
 
+            {!entry.currentVersion &&
+              entry.draftVersion &&
+              editingProgramId !== entry.program.id && (
+                <div className="mt-2 text-sm">
+                  <p>{entry.draftVersion.rewardDescription}</p>
+                  <p className="text-[var(--color-muted-foreground)]">
+                    {t("rewardProgram.versionLabel", { version: entry.draftVersion.version })} —{" "}
+                    {t(`rewardProgram.versionStatus.${entry.draftVersion.status}`)}
+                  </p>
+                </div>
+              )}
+
             {canManage && editingProgramId !== entry.program.id && (
               <div className="mt-3 flex gap-2">
-                {entry.currentVersion?.status === "draft" && (
+                {/* Edit/save/publish act on the editable DRAFT, never the
+                    published version (Finding 1). */}
+                {entry.draftVersion?.status === "draft" && (
                   <>
                     <Button type="button" variant="secondary" onClick={() => startEdit(entry)}>
                       {t("rewardProgram.editDraftAction")}
@@ -270,10 +314,10 @@ export function RewardProgramManagementPage({ context }: { context: BusinessCont
                       type="button"
                       disabled={publishMutation.isPending}
                       onClick={() =>
-                        entry.currentVersion &&
+                        entry.draftVersion &&
                         publishMutation.mutate({
                           rewardProgramId: entry.program.id,
-                          versionId: entry.currentVersion.id,
+                          versionId: entry.draftVersion.id,
                         })
                       }
                     >
@@ -281,7 +325,11 @@ export function RewardProgramManagementPage({ context }: { context: BusinessCont
                     </Button>
                   </>
                 )}
-                {entry.currentVersion?.status === "active" && (
+                {/* "Create next version" is eligible only for a published
+                    current version AND only while no draft exists (Finding
+                    1); the payload preserves the current version's optional
+                    fields the form does not own (Finding 4). */}
+                {entry.currentVersion?.status === "active" && !entry.draftVersion && (
                   <Button
                     type="button"
                     variant="secondary"
@@ -291,9 +339,12 @@ export function RewardProgramManagementPage({ context }: { context: BusinessCont
                       createNextVersionMutation.mutate({
                         rewardProgramId: entry.program.id,
                         rewardDescription: entry.currentVersion.rewardDescription,
+                        standardRewardNodeId: entry.currentVersion.standardRewardNodeId,
                         multipleUnitsAllowed: entry.currentVersion.multipleUnitsAllowed,
                         sharedLoyaltyNumberAllowed: entry.currentVersion.sharedLoyaltyNumberAllowed,
+                        bulkReviewThreshold: entry.currentVersion.bulkReviewThreshold,
                         effectiveFrom: new Date().toISOString(),
+                        effectiveUntil: entry.currentVersion.effectiveUntil,
                         qualifyingNodes: entry.currentVersion.qualifyingNodes,
                       })
                     }

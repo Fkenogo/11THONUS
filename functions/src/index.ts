@@ -189,7 +189,13 @@ const CATEGORY_TO_HTTPS: Readonly<
   INTEGRATION_FAILED: "internal",
 };
 
-function toHttpsError(error: unknown): HttpsError {
+/**
+ * Exported only for the reward-program idempotency transport regression
+ * test in `index.test.ts` (`PLATFORM-BASELINE-005A-CORR-001` Finding 6):
+ * idempotency conflict/in-progress outcomes must map through the domain
+ * error class to the governed client codes, never the `internal` fallback.
+ */
+export function toHttpsError(error: unknown): HttpsError {
   if (error instanceof HttpsError) {
     return error;
   }

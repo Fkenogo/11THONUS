@@ -24,6 +24,8 @@ import {
 import type { QualifyingNode, RewardProgramVersionRow } from "../models/rewardProgram";
 import {
   rewardProgramCrossBusinessMismatchError,
+  rewardProgramIdempotencyConflictError,
+  rewardProgramIdempotencyInProgressError,
   rewardProgramNotFoundError,
   rewardProgramVersionNotDraftError,
   rewardProgramVersionNotFoundError,
@@ -106,10 +108,10 @@ export async function updateRewardProgramDraft(
       return reservation.responseSnapshot as RewardProgramVersionRow;
     }
     if (reservation.outcome === "in_progress") {
-      throw new Error("IDEMPOTENCY_IN_PROGRESS");
+      throw rewardProgramIdempotencyInProgressError();
     }
     if (reservation.outcome === "conflict") {
-      throw new Error("IDEMPOTENCY_CONFLICT");
+      throw rewardProgramIdempotencyConflictError();
     }
 
     const currentDraft = await getDraftVersionForUpdate(tx, params.request.versionId);

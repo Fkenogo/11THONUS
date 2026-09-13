@@ -4,10 +4,13 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { RewardProgramManagementPage } from "./RewardProgramManagementPage";
 import type { BusinessContext } from "../api/businessContext";
-import type { RewardProgramWithCurrentVersionWire } from "../api/rewardProgramMutations";
+import type {
+  RewardProgramVersionWire,
+  RewardProgramWithVersionsWire,
+} from "../api/rewardProgramMutations";
 
 let rewardProgramsResult: {
-  data: RewardProgramWithCurrentVersionWire[] | undefined;
+  data: RewardProgramWithVersionsWire[] | undefined;
   isLoading: boolean;
   isError: boolean;
 };
@@ -30,7 +33,12 @@ const mockCreateNextVersion = vi.fn();
 vi.mock("../hooks/rewardProgramMutations", () => ({
   useCreateRewardProgramMutation: () => ({ mutate: mockCreate, isPending: false, error: null }),
   useUpdateRewardProgramDraftMutation: () => ({
-    mutate: mockUpdateDraft,
+    mutate: (payload: unknown, options?: { onSuccess?: () => void }) => {
+      mockUpdateDraft(payload, options);
+      // Mirror react-query's success settlement so the page's own
+      // onSuccess (closing the edit form) runs, like the real hook does.
+      options?.onSuccess?.();
+    },
     isPending: false,
     error: null,
   }),
@@ -56,22 +64,8 @@ function renderPage() {
   );
 }
 
-const draftProgram: RewardProgramWithCurrentVersionWire = {
-  program: {
-    id: "rp-1",
-    businessId: "biz-1",
-    displayName: "Buy 10 Coffees",
-    rewardProgramCategoryId: "cat-1",
-    sharedLoyaltyNumberAllowed: false,
-    status: "draft",
-    currentVersionId: "v-1",
-    createdAt: "2026-09-13T00:00:00.000Z",
-    createdBy: "user-1",
-    updatedAt: "2026-09-13T00:00:00.000Z",
-    updatedBy: "user-1",
-    schemaVersion: 1,
-  },
-  currentVersion: {
+function versionWire(overrides: Partial<RewardProgramVersionWire> = {}): RewardProgramVersionWire {
+  return {
     id: "v-1",
     rewardProgramId: "rp-1",
     version: 1,
@@ -92,7 +86,68 @@ const draftProgram: RewardProgramWithCurrentVersionWire = {
     rowVersion: 1,
     schemaVersion: 1,
     qualifyingNodes: [{ knowledgeNodeId: "node-1", businessDisplayName: null }],
-  },
+    ...overrides,
+  };
+}
+
+const programWire = {
+  id: "rp-1",
+  businessId: "biz-1",
+  displayName: "Buy 10 Coffees",
+  rewardProgramCategoryId: "cat-1",
+  sharedLoyaltyNumberAllowed: false,
+  status: "draft" as const,
+  currentVersionId: null,
+  createdAt: "2026-09-13T00:00:00.000Z",
+  createdBy: "user-1",
+  updatedAt: "2026-09-13T00:00:00.000Z",
+  updatedBy: "user-1",
+  schemaVersion: 1,
+};
+
+/**
+ * Corrected read model (`PLATFORM-BASELINE-005A-CORR-001` Finding 1): a
+ * freshly created, never-published program reads back with
+ * `currentVersion: null` and its v1 draft in `draftVersion` — exactly the
+ * shape the old `{program, currentVersion}` model lost after refetch.
+ */
+const draftProgram: RewardProgramWithVersionsWire = {
+  program: programWire,
+  currentVersion: null,
+  draftVersion: versionWire({ id: "v-1", status: "draft" }),
+};
+
+/**
+ * Published program with an N+1 draft: the published v1 stays in
+ * `currentVersion` (pointer unchanged) while the editable v2 draft is
+ * `draftVersion`.
+ */
+const publishedProgramWithDraft: RewardProgramWithVersionsWire = {
+  program: { ...programWire, status: "active", currentVersionId: "v-1" },
+  currentVersion: versionWire({
+    id: "v-1",
+    version: 1,
+    status: "active",
+    approvedAt: "2026-09-13T01:00:00.000Z",
+  }),
+  draftVersion: versionWire({
+    id: "v-2",
+    version: 2,
+    status: "draft",
+    rewardDescription: "Version 2 draft",
+  }),
+};
+
+/** Published program with no draft: only the published version exists. */
+const publishedProgramNoDraft: RewardProgramWithVersionsWire = {
+  program: { ...programWire, status: "active", currentVersionId: "v-1" },
+  currentVersion: versionWire({
+    id: "v-1",
+    version: 1,
+    status: "active",
+    approvedAt: "2026-09-13T01:00:00.000Z",
+  }),
+  draftVersion: null,
 };
 
 describe("RewardProgramManagementPage (PLATFORM-BASELINE-005A)", () => {
@@ -190,5 +245,137 @@ describe("RewardProgramManagementPage (PLATFORM-BASELINE-005A)", () => {
     renderPage();
     await user.click(screen.getByRole("button", { name: /^publish$/i }));
     expect(mockPublish).toHaveBeenCalledWith({ rewardProgramId: "rp-1", versionId: "v-1" });
+  });
+
+  /**
+   * `PLATFORM-BASELINE-005A-CORR-001` Finding 1, flow A: a freshly created
+   * program refetches as `currentVersion: null` + v1 in `draftVersion`; the
+   * UI must still offer edit/publish and act on the DRAFT.
+   */
+  it("Finding 1 flow A: a refetched unpublished program keeps edit/publish available and acts on draftVersion", async () => {
+    rewardProgramsResult = { data: [draftProgram], isLoading: false, isError: false };
+    accessibleResult = { data: [{ businessId: "biz-1", role: "owner" }] };
+    const user = userEvent.setup();
+    renderPage();
+    expect(screen.getByRole("button", { name: /edit draft/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^publish$/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /edit draft/i }));
+    expect(screen.getByLabelText(/reward description/i)).toHaveValue("One free coffee");
+    await user.type(screen.getByLabelText(/reward description/i), " two");
+    await user.click(screen.getByRole("button", { name: /save draft/i }));
+    expect(mockUpdateDraft).toHaveBeenCalledWith(
+      expect.objectContaining({
+        rewardProgramId: "rp-1",
+        versionId: "v-1",
+        expectedRowVersion: 1,
+        rewardDescription: "One free coffee two",
+      }),
+      expect.anything(),
+    );
+  });
+
+  /**
+   * Finding 1, flow B: a published program with an N+1 draft must show the
+   * published v1 as current display, keep edit/publish targeting the v2
+   * DRAFT, and NOT offer "create next version" while a draft exists.
+   */
+  it("Finding 1 flow B: a published program with an N+1 draft edits/publishes the draft and hides create-next-version", async () => {
+    rewardProgramsResult = { data: [publishedProgramWithDraft], isLoading: false, isError: false };
+    accessibleResult = { data: [{ businessId: "biz-1", role: "owner" }] };
+    const user = userEvent.setup();
+    renderPage();
+
+    // Published display comes from currentVersion (v1).
+    expect(screen.getByText(/One free coffee/)).toBeInTheDocument();
+    // Edit/publish act on the v2 draft.
+    expect(screen.getByRole("button", { name: /edit draft/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^publish$/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /create next version/i })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /edit draft/i }));
+    expect(screen.getByLabelText(/reward description/i)).toHaveValue("Version 2 draft");
+    await user.type(screen.getByLabelText(/reward description/i), " improved");
+    await user.click(screen.getByRole("button", { name: /save draft/i }));
+    expect(mockUpdateDraft).toHaveBeenCalledWith(
+      expect.objectContaining({
+        rewardProgramId: "rp-1",
+        versionId: "v-2",
+        expectedRowVersion: 1,
+        rewardDescription: "Version 2 draft improved",
+      }),
+      expect.anything(),
+    );
+
+    await user.click(screen.getByRole("button", { name: /^publish$/i }));
+    expect(mockPublish).toHaveBeenCalledWith({ rewardProgramId: "rp-1", versionId: "v-2" });
+  });
+
+  /**
+   * `PLATFORM-BASELINE-005A-CORR-001` Finding 4: the form does not expose
+   * `standardRewardNodeId`/`bulkReviewThreshold`/`effectiveUntil`, but the
+   * save payload must round-trip them unchanged — editing an unrelated
+   * field must never silently erase them.
+   */
+  it("Finding 4: saving an edit preserves the optional fields the form does not expose", async () => {
+    const draftWithOptionals: RewardProgramWithVersionsWire = {
+      program: programWire,
+      currentVersion: null,
+      draftVersion: versionWire({
+        standardRewardNodeId: "std-node-7",
+        bulkReviewThreshold: 25,
+        effectiveUntil: "2027-01-31T00:00:00.000Z",
+        qualifyingNodes: [
+          { knowledgeNodeId: "node-1", businessDisplayName: null },
+          { knowledgeNodeId: "node-2", businessDisplayName: null },
+        ],
+      }),
+    };
+    rewardProgramsResult = { data: [draftWithOptionals], isLoading: false, isError: false };
+    accessibleResult = { data: [{ businessId: "biz-1", role: "owner" }] };
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(screen.getByRole("button", { name: /edit draft/i }));
+    // The user edits ONLY the reward description.
+    await user.clear(screen.getByLabelText(/reward description/i));
+    await user.type(screen.getByLabelText(/reward description/i), "Edited description only");
+    await user.click(screen.getByRole("button", { name: /save draft/i }));
+
+    expect(mockUpdateDraft).toHaveBeenCalledWith(
+      expect.objectContaining({
+        rewardDescription: "Edited description only",
+        standardRewardNodeId: "std-node-7",
+        bulkReviewThreshold: 25,
+        effectiveUntil: "2027-01-31T00:00:00.000Z",
+        qualifyingNodes: [
+          { knowledgeNodeId: "node-1", businessDisplayName: null },
+          { knowledgeNodeId: "node-2", businessDisplayName: null },
+        ],
+      }),
+      expect.anything(),
+    );
+  });
+
+  it("Finding 1: a published program with no draft offers create-next-version carrying the current version's optional fields, and no edit/publish", async () => {
+    rewardProgramsResult = { data: [publishedProgramNoDraft], isLoading: false, isError: false };
+    accessibleResult = { data: [{ businessId: "biz-1", role: "owner" }] };
+    const user = userEvent.setup();
+    renderPage();
+
+    expect(screen.queryByRole("button", { name: /edit draft/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^publish$/i })).not.toBeInTheDocument();
+    const createNext = screen.getByRole("button", { name: /create next version/i });
+    await user.click(createNext);
+    expect(mockCreateNextVersion).toHaveBeenCalledWith(
+      expect.objectContaining({
+        rewardProgramId: "rp-1",
+        standardRewardNodeId: null,
+        bulkReviewThreshold: null,
+        effectiveUntil: null,
+        multipleUnitsAllowed: true,
+        sharedLoyaltyNumberAllowed: false,
+        qualifyingNodes: [{ knowledgeNodeId: "node-1", businessDisplayName: null }],
+      }),
+    );
   });
 });

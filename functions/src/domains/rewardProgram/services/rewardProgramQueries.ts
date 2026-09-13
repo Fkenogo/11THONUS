@@ -14,7 +14,7 @@ import {
   getRewardProgramById,
   listRewardProgramsForBusiness,
 } from "../repositories/rewardProgramRepository";
-import type { RewardProgramWithCurrentVersion } from "../models/rewardProgram";
+import type { RewardProgramWithVersions } from "../models/rewardProgram";
 import {
   rewardProgramCrossBusinessMismatchError,
   rewardProgramNotFoundError,
@@ -28,7 +28,7 @@ export async function getRewardProgram(
     readonly businessId: string;
     readonly rewardProgramId: string;
   },
-): Promise<RewardProgramWithCurrentVersion> {
+): Promise<RewardProgramWithVersions> {
   await authorizeRewardProgramRead(db, params.userId, params.businessId);
   const result = await getRewardProgramById(pool, params.rewardProgramId);
   if (!result) {
@@ -44,7 +44,7 @@ export async function listRewardPrograms(
   db: Firestore,
   pool: PlatformPostgresPool,
   params: { readonly userId: string; readonly businessId: string },
-): Promise<readonly RewardProgramWithCurrentVersion[]> {
+): Promise<readonly RewardProgramWithVersions[]> {
   await authorizeRewardProgramRead(db, params.userId, params.businessId);
   return listRewardProgramsForBusiness(pool, params.businessId);
 }

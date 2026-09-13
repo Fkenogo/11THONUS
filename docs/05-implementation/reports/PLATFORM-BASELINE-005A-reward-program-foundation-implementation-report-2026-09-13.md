@@ -259,7 +259,7 @@ Pause, retire, archive, migration between Reward Programs, seasonal variants, Pu
 
 ## 36. Rollback instructions
 
-Revert this package's commit(s) on `feat/platform-baseline-005a-reward-program-foundation` (or the eventual merge commit on `main`). Roll back the five migrations via the existing `migrateDown(pool, migrationsDir, 5)` mechanism (proven safe in `rewardProgramMigrations.postgres.test.ts`) before or as part of the revert if the migrations were ever applied to a shared/staging database — they were not applied to any shared environment by this package (only to disposable local/test databases during development). No Firestore data was created or modified by this package (zero writes to any Firestore collection).
+Revert this package's commit(s) on `feat/platform-baseline-005a-reward-program-foundation` (or the eventual merge commit on `main`). Roll back the migrations via the existing `migrateDown(pool, migrationsDir, N)` mechanism (proven safe in `rewardProgramMigrations.postgres.test.ts`) before or as part of the revert if the migrations were ever applied to a shared/staging database — they were not applied to any shared environment by this package (only to disposable local/test databases during development). **Updated by `CORR-001`:** the migration set is now six files (0001-0006, see the CORR-001 section below), so a full rollback is `migrateDown(pool, migrationsDir, 6)`. No Firestore data was created or modified by this package (zero writes to any Firestore collection).
 
 ## 37. PR number
 
@@ -267,14 +267,210 @@ Revert this package's commit(s) on `feat/platform-baseline-005a-reward-program-f
 
 ## 38. Exact PR head
 
-`faee1a5a2002c40b08562143fbbb4b445f83312f` (branch `feat/platform-baseline-005a-reward-program-foundation`)
+See the CORR-001 section below for the corrected head (`faee1a5a2002c40b08562143fbbb4b445f83312f` / `e291a986ce6e48f9a4432c886b5c9cbefa679417` was the pre-correction head reviewed by the independent findings).
 
 ## 39. CI status
 
-Pending at PR open — check `gh pr checks 251` for current status. Not merged; awaiting independent review per this package's stop instruction.
+See the CORR-001 section below.
 
 ## 40. Final disposition
 
-**PLATFORM-BASELINE-005A — IMPLEMENTED / AWAITING INDEPENDENT REVIEW.**
+See the CORR-001 section below — superseded by `PLATFORM-BASELINE-005A-CORR-001 — CORRECTED / AWAITING INDEPENDENT RE-REVIEW`.
+
+---
+
+# PLATFORM-BASELINE-005A-CORR-001 — Independent Review Corrections
+
+**Date:** 2026-09-13
+**Scope:** Bounded correction of six independent-review findings (P1×2, P2×4) raised on PR #251 by `chatgpt-codex-connector[bot]`, plus one additional integrity check this task specification required inspecting independently (same-program ownership of `reward_programs.current_version_id`).
+**Status:** CORRECTED / AWAITING INDEPENDENT RE-REVIEW. Not merged.
+
+## CORR-001.1 Recovery entry state
+
+- PR #251: `state=OPEN`, `mergeable=MERGEABLE`, `mergeStateStatus=UNSTABLE`, base `f955bcebbea673291422c16a3ad4a43ab2ba3b26` (unchanged, still `origin/main`'s head at package start), head `e291a986ce6e48f9a4432c886b5c9cbefa679417` (the original implementation's final report-only commit). CI on that head: `Build, Lint, Test, Emulator Validation` — **FAILURE**.
+- Six open, unresolved review threads on that head, one per finding below — none replied to, none resolved.
+- `git fetch origin` confirmed the local worktree's branch tip exactly matched `origin/feat/platform-baseline-005a-reward-program-foundation` (`0` ahead, `0` behind) — the branch itself had received no new commits since the original implementation.
+
+## CORR-001.2 Previous agent work discovered
+
+A prior correction agent had been assigned this task but never committed, pushed, or communicated its state. `git log`/`git reflog`/`git stash list` on the branch showed no additional commits and no stash entries — every trace of its work existed only as **uncommitted changes in the same isolated worktree's working tree** (`/private/tmp/11thonus-pb005a`, the same worktree the original implementation used): 17 modified tracked files, 3 new untracked files (a new web hook test, and a new migration `0006` pair). No `.output`/scratch artifacts, no partial commits, no WIP markers.
+
+On inspection, this uncommitted work was **substantially complete and materially correct** for all six findings plus the additional same-program integrity check — not a half-finished attempt. It had simply never been validated, committed, or pushed. It had **not** been run against a live PostgreSQL instance, the Firestore emulator, or lint/format at any point (three genuine defects, described below, were caught only once actual validation ran).
+
+## CORR-001.3 Previous valid work preserved
+
+All of the previous agent's design and implementation choices were preserved unchanged as a correct starting point:
+
+- The `RewardProgramWithVersions` (`currentVersion`/`draftVersion`) read-model shape (Finding 1) — exactly the conceptual shape this task specified, propagated consistently through the repository, domain model, query service, callable transport, web wire types, and UI.
+- The atomic `INSERT ... ON CONFLICT (idempotency_key) DO NOTHING RETURNING ...` reservation pattern (Finding 2) — the only race-free approach for a key that may not yet exist.
+- The `keyForRequest` rotation reuse from `businessMutations.ts` for all four Reward Program mutation hooks (Finding 3) — no new idempotency-hook framework invented, exactly as instructed.
+- The complete-draft-snapshot round-trip for `standardRewardNodeId`/`bulkReviewThreshold`/`effectiveUntil` (Finding 4).
+- The same-transaction `reward_programs.shared_loyalty_number_allowed` projection update inside `publishVersion` (Finding 5).
+- The `rewardProgramIdempotencyConflictError()`/`rewardProgramIdempotencyInProgressError()` domain-error factories mapping to the existing closed `IDEMPOTENCY_CONFLICT`/`TEMPORARY_UNAVAILABLE` categories (Finding 6), applied identically across all four write commands.
+- The new forward-only migration `0006_reward_program_pointer_integrity` adding a composite `(current_version_id, id) → (id, reward_program_id)` foreign key plus a partial unique index enforcing at most one editable draft per program (the additional integrity check) — correctly issued as a **new** migration rather than a rewrite of 0001-0005, matching this task's migration-safety instruction; migrations 0001-0005 were confirmed byte-for-byte untouched (`git diff --stat` empty against all five).
+- Extensive real-PostgreSQL and RTL regression coverage already written for every finding (concurrency tests using `Promise.allSettled` against the shared `pool`, not sequential calls).
+
+None of this was rewritten. Corrections below are additive/fix-only.
+
+## CORR-001.4 Findings re-verified against current code (classification)
+
+| Finding | Classification on entry | Root cause (confirmed against current code) |
+|---|---|---|
+| 1 — draft lost on read | Already correctly fixed (uncommitted) | `getRewardProgramById`/`listRewardProgramsForBusiness` returned only `currentVersion`, sourced solely from the nullable `current_version_id` pointer, so a program's own draft (new or N+1) was invisible after any refetch |
+| 2 — idempotency reservation race | Already correctly fixed (uncommitted) | `SELECT ... FOR UPDATE` cannot lock a row that does not exist; two concurrent first attempts both observed "absent" and raced on `INSERT` |
+| 3 — hook key rotation | Already correctly fixed (uncommitted) | Each Reward Program mutation hook is mounted once for the whole management page (not once per program), so a retained key from one program's retryable failure could be replayed against a different program |
+| 4 — silent field loss on edit | Already correctly fixed (uncommitted) | The edit form only carried the fields it rendered; `standardRewardNodeId`/`bulkReviewThreshold`/`effectiveUntil` were never read from the draft or sent back, so the server's update replaced them with the request's (absent) values |
+| 5 — stale shared-number projection | Already correctly fixed (uncommitted) | `publishVersion`'s `UPDATE reward_programs` set `current_version_id`/`status` but never `shared_loyalty_number_allowed`, so the projection could contradict the newly active version's own snapshot |
+| 6 — plain errors bypass domain mapping | Already correctly fixed (uncommitted) | All four write commands threw bare `new Error("IDEMPOTENCY_CONFLICT" / "IDEMPOTENCY_IN_PROGRESS")` on a reservation conflict/in-progress outcome, which `toHttpsError` does not recognize and maps to `internal` |
+| Additional — same-program pointer integrity | Not yet addressed by the original implementation; corrected (uncommitted) by the same prior agent | The original single-column FK (`current_version_id → reward_program_versions(id)`) proved only that the pointer named *some* existing version row, not one belonging to the same program |
+
+No finding required a design contradiction, a Founder decision, or a scope change to resolve. No finding was found to already be fixed on `main`/elsewhere, superseded, or in need of reversal.
+
+## CORR-001.5 Defects found and fixed during THIS validation pass
+
+Three genuine defects survived the previous agent's uncommitted work because it was never run. All are test/lint-only; no production code changed as a result:
+
+1. **Two unused imports** (`insertNextDraftVersion`, `insertRewardProgramWithFirstDraft`) left in `rewardProgramCommands.postgres.test.ts` after the previous agent's edits — `pnpm run lint` failed with 2 errors. Fixed by removing the unused imports (the third import from that statement, `publishVersion`, is used by the Finding 5 rollback test and was kept).
+2. **Stale pre-CORR-001 test assertion**: `createRewardProgram: same key + different request content conflicts` asserted `.rejects.toThrow("IDEMPOTENCY_CONFLICT")` — a message-substring match against the OLD plain-`Error` shape Finding 6 replaces. Fixed by asserting `instanceof RewardProgramDomainError` and `category === "IDEMPOTENCY_CONFLICT"` instead, consistent with every other CORR-001 test.
+3. **Broken Finding 6 in-progress test**: the seeded "in-progress reservation" row was inserted under a throwaway key (`nextId("seedkey")`) while the actual `updateRewardProgramDraft` call under test used a DIFFERENT, freshly generated key (`nextId("key")`) — reservations are looked up strictly by key, never by hash, so the seeded row could never collide with the call being tested; the command ran to normal completion instead of hitting the in-progress branch, and the test's own `expect.unreachable(...)` fired, masking the real assertion behind a confusing "expected AssertionError to be instance of RewardProgramDomainError" failure. Fixed by seeding the in-progress row under the SAME key (`heldKey`) the tested call reuses.
+4. **`platformFoundationReadiness.postgres.test.ts` Case B** still asserted the pre-`CORR-001` five-migration set (`["0001".."0005"]`); with migration `0006` now shipped, `migrateUp` correctly applies six migrations and the stale assertion failed. Updated to `["0001".."0006"]`.
+
+All four fixes were verified by re-running the affected suites; no other test needed to change.
+
+## CORR-001.6 Finding 1 — Management read must return the editable draft
+
+**Root cause:** confirmed in CORR-001.4.
+**Correction:** `RewardProgramWithCurrentVersion` renamed to `RewardProgramWithVersions` with two independent nullable fields, `currentVersion` (unchanged pointer semantics) and `draftVersion` (the program's latest version, but only while `status = 'draft'`, via a new `getEditableDraftVersion` repository helper) — propagated through `getRewardProgramById`, `listRewardProgramsForBusiness`, `rewardProgramQueries.ts`, the callable transport (no explicit serialization needed — the callables return the query result directly), the web wire type `RewardProgramWithVersionsWire`, and `RewardProgramManagementPage.tsx` (edit/save/publish now target `draftVersion`; "create next version" is eligible only when `currentVersion` is active AND `draftVersion` is null). No stale reference to the old type name remains anywhere in the repository (verified by repo-wide grep).
+**Tests:** two dedicated real-PostgreSQL flows in `rewardProgramCommands.postgres.test.ts` ("Finding 1 flow A" — fresh unpublished program refetches as `currentVersion=null`/`draftVersion=v1`, edited and published from that refetched state; "Finding 1 flow B" — publish v1 + create v2 draft refetches as `currentVersion=v1(active)`/`draftVersion=v2`, edited and published, then a further refetch confirms `currentVersion=v2`/`draftVersion=null`); three RTL tests on `RewardProgramManagementPage.test.tsx` proving the UI renders the correct actions from each of the three read-model shapes (unpublished-with-draft, published-with-draft, published-no-draft). Both re-query from persistence via the read boundary, per the task's explicit instruction not to rely on command return values.
+
+## CORR-001.7 Finding 2 — Atomic first-use idempotency reservation
+
+**Root cause:** confirmed in CORR-001.4.
+**Correction:** `checkAndReserveIdempotencyKey` now attempts `INSERT ... ON CONFLICT (idempotency_key) DO NOTHING RETURNING ...` first; a successful insert (`rows.length > 0`) is an unconditional "acquired". Only when the insert is silently skipped (key already exists) does the function fall back to `SELECT ... FOR UPDATE` on the now-guaranteed-existing row, which is the only point row-locking is meaningful. The misleading original doc comment (claiming `FOR UPDATE` alone serialized concurrent first attempts) was corrected to describe the actual atomic pattern and why the old one was unsafe.
+**Real-concurrency tests** (all using `Promise.allSettled` against the shared connection pool — genuine concurrent transactions, not sequential calls, verified safe under this file's `fileParallelism: false` postgres-suite setting which only serializes test *files*, not the concurrent client connections within one test):
+- Same key + same request, concurrent: no raw database error surfaces to either caller (every rejection is a `RewardProgramDomainError`), and exactly one program/version is created.
+- Same key + different request, concurrent: exactly one program is created; the loser receives a governed outcome, never a raw unique-violation.
+- Completed same-key/same-request replay: covered by the pre-existing (non-concurrent) `createRewardProgram: same-key replay` test, unchanged.
+- Rollback: a stale-row-version failure inside `updateRewardProgramDraft`'s transaction rolls back its reservation, domain state, AND outbox together (verified by exact row/outbox/key counts before and after), and a subsequent retry with a fresh key proceeds normally.
+
+## CORR-001.8 Finding 3 — Rotate idempotency key when target/request changes
+
+**Root cause:** confirmed in CORR-001.4.
+**Correction:** all four Reward Program mutation hooks (`useCreateRewardProgramMutation`, `useUpdateRewardProgramDraftMutation`, `usePublishRewardProgramVersionMutation`, `useCreateNextRewardProgramVersionMutation`) now call the existing `keyForRequest(holder, lastRequestRef, JSON.stringify(payload))` helper (reused unmodified from `businessMutations.ts`, the same helper `PLATFORM-BASELINE-004A-CORR-001` introduced for the Team page's shared list-action hooks) instead of `holder.getKey()` directly. A retry of the identical request replays the same key; any materially different request (different program, version, or field values) rotates to a fresh key. No new idempotency-hook abstraction was introduced.
+**Tests:** `apps/web/src/business/hooks/rewardProgramMutations.test.tsx` (new file) renders the real hook with the real `keyForRequest` helper and a mocked callable that can reject retryably or resolve, and captures every key sent: a retry of the exact same request keeps the key; a materially different request (different `rewardProgramId` or field values) rotates to a new key; success clears/rotates per the existing convention.
+
+## CORR-001.9 Finding 4 — Preserve optional draft fields during UI edit
+
+**Root cause:** confirmed in CORR-001.4.
+**Correction:** `DraftFormState` gained `standardRewardNodeId`/`bulkReviewThreshold`/`effectiveUntil`, populated from the draft on `startEdit` and always included, unchanged, in the update/create-next-version payload — never exposed as editable controls (matching current approved product scope), but never silently dropped either.
+**Tests:** "Finding 4: saving an edit preserves the optional fields the form does not expose" (RTL) — a draft seeded with all three optional fields set, the user edits only `rewardDescription`, and the mutation payload is asserted to carry the description change alongside the three untouched original values plus the unmodified qualifying-node list; a companion test proves "create next version" also carries the current version's optional fields forward.
+
+## CORR-001.10 Finding 5 — Update current shared-number projection on publish
+
+**Root cause:** confirmed in CORR-001.4.
+**Correction:** `publishVersion`'s `UPDATE reward_programs` statement now also sets `shared_loyalty_number_allowed = $2` from the just-published version row's own `RETURNING`-clause value, inside the same transaction as the pointer/status update. The version row itself remains the sole historical authority; this write only refreshes the current-value convenience projection.
+**Tests:** "Finding 5: publishing a changed shared-number version updates the program projection in the same transaction, and a failed publication leaves the projection unchanged" — publishes v1 (`shared=false`), creates and publishes v2 (`shared=true`), and separately proves a simulated mid-transaction failure (an injected `throw` after `publishVersion` runs, inside its own `withPlatformTransaction` call) leaves the program's projection, pointer, and the draft version's status completely unchanged, before the real publication is exercised.
+
+## CORR-001.11 Finding 6 — Map idempotency outcomes through domain errors
+
+**Root cause:** confirmed in CORR-001.4.
+**Correction:** two new factories, `rewardProgramIdempotencyConflictError()` (category `IDEMPOTENCY_CONFLICT`, wire code `aborted`) and `rewardProgramIdempotencyInProgressError()` (category `TEMPORARY_UNAVAILABLE`, wire code `unavailable`) — both existing entries in the closed 14-category taxonomy, already mapped in `functions/src/index.ts`'s `CATEGORY_TO_HTTPS`. All four write commands (`createRewardProgram`, `updateRewardProgramDraft`, `publishRewardProgramVersion`, `createNextRewardProgramVersion`) now throw these instead of `new Error("IDEMPOTENCY_CONFLICT"/"IDEMPOTENCY_IN_PROGRESS")`. `toHttpsError` was exported (previously private) solely so `index.test.ts` can exercise the mapping directly.
+**Tests:** two dedicated real-PostgreSQL command-level tests (in-progress reservation with a matching request hash surfaces `TEMPORARY_UNAVAILABLE`; a same-key reservation held for a materially different request surfaces `IDEMPOTENCY_CONFLICT`) plus three callable-transport unit tests in `index.test.ts` (`toHttpsError` maps each category to its governed code and never to `internal`).
+
+## CORR-001.12 Additional integrity check — `current_version_id` same-program ownership
+
+**Finding:** the original single-column FK (`reward_programs.current_version_id → reward_program_versions(id)`, migration 0002) proved only that the pointer named *some* existing version row — not one belonging to the same Reward Program. A relational, declarative fix is possible without any architectural change.
+**Disposition:** corrected via a **new** migration, `0006_reward_program_pointer_integrity.sql` (existing migrations 0001-0005 were confirmed untouched, byte-for-byte). It (a) adds `UNIQUE (id, reward_program_id)` to `reward_program_versions` (harmless — `id` is already the primary key, so this is a redundant-but-necessary composite uniqueness target for the next step), (b) drops the old single-column FK and replaces it with a composite FK `(current_version_id, id) REFERENCES reward_program_versions (id, reward_program_id)`, which PostgreSQL's `MATCH SIMPLE` (the default) still treats as satisfied whenever either referencing column is `NULL` — preserving the pointer's nullable-until-first-publication semantics exactly — and (c) additionally adds a partial unique index `reward_program_versions_one_draft_per_program` (`WHERE status = 'draft'`), turning Finding 1's "at most one editable draft per program" read-model assumption into a database-enforced invariant rather than a command-layer convention. No trigger was needed; both invariants are expressible declaratively.
+**Migration safety:** PR #251 remains unmerged; these migrations have never been applied to any shared/staging/production environment (only to disposable local Docker Postgres instances during development and this validation pass) — a new forward migration was therefore judged safe and preferable to modifying 0001-0005, per this task's own instruction to avoid rewriting migrations relied upon outside the feature branch. No migration-runner checksum concern arises because 0001-0005's file contents are unchanged; only a new 0006 checksum is newly recorded.
+**Tests:** two new real-PostgreSQL tests in `rewardProgramMigrations.postgres.test.ts` — one proves a cross-program pointer assignment is rejected with a foreign-key violation while a same-program assignment succeeds; the other proves the partial unique index rejects a second simultaneous draft per program while allowing an unlimited number of `superseded` historical drafts and exactly one new draft after each publish cycle. The migration-count assertions in this file and in `platformFoundationReadiness.postgres.test.ts` were updated from five to six migrations throughout.
+
+## CORR-001.13 Review-thread handling
+
+All six original threads were independently re-verified against the current (corrected) code before any reply — none were assumed correct from a prior agent's claim, since the prior agent had never replied to or resolved any of them. Each was replied to with the exact correction and test evidence (see the PR for the verbatim replies) and resolved only after the corrected commit was pushed and the full validation suite re-run clean against it. A fresh scan of PR #251 immediately before finalizing this report found no thread beyond the original six and no new reviewer/bot comment.
+
+## CORR-001.14 Final risk state
+
+- The cross-store publish race window (RF-3, unchanged from the original implementation) remains disclosed, not eliminated — this correction package did not touch that contract.
+- The web UI's plain-text Commerce Knowledge id entry (unchanged, disclosed in the original report) remains a known simplification.
+- The new composite FK and partial unique index add real, tested database-level protection with no observed performance concern at this data scale (single-digit rows per program).
+
+## CORR-001.15 Remaining known limitations
+
+Identical to the original implementation report's §34, plus: the "one editable draft per program" invariant is now enforced twice (repository read-model convention AND database constraint) — intentionally, per this task's explicit instruction to prefer a real relational invariant over trusting application logic alone.
+
+## CORR-001.16 Commands executed (this correction pass only)
+
+```
+git fetch --all --prune && git status --short && git log --oneline -5 (worktree audit)
+gh pr view 251 --json headRefOid,baseRefOid,mergeable,mergeStateStatus,state,statusCheckRollup
+gh api repos/Fkenogo/11THONUS/pulls/251/comments (review-thread audit)
+git diff --stat / git diff -- <each changed file> (technical review of uncommitted work)
+pnpm --filter functions typecheck / pnpm --filter web typecheck
+pnpm run lint (found + fixed 2 errors)
+pnpm run format:check / pnpm exec prettier --write <5 files>
+pnpm --filter functions test -- --run rewardProgram evaluatePermission index.test
+pnpm --filter web test -- --run RewardProgram rewardProgram
+docker exec <postgres> psql ... (test-database cleanup between iterations)
+firebase emulators:exec --only firestore ... npx vitest run --config vitest.postgres.config.ts (3 iterations: 2 found+fixed real test bugs, 1 confirmed clean + reproduced a transient shared-machine contention failure as non-regression)
+pnpm --filter functions test (full) / pnpm --filter web test (full)
+pnpm run build
+pnpm run emulators:validate (full Firebase Emulator Suite)
+pnpm run emulators (temporary local UI-disable in firebase.json to avoid a port-4000 conflict with another concurrent session on this shared machine; reverted immediately after, confirmed clean via git diff before any commit)
+pnpm run test:e2e (Playwright, full suite)
+git add / git commit / git push (see below)
+gh pr comment / gh api ...pulls/251/comments/<id>/replies (thread replies)
+```
+
+## CORR-001.17 Dependencies added
+
+None.
+
+## CORR-001.18 Config changes
+
+None persisted. A local, temporary `firebase.json` `emulators.ui.enabled: false` edit was made and reverted (confirmed via `git diff` showing no residual change) to work around a port-4000 conflict with another session's emulator instance on this shared machine while running the Playwright suite locally — never committed.
+
+## CORR-001.19 Schema/migration changes
+
+One new migration pair, `0006_reward_program_pointer_integrity.{sql,down.sql}` — see CORR-001.12. Migrations 0001-0005 unchanged.
+
+## CORR-001.20 Test results (final corrected head)
+
+- Targeted Reward Program + permission/evaluator + index unit tests: **4 files / 282 tests pass**.
+- Targeted Reward Program web/RTL tests: **2 files / 17 tests pass**.
+- Real PostgreSQL + Firestore-emulator cross-store suite (5 files, including the new concurrency and integrity tests): **57/57 pass** (reproduced clean twice after fixing the 3 defects in CORR-001.5; one intermediate run hit one transient, non-reproducing failure in an unrelated pre-existing test caused by shared-database contention on this multi-session machine — confirmed non-regression by an immediate clean re-run with no code change).
+- Full functions unit suite: **158 files / 1739 tests pass**.
+- Full web unit suite: **111 files / 790 tests pass**.
+- Full Firebase Emulator Suite (`emulators:validate`): **65 files / 833 passed, 3 pre-existing skips, 0 failed**.
+- Typecheck (functions + web): clean.
+- Lint: clean (1 pre-existing, unrelated warning) — after fixing the 2 errors in CORR-001.5.
+- Format check: clean — after formatting the 5 previously-unformatted files.
+- Build: clean (pre-existing chunk-size warning only).
+- Playwright e2e (full suite): **37/37 pass**.
+
+## CORR-001.21 Review-thread state
+
+All six original `chatgpt-codex-connector[bot]` threads replied to with the exact correction and test evidence, and resolved after the corrected commit was pushed and validated. See the PR for the verbatim reply text and thread links.
+
+## CORR-001.22 New review findings
+
+None found on a fresh scan of PR #251 immediately before finalizing this report (comments, reviews, and check-run annotations).
+
+## CORR-001.23 CI status on final head
+
+See the corrected head recorded below; CI must be confirmed green there before any independent reviewer approval (this package does not merge regardless of CI state).
+
+## CORR-001.24 Worktree safety confirmation
+
+The primary worktree, `/Volumes/PRODUCTION/Projects/11THONUS`, was inspected (`git status --short --branch`) at the start of this task and found unchanged from its prior in-progress `docs/dec-legal-002-bt-draft-007` state (same modified-file list: `canonical-reference.md`, `assumptions-register.md`, `decision-register.md`, `documentation-changes-log.md`, and the PRD/TRD files already in progress there) — it was never stashed, reset, cleaned, checked out, or committed to. All correction work happened exclusively in the pre-existing isolated worktree `/private/tmp/11thonus-pb005a` on branch `feat/platform-baseline-005a-reward-program-foundation`, the same worktree the original implementation and the incomplete prior correction attempt both used.
+
+## CORR-001.25 Rollback instructions (this correction)
+
+Revert the correction commit(s) on `feat/platform-baseline-005a-reward-program-foundation`. If migration `0006` was ever applied to a shared/staging database (it was not by this package), roll it back first via `migrateDown(pool, migrationsDir, 1)` from a six-migration state, or `migrateDown(pool, migrationsDir, 6)` for a full reset.
+
+## CORR-001.26 Final disposition
+
+**PLATFORM-BASELINE-005A-CORR-001 — CORRECTED / AWAITING INDEPENDENT RE-REVIEW.**
+
+Not merged.
 
 Not merged. Not self-approved.

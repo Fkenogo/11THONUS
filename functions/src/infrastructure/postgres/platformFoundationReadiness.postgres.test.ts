@@ -159,7 +159,7 @@ describe("checkPlatformFoundationReadiness — actual shipped migrations directo
 
   it("Case B: after applying the real shipped Reward Program migration set, readiness reports ready", async () => {
     const bootstrapped = await migrateUp(pool, shippedMigrationsDir);
-    expect(bootstrapped.applied).toEqual(["0001", "0002", "0003", "0004", "0005"]);
+    expect(bootstrapped.applied).toEqual(["0001", "0002", "0003", "0004", "0005", "0006"]);
 
     const result = await checkPlatformFoundationReadiness(shippedReadinessDeps());
 

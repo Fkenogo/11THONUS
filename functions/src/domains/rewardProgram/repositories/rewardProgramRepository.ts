@@ -19,7 +19,7 @@ import type {
   RewardProgramVersionDraftInput,
   RewardProgramVersionRow,
   RewardProgramVersionStatus,
-  RewardProgramWithCurrentVersion,
+  RewardProgramWithVersions,
 } from "../models/rewardProgram";
 
 type Queryable = PoolClient | PlatformPostgresPool;
@@ -197,7 +197,7 @@ export async function insertRewardProgramWithFirstDraft(
 export async function getRewardProgramById(
   db: Queryable,
   programId: string,
-): Promise<RewardProgramWithCurrentVersion | null> {
+): Promise<RewardProgramWithVersions | null> {
   const programResult = await db.query<ProgramDbRow>(
     `SELECT * FROM reward_programs WHERE id = $1`,
     [programId],
@@ -206,11 +206,28 @@ export async function getRewardProgramById(
     return null;
   }
   const program = mapProgramRow(programResult.rows[0]);
-  if (!program.currentVersionId) {
-    return { program, currentVersion: null };
-  }
-  const currentVersion = await getVersionById(db, program.currentVersionId);
-  return { program, currentVersion };
+  const currentVersion = program.currentVersionId
+    ? await getVersionById(db, program.currentVersionId)
+    : null;
+  const draftVersion = await getEditableDraftVersion(db, program.id);
+  return { program, currentVersion, draftVersion };
+}
+
+/**
+ * The program's ONE editable draft (`PLATFORM-BASELINE-005A-CORR-001`
+ * Finding 1): the latest version, but only while it is still a draft --
+ * never an arbitrary historical draft. The database additionally enforces
+ * at most one draft per program (partial unique index), so a draft here
+ * is always the program's single editable one. Returns `null` both when
+ * the program has no versions at all and when its latest version is
+ * published/superseded.
+ */
+async function getEditableDraftVersion(
+  db: Queryable,
+  programId: string,
+): Promise<RewardProgramVersionRow | null> {
+  const latest = await getLatestVersionForProgram(db, programId);
+  return latest !== null && latest.status === "draft" ? latest : null;
 }
 
 export async function getVersionById(
@@ -328,9 +345,27 @@ export async function publishVersion(
       "publishVersion: draft version not found or already published (caller must pre-check).",
     );
   }
+  // The program-level `shared_loyalty_number_allowed` column is the
+  // approved current-value convenience projection (RF-2) -- it must track
+  // the newly published version's authoritative snapshot in the SAME
+  // transaction (`PLATFORM-BASELINE-005A-CORR-001` Finding 5), otherwise
+  // the program row and its current version contradict each other after a
+  // value-changing publication. Historical authority stays on the version
+  // row; this write only refreshes the projection.
   await tx.query(
-    `UPDATE reward_programs SET current_version_id = $1, status = 'active', updated_at = now(), updated_by = $2 WHERE id = $3`,
-    [params.versionId, params.actorUpdatedBy, params.programId],
+    `UPDATE reward_programs
+        SET current_version_id = $1,
+            status = 'active',
+            shared_loyalty_number_allowed = $2,
+            updated_at = now(),
+            updated_by = $3
+      WHERE id = $4`,
+    [
+      params.versionId,
+      publishResult.rows[0].shared_loyalty_number_allowed,
+      params.actorUpdatedBy,
+      params.programId,
+    ],
   );
   const qualifyingNodes = await fetchQualifyingNodes(tx, params.versionId);
   return mapVersionRow(publishResult.rows[0], qualifyingNodes);
@@ -376,18 +411,19 @@ export async function insertNextDraftVersion(
 export async function listRewardProgramsForBusiness(
   db: Queryable,
   businessId: string,
-): Promise<RewardProgramWithCurrentVersion[]> {
+): Promise<RewardProgramWithVersions[]> {
   const result = await db.query<ProgramDbRow>(
     `SELECT * FROM reward_programs WHERE business_id = $1 ORDER BY created_at DESC`,
     [businessId],
   );
   const programs = result.rows.map(mapProgramRow);
-  const withVersions: RewardProgramWithCurrentVersion[] = [];
+  const withVersions: RewardProgramWithVersions[] = [];
   for (const program of programs) {
     const currentVersion = program.currentVersionId
       ? await getVersionById(db, program.currentVersionId)
       : null;
-    withVersions.push({ program, currentVersion });
+    const draftVersion = await getEditableDraftVersion(db, program.id);
+    withVersions.push({ program, currentVersion, draftVersion });
   }
   return withVersions;
 }

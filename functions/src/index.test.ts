@@ -19,7 +19,9 @@ import {
   parseUpdateRewardProgramDraftRequest,
   parsePublishRewardProgramVersionRequest,
   parseCreateNextRewardProgramVersionRequest,
+  toHttpsError,
 } from "./index";
+import { RewardProgramDomainError } from "./domains/rewardProgram/models/rewardProgramErrors";
 
 /**
  * Regression guard for the callable-boundary provider allow-list
@@ -699,5 +701,44 @@ describe("parseCreateNextRewardProgramVersionRequest (mass-assignment boundary, 
     expect(parsed).not.toHaveProperty("version");
     expect(parsed).not.toHaveProperty("requiredVerifiedUnits");
     expect(parsed).not.toHaveProperty("rewardQuantity");
+  });
+});
+
+/**
+ * Callable transport mapping for Reward Program idempotency outcomes
+ * (`PLATFORM-BASELINE-005A-CORR-001` Finding 6): the commands throw the
+ * `RewardProgramDomainError` class — never a plain `Error` — so the
+ * boundary maps conflict to the governed `aborted` code and an in-progress
+ * reservation to the governed retryable `unavailable` code. A plain
+ * `Error` would fall through to `internal` and surface the wrong client
+ * semantics.
+ */
+describe("toHttpsError (reward program idempotency transport mapping, PLATFORM-BASELINE-005A-CORR-001)", () => {
+  it("maps IDEMPOTENCY_CONFLICT to the governed 'aborted' code", () => {
+    const error = toHttpsError(
+      new RewardProgramDomainError(
+        "IDEMPOTENCY_CONFLICT",
+        "same key, materially different request",
+      ),
+    );
+    expect(error.code).toBe("aborted");
+    expect(error.message).not.toContain("same key");
+  });
+
+  it("maps a TEMPORARY_UNAVAILABLE in-progress reservation to the retryable 'unavailable' code", () => {
+    const error = toHttpsError(
+      new RewardProgramDomainError(
+        "TEMPORARY_UNAVAILABLE",
+        "key reserved by an in-progress request",
+      ),
+    );
+    expect(error.code).toBe("unavailable");
+    expect(error.message).not.toContain("reserved");
+  });
+
+  it("does NOT map a Reward Program domain error to 'internal'", () => {
+    for (const category of ["IDEMPOTENCY_CONFLICT", "TEMPORARY_UNAVAILABLE"] as const) {
+      expect(toHttpsError(new RewardProgramDomainError(category, "x")).code).not.toBe("internal");
+    }
   });
 });

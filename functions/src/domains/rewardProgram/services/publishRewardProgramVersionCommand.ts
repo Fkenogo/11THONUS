@@ -35,6 +35,8 @@ import { writeRewardProgramOutboxEntry } from "../repositories/rewardProgramOutb
 import type { RewardProgramVersionRow } from "../models/rewardProgram";
 import {
   rewardProgramCrossBusinessMismatchError,
+  rewardProgramIdempotencyConflictError,
+  rewardProgramIdempotencyInProgressError,
   rewardProgramNotFoundError,
   rewardProgramVersionNotDraftError,
   rewardProgramVersionNotFoundError,
@@ -124,10 +126,10 @@ export async function publishRewardProgramVersion(
       return reservation.responseSnapshot as RewardProgramVersionRow;
     }
     if (reservation.outcome === "in_progress") {
-      throw new Error("IDEMPOTENCY_IN_PROGRESS");
+      throw rewardProgramIdempotencyInProgressError();
     }
     if (reservation.outcome === "conflict") {
-      throw new Error("IDEMPOTENCY_CONFLICT");
+      throw rewardProgramIdempotencyConflictError();
     }
 
     // Re-check draft state under the transaction's row lock (prevents a

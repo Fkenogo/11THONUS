@@ -19,6 +19,10 @@ import {
 import { insertRewardProgramWithFirstDraft } from "../repositories/rewardProgramRepository";
 import { writeRewardProgramOutboxEntry } from "../repositories/rewardProgramOutboxRepository";
 import { FIXED_REQUIRED_VERIFIED_UNITS, FIXED_REWARD_QUANTITY } from "../models/rewardProgram";
+import {
+  rewardProgramIdempotencyConflictError,
+  rewardProgramIdempotencyInProgressError,
+} from "../models/rewardProgramErrors";
 import type {
   QualifyingNode,
   RewardProgramRow,
@@ -93,10 +97,10 @@ export async function createRewardProgram(
       return reservation.responseSnapshot as CreateRewardProgramResult;
     }
     if (reservation.outcome === "in_progress") {
-      throw new Error("IDEMPOTENCY_IN_PROGRESS");
+      throw rewardProgramIdempotencyInProgressError();
     }
     if (reservation.outcome === "conflict") {
-      throw new Error("IDEMPOTENCY_CONFLICT");
+      throw rewardProgramIdempotencyConflictError();
     }
 
     const { program, version } = await insertRewardProgramWithFirstDraft(tx, {
