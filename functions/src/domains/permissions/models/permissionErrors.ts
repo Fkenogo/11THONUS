@@ -71,6 +71,22 @@ export function permissionCannotBeBothSensitiveAndOrdinaryError(
   );
 }
 
+export function unrecognisedRewardProgramPermissionError(value: string): PermissionDomainError {
+  return new PermissionDomainError(
+    "VALIDATION_FAILED",
+    `"${value}" is not a governed Reward Program Permission Catalogue entry (PLATFORM-BASELINE-005A).`,
+  );
+}
+
+export function permissionCannotBeInMultipleCataloguesError(
+  permissionId: string,
+): PermissionDomainError {
+  return new PermissionDomainError(
+    "VALIDATION_FAILED",
+    `"${permissionId}" cannot appear in more than one Permission Catalogue — the Sensitive, Ordinary, and Reward Program catalogues are structurally disjoint by design.`,
+  );
+}
+
 export function sensitivePermissionCannotBeImplicitInRoleTemplateError(
   role: string,
   permissionId: string,

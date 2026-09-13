@@ -21,9 +21,11 @@ import { checkPlatformFoundationReadiness } from "./platformFoundationReadiness"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const fixturesDir = path.join(__dirname, "__fixtures__", "migrations");
-// The package's actual shipped migrations directory (intentionally empty of
-// `.sql` files — see migrations/README.md). Used to prove the empty-shipped-
-// set behaviour, not just the throwaway fixture directory.
+// The package's actual shipped migrations directory. `PLATFORM-BASELINE-001`
+// shipped it empty (migrations/README.md); `PLATFORM-BASELINE-005A` is the
+// first package to add real product migrations to it (the Reward Program
+// schema) — this describe block now proves readiness against that real,
+// non-empty shipped set, not an empty one.
 const shippedMigrationsDir = path.join(__dirname, "migrations");
 
 const firestoreStub = {} as Firestore;
@@ -42,6 +44,17 @@ beforeAll(() => {
 
 afterEach(async () => {
   await pool.query("DROP TABLE IF EXISTS platform_baseline_001_migration_fixture_widgets");
+  // PLATFORM-BASELINE-005A: the shipped migrations directory is no longer
+  // empty (see below) — its own tables must be cleaned up here too, so
+  // state never leaks into another test/file sharing this database.
+  await pool.query("DROP TABLE IF EXISTS reward_program_version_qualifying_nodes CASCADE");
+  await pool.query("DROP TABLE IF EXISTS reward_program_outbox CASCADE");
+  await pool.query("DROP TABLE IF EXISTS idempotency_keys CASCADE");
+  await pool.query(
+    "ALTER TABLE IF EXISTS reward_programs DROP CONSTRAINT IF EXISTS reward_programs_current_version_id_fkey",
+  );
+  await pool.query("DROP TABLE IF EXISTS reward_program_versions CASCADE");
+  await pool.query("DROP TABLE IF EXISTS reward_programs CASCADE");
   await pool.query("DROP TABLE IF EXISTS schema_migrations");
 });
 
@@ -121,7 +134,7 @@ describe("checkPlatformFoundationReadiness — migration state against a real Po
   });
 });
 
-describe("checkPlatformFoundationReadiness — actual shipped (empty) migrations directory", () => {
+describe("checkPlatformFoundationReadiness — actual shipped migrations directory", () => {
   function shippedReadinessDeps() {
     return {
       postgresPool: pool,
@@ -132,7 +145,7 @@ describe("checkPlatformFoundationReadiness — actual shipped (empty) migrations
     };
   }
 
-  it("Case A: a fresh database with an empty shipped migration set is NOT ready (schema_migrations absent) and stays read-only", async () => {
+  it("Case A: a fresh database with the shipped migration set unapplied is NOT ready (schema_migrations absent) and stays read-only", async () => {
     const result = await checkPlatformFoundationReadiness(shippedReadinessDeps());
 
     expect(result.ready).toBe(false);
@@ -144,9 +157,9 @@ describe("checkPlatformFoundationReadiness — actual shipped (empty) migrations
     expect(probe.rows[0].t).toBeNull();
   });
 
-  it("Case B: after the explicit bootstrap path creates schema_migrations, an empty migration set reports ready", async () => {
+  it("Case B: after applying the real shipped Reward Program migration set, readiness reports ready", async () => {
     const bootstrapped = await migrateUp(pool, shippedMigrationsDir);
-    expect(bootstrapped.applied).toEqual([]);
+    expect(bootstrapped.applied).toEqual(["0001", "0002", "0003", "0004", "0005"]);
 
     const result = await checkPlatformFoundationReadiness(shippedReadinessDeps());
 

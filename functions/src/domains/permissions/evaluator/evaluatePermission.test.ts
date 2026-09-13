@@ -1465,3 +1465,144 @@ describe("evaluateAuthorizationDecision — ordinary permission interaction case
     expect(decision.errorCategory).toBe("BUSINESS_INACTIVE");
   });
 });
+
+// ---------------------------------------------------------------------------
+// PLATFORM-BASELINE-005A — Reward Program Permission Catalogue integration.
+// A structural copy of the ordinary-permission branch above, proven the
+// same way (Codex review finding RF-1, PLATFORM-BASELINE-005-
+// REVIEW-FINDINGS-001): a third catalogue classification, its own
+// per-class lifecycle-eligibility gate, its own role-default resolution
+// branch, no override/inheritance path, and the shared final fail-closed
+// fallthrough untouched.
+// ---------------------------------------------------------------------------
+
+function rewardProgramInput(overrides: Partial<EvaluationInput> = {}): EvaluationInput {
+  return baseInput({
+    request: { userId: "user-1", businessId: "biz-a", permission: "rewardProgram.manage" },
+    ...overrides,
+  });
+}
+
+describe("evaluateAuthorizationDecision — Reward Program permission: rewardProgram.manage (PLATFORM-BASELINE-005A)", () => {
+  it("Owner + trial = allow", () => {
+    const decision = evaluateAuthorizationDecision(
+      rewardProgramInput({
+        business: { kind: "found", business: { id: "biz-a", status: "trial" } },
+        membership: { kind: "found", membership: membership({ role: "owner" }) },
+      }),
+    );
+    expect(decision.allowed).toBe(true);
+    expect(decision.permissionSource).toBe("role-default");
+  });
+
+  it("Owner + active = allow", () => {
+    const decision = evaluateAuthorizationDecision(
+      rewardProgramInput({
+        business: { kind: "found", business: { id: "biz-a", status: "active" } },
+        membership: { kind: "found", membership: membership({ role: "owner" }) },
+      }),
+    );
+    expect(decision.allowed).toBe(true);
+  });
+
+  it("Owner + draft = deny (BUSINESS_INACTIVE — not an eligible status for this permission)", () => {
+    const decision = evaluateAuthorizationDecision(
+      rewardProgramInput({
+        business: { kind: "found", business: { id: "biz-a", status: "draft" } },
+        membership: { kind: "found", membership: membership({ role: "owner" }) },
+      }),
+    );
+    expect(decision.allowed).toBe(false);
+    expect(decision.errorCategory).toBe("BUSINESS_INACTIVE");
+  });
+
+  it("Owner + suspended = deny", () => {
+    const decision = evaluateAuthorizationDecision(
+      rewardProgramInput({
+        business: { kind: "found", business: { id: "biz-a", status: "suspended" } },
+        membership: { kind: "found", membership: membership({ role: "owner" }) },
+      }),
+    );
+    expect(decision.allowed).toBe(false);
+    expect(decision.errorCategory).toBe("BUSINESS_INACTIVE");
+  });
+
+  it("Manager + active = deny (Owner-only in this first package, no override path)", () => {
+    const decision = evaluateAuthorizationDecision(
+      rewardProgramInput({
+        membership: { kind: "found", membership: membership({ role: "manager" }) },
+      }),
+    );
+    expect(decision.allowed).toBe(false);
+    expect(decision.errorCategory).toBe("AUTH_FORBIDDEN");
+    expect(decision.role).toBe("manager");
+  });
+
+  it("Staff + active = deny", () => {
+    const decision = evaluateAuthorizationDecision(
+      rewardProgramInput({
+        membership: { kind: "found", membership: membership({ role: "staff" }) },
+      }),
+    );
+    expect(decision.allowed).toBe(false);
+    expect(decision.errorCategory).toBe("AUTH_FORBIDDEN");
+    expect(decision.role).toBe("staff");
+  });
+
+  it("a grant override for rewardProgram.manage is never honored (no explicit-grant path exists for this catalogue)", () => {
+    const decision = evaluateAuthorizationDecision(
+      rewardProgramInput({
+        membership: {
+          kind: "found",
+          membership: membership({
+            role: "manager",
+            overrides: [
+              {
+                permissionId: "rewardProgram.manage",
+                direction: "grant",
+                businessId: "biz-a",
+                membershipId: "mem-1",
+              },
+            ],
+          }),
+        },
+      }),
+    );
+    expect(decision.allowed).toBe(false);
+  });
+
+  it("cross-Business membership is denied", () => {
+    const decision = evaluateAuthorizationDecision(
+      rewardProgramInput({
+        membership: {
+          kind: "found",
+          membership: membership({ role: "owner", businessId: "biz-b" }),
+        },
+      }),
+    );
+    expect(decision.allowed).toBe(false);
+  });
+
+  it("unauthenticated (no membership) is denied", () => {
+    const decision = evaluateAuthorizationDecision(
+      rewardProgramInput({ membership: { kind: "not_found" } }),
+    );
+    expect(decision.allowed).toBe(false);
+  });
+
+  it("an unknown/unclassified permission still fails closed via the shared fallthrough (non-regression)", () => {
+    const decision = evaluateAuthorizationDecision(
+      baseInput({
+        request: {
+          userId: "user-1",
+          businessId: "biz-a",
+          permission: "rewardProgram.doesNotExist",
+        },
+        business: { kind: "found", business: { id: "biz-a", status: "active" } },
+        membership: { kind: "found", membership: membership({ role: "owner" }) },
+      }),
+    );
+    expect(decision.allowed).toBe(false);
+    expect(decision.errorCategory).toBe("AUTH_FORBIDDEN");
+  });
+});

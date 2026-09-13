@@ -1,0 +1,1 @@
+DROP TABLE reward_program_version_qualifying_nodes;
