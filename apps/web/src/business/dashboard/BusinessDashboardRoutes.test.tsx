@@ -15,6 +15,7 @@ vi.mock("../hooks/businessQueries", () => ({
     refetch: vi.fn(),
   }),
   useStaffInvitationsQuery: () => ({ data: [], status: "success", refetch: vi.fn() }),
+  useAccessibleBusinessesQuery: () => ({ data: [], status: "success" }),
 }));
 vi.mock("../hooks/businessMutations", () => ({
   useUpdateBusinessProfileMutation: () => ({ mutate: vi.fn(), isPending: false, error: undefined }),
@@ -31,6 +32,18 @@ vi.mock("../hooks/businessMutations", () => ({
   }),
   useCreateStaffInvitationMutation: () => ({ mutate: vi.fn(), isPending: false, error: undefined }),
   useRevokeStaffInvitationMutation: () => ({ mutate: vi.fn(), isPending: false, error: undefined }),
+  useSuspendStaffMembershipMutation: () => ({ mutate: vi.fn(), isPending: false, error: null }),
+  useReactivateStaffMembershipMutation: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+    error: null,
+  }),
+  useRemoveStaffMembershipMutation: () => ({ mutate: vi.fn(), isPending: false, error: null }),
+  useChangeStaffMembershipRoleMutation: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+    error: null,
+  }),
 }));
 
 const context: BusinessContext = {

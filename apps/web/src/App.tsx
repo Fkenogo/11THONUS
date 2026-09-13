@@ -9,6 +9,7 @@ import { BusinessResolverPage } from "./business/onboarding/BusinessResolverPage
 import { NewBusinessPage } from "./business/onboarding/NewBusinessPage";
 import { BusinessWizardPage } from "./business/onboarding/BusinessWizardPage";
 import { BusinessDashboardBoundaryPage } from "./business/dashboard/BusinessDashboardBoundaryPage";
+import { AcceptStaffInvitationPage } from "./business/invitations/AcceptStaffInvitationPage";
 import { DisplayNameProfile } from "./identity/DisplayNameProfile";
 import { MfaEnrollmentPage } from "./authentication/mfa/MfaEnrollmentPage";
 import { RootEntry } from "./RootEntry";
@@ -157,6 +158,14 @@ function App({ auth, functions }: AppProps) {
           element={
             <RequireAuthenticatedUser auth={auth} renderUnauthenticated={() => <SignInRequired />}>
               <BusinessDashboardBoundaryPage />
+            </RequireAuthenticatedUser>
+          }
+        />
+        <Route
+          path="/invitations/:invitationReference/accept"
+          element={
+            <RequireAuthenticatedUser auth={auth} renderUnauthenticated={() => <SignInRequired />}>
+              <AcceptStaffInvitationPage />
             </RequireAuthenticatedUser>
           }
         />

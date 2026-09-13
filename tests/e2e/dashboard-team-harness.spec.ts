@@ -95,7 +95,9 @@ test.describe("Team Management screen — desktop", () => {
   test("invite form opens, and its Role select offers exactly staff/manager", async ({ page }) => {
     await page.goto(TEAM_PATH);
     await page.getByRole("button", { name: "Invite team member" }).click();
-    const roleSelect = page.getByLabel("Role");
+    // Exact match: per-member "New role" selects (PLATFORM-BASELINE-004A)
+    // must not be confused with the invite form's own "Role" select.
+    const roleSelect = page.getByLabel("Role", { exact: true });
     const optionValues = await roleSelect
       .locator("option")
       .evaluateAll((options) => options.map((option) => (option as HTMLOptionElement).value));

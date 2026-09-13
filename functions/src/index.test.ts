@@ -6,6 +6,10 @@ import {
   parseBusinessBranchProfilePatch,
   parseCreateStaffInvitationRequest,
   parseRevokeStaffInvitationRequest,
+  parseAcceptStaffInvitationRequest,
+  parseStaffMembershipLifecycleRequest,
+  parseChangeStaffMembershipRoleRequest,
+  staffMembershipRequestHash,
   parseAcceptBusinessTermsRequest,
   parseSetDisplayNameRequest,
   parseGetMyDisplayNameRequest,
@@ -255,6 +259,146 @@ describe("parseRevokeStaffInvitationRequest (mass-assignment boundary)", () => {
     };
     const parsed = parseRevokeStaffInvitationRequest(malicious);
     expect(parsed).toEqual({ businessId: "biz-a", invitationId: "inv-1" });
+  });
+});
+
+describe("parseAcceptStaffInvitationRequest (mass-assignment boundary, PLATFORM-BASELINE-004A)", () => {
+  it("only reads invitationReference — userId/role/businessId/status cannot be smuggled even if present on the payload", () => {
+    const malicious = {
+      invitationReference: "inv-ref-1",
+      authenticatedCustomerIdentityId: "cust_attacker",
+      userId: "cust_attacker",
+      role: "owner",
+      businessId: "biz-attacker",
+      status: "accepted",
+    };
+    const parsed = parseAcceptStaffInvitationRequest(malicious);
+    expect(parsed).toEqual({ invitationReference: "inv-ref-1" });
+    for (const forbiddenKey of [
+      "authenticatedCustomerIdentityId",
+      "userId",
+      "role",
+      "businessId",
+      "status",
+    ]) {
+      expect(Object.keys(parsed)).not.toContain(forbiddenKey);
+    }
+  });
+
+  it("rejects a missing/blank invitationReference", () => {
+    expect(() => parseAcceptStaffInvitationRequest({})).toThrow();
+    expect(() => parseAcceptStaffInvitationRequest({ invitationReference: "" })).toThrow();
+    expect(() => parseAcceptStaffInvitationRequest({ invitationReference: "   " })).toThrow();
+    expect(() =>
+      parseAcceptStaffInvitationRequest({ invitationReference: "inv-ref-1" }),
+    ).not.toThrow();
+  });
+});
+
+describe("parseStaffMembershipLifecycleRequest (mass-assignment boundary, PLATFORM-BASELINE-004A)", () => {
+  it("only reads businessId/targetMembershipId — target userId/role/status/authority flags are dropped", () => {
+    const malicious = {
+      businessId: "biz-a",
+      targetMembershipId: "mem-1",
+      userId: "cust_attacker",
+      targetUserId: "cust_victim",
+      role: "owner",
+      status: "active",
+      isSelfAction: false,
+      allow: true,
+    };
+    const parsed = parseStaffMembershipLifecycleRequest(malicious);
+    expect(parsed).toEqual({ businessId: "biz-a", targetMembershipId: "mem-1" });
+    for (const forbiddenKey of [
+      "userId",
+      "targetUserId",
+      "role",
+      "status",
+      "isSelfAction",
+      "allow",
+    ]) {
+      expect(Object.keys(parsed)).not.toContain(forbiddenKey);
+    }
+  });
+
+  it("rejects a missing/blank businessId/targetMembershipId", () => {
+    expect(() => parseStaffMembershipLifecycleRequest({})).toThrow();
+    expect(() => parseStaffMembershipLifecycleRequest({ businessId: "biz-a" })).toThrow();
+    expect(() =>
+      parseStaffMembershipLifecycleRequest({ businessId: "biz-a", targetMembershipId: "" }),
+    ).toThrow();
+  });
+});
+
+describe("parseChangeStaffMembershipRoleRequest (mass-assignment boundary, PLATFORM-BASELINE-004A)", () => {
+  it("reads businessId/targetMembershipId/fromRole/toRole and drops everything else", () => {
+    const malicious = {
+      businessId: "biz-a",
+      targetMembershipId: "mem-1",
+      fromRole: "staff",
+      toRole: "manager",
+      userId: "cust_attacker",
+      requestedBy: "cust_attacker",
+      actorRole: "owner",
+    };
+    const parsed = parseChangeStaffMembershipRoleRequest(malicious);
+    expect(parsed).toEqual({
+      businessId: "biz-a",
+      targetMembershipId: "mem-1",
+      fromRole: "staff",
+      toRole: "manager",
+    });
+  });
+
+  it("rejects roles outside the closed manager/staff vocabulary — owner can never be requested", () => {
+    const base = { businessId: "biz-a", targetMembershipId: "mem-1" };
+    expect(() =>
+      parseChangeStaffMembershipRoleRequest({ ...base, fromRole: "owner", toRole: "staff" }),
+    ).toThrow();
+    expect(() =>
+      parseChangeStaffMembershipRoleRequest({ ...base, fromRole: "staff", toRole: "owner" }),
+    ).toThrow();
+    expect(() =>
+      parseChangeStaffMembershipRoleRequest({ ...base, fromRole: "admin", toRole: "staff" }),
+    ).toThrow();
+    expect(() =>
+      parseChangeStaffMembershipRoleRequest({ ...base, fromRole: "staff", toRole: "staff" }),
+    ).not.toThrow();
+  });
+});
+
+describe("staffMembershipRequestHash (idempotency scoping, PLATFORM-BASELINE-004A)", () => {
+  it("scopes the hash by action, actor, business, target, and role transition — no two distinct operations alias", () => {
+    const suspend = staffMembershipRequestHash("suspend", "u-1", "biz-a", "mem-1");
+    const reactivate = staffMembershipRequestHash("reactivate", "u-1", "biz-a", "mem-1");
+    const remove = staffMembershipRequestHash("remove", "u-1", "biz-a", "mem-1");
+    const roleChange = staffMembershipRequestHash("roleChange", "u-1", "biz-a", "mem-1", {
+      fromRole: "staff",
+      toRole: "manager",
+    });
+    const roleChangeReverse = staffMembershipRequestHash("roleChange", "u-1", "biz-a", "mem-1", {
+      fromRole: "manager",
+      toRole: "staff",
+    });
+    const otherActor = staffMembershipRequestHash("suspend", "u-2", "biz-a", "mem-1");
+    const otherBusiness = staffMembershipRequestHash("suspend", "u-1", "biz-b", "mem-1");
+    const otherTarget = staffMembershipRequestHash("suspend", "u-1", "biz-a", "mem-2");
+
+    const hashes = new Set([
+      suspend,
+      reactivate,
+      remove,
+      roleChange,
+      roleChangeReverse,
+      otherActor,
+      otherBusiness,
+      otherTarget,
+    ]);
+    // Every distinct operation hashes distinctly: a same-key retry of one
+    // operation can never be mistaken for (or alias) another.
+    expect(hashes.size).toBe(8);
+    // And the same operation hashes deterministically (duplicate path).
+    expect(staffMembershipRequestHash("suspend", "u-1", "biz-a", "mem-1")).toBe(suspend);
   });
 });
 

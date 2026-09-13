@@ -99,6 +99,13 @@ import {
   listStaffInvitationsForBusiness,
   listStaffMembershipsForBusiness,
 } from "./domains/permissions/service/staffTransportReadService";
+import { acceptStaffInvitation as acceptStaffInvitationCommand } from "./domains/permissions/service/acceptStaffInvitationService";
+import { changeStaffMembershipRoleCommand } from "./domains/permissions/service/staffRoleChangeCommand";
+import {
+  suspendStaffMembershipCommand,
+  reactivateStaffMembershipCommand,
+  removeStaffMembershipCommand,
+} from "./domains/permissions/service/staffMembershipLifecycleCommand";
 import { acceptBusinessTermsCommand } from "./domains/business/services/acceptBusinessTermsCommand";
 import { isInvitationRole } from "./domains/permissions/models/invitationRole";
 import { isInvitationDeliveryType } from "./domains/permissions/models/invitationDeliveryTarget";
@@ -1165,6 +1172,257 @@ export const listStaffMemberships = onCall(async (request) => {
     });
     const businessId = parseBusinessId(value.businessId);
     return await listStaffMembershipsForBusiness(db, userId, businessId);
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+/**
+ * Whitelist parser (`PLATFORM-BASELINE-004A`): the only thing a client
+ * submits to accept an invitation is the opaque invitation reference —
+ * never a membership id, never a userId, never a role or businessId
+ * (mirrors `AcceptInvitationRequest`'s own structural guarantee,
+ * `invitationAcceptanceHandoff.ts`). Any other key the client sends is
+ * silently dropped here. Exported only for the mass-assignment regression
+ * test in `index.test.ts`.
+ */
+export function parseAcceptStaffInvitationRequest(value: Record<string, unknown>): {
+  invitationReference: string;
+} {
+  return {
+    invitationReference: parseNonEmptyString(value.invitationReference),
+  };
+}
+
+/**
+ * `acceptStaffInvitation` (`PLATFORM-BASELINE-004A`) — transport exposure
+ * only; the already-complete `ENG-P2-003B` ACCEPT command remains sole
+ * authority (self-service: the invitation is the authority, entitlement
+ * re-derived inside the command from the accepting identity's verified
+ * contacts). The accepting Customer Identity id is derived exclusively
+ * from the verified credential (`resolveAuthenticatedBusinessActor`) —
+ * never accepted from the request — and the accepted role/business come
+ * from the authoritative invitation, never from client input. The wire
+ * result normalizes `acceptedAt` to an ISO string (callable responses are
+ * JSON-serialized); every other field crosses unchanged.
+ */
+export const acceptStaffInvitation = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId } = await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    const parsedRequest = parseAcceptStaffInvitationRequest(value);
+    const result = await acceptStaffInvitationCommand(db, {
+      request: { invitationReference: parsedRequest.invitationReference },
+      authenticatedCustomerIdentityId: userId,
+      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+      correlationId: randomUUID(),
+      actor: { actorType: "user", actorId: userId },
+      now: new Date(),
+      newId: randomUUID,
+    });
+    return { ...result, acceptedAt: result.acceptedAt.toISOString() };
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+/**
+ * Whitelist parser (`PLATFORM-BASELINE-004A`): a lifecycle/role request
+ * names only the authorized Business context and the target membership id
+ * — never a target userId, never a client-supplied authority flag. Any
+ * other key is silently dropped here. Exported only for the
+ * mass-assignment regression test in `index.test.ts`.
+ */
+export function parseStaffMembershipLifecycleRequest(value: Record<string, unknown>): {
+  businessId: string;
+  targetMembershipId: string;
+} {
+  return {
+    businessId: parseBusinessId(value.businessId),
+    targetMembershipId: parseNonEmptyString(value.targetMembershipId),
+  };
+}
+
+/**
+ * Whitelist parser (`PLATFORM-BASELINE-004A`): exactly the lifecycle
+ * whitelist plus the requested governed role transition. `fromRole`/`toRole`
+ * are validated against the closed invitation-role vocabulary
+ * (`manager`/`staff` — `owner` is structurally excluded) at this transport
+ * boundary, mirroring `parseCreateStaffInvitationRequest`'s closed-enum
+ * convention; the server command remains the authority (it re-validates
+ * `fromRole` against the target's live role transactionally). Exported only
+ * for the mass-assignment regression test in `index.test.ts`.
+ */
+export function parseChangeStaffMembershipRoleRequest(value: Record<string, unknown>): {
+  businessId: string;
+  targetMembershipId: string;
+  fromRole: "manager" | "staff";
+  toRole: "manager" | "staff";
+} {
+  const lifecycle = parseStaffMembershipLifecycleRequest(value);
+  const fromRole = parseNonEmptyString(value.fromRole);
+  if (!isInvitationRole(fromRole)) {
+    throw new HttpsError("invalid-argument", "staff_command_failed", { field: "fromRole" });
+  }
+  const toRole = parseNonEmptyString(value.toRole);
+  if (!isInvitationRole(toRole)) {
+    throw new HttpsError("invalid-argument", "staff_command_failed", { field: "toRole" });
+  }
+  return { ...lifecycle, fromRole, toRole };
+}
+
+/**
+ * Deterministic, content-derived request hash for the lifecycle/role
+ * commands (`PLATFORM-BASELINE-004A`) — mirrors `create`/`revoke`'s
+ * `stableRequestHash` discipline (same key + same request → duplicate;
+ * same key + different request → conflict), built server-side so a client
+ * can never pin two different operations to one idempotency key.
+ * Exported only for the hash-scoping regression test in `index.test.ts`.
+ */
+export function staffMembershipRequestHash(
+  action: "suspend" | "reactivate" | "remove" | "roleChange",
+  userId: string,
+  businessId: string,
+  targetMembershipId: string,
+  roleTransition?: { fromRole: string; toRole: string },
+): string {
+  const transition = roleTransition ? `:${roleTransition.fromRole}:${roleTransition.toRole}` : "";
+  return `staffMembership.${action}:${userId}:${businessId}:${targetMembershipId}${transition}`;
+}
+
+/**
+ * `suspendStaffMembership` / `reactivateStaffMembership` /
+ * `removeStaffMembership` (`PLATFORM-BASELINE-004A`) — transport exposure
+ * only; the already-complete `ENG-P2-003C` lifecycle commands remain sole
+ * authority (`staff.manage`-gated via `authorizeAndExecute`, target-policy,
+ * lifecycle table, and cross-business isolation all re-derived
+ * server-side). The `authorizeAndExecute` outcome envelope
+ * (executed/denied/duplicate/in_progress) is returned unchanged, exactly
+ * like `create`/`revoke` — the web layer unwraps it via the shared
+ * `unwrapMutationResult`.
+ */
+export const suspendStaffMembership = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId } = await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    const parsedRequest = parseStaffMembershipLifecycleRequest(value);
+    return await suspendStaffMembershipCommand(db, {
+      userId,
+      businessId: parsedRequest.businessId,
+      targetMembershipId: parsedRequest.targetMembershipId,
+      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+      requestHash: staffMembershipRequestHash(
+        "suspend",
+        userId,
+        parsedRequest.businessId,
+        parsedRequest.targetMembershipId,
+      ),
+      correlationId: randomUUID(),
+      now: new Date(),
+      newId: randomUUID,
+    });
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+export const reactivateStaffMembership = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId } = await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    const parsedRequest = parseStaffMembershipLifecycleRequest(value);
+    return await reactivateStaffMembershipCommand(db, {
+      userId,
+      businessId: parsedRequest.businessId,
+      targetMembershipId: parsedRequest.targetMembershipId,
+      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+      requestHash: staffMembershipRequestHash(
+        "reactivate",
+        userId,
+        parsedRequest.businessId,
+        parsedRequest.targetMembershipId,
+      ),
+      correlationId: randomUUID(),
+      now: new Date(),
+      newId: randomUUID,
+    });
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+export const removeStaffMembership = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId } = await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    const parsedRequest = parseStaffMembershipLifecycleRequest(value);
+    return await removeStaffMembershipCommand(db, {
+      userId,
+      businessId: parsedRequest.businessId,
+      targetMembershipId: parsedRequest.targetMembershipId,
+      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+      requestHash: staffMembershipRequestHash(
+        "remove",
+        userId,
+        parsedRequest.businessId,
+        parsedRequest.targetMembershipId,
+      ),
+      correlationId: randomUUID(),
+      now: new Date(),
+      newId: randomUUID,
+    });
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+/**
+ * `changeStaffMembershipRole` (`PLATFORM-BASELINE-004A`) — transport
+ * exposure only; the already-complete `ENG-P2-003C` role-change command
+ * remains sole authority (`staff.assignRole`, Owner-only non-delegable via
+ * `authorizeAndExecute`, TOCTOU `fromRole` re-check and override
+ * reconciliation intact). The requested governed role is accepted only as
+ * a candidate — the server command re-validates it against the target's
+ * live role before any write.
+ */
+export const changeStaffMembershipRole = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId } = await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    const parsedRequest = parseChangeStaffMembershipRoleRequest(value);
+    return await changeStaffMembershipRoleCommand(db, {
+      userId,
+      businessId: parsedRequest.businessId,
+      targetMembershipId: parsedRequest.targetMembershipId,
+      fromRole: parsedRequest.fromRole,
+      toRole: parsedRequest.toRole,
+      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+      requestHash: staffMembershipRequestHash(
+        "roleChange",
+        userId,
+        parsedRequest.businessId,
+        parsedRequest.targetMembershipId,
+        { fromRole: parsedRequest.fromRole, toRole: parsedRequest.toRole },
+      ),
+      correlationId: randomUUID(),
+      now: new Date(),
+      newId: randomUUID,
+    });
   } catch (error) {
     throw toHttpsError(error);
   }
