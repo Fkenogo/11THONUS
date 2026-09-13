@@ -14,7 +14,7 @@
 
 **Verdict: YES — IMPLEMENTATION READY**, for a narrowly-bounded `PLATFORM-BASELINE-005A` package (schema, permissions, CRUD, first-version creation and publish; explicitly excluding Loyalty Cycle, Purchase, Verified Units, Reward issuance, and Redemption).
 
-**No Founder decision is required to start.** Two flagged discussion items (permission catalogue extension convention; whether "publish" is a distinct action from "activate") are procedural clarifications, not blocking gates.
+**[Updated by `FOUNDER-DISPOSITION-001` — see the Founder Disposition section near the end of this document.]** No further Founder decision blocks `PLATFORM-BASELINE-005A`: the Founder has since explicitly confirmed the two points this design's own analysis had flagged as needing confirmation (PostgreSQL persistence authority for Reward Program; exclusion of pause/retire/archive from the first package), rather than the design resting on its own self-assessment that none was needed. Two flagged discussion items (permission catalogue extension convention; whether "publish" is a distinct action from "activate") remain procedural clarifications, not blocking gates.
 
 ---
 
@@ -845,12 +845,34 @@ Together, these two already-canonical facts entail "at most one active version p
 
 ## CORR-001.12 — Genuine Founder decisions, corrected
 
-**None required to start `PLATFORM-BASELINE-005A`** as narrowed above — the same conclusion as the original report, but reached by *narrowing scope to avoid open questions* (Manager access excluded entirely; pause/retire/archive deferred; plan-capacity check omitted) rather than by *picking unstated "safe defaults" for open questions and calling them non-blocking*. This is a materially different and more conservative justification for the same top-line verdict.
+**[Updated by `FOUNDER-DISPOSITION-001`]** `CORR-001`'s own analysis concluded none was strictly required to start `PLATFORM-BASELINE-005A`, reached by *narrowing scope to avoid open questions* (Manager access excluded entirely; pause/retire/archive deferred; plan-capacity check omitted) rather than by *picking unstated "safe defaults" for open questions and calling them non-blocking*. The Founder has since reviewed this analysis and explicitly confirmed the two load-bearing points it rested on (persistence authority; lifecycle scope) directly, rather than leaving them resting on this design's own self-assessment — see the Founder Disposition section below for the recorded text.
+
+---
+
+# FOUNDER DISPOSITION — `PLATFORM-BASELINE-005-FOUNDER-DISPOSITION-001` (2026-09-13)
+
+The Founder reviewed `CORR-001` (above) and issued two package-scope/architectural clarifications, confirming rather than altering `CORR-001`'s own conclusions. These are recorded verbatim in substance below; no decision-register entry was created or modified, and this is not a new governance exercise — it is confirmation of the corrected design's own two most load-bearing judgment calls (§CORR-001.3 and §CORR-001.10/.11), which `CORR-001` itself had flagged as reasonable-but-not-Founder-verified inferences.
+
+## FD-1 — Reward Program persistence
+
+**Reward Program is authorized as a PostgreSQL-authoritative domain for the new 11thONUS loyalty-engine spine.** PostgreSQL owns: Reward Program stable identity; configuration; immutable versions; transactional idempotency; transactionally co-located audit/outbox records. Existing authorities remain unchanged: Business, Customer Identity, workforce/permissions, and Commerce Knowledge continue exactly as they are today; Reward Program references those domains by stable identifiers only (§9 of this report, unchanged). **This does not authorize:** dual authority, Firestore Reward Program copies, migration of existing Firestore domains, or any broad database migration.
+
+This directly confirms `CORR-001.3`'s retained-but-flagged-as-second-hand conclusion — the architectural direction §8/`CORR-001.3` already recommended is now Founder-confirmed outright, not merely corroborated by inference. **No change to §8, §9, or §22's schema design was required** — the schema-naming-provenance correction in `CORR-001.2` stands unchanged (the table names remain PROPOSED BY PLATFORM-BASELINE-005, not inherited from any prior package).
+
+## FD-2 — `PLATFORM-BASELINE-005A` lifecycle scope
+
+**`PLATFORM-BASELINE-005A` shall exclude pause, retire, and archive.** The first implementation is limited to: the PostgreSQL Reward Program foundation; draft configuration; immutable versioning; first publication; subsequent version creation; governed reads; and the minimum Business-facing configuration UI. Pause/retire/archive semantics remain deferred, tied to `DEC-LOY-013`'s eventual resolution.
+
+This directly confirms `CORR-001.10`/`CORR-001.11`'s corrected scope exactly as already narrowed — no wording change to the command list, schema enums, or UI contract was required.
+
+## Net effect on this design
+
+Both dispositions **confirm, rather than alter,** the exact `PLATFORM-BASELINE-005A` shape `CORR-001` had already arrived at independently. No section of this report needed technical revision as a result — only the framing of "is a Founder decision required" (§1, §CORR-001.12) is corrected, from "none required" to "the required clarification has been sought and received, and no further Founder decision blocks implementation."
 
 ---
 
 ## FINAL DISPOSITION
 
-**PLATFORM-BASELINE-005-CORR-001 — DESIGN CORRECTED / AWAITING INDEPENDENT REVIEW**
+**PLATFORM-BASELINE-005 — DESIGN APPROVED / MERGED / CLOSED**
 
-No implementation was performed. No decision-register modification. No new Founder decision recorded. No code, migration, permission, or UI file was touched. Do not implement `PLATFORM-BASELINE-005A` yet. Do not merge. Stopping for independent review, as instructed.
+No implementation was performed by this design package. No decision-register modification. `PLATFORM-BASELINE-005A` may now proceed exactly within the scope recorded in `CORR-001.11` and reconfirmed by `FOUNDER-DISPOSITION-001` above, in a separate, future implementation task.
