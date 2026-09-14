@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-13
 **Authority:** `PLATFORM-BASELINE-005` design report + `CORR-001` + `FOUNDER-DISPOSITION-001` + `REVIEW-FINDINGS-001` (all merged, PR #250).
-**Status:** IMPLEMENTED / AWAITING INDEPENDENT REVIEW.
+**Status:** CORRECTED / AWAITING INDEPENDENT RE-REVIEW (superseded by `PLATFORM-BASELINE-005A-CORR-001`, see the appended section below).
 
 ## 1. Entry origin/main SHA
 
@@ -267,15 +267,15 @@ Revert this package's commit(s) on `feat/platform-baseline-005a-reward-program-f
 
 ## 38. Exact PR head
 
-See the CORR-001 section below for the corrected head (`faee1a5a2002c40b08562143fbbb4b445f83312f` / `e291a986ce6e48f9a4432c886b5c9cbefa679417` was the pre-correction head reviewed by the independent findings).
+`244ddc4008ac51b98763f0ede869f2a7afc50a5c` (branch `feat/platform-baseline-005a-reward-program-foundation`). `e291a986ce6e48f9a4432c886b5c9cbefa679417` was the pre-correction head the independent review's six findings were raised against.
 
 ## 39. CI status
 
-See the CORR-001 section below.
+**Green.** See CORR-001.23 for the exact run and the one CI-workflow fix required to get there.
 
 ## 40. Final disposition
 
-See the CORR-001 section below — superseded by `PLATFORM-BASELINE-005A-CORR-001 — CORRECTED / AWAITING INDEPENDENT RE-REVIEW`.
+**PLATFORM-BASELINE-005A-CORR-001 — CORRECTED / AWAITING INDEPENDENT RE-REVIEW.** See the CORR-001 section below for full detail. Not merged.
 
 ---
 
@@ -418,7 +418,13 @@ pnpm run emulators:validate (full Firebase Emulator Suite)
 pnpm run emulators (temporary local UI-disable in firebase.json to avoid a port-4000 conflict with another concurrent session on this shared machine; reverted immediately after, confirmed clean via git diff before any commit)
 pnpm run test:e2e (Playwright, full suite)
 git add / git commit / git push (see below)
-gh pr comment / gh api ...pulls/251/comments/<id>/replies (thread replies)
+gh api repos/Fkenogo/11THONUS/pulls/251/comments/<id>/replies (thread replies, 6x)
+gh api graphql (fetch review-thread node ids; resolveReviewThread mutation, 6x)
+gh pr checks 251 (found CI FAILURE on the pushed correction commit)
+gh run view <id> --log-failed (diagnosed: PostgreSQL integration tests step lacked the Firestore emulator the new cross-store test file requires)
+pnpm exec firebase emulators:exec --only firestore --project demo-11thonus "PLATFORM_ENV=test PLATFORM_POSTGRES_URL=... pnpm --filter functions test:postgres" (verified the CI-equivalent command locally before committing the workflow fix)
+git add .github/workflows/ci.yml / git commit / git push (CI-workflow fix)
+gh pr checks 251 (confirmed green on the final head)
 ```
 
 ## CORR-001.17 Dependencies added
@@ -457,7 +463,7 @@ None found on a fresh scan of PR #251 immediately before finalizing this report 
 
 ## CORR-001.23 CI status on final head
 
-See the corrected head recorded below; CI must be confirmed green there before any independent reviewer approval (this package does not merge regardless of CI state).
+**Green.** `Build, Lint, Test, Emulator Validation` — SUCCESS on head `244ddc4008ac51b98763f0ede869f2a7afc50a5c` (`https://github.com/Fkenogo/11THONUS/actions/runs/34810706131`). `mergeStateStatus: CLEAN`, `mergeable: MERGEABLE`. Getting here required one additional bounded fix beyond the six findings and the pointer-integrity check: the "PostgreSQL integration tests" CI step ran `pnpm --filter functions test:postgres` directly, but the new cross-store test file (`rewardProgramCommands.postgres.test.ts`, added by the original `PLATFORM-BASELINE-005A` implementation) requires `FIRESTORE_EMULATOR_HOST` to be set and threw its own env guard on every CI run since that PR was opened — CI was already `FAILURE` on the pre-correction head `e291a986ce6e48f9a4432c886b5c9cbefa679417`, undetected because the original implementation session never checked CI status before reporting success. Fixed in commit `244ddc4` by wrapping that step in `firebase emulators:exec --only firestore` (moving the Java-setup step earlier so it is available in time) and verified locally against the exact command shape before pushing (5 files / 57 tests pass). This is a CI-workflow fix only — no test or product code changed in that commit.
 
 ## CORR-001.24 Worktree safety confirmation
 
@@ -467,10 +473,14 @@ The primary worktree, `/Volumes/PRODUCTION/Projects/11THONUS`, was inspected (`g
 
 Revert the correction commit(s) on `feat/platform-baseline-005a-reward-program-foundation`. If migration `0006` was ever applied to a shared/staging database (it was not by this package), roll it back first via `migrateDown(pool, migrationsDir, 1)` from a six-migration state, or `migrateDown(pool, migrationsDir, 6)` for a full reset.
 
-## CORR-001.26 Final disposition
+## CORR-001.26 CI-workflow fix (required to reach a green final head)
+
+Pushing the correction commit (`708a936`) surfaced that CI had already been `FAILURE` on the ORIGINAL, pre-correction head (`e291a986`) — a fact the original `PLATFORM-BASELINE-005A` implementation session never checked before declaring "IMPLEMENTED / AWAITING INDEPENDENT REVIEW". Root cause: `.github/workflows/ci.yml`'s "PostgreSQL integration tests" step ran `pnpm --filter functions test:postgres` directly, but `rewardProgramCommands.postgres.test.ts` (the cross-store command test the original implementation added) requires `FIRESTORE_EMULATOR_HOST` to be set and throws its own `beforeAll` guard otherwise — every CI run since PR #251 opened failed that one file. This is a CI-plumbing gap, not a design or product-code defect, and required no architectural decision to fix: the step was wrapped in `firebase emulators:exec --only firestore --project demo-11thonus "..."` (mirroring the exact command already used for local validation throughout this package), and the JDK 21 setup step (required by the Firestore Emulator) was moved earlier so it is available in time. Verified locally against the identical command shape before pushing (5 files / 57 tests pass), then confirmed green in actual CI on commit `244ddc4` (`Build, Lint, Test, Emulator Validation` — SUCCESS, run `34810706131`). Only `.github/workflows/ci.yml` changed in this commit — no test or product code.
+
+## CORR-001.27 Final disposition
 
 **PLATFORM-BASELINE-005A-CORR-001 — CORRECTED / AWAITING INDEPENDENT RE-REVIEW.**
 
-Not merged.
+Not merged. Final PR head `244ddc4008ac51b98763f0ede869f2a7afc50a5c`, CI green.
 
 Not merged. Not self-approved.
