@@ -1,14 +1,29 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { i18n } from "../i18n";
 import { CustomerRoutes } from "./CustomerRoutes";
 
+vi.mock("./hooks/purchaseQueries", () => ({
+  useWaitingPurchasesQuery: () => ({ data: { purchases: [] }, isPending: false, isError: false }),
+  useCustomerPurchaseQuery: () => ({ data: undefined, isPending: false, isError: false }),
+  useAvailableRewardsQuery: () => ({ data: { rewards: [] }, isPending: false, isError: false }),
+}));
+
+vi.mock("./hooks/purchaseMutations", () => ({
+  useVerifyPurchaseMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useRejectPurchaseMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDisputePurchaseMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
+}));
+
 function renderCustomer(initialPath = "/customer") {
   return render(
     <MemoryRouter initialEntries={[initialPath]}>
       <Routes>
-        <Route path="/customer/*" element={<CustomerRoutes />} />
+        <Route
+          path="/customer/*"
+          element={<CustomerRoutes auth={{} as never} functions={{} as never} />}
+        />
       </Routes>
     </MemoryRouter>,
   );
@@ -47,14 +62,16 @@ describe("CustomerShell / CustomerRoutes", () => {
     expect(screen.getByText("Scanning isn't available yet.")).toBeInTheDocument();
   });
 
-  it("shows an honest not-yet-available stub for Rewards", () => {
+  it("renders the real Rewards surface (empty state, PLATFORM-BASELINE-006A)", () => {
     renderCustomer("/customer/rewards");
+    expect(screen.getByText("Available rewards")).toBeInTheDocument();
     expect(screen.getByText("You don't have any rewards yet.")).toBeInTheDocument();
   });
 
-  it("shows an honest not-yet-available stub for Activity", () => {
+  it("renders the real Activity surface (waiting list, PLATFORM-BASELINE-006A)", () => {
     renderCustomer("/customer/activity");
-    expect(screen.getByText("Your activity isn't available yet.")).toBeInTheDocument();
+    expect(screen.getByText("Waiting for you")).toBeInTheDocument();
+    expect(screen.getByText("Nothing is waiting for your review right now.")).toBeInTheDocument();
   });
 
   it("shows an honest not-yet-available stub for Account", () => {

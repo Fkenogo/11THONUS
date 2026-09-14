@@ -109,7 +109,7 @@ function App({ auth, functions }: AppProps) {
           path="/customer/*"
           element={
             <RequireAuthenticatedUser auth={auth} renderUnauthenticated={() => <SignInRequired />}>
-              <CustomerRoutes />
+              <CustomerRoutes auth={auth} functions={functions} />
             </RequireAuthenticatedUser>
           }
         />

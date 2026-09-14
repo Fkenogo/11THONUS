@@ -129,6 +129,18 @@ import {
   listRewardPrograms as listRewardProgramsQuery,
 } from "./domains/rewardProgram/services/rewardProgramQueries";
 import type { QualifyingNode } from "./domains/rewardProgram/models/rewardProgram";
+import { PurchaseDomainError } from "./domains/purchase/models/purchaseErrors";
+import { recordPurchase as recordPurchaseCommand } from "./domains/purchase/services/recordPurchaseCommand";
+import { verifyPurchase as verifyPurchaseCommand } from "./domains/purchase/services/verifyPurchaseCommand";
+import { rejectPurchase as rejectPurchaseCommand } from "./domains/purchase/services/rejectPurchaseCommand";
+import { raisePurchaseDispute as raisePurchaseDisputeCommand } from "./domains/purchase/services/raisePurchaseDisputeCommand";
+import {
+  listPurchasesForBusiness as listPurchasesForBusinessQuery,
+  getPurchaseRecordForBusiness as getPurchaseRecordForBusinessQuery,
+  listPurchasesWaitingForCustomer as listPurchasesWaitingForCustomerQuery,
+  getPurchaseRecordForCustomer as getPurchaseRecordForCustomerQuery,
+  listAvailableRewardsForCustomer as listAvailableRewardsForCustomerQuery,
+} from "./domains/purchase/services/purchaseQueries";
 
 setGlobalOptions({ region: PLATFORM_REGION, maxInstances: 10 });
 
@@ -250,6 +262,15 @@ export function toHttpsError(error: unknown): HttpsError {
     return new HttpsError(
       CATEGORY_TO_HTTPS[error.category] ?? "internal",
       "reward_program_command_failed",
+    );
+  }
+  if (error instanceof PurchaseDomainError) {
+    // `PLATFORM-BASELINE-006A`: same stable-message posture — the domain
+    // message (which may name purchase/customer/program ids or the exact
+    // idempotency key) is never echoed.
+    return new HttpsError(
+      CATEGORY_TO_HTTPS[error.category] ?? "internal",
+      "purchase_command_failed",
     );
   }
   return new HttpsError("internal", "authentication_failed");
@@ -1777,6 +1798,268 @@ export const listRewardPrograms = onCall(async (request) => {
     return await listRewardProgramsQuery(db, getRewardProgramPostgresPool(), {
       userId,
       businessId: parseBusinessId(value.businessId),
+    });
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// `PLATFORM-BASELINE-006A` — Purchase / Verification transactional spine.
+// The pool below is the same PostgreSQL database the Reward Program domain
+// uses (one database, one lazy singleton); the alias names the purchase
+// domain's entry point without opening a second pool.
+// ---------------------------------------------------------------------------
+
+function getPurchasePostgresPool(): PlatformPostgresPool {
+  return getRewardProgramPostgresPool();
+}
+
+function parseOptionalPurchaseString(value: unknown, field: string): string | undefined {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new HttpsError("invalid-argument", "purchase_command_failed", { field });
+  }
+  return value;
+}
+
+function parsePurchaseQuantity(value: unknown): number {
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 1) {
+    throw new HttpsError("invalid-argument", "purchase_command_failed", { field: "quantity" });
+  }
+  return value;
+}
+
+function parsePurchaseIsoDate(value: unknown, field: string): Date {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new HttpsError("invalid-argument", "purchase_command_failed", { field });
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new HttpsError("invalid-argument", "purchase_command_failed", { field });
+  }
+  return parsed;
+}
+
+function parsePurchasePagination(value: Record<string, unknown>): {
+  limit?: number;
+  offset?: number;
+} {
+  const out: { limit?: number; offset?: number } = {};
+  if (value.limit !== undefined) {
+    if (typeof value.limit !== "number" || !Number.isInteger(value.limit)) {
+      throw new HttpsError("invalid-argument", "purchase_command_failed", { field: "limit" });
+    }
+    out.limit = value.limit;
+  }
+  if (value.offset !== undefined) {
+    if (typeof value.offset !== "number" || !Number.isInteger(value.offset)) {
+      throw new HttpsError("invalid-argument", "purchase_command_failed", { field: "offset" });
+    }
+    out.offset = value.offset;
+  }
+  return out;
+}
+
+/**
+ * Whitelist parser: exactly `businessId`, `rewardProgramId`, one presented
+ * artifact (`loyaltyNumberValue` XOR `qrReference`), and the commercial
+ * snapshot fields. No Customer Identity id, no program version, no
+ * recorder identity/role, no status — all server-resolved or
+ * server-derived. Exported only for the mass-assignment regression test.
+ */
+export function parseRecordPurchaseRequest(value: Record<string, unknown>) {
+  return {
+    businessId: parseBusinessId(value.businessId),
+    rewardProgramId: parseNonEmptyString(value.rewardProgramId),
+    loyaltyNumberValue: parseOptionalPurchaseString(value.loyaltyNumberValue, "loyaltyNumberValue"),
+    qrReference: parseOptionalPurchaseString(value.qrReference, "qrReference"),
+    quantity: parsePurchaseQuantity(value.quantity),
+    itemLabel: parseNonEmptyString(value.itemLabel),
+    knowledgeNodeId: parseOptionalPurchaseString(value.knowledgeNodeId, "knowledgeNodeId"),
+    unitValueMinor:
+      value.unitValueMinor === undefined || value.unitValueMinor === null
+        ? undefined
+        : parsePurchaseQuantity(value.unitValueMinor),
+    currency: parseOptionalPurchaseString(value.currency, "currency"),
+    purchaseDate: parsePurchaseIsoDate(value.purchaseDate, "purchaseDate"),
+    notes: parseOptionalPurchaseString(value.notes, "notes"),
+  };
+}
+
+export const recordPurchase = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId } = await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    const parsedRequest = parseRecordPurchaseRequest(value);
+    return await recordPurchaseCommand(db, getPurchasePostgresPool(), {
+      userId,
+      request: parsedRequest,
+      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+      correlationId: randomUUID(),
+    });
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+export const verifyPurchase = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId: customerIdentityId } = await resolveAuthenticatedIdentityActor(
+      db,
+      parseActorRequest(value),
+      { verifier: firebaseAdminTokenVerifier() },
+    );
+    return await verifyPurchaseCommand(db, getPurchasePostgresPool(), {
+      customerIdentityId,
+      request: { purchaseRecordId: parseNonEmptyString(value.purchaseRecordId) },
+      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+      correlationId: randomUUID(),
+    });
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+export const rejectPurchase = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId: customerIdentityId } = await resolveAuthenticatedIdentityActor(
+      db,
+      parseActorRequest(value),
+      { verifier: firebaseAdminTokenVerifier() },
+    );
+    return await rejectPurchaseCommand(db, getPurchasePostgresPool(), {
+      customerIdentityId,
+      request: {
+        purchaseRecordId: parseNonEmptyString(value.purchaseRecordId),
+        reason: value.reason,
+      },
+      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+      correlationId: randomUUID(),
+    });
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+export const raisePurchaseDispute = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId: customerIdentityId } = await resolveAuthenticatedIdentityActor(
+      db,
+      parseActorRequest(value),
+      { verifier: firebaseAdminTokenVerifier() },
+    );
+    return await raisePurchaseDisputeCommand(db, getPurchasePostgresPool(), {
+      customerIdentityId,
+      request: {
+        purchaseRecordId: parseNonEmptyString(value.purchaseRecordId),
+        reason: value.reason,
+      },
+      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+      correlationId: randomUUID(),
+    });
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+/**
+ * Purchase reads — membership/ownership-gated, never catalogue-gated
+ * (design §21, 005A read precedent). Reads never create or repair.
+ */
+export const listPurchasesForBusiness = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId } = await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    return await listPurchasesForBusinessQuery(db, getPurchasePostgresPool(), {
+      userId,
+      businessId: parseBusinessId(value.businessId),
+      status: value.status,
+      ...parsePurchasePagination(value),
+    });
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+export const getBusinessPurchaseRecord = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId } = await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    return await getPurchaseRecordForBusinessQuery(db, getPurchasePostgresPool(), {
+      userId,
+      businessId: parseBusinessId(value.businessId),
+      purchaseRecordId: parseNonEmptyString(value.purchaseRecordId),
+    });
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+export const listPurchasesWaitingForCustomer = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId: customerIdentityId } = await resolveAuthenticatedIdentityActorReadOnly(
+      db,
+      parseActorRequest(value),
+      { verifier: firebaseAdminTokenVerifier() },
+    );
+    return await listPurchasesWaitingForCustomerQuery(getPurchasePostgresPool(), {
+      customerIdentityId,
+      ...parsePurchasePagination(value),
+    });
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+export const getCustomerPurchaseRecord = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId: customerIdentityId } = await resolveAuthenticatedIdentityActorReadOnly(
+      db,
+      parseActorRequest(value),
+      { verifier: firebaseAdminTokenVerifier() },
+    );
+    return await getPurchaseRecordForCustomerQuery(getPurchasePostgresPool(), {
+      customerIdentityId,
+      purchaseRecordId: parseNonEmptyString(value.purchaseRecordId),
+    });
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+export const listAvailableRewardsForCustomer = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId: customerIdentityId } = await resolveAuthenticatedIdentityActorReadOnly(
+      db,
+      parseActorRequest(value),
+      { verifier: firebaseAdminTokenVerifier() },
+    );
+    return await listAvailableRewardsForCustomerQuery(getPurchasePostgresPool(), {
+      customerIdentityId,
     });
   } catch (error) {
     throw toHttpsError(error);

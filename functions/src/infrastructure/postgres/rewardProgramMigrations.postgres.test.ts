@@ -37,6 +37,19 @@ beforeAll(() => {
 });
 
 async function dropAll() {
+  // PLATFORM-BASELINE-006A tables first (reverse dependency order), then
+  // the Reward Program tables they reference.
+  await pool.query("DROP TABLE IF EXISTS purchase_outbox CASCADE");
+  await pool.query("DROP TABLE IF EXISTS notification_intents CASCADE");
+  await pool.query("DROP TABLE IF EXISTS trust_events CASCADE");
+  await pool.query("DROP TABLE IF EXISTS rewards CASCADE");
+  await pool.query("DROP TABLE IF EXISTS verified_unit_allocation_events CASCADE");
+  await pool.query("DROP TABLE IF EXISTS verified_unit_allocations CASCADE");
+  await pool.query("DROP TABLE IF EXISTS loyalty_cycles CASCADE");
+  await pool.query("DROP TABLE IF EXISTS loyalty_cycle_streams CASCADE");
+  await pool.query("DROP TABLE IF EXISTS verified_units CASCADE");
+  await pool.query("DROP TABLE IF EXISTS purchase_record_events CASCADE");
+  await pool.query("DROP TABLE IF EXISTS purchase_records CASCADE");
   await pool.query("DROP TABLE IF EXISTS reward_program_version_qualifying_nodes CASCADE");
   await pool.query("DROP TABLE IF EXISTS reward_program_outbox CASCADE");
   await pool.query("DROP TABLE IF EXISTS idempotency_keys CASCADE");
@@ -57,14 +70,44 @@ afterAll(async () => {
 });
 
 describe("Reward Program migrations against a real PostgreSQL instance", () => {
-  it("discovers all six migrations in version order", async () => {
+  it("discovers all fourteen migrations in version order", async () => {
     const files = await discoverMigrationFiles(migrationsDir);
-    expect(files.map((f) => f.version)).toEqual(["0001", "0002", "0003", "0004", "0005", "0006"]);
+    expect(files.map((f) => f.version)).toEqual([
+      "0001",
+      "0002",
+      "0003",
+      "0004",
+      "0005",
+      "0006",
+      "0007",
+      "0008",
+      "0009",
+      "0010",
+      "0011",
+      "0012",
+      "0013",
+      "0014",
+    ]);
   });
 
   it("bootstraps a clean empty database and applies all migrations in order", async () => {
     const result = await migrateUp(pool, migrationsDir);
-    expect(result.applied).toEqual(["0001", "0002", "0003", "0004", "0005", "0006"]);
+    expect(result.applied).toEqual([
+      "0001",
+      "0002",
+      "0003",
+      "0004",
+      "0005",
+      "0006",
+      "0007",
+      "0008",
+      "0009",
+      "0010",
+      "0011",
+      "0012",
+      "0013",
+      "0014",
+    ]);
 
     for (const table of [
       "reward_programs",
@@ -82,12 +125,27 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
     await migrateUp(pool, migrationsDir);
     const second = await migrateUp(pool, migrationsDir);
     expect(second.applied).toEqual([]);
-    expect(second.alreadyApplied).toEqual(["0001", "0002", "0003", "0004", "0005", "0006"]);
+    expect(second.alreadyApplied).toEqual([
+      "0001",
+      "0002",
+      "0003",
+      "0004",
+      "0005",
+      "0006",
+      "0007",
+      "0008",
+      "0009",
+      "0010",
+      "0011",
+      "0012",
+      "0013",
+      "0014",
+    ]);
   });
 
   it("rolls back the full migration set and re-applies cleanly", async () => {
     await migrateUp(pool, migrationsDir);
-    await migrateDown(pool, migrationsDir, 6);
+    await migrateDown(pool, migrationsDir, 14);
 
     for (const table of [
       "reward_programs",
@@ -100,9 +158,39 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
     }
 
     const reapplied = await migrateUp(pool, migrationsDir);
-    expect(reapplied.applied).toEqual(["0001", "0002", "0003", "0004", "0005", "0006"]);
+    expect(reapplied.applied).toEqual([
+      "0001",
+      "0002",
+      "0003",
+      "0004",
+      "0005",
+      "0006",
+      "0007",
+      "0008",
+      "0009",
+      "0010",
+      "0011",
+      "0012",
+      "0013",
+      "0014",
+    ]);
     const applied = await getAppliedMigrations(pool);
-    expect(applied.map((a) => a.version)).toEqual(["0001", "0002", "0003", "0004", "0005", "0006"]);
+    expect(applied.map((a) => a.version)).toEqual([
+      "0001",
+      "0002",
+      "0003",
+      "0004",
+      "0005",
+      "0006",
+      "0007",
+      "0008",
+      "0009",
+      "0010",
+      "0011",
+      "0012",
+      "0013",
+      "0014",
+    ]);
   });
 
   describe("schema constraints", () => {

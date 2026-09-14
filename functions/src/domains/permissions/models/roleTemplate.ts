@@ -114,7 +114,8 @@ const CATALOGUE_INHERITABLE_IDS: readonly PermissionId[] =
  * specifies: Owner and Manager both default to the catalogue's two
  * inheritable entries; Staff defaults to none of them (design §3.2 rows
  * 7–8). It deliberately excludes the entire non-sensitive baseline
- * (e.g. `purchase.record`, `redemption.process`) — no governed
+ * (e.g. `redemption.process` — and, before `PLATFORM-BASELINE-006A`,
+ * `purchase.record`) — no governed
  * document mints identifiers for that baseline (see this file's header
  * comment and `permissionId.ts`), so this constant cannot include it
  * without inventing content.
