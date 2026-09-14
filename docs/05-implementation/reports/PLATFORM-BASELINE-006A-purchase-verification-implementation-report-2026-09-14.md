@@ -23,11 +23,11 @@
 
 ## 4. Final implementation SHA
 
-(Recorded in the follow-up reports commit; PR head == reviewed head.)
+`f5352fb82cba6a6be75dd17029e46dad157063c3` (implementation commit; this reports commit follows on the same branch — PR head == reviewed head).
 
 ## 5. PR number
 
-(Opened after local validation; number recorded in the follow-up reports commit.)
+PR #253 — `https://github.com/Fkenogo/11THONUS/pull/253` (base `main`, head `feat/platform-baseline-006a-purchase-verification-spine`). Open, unmerged.
 
 ## 6. Files modified
 
