@@ -70,27 +70,15 @@ jobs:
       - name: Unit / component tests
         run: pnpm test
 
-      # PostgreSQL integration tests run against the in-job service container
-      # above (no Docker Compose, no external database, no secret). The
-      # runner waits for the container's `pg_isready` health check before
-      # reaching this step.
-      - name: PostgreSQL integration tests
-        env:
-          PLATFORM_ENV: test
-          PLATFORM_POSTGRES_URL: postgres://postgres:postgres@localhost:5432/eleventhonus_platform_test
-        run: PLATFORM_ENV=test pnpm --filter functions test:postgres
-
-      - name: Install Playwright browsers
-        run: pnpm exec playwright install --with-deps chromium
-
-      - name: Playwright e2e
-        run: pnpm test:e2e
-
       # The Firestore Emulator requires a JRE, and firebase-tools now refuses
       # to run it on Java below 21. GitHub's ubuntu-latest runner's default
       # `java` resolves to Temurin 17 (confirmed by CI run 29608691029,
       # 2026-07-17: "firebase-tools no longer supports Java version before
-      # 21"), so JDK 21 is installed explicitly rather than assumed.
+      # 21"), so JDK 21 is installed explicitly rather than assumed. Moved
+      # ahead of the PostgreSQL step (`PLATFORM-BASELINE-005A-CORR-001`):
+      # the Reward Program cross-store command test needs the Firestore
+      # Emulator running alongside the PostgreSQL service container, so
+      # Java must already be in place before that step runs.
       - name: Set up Java (JDK 21+ required by the Firestore Emulator)
         uses: actions/setup-java@v4
         with:
@@ -99,6 +87,31 @@ jobs:
 
       - name: Verify Java runtime (required by the Firestore Emulator)
         run: java -version
+
+      # PostgreSQL integration tests run against the in-job service container
+      # above (no Docker Compose, no external database, no secret). The
+      # runner waits for the container's `pg_isready` health check before
+      # reaching this step. Wrapped in the Firestore Emulator
+      # (`PLATFORM-BASELINE-005A-CORR-001`): the Reward Program cross-store
+      # command test (`rewardProgramCommands.postgres.test.ts`) requires
+      # BOTH a live PostgreSQL instance AND `FIRESTORE_EMULATOR_HOST` set --
+      # running the bare vitest command here (as originally shipped) let
+      # that file fail its own env-guard on every CI run, undetected because
+      # the original implementation never actually checked CI status before
+      # reporting success. Mirrors the exact command validated locally.
+      - name: PostgreSQL integration tests
+        env:
+          PLATFORM_ENV: test
+          PLATFORM_POSTGRES_URL: postgres://postgres:postgres@localhost:5432/eleventhonus_platform_test
+        run: >-
+          pnpm exec firebase emulators:exec --only firestore --project demo-11thonus
+          "PLATFORM_ENV=test PLATFORM_POSTGRES_URL=postgres://postgres:postgres@localhost:5432/eleventhonus_platform_test pnpm --filter functions test:postgres"
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Playwright e2e
+        run: pnpm test:e2e
 
       - name: Firebase Emulator Suite validation
         run: pnpm emulators:validate
