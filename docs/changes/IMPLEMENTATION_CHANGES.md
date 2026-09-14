@@ -7,6 +7,23 @@
 
 ---
 
+## 2026-09-14 — PLATFORM-BASELINE-005A-MERGE-CLOSE-001 — Founder Approval, Controlled Merge & Closure of PR #251
+
+- **Task / status:** Merge/closure only for `PLATFORM-BASELINE-005A — Reward Program Foundation` (PR #251) at the independently reviewed head `f0ee6d6edab5bb25d7fd75f38742cfa0b001960e` (independent disposition `PLATFORM-BASELINE-005A — INDEPENDENTLY VERIFIED / APPROVABLE`; Founder approval granted for that exact head). No implementation code modified.
+- **Entry verification:** PR OPEN/unmerged; head exactly `f0ee6d6...`; base `f955bce...` current with zero drift (`origin/main` equaled the base at merge time); `MERGEABLE`/`CLEAN`; CI SUCCESS on the exact head (run `34811356573`, `headSha` byte-match); six original review threads with correction replies, zero new P0/P1/P2 findings, zero new reviews.
+- **PR body (GitHub metadata only, no commit):** corrected from stale pre-CORR-001 text to six migrations (naming `0006_reward_program_pointer_integrity`), CORR-001 six-finding resolution, final evidence (functions 1739 / web 790 / PostgreSQL-cross-store 57 / emulator 833 passed + 3 pre-existing skips + 0 failed / Playwright 37/37 / typecheck-lint-format-build clean), exact-head CI SUCCESS, disposition `INDEPENDENTLY VERIFIED / APPROVED FOR MERGE`. Head re-verified unchanged after the edit.
+- **Merge:** regular merge commit with expected-head protection (`gh pr merge 251 --merge --match-head-commit f0ee6d6...`; no squash/rebase/force). Merge commit `c3e4916bcf3ee36d0ec301e7af6d11de60797ea5`; parents exactly `f955bce...` + `f0ee6d6...`; only the five PR branch commits introduced (`faee1a5`, `e291a98`, `708a936`, `244ddc4`, `f0ee6d6`); diff scope 49 files, +6401/−39.
+- **Post-merge verification:** PR #251 state MERGED; post-merge `origin/main` = `c3e4916...`; post-merge CI (run `34813693472`) SUCCESS on the merge commit before closure.
+- **Migrations:** 0001–0006 (+ down migrations) present on main in expected order; 0001–0005 unmutated by the merge; no checksum/history mutation. Not applied to any shared/prod environment.
+- **Findings:** six original findings (P1x2/P2x4) resolved and independently verified. Residual P3 observations recorded only, no correction PR: NF-1 (defensive idempotency-fallback hardening), NF-2 (governed mapping for concurrent constraint-race losers), NF-3 (unreachable plain `Error` in `publishVersion`).
+- **Files changed:** `docs/00-governance/documentation-changes-log.md` (Entry 222); this record. Implementation report left untouched (its stale historical head/run lines are history, not rewritten — closure facts live here).
+- **Code/configuration/dependencies/migrations/live changes:** none. No decision-register modification.
+- **Validation:** entry-gate checks; `git diff --stat` scope review; merge-parent verification; post-merge CI SUCCESS. Primary worktree (unrelated `docs/dec-legal-002-bt-draft-007` legal work) untouched — closure prepared in an isolated worktree.
+- **Rollback:** `git revert` the closure commit for the log entries; revert merge `c3e4916` (`git revert -m 1`) only under Founder direction — note this would back out the entire Reward Program foundation including migrations 0001–0006 (down-migrate any environment that applied them first).
+- **Final disposition:** `PLATFORM-BASELINE-005A — APPROVED / MERGED / CLOSED`. Programme sequence: Platform Foundation ✓ / Customer Identity ✓ / Business Activation ✓ / Business Configuration ✓ / Reward Program Foundation ✓.
+
+---
+
 ## 2026-09-10 — AUTH-ARCH-002-VAL-002-EXEC-001-STOP-001-CORR-003 — Provenance-Label Correction Only: E-08/E-10
 
 - **Task / status:** Provenance-label correction only, on the existing branch `docs/auth-arch-002-val-002-exec-001-stop-001` at reviewed head `96e4208668dbdc505de99d8df4cdee4956868123` (PR #241 OPEN/MERGEABLE; base `origin/main` `a2c80d1f` current, zero drift). No Auth0/provider activity, no production code, no unrelated file modified, FD-COM-001 untouched.
