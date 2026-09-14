@@ -168,7 +168,7 @@ Open, unmerged, awaiting independent review (number/URL in §5 after opening).
 
 ## 35. CI state
 
-Exact-head CI to be recorded after pushing (URL/run in §5 follow-up). Locally: typecheck/lint/unit/PG/emulator/build all green as above. Known CI consideration (inherited from 005A CORR-001.23): cross-store PG tests require `FIRESTORE_EMULATOR_HOST` — no workflow change was needed or made.
+**Green on the exact head.** `Build, Lint, Test, Emulator Validation` — SUCCESS on head `cd7dcce3ec919758bbf7c8d51b9b0a3710e7884b` (run `34876402984`, `https://github.com/Fkenogo/11THONUS/actions/runs/34876402984`). `mergeStateStatus` at last check: `UNSTABLE` (CI in progress at the time) → checks now `pass`; `mergeable: MERGEABLE`. CI steps include Build, Lint, Format check, Typecheck, Unit/component tests, PostgreSQL integration tests (full `test:postgres` under `firebase emulators:exec --only firestore`, covering the new 34-test cross-store file), Playwright e2e, and Firebase Emulator Suite validation — all success. No workflow change was needed or made (the 005A CORR-001.23 emulator-wrapped PG step already covers the new file).
 
 ## 36. Known limitations
 
