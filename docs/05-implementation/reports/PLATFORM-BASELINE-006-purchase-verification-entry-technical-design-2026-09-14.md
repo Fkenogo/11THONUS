@@ -1,5 +1,7 @@
 # PLATFORM-BASELINE-006 — Purchase & Verification Entry / Technical Design
 
+> **Correction `PLATFORM-BASELINE-006-CORR-003` (2026-09-14):** final in-place correction on PR #252 addressing ITR-003 (P1/P2/P3): repeatable `loyalty_cycle.allocated` Trust Events dedup per source transition (one-time subjects keep lifetime uniqueness); pending-split rule bounded with the oversized-position split deferred to the future package; Reward FK parenthesis fixed. No Founder decision touched; register unchanged. Details in §34. Disposition is now **FINAL DESIGN CORRECTED / ITR-003 FINDINGS ADDRESSED / AWAITING FINAL APPROVAL** (§31).
+
 > **Correction `PLATFORM-BASELINE-006-CORR-002` (2026-09-14):** second in-place correction on PR #252 addressing ITR-002 (P1×6/P2×6/P3×2). No Founder decision changed or added (reward-terms version answered from current authority — PRD6 + BR-066/067 — per the task's §12 inspection rule). Conservation model fixed (positions = current; in-place pending→allocated + append-only history); artifact snapshot made truthful; stream-serialization + threshold concurrency defined; minimum `rewards` entitlement at threshold; Trust cardinality + Intent uniqueness; fact-preserving states; single replacement FK. Details + proofs in §33. Disposition is now **DESIGN CORRECTED / ITR-002 FINDINGS ADDRESSED / AWAITING FINAL INDEPENDENT APPROVAL** (§31).
 
 **Date:** 2026-09-14
@@ -23,7 +25,7 @@ The governed Purchase Verification Lifecycle (PRD5, pre-freeze draft) enters the
 
 **Recommended `006A` scope (20 items, §29):** Purchase Record foundation; lifecycle events; Trust Event foundation (Purchase/Unit/Cycle/Reward); Verified Unit foundation; Cycle stream + aggregate foundation; allocation-position + allocation-history foundation; minimum Reward entitlement at threshold; Notification Intent foundation; `purchase.record` permission; `recordPurchase`; `verifyPurchase`; `rejectPurchase`; `raisePurchaseDispute`; Business/customer reads; EN/FR minimum UI; atomic verify→unit→cycle→reward transaction; idempotency; outbox; conservation/concurrency tests; localhost Founder flow.
 
-**Disposition: DESIGN CORRECTED / ITR-002 FINDINGS ADDRESSED / AWAITING FINAL INDEPENDENT APPROVAL** (see §§31, 33).
+**Disposition: FINAL DESIGN CORRECTED / ITR-003 FINDINGS ADDRESSED / AWAITING FINAL APPROVAL** (see §§31, 34).
 
 ---
 
@@ -278,8 +280,9 @@ Governed representation (TRD10 §10.11.1): each row records an authoritative iss
 
 **Allocation-position model (`verified_unit_allocations` = CURRENT positions — CORR-002 conservation fix):**
 
-- The prior "forward movement writes NEW rows" design double-counts (2 allocated + 2 pending + a new 2 allocated = 6 rows of quantity from a credit of 4). It is superseded: allocation rows represent **current** positions only, and a pending position transitions to allocated **on the same row** when the next cycle opens. No new quantity position is ever created by movement.
-- Hard invariant: `credit.quantity = SUM(current allocation-position quantities)` at all times, where current positions include both `allocated` and `pending` rows. Example — credit of 4: position A (2, allocated, Cycle 1) + position B (2, pending). After the next cycle opens: position B becomes (2, allocated, Cycle 2) **on the same row**; no third row exists; the sum is still 4.
+- The prior "forward movement writes NEW rows" design double-counts (2 allocated + 2 pending + a new 2 allocated = 6 rows of quantity from a credit of 4). It is superseded: allocation rows represent **current** positions only. For same-quantity movement where the entire pending position fits into the new Cycle, the position transitions in place (`pending → allocated` on the same row, with an append-only allocation event). No new quantity position is ever created by movement.
+- However, if a pending position quantity exceeds the next Cycle's remaining capacity (e.g. pending 13 against capacity 10), future redemption/forward-allocation logic must perform a **quantity-conserving split** (10 → allocated to the new Cycle; 3 → remains pending). The exact split-position algorithm is DEFERRED to the redemption / pending-forward-allocation package: 006A only CREATES pending overflow and never consumes it, so no 006A behavior depends on the split. Fixed now regardless of the deferred algorithm: the credit row stays immutable; no quantity created or lost; current positions always sum to the credit; history rows never count; future splitting may create/restructure CURRENT position rows only as conservation requires.
+- Hard invariant: `credit.quantity = SUM(current allocation-position quantities)` at all times, where current positions include both `allocated` and `pending` rows. Example — credit of 4: position A (2, allocated, Cycle 1) + position B (2, pending). After the next cycle opens: position B becomes (2, allocated, Cycle 2) **on the same row** (whole position fits); no third row exists; the sum is still 4.
 - Splits across the threshold write one row per position (e.g. 2 allocated + 2 pending), each with `allocation_order`; the rows for one credit always sum to the credit quantity by construction of the verify transaction.
 - Deterministic ordering: positions apply in `(occurred_at, verified_unit_id, allocation_order)` order; pending positions convert in that order when cycles open. Replay-safe via idempotency completion (§16) — a replayed verify returns the stored result (backstopped by the one-credit-per-purchase index and the one-reward-per-cycle index).
 
@@ -327,7 +330,7 @@ BEGIN PG TRANSACTION
     positions per FD-PVL-002 (never a second concurrent active cycle).
  9. Write allocation position rows (exact traceability) + allocation
     event rows (movement history).
-10. Append causal + subject Trust Events (§22).
+10. Append causal + subject Trust Events, each naming its source transition row (§22; repeatable `loyalty_cycle.allocated` dedups per source event).
 11. Create source-linked Notification Intent(s) (§23).
 12. Write downstream outbox event(s) (purchase_verified, verified_units_issued,
     loyalty_cycle_allocated / loyalty_cycle_reward_available / reward_available
@@ -591,6 +594,10 @@ CREATE TABLE trust_events (
   -- Causal root: every event in this spine is caused by a Purchase
   -- lifecycle transition.
   causal_purchase_record_id UUID NOT NULL REFERENCES purchase_records (id) ON DELETE RESTRICT,
+  -- Authoritative source transition: the purchase_record_events row this
+  -- Trust Event was generated from (mirrors the notification_intents
+  -- linkage; the causal id above names the Purchase, this names the event).
+  source_purchase_record_event_id UUID NOT NULL REFERENCES purchase_record_events (id) ON DELETE RESTRICT,
   -- Explicit subject semantics.
   subject_type TEXT NOT NULL
     CHECK (subject_type IN ('purchase_record','verified_unit','loyalty_cycle','reward')),
@@ -625,15 +632,21 @@ CREATE TABLE trust_events (
       AND subject_reward_id IS NOT NULL AND subject_id = subject_reward_id
       AND subject_verified_unit_id IS NULL AND subject_loyalty_cycle_id IS NULL))
 );
--- Deduplication independent of command idempotency: one causal event per
--- (purchase, type); one subject event per (subject, type). Transitions fire
--- once by state machine; the verify transaction writes each event once.
-CREATE UNIQUE INDEX trust_events_one_causal_per_purchase
-  ON trust_events (causal_purchase_record_id, event_type)
-  WHERE subject_type = 'purchase_record';
-CREATE UNIQUE INDEX trust_events_one_per_subject
+-- Deduplication independent of command idempotency, split by cardinality:
+-- one-time subject events keep lifetime uniqueness per subject…
+CREATE UNIQUE INDEX trust_events_one_time_subject_event
   ON trust_events (subject_type, subject_id, event_type)
-  WHERE subject_type <> 'purchase_record';
+  WHERE event_type IN ('verified_units.issued',
+    'loyalty_cycle.reward_available', 'reward.available');
+-- …while repeatable subject events dedup per CAUSAL SOURCE TRANSITION:
+-- two distinct Purchases may each emit loyalty_cycle.allocated against the
+-- same Cycle (different source keys coexist); replaying the SAME source
+-- transition cannot insert twice. Transitions fire once by state machine;
+-- the verify transaction writes each event once.
+CREATE UNIQUE INDEX trust_events_repeatable_causal_event
+  ON trust_events (source_purchase_record_event_id, subject_type,
+    subject_id, event_type)
+  WHERE event_type IN ('loyalty_cycle.allocated');
 CREATE INDEX trust_events_causal_idx ON trust_events (causal_purchase_record_id, occurred_at);
 CREATE INDEX trust_events_customer_idx ON trust_events (customer_identity_id, occurred_at DESC);
 CREATE INDEX trust_events_business_idx ON trust_events (business_id, occurred_at DESC);
@@ -734,7 +747,7 @@ CREATE TABLE rewards (
   -- (opened_under_version_id, §15) — relational, not a comment.
   CONSTRAINT rewards_governing_version FOREIGN KEY
     (loyalty_cycle_id, reward_program_version_id)
-    REFERENCES loyalty_cycles (id, opened_under_version_id) ON DELETE RESTRICT)
+    REFERENCES loyalty_cycles (id, opened_under_version_id) ON DELETE RESTRICT
 );
 -- Exactly one Reward entitlement per qualifying Loyalty Cycle, created
 -- exactly once by the threshold transaction (UNIQUE backstop + progress
@@ -742,11 +755,13 @@ CREATE TABLE rewards (
 CREATE UNIQUE INDEX rewards_one_per_cycle
   ON rewards (loyalty_cycle_id);
 
--- verified_unit_allocations: CURRENT allocation positions (CORR-002).
+-- verified_unit_allocations: CURRENT allocation positions (CORR-002/003).
 -- Conservation invariant: credit.quantity = SUM(position quantities) at
--- all times, positions = allocated + pending rows. Pending→allocated
--- converts ON THE SAME ROW when the next cycle opens — movement never
--- creates quantity. History lives in allocation events, never here.
+-- all times, positions = allocated + pending rows. Whole-position movement
+-- converts ON THE SAME ROW when the next cycle opens; a pending position
+-- larger than the next cycle's remaining capacity is split
+-- quantity-conservingly by the future forward-allocation package (current
+-- rows only, never history). History lives in allocation events, never here.
 CREATE TABLE verified_unit_allocations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   verified_unit_id UUID NOT NULL,
@@ -867,7 +882,7 @@ CREATE TABLE purchase_outbox (
 CREATE INDEX purchase_outbox_aggregate_idx ON purchase_outbox (aggregate_id, occurred_at);
 ```
 
-Reuse as-is: generic `idempotency_keys` (new operation types `purchase.create`/`purchase.verify`/`purchase.reject`/`purchase.dispute` only). Each table ships with a matching `.down.sql`. The additive UNIQUEs on pre-existing tables (`reward_program_versions (reward_program_id, id)`, `reward_programs (id, business_id)`) arrive via new forward-only 006A migrations — `0001–0006` are never hand-edited. Table order above is documentary: 006A migrations create all tables before adding cross-table FKs (no forward-reference FK at apply time). Quantity conservation is constructional + test-enforced: `credit.quantity = SUM(current position quantities)` holds because the verify transaction writes positions summing to the credit and movement transitions preserve the sum on the same rows (§15); `cycle.allocated_units = SUM(allocated positions for that cycle)` holds because the counter is maintained only inside the serialized stream transaction (§16) — the materialized counter is chosen over derivation (simplest safe model: a single lock target, reconciliation tests after every threshold/concurrency scenario in §29). No migration files are created by this design task.
+Reuse as-is: generic `idempotency_keys` (new operation types `purchase.create`/`purchase.verify`/`purchase.reject`/`purchase.dispute` only). Each table ships with a matching `.down.sql`. The additive UNIQUEs on pre-existing tables (`reward_program_versions (reward_program_id, id)`, `reward_programs (id, business_id)`) arrive via new forward-only 006A migrations — `0001–0006` are never hand-edited. Table order above is documentary: 006A migrations create all tables before adding cross-table FKs (no forward-reference FK at apply time). Quantity conservation is constructional + test-enforced: `credit.quantity = SUM(current position quantities)` holds because initial verification creates positions summing to the credit (splitting across current Cycle + pending overflow as needed), whole-position movement preserves the sum on the same rows, and any future split of an oversized pending position must preserve it across the resulting current rows (§15); historical event rows never enter the sum. `cycle.allocated_units = SUM(allocated positions for that cycle)` holds because the counter is maintained only inside the serialized stream transaction (§16) — the materialized counter is chosen over derivation (simplest safe model: a single lock target, reconciliation tests after every threshold/concurrency scenario in §29). No migration files are created by this design task.
 
 ---
 
@@ -888,7 +903,9 @@ Three distinct concepts — all three written by 006A, no overlapping ledgers (P
 
 - **Transactional audit (`purchase_record_events`):** the Purchase lifecycle timeline / domain transition history — queryable per-record history and PRD5 §20 timeline source. Same transaction as the transition.
 - **Authoritative Trust Events (`trust_events`):** the authoritative commercial trust history required by product authority — written in the **same PostgreSQL transaction** as the state change (creation, verification, rejection, dispute; unit issuance, cycle allocation/reward-available, and reward availability included as subject events). Translates the governed TRD10 §10.13.1 `TrustEventDocument` semantics into the PG spine without copying provider-specific structure:
-  - `event_type` + `event_version` (closed vocabulary, §20) · `actor` (`actor_type` staff|manager|owner|customer|system + `actor_id` + optional `actor_role`) · causal root (`causal_purchase_record_id` — every event in this spine is caused by a Purchase transition) · explicit subject (`subject_type` purchase_record|verified_unit|loyalty_cycle|reward + `subject_id` + the matching nullable subject FK; purchase-record subjects use the causal id) · Purchase/Business/Customer ids · `correlation_id` (+ optional `causation_id` chaining to the prior Trust Event) · `occurred_at`/`recorded_at` timestamps · immutable JSONB `payload`/reference (ids + version snapshot + quantity + reason codes; PII minimized) · `schema_version`. Append-only: insert-only by convention, no 006A updater/deleter. Cardinality/dedup: one causal event per (purchase, type); one subject event per (subject, type) — partial UNIQUEs backstop the state machine (each transition fires once) independently of command idempotency.
+  - `event_type` + `event_version` (closed vocabulary, §20) · `actor` (`actor_type` staff|manager|owner|customer|system + `actor_id` + optional `actor_role`) · causal root (`causal_purchase_record_id` — every event in this spine is caused by a Purchase transition) · explicit subject (`subject_type` purchase_record|verified_unit|loyalty_cycle|reward + `subject_id` + the matching nullable subject FK; purchase-record subjects use the causal id) · Purchase/Business/Customer ids · `correlation_id` (+ optional `causation_id` chaining to the prior Trust Event) · `occurred_at`/`recorded_at` timestamps · immutable JSONB `payload`/reference (ids + version snapshot + quantity + reason codes; PII minimized) · `schema_version`. Append-only: insert-only by convention, no 006A updater/deleter. Cardinality/dedup, split by kind: **one-time subject events** (`verified_units.issued` per credit, `loyalty_cycle.reward_available` per threshold transition, `reward.available` per Reward) keep lifetime uniqueness per subject; **repeatable subject events** (`loyalty_cycle.allocated`) dedup per causal source transition (`source_purchase_record_event_id`, §20) — partial UNIQUEs backstop the state machine (each transition fires once) independently of command idempotency.
+  - Worked proof — P1 verifies +2 into Cycle C1 → source event E1 → Trust Event (subject C1, `loyalty_cycle.allocated`, source E1). P2 later verifies +3 into the same C1 → source event E2 → second legitimate Trust Event (subject C1, `loyalty_cycle.allocated`, source E2). Both coexist (different source keys). Replaying P2/E2 returns the idempotent stored result and cannot create a third row (same source key violates the repeatable index even if the replay guard were bypassed).
+  - Threshold trio — P3 crossing C1 to 10 emits `loyalty_cycle.allocated` (repeatable, sourced from E3) plus `loyalty_cycle.reward_available` and `reward.available` (one-time per Cycle threshold / per Reward — a second crossing is impossible by state machine, and the lifetime UNIQUEs backstop it).
 - **Domain outbox (`purchase_outbox`):** the delivery/integration mechanism for downstream processing (future notification delivery workers, analytics, integrations). Same transaction; payloads carry ids only, never secrets.
 - There is exactly one trust ledger (`trust_events`). `purchase_record_events` is not a second ledger — it is the per-record timeline the Trust Event is derived alongside, in the same transaction, from the same transition.
 - Security-relevant denials (e.g. cross-customer access attempts) are security logs per TRD12 §12.39, not Trust Events — 006A follows the existing observability convention, not a new one.
@@ -1009,7 +1026,7 @@ Justification: this is the smallest slice in which every persisted state is vali
 
 ## 31. Final disposition
 
-**PLATFORM-BASELINE-006 — DESIGN CORRECTED / ITR-002 FINDINGS ADDRESSED / AWAITING FINAL INDEPENDENT APPROVAL.**
+**PLATFORM-BASELINE-006 — FINAL DESIGN CORRECTED / ITR-003 FINDINGS ADDRESSED / AWAITING FINAL APPROVAL.**
 
 `PLATFORM-BASELINE-006A` may implement the §29 20-item scope without inventing product or architecture decisions, subject to final independent approval of this corrected design. Do not begin 006A in this task. Do not merge the design PR (PR #252 stays open, unmerged).
 
@@ -1063,7 +1080,8 @@ ITR-002 (P1×6/P2×6/P3×2) found engineering defects under the five already-rec
 - (b) **4 units at progress 8:** stream + cycle locked, progress re-read (8) → room 2 → positions (2, allocated, Cycle 1) + (2, pending) + two events → cycle.allocated = 10 → threshold sub-transaction: Reward created once (UNIQUE backstop), cycle → `reward_available`, subject Trust Events, customer `reward_available` intent, outbox → commit. SUM = 2+2 = 4 = credit ✓. Cycle sum = 8+2 = 10, never 11 ✓. Exactly one Reward ✓.
 - (c) **2 concurrent first verifications (credits 3 and 2), no cycle:** both `INSERT` stream (one wins, other hits designed `ON CONFLICT DO NOTHING` — no leaked violation) → serialize on stream lock → T1 creates cycle seq 1 (counter → 2), allocates 3 → commit → T2 locks stream, finds the current cycle (allocated 3), allocates 2 → cycle.allocated = 5, one current cycle (partial-unique backstop never fires). Both succeed correctly ✓. Quantity neither created nor lost: 3+2 = 5 across two credits, positions sum per credit ✓.
 - (d) **2 concurrent verifications at 9/10 (credits 2 and 2):** serialize → T1 re-reads 9, room 1 → (1, allocated → 10, Reward, `reward_available`) + (1, pending) → commit → T2 re-reads `reward_available` (not active) → (2, pending) → commit. Exactly one threshold crossing, one Reward, no overfill ✓. SUMs hold per credit ✓.
-- (e) **Pending moved after redemption (future package, mechanics defined now):** redemption txn locks stream → creates cycle seq N (counter) → converts pending positions in `(occurred_at, unit, order)` order via same-row `pending→allocated` + `pending_to_allocated` events → cycle counters updated → commit. Row count unchanged; SUM preserved by same-row transition ✓. 006A accumulates pending rows and never moves them (no redemption writer) — accumulation conservation is 006A-tested; movement conservation is future-package-tested against this contract.
+- (e) **Pending moved after redemption (future package, mechanics bounded now):** redemption txn locks stream → creates cycle seq N (counter) → converts fitting pending positions in `(occurred_at, unit, order)` order via same-row `pending→allocated` + `pending_to_allocated` events → cycle counters updated → commit. For fitting positions row count is unchanged and SUM is preserved by the same-row transition ✓. Oversized positions follow the deferred split rule instead (see H). 006A accumulates pending rows and never moves them (no redemption writer) — accumulation conservation is 006A-tested; movement conservation is future-package-tested against this contract.
+- (H) **Future illustrative case only (deferred split, not falsely solved):** pending 13 with next-cycle capacity 10 → recognized as requiring a quantity-conserving split (10 allocated to the new Cycle + 3 remains pending) under the future package's algorithm: 13 = 10 + 3 at every step, history rows excluded from the sum, credit row untouched. The current schema permits the resulting current rows; the split algorithm itself is explicitly deferred, not claimed here.
 - (f) **Replay of threshold-crossing verify:** idempotency peek returns the stored result before any write (same-key/same-request); same-key/different-request → `IDEMPOTENCY_CONFLICT`. No second credit (partial-unique backstop), no second Reward (`UNIQUE(loyalty_cycle_id)` backstop), no second positions ✓.
 - **Shared-policy five cases** (§10 matrix) re-verified against the A/B/C columns + 19-step order: LN resolves yet still rejects when the locked version says `shared=false` (step 10); stale QR fails at Firestore resolution (step 4); client Customer ID has no input path ✓.
 
@@ -1087,6 +1105,18 @@ ITR-002 (P1×6/P2×6/P3×2) found engineering defects under the five already-rec
 | P3-14 stale PR body | Body describes pre-correction design | Metadata rewritten post-push (no commit) | PR #252 body | CLOSED |
 
 No new Founder decision. 006A implementation does not begin in this task.
+
+---
+
+## 34. PLATFORM-BASELINE-006-CORR-003 — ITR-003 Final Corrections (2026-09-14)
+
+Three findings, no Founder decision touched, no scope widened, no register change.
+
+| Finding | Severity | Root cause | Correction | Affected section | Status |
+|---|---|---|---|---|---|
+| Repeatable Trust Event uniqueness | P1 | Per-subject UNIQUE forbade two legitimate `loyalty_cycle.allocated` events on one Cycle | `source_purchase_record_event_id` linkage (mirrors intents); one-time subjects keep lifetime UNIQUE, `loyalty_cycle.allocated` dedups per source transition; worked A/B coexistence + replay + threshold-trio proofs | §§16, 20, 22, 33 | CLOSED |
+| Pending split clarification | P2 | "Same-row" wording overclaimed the pending-13-into-capacity-10 future case | Same-row bounded to fitting positions; oversized positions split quantity-conservingly under a deferred future-package algorithm; invariant retained; 006A still only creates pending | §§15, 20, 33 | CLOSED |
+| Reward FK parenthesis | P3 | Extra `)` in `rewards_governing_version` example | Parenthesis removed; full 34-statement block re-verified balanced; semantics unchanged | §20 | CLOSED |
 
 ---
 
