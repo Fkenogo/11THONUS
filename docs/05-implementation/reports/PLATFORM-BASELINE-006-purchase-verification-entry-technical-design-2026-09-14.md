@@ -1,5 +1,7 @@
 # PLATFORM-BASELINE-006 — Purchase & Verification Entry / Technical Design
 
+> **Correction `PLATFORM-BASELINE-006-CORR-002` (2026-09-14):** second in-place correction on PR #252 addressing ITR-002 (P1×6/P2×6/P3×2). No Founder decision changed or added (reward-terms version answered from current authority — PRD6 + BR-066/067 — per the task's §12 inspection rule). Conservation model fixed (positions = current; in-place pending→allocated + append-only history); artifact snapshot made truthful; stream-serialization + threshold concurrency defined; minimum `rewards` entitlement at threshold; Trust cardinality + Intent uniqueness; fact-preserving states; single replacement FK. Details + proofs in §33. Disposition is now **DESIGN CORRECTED / ITR-002 FINDINGS ADDRESSED / AWAITING FINAL INDEPENDENT APPROVAL** (§31).
+
 **Date:** 2026-09-14
 **Type:** Read-only architecture / technical-design assessment. No product code implemented.
 **Authority chain:** `PLATFORM-BASELINE-005` design + `FOUNDER-DISPOSITION-001` + `REVIEW-FINDINGS-001` (all merged, PR #250) → `PLATFORM-BASELINE-005A` implementation + `CORR-001` (merged, PR #251).
@@ -19,9 +21,9 @@ The governed Purchase Verification Lifecycle (PRD5, pre-freeze draft) enters the
 - **Verification and Verified Unit creation and Loyalty Cycle allocation are atomic in ONE PostgreSQL transaction** (lock → state-check → transition → issue units → allocate into cycle / hold overflow pending → Trust Event → Notification Intent → complete idempotency → outbox). `DEC-LOY-008` is resolved by `FD-PVL-002`: units allocate sequentially into the current active cycle up to exactly 10 (`reward_available` at 10); overflow beyond a full current cycle becomes durable, ordered, traceable pending allocation — never discarded, never a second concurrent active cycle — and applies forward in order after redemption. The prior universal-pending-unit design is superseded (§32 preserves the reasoning change).
 - **Five Founder decisions close the slice edges.** Version-bump semantics (`FD-PVL-003`), shared-number-off enforcement (`FD-PVL-005`: `sharedLoyaltyNumberAllowed = false` ⇒ current QR Identity required), whole-record verify/reject/dispute with no partial verification (`FD-PVL-004`, resolving `DEC-PROD-008` for MVP), immediate allocation + overflow (`FD-PVL-002`), and explicit PostgreSQL authority (`FD-PVL-001`) are all decided. The remaining open decisions (expiry values, pause/migration, catalogue values, Business-side dispute review) affect only explicitly deferred scope.
 
-**Recommended `006A` scope:** PostgreSQL Purchase Record foundation; PostgreSQL Trust Event foundation for Purchase transitions; PostgreSQL Verified Unit foundation; minimum Loyalty Cycle foundation; Verified Unit allocation / overflow foundation; Notification Intent foundation; `purchase.record` permission; `recordPurchase`; `verifyPurchase`; `rejectPurchase`; `raisePurchaseDispute`; Business pending/history reads; Customer Waiting-for-You/history reads; atomic verify→unit→cycle allocation; idempotency; outbox; minimum EN/FR Business + Customer UI; localhost Founder flow (§29).
+**Recommended `006A` scope (20 items, §29):** Purchase Record foundation; lifecycle events; Trust Event foundation (Purchase/Unit/Cycle/Reward); Verified Unit foundation; Cycle stream + aggregate foundation; allocation-position + allocation-history foundation; minimum Reward entitlement at threshold; Notification Intent foundation; `purchase.record` permission; `recordPurchase`; `verifyPurchase`; `rejectPurchase`; `raisePurchaseDispute`; Business/customer reads; EN/FR minimum UI; atomic verify→unit→cycle→reward transaction; idempotency; outbox; conservation/concurrency tests; localhost Founder flow.
 
-**Disposition: DESIGN CORRECTED / FOUNDER DECISIONS RECORDED / AWAITING INDEPENDENT RE-REVIEW** (see §§31–32).
+**Disposition: DESIGN CORRECTED / ITR-002 FINDINGS ADDRESSED / AWAITING FINAL INDEPENDENT APPROVAL** (see §§31, 33).
 
 ---
 
@@ -162,13 +164,16 @@ Searched `functions/src`, `apps/web/src`, `tests/`, `firestore.rules`, `firestor
 
 - **Primary id:** PostgreSQL-generated `UUID` (`gen_random_uuid()`, PK). Rationale: the record is platform-created inside the creation transaction; no offline deterministic-id requirement is governed (TRD10 §10.28 offline keys concern client retries, which idempotency keys already cover). Application-generated ids would add collision handling for no governed benefit.
 - **Business:** `business_id TEXT NOT NULL` — opaque Firestore Business id (indexed, never PG FK).
-- **Customer:** `customer_identity_id TEXT NOT NULL` — opaque Firestore Customer Identity id (`users/{id}` identity, resolved server-side via `identityLookupRepository`, §10). The as-presented artifact value is snapshotted separately (`loyalty_number_value TEXT NOT NULL`, `qr_reference TEXT NULL`) so later artifact regeneration never rewrites history.
+- **Presented artifact (A — exactly what the Business submitted):** `presented_artifact_type TEXT NOT NULL CHECK (presented_artifact_type IN ('loyalty_number','qr_identity'))` + `presented_artifact_reference TEXT NOT NULL` (the raw submitted value: the loyalty-number string or the QR reference). Exactly one presentation form per Purchase — the client submits one artifact, never a Customer domain id (anti-enumeration + flow requirement). The column names say what they are: presented input, never authority.
+- **Resolved Customer Identity (B — server-authoritative):** `customer_identity_id TEXT NOT NULL` — opaque Firestore Customer Identity id (`users/{id}` identity, resolved server-side via `identityLookupRepository`, §10). Resolution happens before the PG transaction (external authority); the final accept/reject decision uses the locked Program Version policy inside the transaction (§§12, 18).
+- **Canonical Loyalty Number snapshot (C — server-derived, display-only):** `canonical_loyalty_number_value TEXT NOT NULL` — derived server-side at creation from the resolved identity (exactly one Loyalty Number per identity is governed by `DEC-CUST-ID-ART-001`, so the value always exists regardless of presentation path). It is a historical display/reporting snapshot: never read as presented input, never read as identity authority. `NOT NULL` is justified because the derivation source is total over resolved identities; a NULL would falsely suggest "no number exists".
+- Later artifact regeneration/rotation never rewrites any of these three columns (insert-only snapshot convention).
 - **Reward Program + version:** `reward_program_id UUID NOT NULL REFERENCES reward_programs(id)` + `reward_program_version_id UUID NOT NULL REFERENCES reward_program_versions(id)` — the creation-time **active** version snapshotted at creation (§9 for why both).
 - **Recorder:** `recorded_by_user_id TEXT NOT NULL` (server-resolved actor) + `recorded_by_role TEXT NOT NULL` (`staff|manager|owner` as resolved, for audit display).
 - **Branch:** `branch_id TEXT NOT NULL` — the Business's default branch (single-branch model; informational, visible on the verification screen per PRD5 §14).
 - **Commercial snapshot (immutable):** `quantity INTEGER NOT NULL CHECK (quantity >= 1)`; `item_label TEXT NOT NULL` (customer-visible descriptor, e.g. "Coffee"); `knowledge_node_id TEXT NULL` (optional qualifying Commerce Knowledge ref, validated at creation iff present); `unit_value_minor INTEGER NULL` + `currency TEXT NULL` (reporting-only per DEC-DATA-003; engine must not read); `purchase_date TIMESTAMPTZ NOT NULL` (business-asserted commercial date, sanity-bounded, not future); `notes TEXT NULL` (customer-visible free text).
 - **Lifecycle:** `status TEXT NOT NULL` (8-state CHECK) + `purchase_record_events` append-only history (§15).
-- **Correction linkage (forward-compatible, unused by 006A commands):** `replaces_purchase_record_id UUID NULL REFERENCES purchase_records(id)`, `replaced_by_purchase_record_id UUID NULL REFERENCES purchase_records(id)`.
+- **Correction linkage (forward-compatible, unused by 006A commands):** `replaces_purchase_record_id UUID NULL REFERENCES purchase_records(id)` — one directional FK on the replacement; the reverse is a query, never a second column (§19).
 - **Integrity/ops:** `correlation_id TEXT NOT NULL`, `recorded_at TIMESTAMPTZ` (server commit time), `created_at/updated_at`, `schema_version INTEGER DEFAULT 1`. Optimistic concurrency via state-conditional `UPDATE … WHERE status = …` (005A `publishVersion` precedent); no separate `row_version` needed because transitions are single-writer state-machine steps, not multi-field edits.
 
 ---
@@ -189,7 +194,7 @@ Searched `functions/src`, `apps/web/src`, `tests/`, `firestore.rules`, `firestor
 
 - **What the client submits:** exactly one of `loyaltyNumberValue` or `qrReference` (canonical per PRD5 §9: "Customer Loyalty Number or QR"), plus commercial fields. The client **never** submits a Customer domain id (anti-enumeration + flow requirement).
 - **What the server resolves:** `lookupCustomerIdentityByLoyaltyNumber` or `lookupCustomerIdentityByQrReference` (`identityLookupRepository.ts`) → Customer Identity id → stored as `customer_identity_id`. Unknown/inactive artifacts fail closed with a non-enumerating error. No phone lookup exists (confirmed absent — §6.10); phone-based recording remains future and is not in 006A.
-- **What is stored:** the resolved identity id plus the as-presented artifact snapshot (`loyalty_number_value`, `qr_reference`). Shared-number behavior falls out correctly with no extra machinery: the number resolves to its registered owner, the record attaches to the owner, and only the owner can verify (DEC-LOY-007; PRD5 §11; PRD4 §9). The presenter is not identified and no presenter field is stored.
+- **What is stored (§8 A/B/C):** the presented pair (`presented_artifact_type` + `presented_artifact_reference`), the resolved identity id, and the server-derived canonical Loyalty Number snapshot. Shared-number behavior: the artifact resolves to its registered owner, the record attaches to the owner, and only the owner can verify (DEC-LOY-007; PRD5 §11; PRD4 §9). The presenter is not identified and no presenter field is stored. Successful artifact resolution does **not** imply acceptance — the locked Version policy decides inside the transaction (§18): an LN may resolve perfectly and still be rejected when the locked version says `shared=false`.
 - **Preserved invariants:** one Loyalty Number + one current QR per identity; server-authoritative resolution; reads (including the new pending-list reads) never create/repair artifacts — they use the read-only lookup path only.
 - **Shared-number-off (DECIDED — `FD-PVL-005`, recorded on `DEC-LOY-007`):** the version's `sharedLoyaltyNumberAllowed` flag is operational at creation, not merely snapshotted. When `true`, creation accepts the Loyalty Number **or** the current QR Identity. When `false`, a Loyalty Number alone is insufficient — the Business must present the Customer's **CURRENT QR Identity**: the server resolves the QR authoritatively through the existing lookup path (which fails closed on unknown/inactive references), confirms it is the current active QR Identity, stores the resolved Customer Identity, and stores the artifact snapshot for historical traceability. QR here is the stronger current customer-controlled platform artifact — not biometric or legal proof of physical identity. No presenter identity model, no recorder attestation model, and no phone-number fallback are introduced. Design matrix (all five enforced server-side):
   - `shared=true + LN → allowed` · `shared=true + QR → allowed` · `shared=false + LN → reject` · `shared=false + current QR → allowed` · `shared=false + stale QR → reject`.
@@ -211,16 +216,19 @@ Searched `functions/src`, `apps/web/src`, `tests/`, `firestore.rules`, `firestor
 
 - **Authorized actors:** active Staff/Manager/Owner membership via new `purchase.record` permission (§11). Recorder identity + role server-resolved and stored.
 - **Business eligibility:** `trial`/`active` via the catalogue lifecycle gate (005A pattern). Suspended/expired/closed fail closed.
-- **Customer resolution:** §10 — exactly one of LN or QR submitted; the version's `sharedLoyaltyNumberAllowed` gates acceptance (`false` ⇒ current QR required; LN-only rejected; stale QR rejected). Server resolves to identity id, fail-closed.
-- **Reward Program eligibility (authoritative, PG-local — §18):** inside the creation transaction, resolve and lock the target program + its current version and prove: same Business (composite FK backstop, §20); program `active`; the exact active/current version selected; version status `active` (eligible for new Purchase creation). Snapshot program id + version id + `shared_loyalty_number_allowed` + `multiple_units_allowed` on the row. Program-level `multipleUnitsAllowed=false` ⇒ `quantity` must be `1`; optional `Maximum Units per Purchase Record` (if configured on the version) enforced as a hard cap; bulk/quantity review thresholds recorded as review-visibility only (DEC-LOY-003: never auto-reject). Creation against a program with no published version fails closed (`no-active-version`).
+- **Customer resolution:** §10 — exactly one artifact parsed (`loyaltyNumberValue` XOR `qrReference`); resolved via the matching lookup to a Customer Identity id, fail-closed (unknown/inactive → non-enumerating error; stale QR → reject). Resolution success is provisional: acceptance is decided in-transaction (step 10).
+- **Reward Program eligibility (authoritative, PG-local — §18):** proven inside the creation transaction against the locked program + version rows: same Business (composite-FK backstop, §20); program `active`; the exact active/current version selected; version status `active`. Snapshot program id + version id + `shared_loyalty_number_allowed` + `multiple_units_allowed` on the row.
+- **Quantity/caps/shared (locked-version rules ONLY):** no quantity, cap, or shared-policy validation is final before the locked version is available. Inside the transaction, against the locked version: `multipleUnitsAllowed=false` ⇒ `quantity` must be `1`; optional `Maximum Units per Purchase Record` enforced as a hard cap; `quantity >= 1`; if `presented_artifact_type='loyalty_number'` and locked `sharedLoyaltyNumberAllowed=false` ⇒ reject before insert. Bulk/quantity review thresholds recorded as review-visibility only (DEC-LOY-003: never auto-reject). Creation against a program with no published version fails closed (`no-active-version`).
 - **Commerce Knowledge validation:** optional `knowledge_node_id` validated via `validateQualifyingNodes`-equivalent (active-type eligibility) in the authoritative Firestore read **before** the PG transaction (RF-3 discipline applies only to genuinely external authorities — §18); category/standard-node checks are not purchase concerns.
-- **Quantity:** integer `>= 1`. Noнитary math anywhere near it.
+- **Quantity:** integer `>= 1`. No monetary math anywhere near it.
 - **Monetary metadata:** optional `unit_value_minor` (integer minor units per DEC-DATA-002) + `currency`; stored, never read by loyalty logic (DEC-DATA-003 guard).
 - **Notes:** optional free text, customer-visible.
 - **Idempotency:** client-supplied key, operation type `purchase.create`, request hash binds actor + business + customer artifact + program/version + commercial snapshot; same-key/same-request replays the created record; same-key/different-request conflicts; rollback rolls back the reservation with the transaction (005A pattern).
 - **Correlation/audit/outbox:** server-generated `correlationId`; `purchase_recorded` outbox event + `purchase_record_events` creation row, same transaction.
 - **Initial state:** exactly `waiting_for_customer`. `Draft`/`Recorded` are transient workflow moments (PRD5 §7 note), never stored values — the creation transaction writes the row directly in `waiting_for_customer`.
-- **Validation ordering (fail-closed):** authentication → permission/business-eligibility → customer-artifact resolution (Firestore read, external authority) → commercial validation (quantity/caps/dates) → remaining Firestore cross-store reads → single PG transaction: lock program + current version → prove program/version eligibility → idempotency reservation → insert record + creation event + Trust Event + Notification Intent + outbox + complete key (§16). Any failure before the transaction leaves zero PG state; any failure inside rolls back everything including the reservation. PostgreSQL-owned checks are never a read→commit race across the boundary — they execute under the transaction's locked snapshot (§18).
+- **Creation sequence (fail-closed; version-derived validation only on the locked version):**
+  1. authenticate; 2. resolve Business actor/membership from Firestore; 3. parse exactly one presented Customer artifact; 4. resolve the artifact in Firestore (provisional); 5. validate external Firestore authorities (Business, membership, current-QR-if-QR-path, Branch, Commerce Knowledge); 6. BEGIN PostgreSQL transaction; 7. lock Reward Program; 8. lock current Reward Program Version; 9. prove program∈Business, program active, version is current/active, and read the locked `sharedLoyaltyNumberAllowed`, `multipleUnitsAllowed`, version maximum; 10. if artifact is loyalty_number and locked `shared=false` ⇒ reject before insert; 11. validate quantity against locked Version rules; 12. reserve idempotency key; 13. insert Purchase snapshot (presented pair + resolved identity + canonical LN + locked program/version); 14. lifecycle event; 15. Trust Event; 16. Notification Intent; 17. outbox; 18. complete idempotency; 19. COMMIT.
+  Any failure before the transaction leaves zero PG state; any failure inside rolls back everything including the reservation. PostgreSQL-owned checks are never a read→commit race across the boundary — they execute under the transaction's locked snapshot (§18).
 
 ---
 
@@ -235,7 +243,7 @@ Stored `status` CHECK over the 8 canonical states (`waiting_for_customer, verifi
 | `waiting_for_customer → rejected` | registered Customer only | no units; reason code required (bounded vocabulary, §15); terminal in 006A |
 | `waiting_for_customer → under_review` | registered Customer only | no units; mandatory dispute reason (§14); safe durable holding state in 006A |
 
-Governed-invalid examples 006A must enforce (TRD19 §19.17): `verified → waiting_for_customer`, `rejected → verified` without approved resolution, `cancelled → verified`, `under_review → verified` without a governed replacement — all rejected with standardized errors and zero partial writes. `corrected/cancelled/expired/archived` have no 006A writer; Business-side dispute review, correction→replacement, expiry, and archival belong to later packages (`PLATFORM-BASELINE-006B` or equivalent, §14). The `rejected → under_review` question (PRD5 §6 vs §7 tension) stays deferred with the dispute package — 006A treats `rejected` as terminal. Disputes are never silently redirected into rejection: `raisePurchaseDispute` is its own command with its own event, Trust Event, and Notification Intent.
+Governed-invalid examples 006A must enforce (TRD19 §19.17): `verified → waiting_for_customer`, `rejected → verified` without approved resolution, `cancelled → verified`, `under_review → verified` without a governed replacement — all rejected with standardized errors and zero partial writes. `corrected/cancelled/expired/archived` have no 006A writer; Business-side dispute review, correction→replacement, expiry, and archival belong to later packages (`PLATFORM-BASELINE-006B` or equivalent, §14). The `rejected → under_review` question (PRD5 §6 vs §7 tension) stays deferred with the dispute package — 006A treats `rejected` as terminal. Disputes are never silently redirected into rejection: `raisePurchaseDispute` is its own command with its own event, Trust Event, and Notification Intent. State integrity preserves historical facts rather than nulling them: a fact required when its transition occurred (e.g. `verified_at`, `rejection_reason`, `dispute_reason`) is never erased by a later status change, while incompatible simultaneous verdict facts are prevented — full rules in §§19–20.
 
 ---
 
@@ -248,7 +256,7 @@ Governed-invalid examples 006A must enforce (TRD19 §19.17): `verified → waiti
 - **Creation-time version binding re-checked:** the locked row's `reward_program_version_id` governs issuance/allocation — never re-resolved to program-current (`FD-PVL-003`).
 - **Idempotency:** operation type `purchase.verify`, hash binds purchase + actor; same-key replay returns the verification result; double-clicks and retries are safe. Simultaneous verify-vs-reject-vs-dispute on one record serializes on the row lock — exactly one transition commits.
 - **Timestamp/attribution:** server commit time as `verified_at`; actor = resolved identity id; optional customer response/note stored on the verification event row.
-- **Atomic effects (§16):** `verified` status + durably created units (§15) + Cycle allocation / pending-overflow rows (§15) + `purchase_record_events` transition row + authoritative Trust Event (§22) + Notification Intent(s) (§23) + `purchase_outbox` events + idempotency completion — **all in one PG transaction**; any failure rolls back everything. Returned with resulting unit + cycle totals.
+- **Atomic effects (§16):** `verified` status + durably created units (§15) + serialized Cycle-stream allocation / pending-overflow positions (§§15–16) + minimum Reward entitlement exactly when the threshold is reached (§15) + `purchase_record_events` transition row + causal + subject Trust Events (§22) + source-linked Notification Intent(s) (§23) + `purchase_outbox` events + idempotency completion — **all in one PG transaction**; any failure rolls back everything. Returned with resulting unit + cycle (+ reward where created) totals.
 - `rejectPurchaseRecord` mirrors this with `purchase_rejected`, a mandatory reason code from the bounded vocabulary (§15), and **no** unit writes.
 - `raisePurchaseDispute` (customer-authenticated callable, in 006A scope per `FD-PVL-004`):
   - authenticated Customer; server-resolved identity; Purchase ownership check; source state `waiting_for_customer` only; **mandatory dispute reason** (wrong quantity / wrong item-service / partially inaccurate record — never a silent redirect into rejection);
@@ -265,19 +273,30 @@ Governed representation (TRD10 §10.11.1): each row records an authoritative iss
 **006A mapping (PostgreSQL `verified_units`) — `FD-PVL-002`/`FD-PVL-004`:**
 
 - One credit row per verified purchase (`quantity` = purchase quantity — the per-issuance shape the schema's `quantity` field specifies; no per-unit ordinal rows required by any authority). Partial unique index `UNIQUE (purchase_record_id) WHERE entry_type = 'credit'` makes double-issuance structurally impossible. Whole-record verification only (`FD-PVL-004`): `units issued = purchase quantity`, no partial issuance.
-- Copied identifiers (business, customer, program, version) must equal the originating Purchase row's — enforced by a composite FK against a composite UNIQUE on `purchase_records`, not by application prechecks (§20).
+- Copied identifiers (business, customer, program, version) must equal the originating Purchase row's — enforced by a composite FK against a composite UNIQUE on `purchase_records`, not by application prechecks (§20). `verified_units` additionally carries its own composite identity-tuple UNIQUE so allocation rows prove their copied scope against the exact credit; the version column on allocation rows pins that exact tuple (each copied field serves a named FK — §20 documents the one justified duplication rather than silently repeating truth).
 - Rows are insert-only: no 006A command updates or deletes a unit row (command-layer convention, 005A-style, documented on the table).
 
-**Allocation model (`verified_unit_allocations` + minimum `loyalty_cycles` — `FD-PVL-002`):**
+**Allocation-position model (`verified_unit_allocations` = CURRENT positions — CORR-002 conservation fix):**
 
-- Only overflow beyond a full current cycle may be pending — normal units never sit unattached merely because the Cycle package is deferred. One Verified Unit credit may split quantity across current-cycle allocation **and** pending overflow; `sum(allocation quantities) == credit quantity` always: no quantity lost, none double-counted.
-- Allocation row shape: `verified_unit_id` + `loyalty_cycle_id NULL` + `allocated_quantity` + `allocation_order` + `state ('allocated'|'pending')` + `created_at`, with `CHECK ((state = 'pending') = (loyalty_cycle_id IS NULL))` so pending is explicit, never an ambiguous null. Allocation into the next cycle after redemption writes **new allocation rows** (forward movement) — the original Unit row is never rewritten; movement history stays auditable.
-- Deterministic ordering: allocations apply in `(occurred_at, verified_unit_id, allocation_order)` order; replay-safe via the verify transaction's idempotency completion (§16) — a replayed verify returns the stored result instead of writing second rows (backstopped by the one-credit-per-purchase index).
-- **Minimum Loyalty Cycle row (006A foundation, not the full future Cycle feature set):** `id` + `business_id` + `customer_identity_id` + `reward_program_id` + `opened_under_version_id` (the program version current when the cycle opened — units allocated into the cycle keep their own creation-time version reference per `FD-PVL-003`, which may differ) + `sequence_number` (1, 2, 3… per customer+program) + `state ('active'|'reward_available'|'reward_redeemed'|'closed')` + progress + `created_at/updated_at` + `correlation_id` + `schema_version`. Threshold is exactly 10 (`DEC-LOY-001`): the cycle flips to `reward_available` at 10. Exactly one current `active`/`reward_available` cycle per customer+program (`DEC-LOY-002`), enforced by a partial unique index (§20). Progress is **both**: the explicit allocation rows are the source of truth (reconstructible), and a materialized `allocated_units` counter on the cycle row supports the threshold check under the row lock (the prior Baseline architecture's immutable-ledger + materialized-aggregate shape, preserved).
-- Allocation requires the cycle to belong to the same Business + Customer + Reward Program as the unit's Purchase (composite FK backstop, §20); version scope follows `FD-PVL-003` (unit's own version ref, cycle's program scope).
-- **Reward-row dependency (explicit, not hidden):** if governing authority requires a Reward row the moment a cycle reaches `reward_available`, that Reward creation is an identified implementation dependency of 006A (Reward issuance/redemption itself stays deferred, §28) — `reward_available` is representable as cycle state regardless; 006A must not silently omit a required Reward write. 006A creates no Reward/Redemption rows.
+- The prior "forward movement writes NEW rows" design double-counts (2 allocated + 2 pending + a new 2 allocated = 6 rows of quantity from a credit of 4). It is superseded: allocation rows represent **current** positions only, and a pending position transitions to allocated **on the same row** when the next cycle opens. No new quantity position is ever created by movement.
+- Hard invariant: `credit.quantity = SUM(current allocation-position quantities)` at all times, where current positions include both `allocated` and `pending` rows. Example — credit of 4: position A (2, allocated, Cycle 1) + position B (2, pending). After the next cycle opens: position B becomes (2, allocated, Cycle 2) **on the same row**; no third row exists; the sum is still 4.
+- Splits across the threshold write one row per position (e.g. 2 allocated + 2 pending), each with `allocation_order`; the rows for one credit always sum to the credit quantity by construction of the verify transaction.
+- Deterministic ordering: positions apply in `(occurred_at, verified_unit_id, allocation_order)` order; pending positions convert in that order when cycles open. Replay-safe via idempotency completion (§16) — a replayed verify returns the stored result (backstopped by the one-credit-per-purchase index and the one-reward-per-cycle index).
 
-**Reversal provenance (future-safe, P2-8):** reversals are separate immutable rows (`entry_type='reversal'`, positive `quantity`, own row, never negative quantities — PRD4 §18 forbids negative units) that **reference the exact original credit entry** (`reverses_verified_unit_id` FK, self-link with no-self-reference + no-invalid-circularity guards, §20). The original credit is never mutated or deleted. Reversal quantity may never exceed the credit's remaining reversible quantity, and duplicate/over-reversal is prevented through DB + transaction constraints (unique reversal-per-credit-per-correction + in-transaction remaining-quantity check). 006A implements **no** reversal writer (correction package owns it under `DEC-LOY-004` + TRD11 §11.24) — but the schema carries the linkage so future valid correction is possible. The old nullable-`loyalty_cycle_id`-means-pending convention on the unit row is superseded by the explicit allocation table (no conflicting nullable-cycle semantics).
+**Allocation history (`verified_unit_allocation_events` — append-only, never positions):**
+
+- Every movement (initial placement, pending→allocated conversion, future correction adjustments) appends one event row capturing: allocation position id, verified unit id, `from_state`/`to_state`, `from_cycle_id` NULL / `to_cycle_id` NULL, quantity, correlation id, reason/event type, `occurred_at`, schema version (§20).
+- Historical rows are never read as current quantity. Current-position queries touch only `verified_unit_allocations`; audits/reconciliation read the events table. The two are never mixed.
+
+**Minimum Loyalty Cycle row (006A foundation, not the full future Cycle feature set):** `id` + `business_id` + `customer_identity_id` + `reward_program_id` + `opened_under_version_id` + `sequence_number` (per customer+program, drawn from the stream row counter, §16) + `state ('active'|'reward_available'|'reward_redeemed'|'closed')` + `allocated_units` + `created_at/updated_at` + `correlation_id` + `schema_version`. Threshold is exactly 10 (`DEC-LOY-001`): the cycle flips to `reward_available` at 10, with `CHECK (0 <= allocated_units <= 10)`. Exactly one current `active`/`reward_available` cycle per customer+program (`DEC-LOY-002`), enforced by a partial unique index (§20). Relational scope is proven by composite FKs: version∈program, program∈Business, and the cycle identity tuple anchoring allocation scope (§20). Each cycle belongs to its stream parent row (`loyalty_cycle_streams`), which serializes the allocation stream and owns the sequence counter (§16).
+
+**Minimum Reward entitlement (`rewards` — REQUIRED in 006A):**
+
+- Current authority requires Reward creation at threshold (BR-064: reaching the required units makes the reward available immediately; BR-069; TRD10 §10.12.1 `rewards`/`RewardDocument`), so the conditional language is removed: the threshold transaction creates the minimum Reward entitlement exactly once. No redemption behavior is invented (redemption stays deferred, §28).
+- Minimum row (consistent with governed `RewardDocument` vocabulary): `id` + `loyalty_cycle_id` + `business_id` + `customer_identity_id` + `reward_program_id` + `reward_program_version_id` + `reward_description` (terms snapshot) + `reward_quantity CHECK = 1` (`DEC-LOY-009`: fixed at exactly 1) + `state` (canonical enum `available|redeemed|cancelled|expired`; 006A writes only `available`) + `available_at` + `created_at` + `correlation_id` + `schema_version`. DB: exactly one Reward per qualifying cycle (`UNIQUE(loyalty_cycle_id)`); same-scope composite FKs; quantity CHECK.
+- **Reward version semantics (authority-inspected, no new Founder decision):** the entitlement carries the **cycle's governing version** (`opened_under_version_id`), with `reward_description` snapshotted from that version row. Basis: PRD6 requires historical cycles to keep referencing "the version that governed them" with rules never rewritten (BR-066/067, FR-RP-009/010); `reward_description` lives on the version row; the threshold event fires under the cycle's immutable rules, not under whatever program-current version happens to exist at crossing time. Mixed unit versions inside the cycle do not change this — units carry their own creation-time refs (`FD-PVL-003`); the Reward carries the cycle's governing terms. If a future package discovers a genuine conflict with this reading, that — and only that — would be a new Founder-decision point.
+
+**Reversal future-safety (no 006A writer; schema must not foreclose correction):** a future correction command must (a) lock the original credit row; (b) prove the correction Purchase validly replaces the original (`replaces_purchase_record_id` chain); (c) prove reversal identifiers/scope match the original credit tuple; (d) compute remaining reversible quantity **transactionally** (`sum(existing reversals) + new reversal <= credit quantity`); (e) transition current allocation positions consistently (never leaving orphan quantity); (f) adjust Cycle/Reward state under future governed correction semantics (e.g. a threshold un-crossing rule the correction package will govern — not invented here). The `UNIQUE(reverses, correction)` index is a duplicate guard only — it does not solve over-reversal; the transactional sum check does. The schema carries `reverses_verified_unit_id` + `correction_purchase_record_id` so all of the above is expressible without migration.
 
 **Reason vocabularies (bounded, closed):**
 - *Reject* ("should not count at all"): `did_not_happen` · `duplicate` · `wrong_customer` · `wrong_program` · `wholly_invalid`. Never used for quantity/item inaccuracies.
@@ -297,24 +316,33 @@ BEGIN PG TRANSACTION
     creation-time Reward Program version binding (snapshot governs).
  4. Transition Purchase → verified (`verified_at` = server commit time).
  5. Append purchase_record_event.
- 6. Append authoritative Trust Event (§22).
- 7. Create immutable Verified Unit credit row(s) (§15).
- 8. Resolve/lock current Loyalty Cycle for Customer + Reward Program
-    (create the first cycle if none exists).
- 9. Allocate units sequentially: fill cycle up to threshold 10; flip cycle
-    to reward_available at 10; overflow becomes pending allocation rows
-    per FD-PVL-002 (never a second concurrent active cycle).
-10. Allocation rows written (exact traceability: unit → cycle | pending).
-11. Create Notification Intent(s) (§23).
+ 6. Ensure + lock the allocation stream (loyalty_cycle_streams row for
+    Business+Customer+Program: INSERT … ON CONFLICT DO NOTHING, then
+    SELECT … FOR UPDATE — §9 mechanism below).
+ 7. Resolve/lock current Loyalty Cycle (create it under the stream lock
+    if none exists, drawing sequence from the stream counter).
+ 8. Re-read cycle progress under the lock; allocate unit quantity:
+    fill up to 10 → flip to reward_available at exactly 10 (+ minimum
+    Reward entitlement, steps T1–T12 below) → overflow becomes pending
+    positions per FD-PVL-002 (never a second concurrent active cycle).
+ 9. Write allocation position rows (exact traceability) + allocation
+    event rows (movement history).
+10. Append causal + subject Trust Events (§22).
+11. Create source-linked Notification Intent(s) (§23).
 12. Write downstream outbox event(s) (purchase_verified, verified_units_issued,
-    cycle_allocated / cycle_reward_available as applicable).
+    loyalty_cycle_allocated / loyalty_cycle_reward_available / reward_available
+    as applicable).
 13. Complete idempotency key.
 COMMIT — any failure ROLLBACKs everything.
 ```
 
-No Purchase may be verified without durable unit issuance **and** the correct Cycle/allocation result **and** the Trust Event **and** idempotency completion. The "never verified-without-units, never units-for-unverified" principle now extends to "never verified-without-allocation": DB constraints (partial unique credit index, status CHECKs, composite FKs, single-current-cycle index) backstop the transaction rather than application prechecks alone.
+**Threshold sub-transaction (inside the same verify transaction — required, not conditional):** when the cycle reaches exactly 10: 1. cycle is locked (step 7); 2. unit quantity allocated up to 10; 3. progress becomes exactly 10; 4. minimum Reward entitlement created (version = cycle governing version, §15); 5. `UNIQUE(loyalty_cycle_id)` enforced — exactly one Reward per cycle, created exactly once; 6. cycle → `reward_available`; 7. Purchase/Unit/Cycle/Reward Trust Events appended; 8. customer `reward_available` Notification Intent created; 9. outbox events written; 10. overflow remains pending positions; 11. idempotency completed; 12. COMMIT with the outer transaction. Redemption remains out of scope — but pending→allocated conversion mechanics (§15) are defined now so the future redemption package moves positions without inventing semantics (006A itself writes pending rows and never moves them: no redemption writer exists yet).
 
-**Creation boundary:** one transaction performs: lock program + current version → prove program/version eligibility (§18) → idempotency reservation → insert `purchase_records` (`waiting_for_customer`) → insert creation event → Trust Event → Notification Intent (Purchase recorded → Customer) → outbox (`purchase_recorded`) → complete key. Firestore cross-store reads (Business/membership/customer-artifact/knowledge-node) all precede the transaction (RF-3 — external authorities only).
+**Cycle-stream concurrency (mechanism B — dedicated parent row, chosen over advisory locks):** a `SELECT … FOR UPDATE` cannot lock a missing first cycle, so the stream is serialized on an explicit `loyalty_cycle_streams` row keyed `(business_id, customer_identity_id, reward_program_id)`, created idempotently (`INSERT … ON CONFLICT DO NOTHING` — the conflict path is the designed concurrent-arrival path, never a leaked raw violation) and then locked. Chosen over transaction-scoped advisory locks because the stream row is inspectable in SQL, participates in FK graphs (cycles reference their stream), uses ordinary row-lock failure behavior (no session-lock lifecycle pitfalls, no key-hash collision surface), and owns the cycle sequence counter (no `MAX()+1` race). The partial-unique current-cycle index remains as DB backstop. Global lock ordering inside every transaction (deadlock prevention): idempotency key → purchase → stream → cycle → reward → outbox/intent/event appends. Proven scenarios (§29 tests must cover all four): (a) two concurrent first verifications create exactly one current cycle and both allocations land with correct progress; (b) two concurrent verifications at 9/10 serialize — exactly one crosses the threshold (progress re-checked under lock), creates the single Reward, and the other becomes overflow pending with no overfill above 10; (c) replay of a threshold-crossing verify returns the stored idempotent result (no second credit, no second reward — backstopped by both UNIQUEs); (d) pending positions convert in order when later cycles open, with sums preserved (§15 invariant).
+
+No Purchase may be verified without durable unit issuance **and** the correct Cycle/allocation result **and** the Reward where threshold requires **and** the Trust Events **and** idempotency completion.
+
+**Creation boundary:** the 19-step sequence in §12 — pre-transaction external reads, then one transaction: lock program → lock version → prove eligibility → shared-gate → locked-rule quantity validation → idempotency reservation → insert `purchase_records` (`waiting_for_customer`) → creation event → Trust Event → Notification Intent (Purchase recorded → Customer) → outbox (`purchase_recorded`) → complete key.
 
 **Rejection boundary:** lock → re-check → `waiting → rejected` (mandatory bounded reason) → no unit writes → Purchase Event → Trust Event → Notification Intent (→ Business) → outbox → idempotency completion. One transaction.
 
@@ -330,14 +358,14 @@ Reuse the generic PG `idempotency_keys` table with new operation types `purchase
 
 - **Request hashes** bind actor + business + target (purchase id for verify/reject; artifact + program/version + commercial snapshot for create) + content fingerprint, mirroring `rewardProgramRequestHash`.
 - **Replay:** same-key/same-request returns the stored result (created record / verification outcome). **Conflict:** same-key/different-request → governed `IDEMPOTENCY_CONFLICT`. **In-progress:** concurrent same-key → retryable `TEMPORARY_UNAVAILABLE`. **Rollback:** reservation lives inside the domain transaction — a throw rolls it back; the next attempt sees "no record" (retryable).
-- **Races decided by the database, not the UI:** double-submit create (unique key + reservation), double-verify (row lock + conditional transition + partial-unique credit index — triple backstop), simultaneous verify-vs-reject (row lock serializes; loser fails closed on state), replay-after-success (peek short-circuit before preconditions, the 005A publish-replay fix pattern).
+- **Races decided by the database, not the UI:** double-submit create (unique key + reservation), double-verify (purchase row lock + stream lock + conditional transition + partial-unique credit index + one-reward-per-cycle index — quadruple backstop), simultaneous verify-vs-reject-vs-dispute (purchase row lock serializes; losers fail closed on state), concurrent first-cycle creation (stream-row `INSERT … ON CONFLICT DO NOTHING` + lock; the conflict path is designed, never a leaked violation), replay-after-success (peek short-circuit before preconditions, the 005A publish-replay fix pattern).
 - Web hooks reuse `keyForRequest` rotation + `settleKeyOnError` (005A precedent) so a retained key never leaks across purchases.
 
 ---
 
 ## 18. Cross-store validation model
 
-Ordering for every 006A write (RF-3 discipline, corrected P2-9): authenticate → authorize (evaluator/membership, Firestore read) → resolve customer artifact (Firestore read) → validate knowledge-node refs (Firestore read, iff present) → validate business/branch state (Firestore read) → **then** open the PG transaction. Reward Program is PostgreSQL-owned, so program/version eligibility checks that can be authoritative inside PostgreSQL **execute inside the transaction** — a PostgreSQL read→PostgreSQL commit race is never accepted as if it were a cross-store race:
+Pre-transaction ordering for every 006A write (RF-3 discipline, corrected P2-9): 1. authenticate → 2. authorize: resolve Business actor/membership (Firestore read) → 3. parse exactly one presented artifact → 4. resolve the artifact in Firestore (provisional — acceptance still pending) → 5. validate external Firestore authorities: Business, membership, current-QR-if-QR-path, Branch, Commerce Knowledge refs (iff present) → **then** open the PG transaction. Reward Program is PostgreSQL-owned, so program/version eligibility checks that can be authoritative inside PostgreSQL **execute inside the transaction** — a PostgreSQL read→PostgreSQL commit race is never accepted as if it were a cross-store race:
 
 ```text
 BEGIN → SELECT program … FOR UPDATE → SELECT current version … FOR UPDATE
@@ -349,16 +377,16 @@ selected) · version status active (eligible for new Purchase creation)
 
 For verification, the program/version proof reduces to the locked Purchase row's own snapshot (no re-resolution; `FD-PVL-003`), plus the cycle lock for the allocation step (§16).
 
-Keep pre-PG authoritative checks only for genuinely external (Firestore-owned) authorities. Post-read-change behavior per external snapshot:
+Keep pre-PG authoritative checks only for genuinely external (Firestore-owned) authorities. A mutation landing after the Firestore validation read but before the PG commit — staff/member suspension, Business suspension, QR rotation, Commerce Knowledge retirement — is an **accepted bounded cross-store race**, stated exactly as such:
 
 | External snapshot | Change after read, before commit | Effect |
 |---|---|---|
-| Business lifecycle / membership state | suspension/expiry lands | does **not** retroactively invalidate the recorded Purchase (snapshot governs); affects only future actions (later commands re-read and fail closed) |
-| Customer Identity / current QR | artifact invalidated/rotated | does **not** retroactively invalidate (stored identity + artifact snapshot stand); future creations resolve afresh |
+| Business lifecycle / membership state | suspension/expiry lands | authoritative state was checked at validation time; the PG row stores a snapshot; later source changes do not rewrite committed history; each future command revalidates live external authority. The recorded Purchase is **not** retroactively invalidated; only future actions are affected (later commands re-read and fail closed) |
+| Customer Identity / current QR | artifact invalidated/rotated | same snapshot rule as above: no retroactive invalidation of the committed row; future creations resolve afresh. For QR specifically: Firestore confirms currency at validation time; a rotation in the race window is disclosed and bounded; no distributed transaction is claimed |
 | Branch (default) | default branch changes | informational metadata only; no invalidation |
-| Commerce Knowledge node | node retired | does **not** retroactively invalidate; future creations re-validate |
+| Commerce Knowledge node | node retired | same snapshot rule; future creations re-validate |
 
-No validation result is cached across commands — every command re-reads external authorities and re-locks PG authorities. Consequences remain fail-safe by construction: the PG row permanently snapshots every validated reference, so later source changes never rewrite history.
+Nothing is described as "already historical" before commit — history is made at COMMIT. No validation result is cached across commands — every command re-reads external authorities and re-locks PG authorities. Consequences remain fail-safe by construction: the PG row permanently snapshots every validated reference (presented pair + identity + canonical LN, program id + version id, node id, recorder + role, business + branch), so later source changes never rewrite committed history.
 
 ---
 
@@ -366,7 +394,7 @@ No validation result is cached across commands — every command re-reads extern
 
 Governed reconciliation (TRD10 §10.10.1 Immutability Rule + DAP-004) — the approved technical interpretation (P2-10): **Purchase commercial/identity snapshot fields are immutable after creation; controlled lifecycle status/current-state fields transition only through the four governed server-side state-machine commands** (record/verify/reject/dispute); **every transition has append-only event/history records**; corrections never edit the original commercial snapshot — correction creates a replacement Purchase Record. No full event-sourced redesign. Snapshot immutability is command-layer convention (documented on the table — the 005A approach); lifecycle integrity is additionally DB-enforced (state CHECKs: `verified_at` only for `verified`, rejection reason only for `rejected`, dispute reason/event only for `under_review`, terminal-state timestamp consistency; §20).
 
-Corrections (deferred behavior, prepared schema): under DEC-LOY-004 + TRD11 §11.24 the future package will retain the original, create a correction record + replacement purchase (new id, `replaces_purchase_record_id` set, original `replaced_by_purchase_record_id` set, original → `corrected`), require fresh customer verification of the replacement, and — where the original already issued units — write `reversal` unit rows rather than deleting. 006A lays the linkage columns and the reversal-capable unit shape but writes neither. If the original never verified (no units), correction is a plain replacement chain with no reversal rows.
+Corrections (deferred behavior, prepared schema): under DEC-LOY-004 + TRD11 §11.24 the future package will retain the original, create a correction record + replacement purchase (new id, `replaces_purchase_record_id` set on the replacement pointing at the original, original → `corrected`), require fresh customer verification of the replacement, and — where the original already issued units — write `reversal` unit rows rather than deleting. The relationship is **one authoritative directional FK** (`replaces_purchase_record_id` on the replacement, with `UNIQUE` so one original gains at most one replacement); the reverse is a query (`SELECT * FROM purchase_records WHERE replaces_purchase_record_id = original.id`), never a second materialized column — there are not two independently mutable relationship truths. 006A lays the linkage column and the reversal-capable unit shape but writes neither. If the original never verified (no units), correction is a plain replacement chain with no reversal rows.
 
 ---
 
@@ -380,9 +408,17 @@ Corrections (deferred behavior, prepared schema): under DEC-LOY-004 + TRD11 §11
 CREATE TABLE purchase_records (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   business_id TEXT NOT NULL,                        -- opaque Firestore ref
-  customer_identity_id TEXT NOT NULL,               -- opaque, server-resolved
-  loyalty_number_value TEXT NOT NULL,               -- as-presented snapshot
-  qr_reference TEXT NULL,                           -- as-presented snapshot
+  customer_identity_id TEXT NOT NULL,               -- B: resolved, server-authoritative
+  -- A: presented artifact — exactly what the Business submitted (P1-1).
+  -- One presentation form only; never a Customer id; never authority.
+  presented_artifact_type TEXT NOT NULL
+    CHECK (presented_artifact_type IN ('loyalty_number','qr_identity')),
+  presented_artifact_reference TEXT NOT NULL,       -- raw submitted value
+  -- C: canonical Loyalty Number, server-derived display snapshot.
+  -- Exactly one LN per identity is governed (DEC-CUST-ID-ART-001), so the
+  -- derivation source is total: NOT NULL is justified. Display/reporting
+  -- only — never read as presented input, never read as authority.
+  canonical_loyalty_number_value TEXT NOT NULL,
   reward_program_id UUID NOT NULL,
   reward_program_version_id UUID NOT NULL,
   shared_loyalty_number_allowed BOOLEAN NOT NULL,   -- version-flag snapshot
@@ -408,21 +444,29 @@ CREATE TABLE purchase_records (
     CHECK (dispute_reason IS NULL OR dispute_reason IN
       ('wrong_quantity','wrong_item','partially_inaccurate')),
   replaces_purchase_record_id UUID NULL REFERENCES purchase_records (id) ON DELETE RESTRICT,
-  replaced_by_purchase_record_id UUID NULL REFERENCES purchase_records (id) ON DELETE RESTRICT,
   correlation_id TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   schema_version INTEGER NOT NULL DEFAULT 1,
+  -- State integrity preserves historical facts (P2-10): facts required when
+  -- their transition occurred are never erased by later transitions; only
+  -- incompatible simultaneous verdicts are prevented. waiting_for_customer
+  -- carries no verdict facts; corrected/cancelled/expired/archived (no 006A
+  -- writer) impose no erasure — append-only events hold full history.
   CONSTRAINT purchase_records_verified_fields CHECK (
+    (status = 'waiting_for_customer'
+      AND verified_at IS NULL AND rejection_reason IS NULL
+      AND dispute_reason IS NULL) OR
     (status = 'verified' AND verified_at IS NOT NULL
       AND rejection_reason IS NULL AND dispute_reason IS NULL) OR
     (status = 'rejected' AND rejection_reason IS NOT NULL
-      AND verified_at IS NULL AND dispute_reason IS NULL) OR
+      AND dispute_reason IS NULL) OR
     (status = 'under_review' AND dispute_reason IS NOT NULL
-      AND verified_at IS NULL AND rejection_reason IS NULL) OR
-    (status NOT IN ('verified','rejected','under_review')
-      AND verified_at IS NULL AND rejection_reason IS NULL
-      AND dispute_reason IS NULL)),
+      AND rejection_reason IS NULL) OR
+    (status IN ('corrected','cancelled','expired','archived'))),
+  -- Incompatible simultaneous verdicts are prevented in every state.
+  CONSTRAINT purchase_records_single_verdict CHECK (
+    NOT (rejection_reason IS NOT NULL AND dispute_reason IS NOT NULL)),
   CONSTRAINT purchase_records_reporting_pair CHECK (
     (unit_value_minor IS NULL) = (currency IS NULL)), -- value+currency together or neither
   -- A-B. version∈program and program∈Business, relationally (P1-7):
@@ -436,10 +480,12 @@ CREATE TABLE purchase_records (
   CONSTRAINT purchase_records_program_in_business FOREIGN KEY
     (reward_program_id, business_id)
     REFERENCES reward_programs (id, business_id) ON DELETE RESTRICT,
-  -- F. correction/replacement linkage guards (deferred behavior, safe schema):
+  -- F. correction linkage: ONE authoritative directional FK (P2-11).
+  -- The replacement points at the original; the reverse is a query, never
+  -- a second materialized column. Longer circular chains are rejected
+  -- transactionally by the future correction command (no 006A writer exists).
   CONSTRAINT purchase_records_no_self_replace CHECK (
-    replaces_purchase_record_id IS DISTINCT FROM id AND
-    replaced_by_purchase_record_id IS DISTINCT FROM id),
+    replaces_purchase_record_id IS DISTINCT FROM id),
   -- C/D anchor: copied-identifier tuple other tables pin to.
   CONSTRAINT purchase_records_identity_tuple_unique UNIQUE
     (id, business_id, customer_identity_id, reward_program_id,
@@ -448,13 +494,9 @@ CREATE TABLE purchase_records (
 CREATE INDEX purchase_records_business_status_idx ON purchase_records (business_id, status, created_at DESC);
 CREATE INDEX purchase_records_customer_status_idx ON purchase_records (customer_identity_id, status, created_at DESC);
 CREATE INDEX purchase_records_program_idx ON purchase_records (reward_program_id, reward_program_version_id);
--- F (continued): one replacement claims at most one original; one original
--- points to at most one replacement. Longer circular chains are rejected
--- transactionally by the future correction command (no 006A writer exists).
+-- F (continued): one replacement claims at most one original.
 CREATE UNIQUE INDEX purchase_records_one_original_per_replacement
   ON purchase_records (replaces_purchase_record_id) WHERE replaces_purchase_record_id IS NOT NULL;
-CREATE UNIQUE INDEX purchase_records_one_replacement_per_original
-  ON purchase_records (replaced_by_purchase_record_id) WHERE replaced_by_purchase_record_id IS NOT NULL;
 
 -- purchase_record_events: append-only transition history (timeline + Trust source).
 CREATE TABLE purchase_record_events (
@@ -505,7 +547,12 @@ CREATE TABLE verified_units (
     (entry_type = 'reversal' AND reverses_verified_unit_id IS NOT NULL
       AND correction_purchase_record_id IS NOT NULL)),
   CONSTRAINT verified_units_no_self_reverse CHECK (
-    reverses_verified_unit_id IS DISTINCT FROM id)
+    reverses_verified_unit_id IS DISTINCT FROM id),
+  -- Identity tuple proving the exact credit (business/customer/program/
+  -- version scope) for allocation-scope FKs (P1-3/§6).
+  CONSTRAINT verified_units_identity_tuple_unique UNIQUE
+    (id, business_id, customer_identity_id, reward_program_id,
+     reward_program_version_id)
 );
 CREATE UNIQUE INDEX verified_units_one_credit_per_purchase
   ON verified_units (purchase_record_id) WHERE entry_type = 'credit';
@@ -519,20 +566,38 @@ CREATE INDEX verified_units_customer_program_idx
   ON verified_units (customer_identity_id, reward_program_id, entry_type);
 
 -- trust_events: authoritative commercial trust history (P1-5, FD-PVL-001).
--- One row per Purchase lifecycle transition, written in the SAME PG
--- transaction as the state change. Translates the governed TRD10
--- §10.13.1 TrustEventDocument semantics into the PG spine without copying
+-- One row per governed occurrence, written in the SAME PG transaction as
+-- the state change. Translates the governed TRD10 §10.13.1
+-- TrustEventDocument semantics into the PG spine without copying
 -- provider-specific structure. Insert-only (no 006A updater/deleter).
+-- Cardinality (P2-7): A. one CAUSAL purchase-transition event per
+-- transition (purchase.recorded / .verified / .rejected / .disputed);
+-- B. SUBJECT events where governed (verified_units.issued,
+-- loyalty_cycle.allocated, loyalty_cycle.reward_available,
+-- reward.available), each naming its explicit subject. Subjects are NOT
+-- forced into a purchase aggregate FK: the causal purchase root is always
+-- present, and the subject is carried as (subject_type + subject_id) with
+-- explicit nullable FK columns per subject type — never an unsafe
+-- polymorphic FK.
 CREATE TABLE trust_events (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   event_type TEXT NOT NULL
     CHECK (event_type IN ('purchase.recorded','purchase.verified',
       'purchase.rejected','purchase.disputed','verified_units.issued',
-      'loyalty_cycle.allocated','loyalty_cycle.reward_available')),
+      'loyalty_cycle.allocated','loyalty_cycle.reward_available',
+      'reward.available')),
   event_version INTEGER NOT NULL DEFAULT 1,
   source_domain TEXT NOT NULL DEFAULT 'purchase',
-  aggregate_type TEXT NOT NULL DEFAULT 'purchase_record',
-  aggregate_id UUID NOT NULL REFERENCES purchase_records (id) ON DELETE RESTRICT,
+  -- Causal root: every event in this spine is caused by a Purchase
+  -- lifecycle transition.
+  causal_purchase_record_id UUID NOT NULL REFERENCES purchase_records (id) ON DELETE RESTRICT,
+  -- Explicit subject semantics.
+  subject_type TEXT NOT NULL
+    CHECK (subject_type IN ('purchase_record','verified_unit','loyalty_cycle','reward')),
+  subject_id UUID NOT NULL,
+  subject_verified_unit_id UUID NULL REFERENCES verified_units (id) ON DELETE RESTRICT,
+  subject_loyalty_cycle_id UUID NULL REFERENCES loyalty_cycles (id) ON DELETE RESTRICT,
+  subject_reward_id UUID NULL REFERENCES rewards (id) ON DELETE RESTRICT,
   business_id TEXT NOT NULL,
   customer_identity_id TEXT NOT NULL,
   actor_type TEXT NOT NULL CHECK (actor_type IN ('staff','manager','owner','customer','system')),
@@ -543,11 +608,51 @@ CREATE TABLE trust_events (
   payload JSONB NOT NULL,                           -- immutable reference; ids only, PII minimized
   occurred_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   recorded_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  schema_version INTEGER NOT NULL DEFAULT 1
+  schema_version INTEGER NOT NULL DEFAULT 1,
+  CONSTRAINT trust_events_subject_shape CHECK (
+    (subject_type = 'purchase_record'
+      AND subject_id = causal_purchase_record_id
+      AND subject_verified_unit_id IS NULL
+      AND subject_loyalty_cycle_id IS NULL
+      AND subject_reward_id IS NULL) OR
+    (subject_type = 'verified_unit'
+      AND subject_verified_unit_id IS NOT NULL AND subject_id = subject_verified_unit_id
+      AND subject_loyalty_cycle_id IS NULL AND subject_reward_id IS NULL) OR
+    (subject_type = 'loyalty_cycle'
+      AND subject_loyalty_cycle_id IS NOT NULL AND subject_id = subject_loyalty_cycle_id
+      AND subject_verified_unit_id IS NULL AND subject_reward_id IS NULL) OR
+    (subject_type = 'reward'
+      AND subject_reward_id IS NOT NULL AND subject_id = subject_reward_id
+      AND subject_verified_unit_id IS NULL AND subject_loyalty_cycle_id IS NULL))
 );
-CREATE INDEX trust_events_aggregate_idx ON trust_events (aggregate_id, occurred_at);
+-- Deduplication independent of command idempotency: one causal event per
+-- (purchase, type); one subject event per (subject, type). Transitions fire
+-- once by state machine; the verify transaction writes each event once.
+CREATE UNIQUE INDEX trust_events_one_causal_per_purchase
+  ON trust_events (causal_purchase_record_id, event_type)
+  WHERE subject_type = 'purchase_record';
+CREATE UNIQUE INDEX trust_events_one_per_subject
+  ON trust_events (subject_type, subject_id, event_type)
+  WHERE subject_type <> 'purchase_record';
+CREATE INDEX trust_events_causal_idx ON trust_events (causal_purchase_record_id, occurred_at);
 CREATE INDEX trust_events_customer_idx ON trust_events (customer_identity_id, occurred_at DESC);
 CREATE INDEX trust_events_business_idx ON trust_events (business_id, occurred_at DESC);
+
+-- loyalty_cycle_streams: serialization parent per allocation stream (P1-5/B).
+-- One row per (Business, Customer, Reward Program), created idempotently
+-- (INSERT … ON CONFLICT DO NOTHING) and locked FOR UPDATE before any
+-- cycle resolution/creation or allocation step. Owns the cycle sequence
+-- counter. The conflict path is the designed concurrent-arrival path.
+CREATE TABLE loyalty_cycle_streams (
+  business_id TEXT NOT NULL,                        -- opaque Firestore ref
+  customer_identity_id TEXT NOT NULL,               -- opaque, server-resolved
+  reward_program_id UUID NOT NULL REFERENCES reward_programs (id) ON DELETE RESTRICT,
+  next_cycle_sequence INTEGER NOT NULL DEFAULT 1 CHECK (next_cycle_sequence >= 1),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT loyalty_cycle_streams_pkey PRIMARY KEY
+    (business_id, customer_identity_id, reward_program_id)
+);
 
 -- loyalty_cycles: minimum operational Cycle aggregate (FD-PVL-002).
 -- Full future Cycle feature set NOT designed here — only what 006A needs
@@ -556,18 +661,39 @@ CREATE TABLE loyalty_cycles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   business_id TEXT NOT NULL,                        -- opaque Firestore ref
   customer_identity_id TEXT NOT NULL,               -- opaque, server-resolved
-  reward_program_id UUID NOT NULL REFERENCES reward_programs (id) ON DELETE RESTRICT,
-  opened_under_version_id UUID NOT NULL REFERENCES reward_program_versions (id) ON DELETE RESTRICT,
+  reward_program_id UUID NOT NULL,
+  opened_under_version_id UUID NOT NULL,
   sequence_number INTEGER NOT NULL CHECK (sequence_number >= 1),
   state TEXT NOT NULL DEFAULT 'active'
     CHECK (state IN ('active','reward_available','reward_redeemed','closed')),
-  allocated_units INTEGER NOT NULL DEFAULT 0 CHECK (allocated_units >= 0),
+  allocated_units INTEGER NOT NULL DEFAULT 0
+    CHECK (allocated_units >= 0 AND allocated_units <= 10),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   correlation_id TEXT NOT NULL,
   schema_version INTEGER NOT NULL DEFAULT 1,
+  -- A. opening version belongs to the program (same additive UNIQUE as §20
+  -- purchase constraints; new forward-only 006A migration).
+  CONSTRAINT loyalty_cycles_version_in_program FOREIGN KEY
+    (reward_program_id, opened_under_version_id)
+    REFERENCES reward_program_versions (reward_program_id, id) ON DELETE RESTRICT,
+  -- B. program belongs to the business.
+  CONSTRAINT loyalty_cycles_program_in_business FOREIGN KEY
+    (reward_program_id, business_id)
+    REFERENCES reward_programs (id, business_id) ON DELETE RESTRICT,
+  -- Stream membership: every cycle hangs off its serialization parent.
+  CONSTRAINT loyalty_cycles_in_stream FOREIGN KEY
+    (business_id, customer_identity_id, reward_program_id)
+    REFERENCES loyalty_cycle_streams
+    (business_id, customer_identity_id, reward_program_id) ON DELETE RESTRICT,
+  -- C. identity tuple anchoring allocation-scope FKs.
   CONSTRAINT loyalty_cycles_identity_tuple_unique UNIQUE
     (id, business_id, customer_identity_id, reward_program_id),
+  -- Anchor for the reward-version proof below.
+  CONSTRAINT loyalty_cycles_governing_version_unique UNIQUE
+    (id, opened_under_version_id),
+  -- E. sequence uniqueness scoped per customer+program stream (the stream
+  -- counter is the writer; this index is the backstop).
   CONSTRAINT loyalty_cycles_sequence_unique UNIQUE
     (customer_identity_id, reward_program_id, sequence_number)
 );
@@ -577,23 +703,76 @@ CREATE UNIQUE INDEX loyalty_cycles_one_current_per_customer_program
   ON loyalty_cycles (customer_identity_id, reward_program_id)
   WHERE state IN ('active','reward_available');
 
--- verified_unit_allocations: exact quantity traceability (§15, FD-PVL-002).
--- A credit's quantity may split across current-cycle allocation and pending
--- overflow; sum(rows) == credit quantity; forward movement writes NEW rows.
+-- rewards: minimum Reward entitlement foundation (P1-6, REQUIRED).
+-- Created exactly once by the threshold transaction (§16); no redemption
+-- behavior here. Shape follows the governed TRD10 §10.12.1
+-- RewardDocument vocabulary (table `rewards`, canonical states).
+CREATE TABLE rewards (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  loyalty_cycle_id UUID NOT NULL,
+  business_id TEXT NOT NULL,
+  customer_identity_id TEXT NOT NULL,
+  reward_program_id UUID NOT NULL,
+  -- Reward terms governed by the CYCLE's governing version (§15):
+  -- opened_under_version_id of the qualifying cycle, never program-current.
+  reward_program_version_id UUID NOT NULL,
+  reward_description TEXT NOT NULL,                 -- terms snapshot from the governing version
+  reward_quantity INTEGER NOT NULL CHECK (reward_quantity = 1),
+  state TEXT NOT NULL DEFAULT 'available'
+    CHECK (state IN ('available','redeemed','cancelled','expired')),
+  available_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  correlation_id TEXT NOT NULL,
+  schema_version INTEGER NOT NULL DEFAULT 1,
+  -- Same-scope relational integrity: reward pins the exact cycle tuple
+  -- (which itself proves version∈program and program∈business)…
+  CONSTRAINT rewards_match_cycle FOREIGN KEY
+    (loyalty_cycle_id, business_id, customer_identity_id, reward_program_id)
+    REFERENCES loyalty_cycles (id, business_id, customer_identity_id,
+     reward_program_id) ON DELETE RESTRICT,
+  -- …and proves its terms version IS the cycle's governing version
+  -- (opened_under_version_id, §15) — relational, not a comment.
+  CONSTRAINT rewards_governing_version FOREIGN KEY
+    (loyalty_cycle_id, reward_program_version_id)
+    REFERENCES loyalty_cycles (id, opened_under_version_id) ON DELETE RESTRICT)
+);
+-- Exactly one Reward entitlement per qualifying Loyalty Cycle, created
+-- exactly once by the threshold transaction (UNIQUE backstop + progress
+-- re-checked under the cycle lock, §16).
+CREATE UNIQUE INDEX rewards_one_per_cycle
+  ON rewards (loyalty_cycle_id);
+
+-- verified_unit_allocations: CURRENT allocation positions (CORR-002).
+-- Conservation invariant: credit.quantity = SUM(position quantities) at
+-- all times, positions = allocated + pending rows. Pending→allocated
+-- converts ON THE SAME ROW when the next cycle opens — movement never
+-- creates quantity. History lives in allocation events, never here.
 CREATE TABLE verified_unit_allocations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  verified_unit_id UUID NOT NULL REFERENCES verified_units (id) ON DELETE RESTRICT,
+  verified_unit_id UUID NOT NULL,
   loyalty_cycle_id UUID NULL REFERENCES loyalty_cycles (id) ON DELETE RESTRICT,
   business_id TEXT NOT NULL,
   customer_identity_id TEXT NOT NULL,
   reward_program_id UUID NOT NULL,
+  reward_program_version_id UUID NOT NULL,
   allocated_quantity INTEGER NOT NULL CHECK (allocated_quantity >= 1),
   allocation_order INTEGER NOT NULL CHECK (allocation_order >= 0),
   state TEXT NOT NULL CHECK (state IN ('allocated','pending')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT verified_unit_allocations_pending_shape CHECK (
     (state = 'pending') = (loyalty_cycle_id IS NULL)),
+  -- Allocation rows prove their copied scope against the EXACT credit
+  -- tuple (version pins the credit's own snapshot; each copied field
+  -- serves this named FK — see §15).
+  CONSTRAINT verified_unit_allocations_match_unit FOREIGN KEY
+    (verified_unit_id, business_id, customer_identity_id,
+     reward_program_id, reward_program_version_id)
+    REFERENCES verified_units (id, business_id, customer_identity_id,
+     reward_program_id, reward_program_version_id) ON DELETE RESTRICT,
   -- D. allocated rows prove the cycle's Business/Customer/Program scope.
+  -- (MATCH SIMPLE: pending rows with NULL cycle id skip this FK and prove
+  -- scope through the unit FK instead — exactly the intended split.)
   CONSTRAINT verified_unit_allocations_cycle_scope FOREIGN KEY
     (loyalty_cycle_id, business_id, customer_identity_id, reward_program_id)
     REFERENCES loyalty_cycles (id, business_id, customer_identity_id,
@@ -608,6 +787,37 @@ CREATE INDEX verified_unit_allocations_pending_idx
   ON verified_unit_allocations (customer_identity_id, reward_program_id, created_at)
   WHERE state = 'pending';
 
+-- verified_unit_allocation_events: append-only movement history (§15).
+-- NEVER read as current quantity. Current-position queries touch only the
+-- positions table; audits and reconciliation read here.
+CREATE TABLE verified_unit_allocation_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  allocation_position_id UUID NOT NULL REFERENCES verified_unit_allocations (id) ON DELETE RESTRICT,
+  verified_unit_id UUID NOT NULL REFERENCES verified_units (id) ON DELETE RESTRICT,
+  from_state TEXT NOT NULL CHECK (from_state IN ('none','pending','allocated')),
+  to_state TEXT NOT NULL CHECK (to_state IN ('pending','allocated','reversed')),
+  from_cycle_id UUID NULL REFERENCES loyalty_cycles (id) ON DELETE RESTRICT,
+  to_cycle_id UUID NULL REFERENCES loyalty_cycles (id) ON DELETE RESTRICT,
+  quantity INTEGER NOT NULL CHECK (quantity >= 1),
+  reason TEXT NOT NULL
+    CHECK (reason IN ('initial_placement','pending_to_allocated','correction_adjustment')),
+  correlation_id TEXT NOT NULL,
+  occurred_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  schema_version INTEGER NOT NULL DEFAULT 1,
+  CONSTRAINT verified_unit_allocation_events_shape CHECK (
+    (reason = 'initial_placement' AND from_state = 'none'
+      AND from_cycle_id IS NULL
+      AND (to_state = 'pending') = (to_cycle_id IS NULL)) OR
+    (reason = 'pending_to_allocated' AND from_state = 'pending'
+      AND to_state = 'allocated'
+      AND from_cycle_id IS NULL AND to_cycle_id IS NOT NULL) OR
+    (reason = 'correction_adjustment'))
+);
+CREATE INDEX verified_unit_allocation_events_position_idx
+  ON verified_unit_allocation_events (allocation_position_id, occurred_at);
+CREATE INDEX verified_unit_allocation_events_unit_idx
+  ON verified_unit_allocation_events (verified_unit_id, occurred_at);
+
 -- notification_intents: durable business intent per transition (P2-11).
 -- Intent (authoritative, durable, transactional) vs delivery (deferred
 -- provider infrastructure) — §23. No delivery worker reads this in 006A.
@@ -615,8 +825,12 @@ CREATE TABLE notification_intents (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   intent_type TEXT NOT NULL
     CHECK (intent_type IN ('purchase_recorded_customer','purchase_verified_business',
-      'purchase_rejected_business','purchase_disputed_business')),
+      'purchase_rejected_business','purchase_disputed_business',
+      'reward_available_customer')),
   purchase_record_id UUID NOT NULL REFERENCES purchase_records (id) ON DELETE RESTRICT,
+  -- Authoritative source transition: the purchase_record_events row this
+  -- intent was generated from (P2-8). Structural dedup key below.
+  source_purchase_record_event_id UUID NOT NULL REFERENCES purchase_record_events (id) ON DELETE RESTRICT,
   recipient_type TEXT NOT NULL CHECK (recipient_type IN ('customer','business')),
   recipient_id TEXT NOT NULL,
   payload JSONB NOT NULL,                           -- template keys + ids; copy resolved at delivery time
@@ -627,6 +841,12 @@ CREATE TABLE notification_intents (
 );
 CREATE INDEX notification_intents_purchase_idx
   ON notification_intents (purchase_record_id, created_at);
+-- Structural deduplication independent of command idempotency: one intent
+-- per (source transition, type, recipient). A retried command replays from
+-- its idempotency record instead of inserting; this index backstops it.
+CREATE UNIQUE INDEX notification_intents_one_per_source_recipient
+  ON notification_intents (source_purchase_record_event_id, intent_type,
+    recipient_type, recipient_id);
 
 -- purchase_outbox: domain-scoped transactional outbox (005A pattern).
 -- Payloads carry ids only, never secrets.
@@ -635,7 +855,7 @@ CREATE TABLE purchase_outbox (
   event_type TEXT NOT NULL
     CHECK (event_type IN ('purchase_recorded','purchase_verified','purchase_rejected',
       'purchase_disputed','verified_units_issued','loyalty_cycle_allocated',
-      'loyalty_cycle_reward_available')),
+      'loyalty_cycle_reward_available','reward_available')),
   aggregate_type TEXT NOT NULL DEFAULT 'purchase_record',
   aggregate_id UUID NOT NULL REFERENCES purchase_records (id) ON DELETE RESTRICT,
   payload JSONB NOT NULL,
@@ -647,7 +867,7 @@ CREATE TABLE purchase_outbox (
 CREATE INDEX purchase_outbox_aggregate_idx ON purchase_outbox (aggregate_id, occurred_at);
 ```
 
-Reuse as-is: generic `idempotency_keys` (new operation types `purchase.create`/`purchase.verify`/`purchase.reject`/`purchase.dispute` only). Each table ships with a matching `.down.sql`. The two additive UNIQUEs on pre-existing tables (`reward_program_versions (reward_program_id, id)`, `reward_programs (id, business_id)`) arrive via new forward-only 006A migrations — `0001–0006` are never hand-edited. No migration files are created by this design task.
+Reuse as-is: generic `idempotency_keys` (new operation types `purchase.create`/`purchase.verify`/`purchase.reject`/`purchase.dispute` only). Each table ships with a matching `.down.sql`. The additive UNIQUEs on pre-existing tables (`reward_program_versions (reward_program_id, id)`, `reward_programs (id, business_id)`) arrive via new forward-only 006A migrations — `0001–0006` are never hand-edited. Table order above is documentary: 006A migrations create all tables before adding cross-table FKs (no forward-reference FK at apply time). Quantity conservation is constructional + test-enforced: `credit.quantity = SUM(current position quantities)` holds because the verify transaction writes positions summing to the credit and movement transitions preserve the sum on the same rows (§15); `cycle.allocated_units = SUM(allocated positions for that cycle)` holds because the counter is maintained only inside the serialized stream transaction (§16) — the materialized counter is chosen over derivation (simplest safe model: a single lock target, reconciliation tests after every threshold/concurrency scenario in §29). No migration files are created by this design task.
 
 ---
 
@@ -656,7 +876,7 @@ Reuse as-is: generic `idempotency_keys` (new operation types `purchase.create`/`
 Minimum 006A reads (all server-authorized; reads never create/repair):
 
 - Business: `listPurchasesForBusiness` (filter by `status`, default `waiting_for_customer` first, paginated, newest-first) + `getPurchaseRecord` (single, membership-gated, same-Business enforced). Membership-gated like 005A reads (no catalogue entry needed).
-- Customer: `listPurchasesWaitingForCustomer` ("Waiting for You", ownership-scoped) + `getPurchaseRecord` (ownership-enforced). Batch-verify operates strictly on the visible reviewed set (DEC-LOY-006); rejection stays individual-only end-to-end (DEC-LOY-010).
+- Customer: `listPurchasesWaitingForCustomer` ("Waiting for You", ownership-scoped) + `getPurchaseRecord` (ownership-enforced) + `listAvailableRewardsForCustomer` (ownership-scoped minimum reward read — `available` rewards with governing terms snapshot, no redemption surface). Batch-verify operates strictly on the visible reviewed set (DEC-LOY-006); rejection stays individual-only end-to-end (DEC-LOY-010).
 - No reporting dashboards, no cross-business views, no staff-activity feeds in 006A.
 - State visibility: customers see their own records in any status; Businesses see their records in any status; rejected records remain visible to both (history rule).
 
@@ -667,8 +887,8 @@ Minimum 006A reads (all server-authorized; reads never create/repair):
 Three distinct concepts — all three written by 006A, no overlapping ledgers (P1-5, `FD-PVL-001`):
 
 - **Transactional audit (`purchase_record_events`):** the Purchase lifecycle timeline / domain transition history — queryable per-record history and PRD5 §20 timeline source. Same transaction as the transition.
-- **Authoritative Trust Events (`trust_events`):** the authoritative commercial trust history required by product authority — one row per Purchase lifecycle transition, created in the **same PostgreSQL transaction** as the domain state change (creation, verification, rejection, dispute; unit issuance and cycle allocation/reward-available included as their own event types). Translates the governed TRD10 §10.13.1 `TrustEventDocument` semantics into the PG spine without copying provider-specific structure:
-  - `event_type` + `event_version` (closed vocabulary, §20) · `actor` (`actor_type` staff|manager|owner|customer|system + `actor_id` + optional `actor_role`) · subject/reference (`source_domain='purchase'`, `aggregate_type='purchase_record'`, `aggregate_id`) · Purchase/Business/Customer ids · `correlation_id` (+ optional `causation_id` chaining to the prior Trust Event) · `occurred_at`/`recorded_at` timestamps · immutable JSONB `payload`/reference (ids + version snapshot + quantity + reason codes; PII minimized) · `schema_version`. Append-only: insert-only by convention, no 006A updater/deleter.
+- **Authoritative Trust Events (`trust_events`):** the authoritative commercial trust history required by product authority — written in the **same PostgreSQL transaction** as the state change (creation, verification, rejection, dispute; unit issuance, cycle allocation/reward-available, and reward availability included as subject events). Translates the governed TRD10 §10.13.1 `TrustEventDocument` semantics into the PG spine without copying provider-specific structure:
+  - `event_type` + `event_version` (closed vocabulary, §20) · `actor` (`actor_type` staff|manager|owner|customer|system + `actor_id` + optional `actor_role`) · causal root (`causal_purchase_record_id` — every event in this spine is caused by a Purchase transition) · explicit subject (`subject_type` purchase_record|verified_unit|loyalty_cycle|reward + `subject_id` + the matching nullable subject FK; purchase-record subjects use the causal id) · Purchase/Business/Customer ids · `correlation_id` (+ optional `causation_id` chaining to the prior Trust Event) · `occurred_at`/`recorded_at` timestamps · immutable JSONB `payload`/reference (ids + version snapshot + quantity + reason codes; PII minimized) · `schema_version`. Append-only: insert-only by convention, no 006A updater/deleter. Cardinality/dedup: one causal event per (purchase, type); one subject event per (subject, type) — partial UNIQUEs backstop the state machine (each transition fires once) independently of command idempotency.
 - **Domain outbox (`purchase_outbox`):** the delivery/integration mechanism for downstream processing (future notification delivery workers, analytics, integrations). Same transaction; payloads carry ids only, never secrets.
 - There is exactly one trust ledger (`trust_events`). `purchase_record_events` is not a second ledger — it is the per-record timeline the Trust Event is derived alongside, in the same transaction, from the same transition.
 - Security-relevant denials (e.g. cross-customer access attempts) are security logs per TRD12 §12.39, not Trust Events — 006A follows the existing observability convention, not a new one.
@@ -679,7 +899,7 @@ Three distinct concepts — all three written by 006A, no overlapping ledgers (P
 
 PRD5 §19 requires a notification per transition, and product authority requires a durable record of that intent — but **no notification delivery infrastructure exists** (no templates, no provider adapters, no scheduler). 006A therefore implements the **intent/delivery split** from TRD13 §§13.13–13.28 (P2-11):
 
-- **A. Notification intent (006A, authoritative + durable):** every Purchase transition creates its `notification_intents` row(s) **in the same PG transaction** as the transition — the authoritative business intent generated from the transition, transactionally created and reliably linked to it. Minimum intents: Purchase recorded → Customer; Purchase verified → Business; Purchase rejected → Business; Purchase disputed → Business. The intent row carries template keys + ids; user-visible copy is resolved at delivery time (EN/FR parity required then, not stored twice now).
+- **A. Notification intent (006A, authoritative + durable):** every Purchase transition creates its `notification_intents` row(s) **in the same PG transaction** as the transition — the authoritative business intent generated from the transition, transactionally created and reliably linked to it. Each intent row names its authoritative source transition (`source_purchase_record_event_id`) and is covered by `UNIQUE(source, intent_type, recipient_type, recipient_id)` — structural dedup independent of command idempotency. Minimum intents: Purchase recorded → Customer; Purchase verified → Business; Purchase rejected → Business; Purchase disputed → Business; **Reward available → Customer** (sourced from the threshold-crossing verify transition's event row, created in the same transaction as the Reward). The intent row carries template keys + ids; user-visible copy is resolved at delivery time (EN/FR parity required then, not stored twice now).
 - **B. Notification delivery (deferred):** channels/provider, retry, quiet hours, consent/channel resolution, and external delivery infrastructure remain deferred to the Notification/Integration domains. No delivery worker reads `notification_intents` in 006A; the `status` stays `pending` by design (CHECK-enforced until a governed delivery package widens it).
 - 006A builds no mini-notification system and no second queue: one intent table, one outbox, each with a single owner and a coherent boundary. Reminder/expiry notifications are doubly out of scope (no governed durations exist).
 
@@ -692,8 +912,8 @@ Smallest real journey on canonical Git + local PostgreSQL/Docker + Firebase emul
 1. Owner signs in (Business in `trial`), opens Reward Programs, publishes a version (existing 005A UI).
 2. Staff/Manager records a qualifying purchase against a test Customer's Loyalty Number (new minimal Business form: artifact + quantity + item label + date).
 3. Customer signs in (resolved identity), opens "Waiting for You," sees the purchase with recorder/branch/notes, and verifies — or rejects with a reason, or raises a dispute with a reason (all three customer actions exercisable).
-4. Both sides observe `verified` + issued units + Cycle allocation (Business pending list clears; customer history shows verified record and current cycle progress toward 10).
-5. Negative paths demonstrable: wrong-customer access denied; double-verify safe; reject path creates no units; dispute path creates no units and lands `under_review`; `shared=false` program rejects LN-only creation and accepts current-QR creation.
+4. Both sides observe `verified` + issued units + Cycle allocation (Business pending list clears; customer history shows verified record and current cycle progress toward 10). A threshold journey (enough verified quantity to reach 10) shows the cycle flipping to `reward_available` with exactly one `available` Reward carrying the cycle's governing terms, plus the customer `reward_available` intent recorded.
+5. Negative paths demonstrable: wrong-customer access denied; double-verify safe; reject path creates no units; dispute path creates no units and lands `under_review`; `shared=false` program rejects LN-only creation and accepts current-QR creation; replay of a threshold verify creates nothing twice.
 
 EN/FR parity required for every new string (no Kinyarwanda/Kirundi/Swahili).
 
@@ -714,6 +934,8 @@ All 006A UI strings (record form, waiting lists, verify/reject screens, reasons,
 | DEC-PROD-014 version binding (new) | **CONFIRMED** 2026-09-14 (`FD-PVL-003`) | pending-Purchase verification across version publication | No | Creation-time snapshot normative; publication never blocks valid verification |
 | DEC-LOY-007 shared-number policy | CONFIRMED + `FD-PVL-005` addendum | creation gating when sharing disabled | No | `false` ⇒ current QR required; five-case matrix enforced |
 | DEC-DATA-008 PG authority | CONFIRMED + `FD-PVL-001` addendum | Purchase/Verification/Unit/Cycle spine | No | Bounded spine explicitly authorized |
+| Minimum Reward entitlement | REQUIRED by BR-064/BR-069 + TRD10 §10.12.1 (CORR-002) | threshold transaction | No | Created exactly once per qualifying cycle in 006A; redemption deferred |
+| Reward terms version | Answered by authority (CORR-002 §15) | threshold transaction | No | Cycle governing version (`opened_under_version_id`); PRD6 + BR-066/067; no new FD needed |
 | DEC-LOY-013 pause/migration/seasonal | OPEN_FOUNDER (D2) | lifecycle edge cases | No | Only affects pause/migration/seasonal semantics, excluded from slice |
 | DEC-SUB-008 catalogue values | OPEN_FOUNDER (D2) | plan catalogue/seed | No | Mechanics confirmed; 006A uses trial/active gate only |
 | DEC-PROD-009 reminder/expiry values | OPEN (values) | reminders, expiry transitions | No | Expiry/reminders deferred; no values invented |
@@ -735,26 +957,41 @@ All 006A UI strings (record form, waiting lists, verify/reject screens, reasons,
 3. **Quantity-mapping thinness:** the 1:1 quantity→units mapping rests on examples + DEC-LOY-003 + the schema's `quantity` field, not a normative sentence. A freeze clarification changing this would reshape issuance.
 4. **Downstream-package coupling:** the allocation/pending-overflow contract, Trust Event vocabulary, and Notification Intent vocabulary (§29.8) must be honored by later packages (006B dispute review, Reward issuance, notification delivery); documented here as hard interface requirements.
 5. **Test-infrastructure load:** the slice adds a third PG test surface (purchase + cross-store + concurrency); shared-machine contention flakes observed in prior packages must be diagnosed, never normalized.
-6. **No-notification gap:** users get no transition messages until the Notification package exists; acceptable for localhost verification, not for pilot.
+6. **No-notification gap:** users get no transition messages until the Notification package exists; acceptable for localhost verification, not for pilot. (Intent rows accumulate `pending` by design until then.)
+7. **Conservation/concurrency new-surface risk:** the position/event split, stream serialization, and threshold Reward creation are new design surface with no prior implementation precedent in this codebase. Mitigation: hard invariants stated in §§15–16/20, six conservation walkthroughs proven in §33, and §29.19 tests mandatory before 006A closes.
 
 ---
 
 ## 28. Explicit exclusions
 
-Business dispute review (`under_review` workflow beyond the safe holding state), correction/replacement workflow, cancellation, expiry scheduler + `expired` transitions, archival, notification delivery/provider workers (intent creation itself is **in** scope, §23), reward redemption, Reward creation beyond the identified threshold dependency (§15), billing/plan-capacity enforcement, multi-branch support, phone-number lookup, POS/Mobile-Money/API creation paths, hosted preview, Cloud SQL provisioning, any Firestore purchase/trust/notification collection, any new permission beyond the single specified `purchase.record` catalogue entry.
+Business dispute review (`under_review` workflow beyond the safe holding state), correction/replacement workflow, cancellation, expiry scheduler + `expired` transitions, archival, notification delivery/provider workers (intent creation itself is **in** scope, §23), Reward redemption (minimum Reward **creation** at threshold is **in** scope, §15), billing/plan-capacity enforcement, multi-branch support, phone-number lookup, POS/Mobile-Money/API creation paths, hosted preview, Cloud SQL provisioning, any Firestore purchase/trust/notification collection, any new permission beyond the single specified `purchase.record` catalogue entry.
 
 ---
 
 ## 29. Recommended PLATFORM-BASELINE-006A scope
 
-1. PG migrations: `purchase_records`, `purchase_record_events`, `trust_events`, `verified_units`, `loyalty_cycles`, `verified_unit_allocations`, `notification_intents`, `purchase_outbox` (+ down migrations), plus the two additive UNIQUEs on pre-existing tables (§20), under existing runner/checksum rules.
-2. New disjoint `purchasePermissionCatalogue.ts` (`purchase.record`, Staff/Manager/Owner, trial/active) + structural-copy evaluator branch + `authorizePurchaseRecord` boundary.
-3. Commands: `recordPurchase` (shared-policy gating per §10; PG-local program/version proof per §18), `verifyPurchase` (atomic verify→unit→cycle chain per §16), `rejectPurchase` (bounded vocabulary), `raisePurchaseDispute` (mandatory reason; `under_review` holding state) — all with ownership/permission gating, RF-3 ordering, atomic boundaries per §16, idempotency per §17, Trust Events per §22, Notification Intents per §23, outbox per §22.
-4. Reads: Business pending list + get; customer waiting list + get (§21); both sides see `under_review` records (history rule).
-5. Web: minimal Business record form + pending list; minimal Customer waiting list + verify/reject/dispute screens; EN/FR parity.
-6. Tests: PG unit + cross-store (Firestore emulator) + concurrency (double-verify, verify-vs-reject-vs-dispute, double-create) + state-transition tests (valid + TRD19 §19.17 invalid examples, five-case shared-matrix tests per §17 of the correction task, version-snapshot tests) + callable transport tests; Playwright localhost journey (§24).
-7. Reports: 006A implementation report; changes-log + implementation-changes entries.
-8. Hard interface guarantees to later packages: allocation-row shape and ordering; pending-overflow forward-movement contract; `reward_available` state semantics; Trust Event vocabulary; Notification Intent vocabulary; units immutable; no cycle writes except through the governed verify path.
+1. Purchase Record PostgreSQL foundation (presented-artifact + resolved-identity + canonical-LN snapshot; fact-preserving state CHECKs; single directional replacement FK).
+2. Purchase lifecycle events (`purchase_record_events`).
+3. Trust Event foundation for Purchase/Unit/Cycle/Reward events (`trust_events`: causal root + explicit subject semantics + cardinality/dedup rules).
+4. Verified Unit foundation (immutable credits + reversal-capable shape + identity-tuple UNIQUE).
+5. Loyalty Cycle stream + aggregate foundation (`loyalty_cycle_streams` serialization parent + minimum `loyalty_cycles` with composite scope proofs and 0–10 progress CHECK).
+6. Current allocation-position + allocation-history foundation (`verified_unit_allocations` + `verified_unit_allocation_events`; conservation invariant).
+7. Minimum Reward entitlement creation at threshold (`rewards`: one `available` Reward per qualifying cycle, governing-version terms, quantity 1).
+8. Notification Intent foundation (source-linked intents + structural dedup UNIQUE + `reward_available` intent).
+9. `purchase.record` permission (Staff/Manager/Owner, trial/active — retained Founder-approved scope).
+10. `recordPurchase` (19-step sequence: external reads → locked-version proofs → shared-gate → locked-rule quantity → writes).
+11. `verifyPurchase` (verify→unit→cycle→reward atomic transaction with stream serialization).
+12. `rejectPurchase` (bounded vocabulary, no units).
+13. `raisePurchaseDispute` (mandatory reason; `under_review` holding state; 006B boundary).
+14. Business/customer reads (pending lists + get + minimum available-rewards read).
+15. EN/FR minimum UI (record form, waiting lists, verify/reject/dispute screens, reward-available display).
+16. Atomic verify→unit→cycle→reward transaction (threshold sub-transaction; global lock ordering).
+17. Idempotency (`purchase.create/verify/reject/dispute` + replay/conflict/in-progress semantics).
+18. Outbox (extended event vocabulary incl. `reward_available`).
+19. Concurrency/quantity-conservation tests (§33 walkthroughs a–d as executable cases + reconciliation queries + five-case shared matrix + version-snapshot cases).
+20. Localhost Founder flow (§24, incl. threshold journey and replay-safety demo).
+
+Still excluded: Reward redemption; Business-side dispute resolution/correction commands; reversal command; expiry; cancellation; archival; notification delivery/provider workers; billing; analytics; external POS/Mobile-Money/API integrations; hosted preview; Cloud SQL provisioning.
 
 Justification: this is the smallest slice in which every persisted state is valid and reachable states have exits (create → verify | reject), no invalid gaps (no command writes a state it cannot justify), and nothing deferred can corrupt what is built (deferred transitions are simply unreachable; deferred packages consume only the outbox seam).
 
@@ -762,7 +999,7 @@ Justification: this is the smallest slice in which every persisted state is vali
 
 ## 30. Acceptance criteria
 
-1. Every §28 quality-bar item is answered in this report (authoritative datastore; version binding; immutable fields; initial state; authorized creators; server-side resolution + shared-policy enforcement; verification ownership; verification transaction incl. cycle allocation; unit representation + allocation/overflow; reversal provenance; duplicate/concurrent behavior; idempotency; rejection + dispute behavior; DB/relational constraints; PG-local program/version checks; cross-store races; audit/Trust Events/outbox; Notification Intent; inclusions/exclusions) — self-checked during authoring and re-checked in the `FD-CORR-001` pass (§32).
+1. Every §28 quality-bar item is answered in this report (authoritative datastore; version binding; immutable fields; initial state; authorized creators; server-side resolution + shared-policy enforcement; verification ownership; verification transaction incl. cycle allocation; unit representation + allocation/overflow; reversal provenance; duplicate/concurrent behavior; idempotency; rejection + dispute behavior; DB/relational constraints; PG-local program/version checks; cross-store races; audit/Trust Events/outbox; Notification Intent; inclusions/exclusions) — self-checked during authoring, re-checked in the `FD-CORR-001` pass (§32), and re-checked again in the `CORR-002` pass (§33: artifact snapshot truthfulness; position/event conservation; cycle/allocation/unit/reward relational scope; 19-step creation order; stream serialization + threshold concurrency; minimum Reward entitlement + governing-version terms; Trust cardinality/dedup; Intent source-linkage + uniqueness; fact-preserving states; single replacement FK; transactional reversal rules; constructional conservation; bounded-race wording).
 2. No product behavior invented: each rule traces to a cited source or is explicitly flagged OPEN with fail-safe specified behavior.
 3. No Founder decision required before 006A starts (§26 matrix).
 4. 006A implementable without architectural invention (all patterns exist in 001–005A).
@@ -772,9 +1009,9 @@ Justification: this is the smallest slice in which every persisted state is vali
 
 ## 31. Final disposition
 
-**PLATFORM-BASELINE-006 — DESIGN CORRECTED / FOUNDER DECISIONS RECORDED / AWAITING INDEPENDENT RE-REVIEW.**
+**PLATFORM-BASELINE-006 — DESIGN CORRECTED / ITR-002 FINDINGS ADDRESSED / AWAITING FINAL INDEPENDENT APPROVAL.**
 
-`PLATFORM-BASELINE-006A` may implement the §29 scope without inventing product or architecture decisions, subject to independent re-review of this corrected design. Do not begin 006A in this task. Do not merge the design PR (PR #252 stays open, unmerged).
+`PLATFORM-BASELINE-006A` may implement the §29 20-item scope without inventing product or architecture decisions, subject to final independent approval of this corrected design. Do not begin 006A in this task. Do not merge the design PR (PR #252 stays open, unmerged).
 
 ---
 
@@ -811,6 +1048,45 @@ Superseded original positions (history — do not implement): (a) Option A no-cy
 | P2-11 Durable Notification Intent | Outbox event treated as the trigger; no intent store | `notification_intents` in PG, per transition, same transaction; intent vs delivery split; 4 minimum intents | §§16, 20, 23 | CLOSED |
 
 All P1/P2 findings are closed by this correction. The corrected design returns for one final independent design review; 006A implementation does not begin in this task.
+
+---
+
+## 33. PLATFORM-BASELINE-006-CORR-002 — ITR-002 Integrity Corrections (2026-09-14)
+
+### 33.1 What changed and what did not
+
+ITR-002 (P1×6/P2×6/P3×2) found engineering defects under the five already-recorded Founder decisions — no decision is reopened or altered here. The one place the task allowed discovering a new Founder decision (reward-terms version, §12 of the correction task) was inspected against current authority and **answered without one**: PRD6 ("Historical Loyalty Cycles must continue referencing the version that governed them… never rewrite historical cycle rules") + BR-066/067 + FR-RP-009/010 + `reward_description` living on the version row jointly determine that the Reward entitlement carries the cycle's `opened_under_version_id` — recorded in §15 with the full trail, relationally enforced in §20 (`rewards_governing_version` FK). Superseded CORR-001 positions (history — do not implement): forward-movement-new-rows (§§15–16 CORR-001); `loyalty_number_value`/`qr_reference` columns (§§8/20 CORR-001); outbox-shape trust rows without subject semantics (§22 CORR-001); sourceless intents (§23 CORR-001); null-erasing state CHECKs (§20 CORR-001); bidirectional replacement columns (§§19–20 CORR-001); conditional Reward language (§§15/28 CORR-001).
+
+### 33.2 Conservation walkthroughs (manually proven against §§15–16/20)
+
+- (a) **4 units into empty Cycle:** stream ensured + locked → cycle seq 1 created (allocated 0) → credit 4 → one position (4, allocated, Cycle 1, order 0) + `initial_placement` event → cycle.allocated = 4. SUM positions = 4 = credit ✓. Cycle sum = 4 ✓. No reward (4 < 10) ✓.
+- (b) **4 units at progress 8:** stream + cycle locked, progress re-read (8) → room 2 → positions (2, allocated, Cycle 1) + (2, pending) + two events → cycle.allocated = 10 → threshold sub-transaction: Reward created once (UNIQUE backstop), cycle → `reward_available`, subject Trust Events, customer `reward_available` intent, outbox → commit. SUM = 2+2 = 4 = credit ✓. Cycle sum = 8+2 = 10, never 11 ✓. Exactly one Reward ✓.
+- (c) **2 concurrent first verifications (credits 3 and 2), no cycle:** both `INSERT` stream (one wins, other hits designed `ON CONFLICT DO NOTHING` — no leaked violation) → serialize on stream lock → T1 creates cycle seq 1 (counter → 2), allocates 3 → commit → T2 locks stream, finds the current cycle (allocated 3), allocates 2 → cycle.allocated = 5, one current cycle (partial-unique backstop never fires). Both succeed correctly ✓. Quantity neither created nor lost: 3+2 = 5 across two credits, positions sum per credit ✓.
+- (d) **2 concurrent verifications at 9/10 (credits 2 and 2):** serialize → T1 re-reads 9, room 1 → (1, allocated → 10, Reward, `reward_available`) + (1, pending) → commit → T2 re-reads `reward_available` (not active) → (2, pending) → commit. Exactly one threshold crossing, one Reward, no overfill ✓. SUMs hold per credit ✓.
+- (e) **Pending moved after redemption (future package, mechanics defined now):** redemption txn locks stream → creates cycle seq N (counter) → converts pending positions in `(occurred_at, unit, order)` order via same-row `pending→allocated` + `pending_to_allocated` events → cycle counters updated → commit. Row count unchanged; SUM preserved by same-row transition ✓. 006A accumulates pending rows and never moves them (no redemption writer) — accumulation conservation is 006A-tested; movement conservation is future-package-tested against this contract.
+- (f) **Replay of threshold-crossing verify:** idempotency peek returns the stored result before any write (same-key/same-request); same-key/different-request → `IDEMPOTENCY_CONFLICT`. No second credit (partial-unique backstop), no second Reward (`UNIQUE(loyalty_cycle_id)` backstop), no second positions ✓.
+- **Shared-policy five cases** (§10 matrix) re-verified against the A/B/C columns + 19-step order: LN resolves yet still rejects when the locked version says `shared=false` (step 10); stale QR fails at Firestore resolution (step 4); client Customer ID has no input path ✓.
+
+### 33.3 ITR-002 finding-resolution matrix (all CLOSED)
+
+| Finding | Root cause | Correction | Section(s) | Status |
+|---|---|---|---|---|
+| P1-1 artifact snapshot schema | `loyalty_number_value NOT NULL` mislabeled QR-only truth | A/B/C columns: presented pair + resolved identity + server-derived canonical LN; exactly-one-form; client never sends Customer ID | §§8, 10, 12, 20, 24 | CLOSED |
+| P1-2 overflow conservation | Split + new-row movement double-counts (2+2→new 2 = 6 from 4) | Positions = CURRENT; in-place pending→allocated; credit.qty = SUM(positions) invariant | §§15, 16, 20 | CLOSED |
+| P1-3 cycle/allocation integrity | Missing composite proofs; unbounded counter | Composite FKs (version∈program, program∈Business, unit-tuple, cycle-scope, reward-version); 0–10 CHECK; scoped sequence + stream counter; single-current index kept | §§15, 20 | CLOSED |
+| P1-4 creation/shared ordering | Qty/cap/shared final before locked version | 19-step order; shared-gate (step 10) + qty (step 11) inside txn on locked rules | §§12, 16, 18 | CLOSED |
+| P1-5 first-cycle/threshold concurrency | No lockable first-cycle target; threshold races | Mechanism B: `loyalty_cycle_streams` parent (inspectable, FK-able, owns counter; conflict path designed) + global lock ordering; scenarios proven §33.2 | §§16, 17, 20, 29 | CLOSED |
+| P1-6 reward entitlement | Conditional language; no table | `rewards` (TRD10 §10.12.1 shape); created exactly once in threshold txn; UNIQUE per cycle; redemption still excluded | §§15, 16, 20, 26, 28, 29 | CLOSED |
+| P2-7 trust cardinality | All events forced into purchase aggregate FK | Causal root + subject_type/id + nullable per-type FKs; no polymorphic FK; cardinality + dedup UNIQUEs | §§20, 22 | CLOSED |
+| P2-8 intent uniqueness | Idempotency-only dedup; no source link | `source_purchase_record_event_id` + UNIQUE(source,type,recipient); +`reward_available`→Customer intent | §§20, 23 | CLOSED |
+| P2-9 reversal/correction | UNIQUE presented as over-reversal fix | Lock credit; prove replacement; txn remaining-qty sum check; allocation/cycle/reward adjustment rules; UNIQUE kept as duplicate guard only | §§15, 19, 20 | CLOSED |
+| P2-10 state history | CHECKs nulled historical facts | Facts-required-at-transition, never erased, single-verdict guard; events hold full history | §§13, 19, 20 | CLOSED |
+| P2-11 replacement pointers | Two mutable truths | Single `replaces_*` FK + UNIQUE; reverse via query; `replaced_by_*` removed | §§15, 19, 20 | CLOSED |
+| P2-12 race wording | "Already historical" pre-commit | Accepted bounded-race language; checked-at-validation + snapshot + no-distributed-txn + revalidate-live; boundary tests | §§18, 30 | CLOSED |
+| P3-13 summary arithmetic | Stale counts; 108 ≠ 109; 116 rows | Deterministic recount from actual rows (evidence in changes-log Entry 225): CONFIRMED 64, OPEN_FOUNDER 18, OPEN_ENGINEERING 7, OPEN_PROVIDER 5, OPEN_LEGAL 6, DEFERRED 10, SUPERSEDED 4, CLOSED 1, RESOLVED 1 = 116 | Register Summary | CLOSED |
+| P3-14 stale PR body | Body describes pre-correction design | Metadata rewritten post-push (no commit) | PR #252 body | CLOSED |
+
+No new Founder decision. 006A implementation does not begin in this task.
 
 ---
 

@@ -1412,15 +1412,17 @@ Legend: fields with **—** are intentionally blank (OPEN records have no Final 
 
 | Status | Count |
 |---|---|
-| CONFIRMED | 52 |
-| OPEN_FOUNDER | 20 |
-| OPEN_ENGINEERING | 12 |
+| CONFIRMED | 64 |
+| OPEN_FOUNDER | 18 |
+| OPEN_ENGINEERING | 7 |
 | OPEN_PROVIDER | 5 |
 | OPEN_LEGAL | 6 |
 | DEFERRED | 10 |
 | SUPERSEDED | 4 |
 | REJECTED | 0 (no option in the suite was explicitly considered and rejected outright; exclusions are DEFERRED per TRD22) |
-| **Total records** | **110** (adds `DEC-PROD-014`, recorded 2026-09-14 per `PLATFORM-BASELINE-006-FD-CORR-001`; resolves `DEC-LOY-008`/`DEC-PROD-008` to CONFIRMED per the same task; previously added `DEC-BUS-ACT-001`, recorded 2026-09-12 per `PLATFORM-BASELINE-003`; previously added `DEC-CUST-ID-ART-001`, recorded 2026-09-11 per `PLATFORM-BASELINE-002`; previously added `DEC-SEC-005`, recorded 2026-09-07 per `AUTH-MFA-003D-FD-001`; adds `DEC-SEC-004`, recorded 2026-09-04 per `AUTH-MFA-002-CLOSE-001`; previously added `DEC-AUTH-001`, 2026-08-07 per `AUTH-P0-001`; `DEC-PROV-004` and `DEC-SEC-001` remain CONFIRMED and are not double-counted — they were amended in place, not superseded) |
+| CLOSED | 1 (`DEC-PROD-012` — closed approved & implemented; its own status word, counted as stated) |
+| RESOLVED | 1 (`DEC-DATA-005` — resolved with its own disposition wording; counted as stated, not reinterpreted) |
+| **Total records** | **116** (recounted deterministically from actual register rows 2026-09-14 per `PLATFORM-BASELINE-006-CORR-002`: prior totals were stale — the table's own categories summed to 108 against a claimed 109, and six further rows predate the last count update. No entry added, removed, or restated by this recount; per-status member evidence is recorded in changes-log Entry 225. Previously: adds `DEC-PROD-014`, recorded 2026-09-14 per `PLATFORM-BASELINE-006-FD-CORR-001`; resolves `DEC-LOY-008`/`DEC-PROD-008` to CONFIRMED per the same task; previously added `DEC-BUS-ACT-001`, recorded 2026-09-12 per `PLATFORM-BASELINE-003`; previously added `DEC-CUST-ID-ART-001`, recorded 2026-09-11 per `PLATFORM-BASELINE-002`; previously added `DEC-SEC-005`, recorded 2026-09-07 per `AUTH-MFA-003D-FD-001`; adds `DEC-SEC-004`, recorded 2026-09-04 per `AUTH-MFA-002-CLOSE-001`; previously added `DEC-AUTH-001`, 2026-08-07 per `AUTH-P0-001`; `DEC-PROV-004` and `DEC-SEC-001` remain CONFIRMED and are not double-counted — they were amended in place, not superseded) |
 
 Freeze blockers (D0 × 4): DEC-GOV-001 (document hierarchy), DEC-GOV-006 (ID renumbering approval), DEC-LOY-010 (batch rejection), DEC-DATA-003 (Purchase Record monetary fields).
 
