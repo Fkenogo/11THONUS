@@ -9,4 +9,7 @@ export const businessQueryKeys = {
   types: (categoryId: string) => ["commerceKnowledge", "businessTypes", categoryId] as const,
   staffInvitations: (businessId: string) => ["staffInvitations", businessId] as const,
   staffMemberships: (businessId: string) => ["staffMemberships", businessId] as const,
+  rewardPrograms: (businessId: string) => ["rewardPrograms", businessId] as const,
+  rewardProgram: (businessId: string, rewardProgramId: string) =>
+    ["rewardProgram", businessId, rewardProgramId] as const,
 };

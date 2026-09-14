@@ -90,6 +90,10 @@ import {
   isOrdinaryPermission,
   getOrdinaryPermissionEntry,
 } from "../models/ordinaryPermissionCatalogue";
+import {
+  isRewardProgramPermission,
+  getRewardProgramPermissionEntry,
+} from "../models/rewardProgramPermissionCatalogue";
 import type { AuthorizationDecision, EvaluationInput, PermissionSource, ReasonCode } from "./types";
 import type { ErrorCategory } from "../../../shared/errors/errorCategories";
 
@@ -117,7 +121,7 @@ import type { ErrorCategory } from "../../../shared/errors/errorCategories";
  */
 const LEGACY_OPERATIONAL_SENSITIVE_STATUSES = new Set(["active", "trial"]);
 
-type PermissionClass = "sensitive" | "ordinary" | "unknown";
+type PermissionClass = "sensitive" | "ordinary" | "rewardProgram" | "unknown";
 
 function classifyPermission(permission: string): PermissionClass {
   if (isSensitivePermission(permission)) {
@@ -125,6 +129,9 @@ function classifyPermission(permission: string): PermissionClass {
   }
   if (isOrdinaryPermission(permission)) {
     return "ordinary";
+  }
+  if (isRewardProgramPermission(permission)) {
+    return "rewardProgram";
   }
   return "unknown";
 }
@@ -229,6 +236,13 @@ export function evaluateAuthorizationDecision(input: EvaluationInput): Authoriza
     if (!ordinaryEntry.eligibleBusinessStatuses.includes(business.business.status)) {
       return deny(now, "BUSINESS_NOT_ACTIVE", "BUSINESS_INACTIVE");
     }
+  } else if (permissionClass === "rewardProgram") {
+    // `PLATFORM-BASELINE-005A`: third catalogue, same per-class lifecycle-
+    // eligibility gate shape as ordinary permissions above.
+    const rewardProgramEntry = getRewardProgramPermissionEntry(request.permission);
+    if (!rewardProgramEntry.eligibleBusinessStatuses.includes(business.business.status)) {
+      return deny(now, "BUSINESS_NOT_ACTIVE", "BUSINESS_INACTIVE");
+    }
   }
   // permissionClass === "unknown": no lifecycle gate applies here — an
   // unconfigured permission was never eligible on any Business status
@@ -304,6 +318,26 @@ export function evaluateAuthorizationDecision(input: EvaluationInput): Authoriza
   if (isOrdinaryPermission(permission)) {
     const ordinaryEntry = getOrdinaryPermissionEntry(permission);
     if (ordinaryEntry.roleDefaults[role]) {
+      return {
+        allowed: true,
+        reasonCode: "ROLE_DEFAULT_ALLOW",
+        role,
+        permissionSource: "role-default",
+        evaluatedAt: now,
+      };
+    }
+    return deny(now, "NO_APPLICABLE_GRANT", "AUTH_FORBIDDEN", role);
+  }
+
+  // Step 5b (`PLATFORM-BASELINE-005A`): Reward Program permissions resolve
+  // entirely through their own role-default table and return here, exactly
+  // mirroring Step 5a's ordinary-permission branch above (structural copy,
+  // not a new algorithm) — no override/inheritance path exists for this
+  // catalogue in this first package (Owner-only; see
+  // `rewardProgramPermissionCatalogue.ts`'s header note).
+  if (isRewardProgramPermission(permission)) {
+    const rewardProgramEntry = getRewardProgramPermissionEntry(permission);
+    if (rewardProgramEntry.roleDefaults[role]) {
       return {
         allowed: true,
         reasonCode: "ROLE_DEFAULT_ALLOW",

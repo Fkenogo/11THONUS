@@ -1,0 +1,2 @@
+ALTER TABLE reward_programs DROP CONSTRAINT reward_programs_current_version_id_fkey;
+DROP TABLE reward_program_versions;
