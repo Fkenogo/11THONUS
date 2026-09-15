@@ -924,6 +924,360 @@ describe("verifyPurchase — ownership, states, races, replay, rollback", () => 
 });
 
 // ---------------------------------------------------------------------------
+// Concurrent SAME-KEY idempotency (CORR-001).
+// ---------------------------------------------------------------------------
+
+/**
+ * `PLATFORM-BASELINE-006A-CORR-001` — closes the single P2 gap found by the
+ * independent review `PLATFORM-BASELINE-006A-ITR-001`: the suite raced many
+ * genuine concurrency scenarios against real PostgreSQL, but never raced two
+ * truly simultaneous requests carrying the SAME idempotency key.
+ *
+ * Mechanism under test (`rewardProgram/repositories/idempotencyRepository.ts`):
+ * each command reserves its key with
+ * `INSERT ... ON CONFLICT (idempotency_key) DO NOTHING RETURNING ...` inside
+ * its own `withPlatformTransaction` (a distinct pooled connection, real
+ * `BEGIN`/`COMMIT`). Two same-key transactions therefore interact entirely
+ * inside PostgreSQL:
+ *
+ *  - exactly one transaction's speculative insertion wins the unique index on
+ *    `idempotency_key`; it returns a row and proceeds as `acquired`;
+ *  - the loser's `INSERT` does not fail and does not return — PostgreSQL makes
+ *    it WAIT on the winner's uncommitted tuple, so the loser cannot observe a
+ *    half-applied world;
+ *  - when the winner commits (having marked the key `completed` in the SAME
+ *    transaction as its domain effect), `DO NOTHING` applies, the loser's
+ *    `SELECT ... FOR UPDATE` re-read sees `completed` + a matching request
+ *    hash, and the loser replays the winner's stored snapshot;
+ *  - if the winner instead rolls back, its reservation row vanishes with it and
+ *    the loser's own insert succeeds — retryable, never stuck.
+ *
+ * Both `duplicate` (winner already committed) and `in_progress` (re-read
+ * observed a still-processing reservation) are governed, correct outcomes, so
+ * these tests assert the UNION of acceptable resolution shapes plus the domain
+ * invariants — never that a particular caller "wins".
+ */
+
+type SettledVerify = PromiseSettledResult<Awaited<ReturnType<typeof verifyPurchase>>>;
+
+/** Governed idempotency resolutions a same-key racer may legitimately produce. */
+const GOVERNED_IDEMPOTENCY_CATEGORIES = ["TEMPORARY_UNAVAILABLE", "IDEMPOTENCY_CONFLICT"];
+
+function assertGovernedRejection(outcome: PromiseSettledResult<unknown>): void {
+  if (outcome.status !== "rejected") return;
+  // Never a raw pg error (e.g. a leaked unique_violation) — always a governed
+  // domain error, and only the idempotency-governed categories.
+  expect(outcome.reason).toBeInstanceOf(PurchaseDomainError);
+  expect(GOVERNED_IDEMPOTENCY_CATEGORIES).toContain(
+    (outcome.reason as PurchaseDomainError).category,
+  );
+}
+
+async function countWhere(sql: string, params: unknown[]): Promise<number> {
+  const r = await pool.query(sql, params);
+  return Number(r.rows[0].c);
+}
+
+describe("idempotency — two truly concurrent SAME-KEY requests (CORR-001)", () => {
+  it("verifyPurchase: same key, same body, fired simultaneously → exactly one applied effect", async () => {
+    const s = await setupBusinessWithProgram({
+      sharedLoyaltyNumberAllowed: true,
+      multipleUnitsAllowed: true,
+    });
+    // Quantity 10 fills a fresh Cycle exactly, so this race also exercises the
+    // threshold sub-transaction (Reward + reward Trust Events + reward intents).
+    const rec = await recordPurchase(db, pool, {
+      userId: s.recorderId,
+      request: {
+        businessId: s.businessId,
+        rewardProgramId: s.programId,
+        ...baseRecordRequest({ loyaltyNumberValue: s.customer.ln, quantity: 10 }),
+      },
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+    const purchaseId = rec.purchase.id;
+
+    const sharedKey = nextId("key_same");
+    const call = () =>
+      verifyPurchase(db, pool, {
+        customerIdentityId: s.customer.customerId,
+        request: { purchaseRecordId: purchaseId },
+        idempotencyKey: sharedKey,
+        correlationId: nextId("corr"),
+      });
+    // Genuinely simultaneous: both promises are created before either is
+    // awaited, and each opens its own pooled PostgreSQL connection.
+    const outcomes: SettledVerify[] = await Promise.allSettled([call(), call()]);
+
+    // --- Resolution shapes (union, not a fixed winner) -----------------------
+    const fulfilled = outcomes.filter((o) => o.status === "fulfilled");
+    expect(fulfilled.length).toBeGreaterThanOrEqual(1);
+    for (const outcome of outcomes) {
+      assertGovernedRejection(outcome);
+      if (outcome.status === "fulfilled") {
+        // Original success or replayed duplicate — indistinguishable and
+        // identical by contract.
+        expect(outcome.value.purchase.id).toBe(purchaseId);
+        expect(outcome.value.purchase.status).toBe("verified");
+      }
+    }
+    if (fulfilled.length === 2) {
+      const [a, b] = fulfilled.map((o) => (o as PromiseFulfilledResult<never>).value) as Awaited<
+        ReturnType<typeof verifyPurchase>
+      >[];
+      // A replay returns the winner's stored snapshot — same effect, not a second one.
+      expect(b.verifiedUnit.id).toBe(a.verifiedUnit.id);
+      expect(b.cycle.id).toBe(a.cycle.id);
+      expect(b.reward?.id ?? null).toBe(a.reward?.id ?? null);
+    }
+
+    // --- §3.1 terminal state reached exactly once ---------------------------
+    const purchaseRows = await pool.query(`SELECT status FROM purchase_records WHERE id = $1`, [
+      purchaseId,
+    ]);
+    expect(purchaseRows.rows).toHaveLength(1);
+    expect(purchaseRows.rows[0].status).toBe("verified");
+
+    // --- §3.2 exactly one Verified Unit credit ------------------------------
+    expect(
+      await countWhere(
+        `SELECT COUNT(*) AS c FROM verified_units WHERE purchase_record_id = $1 AND entry_type = 'credit'`,
+        [purchaseId],
+      ),
+    ).toBe(1);
+    const unit = await getVerifiedUnitCreditForPurchase(pool, purchaseId);
+    expect(unit).not.toBeNull();
+    expect(unit!.quantity).toBe(10);
+
+    // --- §3.3 allocation quantity exists exactly once ------------------------
+    const positions = await listAllocationPositionsForUnit(pool, unit!.id);
+    expect(positions).toHaveLength(1);
+    expect(positions[0].allocatedQuantity).toBe(10);
+    expect(positions[0].state).toBe("allocated");
+
+    // --- §3.4 cycle progress counted once ------------------------------------
+    const cycles = await pool.query(
+      `SELECT id, allocated_units, state FROM loyalty_cycles WHERE customer_identity_id = $1`,
+      [s.customer.customerId],
+    );
+    expect(cycles.rows).toHaveLength(1);
+    expect(Number(cycles.rows[0].allocated_units)).toBe(LOYALTY_CYCLE_THRESHOLD);
+    expect(cycles.rows[0].state).toBe("reward_available");
+
+    // --- §3.5 at most one Reward across the crossed threshold ----------------
+    expect(await count("rewards")).toBe(1);
+
+    // --- §3.6 exactly one `verified` lifecycle transition event --------------
+    expect(
+      await countWhere(
+        `SELECT COUNT(*) AS c FROM purchase_record_events WHERE purchase_record_id = $1 AND to_status = 'verified'`,
+        [purchaseId],
+      ),
+    ).toBe(1);
+
+    // --- §3.7 no duplicate Trust Event --------------------------------------
+    const trustTypes = (await listTrustEventsForPurchase(pool, purchaseId))
+      .map((e) => e.eventType)
+      .sort();
+    expect(trustTypes).toEqual(
+      [
+        "purchase.recorded",
+        "purchase.verified",
+        "verified_units.issued",
+        "loyalty_cycle.allocated",
+        "loyalty_cycle.reward_available",
+        "reward.available",
+      ].sort(),
+    );
+    expect(new Set(trustTypes).size).toBe(trustTypes.length);
+
+    // --- §3.8 no duplicate Notification Intent -------------------------------
+    const intentTypes = (await listNotificationIntentsForPurchase(pool, purchaseId))
+      .map((i) => i.intentType)
+      .sort();
+    expect(intentTypes).toEqual(
+      [
+        "purchase_recorded_customer",
+        "purchase_verified_business",
+        "reward_available_customer",
+      ].sort(),
+    );
+    expect(new Set(intentTypes).size).toBe(intentTypes.length);
+
+    // --- §3.9 no duplicate outbox row ----------------------------------------
+    const outboxTypes = (
+      await pool.query(`SELECT event_type FROM purchase_outbox WHERE aggregate_id = $1`, [
+        purchaseId,
+      ])
+    ).rows
+      .map((r) => r.event_type as string)
+      .sort();
+    expect(outboxTypes).toEqual(
+      [
+        "purchase_recorded",
+        "purchase_verified",
+        "verified_units_issued",
+        "loyalty_cycle_allocated",
+        "loyalty_cycle_reward_available",
+        "reward_available",
+      ].sort(),
+    );
+    expect(new Set(outboxTypes).size).toBe(outboxTypes.length);
+
+    // --- §3.10 exactly one idempotency record represents the operation -------
+    const keyRows = await pool.query(
+      `SELECT status, operation_type, result_reference FROM idempotency_keys WHERE idempotency_key = $1`,
+      [sharedKey],
+    );
+    expect(keyRows.rows).toHaveLength(1);
+    expect(keyRows.rows[0].status).toBe("completed");
+    expect(keyRows.rows[0].operation_type).toBe("purchase.verify");
+    expect(keyRows.rows[0].result_reference).toBe(purchaseId);
+
+    // --- §3.11 conservation: nothing created, nothing lost -------------------
+    const creditedTotal = await countWhere(
+      `SELECT COALESCE(SUM(quantity), 0) AS c FROM verified_units WHERE purchase_record_id = $1 AND entry_type = 'credit'`,
+      [purchaseId],
+    );
+    expect(creditedTotal).toBe(rec.purchase.quantity);
+    expect(positions.reduce((sum, p) => sum + p.allocatedQuantity, 0)).toBe(rec.purchase.quantity);
+    expect(await sumAllocatedPositionsForCycle(pool, cycles.rows[0].id)).toBe(
+      rec.purchase.quantity,
+    );
+  });
+
+  it("recordPurchase: same actor, same body, same key, fired simultaneously → one Purchase Record", async () => {
+    const s = await setupBusinessWithProgram({
+      sharedLoyaltyNumberAllowed: true,
+      multipleUnitsAllowed: true,
+    });
+    const sharedKey = nextId("key_same");
+    // Identical request bodies → identical request fingerprints.
+    const body = baseRecordRequest({ loyaltyNumberValue: s.customer.ln, quantity: 3 });
+    const call = () =>
+      recordPurchase(db, pool, {
+        userId: s.recorderId,
+        request: { businessId: s.businessId, rewardProgramId: s.programId, ...body },
+        idempotencyKey: sharedKey,
+        correlationId: nextId("corr"),
+      });
+    const outcomes = await Promise.allSettled([call(), call()]);
+
+    const fulfilled = outcomes.filter((o) => o.status === "fulfilled");
+    expect(fulfilled.length).toBeGreaterThanOrEqual(1);
+    for (const outcome of outcomes) assertGovernedRejection(outcome);
+    const purchaseIds = new Set(
+      fulfilled.map(
+        (o) =>
+          (o as PromiseFulfilledResult<Awaited<ReturnType<typeof recordPurchase>>>).value.purchase
+            .id,
+      ),
+    );
+    expect(purchaseIds.size).toBe(1);
+    const purchaseId = [...purchaseIds][0];
+
+    // One Purchase Record; one creation lifecycle event.
+    expect(await count("purchase_records")).toBe(1);
+    expect(
+      await countWhere(
+        `SELECT COUNT(*) AS c FROM purchase_record_events WHERE purchase_record_id = $1`,
+        [purchaseId],
+      ),
+    ).toBe(1);
+    // One Trust Event, one Notification Intent, one outbox effect.
+    expect((await listTrustEventsForPurchase(pool, purchaseId)).map((e) => e.eventType)).toEqual([
+      "purchase.recorded",
+    ]);
+    expect(
+      (await listNotificationIntentsForPurchase(pool, purchaseId)).map((i) => i.intentType),
+    ).toEqual(["purchase_recorded_customer"]);
+    expect(
+      (
+        await pool.query(`SELECT event_type FROM purchase_outbox WHERE aggregate_id = $1`, [
+          purchaseId,
+        ])
+      ).rows.map((r) => r.event_type),
+    ).toEqual(["purchase_recorded"]);
+    // One idempotency record for the key.
+    const keyRows = await pool.query(
+      `SELECT status, operation_type FROM idempotency_keys WHERE idempotency_key = $1`,
+      [sharedKey],
+    );
+    expect(keyRows.rows).toHaveLength(1);
+    expect(keyRows.rows[0].status).toBe("completed");
+    expect(keyRows.rows[0].operation_type).toBe("purchase.create");
+    // No units issued by creation alone.
+    expect(await count("verified_units")).toBe(0);
+  });
+
+  it("verifyPurchase: same key, DIFFERENT body, fired simultaneously → only one operation is established", async () => {
+    const s = await setupBusinessWithProgram({
+      sharedLoyaltyNumberAllowed: true,
+      multipleUnitsAllowed: true,
+    });
+    const recA = await recordPurchase(db, pool, {
+      userId: s.recorderId,
+      request: {
+        businessId: s.businessId,
+        rewardProgramId: s.programId,
+        ...baseRecordRequest({ loyaltyNumberValue: s.customer.ln, quantity: 2 }),
+      },
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+    const recB = await recordPurchase(db, pool, {
+      userId: s.recorderId,
+      request: {
+        businessId: s.businessId,
+        rewardProgramId: s.programId,
+        ...baseRecordRequest({ loyaltyNumberValue: s.customer.ln, quantity: 3 }),
+      },
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+
+    const sharedKey = nextId("key_same");
+    // Same key, incompatible request fingerprints (different target Purchase).
+    const outcomes: SettledVerify[] = await Promise.allSettled([
+      verifyPurchase(db, pool, {
+        customerIdentityId: s.customer.customerId,
+        request: { purchaseRecordId: recA.purchase.id },
+        idempotencyKey: sharedKey,
+        correlationId: nextId("corr"),
+      }),
+      verifyPurchase(db, pool, {
+        customerIdentityId: s.customer.customerId,
+        request: { purchaseRecordId: recB.purchase.id },
+        idempotencyKey: sharedKey,
+        correlationId: nextId("corr"),
+      }),
+    ]);
+
+    // Exactly one establishes the operation; the incompatible one is refused
+    // by governed conflict/in-progress semantics, never a raw error.
+    const fulfilled = outcomes.filter((o) => o.status === "fulfilled");
+    expect(fulfilled).toHaveLength(1);
+    for (const outcome of outcomes) assertGovernedRejection(outcome);
+
+    // The loser created no second domain effect.
+    expect(await count("verified_units")).toBe(1);
+    expect(
+      await countWhere(
+        `SELECT COUNT(*) AS c FROM purchase_records WHERE status = 'verified' AND id IN ($1, $2)`,
+        [recA.purchase.id, recB.purchase.id],
+      ),
+    ).toBe(1);
+    const keyRows = await pool.query(
+      `SELECT status FROM idempotency_keys WHERE idempotency_key = $1`,
+      [sharedKey],
+    );
+    expect(keyRows.rows).toHaveLength(1);
+    expect(keyRows.rows[0].status).toBe("completed");
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Cycles, concurrency, threshold, rewards.
 // ---------------------------------------------------------------------------
 
