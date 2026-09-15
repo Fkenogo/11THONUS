@@ -187,3 +187,74 @@ Open, unmerged, awaiting independent review (number/URL in §5 after opening).
 ## 38. Final disposition
 
 **PLATFORM-BASELINE-006A — IMPLEMENTED / AWAITING INDEPENDENT REVIEW. Do NOT merge.**
+
+---
+
+# PLATFORM-BASELINE-006A-CORR-001 — Concurrent Same-Key Idempotency Proof
+
+**Date:** 2026-09-15
+**Type:** Test/evidence correction on the existing PR #253 (no new PR, no merge).
+**Authority:** Independent technical review `PLATFORM-BASELINE-006A-ITR-001` (single P2 finding).
+**Disposition: CORRECTED / IDEMPOTENCY CONCURRENCY PROVEN / AWAITING NARROW INDEPENDENT RE-REVIEW. Do NOT merge.**
+
+## C1. ITR-001 disposition
+
+ITR-001 found **no production-code defect** in this package. It raised exactly one **P2** finding and a set of explicitly non-blocking **P3** observations. Only the P2 finding is addressed here; every P3 item (unchecked `responseSnapshot` runtime casts, callable direct-test coverage in `index.test.ts`, reward-list pagination, UI error/pending-state assertions, causal Purchase Trust Event DB dedup, outbox dispatch-status column, deferred pending-allocation redistribution, cross-store Firestore/PG TOCTOU boundary) is **deliberately untouched** and remains recorded as non-blocking.
+
+## C2. The P2 finding
+
+The real-PostgreSQL cross-store suite (`functions/src/domains/purchase/services/purchaseCommands.postgres.test.ts`) proved several genuine concurrency races against a live database (two concurrent first verifications creating one Cycle; two concurrent verifications at progress 9/10 with no overfill; verify-vs-reject; verify-vs-dispute) — but it never raced **two truly concurrent requests carrying the SAME idempotency key**. Same-key behaviour was only ever proven *sequentially* (replay after completion, conflict after completion). The concurrent interleaving — the one the `ON CONFLICT DO NOTHING` reservation exists for — was untested.
+
+## C3. Same-key concurrency analysis (what the test had to account for)
+
+**(A) How two same-key transactions interact.** Each command runs its own `withPlatformTransaction` — a distinct pooled connection with real `BEGIN`/`COMMIT`. Inside it, `checkAndReserveIdempotencyKey` issues `INSERT INTO idempotency_keys ... ON CONFLICT (idempotency_key) DO NOTHING RETURNING ...`. Exactly one transaction's speculative insertion wins the unique index and returns a row (`acquired`). Only on conflict does the function fall through to `SELECT ... FOR UPDATE` on the now-guaranteed-existing row — locking a row that does exist, which is the only place row locking is meaningful.
+
+**(B) Real PostgreSQL lock/conflict behaviour.** The loser's `INSERT` does **not** fail and does **not** immediately return: PostgreSQL makes the speculative insertion **wait on the winner's uncommitted tuple**. The loser therefore cannot observe a half-applied world. When the winner commits — having marked the key `completed` in the SAME transaction as its domain effect — `DO NOTHING` applies, and the loser's `FOR UPDATE` re-read sees `status = 'completed'` with a matching `request_hash`. If the winner instead rolls back, its reservation row disappears with it and the loser's own insert succeeds (retryable, never permanently stuck).
+
+**(C) Externally observable outcomes that are valid.** Because of (B), the naturally-produced outcome is **one original success + one replayed duplicate** — and that is exactly what the live runs produce (instrumented probe on the final test code, three consecutive runs: `["fulfilled","fulfilled"]` for `verifyPurchase` and for `recordPurchase`; `["fulfilled","rejected:IDEMPOTENCY_CONFLICT"]` for the different-body case). A scheduling in which the loser's re-read observes a still-`processing` reservation would yield `in_progress` (`TEMPORARY_UNAVAILABLE`), which is equally governed and equally correct. The tests therefore assert the **union** of acceptable resolution shapes and never assume which caller wins or that a specific racer returns `in_progress`.
+
+**(D) Invariants that must hold regardless of scheduling.** Exactly one applied effect: one terminal transition, one Verified Unit credit, one allocation of the purchase quantity, cycle progress advanced once, at most one Reward, no duplicated Trust Event / Notification Intent / outbox row, exactly one `idempotency_keys` row for the key, and strict quantity conservation (nothing created, nothing lost). Every racer must resolve through governed behaviour only — never a raw unhandled PostgreSQL error.
+
+## C4. Concurrency proof added
+
+Three tests, all real-Postgres and all genuinely simultaneous (`Promise.allSettled` over promises created before either is awaited; no mocked locking, no sequential awaits), in a new `describe("idempotency — two truly concurrent SAME-KEY requests (CORR-001)")` block:
+
+1. **`verifyPurchase` — same key, same body.** Quantity 10, so the race also crosses the Cycle threshold and exercises the Reward sub-transaction. Asserts the union of governed resolution shapes (every rejection must be a `PurchaseDomainError` of category `TEMPORARY_UNAVAILABLE` or `IDEMPOTENCY_CONFLICT` — never a leaked `pg` error), that two fulfilled results reference the *same* Verified Unit / Cycle / Reward, and all eleven task §3 invariants directly against the database.
+2. **`recordPurchase` — same actor, same body, same key.** Crosses the Firestore-read → PostgreSQL-write boundary using the file's existing fixtures (no new Firestore mocking infrastructure). Proves one Purchase Record, one creation lifecycle event, one Trust Event, one Notification Intent, one outbox effect, one idempotency record, and zero Verified Units.
+3. **`verifyPurchase` — same key, DIFFERENT body.** Two simultaneous verifications of two different Purchases under one key. Proves exactly one establishes the operation, the incompatible one is refused by governed conflict semantics, and no second domain effect exists.
+
+## C5. Production code, migrations, governance
+
+**None changed.** No new test failed, so §6 of the task ("STOP and report") was never triggered — the implementation permitted no duplicate effect, did not deadlock, leaked no raw PostgreSQL error, and violated no idempotency semantics. The only source file changed is the test file above.
+
+## C6. Test results (actually run)
+
+Isolated environment: the shared local PostgreSQL container on port `54329` with a dedicated database `pb006a_corr1`, plus a private Firestore emulator (`firebase emulators:exec --only firestore`, alternate port) so neither the primary worktree nor any other session was disturbed.
+
+- Targeted suite `purchaseCommands.postgres.test.ts`: **37 passed (37)** — 34 pre-existing + 3 new (baseline before the change re-verified at 34/34).
+- Full PostgreSQL integration suite (all `*.postgres.test.ts`): **6 files, 94 passed (94)**.
+- `functions` unit suite: **158 files, 1756 passed (1756)**.
+- `apps/web` unit suite: **116 files, 809 passed (809)**.
+- Typecheck: clean (`functions` + `apps/web`). Lint: 0 errors (1 pre-existing `react-refresh` warning in `apps/web/src/business/BusinessApiContext.tsx`, untouched). Format check: clean. Build: clean. `git diff --check`: clean.
+- The Firebase Emulator Suite validation and Playwright e2e steps were left to CI on the exact pushed head (the local machine's default emulator ports were occupied by an unrelated session); both are unaffected by a test-file-only change.
+
+## C7. Administrative review-count correction
+
+The ITR-001 review summary recorded **"78 changed files"**. `gh pr view 253` reports **69 changed files** for PR #253 at its pre-correction head `4535807e715f3c9639a2c36d109634fb69806155`. This is recorded here as an **administrative review-count correction only**. It was not investigated and nothing was changed because of it.
+
+## C8. SHAs
+
+- Entry head (verified before any change): `4535807e715f3c9639a2c36d109634fb69806155`; base `a19c86a48b8c958fd09ce5be04edb462f7975bb0`; PR #253 OPEN, unmerged, `MERGEABLE`, exact-head CI `pass`.
+- Correction commit: `8455d7e774e669622d7a88eb79079ef3f4e298f3` (test/evidence only). This report's own commit follows on the same branch, so the PR head equals the reviewed head.
+
+## C9. Rollback
+
+Revert the two CORR-001 commits on `feat/platform-baseline-006a-purchase-verification-spine` (`git revert 8455d7e` plus this report commit). Nothing else is affected: no production code, no migration, no dependency, no configuration, no governance decision.
+
+## C10. Worktree safety
+
+All work was done in the isolated agent worktree `/Volumes/PRODUCTION/Projects/11THONUS/.claude/worktrees/agent-a0f1b1d0649d131c5` at a detached checkout of the exact entry head (the branch itself was already checked out in another worktree). The primary worktree `/Volumes/PRODUCTION/Projects/11THONUS`, with its unrelated dirty legal/commercial work, was **never touched**.
+
+## C11. Final disposition
+
+**PLATFORM-BASELINE-006A — CORR-001 COMPLETE / IDEMPOTENCY CONCURRENCY PROVEN / AWAITING NARROW INDEPENDENT RE-REVIEW. Do NOT merge.**
