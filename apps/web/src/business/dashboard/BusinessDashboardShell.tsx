@@ -28,6 +28,7 @@ export function BusinessDashboardShell({ context }: { context: BusinessContext }
     { to: `${base}/team`, end: false, labelKey: "dashboard.nav.team" },
     { to: `${base}/terms`, end: false, labelKey: "dashboard.nav.terms" },
     { to: `${base}/reward-programs`, end: false, labelKey: "dashboard.nav.rewardPrograms" },
+    { to: `${base}/purchases`, end: false, labelKey: "dashboard.nav.purchases" },
   ] as const;
 
   useEffect(() => {

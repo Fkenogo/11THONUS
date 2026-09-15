@@ -15,12 +15,13 @@
  *
  * This catalogue is intentionally **not** a general non-sensitive
  * baseline-permission table. `permissionId.ts` still leaves the wider
- * non-sensitive permission space (e.g. `purchase.record`) ungoverned —
- * that gap is unchanged by this correction (FD-CORR-2: "Do not globally
- * widen Business-status eligibility"). Only the four ids FD-CORR-3
- * approved exist here; every other permission id, sensitive or not,
- * remains exactly as governed (or ungoverned) as it was before this file
- * existed.
+ * non-sensitive permission space (e.g. `redemption.process`) ungoverned —
+ * that gap is narrowed only by the separate `purchasePermissionCatalogue.ts`
+ * (`PLATFORM-BASELINE-006A`, exactly `purchase.record`; FD-CORR-2's "do not
+ * globally widen Business-status eligibility" still holds for everything
+ * else). Only the four ids FD-CORR-3 approved exist here; every other
+ * permission id, sensitive or not, remains exactly as governed (or
+ * ungoverned) as it was before this file existed.
  */
 
 import type { PermissionId } from "./permissionId";

@@ -1282,7 +1282,7 @@ describe("evaluateAuthorizationDecision — unknown ordinary permission (Phase N
   it("an unconfigured permission id (well-formed, no catalogue entry) denies regardless of role or business status", () => {
     const decision = evaluateAuthorizationDecision(
       ordinaryInput({
-        request: { userId: "user-1", businessId: "biz-a", permission: "purchase.record" },
+        request: { userId: "user-1", businessId: "biz-a", permission: "stock.count" },
         business: { kind: "found", business: { id: "biz-a", status: "draft" } },
         membership: { kind: "found", membership: membership({ role: "owner" }) },
       }),
@@ -1604,5 +1604,112 @@ describe("evaluateAuthorizationDecision — Reward Program permission: rewardPro
     );
     expect(decision.allowed).toBe(false);
     expect(decision.errorCategory).toBe("AUTH_FORBIDDEN");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PLATFORM-BASELINE-006A — Purchase Permission Catalogue integration.
+// A structural copy of the reward-program-permission branch above, proven
+// the same way: a fourth catalogue classification, its own per-class
+// lifecycle-eligibility gate, its own role-default resolution branch
+// (Staff/Manager/Owner per PRD5 §8), no override/inheritance path, and the
+// shared final fail-closed fallthrough untouched.
+// ---------------------------------------------------------------------------
+
+function purchaseInput(overrides: Partial<EvaluationInput> = {}): EvaluationInput {
+  return baseInput({
+    request: { userId: "user-1", businessId: "biz-a", permission: "purchase.record" },
+    ...overrides,
+  });
+}
+
+describe("evaluateAuthorizationDecision — Purchase permission: purchase.record (PLATFORM-BASELINE-006A)", () => {
+  it.each(["owner", "manager", "staff"] as const)("%s + trial = allow", (role) => {
+    const decision = evaluateAuthorizationDecision(
+      purchaseInput({
+        business: { kind: "found", business: { id: "biz-a", status: "trial" } },
+        membership: { kind: "found", membership: membership({ role }) },
+      }),
+    );
+    expect(decision.allowed).toBe(true);
+    expect(decision.permissionSource).toBe("role-default");
+  });
+
+  it.each(["owner", "manager", "staff"] as const)("%s + active = allow", (role) => {
+    const decision = evaluateAuthorizationDecision(
+      purchaseInput({
+        business: { kind: "found", business: { id: "biz-a", status: "active" } },
+        membership: { kind: "found", membership: membership({ role }) },
+      }),
+    );
+    expect(decision.allowed).toBe(true);
+    expect(decision.permissionSource).toBe("role-default");
+  });
+
+  it("Owner + draft = deny (BUSINESS_INACTIVE — not an eligible status for this permission)", () => {
+    const decision = evaluateAuthorizationDecision(
+      purchaseInput({
+        business: { kind: "found", business: { id: "biz-a", status: "draft" } },
+        membership: { kind: "found", membership: membership({ role: "owner" }) },
+      }),
+    );
+    expect(decision.allowed).toBe(false);
+    expect(decision.errorCategory).toBe("BUSINESS_INACTIVE");
+  });
+
+  it("Staff + suspended = deny", () => {
+    const decision = evaluateAuthorizationDecision(
+      purchaseInput({
+        business: { kind: "found", business: { id: "biz-a", status: "suspended" } },
+        membership: { kind: "found", membership: membership({ role: "staff" }) },
+      }),
+    );
+    expect(decision.allowed).toBe(false);
+    expect(decision.errorCategory).toBe("BUSINESS_INACTIVE");
+  });
+
+  it("a revoke override for purchase.record is never honored (no override path exists for this catalogue)", () => {
+    const decision = evaluateAuthorizationDecision(
+      purchaseInput({
+        membership: {
+          kind: "found",
+          membership: membership({
+            role: "staff",
+            overrides: [
+              {
+                permissionId: "purchase.record",
+                direction: "revoke",
+                businessId: "biz-a",
+                membershipId: "mem-1",
+              },
+            ],
+          }),
+        },
+      }),
+    );
+    // Step 5c returns via the catalogue role-default table before the
+    // override-resolution steps run at all (structural copy of the
+    // ordinary/reward-program branches) — the revoke is never consulted.
+    expect(decision.allowed).toBe(true);
+    expect(decision.permissionSource).toBe("role-default");
+  });
+
+  it("cross-Business membership is denied", () => {
+    const decision = evaluateAuthorizationDecision(
+      purchaseInput({
+        membership: {
+          kind: "found",
+          membership: membership({ role: "owner", businessId: "biz-b" }),
+        },
+      }),
+    );
+    expect(decision.allowed).toBe(false);
+  });
+
+  it("unauthenticated (no membership) is denied", () => {
+    const decision = evaluateAuthorizationDecision(
+      purchaseInput({ membership: { kind: "not_found" } }),
+    );
+    expect(decision.allowed).toBe(false);
   });
 });

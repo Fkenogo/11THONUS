@@ -19,9 +19,11 @@ import {
   parseUpdateRewardProgramDraftRequest,
   parsePublishRewardProgramVersionRequest,
   parseCreateNextRewardProgramVersionRequest,
+  parseRecordPurchaseRequest,
   toHttpsError,
 } from "./index";
 import { RewardProgramDomainError } from "./domains/rewardProgram/models/rewardProgramErrors";
+import { PurchaseDomainError } from "./domains/purchase/models/purchaseErrors";
 
 /**
  * Regression guard for the callable-boundary provider allow-list
@@ -740,5 +742,114 @@ describe("toHttpsError (reward program idempotency transport mapping, PLATFORM-B
     for (const category of ["IDEMPOTENCY_CONFLICT", "TEMPORARY_UNAVAILABLE"] as const) {
       expect(toHttpsError(new RewardProgramDomainError(category, "x")).code).not.toBe("internal");
     }
+  });
+});
+
+/**
+ * Adversarial mass-assignment regression (`PLATFORM-BASELINE-006A`): the
+ * client submits exactly one presented artifact plus commercial fields —
+ * Customer Identity id, program version, recorder identity/role, and
+ * status are server-resolved/server-derived and must be structurally
+ * absent from the parsed request.
+ */
+describe("parseRecordPurchaseRequest (mass-assignment boundary, PLATFORM-BASELINE-006A)", () => {
+  it("drops authority-sensitive fields a client might try to inject", () => {
+    const malicious = {
+      businessId: "biz-1",
+      rewardProgramId: "rp-1",
+      loyaltyNumberValue: "ABC234",
+      quantity: 2,
+      itemLabel: "Coffee",
+      purchaseDate: "2026-09-14T10:00:00.000Z",
+      customerIdentityId: "attacker-chosen-customer",
+      customerId: "attacker-chosen-customer",
+      rewardProgramVersionId: "attacker-chosen-version",
+      recordedByUserId: "attacker",
+      recordedByRole: "owner",
+      status: "verified",
+      verifiedAt: "2026-09-14T10:00:00.000Z",
+      canonicalLoyaltyNumberValue: "ATTACKER",
+    };
+    const parsed = parseRecordPurchaseRequest(malicious);
+    expect(parsed).not.toHaveProperty("customerIdentityId");
+    expect(parsed).not.toHaveProperty("customerId");
+    expect(parsed).not.toHaveProperty("rewardProgramVersionId");
+    expect(parsed).not.toHaveProperty("recordedByUserId");
+    expect(parsed).not.toHaveProperty("recordedByRole");
+    expect(parsed).not.toHaveProperty("status");
+    expect(parsed).not.toHaveProperty("verifiedAt");
+    expect(parsed).not.toHaveProperty("canonicalLoyaltyNumberValue");
+    expect(parsed.loyaltyNumberValue).toBe("ABC234");
+  });
+
+  it("accepts a well-formed QR request with reporting metadata", () => {
+    const parsed = parseRecordPurchaseRequest({
+      businessId: "biz-1",
+      rewardProgramId: "rp-1",
+      qrReference: "qr_ref_1",
+      quantity: 1,
+      itemLabel: "Tea",
+      purchaseDate: "2026-09-14T10:00:00.000Z",
+      unitValueMinor: 500,
+      currency: "RWF",
+    });
+    expect(parsed.qrReference).toBe("qr_ref_1");
+    expect(parsed.loyaltyNumberValue).toBeUndefined();
+    expect(parsed.purchaseDate).toBeInstanceOf(Date);
+  });
+
+  it("rejects missing/invalid fields", () => {
+    expect(() => parseRecordPurchaseRequest({})).toThrow();
+    expect(() =>
+      parseRecordPurchaseRequest({
+        businessId: "biz-1",
+        rewardProgramId: "rp-1",
+        quantity: 0,
+        itemLabel: "x",
+        purchaseDate: "2026-09-14T10:00:00.000Z",
+      }),
+    ).toThrow();
+    expect(() =>
+      parseRecordPurchaseRequest({
+        businessId: "biz-1",
+        rewardProgramId: "rp-1",
+        loyaltyNumberValue: "ABC234",
+        quantity: 1,
+        itemLabel: "x",
+        purchaseDate: "not-a-date",
+      }),
+    ).toThrow();
+  });
+});
+
+/**
+ * Callable transport mapping for Purchase idempotency outcomes
+ * (`PLATFORM-BASELINE-006A`, same posture as the 005A reward-program
+ * mapping above): conflict → `aborted`, in-progress → `unavailable`,
+ * never `internal`, never echoing the domain message.
+ */
+describe("toHttpsError (purchase idempotency transport mapping, PLATFORM-BASELINE-006A)", () => {
+  it("maps IDEMPOTENCY_CONFLICT to the governed 'aborted' code", () => {
+    const error = toHttpsError(
+      new PurchaseDomainError("IDEMPOTENCY_CONFLICT", "same key, materially different request"),
+    );
+    expect(error.code).toBe("aborted");
+    expect(error.message).not.toContain("same key");
+  });
+
+  it("maps a TEMPORARY_UNAVAILABLE in-progress reservation to the retryable 'unavailable' code", () => {
+    const error = toHttpsError(
+      new PurchaseDomainError("TEMPORARY_UNAVAILABLE", "key reserved by an in-progress request"),
+    );
+    expect(error.code).toBe("unavailable");
+    expect(error.message).not.toContain("reserved");
+  });
+
+  it("maps INVALID_STATE_TRANSITION to 'aborted' without echoing purchase ids", () => {
+    const error = toHttpsError(
+      new PurchaseDomainError("INVALID_STATE_TRANSITION", 'Purchase "abc" cannot transition'),
+    );
+    expect(error.code).toBe("aborted");
+    expect(error.message).toBe("purchase_command_failed");
   });
 });

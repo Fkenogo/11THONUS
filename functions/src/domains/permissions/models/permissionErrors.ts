@@ -78,12 +78,19 @@ export function unrecognisedRewardProgramPermissionError(value: string): Permiss
   );
 }
 
+export function unrecognisedPurchasePermissionError(value: string): PermissionDomainError {
+  return new PermissionDomainError(
+    "VALIDATION_FAILED",
+    `"${value}" is not a governed Purchase Permission Catalogue entry (PLATFORM-BASELINE-006A).`,
+  );
+}
+
 export function permissionCannotBeInMultipleCataloguesError(
   permissionId: string,
 ): PermissionDomainError {
   return new PermissionDomainError(
     "VALIDATION_FAILED",
-    `"${permissionId}" cannot appear in more than one Permission Catalogue — the Sensitive, Ordinary, and Reward Program catalogues are structurally disjoint by design.`,
+    `"${permissionId}" cannot appear in more than one Permission Catalogue — the Sensitive, Ordinary, Reward Program, and Purchase catalogues are structurally disjoint by design.`,
   );
 }
 

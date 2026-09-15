@@ -47,6 +47,20 @@ afterEach(async () => {
   // PLATFORM-BASELINE-005A: the shipped migrations directory is no longer
   // empty (see below) — its own tables must be cleaned up here too, so
   // state never leaks into another test/file sharing this database.
+  // PLATFORM-BASELINE-006A: same for the Purchase-domain tables (reverse
+  // dependency order), otherwise a dropped `schema_migrations` plus
+  // leftover 006A tables breaks the next file's `migrateUp`.
+  await pool.query("DROP TABLE IF EXISTS purchase_outbox CASCADE");
+  await pool.query("DROP TABLE IF EXISTS notification_intents CASCADE");
+  await pool.query("DROP TABLE IF EXISTS trust_events CASCADE");
+  await pool.query("DROP TABLE IF EXISTS rewards CASCADE");
+  await pool.query("DROP TABLE IF EXISTS verified_unit_allocation_events CASCADE");
+  await pool.query("DROP TABLE IF EXISTS verified_unit_allocations CASCADE");
+  await pool.query("DROP TABLE IF EXISTS loyalty_cycles CASCADE");
+  await pool.query("DROP TABLE IF EXISTS loyalty_cycle_streams CASCADE");
+  await pool.query("DROP TABLE IF EXISTS verified_units CASCADE");
+  await pool.query("DROP TABLE IF EXISTS purchase_record_events CASCADE");
+  await pool.query("DROP TABLE IF EXISTS purchase_records CASCADE");
   await pool.query("DROP TABLE IF EXISTS reward_program_version_qualifying_nodes CASCADE");
   await pool.query("DROP TABLE IF EXISTS reward_program_outbox CASCADE");
   await pool.query("DROP TABLE IF EXISTS idempotency_keys CASCADE");
@@ -159,7 +173,22 @@ describe("checkPlatformFoundationReadiness — actual shipped migrations directo
 
   it("Case B: after applying the real shipped Reward Program migration set, readiness reports ready", async () => {
     const bootstrapped = await migrateUp(pool, shippedMigrationsDir);
-    expect(bootstrapped.applied).toEqual(["0001", "0002", "0003", "0004", "0005", "0006"]);
+    expect(bootstrapped.applied).toEqual([
+      "0001",
+      "0002",
+      "0003",
+      "0004",
+      "0005",
+      "0006",
+      "0007",
+      "0008",
+      "0009",
+      "0010",
+      "0011",
+      "0012",
+      "0013",
+      "0014",
+    ]);
 
     const result = await checkPlatformFoundationReadiness(shippedReadinessDeps());
 
