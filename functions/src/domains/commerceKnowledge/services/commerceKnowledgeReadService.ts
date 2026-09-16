@@ -35,6 +35,7 @@ import {
 } from "../models/languageCode";
 import type { KnowledgeNode } from "../models/knowledgeNode";
 import type { KnowledgeLifecycleStatus } from "../models/knowledgeLifecycle";
+import { isResolvableForExistingReference } from "../models/referenceEligibility";
 import {
   businessCategoryNotFoundForTypeListingError,
   rewardProgramCategoryNotFoundForNodeListingError,
@@ -247,16 +248,36 @@ export async function listQualifyingNodesForCategory(
  * `PLATFORM-BASELINE-008`: display-only label resolution for a bounded
  * set of canonical Commerce Knowledge node ids a caller already holds
  * (e.g. hydrating a Reward Program draft's persisted `qualifyingNodes`
- * for display). Deliberately does not filter by `status` — an existing
- * reference to a `retired`/`archived` node still resolves for display
- * (`isResolvableForExistingReference`'s rule), so the caller's already-
- * selected canonical id is never silently dropped just because the node
- * is no longer eligible for a NEW reference. A truly unresolvable id
- * (`getKnowledgeNodeById` returns `null` — should not occur under DAP-010,
- * but not assumed impossible) resolves to `{displayLabel: null, status:
- * null}` rather than being omitted from the result, so a caller can match
- * every requested id 1:1 and render an explicit "can't resolve" state
- * instead of silently losing the row. Bounded to at most 100 ids per call
+ * for display).
+ *
+ * Gated by `isResolvableForExistingReference` (`active`/`retired`/
+ * `archived`), not merely "any status" — an existing reference to a
+ * `retired`/`archived` node still resolves for display (retirement never
+ * breaks an existing reference), so the caller's already-selected
+ * canonical id is never silently dropped just because the node is no
+ * longer eligible for a NEW reference. A `draft`/`in_review` node,
+ * however, was **never** eligible to be referenced in the first place
+ * (`isResolvableForExistingReference`'s own contract) and must not
+ * resolve here either: this endpoint requires only authentication, not
+ * Business membership or any Commerce-Knowledge-authoring permission, so
+ * treating every status as resolvable would let any authenticated caller
+ * probe an arbitrary (e.g. guessed or enumerated) node id for the
+ * canonical name and lifecycle status of unpublished, governance-in-
+ * progress taxonomy content — an information-disclosure gap independent
+ * reviewers correctly flagged that mirrors `isEligibleForNewReference`/
+ * `isResolvableForExistingReference`'s established fail-closed status
+ * gate rather than inventing a new one. A `draft`/`in_review` id resolves
+ * identically to a genuinely nonexistent one: `{displayLabel: null,
+ * status: null}` — never the draft's real name or status.
+ *
+ * A truly unresolvable id (`getKnowledgeNodeById` returns `null` —
+ * should not occur under DAP-010, but not assumed impossible) also
+ * resolves to `{displayLabel: null, status: null}` rather than being
+ * omitted from the result, so a caller can match every requested id 1:1
+ * and render an explicit "can't resolve" state instead of silently
+ * losing the row — this is indistinguishable from the not-yet-resolvable
+ * case by design (never leaking "this id exists but is still in
+ * governance review" either). Bounded to at most 100 ids per call
  * (transport-level guard against an unbounded fan-out read — no Reward
  * Program version is expected to ever approach that many qualifying
  * nodes; this is a defensive technical bound, not a product limit).
@@ -271,7 +292,7 @@ export async function resolveKnowledgeNodeLabels(
   const results: KnowledgeNodeLabelDto[] = [];
   for (const id of uniqueIds) {
     const node = await getKnowledgeNodeById(db, id);
-    if (!node) {
+    if (!node || !isResolvableForExistingReference(node.status)) {
       results.push({ id, displayLabel: null, status: null });
       continue;
     }

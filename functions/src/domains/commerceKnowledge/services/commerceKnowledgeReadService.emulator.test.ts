@@ -4,6 +4,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
   listBusinessCategories,
   listBusinessTypesForCategory,
+  listRewardProgramCategories,
   listQualifyingNodesForCategory,
   resolveKnowledgeNodeLabels,
 } from "./commerceKnowledgeReadService";
@@ -284,6 +285,37 @@ describe("listBusinessTypesForCategory", () => {
 });
 
 /**
+ * `PLATFORM-BASELINE-008` — Reward Program create-form category selector
+ * read transport. Mirrors `listBusinessCategories`'s own test coverage
+ * exactly, one node type over.
+ */
+describe("listRewardProgramCategories", () => {
+  it("lists active Reward Program categories", async () => {
+    await seedRewardProgramHierarchy();
+    await seedRewardProgramCategory("rpc_haircuts", "type_salon", "Haircuts");
+    await activateNode("rpc_haircuts");
+
+    const result = await listRewardProgramCategories(db);
+    expect(result.map((c) => c.id)).toContain("rpc_haircuts");
+    expect(result.find((c) => c.id === "rpc_haircuts")?.nodeType).toBe("reward_program_category");
+  });
+
+  it("excludes an inactive Reward Program category (draft, in_review, retired, archived)", async () => {
+    await seedRewardProgramHierarchy();
+    await seedRewardProgramCategory("rpc_draft", "type_salon", "Draft Category");
+    // left in "draft" — never activated
+
+    const result = await listRewardProgramCategories(db);
+    expect(result.map((c) => c.id)).not.toContain("rpc_draft");
+  });
+
+  it("an empty result is a normal, supported outcome, never an error", async () => {
+    const result = await listRewardProgramCategories(db);
+    expect(result).toEqual([]);
+  });
+});
+
+/**
  * `PLATFORM-BASELINE-008` — Reward Program qualifying-node selector read
  * transport (`listQualifyingNodesForCategory`/`resolveKnowledgeNodeLabels`).
  * Mirrors `listBusinessTypesForCategory`'s own test coverage one level
@@ -416,5 +448,58 @@ describe("resolveKnowledgeNodeLabels", () => {
       displayLabel: null,
       status: null,
     });
+  });
+
+  /**
+   * Information-disclosure regression (independent security review
+   * finding on `PLATFORM-BASELINE-008`): this endpoint requires only
+   * authentication, not Commerce-Knowledge-authoring permission, so a
+   * `draft`/`in_review` node -- never eligible to be referenced in the
+   * first place (`isResolvableForExistingReference`) -- must not resolve
+   * to its real canonical name/status for an arbitrary authenticated
+   * caller. It must resolve identically to a genuinely nonexistent id.
+   */
+  it("never resolves a draft node's real label/status -- treated identically to a nonexistent id", async () => {
+    await seedRewardProgramHierarchy();
+    await seedRewardProgramCategory("rpc_haircuts", "type_salon", "Haircuts");
+    await activateNode("rpc_haircuts");
+    await seedStandardService("svc_unpublished", "rpc_haircuts", "Confidential Upcoming Service");
+    // left in "draft" -- never activated, never even in_review
+
+    const result = await resolveKnowledgeNodeLabels(db, ["svc_unpublished"]);
+    expect(result).toEqual([{ id: "svc_unpublished", displayLabel: null, status: null }]);
+  });
+
+  it("never resolves an in_review node's real label/status -- treated identically to a nonexistent id", async () => {
+    await seedRewardProgramHierarchy();
+    await seedRewardProgramCategory("rpc_haircuts", "type_salon", "Haircuts");
+    await activateNode("rpc_haircuts");
+    await seedStandardService("svc_in_review", "rpc_haircuts", "Under Governance Review Service");
+    await transitionKnowledgeNodeStatusPersisted(db, "svc_in_review", "in_review", {
+      updatedAt: NOW,
+    });
+
+    const result = await resolveKnowledgeNodeLabels(db, ["svc_in_review"]);
+    expect(result).toEqual([{ id: "svc_in_review", displayLabel: null, status: null }]);
+  });
+
+  it("archived nodes still resolve for display (DAP-010: never deleted, historical/audit lookup remains valid)", async () => {
+    await seedRewardProgramHierarchy();
+    await seedRewardProgramCategory("rpc_haircuts", "type_salon", "Haircuts");
+    await activateNode("rpc_haircuts");
+    await seedStandardService("svc_old", "rpc_haircuts", "Very Old Service");
+    await activateNode("svc_old");
+    await seedStandardService("svc_new", "rpc_haircuts", "Replacement Service");
+    await activateNode("svc_new");
+    await retireKnowledgeNodePersisted(db, "svc_old", {
+      updatedAt: NOW,
+      replacementNodeId: "svc_new",
+    });
+    await transitionKnowledgeNodeStatusPersisted(db, "svc_old", "archived", { updatedAt: NOW });
+
+    const result = await resolveKnowledgeNodeLabels(db, ["svc_old"]);
+    expect(result).toEqual([
+      { id: "svc_old", displayLabel: "Very Old Service", status: "archived" },
+    ]);
   });
 });
