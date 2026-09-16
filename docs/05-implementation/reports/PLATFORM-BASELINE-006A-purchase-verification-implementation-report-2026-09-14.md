@@ -258,3 +258,118 @@ All work was done in the isolated agent worktree `/Volumes/PRODUCTION/Projects/1
 ## C11. Final disposition
 
 **PLATFORM-BASELINE-006A — CORR-001 COMPLETE / IDEMPOTENCY CONCURRENCY PROVEN / AWAITING NARROW INDEPENDENT RE-REVIEW. Do NOT merge.**
+
+---
+
+# PLATFORM-BASELINE-006A-CORR-002 — Customer Cache Isolation and Quantity Validation
+
+**Date:** 2026-09-16
+**Type:** Correction of two confirmed P1 findings on the existing PR #253 (no new PR, no merge).
+**Authority:** Automated `chatgpt-codex-connector` review threads on PR #253 (2 P1, independently re-inspected against the exact approved head and confirmed).
+**Disposition: CORRECTED / AWAITING NARROW INDEPENDENT RE-REVIEW. Do NOT merge.**
+
+## D1. Why the prior Founder merge approval no longer applies
+
+The Founder merge approval covered head `6f5e256a4f9ffefedb06d8821f605e8662be217e` (the CORR-001 head). Two automated P1 review threads on that exact head — opened before CORR-001 and never addressed by it (CORR-001 scope was the ITR-001 P2 idempotency-concurrency finding only) — were independently re-inspected and confirmed as genuine defects. That head is therefore no longer approved for merge.
+
+## D2. Why ITR-001/CORR-001 did not catch these findings
+
+ITR-001's scope was a single P2 finding (same-key idempotency concurrency) and a set of explicitly non-blocking P3 observations; it did not re-run or re-triage the two `chatgpt-codex-connector` P1 threads (which target the Customer-facing React Query cache-key module and the Business quantity-input path — outside ITR-001's PostgreSQL-concurrency focus). CORR-001 closed exactly the one P2 finding it was scoped to and correctly left everything else untouched. The two P1 threads therefore remained open and unaddressed until this correction.
+
+Two P2 threads also remain open on the same review (a purchase-date/timezone boundary issue and a zero-valued `unitValueMinor` rejection issue, both in files this task does not touch) — **out of scope for CORR-002 and deliberately left open**, per the task's narrow two-defect mandate.
+
+## D3. P1-1 — Customer React Query cache isolation
+
+**Root cause.** `customerPurchaseQueryKeys` (`apps/web/src/customer/hooks/queryKeys.ts`) produced actor-independent keys (`["customerPurchases","waiting"]`, `["customerPurchase", id]`, `["customerRewards","available"]`). The SPA uses one long-lived `QueryClient` (`apps/web/src/main.tsx`). If Customer A signs out and Customer B signs in without a full page reload, React Query can resolve B's `useQuery` calls from A's still-cached entries under those same keys before B's own refetch completes — a customer-data cross-identity leak.
+
+**Architecture inspected before choosing a fix.** The Business domain's `businessQueryKeys` (`apps/web/src/business/hooks/queryKeys.ts`) already scopes every purchase/reward-program key by a server-verified `businessId`, establishing the codebase's own precedent for parameterized, scope-first query keys. `useAuthenticatedActor` (`apps/web/src/identity/hooks/useAuthenticatedActor.ts`) already resolves the signed-in Firebase `User` on every `onAuthStateChanged` transition but its `AuthenticatedActor` payload deliberately carries no `uid` (the server derives the Customer Identity from the ID token, never from a client-supplied id — see `identityCallableClient.ts`'s header). A separate existing pattern, `registerAuthLifecycle` (`apps/web/src/observability/authLifecycle.ts`), already clears identity-scoped client state on `onAuthStateChanged(user === null)`, but it operates on observability/correlation context, not the `QueryClient`.
+
+**Correction chosen (smallest architecture-consistent option).** `useAuthenticatedActor`'s `ready` state now also carries `identityScope: user.uid` — additive only, never sent to the server (the `actor` payload passed to callables is unchanged) and used exclusively as a client-local cache-partitioning key. `customerPurchaseQueryKeys.waiting/purchase/rewards` each now take that `identityScope` as their first parameter. `purchaseQueries.ts` and `purchaseMutations.ts` derive it via a small `identityScopeOf` helper (`"pending"` placeholder while not yet `ready`, which is never a real `uid` and is never populated because those queries stay `enabled: false` until `ready`). Query *execution* was already correctly gated on `actorState.status === "ready"` and is unchanged.
+
+**Why identity-scoped keys alone are sufficient (no auth-lifecycle cache clearing added).** Once every key includes `identityScope`, Customer A's and Customer B's cache entries live under permanently distinct keys — B's `useQuery` call for its own key never resolves from A's entry regardless of whether A's now-orphaned entry is ever evicted. Adding cache clearing on sign-out was considered (per the task's explicit prompt) and rejected as unnecessary scope: it would touch `observability/authLifecycle.ts` (unrelated domain, outside this task's two named files) to solve a problem the key-scoping change already fully closes, and the task's own guidance is to choose the smallest architecture-consistent correction.
+
+**Client-supplied-id guard respected.** `identityScope` is `user.uid` from the Firebase Auth SDK's own resolved `User` object on a real `onAuthStateChanged` callback — never a value read from any request, response, or route parameter — so it cannot be a client-injected 'Customer Identity ID' used to opt into someone else's cache partition.
+
+**Mutation invalidation.** `settleSuccess` in `purchaseMutations.ts` now invalidates `customerPurchaseQueryKeys.waiting/purchase/rewards` scoped by the same `identityScopeOf(harness.actorState)`, so a mutation's cache invalidation targets only the acting customer's own partition.
+
+## D4. P1-1 regression tests
+
+- `apps/web/src/customer/hooks/queryKeys.test.ts` — distinct keys for distinct identity scopes (waiting/purchase/rewards), and stable identical keys for the same scope (same-customer caching unaffected).
+- `apps/web/src/customer/hooks/purchaseQueries.cacheIsolation.test.tsx` — four tests against the real hooks (`purchaseQueries.ts`) and a real `QueryClient`, driving a controllable `onAuthStateChanged` callback through a genuine A→sign-out→B transition within one mounted session:
+  1. Waiting purchases: Customer B's query is `isPending`/undefined (never A's cached array) while B's own fetch is held open by a deferred promise, then resolves to B's own data; A's orphaned cache entry is verified still isolated (present but never read by B).
+  2. Purchase detail: same proof for `useCustomerPurchaseQuery`, including that the `purchase` key itself (not only `waiting`/`rewards`) is identity-scoped.
+  3. Available rewards: same proof for `useAvailableRewardsQuery`.
+  4. Same-customer regression: unmounting and remounting under the *same* identity still serves the cached entry — the fix does not break ordinary same-customer caching.
+- `apps/web/src/customer/hooks/purchaseMutations.test.tsx` — `useVerifyPurchaseMutation`'s `onSuccess` invalidation is asserted to target exactly Customer A's three identity-scoped keys and never contain another customer's scope.
+
+All four files pass; the full existing `apps/web` suite (836 tests) shows no regression attributable to this change (see §D8).
+
+## D5. P1-2 — Purchase quantity input validation
+
+**Root cause.** `PurchaseRecordsPage.tsx`'s submit handler ran `Number.parseInt(form.quantity, 10)` on a free-form text input. `parseInt` silently truncates/coerces malformed text to a different valid integer (`"1.5"` → `1`, `"2abc"` → `2`), so the server (`functions/src/index.ts`'s `parsePurchaseQuantity`, which only checks `Number.isInteger(value) && value >= 1` on the already-coerced number) has no way to detect that the operator's original input was invalid — a wrong Purchase quantity could reach the server as a "valid" one, incorrectly sizing Verified Unit issuance and Loyalty Cycle progress.
+
+**Path inspected end-to-end.** UI text input (`TextField`, already supports `errorMessage`/`aria-invalid`/`aria-describedby` via `apps/web/src/components/ui/formPrimitives.tsx`) → form state (`RecordFormState.quantity: string`) → submit parsing (the `parseInt` call) → `recordMutation.mutateAsync` → `useRecordPurchaseMutation` (business hook, unchanged) → `recordPurchase` callable → server `parsePurchaseQuantity`. The defect is entirely at the submit-parsing step; every other layer already behaves correctly once given a real integer.
+
+**Correction.** A new pure validator, `parsePurchaseRecordQuantity` (`apps/web/src/business/dashboard/purchaseQuantityInput.ts`), accepts only text matching `^[1-9][0-9]*$` — the exact decimal digits of a positive integer: no sign, no leading zero, no decimal point, no trailing/leading characters or whitespace, non-empty. This mirrors (never relaxes or reinterprets) the server's integer-`>=1` rule; it only rejects malformed text before it can be silently coerced. `submitRecord` calls it in place of `Number.parseInt`; on `null` (rejection) it sets a `quantityError` flag and returns *before* calling `recordMutation.mutateAsync` — no mutation is invoked for any rejected input. The quantity `TextField` now passes `errorMessage={quantityError ? t("purchase.fieldQuantityError") : undefined}`, and editing the field again clears the error. No maximum quantity was invented; `bulk_review_threshold` was not touched or reinterpreted as a cap, per the task's explicit constraint.
+
+**EN/FR parity.** Added `purchase.fieldQuantityError` to both `apps/web/src/i18n/locales/en.ts` ("Enter a whole number of 1 or more.") and `fr.ts` ("Saisissez un nombre entier supérieur ou égal à 1."). The repository's existing `i18n.test.tsx` EN/FR key-parity test covers the new key automatically.
+
+## D6. P1-2 regression tests
+
+- `apps/web/src/business/dashboard/purchaseQuantityInput.test.ts` — direct unit tests of the validator: accepts plain positive integers; rejects (parameterized) empty input, whitespace-only, `"0"`, `"-1"`, `"1.5"`, `"2abc"`, `"abc"`, `"NaN"`, `"Infinity"`, a leading-zero value (`"007"`), leading/trailing whitespace around a digit, and a plus-signed value.
+- `apps/web/src/business/dashboard/PurchaseRecordsPage.test.tsx` (extended):
+  - submits the exact typed integer quantity (e.g. `"7"` → `quantity: 7`, not silently altered);
+  - parameterized rejection test (`"1.5"`, `"2abc"`, `"0"`, `"-1"`) each asserting `mockRecord` (the purchase-record mutation) is **never called** and the field's `role="alert"` shows the exact validation copy — proving malformed input cannot invoke the mutation;
+  - clears the quantity error once the field is edited again.
+  - (Empty input is covered at the unit-validator level; in the DOM it is additionally blocked by the field's pre-existing `required` attribute before the submit handler ever runs, which is itself a valid defense and does not need duplicate DOM-level coverage.)
+
+## D7. Files modified
+
+- `apps/web/src/identity/hooks/useAuthenticatedActor.ts` — `ready` state gains `identityScope: user.uid` (additive; `actor` payload unchanged).
+- `apps/web/src/customer/hooks/queryKeys.ts` — every key now takes `identityScope` as its first parameter.
+- `apps/web/src/customer/hooks/purchaseQueries.ts` — `identityScopeOf` helper; all three queries pass it into their key.
+- `apps/web/src/customer/hooks/purchaseMutations.ts` — `identityScopeOf` helper (disclosed duplication, matching the module's existing convention); `settleSuccess` invalidates scoped keys.
+- `apps/web/src/business/dashboard/purchaseQuantityInput.ts` — new: `parsePurchaseRecordQuantity`.
+- `apps/web/src/business/dashboard/PurchaseRecordsPage.tsx` — strict client-side quantity validation before `mutateAsync`; `quantityError` UI state.
+- `apps/web/src/i18n/locales/en.ts`, `apps/web/src/i18n/locales/fr.ts` — `purchase.fieldQuantityError`.
+- New test files: `apps/web/src/customer/hooks/queryKeys.test.ts`, `apps/web/src/customer/hooks/purchaseQueries.cacheIsolation.test.tsx`, `apps/web/src/customer/hooks/purchaseMutations.test.tsx`, `apps/web/src/business/dashboard/purchaseQuantityInput.test.ts`.
+- `apps/web/src/business/dashboard/PurchaseRecordsPage.test.tsx` — extended with the quantity-rejection tests in §D6.
+
+No production code outside `apps/web` was touched. No PostgreSQL schema, migration, Verified Unit allocation, Loyalty Cycle, Reward, Trust Event, Notification Intent, permission, or auth-provider-architecture change was made or required by either correction.
+
+## D8. Test results (actually run)
+
+- Targeted: `queryKeys.test.ts`, `purchaseQueries.cacheIsolation.test.tsx`, `purchaseMutations.test.tsx`, `purchaseQuantityInput.test.ts`, `PurchaseRecordsPage.test.tsx` — **31 passed (31)**.
+- Full `apps/web` unit/component suite: **836 tests**. One run showed 1 unrelated flaky failure (a hard-coded sub-80ms latency assertion in `PhoneAuthHarnessPage.test.tsx`, timing-sensitive and untouched by this correction); a second full run showed 835/836 passing with a *different* single flaky failure elsewhere (confirmed pre-existing scheduler/timing flakiness under full-suite parallelism, not a regression — verified by stashing this correction's changes and re-running the previously-failing files in isolation, where they passed cleanly against the unmodified baseline).
+- Full `functions` unit suite: **158 files, 1756 passed (1756)** — unaffected, as expected (no `functions/` file touched).
+- PostgreSQL integration suite, under the Firestore Emulator per the CI recipe (`firebase emulators:exec --only firestore -- ... pnpm --filter functions test:postgres`): **6 files, 94 passed (94)**.
+- Firebase Emulator Suite validation (`pnpm emulators:validate`): **65 files, 833 passed, 3 skipped (836)** — matches the CORR-001 baseline exactly.
+- Playwright e2e (`pnpm test:e2e`, local): **36 passed**, 1 failure (`app-shell.spec.ts` — "application shell loads") traced to a **local port collision only**: Playwright's `webServer` config reuses an already-listening server outside CI (`reuseExistingServer: !process.env.CI`), and port 4173 on this shared machine was already bound by an entirely unrelated dev server from a different project (confirmed by inspecting the failure's captured DOM snapshot, which rendered a different application, "Klockit Work Presence," not this repository's sign-in page). Forcing `CI=true` locally to reproduce the CI server-start path correctly failed with `EADDRINUSE` on that same pre-occupied port, confirming the cause. This is environmental to the local machine, not a code regression, and does not reproduce on a CI runner (a clean ephemeral host with nothing pre-bound to 4173).
+- Typecheck (`pnpm typecheck`, both workspaces): clean.
+- Lint (`pnpm lint`): 0 errors, 1 pre-existing `react-refresh` warning in `apps/web/src/business/BusinessApiContext.tsx` (untouched file, same warning recorded in CORR-001).
+- Format check (`pnpm format:check`): clean.
+- Build (`pnpm build`): clean (pre-existing >500kB chunk-size advisory only, unrelated).
+- `git diff --check`: clean.
+
+## D9. Review-thread inventory on the corrected head (pre-push)
+
+Four total review threads existed on entry head `6f5e256a4f9ffefedb06d8821f605e8662be217e`, all unresolved:
+
+1. **P1** — `apps/web/src/customer/hooks/queryKeys.ts:6` — cross-customer cache leakage. **Addressed by §D3/§D4.** Reply posted with root cause, correction, and test evidence; left unresolved for the independent reviewer to close.
+2. **P1** — `apps/web/src/business/dashboard/PurchaseRecordsPage.tsx:79` — quantity truncation. **Addressed by §D5/§D6.** Reply posted; left unresolved for the independent reviewer to close.
+3. **P2** — `apps/web/src/business/dashboard/PurchaseRecordsPage.tsx:87` — purchase-date/timezone boundary. **Out of scope for CORR-002 — untouched, left open**, per the task's narrow two-defect mandate.
+4. **P2** — `functions/src/index.ts:1885` — zero-valued `unitValueMinor` rejected by `parsePurchaseQuantity`. **Out of scope for CORR-002 — untouched, left open.**
+
+No new review finding was introduced by this correction as of the corrected head.
+
+## D10. Rollback
+
+Revert the CORR-002 commit(s) on `feat/platform-baseline-006a-purchase-verification-spine`. Nothing outside `apps/web` and this report/changes-log entry is affected: no migration, no dependency, no configuration, no governance decision, no schema change.
+
+## D11. Worktree safety
+
+All work was done in the isolated agent worktree `/Volumes/PRODUCTION/Projects/11THONUS/.claude/worktrees/agent-a0f1b1d0649d131c5`, on a new branch `platform-baseline-006a-corr-002` created off the exact confirmed entry head, then pushed to the existing `feat/platform-baseline-006a-purchase-verification-spine` branch backing PR #253. The primary worktree `/Volumes/PRODUCTION/Projects/11THONUS`, with its unrelated dirty `docs/dec-legal-002-bt-draft-007` legal/commercial work, was never touched.
+
+## D12. Final disposition
+
+**PLATFORM-BASELINE-006A-CORR-002 — CORRECTED / AWAITING NARROW INDEPENDENT RE-REVIEW. Do NOT merge.**
