@@ -270,3 +270,136 @@ describe("PurchaseRecordsPage", () => {
     expect(screen.getByText(/Recorded by staff/)).toBeInTheDocument();
   });
 });
+
+/**
+ * PLATFORM-BASELINE-006A-CORR-003: reproduces the actual reported bug
+ * through the real submit flow (not the date helper in isolation) — the
+ * page used to construct `${date}T12:00:00.000Z` (noon UTC) for the
+ * default "today" date, which the server rejects as a future instant
+ * whenever the real UTC time is still before 12:00 (e.g. any time before
+ * 2pm in a UTC+2 business's own timezone). These tests fake the system
+ * clock and the process timezone together — `process.env.TZ` is verified
+ * to genuinely change what `Date`'s local getters/constructor report on
+ * this runtime — so they are deterministic regardless of the actual
+ * machine's configured timezone or wall clock.
+ */
+describe("PurchaseRecordsPage — purchase date / timezone (CORR-003)", () => {
+  const ORIGINAL_TZ = process.env.TZ;
+
+  afterEach(() => {
+    vi.useRealTimers();
+    process.env.TZ = ORIGINAL_TZ;
+  });
+
+  function fillMinimalFormAndSubmit() {
+    fireEvent.change(screen.getByLabelText("Loyalty Number or QR reference"), {
+      target: { value: "ABC234" },
+    });
+    fireEvent.change(screen.getByLabelText("Item label"), { target: { value: "Coffee" } });
+    const selects = screen.getAllByRole("combobox");
+    fireEvent.change(selects[0], { target: { value: "rp-1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Record purchase" }));
+  }
+
+  function setUpPrograms() {
+    purchasesResult = { data: { purchases: [] } };
+    detailResult = { data: undefined };
+    programsResult = {
+      data: [
+        {
+          program: {
+            id: "rp-1",
+            displayName: "Coffees",
+            status: "active",
+            currentVersionId: "v-1",
+          },
+        },
+      ],
+    };
+  }
+
+  it("records today's default date during UTC+2 local morning without producing a future instant", () => {
+    process.env.TZ = "Etc/GMT-2"; // UTC+2 — the platform's stated target market
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-16T09:00:00.000Z")); // 11:00 local — well before the old noon-UTC anchor
+    setUpPrograms();
+    renderPage();
+    fillMinimalFormAndSubmit();
+    expect(mockRecord).toHaveBeenCalledTimes(1);
+    const payload = mockRecord.mock.calls[0][0] as Record<string, unknown>;
+    const sentInstant = new Date(payload.purchaseDate as string).getTime();
+    // The old implementation would have sent 2026-09-16T12:00:00.000Z here,
+    // which is AFTER Date.now() (09:00 UTC) and would fail the server's
+    // `purchaseDate > Date.now()` check.
+    expect(sentInstant).toBeLessThanOrEqual(Date.now());
+  });
+
+  it("records today's default date around UTC+2 local midday without producing a future instant", () => {
+    process.env.TZ = "Etc/GMT-2";
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-16T11:30:00.000Z")); // 13:30 local — straddles the old anchor
+    setUpPrograms();
+    renderPage();
+    fillMinimalFormAndSubmit();
+    const payload = mockRecord.mock.calls[0][0] as Record<string, unknown>;
+    expect(new Date(payload.purchaseDate as string).getTime()).toBeLessThanOrEqual(Date.now());
+  });
+
+  it("records today's default date later in the UTC+2 day (the old anchor would already have passed)", () => {
+    process.env.TZ = "Etc/GMT-2";
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-16T16:00:00.000Z")); // 18:00 local
+    setUpPrograms();
+    renderPage();
+    fillMinimalFormAndSubmit();
+    const payload = mockRecord.mock.calls[0][0] as Record<string, unknown>;
+    expect(new Date(payload.purchaseDate as string).getTime()).toBeLessThanOrEqual(Date.now());
+  });
+
+  it("records today's default date in UTC (zero offset) without producing a future instant", () => {
+    process.env.TZ = "UTC";
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-16T01:00:00.000Z"));
+    setUpPrograms();
+    renderPage();
+    fillMinimalFormAndSubmit();
+    const payload = mockRecord.mock.calls[0][0] as Record<string, unknown>;
+    expect(new Date(payload.purchaseDate as string).getTime()).toBeLessThanOrEqual(Date.now());
+  });
+
+  it("records today's default date under a negative UTC offset (UTC-5) without producing a future instant", () => {
+    process.env.TZ = "Etc/GMT+5"; // UTC-5 (POSIX sign flipped)
+    vi.useFakeTimers();
+    // Just after local midnight — exercises the local-date boundary crossing the UTC day boundary.
+    vi.setSystemTime(new Date("2026-09-16T04:30:00.000Z"));
+    setUpPrograms();
+    renderPage();
+    fillMinimalFormAndSubmit();
+    const payload = mockRecord.mock.calls[0][0] as Record<string, unknown>;
+    expect(new Date(payload.purchaseDate as string).getTime()).toBeLessThanOrEqual(Date.now());
+  });
+
+  it("still submits a historical date selection as a past instant", () => {
+    process.env.TZ = "Etc/GMT-2";
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-16T09:00:00.000Z"));
+    setUpPrograms();
+    renderPage();
+    fireEvent.change(screen.getByLabelText("Purchase date"), { target: { value: "2026-09-10" } });
+    fillMinimalFormAndSubmit();
+    const payload = mockRecord.mock.calls[0][0] as Record<string, unknown>;
+    expect(new Date(payload.purchaseDate as string).getTime()).toBeLessThan(Date.now());
+  });
+
+  it("still resolves a genuinely future calendar date to a future instant (server rejection remains meaningful)", () => {
+    process.env.TZ = "Etc/GMT-2";
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-16T09:00:00.000Z"));
+    setUpPrograms();
+    renderPage();
+    fireEvent.change(screen.getByLabelText("Purchase date"), { target: { value: "2026-09-20" } });
+    fillMinimalFormAndSubmit();
+    const payload = mockRecord.mock.calls[0][0] as Record<string, unknown>;
+    expect(new Date(payload.purchaseDate as string).getTime()).toBeGreaterThan(Date.now());
+  });
+});

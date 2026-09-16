@@ -23,6 +23,7 @@ import { usePurchasesQuery, useBusinessPurchaseQuery } from "../hooks/purchaseQu
 import { useRecordPurchaseMutation } from "../hooks/purchaseMutations";
 import { useRewardProgramsQuery } from "../hooks/rewardProgramQueries";
 import { parsePurchaseRecordQuantity } from "./purchaseQuantityInput";
+import { resolvePurchaseDateInstant, todayDateInputValue } from "./purchaseDateInput";
 
 type RecordFormState = {
   rewardProgramId: string;
@@ -41,7 +42,7 @@ function emptyRecordForm(): RecordFormState {
     artifactValue: "",
     quantity: "1",
     itemLabel: "",
-    purchaseDate: new Date().toISOString().slice(0, 10),
+    purchaseDate: todayDateInputValue(),
     notes: "",
   };
 }
@@ -91,7 +92,7 @@ export function PurchaseRecordsPage({ context }: { context: BusinessContext }) {
         : { qrReference: form.artifactValue.trim() }),
       quantity,
       itemLabel: form.itemLabel.trim(),
-      purchaseDate: new Date(`${form.purchaseDate}T12:00:00.000Z`).toISOString(),
+      purchaseDate: resolvePurchaseDateInstant(form.purchaseDate),
       ...(form.notes.trim().length > 0 ? { notes: form.notes.trim() } : {}),
     });
     setRecorded(true);
