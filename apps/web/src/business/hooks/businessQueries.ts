@@ -117,7 +117,7 @@ export function useRewardProgramCategoriesQuery(languageCode?: string) {
   const { auth, functions } = useBusinessApiPlatform();
   const actorState = useAuthenticatedActor(auth);
   return useQuery({
-    queryKey: businessQueryKeys.rewardProgramCategories(),
+    queryKey: businessQueryKeys.rewardProgramCategories(languageCode ?? ""),
     queryFn: () =>
       makeCallListRewardProgramCategories(functions)(
         actorState.status === "ready"
@@ -144,7 +144,7 @@ export function useQualifyingNodesForCategoryQuery(
   const { auth, functions } = useBusinessApiPlatform();
   const actorState = useAuthenticatedActor(auth);
   return useQuery({
-    queryKey: businessQueryKeys.qualifyingNodes(categoryId ?? ""),
+    queryKey: businessQueryKeys.qualifyingNodes(categoryId ?? "", languageCode ?? ""),
     queryFn: () =>
       makeCallListQualifyingNodesForCategory(functions)(
         actorState.status === "ready"
@@ -170,7 +170,7 @@ export function useKnowledgeNodeLabelsQuery(nodeIds: readonly string[], language
   const { auth, functions } = useBusinessApiPlatform();
   const actorState = useAuthenticatedActor(auth);
   return useQuery({
-    queryKey: businessQueryKeys.knowledgeNodeLabels(nodeIds),
+    queryKey: businessQueryKeys.knowledgeNodeLabels(nodeIds, languageCode ?? ""),
     queryFn: () =>
       makeCallResolveKnowledgeNodeLabels(functions)(
         actorState.status === "ready"

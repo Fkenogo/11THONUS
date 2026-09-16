@@ -7,11 +7,20 @@ export const businessQueryKeys = {
   branch: (businessId: string) => ["businessBranch", businessId] as const,
   categories: () => ["commerceKnowledge", "businessCategories"] as const,
   types: (categoryId: string) => ["commerceKnowledge", "businessTypes", categoryId] as const,
-  rewardProgramCategories: () => ["commerceKnowledge", "rewardProgramCategories"] as const,
-  qualifyingNodes: (categoryId: string) =>
-    ["commerceKnowledge", "qualifyingNodes", categoryId] as const,
-  knowledgeNodeLabels: (nodeIds: readonly string[]) =>
-    ["commerceKnowledge", "nodeLabels", [...nodeIds].sort().join(",")] as const,
+  /**
+   * `PLATFORM-BASELINE-008`: unlike the pre-existing `categories`/`types`
+   * keys above, these three include `languageCode` — paired with
+   * `staleTime: Infinity` (`businessQueries.ts`), an unscoped key would
+   * mean switching EN<->FR never refetches (React Query has no reason to
+   * treat the cached entry as stale), leaving stale-language labels on
+   * screen after a language switch (review finding, PR #255).
+   */
+  rewardProgramCategories: (languageCode: string) =>
+    ["commerceKnowledge", "rewardProgramCategories", languageCode] as const,
+  qualifyingNodes: (categoryId: string, languageCode: string) =>
+    ["commerceKnowledge", "qualifyingNodes", categoryId, languageCode] as const,
+  knowledgeNodeLabels: (nodeIds: readonly string[], languageCode: string) =>
+    ["commerceKnowledge", "nodeLabels", [...nodeIds].sort().join(","), languageCode] as const,
   staffInvitations: (businessId: string) => ["staffInvitations", businessId] as const,
   staffMemberships: (businessId: string) => ["staffMemberships", businessId] as const,
   rewardPrograms: (businessId: string) => ["rewardPrograms", businessId] as const,

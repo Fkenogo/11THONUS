@@ -244,6 +244,7 @@ export function RewardProgramManagementPage({ context }: { context: BusinessCont
                   setCreateForm((f) => ({ ...f, rewardProgramCategoryId: v, qualifyingNodes: [] }))
                 }
                 placeholder={t("rewardProgram.category.placeholder")}
+                required
                 options={(rewardProgramCategoriesQuery.data ?? []).map((option) => ({
                   value: option.id,
                   label: option.displayLabel,

@@ -260,6 +260,25 @@ describe("RewardProgramManagementPage (PLATFORM-BASELINE-005A)", () => {
     );
   });
 
+  /**
+   * Review finding (PR #255): the category field used to be a `TextField`
+   * with `required`, which blocked native browser submission on an empty
+   * value before any mutation ever fired. Replacing it with a `Select`
+   * must not silently drop that constraint -- an empty selection should
+   * still fail native constraint validation, not reach the server.
+   */
+  it("the category selector is a required field (native constraint-validation, matching the prior TextField)", async () => {
+    rewardProgramsResult = { data: [], isLoading: false, isError: false };
+    accessibleResult = { data: [{ businessId: "biz-1", role: "owner" }] };
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(screen.getByRole("button", { name: /create reward program/i }));
+
+    const categorySelect = screen.getByLabelText(/reward program category/i);
+    expect(categorySelect).toBeRequired();
+    expect((categorySelect as HTMLSelectElement).checkValidity()).toBe(false);
+  });
+
   it("Owner sees edit-draft and publish actions on a draft program", () => {
     rewardProgramsResult = { data: [draftProgram], isLoading: false, isError: false };
     accessibleResult = { data: [{ businessId: "biz-1", role: "owner" }] };
