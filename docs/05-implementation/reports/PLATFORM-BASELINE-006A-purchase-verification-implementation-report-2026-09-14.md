@@ -373,3 +373,80 @@ All work was done in the isolated agent worktree `/Volumes/PRODUCTION/Projects/1
 ## D12. Final disposition
 
 **PLATFORM-BASELINE-006A-CORR-002 — CORRECTED / AWAITING NARROW INDEPENDENT RE-REVIEW. Do NOT merge.**
+
+---
+
+# PLATFORM-BASELINE-006A-CORR-003 — Purchase Date / Timezone Correction
+
+**Date:** 2026-09-16
+**Type:** Correction of one confirmed P2 finding on the existing PR #253 (no new PR, no merge).
+**Authority:** `PLATFORM-BASELINE-006A-ITR-003` independent verification — both CORR-002 P1 findings confirmed CLOSED; the pre-existing purchase-date/timezone P2 independently reclassified as **VALID-BLOCKING** (reachable through the shipped UI, blocks the core purchase-recording workflow during ordinary business hours in the platform's stated target market).
+
+## E1. Root cause
+
+`PurchaseRecordsPage.tsx`'s submit handler sent `new Date(`${form.purchaseDate}T12:00:00.000Z`).toISOString()` for every purchase-date selection, and its default "today" value came from `new Date().toISOString().slice(0, 10)` (the **UTC** calendar date, not the operator's own local date). The server (`recordPurchaseCommand.ts:146`) rejects any `purchaseDate` later than `Date.now()`. For a business in a positive-UTC-offset timezone (the platform's stated target market is Burundi, UTC+2), the fixed noon-UTC anchor is 2pm local — so recording a purchase dated "today" before 2pm local time sent an instant that was still in the future relative to the real current UTC time, and the server rejected it. The default-date computation had a related, narrower defect: using the UTC calendar date could show the wrong date entirely for roughly two hours around each local midnight in UTC+2 (and analogous windows in other offsets).
+
+## E2. Field semantics established before choosing a fix
+
+The design (`docs/05-implementation/reports/PLATFORM-BASELINE-006-purchase-verification-entry-technical-design-2026-09-14.md`, purchase commercial snapshot) documents `purchase_date TIMESTAMPTZ NOT NULL` as a **"business-asserted commercial date, sanity-bounded, not future."** This is a COMMERCIAL CALENDAR DATE, not a precise event timestamp — it is stored as a `TIMESTAMPTZ` only because PostgreSQL has no bare "local date" type suited to a multi-timezone Business/Customer platform. The ITR-003 suggestion of blindly using `new Date().toISOString()` for every date was **not** applied without this analysis: doing so unconditionally would have silently converted every *historical* date selection into "right now" as well, discarding the operator's actual selection. The correction therefore treats "today" and "any other date" differently, preserving the field's calendar-date semantics for both cases.
+
+## E3. Correction
+
+New helper module `apps/web/src/business/dashboard/purchaseDateInput.ts`:
+
+- `todayDateInputValue(now = new Date())` — the `YYYY-MM-DD` value for "today" in the caller's own (ambient/browser) timezone, using local `Date` getters (`getFullYear`/`getMonth`/`getDate`), not UTC ones. Used for the form's default date value (`emptyRecordForm`).
+- `resolvePurchaseDateInstant(dateInputValue, now = new Date())` — if the selected date equals the caller's own "today," returns `now.toISOString()` (the real current instant, which by construction can never be ahead of the server's own clock). For any other date, anchors to **local** noon of that calendar date via the native local `Date` constructor (`new Date(year, month - 1, day, 12, 0, 0, 0)`) — never UTC noon — which is always safely in the past for a historical date, and correctly still resolves to a future instant (triggering the existing, unmodified server rejection) for a genuinely future calendar date.
+
+Both call sites in `PurchaseRecordsPage.tsx` (the default-value computation and the submit-time construction) now use this module instead of ad-hoc `Date` construction. No new dependency, no timezone library — the whole correction relies only on the JS runtime's native local-time `Date` behavior, verified directly (`node -e`) to respect the ambient timezone correctly for both getters and the local constructor. **No client timezone becomes authoritative business/domain identity**: the browser's own ambient timezone is used exactly as the pre-existing design already did (to decide what instant to *attempt* to submit for a calendar-date selection) — the server's `purchaseDate > Date.now()` check (`recordPurchaseCommand.ts:146`) remains the sole, unmodified authority over what is actually accepted.
+
+## E4. Regression tests — reproduce the actual bug, not just the helper
+
+`apps/web/src/business/dashboard/purchaseDateInput.test.ts` (helper-level, 9 tests) and a new `describe` block appended to `apps/web/src/business/dashboard/PurchaseRecordsPage.test.tsx` (flow-level, 7 tests) drive the **real submit flow** through `fireEvent`/`mockRecord`, using `vi.useFakeTimers()` + `vi.setSystemTime()` together with `process.env.TZ` reassignment — verified directly on this runtime to genuinely change what `Date`'s local getters and local constructor report mid-process, so every test is deterministic regardless of the actual machine's configured timezone or wall clock:
+
+- UTC+2 morning (09:00 UTC / 11:00 local), midday-straddling (11:30 UTC / 13:30 local), and later-in-day (16:00 UTC / 18:00 local) "today" submissions — each asserts the submitted instant is `<= Date.now()`.
+- UTC (zero offset) "today" submission.
+- A negative offset (UTC-5) "today" submission, including one case exactly at the local-date boundary (04:30 UTC = 23:30 the *previous* local day) that also proves `todayDateInputValue` reports the correct local calendar date across that boundary.
+- A historical-date selection still resolves to a past instant.
+- A genuinely future calendar-date selection still resolves to a future instant (server rejection remains meaningful).
+
+**Verified these tests actually reproduce the bug:** the fix commit was temporarily reverted (via `git stash`) and the page-level suite re-run — the 4 "today" scenarios (UTC+2 morning/midday, UTC, UTC-5) failed exactly as expected against the old `T12:00:00.000Z` construction, while the historical-date, future-date, and UTC+2-later-in-day cases still passed (consistent with the old anchor only being unsafe for "today," which is exactly what CORR-003 targets). The fix was then restored and reconfirmed passing before commit.
+
+## E5. CORR-002 protection
+
+Re-ran the full CORR-002 regression suite unmodified: `queryKeys.test.ts`, `purchaseQueries.cacheIsolation.test.tsx`, `purchaseMutations.test.tsx`, `purchaseQuantityInput.test.ts`, `i18n.test.tsx` — **34/34 passed**. Customer query keys remain UID-scoped; Customer B still cannot synchronously observe Customer A's cached data; malformed quantities still cannot reach `mutateAsync`; EN/FR validation parity intact. Neither `customer/hooks/**` nor `purchaseQuantityInput.ts` was touched by this correction.
+
+## E6. Files modified
+
+- `apps/web/src/business/dashboard/purchaseDateInput.ts` — new helper (`todayDateInputValue`, `resolvePurchaseDateInstant`).
+- `apps/web/src/business/dashboard/PurchaseRecordsPage.tsx` — both call sites switched to the new helper; no other change.
+- `apps/web/src/business/dashboard/purchaseDateInput.test.ts` — new (9 tests).
+- `apps/web/src/business/dashboard/PurchaseRecordsPage.test.tsx` — extended with a new `describe` block (7 tests).
+
+No production code outside `apps/web`, no PostgreSQL schema/migration, no `functions/` change, no Cycle/Reward/Trust/Notification-architecture change, no auth-provider-architecture change, no new dependency.
+
+## E7. Test results (actually run)
+
+- Targeted (`purchaseDateInput.test.ts` + `PurchaseRecordsPage.test.tsx`): **26/26 passed**.
+- CORR-002 protection suite: **34/34 passed**.
+- Full `functions` unit suite: **158 files, 1756/1756 passed** — unaffected, as expected.
+- Full `apps/web` unit/component suite: **121 files, 852/852 passed** — clean, no flakes this run.
+- PostgreSQL integration suite (under the Firestore Emulator, CI recipe): first run showed **1 failure** in `platformFoundationReadiness.postgres.test.ts` ("Applied migration \"0001\" ... does not match" — a migration-identity fixture check unrelated to any file this correction touches); an immediate re-run against the same isolated container passed **6 files, 94/94**, confirming the first result was a one-off environmental flake, not a regression (no migration or Postgres infrastructure file was modified by CORR-003).
+- Firebase Emulator Suite validation: **65 files, 833 passed, 3 skipped (836), zero failures** — matches the CORR-002 baseline exactly.
+- Playwright e2e (local): **36 passed**, 1 failure (`app-shell.spec.ts`) — reconfirmed as the same local port-4173 collision documented in CORR-002 (the DOM snapshot again captured the unrelated "Klockit Work Presence" application; the process squatting on the port is unchanged from the prior correction). Exact-head CI (a clean runner) is authoritative for this check.
+- Typecheck, lint (0 errors, the same pre-existing `react-refresh` warning), format check, build, `git diff --check`: all clean.
+
+## E8. Review threads
+
+The purchase-date P2 thread was replied to with root cause, correction, and test evidence, and left unresolved for the independent reviewer to close after re-verification. The two CORR-002 P1 threads were re-inspected against the corrected head and confirmed still correctly closed (no reply needed — the underlying code is unchanged and CORR-002's replies already stand). The `unitValueMinor=0` P2 thread is **explicitly not addressed** — recorded here as **VALID / NON-BLOCKING / DEFERRED FOLLOW-UP** per the task's scope boundary: the current shipped Business UI never sends `unitValueMinor`, so no shipped path is broken, and fixing it is out of CORR-003's bounded scope.
+
+## E9. Rollback
+
+Revert the CORR-003 commit on `feat/platform-baseline-006a-purchase-verification-spine`. Nothing outside the four files in §E6 is affected: no migration, no dependency, no configuration, no governance decision, no schema change.
+
+## E10. Worktree safety
+
+All work was done in the isolated agent worktree `/Volumes/PRODUCTION/Projects/11THONUS/.claude/worktrees/agent-a0f1b1d0649d131c5`, on a new branch `platform-baseline-006a-corr-003` created off the exact confirmed entry head, then pushed to the existing `feat/platform-baseline-006a-purchase-verification-spine` branch backing PR #253. The primary worktree `/Volumes/PRODUCTION/Projects/11THONUS`, with its unrelated dirty `docs/dec-legal-002-bt-draft-007` legal/commercial work, was never touched.
+
+## E11. Final disposition
+
+**PLATFORM-BASELINE-006A-CORR-003 — PURCHASE-DATE/TIMEZONE DEFECT CORRECTED / AWAITING NARROW FINAL VERIFICATION. Do NOT merge.**
