@@ -86,6 +86,9 @@ import {
 import {
   listBusinessCategories as listBusinessCategoriesRead,
   listBusinessTypesForCategory as listBusinessTypesForCategoryRead,
+  listRewardProgramCategories as listRewardProgramCategoriesRead,
+  listQualifyingNodesForCategory as listQualifyingNodesForCategoryRead,
+  resolveKnowledgeNodeLabels as resolveKnowledgeNodeLabelsRead,
 } from "./domains/commerceKnowledge/services/commerceKnowledgeReadService";
 import {
   createStaffInvitation as createStaffInvitationCommand,
@@ -1100,6 +1103,98 @@ export const listBusinessTypesForCategory = onCall(async (request) => {
     return await listBusinessTypesForCategoryRead(
       db,
       categoryId,
+      parseOptionalLanguageCode(value.languageCode),
+    );
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+/**
+ * `listRewardProgramCategories` (`PLATFORM-BASELINE-008`) — the Reward
+ * Program create-form category selector's read transport. Same
+ * authentication-only, non-Business-scoped shape as `listBusinessCategories`
+ * (platform-global Commerce Knowledge data).
+ */
+export const listRewardProgramCategories = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    return await listRewardProgramCategoriesRead(db, parseOptionalLanguageCode(value.languageCode));
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+/**
+ * `listQualifyingNodesForCategory` (`PLATFORM-BASELINE-008`) — the Reward
+ * Program qualifying-node selector's read transport. Same authentication-
+ * only, non-Business-scoped shape as `listBusinessTypesForCategory`
+ * (platform-global Commerce Knowledge data, uniform to every authenticated
+ * caller — no per-caller filtering is meaningful here either). `categoryId`
+ * is independently re-validated server-side inside the read service; this
+ * callable owns only transport parsing and the authentication boundary.
+ */
+export const listQualifyingNodesForCategory = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    const categoryId = parseNonEmptyString(value.categoryId);
+    return await listQualifyingNodesForCategoryRead(
+      db,
+      categoryId,
+      parseOptionalLanguageCode(value.languageCode),
+    );
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+/**
+ * Whitelist parser (`PLATFORM-BASELINE-008`): `nodeIds` must be a
+ * non-empty array of non-empty strings, capped at 100 entries — mirrors
+ * `resolveKnowledgeNodeLabels`'s own defensive transport-level bound
+ * (never a product limit).
+ */
+export function parseKnowledgeNodeIds(value: unknown): string[] {
+  if (!Array.isArray(value) || value.length === 0 || value.length > 100) {
+    throw new HttpsError("invalid-argument", "commerce_knowledge_read_failed", {
+      field: "nodeIds",
+    });
+  }
+  return value.map((entry, index) => {
+    if (typeof entry !== "string" || entry.trim().length === 0) {
+      throw new HttpsError("invalid-argument", "commerce_knowledge_read_failed", {
+        field: `nodeIds[${index}]`,
+      });
+    }
+    return entry;
+  });
+}
+
+/**
+ * `resolveKnowledgeNodeLabels` (`PLATFORM-BASELINE-008`) — display-only
+ * hydration read for a bounded set of canonical Commerce Knowledge node
+ * ids a caller already holds. Same authentication-only, non-Business-
+ * scoped shape as the other Commerce Knowledge reads above.
+ */
+export const resolveKnowledgeNodeLabels = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    const nodeIds = parseKnowledgeNodeIds(value.nodeIds);
+    return await resolveKnowledgeNodeLabelsRead(
+      db,
+      nodeIds,
       parseOptionalLanguageCode(value.languageCode),
     );
   } catch (error) {

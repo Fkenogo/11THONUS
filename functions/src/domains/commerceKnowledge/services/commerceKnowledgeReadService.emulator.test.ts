@@ -4,9 +4,12 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
   listBusinessCategories,
   listBusinessTypesForCategory,
+  listQualifyingNodesForCategory,
+  resolveKnowledgeNodeLabels,
 } from "./commerceKnowledgeReadService";
 import {
   createKnowledgeNodePersisted,
+  retireKnowledgeNodePersisted,
   transitionKnowledgeNodeStatusPersisted,
 } from "../repositories/knowledgeNodeRepository";
 import {
@@ -83,6 +86,49 @@ async function seedType(id: string, parentId: string, canonicalName = "Restauran
     slug: id,
     createdAt: NOW,
   });
+}
+
+/** `PLATFORM-BASELINE-008` fixtures: reward_program_category -> {standard_product, standard_service}. */
+async function seedRewardProgramCategory(id: string, parentId: string, canonicalName = "Haircuts") {
+  await createKnowledgeNodePersisted(db, {
+    id,
+    nodeType: "reward_program_category",
+    parentId,
+    canonicalName,
+    slug: id,
+    createdAt: NOW,
+  });
+}
+
+async function seedStandardProduct(id: string, parentId: string, canonicalName = "Shampoo") {
+  await createKnowledgeNodePersisted(db, {
+    id,
+    nodeType: "standard_product",
+    parentId,
+    canonicalName,
+    slug: id,
+    createdAt: NOW,
+  });
+}
+
+async function seedStandardService(id: string, parentId: string, canonicalName = "Haircut") {
+  await createKnowledgeNodePersisted(db, {
+    id,
+    nodeType: "standard_service",
+    parentId,
+    canonicalName,
+    slug: id,
+    createdAt: NOW,
+  });
+}
+
+/** Full ancestor chain a `standard_product`/`standard_service`/`reward_program_category` fixture needs. */
+async function seedRewardProgramHierarchy() {
+  await seedIndustry("ind_1");
+  await seedCategory("cat_beauty", "ind_1", "Beauty & Personal Care");
+  await activateNode("cat_beauty");
+  await seedType("type_salon", "cat_beauty", "Salon");
+  await activateNode("type_salon");
 }
 
 describe("listBusinessCategories", () => {
@@ -234,5 +280,141 @@ describe("listBusinessTypesForCategory", () => {
 
     const result = await listBusinessTypesForCategory(db, "cat_food");
     expect(result).toEqual([]);
+  });
+});
+
+/**
+ * `PLATFORM-BASELINE-008` — Reward Program qualifying-node selector read
+ * transport (`listQualifyingNodesForCategory`/`resolveKnowledgeNodeLabels`).
+ * Mirrors `listBusinessTypesForCategory`'s own test coverage one level
+ * lower in the hierarchy, plus the additional `resolveKnowledgeNodeLabels`
+ * hydration read `listBusinessTypesForCategory` has no analogue for.
+ */
+describe("listQualifyingNodesForCategory", () => {
+  it("lists active standard_product/standard_service nodes scoped to the selected Reward Program category", async () => {
+    await seedRewardProgramHierarchy();
+    await seedRewardProgramCategory("rpc_haircuts", "type_salon", "Haircuts");
+    await activateNode("rpc_haircuts");
+    await seedRewardProgramCategory("rpc_other", "type_salon", "Other");
+    await activateNode("rpc_other");
+    await seedStandardService("svc_haircut", "rpc_haircuts", "Haircut");
+    await activateNode("svc_haircut");
+    await seedStandardProduct("prod_shampoo", "rpc_haircuts", "Shampoo");
+    await activateNode("prod_shampoo");
+    await seedStandardProduct("prod_other_category", "rpc_other", "Unrelated product");
+    await activateNode("prod_other_category");
+
+    const result = await listQualifyingNodesForCategory(db, "rpc_haircuts");
+    expect(result.map((n) => n.id).sort()).toEqual(["prod_shampoo", "svc_haircut"]);
+    expect(result.every((n) => n.parentId === "rpc_haircuts")).toBe(true);
+    expect(result.map((n) => n.nodeType).sort()).toEqual(["standard_product", "standard_service"]);
+  });
+
+  it("an empty candidate list for a valid, active category is a normal outcome, never an error", async () => {
+    await seedRewardProgramHierarchy();
+    await seedRewardProgramCategory("rpc_empty", "type_salon", "No products yet");
+    await activateNode("rpc_empty");
+
+    const result = await listQualifyingNodesForCategory(db, "rpc_empty");
+    expect(result).toEqual([]);
+  });
+
+  it("excludes a retired standard_product/standard_service from the candidate list", async () => {
+    await seedRewardProgramHierarchy();
+    await seedRewardProgramCategory("rpc_haircuts", "type_salon", "Haircuts");
+    await activateNode("rpc_haircuts");
+    await seedStandardService("svc_retiring", "rpc_haircuts", "Old Haircut Style");
+    await activateNode("svc_retiring");
+    await seedStandardService("svc_replacement", "rpc_haircuts", "New Haircut Style");
+    await activateNode("svc_replacement");
+    await retireKnowledgeNodePersisted(db, "svc_retiring", {
+      updatedAt: NOW,
+      replacementNodeId: "svc_replacement",
+    });
+
+    const result = await listQualifyingNodesForCategory(db, "rpc_haircuts");
+    expect(result.map((n) => n.id)).toEqual(["svc_replacement"]);
+  });
+
+  it("rejects an unknown categoryId", async () => {
+    await expect(listQualifyingNodesForCategory(db, "rpc_does_not_exist")).rejects.toMatchObject({
+      category: "RESOURCE_NOT_FOUND",
+    });
+  });
+
+  it("rejects a categoryId that resolves but is not active (e.g. still draft)", async () => {
+    await seedRewardProgramHierarchy();
+    await seedRewardProgramCategory("rpc_draft_only", "type_salon", "Draft Only");
+    // never activated
+
+    await expect(listQualifyingNodesForCategory(db, "rpc_draft_only")).rejects.toMatchObject({
+      category: "RESOURCE_NOT_FOUND",
+    });
+  });
+
+  it("rejects a categoryId that resolves to a business_type, not a reward_program_category", async () => {
+    await seedRewardProgramHierarchy();
+
+    await expect(listQualifyingNodesForCategory(db, "type_salon")).rejects.toMatchObject({
+      category: "RESOURCE_NOT_FOUND",
+    });
+  });
+});
+
+describe("resolveKnowledgeNodeLabels", () => {
+  it("resolves display labels for active nodes", async () => {
+    await seedRewardProgramHierarchy();
+    await seedRewardProgramCategory("rpc_haircuts", "type_salon", "Haircuts");
+    await activateNode("rpc_haircuts");
+    await seedStandardService("svc_haircut", "rpc_haircuts", "Haircut");
+    await activateNode("svc_haircut");
+
+    const result = await resolveKnowledgeNodeLabels(db, ["svc_haircut"]);
+    expect(result).toEqual([{ id: "svc_haircut", displayLabel: "Haircut", status: "active" }]);
+  });
+
+  it("still resolves a retired node's label -- retirement never breaks an existing reference's display", async () => {
+    await seedRewardProgramHierarchy();
+    await seedRewardProgramCategory("rpc_haircuts", "type_salon", "Haircuts");
+    await activateNode("rpc_haircuts");
+    await seedStandardService("svc_retiring", "rpc_haircuts", "Old Haircut Style");
+    await activateNode("svc_retiring");
+    await seedStandardService("svc_replacement", "rpc_haircuts", "New Haircut Style");
+    await activateNode("svc_replacement");
+    await retireKnowledgeNodePersisted(db, "svc_retiring", {
+      updatedAt: NOW,
+      replacementNodeId: "svc_replacement",
+    });
+
+    const result = await resolveKnowledgeNodeLabels(db, ["svc_retiring"]);
+    expect(result).toEqual([
+      { id: "svc_retiring", displayLabel: "Old Haircut Style", status: "retired" },
+    ]);
+  });
+
+  it("resolves a genuinely unknown id to a null label/status rather than omitting it or throwing", async () => {
+    const result = await resolveKnowledgeNodeLabels(db, ["does_not_exist_at_all"]);
+    expect(result).toEqual([{ id: "does_not_exist_at_all", displayLabel: null, status: null }]);
+  });
+
+  it("resolves a bounded set of mixed ids 1:1, deduplicated", async () => {
+    await seedRewardProgramHierarchy();
+    await seedRewardProgramCategory("rpc_haircuts", "type_salon", "Haircuts");
+    await activateNode("rpc_haircuts");
+    await seedStandardService("svc_haircut", "rpc_haircuts", "Haircut");
+    await activateNode("svc_haircut");
+
+    const result = await resolveKnowledgeNodeLabels(db, [
+      "svc_haircut",
+      "unknown_id",
+      "svc_haircut",
+    ]);
+    expect(result).toHaveLength(2);
+    expect(result.find((r) => r.id === "svc_haircut")?.displayLabel).toBe("Haircut");
+    expect(result.find((r) => r.id === "unknown_id")).toEqual({
+      id: "unknown_id",
+      displayLabel: null,
+      status: null,
+    });
   });
 });

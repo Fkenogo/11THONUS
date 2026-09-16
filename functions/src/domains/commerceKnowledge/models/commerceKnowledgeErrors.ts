@@ -427,3 +427,29 @@ export function businessCategoryNotFoundForTypeListingError(
     ],
   );
 }
+
+/**
+ * `PLATFORM-BASELINE-008` addendum (Reward Program qualifying-node
+ * selector read transport) — `listQualifyingNodesForCategory` was called
+ * with a `categoryId` that does not resolve to an existing, `active`
+ * `reward_program_category` node. Mirrors
+ * `businessCategoryNotFoundForTypeListingError`'s established
+ * fail-closed-and-undifferentiated precedent exactly (never distinguishes
+ * "does not exist" from "not a Reward Program category" from "not
+ * active").
+ */
+export function rewardProgramCategoryNotFoundForNodeListingError(
+  categoryId: string,
+): CommerceKnowledgeDomainError {
+  return new CommerceKnowledgeDomainError(
+    "RESOURCE_NOT_FOUND",
+    `Reward Program category "${categoryId}" does not resolve to an existing, active Commerce Knowledge category.`,
+    [
+      {
+        field: "categoryId",
+        code: "not_found",
+        messageKey: "commerceKnowledge.rewardProgramCategory.notFound",
+      },
+    ],
+  );
+}

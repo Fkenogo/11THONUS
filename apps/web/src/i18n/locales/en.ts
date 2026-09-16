@@ -263,13 +263,27 @@ export const en = {
       saving: "Saving…",
       fieldDisplayName: "Program name",
       fieldCategory: "Reward Program category",
-      fieldQualifyingNodes: "Qualifying products/services (comma-separated)",
+      fieldQualifyingNodes: "Qualifying products/services",
       fieldRewardDescription: "Reward description",
       fieldEffectiveFrom: "Effective from",
       fieldMultipleUnitsAllowed: "Allow multiple units per purchase",
       fieldSharedLoyaltyNumberAllowed: "Allow a shared loyalty number",
       fixedInvariantsNote:
         "Verified Units Required: {{threshold}} and Reward Quantity: {{quantity}} are fixed platform rules and cannot be changed.",
+      category: {
+        loading: "Loading Reward Program categories…",
+        loadError: "We couldn't load Reward Program categories. Please try again.",
+        placeholder: "Choose a category",
+        empty: "No Reward Program categories are available yet. Contact platform support.",
+      },
+      qualifyingNodeSelector: {
+        chooseCategoryFirst: "Choose a Reward Program category first.",
+        loading: "Loading products and services…",
+        loadError: "We couldn't load products and services for this category. Please try again.",
+        empty: "No products or services are available for this category yet.",
+        unavailableLabel: "Previously selected item (name unavailable)",
+        unavailableNote: "(no longer available — kept in this program's configuration)",
+      },
       versionLabel: "Version {{version}}",
       status: {
         draft: "Draft",

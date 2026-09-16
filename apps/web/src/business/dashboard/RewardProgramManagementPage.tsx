@@ -17,8 +17,11 @@
 
 import { useState } from "react";
 import { useTranslation } from "../../i18n";
-import { Button, Checkbox, TextField } from "../../components/ui/formPrimitives";
-import { useAccessibleBusinessesQuery } from "../hooks/businessQueries";
+import { Button, Checkbox, Select, TextField } from "../../components/ui/formPrimitives";
+import {
+  useAccessibleBusinessesQuery,
+  useRewardProgramCategoriesQuery,
+} from "../hooks/businessQueries";
 import { useRewardProgramsQuery } from "../hooks/rewardProgramQueries";
 import {
   useCreateNextRewardProgramVersionMutation,
@@ -27,6 +30,7 @@ import {
   useUpdateRewardProgramDraftMutation,
 } from "../hooks/rewardProgramMutations";
 import { MutationError } from "../onboarding/MutationError";
+import { QualifyingNodeSelector } from "./QualifyingNodeSelector";
 import type { BusinessContext } from "../api/businessContext";
 import type {
   QualifyingNodeWire,
@@ -48,7 +52,16 @@ type DraftFormState = {
   displayName: string;
   rewardProgramCategoryId: string;
   rewardDescription: string;
-  qualifyingNodeIds: string;
+  /**
+   * `PLATFORM-BASELINE-008`: canonical Commerce Knowledge qualifying-node
+   * selections, edited exclusively through `QualifyingNodeSelector` — the
+   * operator never types a canonical id (previously a comma-separated
+   * free-text field, `parseQualifyingNodeIds`). Preserves each node's
+   * existing `businessDisplayName` (never product-exposed as editable,
+   * Finding 4-style preservation) rather than resetting it to `null` on
+   * every edit.
+   */
+  qualifyingNodes: QualifyingNodeWire[];
   multipleUnitsAllowed: boolean;
   sharedLoyaltyNumberAllowed: boolean;
   effectiveFrom: string;
@@ -65,7 +78,7 @@ function emptyDraftForm(): DraftFormState {
     displayName: "",
     rewardProgramCategoryId: "",
     rewardDescription: "",
-    qualifyingNodeIds: "",
+    qualifyingNodes: [],
     multipleUnitsAllowed: true,
     sharedLoyaltyNumberAllowed: false,
     effectiveFrom: new Date().toISOString().slice(0, 10),
@@ -75,18 +88,20 @@ function emptyDraftForm(): DraftFormState {
   };
 }
 
-function parseQualifyingNodeIds(raw: string): QualifyingNodeWire[] {
-  return raw
-    .split(",")
-    .map((id) => id.trim())
-    .filter((id) => id.length > 0)
-    .map((id) => ({ knowledgeNodeId: id, businessDisplayName: null }));
-}
-
 export function RewardProgramManagementPage({ context }: { context: BusinessContext }) {
-  const { t } = useTranslation("business");
+  const { t, i18n } = useTranslation("business");
   const accessibleQuery = useAccessibleBusinessesQuery();
   const rewardProgramsQuery = useRewardProgramsQuery(context.businessId);
+  /**
+   * `PLATFORM-BASELINE-008`: the create form's Reward Program category
+   * selector candidate list — human-readable Commerce Knowledge category
+   * options in place of a free-typed canonical id. An empty result is a
+   * normal, supported outcome (current Commerce Knowledge seed content has
+   * no `reward_program_category` nodes yet — a disclosed, pre-existing
+   * content gap, not a defect of this selector); the form shows an
+   * explicit note rather than a silently empty dropdown.
+   */
+  const rewardProgramCategoriesQuery = useRewardProgramCategoriesQuery(i18n.language);
 
   const myRole = accessibleQuery.data?.find(
     (business) => business.businessId === context.businessId,
@@ -131,7 +146,7 @@ export function RewardProgramManagementPage({ context }: { context: BusinessCont
       displayName: entry.program.displayName,
       rewardProgramCategoryId: entry.program.rewardProgramCategoryId,
       rewardDescription: draft.rewardDescription,
-      qualifyingNodeIds: draft.qualifyingNodes.map((n) => n.knowledgeNodeId).join(", "),
+      qualifyingNodes: draft.qualifyingNodes,
       multipleUnitsAllowed: draft.multipleUnitsAllowed,
       sharedLoyaltyNumberAllowed: draft.sharedLoyaltyNumberAllowed,
       effectiveFrom: draft.effectiveFrom.slice(0, 10),
@@ -152,7 +167,7 @@ export function RewardProgramManagementPage({ context }: { context: BusinessCont
         multipleUnitsAllowed: createForm.multipleUnitsAllowed,
         sharedLoyaltyNumberAllowed: createForm.sharedLoyaltyNumberAllowed,
         effectiveFrom: new Date(createForm.effectiveFrom).toISOString(),
-        qualifyingNodes: parseQualifyingNodeIds(createForm.qualifyingNodeIds),
+        qualifyingNodes: createForm.qualifyingNodes,
       },
       {
         onSuccess: () => {
@@ -178,7 +193,7 @@ export function RewardProgramManagementPage({ context }: { context: BusinessCont
         bulkReviewThreshold: editForm.bulkReviewThreshold,
         effectiveFrom: new Date(editForm.effectiveFrom).toISOString(),
         effectiveUntil: editForm.effectiveUntil,
-        qualifyingNodes: parseQualifyingNodeIds(editForm.qualifyingNodeIds),
+        qualifyingNodes: editForm.qualifyingNodes,
       },
       { onSuccess: () => setEditingProgramId(null) },
     );
@@ -208,18 +223,44 @@ export function RewardProgramManagementPage({ context }: { context: BusinessCont
             onChange={(v) => setCreateForm((f) => ({ ...f, displayName: v }))}
             required
           />
-          <TextField
-            id="rp-create-category"
-            label={t("rewardProgram.fieldCategory")}
-            value={createForm.rewardProgramCategoryId}
-            onChange={(v) => setCreateForm((f) => ({ ...f, rewardProgramCategoryId: v }))}
-            required
-          />
-          <TextField
-            id="rp-create-qualifyingNodes"
-            label={t("rewardProgram.fieldQualifyingNodes")}
-            value={createForm.qualifyingNodeIds}
-            onChange={(v) => setCreateForm((f) => ({ ...f, qualifyingNodeIds: v }))}
+          {rewardProgramCategoriesQuery.isLoading ? (
+            <p className="text-sm text-[var(--color-muted-foreground)]">
+              {t("rewardProgram.category.loading")}
+            </p>
+          ) : rewardProgramCategoriesQuery.isError ? (
+            <div
+              role="alert"
+              className="rounded-md border border-[var(--color-border)] p-2 text-sm"
+            >
+              {t("rewardProgram.category.loadError")}
+            </div>
+          ) : (
+            <>
+              <Select
+                id="rp-create-category"
+                label={t("rewardProgram.fieldCategory")}
+                value={createForm.rewardProgramCategoryId}
+                onChange={(v) =>
+                  setCreateForm((f) => ({ ...f, rewardProgramCategoryId: v, qualifyingNodes: [] }))
+                }
+                placeholder={t("rewardProgram.category.placeholder")}
+                options={(rewardProgramCategoriesQuery.data ?? []).map((option) => ({
+                  value: option.id,
+                  label: option.displayLabel,
+                }))}
+              />
+              {(rewardProgramCategoriesQuery.data ?? []).length === 0 && (
+                <p className="text-sm text-[var(--color-muted-foreground)]">
+                  {t("rewardProgram.category.empty")}
+                </p>
+              )}
+            </>
+          )}
+          <QualifyingNodeSelector
+            idPrefix="rp-create-qn"
+            categoryId={createForm.rewardProgramCategoryId}
+            selected={createForm.qualifyingNodes}
+            onChange={(next) => setCreateForm((f) => ({ ...f, qualifyingNodes: next }))}
           />
           <TextField
             id="rp-create-rewardDescription"
@@ -364,11 +405,15 @@ export function RewardProgramManagementPage({ context }: { context: BusinessCont
                   onChange={(v) => setEditForm((f) => ({ ...f, rewardDescription: v }))}
                   required
                 />
-                <TextField
-                  id={`rp-edit-qualifyingNodes-${entry.program.id}`}
-                  label={t("rewardProgram.fieldQualifyingNodes")}
-                  value={editForm.qualifyingNodeIds}
-                  onChange={(v) => setEditForm((f) => ({ ...f, qualifyingNodeIds: v }))}
+                {/* Category is fixed at creation and not draft-editable
+                    (`RewardProgramDraftFieldsRequest` carries no
+                    `rewardProgramCategoryId`) — the selector is scoped to
+                    the program's own existing category, never a re-pick. */}
+                <QualifyingNodeSelector
+                  idPrefix={`rp-edit-qn-${entry.program.id}`}
+                  categoryId={entry.program.rewardProgramCategoryId}
+                  selected={editForm.qualifyingNodes}
+                  onChange={(next) => setEditForm((f) => ({ ...f, qualifyingNodes: next }))}
                 />
                 <TextField
                   id={`rp-edit-effectiveFrom-${entry.program.id}`}

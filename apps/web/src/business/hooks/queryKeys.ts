@@ -7,6 +7,11 @@ export const businessQueryKeys = {
   branch: (businessId: string) => ["businessBranch", businessId] as const,
   categories: () => ["commerceKnowledge", "businessCategories"] as const,
   types: (categoryId: string) => ["commerceKnowledge", "businessTypes", categoryId] as const,
+  rewardProgramCategories: () => ["commerceKnowledge", "rewardProgramCategories"] as const,
+  qualifyingNodes: (categoryId: string) =>
+    ["commerceKnowledge", "qualifyingNodes", categoryId] as const,
+  knowledgeNodeLabels: (nodeIds: readonly string[]) =>
+    ["commerceKnowledge", "nodeLabels", [...nodeIds].sort().join(",")] as const,
   staffInvitations: (businessId: string) => ["staffInvitations", businessId] as const,
   staffMemberships: (businessId: string) => ["staffMemberships", businessId] as const,
   rewardPrograms: (businessId: string) => ["rewardPrograms", businessId] as const,
