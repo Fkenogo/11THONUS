@@ -94,6 +94,10 @@ import {
   isRewardProgramPermission,
   getRewardProgramPermissionEntry,
 } from "../models/rewardProgramPermissionCatalogue";
+import {
+  isPurchasePermission,
+  getPurchasePermissionEntry,
+} from "../models/purchasePermissionCatalogue";
 import type { AuthorizationDecision, EvaluationInput, PermissionSource, ReasonCode } from "./types";
 import type { ErrorCategory } from "../../../shared/errors/errorCategories";
 
@@ -121,7 +125,7 @@ import type { ErrorCategory } from "../../../shared/errors/errorCategories";
  */
 const LEGACY_OPERATIONAL_SENSITIVE_STATUSES = new Set(["active", "trial"]);
 
-type PermissionClass = "sensitive" | "ordinary" | "rewardProgram" | "unknown";
+type PermissionClass = "sensitive" | "ordinary" | "rewardProgram" | "purchase" | "unknown";
 
 function classifyPermission(permission: string): PermissionClass {
   if (isSensitivePermission(permission)) {
@@ -132,6 +136,9 @@ function classifyPermission(permission: string): PermissionClass {
   }
   if (isRewardProgramPermission(permission)) {
     return "rewardProgram";
+  }
+  if (isPurchasePermission(permission)) {
+    return "purchase";
   }
   return "unknown";
 }
@@ -243,6 +250,13 @@ export function evaluateAuthorizationDecision(input: EvaluationInput): Authoriza
     if (!rewardProgramEntry.eligibleBusinessStatuses.includes(business.business.status)) {
       return deny(now, "BUSINESS_NOT_ACTIVE", "BUSINESS_INACTIVE");
     }
+  } else if (permissionClass === "purchase") {
+    // `PLATFORM-BASELINE-006A`: fourth catalogue, same per-class lifecycle-
+    // eligibility gate shape as the catalogues above.
+    const purchaseEntry = getPurchasePermissionEntry(request.permission);
+    if (!purchaseEntry.eligibleBusinessStatuses.includes(business.business.status)) {
+      return deny(now, "BUSINESS_NOT_ACTIVE", "BUSINESS_INACTIVE");
+    }
   }
   // permissionClass === "unknown": no lifecycle gate applies here — an
   // unconfigured permission was never eligible on any Business status
@@ -349,6 +363,26 @@ export function evaluateAuthorizationDecision(input: EvaluationInput): Authoriza
     return deny(now, "NO_APPLICABLE_GRANT", "AUTH_FORBIDDEN", role);
   }
 
+  // Step 5c (`PLATFORM-BASELINE-006A`): Purchase permissions resolve
+  // entirely through their own role-default table and return here, exactly
+  // mirroring Step 5a/5b above (structural copy, not a new algorithm) — no
+  // override/inheritance path exists for this catalogue in this package
+  // (Staff/Manager/Owner per PRD5 §8; see
+  // `purchasePermissionCatalogue.ts`'s header note).
+  if (isPurchasePermission(permission)) {
+    const purchaseEntry = getPurchasePermissionEntry(permission);
+    if (purchaseEntry.roleDefaults[role]) {
+      return {
+        allowed: true,
+        reasonCode: "ROLE_DEFAULT_ALLOW",
+        role,
+        permissionSource: "role-default",
+        evaluatedAt: now,
+      };
+    }
+    return deny(now, "NO_APPLICABLE_GRANT", "AUTH_FORBIDDEN", role);
+  }
+
   // Overrides embedded in the resolved membership only — an override
   // stamped for a different business or membership is never trusted
   // (§5.6 cross-business isolation, defence-in-depth beyond repository scoping).
@@ -444,13 +478,15 @@ export function evaluateAuthorizationDecision(input: EvaluationInput): Authoriza
   // A sensitive-catalogue id is always exhausted by step 8 above; an
   // ordinary-catalogue id (`ENG-P2-004-CORR-001`) always returns earlier,
   // at Step 5a, via its own dedicated `ORDINARY_PERMISSION_CATALOGUE`
-  // role-default table — never this one; any other id matches no role
-  // template here by construction (`SENSITIVE_PERMISSION_ROLE_TEMPLATES`
+  // role-default table — never this one; a Reward Program id
+  // (`PLATFORM-BASELINE-005A`) always returns at Step 5b; a Purchase id
+  // (`PLATFORM-BASELINE-006A`) always returns at Step 5c; any other id
+  // matches no role template here by construction (`SENSITIVE_PERMISSION_ROLE_TEMPLATES`
   // is derived exclusively from the sensitive catalogue's inheritable
   // entries — see `roleTemplate.ts`). Retained rather than removed as a
   // documented no-op placeholder: a *third*, still-ungoverned non-
-  // sensitive baseline permission space (e.g. `purchase.record`) remains
-  // outside both catalogues — `ENG-P2-004A` explicitly declined to invent
+  // sensitive baseline permission space (e.g. `redemption.process`) remains
+  // outside all catalogues — `ENG-P2-004A` explicitly declined to invent
   // one, and `ENG-P2-004-CORR-001` was explicitly authorized only for the
   // four named ordinary ids, not a general baseline (FD-CORR-2: "Do not
   // globally widen Business-status eligibility"). This step is where that

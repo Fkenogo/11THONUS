@@ -4,11 +4,15 @@
  */
 
 import { Route, Routes } from "react-router-dom";
+import type { Auth } from "firebase/auth";
+import type { Functions } from "firebase/functions";
 import { CustomerShell } from "./CustomerShell";
 import { CustomerHomePage } from "./CustomerHomePage";
 import { CustomerNotAvailablePage } from "./CustomerNotAvailablePage";
+import { CustomerActivityPage } from "./CustomerActivityPage";
+import { CustomerRewardsPage } from "./CustomerRewardsPage";
 
-export function CustomerRoutes() {
+export function CustomerRoutes({ auth, functions }: { auth: Auth; functions: Functions }) {
   return (
     <Routes>
       <Route element={<CustomerShell />}>
@@ -19,20 +23,10 @@ export function CustomerRoutes() {
             <CustomerNotAvailablePage titleKey="scan.title" bodyKey="scan.notYetAvailable" />
           }
         />
-        <Route
-          path="rewards"
-          element={
-            <CustomerNotAvailablePage titleKey="rewards.title" bodyKey="rewards.notYetAvailable" />
-          }
-        />
+        <Route path="rewards" element={<CustomerRewardsPage auth={auth} functions={functions} />} />
         <Route
           path="activity"
-          element={
-            <CustomerNotAvailablePage
-              titleKey="activity.title"
-              bodyKey="activity.notYetAvailable"
-            />
-          }
+          element={<CustomerActivityPage auth={auth} functions={functions} />}
         />
         <Route
           path="account"

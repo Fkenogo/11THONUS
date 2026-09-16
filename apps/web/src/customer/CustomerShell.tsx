@@ -5,13 +5,14 @@
  * and its "no bottom bar" convention (kept consistent across both shells
  * rather than re-litigated here).
  *
- * This is a product-shell integration surface only: every destination is
- * either the customer's own identity/loyalty-number/QR surface (Home, with an
- * explicit "not yet issued" state — no loyalty number or QR is actually
- * issued to any user yet, see `CustomerHomePage`) or an honest "not yet
- * available" stub (Scan, Rewards, Activity, Account). No Purchase,
- * Verification, Verified Unit, progress, or redemption logic is implemented
- * or fabricated here.
+ * This is a product-shell integration surface only: Home is the
+ * customer's own identity/loyalty-number/QR surface (with an explicit "not
+ * yet issued" state — no loyalty number or QR is actually issued to any
+ * user yet, see `CustomerHomePage`); Rewards and Activity are the
+ * `PLATFORM-BASELINE-006A` minimum verification surfaces (available
+ * rewards; "Waiting for you" purchases with verify/reject/dispute);
+ * Scan and Account remain honest "not yet available" stubs. No Verified
+ * Unit, progress, or redemption logic is implemented or fabricated here.
  */
 
 import { useEffect, useId, useRef, useState } from "react";

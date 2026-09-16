@@ -15,10 +15,17 @@ supporting tables introduced for this domain (`idempotency_keys`,
 `reward_program_outbox`) — see
 `../rewardProgramMigrations.postgres.test.ts` for their coverage and
 `docs/05-implementation/reports/PLATFORM-BASELINE-005A-reward-program-foundation-implementation-report-2026-09-13.md`
-for the full design rationale. `purchase_records`, `verification_decisions`,
-`verified_units`, `loyalty_cycles`, `rewards`, and `redemptions` remain
-un-created here — those belong to their own, separately authorized future
-implementation packages.
+for the full design rationale. `PLATFORM-BASELINE-006A` adds `0007`–`0014`: two additive composite
+UNIQUEs on the Reward Program tables (same-program scope proofs) plus the
+Purchase / Verification transactional spine (`purchase_records`,
+`purchase_record_events`, `verified_units`, `loyalty_cycle_streams`,
+`loyalty_cycles`, `verified_unit_allocations`,
+`verified_unit_allocation_events`, `rewards`, `trust_events`,
+`notification_intents`, `purchase_outbox`) — see
+`docs/05-implementation/reports/PLATFORM-BASELINE-006-purchase-verification-entry-technical-design-2026-09-14.md`
+§20 for the full schema rationale. `verification_decisions` and
+`redemptions` remain un-created here — those belong to their own,
+separately authorized future implementation packages.
 
 The migration runner's own bookkeeping table (`schema_migrations`) is
 created directly by `migrationRunner.ts`'s `ensureMigrationsTable` — it is

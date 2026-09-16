@@ -12,4 +12,7 @@ export const businessQueryKeys = {
   rewardPrograms: (businessId: string) => ["rewardPrograms", businessId] as const,
   rewardProgram: (businessId: string, rewardProgramId: string) =>
     ["rewardProgram", businessId, rewardProgramId] as const,
+  purchases: (businessId: string, status: string) => ["purchases", businessId, status] as const,
+  purchase: (businessId: string, purchaseRecordId: string) =>
+    ["purchase", businessId, purchaseRecordId] as const,
 };
