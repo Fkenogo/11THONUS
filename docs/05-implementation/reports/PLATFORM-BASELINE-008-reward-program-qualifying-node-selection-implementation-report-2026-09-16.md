@@ -296,11 +296,11 @@ See the diff in this PR for the exact prepended "Last controlled update" line, f
 
 ## 34. PR state
 
-Opened against `main`, not merged (per explicit task instruction). Exact PR number/URL/head SHA in §35.
+**PR #255** — `https://github.com/Fkenogo/11THONUS/pull/255` (base `main`, head `feat/platform-baseline-008-reward-program-qualifying-node-selection`). **Open, not merged.**
 
 ## 35. CI state
 
-Recorded at PR-open time — see the top-level dispatch completion message for exact-head CI status, review-thread inventory, and confirmed PR head SHA.
+CI (`Build, Lint, Test, Emulator Validation`) triggered on each pushed head; in progress at final-head push time (`094bee0`) — see this report's CORR-001 addendum below for the review-thread inventory and the exact final head this disposition covers.
 
 ## 36. Known limitations
 
@@ -319,3 +319,88 @@ The engine-level operability gap `PLATFORM-BASELINE-007` identified (§4/§6/§1
 ---
 
 *This report and its accompanying `documentation-changes-log.md` entry (232), together with the code changes listed in §9, are the only changes this task makes. No migration, no dependency, no governance-decision change, nothing merged.*
+
+---
+
+# PLATFORM-BASELINE-008-CORR-001 — Review-Finding Corrections (Information Disclosure + Two P2s)
+
+**Date:** 2026-09-16
+**Type:** Correction of three confirmed findings on the existing PR #255 (no new PR, no merge).
+**Authority:** (1) an automated background security review flagged "information-disclosure in `commerceKnowledgeReadService.ts`", independently confirmed as real; (2) automated code review (`chatgpt-codex-connector`) on PR #255, two further **P2** findings, both independently confirmed as real.
+
+## C1. Finding 1 — information disclosure in `resolveKnowledgeNodeLabels` (CONFIRMED, FIXED)
+
+**Root cause.** `resolveKnowledgeNodeLabels` (`functions/src/domains/commerceKnowledge/services/commerceKnowledgeReadService.ts`) called `getKnowledgeNodeById` and returned the node's real `canonicalName`-derived label and lifecycle `status` for **any** status at all, including `draft` and `in_review`. This endpoint requires only authentication (`resolveAuthenticatedBusinessActor`) — no Business membership, no Commerce-Knowledge-authoring permission, and (correctly, by design) no verification that the caller's supplied id actually came from one of their own Reward Program drafts. The domain's own established authority split (`referenceEligibility.ts`) already draws exactly this line: `isEligibleForNewReference` (`active` only) governs new selections, `isResolvableForExistingReference` (`active`/`retired`/`archived`) governs whether an *existing* reference still resolves for display — `draft`/`in_review` was never eligible to be referenced in the first place and must not resolve either way. `resolveKnowledgeNodeLabels` ignored this second predicate entirely, so any authenticated caller (Business Owner or Staff of any Business, not just one with a legitimate reason to know) could submit an arbitrary or guessed node id and learn the real name and lifecycle status of unpublished, governance-in-progress Commerce Knowledge taxonomy content.
+
+**Correction.** Import and apply `isResolvableForExistingReference(node.status)` as the gate: a `draft`/`in_review` node (or a genuinely nonexistent id) now resolves identically — `{displayLabel: null, status: null}`. `active`/`retired`/`archived` nodes continue to resolve for display exactly as before (retirement never breaks an existing reference). No new authority/policy invented — this reuses the domain's own existing predicate, previously used by `listBusinessTypesForCategory`/`listQualifyingNodesForCategory` for the *candidate-list* side of the same distinction but never applied to this *hydration* endpoint.
+
+**Regression tests added** (`commerceKnowledgeReadService.emulator.test.ts`): a `draft` node's real label/status never resolves; an `in_review` node's real label/status never resolves; an `archived` node still resolves for display (DAP-010 precedent unaffected).
+
+## C2. Finding 2 — language-unscoped query keys under `staleTime: Infinity` (CONFIRMED, FIXED)
+
+**Root cause.** `businessQueryKeys.rewardProgramCategories`/`qualifyingNodes`/`knowledgeNodeLabels` did not include `languageCode` in their key, while the corresponding hooks (`businessQueries.ts`) set `staleTime: Infinity` and send `languageCode` in every request. React Query only refetches on a genuine key change (or explicit invalidation, neither of which this page ever triggers for these three reads) — so switching the UI language (EN→FR or back) would leave the previously-cached, wrong-language labels on screen indefinitely for the category dropdown, the qualifying-node candidate list, and any hydrated "unavailable" labels.
+
+**Correction.** All three key factories now take `languageCode` as an explicit parameter and include it in the returned tuple; the three hooks pass `languageCode ?? ""` through. This is additive only — no other caller of `businessQueryKeys` was touched, and the pre-existing `categories`/`types` keys (same underlying gap, `listBusinessCategories`/`listBusinessTypesForCategory`, already-shipped before this package) were deliberately left alone as genuinely out of this package's scope (not code this package added or touched).
+
+**Regression test added:** `apps/web/src/business/hooks/queryKeys.test.ts` — proves distinct keys per language for all three factories, and key stability across repeated calls and (for `knowledgeNodeLabels`) id-array reordering.
+
+## C3. Finding 3 — category `Select` lost native `required` validation (CONFIRMED, FIXED)
+
+**Root cause.** The prior opaque category `TextField` carried `required`, giving native browser constraint-validation before any mutation could fire on an empty value. The replacement `Select` (`apps/web/src/components/ui/formPrimitives.tsx`) had no `required` prop at all, so the create form's category `Select` silently lost that protection — an unfilled category (still showing the placeholder option, value `""`) could reach `createMutation.mutate` and only fail after a round trip to the server.
+
+**Correction.** Added an additive `required?: boolean` prop to the shared `Select` primitive (opt-in; every existing caller — `ClassificationStep.tsx`, `BusinessProfilePage.tsx` — is unaffected, since neither passes it and the prop defaults to `undefined`/falsy) and set `required` on the Reward Program category selector, restoring the exact native-validation behavior the prior `TextField` had.
+
+**Regression test added:** `RewardProgramManagementPage.test.tsx` — asserts the category `Select` is `toBeRequired()` and that `checkValidity()` is `false` while empty.
+
+## C4. Files modified (this correction only)
+
+- `functions/src/domains/commerceKnowledge/services/commerceKnowledgeReadService.ts` — `resolveKnowledgeNodeLabels` gated by `isResolvableForExistingReference`.
+- `functions/src/domains/commerceKnowledge/services/commerceKnowledgeReadService.emulator.test.ts` — 3 new regression tests (C1) + 3 new tests for previously-untested `listRewardProgramCategories` (a pre-existing minor coverage gap, closed opportunistically while already in this file for the security fix).
+- `apps/web/src/business/hooks/queryKeys.ts` — three key factories take `languageCode`.
+- `apps/web/src/business/hooks/queryKeys.test.ts` — **new**, 3 tests (C2).
+- `apps/web/src/business/hooks/businessQueries.ts` — the three hooks pass `languageCode ?? ""` into their keys.
+- `apps/web/src/components/ui/formPrimitives.tsx` — additive `required` prop on `Select`.
+- `apps/web/src/business/dashboard/RewardProgramManagementPage.tsx` — `required` set on the category selector.
+- `apps/web/src/business/dashboard/RewardProgramManagementPage.test.tsx` — 1 new regression test (C3).
+
+No PostgreSQL/migration file, no permission/authorization file, no RF-3 validation file, and no dependency was touched by this correction.
+
+## C5. Test results (actually run, this correction)
+
+- Targeted: `commerceKnowledgeReadService.emulator.test.ts` (28/28, incl. the 6 new tests), `queryKeys.test.ts` (3/3, new file), `RewardProgramManagementPage.test.tsx` + `QualifyingNodeSelector.test.tsx` + `components/ui` (44/44 combined).
+- Full `functions` unit suite: **158 files, 1762/1762 passed**.
+- Full `apps/web` unit/component suite: **123 files, 878/878 passed** (was 122/874 before this correction — +1 file, +4 tests: the new `queryKeys.test.ts` file plus the new required-select regression test).
+- Firebase Emulator Suite (full, `firebase emulators:exec ... test:emulator`, alternate ports to route around an unrelated concurrent `tiizi-s2b-preview` emulator instance on this shared machine, `firebase.json` reverted to its exact committed content immediately after — confirmed via `git diff firebase.json` showing no output): **65 files, 849 passed, 3 pre-existing skipped, 0 failed.**
+- PostgreSQL cross-store integration suite (full, same alternate-port pattern, against a freshly recreated disposable local Postgres 16 container): **6 files, 94/94 passed.** (First attempt against the same container after several hours of accumulated prior test-run state showed one failure in `platformFoundationReadiness.postgres.test.ts` — the exact same class of stale-migration-state environmental flake independently documented in `PLATFORM-BASELINE-006A-CORR-003` §E7; `pnpm postgres:down && pnpm postgres:up` for a genuinely fresh database immediately resolved it to 94/94 — confirmed environmental, not a regression, not touched by this correction's actual file changes.)
+- Playwright (`chromium` + `chromium-dashboard-harness`): **36/37 passed** — the same single `app-shell.spec.ts` failure as the original implementation pass (§25), reconfirmed as the same local port-4173 collision with an unrelated already-running preview server on this shared machine (not a product regression).
+- Typecheck (`apps/web` + `functions`), lint (0 errors, same 1 pre-existing unrelated warning), format check, production build, `git diff --check`: all clean.
+
+## C6. Review-thread inventory and dispositions
+
+Three inline review threads existed on PR #255 (from `chatgpt-codex-connector`'s automated review of commit `e827339`), all **P2**:
+
+1. **P2** — `functions/src/domains/commerceKnowledge/services/commerceKnowledgeReadService.ts:302` — information disclosure via unrestricted status resolution. **Fixed in `360e317` (§C1).** Replied with root cause, fix, and test evidence.
+2. **P2** — `apps/web/src/business/hooks/queryKeys.ts:14` — language-unscoped keys under `staleTime: Infinity`. **Fixed in `094bee0` (§C2).** Replied with root cause, fix, and test evidence.
+3. **P2** — `apps/web/src/business/dashboard/RewardProgramManagementPage.tsx:243` — category `Select` missing `required`. **Fixed in `094bee0` (§C3).** Replied with root cause, fix, and test evidence.
+
+All three threads are addressed; none left open. No new review finding was introduced by this correction as of the corrected head (self-reviewed against the full diff before finalizing).
+
+## C7. SHAs
+
+- Original implementation head: `e827339087646ff8c32733b52db04fdb671504f1`.
+- Correction commit 1 (Finding 1, information disclosure): `360e3173666ffc801030de057ddb923b20263291`.
+- Correction commit 2 (Findings 2/3, the two P2s): `094bee0f217495207cbad83edd103c9277dd6c4b`.
+- **Final PR head (this disposition covers this exact SHA): `094bee0f217495207cbad83edd103c9277dd6c4b`.**
+- Base: `b36043c48afd4bf7aea3217036666255d3cbaa57` (`origin/main` at entry, unchanged).
+
+## C8. Rollback
+
+Revert the two correction commits (`git revert 094bee0 360e317`) on `feat/platform-baseline-008-reward-program-qualifying-node-selection`. Nothing outside the 8 files in §C4 is affected: no migration, no dependency, no configuration, no governance decision, no schema change. Reverting restores the original `e827339` behavior (including the information-disclosure gap) — not recommended; fixing forward is the intended path.
+
+## C9. Worktree safety
+
+All correction work was done in the same isolated worktree (`.claude/worktrees/platform-baseline-008`) on the same branch, pushed to the same PR #255. The primary worktree (`/Volumes/PRODUCTION/Projects/11THONUS`, branch `docs/dec-legal-002-bt-draft-007`, unrelated in-progress legal drafting work) was never entered, staged, committed, reset, or cleaned at any point during this correction — see the top-level completion report for the final `git status` proof.
+
+## C10. Final disposition
+
+**PLATFORM-BASELINE-008-CORR-001 — INFORMATION-DISCLOSURE AND TWO P2 FINDINGS CORRECTED / AWAITING INDEPENDENT RE-REVIEW. Do NOT merge.** This does not change the package-level disposition recorded in §38 (**A — IMPLEMENTED / AWAITING INDEPENDENT REVIEW**); it corrects genuine findings on the same disposition, the same PR, the same branch.
