@@ -22,6 +22,7 @@ import type { BusinessContext } from "../api/businessContext";
 import { usePurchasesQuery, useBusinessPurchaseQuery } from "../hooks/purchaseQueries";
 import { useRecordPurchaseMutation } from "../hooks/purchaseMutations";
 import { useRewardProgramsQuery } from "../hooks/rewardProgramQueries";
+import { parsePurchaseRecordQuantity } from "./purchaseQuantityInput";
 
 type RecordFormState = {
   rewardProgramId: string;
@@ -64,6 +65,7 @@ export function PurchaseRecordsPage({ context }: { context: BusinessContext }) {
 
   const [form, setForm] = useState<RecordFormState>(emptyRecordForm());
   const [recorded, setRecorded] = useState(false);
+  const [quantityError, setQuantityError] = useState(false);
   const recordMutation = useRecordPurchaseMutation(context.businessId);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -76,7 +78,12 @@ export function PurchaseRecordsPage({ context }: { context: BusinessContext }) {
   async function submitRecord(event: React.FormEvent) {
     event.preventDefault();
     setRecorded(false);
-    const quantity = Number.parseInt(form.quantity, 10);
+    const quantity = parsePurchaseRecordQuantity(form.quantity);
+    if (quantity === null) {
+      setQuantityError(true);
+      return;
+    }
+    setQuantityError(false);
     await recordMutation.mutateAsync({
       rewardProgramId: form.rewardProgramId,
       ...(form.artifactKind === "loyalty_number"
@@ -151,7 +158,11 @@ export function PurchaseRecordsPage({ context }: { context: BusinessContext }) {
             id="purchase-record-quantity"
             label={t("purchase.fieldQuantity")}
             value={form.quantity}
-            onChange={(value) => setForm({ ...form, quantity: value })}
+            onChange={(value) => {
+              setForm({ ...form, quantity: value });
+              setQuantityError(false);
+            }}
+            errorMessage={quantityError ? t("purchase.fieldQuantityError") : undefined}
             required
           />
           <TextField

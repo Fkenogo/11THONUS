@@ -20,10 +20,20 @@ function requireReadyActor(actorState: ReturnType<typeof useAuthenticatedActor>)
   return actorState.actor;
 }
 
+/**
+ * The cache-partitioning scope for the current actor. `"pending"` while
+ * not yet `ready` is never a real `uid` and the query stays `enabled:
+ * false` in that state, so it is never populated under that placeholder —
+ * it only keeps `queryKey` defined before the actor resolves.
+ */
+function identityScopeOf(actorState: ReturnType<typeof useAuthenticatedActor>): string {
+  return actorState.status === "ready" ? actorState.identityScope : "pending";
+}
+
 export function useWaitingPurchasesQuery(platform: CustomerPlatform) {
   const actorState = useAuthenticatedActor(platform.auth);
   return useQuery({
-    queryKey: customerPurchaseQueryKeys.waiting(),
+    queryKey: customerPurchaseQueryKeys.waiting(identityScopeOf(actorState)),
     queryFn: () =>
       makeCustomerPurchaseCalls(platform.functions).waitingPurchases(
         requireReadyActor(actorState),
@@ -39,7 +49,10 @@ export function useCustomerPurchaseQuery(
 ) {
   const actorState = useAuthenticatedActor(platform.auth);
   return useQuery({
-    queryKey: customerPurchaseQueryKeys.purchase(purchaseRecordId ?? ""),
+    queryKey: customerPurchaseQueryKeys.purchase(
+      identityScopeOf(actorState),
+      purchaseRecordId ?? "",
+    ),
     queryFn: () =>
       makeCustomerPurchaseCalls(platform.functions).purchaseDetail(requireReadyActor(actorState), {
         purchaseRecordId: purchaseRecordId as string,
@@ -51,7 +64,7 @@ export function useCustomerPurchaseQuery(
 export function useAvailableRewardsQuery(platform: CustomerPlatform) {
   const actorState = useAuthenticatedActor(platform.auth);
   return useQuery({
-    queryKey: customerPurchaseQueryKeys.rewards(),
+    queryKey: customerPurchaseQueryKeys.rewards(identityScopeOf(actorState)),
     queryFn: () =>
       makeCustomerPurchaseCalls(platform.functions).availableRewards(
         requireReadyActor(actorState),

@@ -57,17 +57,33 @@ function usePurchaseMutationHarness(platform: CustomerPlatform) {
   return { actorState, queryClient, holderRef, lastRequestRef };
 }
 
+/**
+ * The cache-partitioning scope for the current actor, mirroring
+ * `customer/hooks/purchaseQueries.ts`'s `identityScopeOf` (disclosed
+ * duplication — see that module). `"pending"` only matters if the actor
+ * transitions away from `ready` in the (async) gap between a mutation's
+ * request and its response; it never targets another customer's cache.
+ */
+function identityScopeOf(actorState: ReturnType<typeof useAuthenticatedActor>): string {
+  return actorState.status === "ready" ? actorState.identityScope : "pending";
+}
+
 function settleSuccess(
   harness: ReturnType<typeof usePurchaseMutationHarness>,
   purchaseRecordId: string,
 ) {
   harness.holderRef.current.clear();
   harness.lastRequestRef.current = null;
-  harness.queryClient.invalidateQueries({ queryKey: customerPurchaseQueryKeys.waiting() });
+  const identityScope = identityScopeOf(harness.actorState);
   harness.queryClient.invalidateQueries({
-    queryKey: customerPurchaseQueryKeys.purchase(purchaseRecordId),
+    queryKey: customerPurchaseQueryKeys.waiting(identityScope),
   });
-  harness.queryClient.invalidateQueries({ queryKey: customerPurchaseQueryKeys.rewards() });
+  harness.queryClient.invalidateQueries({
+    queryKey: customerPurchaseQueryKeys.purchase(identityScope, purchaseRecordId),
+  });
+  harness.queryClient.invalidateQueries({
+    queryKey: customerPurchaseQueryKeys.rewards(identityScope),
+  });
 }
 
 export function useVerifyPurchaseMutation(platform: CustomerPlatform) {

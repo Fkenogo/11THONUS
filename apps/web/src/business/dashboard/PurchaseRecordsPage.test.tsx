@@ -160,6 +160,96 @@ describe("PurchaseRecordsPage", () => {
     expect(payload).not.toHaveProperty("rewardProgramVersionId");
   });
 
+  it("submits the exact typed integer quantity", async () => {
+    purchasesResult = { data: { purchases: [] } };
+    detailResult = { data: undefined };
+    programsResult = {
+      data: [
+        {
+          program: {
+            id: "rp-1",
+            displayName: "Coffees",
+            status: "active",
+            currentVersionId: "v-1",
+          },
+        },
+      ],
+    };
+    renderPage();
+    fireEvent.change(screen.getByLabelText("Loyalty Number or QR reference"), {
+      target: { value: "ABC234" },
+    });
+    fireEvent.change(screen.getByLabelText("Item label"), { target: { value: "Coffee" } });
+    fireEvent.change(screen.getByLabelText("Quantity"), { target: { value: "7" } });
+    const selects = screen.getAllByRole("combobox");
+    fireEvent.change(selects[0], { target: { value: "rp-1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Record purchase" }));
+    expect(mockRecord).toHaveBeenCalledTimes(1);
+    expect(mockRecord.mock.calls[0][0]).toMatchObject({ quantity: 7 });
+  });
+
+  it.each([
+    ["a fractional value", "1.5"],
+    ["trailing garbage", "2abc"],
+    ["zero", "0"],
+    ["a negative value", "-1"],
+  ])("rejects %s without calling the purchase mutation", (_label, rawQuantity) => {
+    purchasesResult = { data: { purchases: [] } };
+    detailResult = { data: undefined };
+    programsResult = {
+      data: [
+        {
+          program: {
+            id: "rp-1",
+            displayName: "Coffees",
+            status: "active",
+            currentVersionId: "v-1",
+          },
+        },
+      ],
+    };
+    renderPage();
+    fireEvent.change(screen.getByLabelText("Loyalty Number or QR reference"), {
+      target: { value: "ABC234" },
+    });
+    fireEvent.change(screen.getByLabelText("Item label"), { target: { value: "Coffee" } });
+    fireEvent.change(screen.getByLabelText("Quantity"), { target: { value: rawQuantity } });
+    const selects = screen.getAllByRole("combobox");
+    fireEvent.change(selects[0], { target: { value: "rp-1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Record purchase" }));
+    expect(mockRecord).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent("Enter a whole number of 1 or more.");
+  });
+
+  it("clears the quantity error once the field is edited again", () => {
+    purchasesResult = { data: { purchases: [] } };
+    detailResult = { data: undefined };
+    programsResult = {
+      data: [
+        {
+          program: {
+            id: "rp-1",
+            displayName: "Coffees",
+            status: "active",
+            currentVersionId: "v-1",
+          },
+        },
+      ],
+    };
+    renderPage();
+    fireEvent.change(screen.getByLabelText("Loyalty Number or QR reference"), {
+      target: { value: "ABC234" },
+    });
+    fireEvent.change(screen.getByLabelText("Item label"), { target: { value: "Coffee" } });
+    fireEvent.change(screen.getByLabelText("Quantity"), { target: { value: "2abc" } });
+    const selects = screen.getAllByRole("combobox");
+    fireEvent.change(selects[0], { target: { value: "rp-1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Record purchase" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Enter a whole number of 1 or more.");
+    fireEvent.change(screen.getByLabelText("Quantity"), { target: { value: "3" } });
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
   it("lists records and shows detail with the event timeline", () => {
     const purchase = purchaseWire();
     purchasesResult = { data: { purchases: [purchase] } };

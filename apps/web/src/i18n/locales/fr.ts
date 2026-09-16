@@ -313,6 +313,7 @@ export const fr = {
       artifactQr: "Identité QR",
       fieldArtifactValue: "Numéro de fidélité ou référence QR",
       fieldQuantity: "Quantité",
+      fieldQuantityError: "Saisissez un nombre entier supérieur ou égal à 1.",
       fieldItemLabel: "Libellé de l'article",
       fieldPurchaseDate: "Date d'achat",
       fieldNotes: "Notes (visibles par le client)",

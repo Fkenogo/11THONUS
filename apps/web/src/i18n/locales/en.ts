@@ -306,6 +306,7 @@ export const en = {
       artifactQr: "QR Identity",
       fieldArtifactValue: "Loyalty Number or QR reference",
       fieldQuantity: "Quantity",
+      fieldQuantityError: "Enter a whole number of 1 or more.",
       fieldItemLabel: "Item label",
       fieldPurchaseDate: "Purchase date",
       fieldNotes: "Notes (visible to the customer)",
