@@ -287,7 +287,7 @@ Commands executed: `pnpm typecheck` (functions+web), `pnpm lint`, `pnpm format:c
 2. `platformFoundationReadiness.postgres.test.ts`'s "fresh database" test — failed as part of the full 6-file suite, passed 7/7 in isolation, and **reproduced identically on the unmodified base commit `b2574990a2d0e27cb7518f9cd1a00eb212797f67`** with this correction's own changes stashed out (same fresh container, same command) — direct proof of pre-existing cross-file test-ordering fragility, not a regression.
 3. `tests/e2e/app-shell.spec.ts` (non-harness `chromium` Playwright project) — failed on a missing `apps/web/.env.local` (no Firebase project config exists in this worktree at all), a pre-existing local environment gap; the harness project (36 specs covering every Reward Program/Team/Terms screen with its own emulator-backed auth stub) passed cleanly.
 
-**Exact-head CI:** not yet re-verified against the pushed correction commit at time of writing this report section — see the completion report delivered to the requester for the actual post-push CI result.
+**Exact-head CI:** confirmed **pass** — `gh pr checks 257` on head `fc72335c964270d1f6af248e4580dcfd86349886` (the pushed correction commit): `Build, Lint, Test, Emulator Validation` — pass (8m4s).
 
 **Dependencies added:** none. **Config changes:** none committed (a temporary local `firebase.json` port remap used only to work around concurrent local sessions was fully reverted before this entry, confirmed via `git status`). **Schema/migration changes:** none. **`unitValueMinor` disposition:** left deferred, not investigated (out of scope, unchanged from §11 above).
 
