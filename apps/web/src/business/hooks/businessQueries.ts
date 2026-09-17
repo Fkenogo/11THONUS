@@ -194,10 +194,24 @@ export function useQualifyingNodesForBusinessTypeQuery(
 }
 
 /**
- * `PLATFORM-BASELINE-010B`: the qualifying-node selector's broader,
- * platform-wide "escape hatch" search — no Business-Type restriction.
- * Disabled while `searchText` is empty (the selector only issues this
- * query once the operator has actually typed something).
+ * `PLATFORM-BASELINE-010B-CORR-001` (P2): the same minimum trimmed-length
+ * gate the server (`searchQualifyingNodes`'s `MIN_SEARCH_TEXT_LENGTH`)
+ * enforces authoritatively -- kept here too so a one-character keystroke
+ * never even reaches the network, not just so the server rejects it once
+ * it arrives.
+ */
+const MIN_SEARCH_TEXT_LENGTH = 2;
+
+/**
+ * `PLATFORM-BASELINE-010B`, bounded by `PLATFORM-BASELINE-010B-CORR-001`
+ * (P2): the qualifying-node selector's broader, platform-wide "escape
+ * hatch" search — no Business-Type restriction. Disabled while the
+ * (caller-debounced -- see `QualifyingNodeSelector`'s use of
+ * `useDebouncedValue`) `searchText` is shorter than
+ * `MIN_SEARCH_TEXT_LENGTH` trimmed characters, so neither a bare keystroke
+ * nor an empty box ever issues a request. The server enforces the same
+ * bound independently and authoritatively; this is a client-side
+ * request-avoidance courtesy, not the security boundary.
  */
 export function useSearchQualifyingNodesQuery(searchText: string, languageCode?: string) {
   const { auth, functions } = useBusinessApiPlatform();
@@ -213,7 +227,7 @@ export function useSearchQualifyingNodesQuery(searchText: string, languageCode?:
             })(),
         { searchText, languageCode },
       ),
-    enabled: actorState.status === "ready" && searchText.trim().length > 0,
+    enabled: actorState.status === "ready" && searchText.trim().length >= MIN_SEARCH_TEXT_LENGTH,
     staleTime: Infinity,
   });
 }

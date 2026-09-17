@@ -15,7 +15,7 @@
  */
 
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QualifyingNodeSelector } from "./QualifyingNodeSelector";
 import type { QualifyingNodeWire } from "../api/rewardProgramMutations";
@@ -37,9 +37,20 @@ let searchResult: {
 };
 let nodeLabelsResult: { data: LabelResult[] | undefined };
 
+/**
+ * `PLATFORM-BASELINE-010B-CORR-001` (P2, item L): captures every
+ * `searchText` value `useSearchQualifyingNodesQuery` is actually called
+ * with, so a debounce test can assert the component does NOT call it once
+ * per keystroke.
+ */
+const searchQuerySpy = vi.fn();
+
 vi.mock("../hooks/businessQueries", () => ({
   useQualifyingNodesForBusinessTypeQuery: () => qualifyingNodesResult,
-  useSearchQualifyingNodesQuery: () => searchResult,
+  useSearchQualifyingNodesQuery: (searchText: string) => {
+    searchQuerySpy(searchText);
+    return searchResult;
+  },
   useKnowledgeNodeLabelsQuery: () => nodeLabelsResult,
 }));
 
@@ -275,6 +286,82 @@ describe("QualifyingNodeSelector (PLATFORM-BASELINE-010B)", () => {
       renderSelector([], vi.fn());
 
       expect(screen.getByText(/couldn't run that search/i)).toBeInTheDocument();
+    });
+
+    /**
+     * `PLATFORM-BASELINE-010B-CORR-001` (P2, item L): the confirmed
+     * finding was "invoked from client search without observed
+     * debouncing" -- typing a word character-by-character must not call
+     * `useSearchQualifyingNodesQuery` with a new, changed `searchText` on
+     * every keystroke; it settles once typing pauses.
+     */
+    it("item L: does not re-query on every keystroke -- the search hook only receives the settled value after typing pauses", () => {
+      vi.useFakeTimers();
+      try {
+        qualifyingNodesResult = { data: [], isLoading: false, isError: false, isSuccess: true };
+        searchResult = emptySearch();
+        nodeLabelsResult = { data: [] };
+        searchQuerySpy.mockClear();
+        renderSelector([], vi.fn());
+
+        const searchInput = screen.getByLabelText(/search all products and services/i);
+
+        // Simulate typing character-by-character (each keystroke is its own
+        // React state update, exactly like a real controlled input).
+        act(() => {
+          for (const partial of ["w", "wa", "was", "wash"]) {
+            fireEvent.change(searchInput, { target: { value: partial } });
+          }
+        });
+        // Immediately after typing, the debounce window has not elapsed --
+        // the hook must not have been re-called with the fully-typed value yet.
+        expect(searchQuerySpy).not.toHaveBeenCalledWith("wash");
+
+        act(() => {
+          vi.advanceTimersByTime(500);
+        });
+        // Only once typing has settled does the hook receive the final value.
+        expect(searchQuerySpy).toHaveBeenLastCalledWith("wash");
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    /**
+     * Item K (server-side, proven functionally here at the boundary the
+     * component controls): trivially short input must not even reach the
+     * search hook with a value the server would have to scan for --
+     * mirrors the server's own `MIN_SEARCH_TEXT_LENGTH` gate
+     * (`useSearchQualifyingNodesQuery`'s `enabled` condition), which this
+     * component relies on rather than duplicating its own copy of the
+     * threshold.
+     */
+    it("item K: a single-character search settles but the underlying query hook still owns the length gate (component does not bypass it)", () => {
+      vi.useFakeTimers();
+      try {
+        qualifyingNodesResult = { data: [], isLoading: false, isError: false, isSuccess: true };
+        searchResult = emptySearch();
+        nodeLabelsResult = { data: [] };
+        searchQuerySpy.mockClear();
+        renderSelector([], vi.fn());
+
+        const searchInput = screen.getByLabelText(/search all products and services/i);
+        act(() => {
+          fireEvent.change(searchInput, { target: { value: "w" } });
+        });
+        act(() => {
+          vi.advanceTimersByTime(500);
+        });
+
+        // The component still passes the debounced text through -- it is
+        // `useSearchQualifyingNodesQuery`'s own `enabled` gate
+        // (`businessQueries.ts`, `MIN_SEARCH_TEXT_LENGTH`) that decides
+        // whether a network request is actually made for a value this
+        // short; this component does not duplicate that decision.
+        expect(searchQuerySpy).toHaveBeenLastCalledWith("w");
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 });

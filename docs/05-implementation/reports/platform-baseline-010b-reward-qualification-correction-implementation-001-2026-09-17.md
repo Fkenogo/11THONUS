@@ -206,4 +206,99 @@ This worktree's copy of `docs/00-governance/documentation-changes-log.md` has he
 
 ## 13. PR
 
-Number/URL recorded after `gh pr create` (see final response to the requester).
+PR #257 — `feat/platform-baseline-010b-reward-qualification-correction-001` → `main`.
+
+---
+
+## CORR-001 — Publication-Requires-Qualifying-Node Invariant + Bounded Discovery Search
+
+**Date:** 2026-09-17
+**Basis:** `PLATFORM-BASELINE-010B-ITR-001`, an independent review of this report's own PR #257, confirmed two findings (P1, P2). This section corrects exactly those two findings. Does not redesign this package; `DEC-LOY-014`/`FD-REWARD-QUALIFICATION-001` remain settled authority.
+
+### CORR-001.1 Entry/analysis
+
+- Entry PR head confirmed via `gh pr view 257 --json headRefOid`: exactly `b2574990a2d0e27cb7518f9cd1a00eb212797f67`, matching this worktree's own `git rev-parse HEAD`.
+- CI on that exact head (`gh pr checks 257`): `Build, Lint, Test, Emulator Validation` — **pass**.
+- Review threads inventoried (`gh api repos/Fkenogo/11THONUS/pulls/257/comments`): two, both from `chatgpt-codex-connector[bot]`, no others.
+  1. P1 (badge `P1`) — `functions/src/domains/rewardProgram/services/rewardProgramKnowledgeValidation.ts:80` — "Require a qualifying node before publication."
+  2. P2 (badge `P2`) — `functions/src/domains/commerceKnowledge/services/commerceKnowledgeReadService.ts:342` — "Bound search before resolving every candidate label."
+- Both findings read and confirmed against source directly (not assumed from the review comment text alone) before any edit — see CORR-001.2/CORR-001.3 root-cause paragraphs below.
+- Worked in the existing isolated worktree (`/Volumes/PRODUCTION/Projects/11THONUS-worktrees/platform-baseline-010b-reward-qualification-correction-001`, same one this report's original package used) — no new worktree created, primary legal worktree never entered.
+
+### CORR-001.2 P1 — publication-requires-qualifying-node invariant
+
+**Root cause.** `validateAllReferences` (`rewardProgramKnowledgeValidation.ts`) is called by every create/draft-edit/publish command and does exactly two things per qualifying node: verify it exists, is the right type, and is active. With zero qualifying nodes, its `for` loop over `validateQualifyingNodes` is vacuously satisfied — nothing fails. Once `rewardProgramCategoryId` became optional (this package's own §3 change), `rewardProgramCategoryId: null` + `qualifyingNodes: []` had no remaining check anywhere in the publish path to reject it, so such a version could reach `publish`/`active` with no qualification definition of any kind.
+
+**Fix strategy considered and chosen.** Three options were weighed: (a) reject this shape globally inside `validateAllReferences` — rejected, since every draft create/edit command also calls that function and a draft is explicitly allowed to hold zero qualifying nodes while configuration is in progress (task instruction: "DRAFT: MAY contain zero qualifying nodes"); (b) a database-level `CHECK` constraint on `reward_program_version_qualifying_nodes` — rejected as disproportionate to a value-shape invariant already expressible in the existing domain-error layer, and it would require a new migration for a purely additive Phase-1 rule; (c) a new, narrow, synchronous assertion called only at the publish boundary — chosen, as the smallest coherent enforcement point, consistent with the task's own preference ("Prefer enforcement at the publication boundary rather than globally in `validateAllReferences`").
+
+**Exact enforcement point.** New exported function `assertHasQualifyingNodeForPublish(nodes)` in `rewardProgramKnowledgeValidation.ts` — pure and synchronous (no Firestore read needed; the node count is already known from the PostgreSQL-persisted draft). Called from exactly one place: `publishRewardProgramVersionCommand.ts`, immediately before the existing `validateAllReferences` call, using `draftPreview.qualifyingNodes` (already read from PostgreSQL for the pre-existing RF-3 validation step) — no new database or Firestore read added. Throws a new `rewardProgramPublishRequiresQualifyingNodeError()` (`rewardProgramErrors.ts`, category `VALIDATION_FAILED`, field `qualifyingNodes`, following the file's own existing error-shape convention exactly).
+
+**Draft behavior after correction:** unchanged — `rewardProgramCategoryId: null` + `qualifyingNodes: []` remains a fully valid, persistable draft state (create, read, and edit all still succeed).
+
+**Publish behavior after correction:** a version with zero qualifying nodes, category present or absent, is rejected with `RewardProgramDomainError` (`VALIDATION_FAILED`) before the PostgreSQL publish transaction ever begins; the version's status remains exactly `draft` (verified by re-reading it via `getRewardProgram` after the rejected attempt). One or more valid qualifying nodes, category present or absent, still publishes successfully exactly as before.
+
+**Tests added** (`rewardProgramCommands.postgres.test.ts`, new describe block, items A–G mapped 1:1 to the task's minimum-proof list):
+- A — draft creation with `category: null` + `qualifyingNodes: []` succeeds.
+- B — publishing that draft is rejected (`RewardProgramDomainError`); the version reads back as `draft`, never partially published.
+- C — publishing with one valid node and no category succeeds (`active`).
+- D — publishing with two valid nodes and no category succeeds (`active`, both nodes persisted).
+- E — a *non-null* category with zero qualifying nodes is rejected identically to a null category — isolates that the invariant is about node count, never category presence.
+- F — a fabricated qualifying-node id on a category-less draft still fails the pre-existing eligibility check at create time (proves this correction is additive, not a replacement of `validateQualifyingNodes`).
+- G — a draft edited down to zero qualifying nodes (an update the existing `updateRewardProgramDraft` command legitimately allows) then published directly via `publishRewardProgramVersion` is still rejected — the "malicious/direct callable request" proof: the publish callable (`functions/src/index.ts`) accepts no client-supplied `qualifyingNodes` field at all, so there is no alternate input path to smuggle a bypass through.
+- H (web, `RewardProgramManagementPage.test.tsx`) — a governed publish rejection renders through the page's existing `MutationError` component (the same path every other publish failure already uses) and the Publish button remains offered — never a fabricated client-side success.
+
+### CORR-001.3 P2 — bounded discovery search
+
+**Root cause.** `searchQualifyingNodes` (`commerceKnowledgeReadService.ts`) read every `active` `standard_product`/`standard_service` node platform-wide on every call (`listActiveSelectableNodes` with no `parentId`/limit), resolved each one's display label via a `for` loop of sequential Firestore translation reads (`resolveDisplayLabel`, up to two reads per node), applied the substring filter only after all of that work, and treated empty input as "return everything" rather than "search nothing." On the client, `useSearchQualifyingNodesQuery`'s `enabled` gate was `searchText.trim().length > 0` — true after the very first keystroke — and `QualifyingNodeSelector.tsx` had no debouncing of any kind, so `searchText`'s query key changed, and a new callable fired, on every keystroke.
+
+**Existing search architecture assessed** (per task instruction, before choosing a fix): `knowledgeNodeRepository.ts`'s `listActiveSelectableNodes` is a plain equality-filtered Firestore query (`nodeType == X`, `status == "active"`, optional `parentId == Y`) — no composite index required, and Firestore's query builder already supports `.limit(n)` as a one-line addition to the same query object. `resolveKnowledgeNodeLabels` already establishes a precedent for a defensive transport-level count bound (100 ids). `MAX_ANCESTOR_TRAVERSAL` in the same repository file establishes the precedent of "bound the underlying work as a defensive technical guard, not a product-level limit." No debounce utility exists anywhere in `apps/web/src` today. `useSearchQualifyingNodesQuery`'s query-key factory (`queryKeys.ts`) already includes `searchText`/`languageCode`, an established convention this correction reuses rather than inventing a new one. `translation` records are keyed by `(entityType, entityId, languageCode)` with no secondary index on `displayName` — confirming that a genuine server-side prefix/full-text query over translated labels is not available in the current Firestore/translation model without a larger architecture change (a denormalized per-token search index, `DEC-TECH-008`-scale). That larger change was judged out of this bounded correction's scope, and — per the task's explicit instruction — the limitation is disclosed here rather than an ungoverned denormalized index being built as an improvised workaround.
+
+**Chosen bounded-search strategy and why.** The smallest architecture-consistent fix reusing every existing primitive:
+1. An optional `limit` parameter added to `listActiveSelectableNodes` (backward-compatible; every other caller omits it and is byte-for-byte unaffected).
+2. `searchQualifyingNodes` now: (a) requires `searchText.trim().length >= MIN_SEARCH_TEXT_LENGTH` (2) before performing any Firestore read at all — below that, `[]` is returned immediately, no scan; (b) supplies `MAX_SEARCH_CANDIDATE_NODES_PER_TYPE` (200) as the `limit` for each of the two node-type queries; (c) resolves display labels concurrently (`Promise.all`, replacing the serial `for` loop) since the candidate set reaching that step is now itself bounded; (d) caps the final filtered response at `MAX_SEARCH_RESULTS` (25).
+3. Client-side, a new generic `useDebouncedValue` hook (`apps/web/src/business/hooks/useDebouncedValue.ts`, a small `useState`/`useEffect`/`setTimeout` pattern, no new dependency) debounces the search box's raw value by 300ms before it is passed into `useSearchQualifyingNodesQuery`. `useSearchQualifyingNodesQuery`'s own `enabled` gate was raised to the same `MIN_SEARCH_TEXT_LENGTH` (2) as a client-side request-avoidance courtesy; the server enforces its own copy of the same bound authoritatively and independently.
+
+**Exact server-work bound:** at most 200 Firestore document reads per node type (400 total) per search request, versus previously unbounded.
+**Exact result-count bound:** at most 25 results per response, versus previously unbounded.
+**Client request-control/debounce behavior:** a 300ms debounce on the search box's value (verified via fake timers: typing "wash" character-by-character does not call the query hook with the settled value until the debounce window elapses) plus a minimum-length gate matching the server's own threshold.
+**Search security assessment:** unchanged from before this correction — only `active` `standard_product`/`standard_service` nodes are ever discoverable (the same hard `status === "active"` filter `listActiveSelectableNodes` always enforced); draft/in_review/retired/archived content, and every other node type (including a `reward_program_category` with a coincidentally matching name), still never leak through, re-confirmed by new tests.
+**Outside-Business-Type escape-hatch proof:** the pre-existing test proving a node outside a Business's default discovery scope remains findable by search (`P: finds an eligible node OUTSIDE a given business type's default discovery scope...`) still passes unmodified — this correction bounds the scan, it does not remove or gate it behind Business Type.
+**PB-008 regression protection:** `resolveKnowledgeNodeLabels`'s unpublished-node disclosure gate (`isResolvableForExistingReference`) was not touched by this correction at all — a different function, a different code path — and its own test file was re-run and still passes in full.
+
+**Tests added/modified:**
+- `commerceKnowledgeReadService.emulator.test.ts`: the pre-existing "an empty searchText returns every active qualifying node platform-wide" test was **replaced** (its asserted behavior is exactly the unbounded scan this correction removes) with item **K** — empty/whitespace/one-character input all return `[]`, no scan. New: item **I** (response capped at 25 despite 30 matching candidates seeded), items **M/N** (only active `standard_product`/`standard_service` discoverable; a `reward_program_category` with a matching name never leaks through), item **P** (EN/FR label resolution/fallback for a search result, language-scoped, no cross-language leakage).
+- `knowledgeNodeRepository.emulator.test.ts` (new describe block): item **J** — the `limit` param caps `listActiveSelectableNodes`'s own read/return count even when more active nodes exist; a companion test confirms omitting `limit` preserves every existing caller's exact prior unbounded behavior.
+- `QualifyingNodeSelector.test.tsx` (new tests under the existing "search escape hatch" describe block): item **L** — typing a word character-by-character does not re-query the search hook per keystroke, only once typing settles (fake-timer-verified); item **K** (component-level) — the component still passes a debounced length-1 value through to the query hook, which is where the length gate itself lives (not duplicated in the component).
+
+### CORR-001.4 Review-thread disposition
+
+Both threads replied to on PR #257 with root cause, fix description, and test evidence (per the task's per-thread protocol). Neither marked resolved by this correction — left for independent re-review per instruction. No new review findings surfaced during this correction pass at time of writing.
+
+### CORR-001.5 Validation
+
+Commands executed: `pnpm typecheck` (functions+web), `pnpm lint`, `pnpm format:check`, `pnpm build`, `git diff --check`, `pnpm --filter functions test`, `pnpm --filter web test`, `pnpm emulators:validate` (`firebase emulators:exec ... test:emulator`), `firebase emulators:exec --only firestore ... test:postgres` (against a disposable one-off Postgres container on an alternate port — the repo's default emulator/Postgres ports and the shared dev container were occupied by other concurrent local worktree sessions, investigated via `docker ps`/`lsof`, resolved with disposable alternate ports/containers, no committed file left modified), `npx playwright test --project=chromium --project=chromium-dashboard-harness`.
+
+**Targeted test results:** the two new/modified test files (`rewardProgramCommands.postgres.test.ts`'s new describe block, `commerceKnowledgeReadService.emulator.test.ts`'s new/modified tests, `knowledgeNodeRepository.emulator.test.ts`'s new describe block, `QualifyingNodeSelector.test.tsx`'s new tests, `RewardProgramManagementPage.test.tsx`'s new test) all pass.
+
+**Full test results:** `pnpm --filter functions test` — 158 files / 1765 tests pass. `pnpm --filter web test` — 123 files / 885 tests pass. Firebase Emulator Suite — 65 files / 864 tests pass, 3 pre-existing skips. PostgreSQL cross-store integration (clean run) — 6 files / 114 tests pass. Playwright `chromium-dashboard-harness` — 36/36 pass.
+
+**Three transient failures investigated, both determined pre-existing/environmental, not regressions** (full reasoning in the log Entry 237):
+1. Three different "two concurrent operations" 5000ms-timeout tests, each failing once across three separate emulator-suite runs, in three different files this correction never touched — a clean re-run passed all three.
+2. `platformFoundationReadiness.postgres.test.ts`'s "fresh database" test — failed as part of the full 6-file suite, passed 7/7 in isolation, and **reproduced identically on the unmodified base commit `b2574990a2d0e27cb7518f9cd1a00eb212797f67`** with this correction's own changes stashed out (same fresh container, same command) — direct proof of pre-existing cross-file test-ordering fragility, not a regression.
+3. `tests/e2e/app-shell.spec.ts` (non-harness `chromium` Playwright project) — failed on a missing `apps/web/.env.local` (no Firebase project config exists in this worktree at all), a pre-existing local environment gap; the harness project (36 specs covering every Reward Program/Team/Terms screen with its own emulator-backed auth stub) passed cleanly.
+
+**Exact-head CI:** not yet re-verified against the pushed correction commit at time of writing this report section — see the completion report delivered to the requester for the actual post-push CI result.
+
+**Dependencies added:** none. **Config changes:** none committed (a temporary local `firebase.json` port remap used only to work around concurrent local sessions was fully reverted before this entry, confirmed via `git status`). **Schema/migration changes:** none. **`unitValueMinor` disposition:** left deferred, not investigated (out of scope, unchanged from §11 above).
+
+### CORR-001.6 Risks/limitations/rollback
+
+- **Risk:** `MAX_SEARCH_CANDIDATE_NODES_PER_TYPE` (200) means a match outside that request's candidate page is not found by that specific call once the catalogue exceeds 200 active nodes of one type — a disclosed, accepted limitation (§CORR-001.3), not a hidden one. No governed source specifies a different bound; this is a defensive technical cap, not a product decision.
+- **Risk:** the pre-existing cross-file Postgres test-ordering fragility (§CORR-001.5 item 2) was reproduced and diagnosed but not fixed here — fixing it would mean adding table-drop cleanup to a file this correction did not otherwise need to touch, judged out of this bounded correction's scope. Flagged as a candidate for a future, separately-scoped correction.
+- **Rollback:** revert this correction's commit(s) on `feat/platform-baseline-010b-reward-qualification-correction-001` — every change here is additive (a new assertion function, a new optional repository parameter, new bounds/constants, a new hook file) or a narrowing of existing behavior (the search minimum-length/candidate/response caps); no migration, no schema change, no data written differently, so a revert is a pure code rollback with no data-migration concern.
+
+### CORR-001.7 Scope confirmation
+
+Confirmed unrelated files untouched by `git diff --stat` against this correction's own commit(s). Confirmed the primary Founder legal worktree (`docs/dec-legal-002-bt-draft-007`) was never entered. Confirmed no Commerce Knowledge content was seeded, no redemption work started, no Reward/Loyalty visibility package started — this correction touches only the two files each finding named plus their direct call sites and tests.
+
+**Disposition: A — CORRECTED / AWAITING NARROW INDEPENDENT RE-REVIEW.** PR #257 not merged.

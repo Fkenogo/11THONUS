@@ -52,7 +52,19 @@ import {
   useQualifyingNodesForBusinessTypeQuery,
   useSearchQualifyingNodesQuery,
 } from "../hooks/businessQueries";
+import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import type { QualifyingNodeWire } from "../api/rewardProgramMutations";
+
+/**
+ * `PLATFORM-BASELINE-010B-CORR-001` (P2, independent review finding
+ * `PLATFORM-BASELINE-010B-ITR-001`): the search box had no debouncing at
+ * all -- every keystroke changed `useSearchQualifyingNodesQuery`'s query
+ * key and fired a new callable request. 300ms is a plain, unremarkable
+ * "wait for a pause in typing" debounce, the same order of magnitude as
+ * any other debounced search box; no product requirement names an exact
+ * value.
+ */
+const SEARCH_DEBOUNCE_MS = 300;
 
 export function QualifyingNodeSelector({
   idPrefix,
@@ -67,8 +79,9 @@ export function QualifyingNodeSelector({
 }) {
   const { t, i18n } = useTranslation("business");
   const [searchText, setSearchText] = useState("");
+  const debouncedSearchText = useDebouncedValue(searchText, SEARCH_DEBOUNCE_MS);
   const candidatesQuery = useQualifyingNodesForBusinessTypeQuery(businessTypeId, i18n.language);
-  const searchQuery = useSearchQualifyingNodesQuery(searchText, i18n.language);
+  const searchQuery = useSearchQualifyingNodesQuery(debouncedSearchText, i18n.language);
 
   const selectedIds = selected.map((n) => n.knowledgeNodeId);
   const candidates = candidatesQuery.data ?? [];

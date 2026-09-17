@@ -18,7 +18,10 @@ import type { Firestore } from "firebase-admin/firestore";
 import type { PlatformPostgresPool } from "../../../infrastructure/postgres/postgresPool";
 import { withPlatformTransaction } from "../../../infrastructure/postgres/postgresTransaction";
 import { authorizeRewardProgramManage } from "./rewardProgramAuthorization";
-import { validateAllReferences } from "./rewardProgramKnowledgeValidation";
+import {
+  assertHasQualifyingNodeForPublish,
+  validateAllReferences,
+} from "./rewardProgramKnowledgeValidation";
 import { rewardProgramRequestHash } from "./rewardProgramRequestHash";
 import {
   checkAndReserveIdempotencyKey,
@@ -101,6 +104,12 @@ export async function publishRewardProgramVersion(
   if (draftPreview.status !== "draft") {
     throw rewardProgramVersionNotDraftError();
   }
+
+  // Step 1.5 (`PLATFORM-BASELINE-010B-CORR-001` P1): the publication-only
+  // "at least one qualifying node" invariant -- a draft may legitimately
+  // carry zero qualifying nodes, but nothing may ever publish with none.
+  // Checked from the already-read `draftPreview`, no extra Firestore read.
+  assertHasQualifyingNodeForPublish(draftPreview.qualifyingNodes);
 
   // Step 2: authoritative Firestore validation, BEFORE the PostgreSQL
   // transaction begins -- this read is never part of that transaction's

@@ -31,6 +31,7 @@ import {
   invalidCategoryNodeError,
   invalidQualifyingNodeError,
   invalidStandardRewardNodeError,
+  rewardProgramPublishRequiresQualifyingNodeError,
 } from "../models/rewardProgramErrors";
 
 const QUALIFYING_NODE_TYPES: readonly KnowledgeNodeType[] = [
@@ -97,6 +98,31 @@ export async function validateQualifyingNodes(
     await assertNodeEligible(db, node.knowledgeNodeId, QUALIFYING_NODE_TYPES, (reason) =>
       invalidQualifyingNodeError(node.knowledgeNodeId, reason),
     );
+  }
+}
+
+/**
+ * `PLATFORM-BASELINE-010B-CORR-001` (P1): the publication-only invariant
+ * -- a Reward Program's qualifying canonical product/service node(s) are
+ * its operative qualification definition, so a version with zero
+ * qualifying nodes must never reach `active`. This is deliberately NOT
+ * folded into `validateAllReferences` (which every draft create/edit call
+ * also runs): a draft is explicitly allowed to carry zero qualifying
+ * nodes while configuration is incomplete (`categoryId=null,
+ * qualifyingNodes=[]` remains a valid, persistable draft state), so
+ * enforcing this globally there would reject legitimate in-progress
+ * drafts. The publish command (`publishRewardProgramVersionCommand.ts`)
+ * is the one caller that invokes this, immediately alongside
+ * `validateAllReferences`, at the same pre-transaction authoritative
+ * validation point (RF-3 step 2) -- a direct/malicious callable request
+ * cannot reach the PostgreSQL publish transaction without passing both.
+ * Pure and synchronous: the node count is already known from the
+ * PostgreSQL-persisted draft, no Firestore read is needed to enforce
+ * this particular invariant.
+ */
+export function assertHasQualifyingNodeForPublish(nodes: readonly QualifyingNode[]): void {
+  if (nodes.length === 0) {
+    throw rewardProgramPublishRequiresQualifyingNodeError();
   }
 }
 

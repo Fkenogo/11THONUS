@@ -1702,3 +1702,246 @@ describe("Reward Program commands — PLATFORM-BASELINE-010B (Reward Program Cat
     ).rejects.toThrow(RewardProgramDomainError);
   });
 });
+
+/**
+ * `PLATFORM-BASELINE-010B-CORR-001` P1 (independent review finding
+ * `PLATFORM-BASELINE-010B-ITR-001`): `rewardProgramCategoryId: null` +
+ * `qualifyingNodes: []` must remain a valid DRAFT state (configuration
+ * still in progress) but must never reach `active` -- the qualifying
+ * canonical node(s) are a Reward Program's operative qualification
+ * definition, so publication with none is ungoverned. Letters below map
+ * directly to the correction task's "TESTS MUST PROVE AT MINIMUM" list.
+ */
+describe("Reward Program commands — PLATFORM-BASELINE-010B-CORR-001 (publish requires >=1 qualifying node)", () => {
+  async function seedOwner(businessId: string) {
+    await seedBusiness(businessId);
+    await seedMembership({
+      membershipId: nextId("mem"),
+      userId: "owner-1",
+      businessId,
+      role: "owner",
+    });
+  }
+
+  function emptyDraftRequest(businessId: string, overrides: Record<string, unknown> = {}) {
+    return {
+      businessId,
+      displayName: "Incomplete Programme",
+      rewardProgramCategoryId: null,
+      rewardDescription: "TBD",
+      multipleUnitsAllowed: true,
+      sharedLoyaltyNumberAllowed: false,
+      effectiveFrom: new Date("2026-09-17T00:00:00.000Z"),
+      qualifyingNodes: [],
+      ...overrides,
+    };
+  }
+
+  // A: draft creation with category=null + qualifyingNodes=[] remains permitted.
+  it("A: creates a draft with rewardProgramCategoryId: null and qualifyingNodes: [] (incomplete configuration in progress)", async () => {
+    const businessId = nextId("biz");
+    await seedOwner(businessId);
+
+    const result = await createRewardProgram(db, pool, {
+      userId: "owner-1",
+      request: emptyDraftRequest(businessId) as never,
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+
+    expect(result.program.rewardProgramCategoryId).toBeNull();
+    expect(result.version.qualifyingNodes).toEqual([]);
+    expect(result.version.status).toBe("draft");
+  });
+
+  // B: publishing category=null + qualifyingNodes=[] is rejected with a governed domain error.
+  it("B: rejects publishing a version with rewardProgramCategoryId: null and zero qualifying nodes", async () => {
+    const businessId = nextId("biz");
+    await seedOwner(businessId);
+
+    const created = await createRewardProgram(db, pool, {
+      userId: "owner-1",
+      request: emptyDraftRequest(businessId) as never,
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+
+    await expect(
+      publishRewardProgramVersion(db, pool, {
+        userId: "owner-1",
+        request: {
+          businessId,
+          rewardProgramId: created.program.id,
+          versionId: created.version.id,
+        },
+        idempotencyKey: nextId("key"),
+        correlationId: nextId("corr"),
+      }),
+    ).rejects.toThrow(RewardProgramDomainError);
+
+    // Never partially published: the version must still be exactly "draft".
+    const readModel = await getRewardProgram(db, pool, {
+      userId: "owner-1",
+      businessId,
+      rewardProgramId: created.program.id,
+    });
+    expect(readModel.currentVersion).toBeNull();
+    expect(readModel.draftVersion?.status).toBe("draft");
+  });
+
+  // C: publishing with one valid canonical qualifying node succeeds.
+  it("C: publishes successfully with one valid qualifying node and no category", async () => {
+    const businessId = nextId("biz");
+    await seedOwner(businessId);
+
+    const created = await createRewardProgram(db, pool, {
+      userId: "owner-1",
+      request: emptyDraftRequest(businessId, {
+        qualifyingNodes: [{ knowledgeNodeId: PRODUCT_NODE, businessDisplayName: null }],
+      }) as never,
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+
+    const published = await publishRewardProgramVersion(db, pool, {
+      userId: "owner-1",
+      request: { businessId, rewardProgramId: created.program.id, versionId: created.version.id },
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+
+    expect(published.status).toBe("active");
+  });
+
+  // D: publishing with multiple valid canonical qualifying nodes succeeds.
+  it("D: publishes successfully with multiple valid qualifying nodes and no category", async () => {
+    const businessId = nextId("biz");
+    await seedOwner(businessId);
+
+    const created = await createRewardProgram(db, pool, {
+      userId: "owner-1",
+      request: emptyDraftRequest(businessId, {
+        qualifyingNodes: [
+          { knowledgeNodeId: PRODUCT_NODE, businessDisplayName: "Black Coffee" },
+          { knowledgeNodeId: PRODUCT_NODE_2, businessDisplayName: "Medium Pizza" },
+        ],
+      }) as never,
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+
+    const published = await publishRewardProgramVersion(db, pool, {
+      userId: "owner-1",
+      request: { businessId, rewardProgramId: created.program.id, versionId: created.version.id },
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+
+    expect(published.status).toBe("active");
+    expect(published.qualifyingNodes).toHaveLength(2);
+  });
+
+  // E: category=null does not itself cause rejection -- only an empty
+  // qualifyingNodes list does (proven independently of C: a category IS
+  // present here, isolating that the invariant is about node count only,
+  // never about category presence).
+  it("E: a non-null category with zero qualifying nodes is rejected for the same reason as a null category -- category presence is never what is being checked", async () => {
+    const businessId = nextId("biz");
+    await seedOwner(businessId);
+
+    const created = await createRewardProgram(db, pool, {
+      userId: "owner-1",
+      request: baseDraftRequest(businessId, { qualifyingNodes: [] }) as never,
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+    expect(created.program.rewardProgramCategoryId).toBe(CATEGORY_NODE);
+
+    await expect(
+      publishRewardProgramVersion(db, pool, {
+        userId: "owner-1",
+        request: {
+          businessId,
+          rewardProgramId: created.program.id,
+          versionId: created.version.id,
+        },
+        idempotencyKey: nextId("key"),
+        correlationId: nextId("corr"),
+      }),
+    ).rejects.toThrow(RewardProgramDomainError);
+  });
+
+  // F: existing invalid-node validation remains effective for a
+  // category-less draft (fabricated id) -- the new invariant is additive,
+  // it does not replace or weaken `validateQualifyingNodes`.
+  it("F: publishing a category-less draft with a fabricated qualifying-node id still fails on the pre-existing reference-eligibility check", async () => {
+    const businessId = nextId("biz");
+    await seedOwner(businessId);
+
+    await expect(
+      createRewardProgram(db, pool, {
+        userId: "owner-1",
+        request: emptyDraftRequest(businessId, {
+          qualifyingNodes: [
+            { knowledgeNodeId: "fabricated-corr-001-id", businessDisplayName: null },
+          ],
+        }) as never,
+        idempotencyKey: nextId("key"),
+        correlationId: nextId("corr"),
+      }),
+    ).rejects.toThrow(RewardProgramDomainError);
+  });
+
+  // G: a malicious/direct callable request cannot bypass the
+  // minimum-one-qualifying-node publication invariant by editing a draft
+  // down to zero nodes and then calling `publishRewardProgramVersion`
+  // directly (the same, and only, code path a real callable uses --
+  // `publishRewardProgramVersion` re-reads the draft's persisted
+  // `qualifyingNodes` from PostgreSQL itself; the callable boundary's
+  // request payload carries no client-suppliable `qualifyingNodes` field
+  // at all, so there is no alternate input to manipulate).
+  it("G: editing a draft down to zero qualifying nodes then calling publishRewardProgramVersion directly is still rejected", async () => {
+    const businessId = nextId("biz");
+    await seedOwner(businessId);
+
+    const created = await createRewardProgram(db, pool, {
+      userId: "owner-1",
+      request: emptyDraftRequest(businessId, {
+        qualifyingNodes: [{ knowledgeNodeId: PRODUCT_NODE, businessDisplayName: null }],
+      }) as never,
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+
+    const updated = await updateRewardProgramDraft(db, pool, {
+      userId: "owner-1",
+      request: {
+        businessId,
+        rewardProgramId: created.program.id,
+        versionId: created.version.id,
+        expectedRowVersion: created.version.rowVersion,
+        rewardDescription: "Now empty",
+        multipleUnitsAllowed: true,
+        sharedLoyaltyNumberAllowed: false,
+        effectiveFrom: created.version.effectiveFrom,
+        qualifyingNodes: [],
+      } as never,
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+    expect(updated.qualifyingNodes).toEqual([]);
+
+    await expect(
+      publishRewardProgramVersion(db, pool, {
+        userId: "owner-1",
+        request: {
+          businessId,
+          rewardProgramId: created.program.id,
+          versionId: created.version.id,
+        },
+        idempotencyKey: nextId("key"),
+        correlationId: nextId("corr"),
+      }),
+    ).rejects.toThrow(RewardProgramDomainError);
+  });
+});

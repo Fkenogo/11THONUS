@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { RewardProgramManagementPage } from "./RewardProgramManagementPage";
+import { BusinessApiError } from "../api/businessCallableClient";
 import type { BusinessContext } from "../api/businessContext";
 import type {
   RewardProgramVersionWire,
@@ -67,6 +68,14 @@ const mockUpdateDraft = vi.fn();
 const mockPublish = vi.fn();
 const mockCreateNextVersion = vi.fn();
 
+/**
+ * `PLATFORM-BASELINE-010B-CORR-001` item H: mutable so a test can simulate
+ * the new server-side "publish requires >=1 qualifying node" governed
+ * rejection surfacing through the page's existing `MutationError`
+ * component, exactly like any other publish failure already does.
+ */
+let publishMutationError: unknown = null;
+
 vi.mock("../hooks/rewardProgramMutations", () => ({
   useCreateRewardProgramMutation: () => ({ mutate: mockCreate, isPending: false, error: null }),
   useUpdateRewardProgramDraftMutation: () => ({
@@ -82,7 +91,7 @@ vi.mock("../hooks/rewardProgramMutations", () => ({
   usePublishRewardProgramVersionMutation: () => ({
     mutate: mockPublish,
     isPending: false,
-    error: null,
+    error: publishMutationError,
   }),
   useCreateNextRewardProgramVersionMutation: () => ({
     mutate: mockCreateNextVersion,
@@ -195,6 +204,7 @@ const publishedProgramNoDraft: RewardProgramWithVersionsWire = {
 describe("RewardProgramManagementPage (PLATFORM-BASELINE-005A)", () => {
   beforeEach(() => {
     resetSelectorMocks();
+    publishMutationError = null;
   });
 
   it("shows a loading state", () => {
@@ -310,6 +320,31 @@ describe("RewardProgramManagementPage (PLATFORM-BASELINE-005A)", () => {
     renderPage();
     await user.click(screen.getByRole("button", { name: /^publish$/i }));
     expect(mockPublish).toHaveBeenCalledWith({ rewardProgramId: "rp-1", versionId: "v-1" });
+  });
+
+  /**
+   * `PLATFORM-BASELINE-010B-CORR-001` item H: the server-side "publish
+   * requires >=1 qualifying node" invariant is authoritative -- the UI
+   * cannot successfully publish an empty programme, and when the server
+   * rejects it the operator sees the governed failure (the same
+   * `MutationError` path every other publish failure already uses), not a
+   * silently-succeeded publish and not a raw/blank error.
+   */
+  it("PLATFORM-BASELINE-010B-CORR-001 item H: a governed publish rejection (e.g. zero qualifying nodes) surfaces via MutationError, and the program stays a draft", async () => {
+    rewardProgramsResult = { data: [draftProgram], isLoading: false, isError: false };
+    accessibleResult = { data: [{ businessId: "biz-1", role: "owner" }] };
+    publishMutationError = new BusinessApiError("validation_failed");
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(screen.getByRole("button", { name: /^publish$/i }));
+
+    expect(mockPublish).toHaveBeenCalledWith({ rewardProgramId: "rp-1", versionId: "v-1" });
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    // The publish action remains offered -- the program was never marked
+    // published on the client's own initiative; only a real successful
+    // server response (never faked here) could do that.
+    expect(screen.getByRole("button", { name: /^publish$/i })).toBeInTheDocument();
   });
 
   /**

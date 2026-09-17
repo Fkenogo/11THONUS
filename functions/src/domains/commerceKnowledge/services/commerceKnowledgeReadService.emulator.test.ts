@@ -631,7 +631,16 @@ describe("searchQualifyingNodes (PLATFORM-BASELINE-010B)", () => {
     expect(result.map((n) => n.id)).toEqual(["svc_replacement"]);
   });
 
-  it("an empty searchText returns every active qualifying node platform-wide -- no filter, not an error", async () => {
+  /**
+   * `PLATFORM-BASELINE-010B-CORR-001` (P2, item K): the confirmed finding
+   * was that this scanned everything for the empty case, not that empty
+   * input is a special error -- an empty/trivially-short (below
+   * `MIN_SEARCH_TEXT_LENGTH`) `searchText` must now perform NO scan at
+   * all, and return `[]` (not every node), never an error. Replaces the
+   * pre-correction "empty returns everything" test, which was itself the
+   * unbounded behavior this correction removes.
+   */
+  it("K: an empty or trivially short searchText returns [] with no platform-wide scan, never an error", async () => {
     await seedRewardProgramHierarchy();
     await seedRewardProgramCategory("rpc_haircuts", "type_salon", "Haircuts");
     await activateNode("rpc_haircuts");
@@ -640,8 +649,9 @@ describe("searchQualifyingNodes (PLATFORM-BASELINE-010B)", () => {
     await seedStandardProduct("prod_shampoo", "rpc_haircuts", "Shampoo");
     await activateNode("prod_shampoo");
 
-    const result = await searchQualifyingNodes(db, "");
-    expect(result.map((n) => n.id).sort()).toEqual(["prod_shampoo", "svc_haircut"]);
+    expect(await searchQualifyingNodes(db, "")).toEqual([]);
+    expect(await searchQualifyingNodes(db, "   ")).toEqual([]);
+    expect(await searchQualifyingNodes(db, "h")).toEqual([]);
   });
 
   it("a search with no matches returns an empty array, never an error", async () => {
@@ -653,5 +663,86 @@ describe("searchQualifyingNodes (PLATFORM-BASELINE-010B)", () => {
 
     const result = await searchQualifyingNodes(db, "nonexistent-search-term-xyz");
     expect(result).toEqual([]);
+  });
+
+  /**
+   * `PLATFORM-BASELINE-010B-CORR-001` (P2, item I): a single search
+   * response is capped at `MAX_SEARCH_RESULTS` (25) even when far more
+   * than that many active nodes match the given term.
+   */
+  it("I: a single search response is bounded even when many more active nodes match", async () => {
+    await seedRewardProgramHierarchy();
+    await seedRewardProgramCategory("rpc_haircuts", "type_salon", "Haircuts");
+    await activateNode("rpc_haircuts");
+    for (let index = 0; index < 30; index += 1) {
+      const id = `svc_bulk_${index}`;
+      await seedStandardService(id, "rpc_haircuts", `Bulk Matching Item ${index}`);
+      await activateNode(id);
+    }
+
+    const result = await searchQualifyingNodes(db, "bulk matching");
+    expect(result.length).toBeLessThanOrEqual(25);
+    expect(result.length).toBe(25);
+  });
+
+  /**
+   * `PLATFORM-BASELINE-010B-CORR-001` (P2, item M/N): only `active`
+   * `standard_product`/`standard_service` nodes are ever discoverable via
+   * search -- draft/in_review/retired/archived content never leaks
+   * through, whether or not the correction's bounds are in play. This is
+   * a corrected-behavior regression check on top of the pre-existing
+   * "excludes a retired/draft/in_review node" test above.
+   */
+  it("M/N: only active eligible standard_product/standard_service nodes are discoverable; other node types never leak through", async () => {
+    await seedRewardProgramHierarchy();
+    await seedRewardProgramCategory("rpc_haircuts", "type_salon", "Matchable Category Name");
+    await activateNode("rpc_haircuts"); // a reward_program_category, not a product/service
+    await seedStandardProduct("prod_matchable", "rpc_haircuts", "Matchable Product");
+    await activateNode("prod_matchable");
+
+    const result = await searchQualifyingNodes(db, "matchable");
+    expect(result.map((n) => n.id)).toEqual(["prod_matchable"]);
+    expect(
+      result.every((n) => n.nodeType === "standard_product" || n.nodeType === "standard_service"),
+    ).toBe(true);
+  });
+
+  /**
+   * `PLATFORM-BASELINE-010B-CORR-001` (P2, item P): EN/FR translation
+   * resolution/fallback still works correctly for a search result exactly
+   * as it does for every other read in this file (`resolveDisplayLabel`,
+   * unchanged by this correction).
+   */
+  it("P: resolves search result labels per requested language, with the same EN fallback every other read here uses", async () => {
+    await seedRewardProgramHierarchy();
+    await seedRewardProgramCategory("rpc_haircuts", "type_salon", "Haircuts");
+    await activateNode("rpc_haircuts");
+    await seedStandardService("svc_haircut_fr", "rpc_haircuts", "Coiffure Classique");
+    await activateNode("svc_haircut_fr");
+
+    const translationId = "knowledge_node_svc_haircut_fr_fr";
+    await createKnowledgeTranslationPersisted(db, {
+      entityType: "knowledge_node",
+      entityId: "svc_haircut_fr",
+      languageCode: "fr",
+      displayName: "Coupe de Cheveux",
+      createdAt: NOW,
+    });
+    await transitionKnowledgeTranslationStatusPersisted(db, translationId, "reviewed", {
+      updatedAt: NOW,
+    });
+    await transitionKnowledgeTranslationStatusPersisted(db, translationId, "published", {
+      updatedAt: NOW,
+    });
+
+    const frResult = await searchQualifyingNodes(db, "coupe", "fr");
+    expect(frResult.map((n) => n.displayLabel)).toEqual(["Coupe de Cheveux"]);
+
+    // The FR-only search term does not match the EN canonical name, so
+    // requesting EN for the same node finds it by its own (canonical,
+    // untranslated) name instead -- proving language scoping, not a
+    // shared/leaking cache between languages.
+    const enResult = await searchQualifyingNodes(db, "coiffure classique", "en");
+    expect(enResult.map((n) => n.displayLabel)).toEqual(["Coiffure Classique"]);
   });
 });

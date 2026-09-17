@@ -308,43 +308,77 @@ export async function listQualifyingNodesForBusinessType(
 
 /**
  * `PLATFORM-BASELINE-010B` (Founder decision `DEC-LOY-014` /
- * `FD-REWARD-QUALIFICATION-001`): the qualifying-node selector's broader
- * "escape hatch" — every `active` `standard_product`/`standard_service`
- * node PLATFORM-WIDE (no `parentId`/Business-Type restriction at all),
- * filtered by a simple case-insensitive substring match on the resolved
- * display label. This is what makes a canonical node outside a Business's
- * own default `listQualifyingNodesForBusinessType` scope actually
- * reachable and selectable — the Founder decision explicitly requires
- * this to remain possible, never gated behind Business Type. Not a search
- * engine (`DEC-TECH-008` remains non-blocking, mirrors this file's
- * existing precedent) — a plain, bounded, in-memory substring filter over
- * the already-small `active` candidate set, resolved via the same
- * `resolveDisplayLabel` EN/FR fallback every other read here uses.
+ * `FD-REWARD-QUALIFICATION-001`), bounded by
+ * `PLATFORM-BASELINE-010B-CORR-001` (P2, independent review finding
+ * `PLATFORM-BASELINE-010B-ITR-001`): the qualifying-node selector's
+ * broader "escape hatch" — every `active` `standard_product`/
+ * `standard_service` node PLATFORM-WIDE (no `parentId`/Business-Type
+ * restriction at all, up to `MAX_SEARCH_CANDIDATE_NODES_PER_TYPE` of
+ * each), filtered by a simple case-insensitive substring match on the
+ * resolved display label. This is what makes a canonical node outside a
+ * Business's own default `listQualifyingNodesForBusinessType` scope
+ * actually reachable and selectable — the Founder decision explicitly
+ * requires this to remain possible, never gated behind Business Type.
+ * Not a search engine (`DEC-TECH-008` remains non-blocking, mirrors this
+ * file's existing precedent) — a plain, bounded, in-memory substring
+ * filter over a bounded `active` candidate set, resolved via the same
+ * `resolveDisplayLabel` EN/FR fallback every other read here uses (now
+ * resolved concurrently, not serially -- the candidate set is itself
+ * bounded, so parallel resolution is bounded too).
  *
- * An empty/whitespace-only `searchText` returns every `active` qualifying
- * node platform-wide (no filter applied) rather than erroring — the same
- * "empty result is normal, not an error" posture the rest of this file
- * uses, just inverted (no filter, not an empty list).
+ * A `searchText` trimmed to fewer than `MIN_SEARCH_TEXT_LENGTH` characters
+ * (including empty/whitespace-only) performs NO Firestore read at all and
+ * returns `[]` immediately -- the previous "empty input returns
+ * everything" behavior was itself the unbounded platform-wide scan this
+ * correction removes. The selector's default Business-Type-scoped list
+ * (`listQualifyingNodesForBusinessType`) already covers "nothing typed
+ * yet". The response itself is capped at `MAX_SEARCH_RESULTS`.
+ *
+ * `MAX_SEARCH_CANDIDATE_NODES_PER_TYPE` is a disclosed, accepted
+ * limitation, not a hidden one: with more `active` nodes of a given type
+ * than this bound, a match outside this call's candidate page is not
+ * found by THIS call -- true unbounded platform-wide full-text search
+ * (e.g. a denormalized per-token search index) is a larger architecture
+ * change than this correction's scope (`DEC-TECH-008` remains
+ * non-blocking). Current Commerce Knowledge seed content has zero
+ * `standard_product`/`standard_service` nodes at all (§17's disclosed
+ * gap), so this bound has no effect on any content that exists today.
  */
+const MIN_SEARCH_TEXT_LENGTH = 2;
+const MAX_SEARCH_CANDIDATE_NODES_PER_TYPE = 200;
+const MAX_SEARCH_RESULTS = 25;
+
 export async function searchQualifyingNodes(
   db: Firestore,
   searchText: string,
   languageCode?: string,
 ): Promise<CommerceKnowledgeOptionDto[]> {
+  const trimmed = searchText.trim().toLowerCase();
+  if (trimmed.length < MIN_SEARCH_TEXT_LENGTH) return [];
+
   const resolvedLanguage = resolveRequestedLanguage(languageCode);
   const [products, services] = await Promise.all([
-    listActiveSelectableNodes(db, "standard_product"),
-    listActiveSelectableNodes(db, "standard_service"),
+    listActiveSelectableNodes(
+      db,
+      "standard_product",
+      undefined,
+      MAX_SEARCH_CANDIDATE_NODES_PER_TYPE,
+    ),
+    listActiveSelectableNodes(
+      db,
+      "standard_service",
+      undefined,
+      MAX_SEARCH_CANDIDATE_NODES_PER_TYPE,
+    ),
   ]);
 
-  const dtos: CommerceKnowledgeOptionDto[] = [];
-  for (const node of [...products, ...services]) {
-    dtos.push(await toOptionDto(db, node, resolvedLanguage));
-  }
+  const dtos = await Promise.all(
+    [...products, ...services].map((node) => toOptionDto(db, node, resolvedLanguage)),
+  );
 
-  const trimmed = searchText.trim().toLowerCase();
-  if (trimmed.length === 0) return dtos;
-  return dtos.filter((dto) => dto.displayLabel.toLowerCase().includes(trimmed));
+  return dtos
+    .filter((dto) => dto.displayLabel.toLowerCase().includes(trimmed))
+    .slice(0, MAX_SEARCH_RESULTS);
 }
 
 /**
