@@ -20,6 +20,7 @@ import {
   parsePublishRewardProgramVersionRequest,
   parseCreateNextRewardProgramVersionRequest,
   parseRecordPurchaseRequest,
+  parseKnowledgeNodeIds,
   toHttpsError,
 } from "./index";
 import { RewardProgramDomainError } from "./domains/rewardProgram/models/rewardProgramErrors";
@@ -851,5 +852,41 @@ describe("toHttpsError (purchase idempotency transport mapping, PLATFORM-BASELIN
     );
     expect(error.code).toBe("aborted");
     expect(error.message).toBe("purchase_command_failed");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PLATFORM-BASELINE-008 — `resolveKnowledgeNodeLabels` request validation.
+// ---------------------------------------------------------------------------
+
+describe("parseKnowledgeNodeIds (request validation, PLATFORM-BASELINE-008)", () => {
+  it("accepts a well-formed array of ids", () => {
+    expect(parseKnowledgeNodeIds(["a", "b", "c"])).toEqual(["a", "b", "c"]);
+  });
+
+  it("rejects a missing/non-array value", () => {
+    expect(() => parseKnowledgeNodeIds(undefined)).toThrow();
+    expect(() => parseKnowledgeNodeIds("not-an-array")).toThrow();
+    expect(() => parseKnowledgeNodeIds({ 0: "a" })).toThrow();
+  });
+
+  it("rejects an empty array", () => {
+    expect(() => parseKnowledgeNodeIds([])).toThrow();
+  });
+
+  it("rejects an array containing a non-string or blank entry", () => {
+    expect(() => parseKnowledgeNodeIds(["a", 123, "c"])).toThrow();
+    expect(() => parseKnowledgeNodeIds(["a", "   ", "c"])).toThrow();
+    expect(() => parseKnowledgeNodeIds(["a", null, "c"])).toThrow();
+  });
+
+  it("rejects more than 100 ids (defensive transport bound, not a product limit)", () => {
+    const tooMany = Array.from({ length: 101 }, (_, i) => `id-${i}`);
+    expect(() => parseKnowledgeNodeIds(tooMany)).toThrow();
+  });
+
+  it("accepts exactly 100 ids", () => {
+    const exactly100 = Array.from({ length: 100 }, (_, i) => `id-${i}`);
+    expect(parseKnowledgeNodeIds(exactly100)).toHaveLength(100);
   });
 });

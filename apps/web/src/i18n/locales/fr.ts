@@ -269,13 +269,30 @@ export const fr = {
       saving: "Enregistrement…",
       fieldDisplayName: "Nom du programme",
       fieldCategory: "Catégorie du programme de fidélité",
-      fieldQualifyingNodes: "Produits/services éligibles (séparés par des virgules)",
+      fieldQualifyingNodes: "Produits/services éligibles",
       fieldRewardDescription: "Description de la récompense",
       fieldEffectiveFrom: "En vigueur à partir du",
       fieldMultipleUnitsAllowed: "Autoriser plusieurs unités par achat",
       fieldSharedLoyaltyNumberAllowed: "Autoriser un numéro de fidélité partagé",
       fixedInvariantsNote:
         "Unités vérifiées requises : {{threshold}} et quantité de récompense : {{quantity}} sont des règles fixes de la plateforme et ne peuvent pas être modifiées.",
+      category: {
+        loading: "Chargement des catégories de programme de fidélité…",
+        loadError:
+          "Nous n'avons pas pu charger les catégories de programme de fidélité. Veuillez réessayer.",
+        placeholder: "Choisissez une catégorie",
+        empty:
+          "Aucune catégorie de programme de fidélité n'est disponible pour l'instant. Contactez le support de la plateforme.",
+      },
+      qualifyingNodeSelector: {
+        chooseCategoryFirst: "Choisissez d'abord une catégorie de programme de fidélité.",
+        loading: "Chargement des produits et services…",
+        loadError:
+          "Nous n'avons pas pu charger les produits et services pour cette catégorie. Veuillez réessayer.",
+        empty: "Aucun produit ou service n'est disponible pour cette catégorie pour l'instant.",
+        unavailableLabel: "Élément précédemment sélectionné (nom indisponible)",
+        unavailableNote: "(plus disponible — conservé dans la configuration de ce programme)",
+      },
       versionLabel: "Version {{version}}",
       status: {
         draft: "Brouillon",

@@ -12,6 +12,9 @@ import { makeCallGetBusinessContext } from "../api/businessContextCallable";
 import {
   makeCallListBusinessCategories,
   makeCallListBusinessTypesForCategory,
+  makeCallListRewardProgramCategories,
+  makeCallListQualifyingNodesForCategory,
+  makeCallResolveKnowledgeNodeLabels,
 } from "../api/commerceKnowledge";
 import { makeCallListStaffInvitations, makeCallListStaffMemberships } from "../api/staffLists";
 import { businessQueryKeys } from "./queryKeys";
@@ -102,6 +105,82 @@ export function useBusinessTypesQuery(categoryId: string | undefined, languageCo
         { categoryId: categoryId as string, languageCode },
       ),
     enabled: actorState.status === "ready" && Boolean(categoryId),
+    staleTime: Infinity,
+  });
+}
+
+/**
+ * `PLATFORM-BASELINE-008`: the Reward Program create-form category
+ * selector's candidate list. Mirrors `useBusinessCategoriesQuery` exactly.
+ */
+export function useRewardProgramCategoriesQuery(languageCode?: string) {
+  const { auth, functions } = useBusinessApiPlatform();
+  const actorState = useAuthenticatedActor(auth);
+  return useQuery({
+    queryKey: businessQueryKeys.rewardProgramCategories(languageCode ?? ""),
+    queryFn: () =>
+      makeCallListRewardProgramCategories(functions)(
+        actorState.status === "ready"
+          ? actorState.actor
+          : (() => {
+              throw new Error("actor not ready");
+            })(),
+        { languageCode },
+      ),
+    enabled: actorState.status === "ready",
+    staleTime: Infinity,
+  });
+}
+
+/**
+ * `PLATFORM-BASELINE-008`: the Reward Program qualifying-node selector's
+ * candidate list for a given (already-known) Reward Program category id.
+ * Mirrors `useBusinessTypesQuery` exactly.
+ */
+export function useQualifyingNodesForCategoryQuery(
+  categoryId: string | undefined,
+  languageCode?: string,
+) {
+  const { auth, functions } = useBusinessApiPlatform();
+  const actorState = useAuthenticatedActor(auth);
+  return useQuery({
+    queryKey: businessQueryKeys.qualifyingNodes(categoryId ?? "", languageCode ?? ""),
+    queryFn: () =>
+      makeCallListQualifyingNodesForCategory(functions)(
+        actorState.status === "ready"
+          ? actorState.actor
+          : (() => {
+              throw new Error("actor not ready");
+            })(),
+        { categoryId: categoryId as string, languageCode },
+      ),
+    enabled: actorState.status === "ready" && Boolean(categoryId),
+    staleTime: Infinity,
+  });
+}
+
+/**
+ * `PLATFORM-BASELINE-008`: display-only label hydration for a bounded set
+ * of already-selected canonical Commerce Knowledge node ids (a Reward
+ * Program draft's persisted `qualifyingNodes`) — works for `retired`/
+ * `archived` ids too, unlike `useQualifyingNodesForCategoryQuery`'s
+ * `active`-only candidate list.
+ */
+export function useKnowledgeNodeLabelsQuery(nodeIds: readonly string[], languageCode?: string) {
+  const { auth, functions } = useBusinessApiPlatform();
+  const actorState = useAuthenticatedActor(auth);
+  return useQuery({
+    queryKey: businessQueryKeys.knowledgeNodeLabels(nodeIds, languageCode ?? ""),
+    queryFn: () =>
+      makeCallResolveKnowledgeNodeLabels(functions)(
+        actorState.status === "ready"
+          ? actorState.actor
+          : (() => {
+              throw new Error("actor not ready");
+            })(),
+        { nodeIds: [...nodeIds], languageCode },
+      ),
+    enabled: actorState.status === "ready" && nodeIds.length > 0,
     staleTime: Infinity,
   });
 }

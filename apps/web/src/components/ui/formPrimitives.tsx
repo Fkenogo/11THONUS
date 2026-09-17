@@ -68,6 +68,7 @@ export function Select({
   options,
   placeholder,
   errorMessage,
+  required,
 }: {
   id: string;
   label: string;
@@ -76,6 +77,14 @@ export function Select({
   options: { value: string; label: string }[];
   placeholder?: string;
   errorMessage?: string;
+  /**
+   * `PLATFORM-BASELINE-008`: additive — no existing caller passed this
+   * prop before, so this change is a pure capability addition, never a
+   * behavior change for `ClassificationStep.tsx`/`BusinessProfilePage.tsx`.
+   * Mirrors `TextField`'s existing `required` prop for the same native
+   * HTML constraint-validation behavior on a `<select>`.
+   */
+  required?: boolean;
 }) {
   const errorId = `${id}-error`;
   return (
@@ -86,6 +95,7 @@ export function Select({
       <select
         id={id}
         value={value}
+        required={required}
         onChange={(event) => onChange(event.target.value)}
         aria-invalid={errorMessage ? true : undefined}
         aria-describedby={errorMessage ? errorId : undefined}
