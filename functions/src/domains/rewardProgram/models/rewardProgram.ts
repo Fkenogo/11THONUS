@@ -38,7 +38,14 @@ export type RewardProgramRow = {
   readonly id: string;
   readonly businessId: string;
   displayName: string;
-  rewardProgramCategoryId: string;
+  /**
+   * Optional as of `PLATFORM-BASELINE-010B` (Founder decision `DEC-LOY-014`
+   * / `FD-REWARD-QUALIFICATION-001`): Phase 1 does not require a Reward
+   * Program Category. `null` means no category was selected -- never
+   * treated as "unset"/"invalid". The version's `qualifyingNodes` remain
+   * the operative qualification authority regardless of this value.
+   */
+  rewardProgramCategoryId: string | null;
   /** Current-value convenience projection only -- NOT historical authority (RF-2). */
   sharedLoyaltyNumberAllowed: boolean;
   status: RewardProgramStatus;

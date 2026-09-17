@@ -38,6 +38,7 @@ import type { KnowledgeLifecycleStatus } from "../models/knowledgeLifecycle";
 import { isResolvableForExistingReference } from "../models/referenceEligibility";
 import {
   businessCategoryNotFoundForTypeListingError,
+  businessTypeNotFoundForNodeListingError,
   rewardProgramCategoryNotFoundForNodeListingError,
 } from "../models/commerceKnowledgeErrors";
 
@@ -242,6 +243,108 @@ export async function listQualifyingNodesForCategory(
     dtos.push(await toOptionDto(db, node, resolvedLanguage));
   }
   return dtos;
+}
+
+/**
+ * `PLATFORM-BASELINE-010B` (Founder decision `DEC-LOY-014` /
+ * `FD-REWARD-QUALIFICATION-001`): the Reward Program qualifying-node
+ * selector's DEFAULT discovery scope — every `active`
+ * `standard_product`/`standard_service` node reachable from the
+ * Business's own `businessTypeId`, via a two-hop traversal reusing
+ * `listActiveSelectableNodes` exactly as `listBusinessTypesForCategory`/
+ * `listQualifyingNodesForCategory` already do (`business_type` ->
+ * `reward_program_category` -> `{standard_product, standard_service}`,
+ * the fixed Commerce Knowledge hierarchy adjacency in
+ * `knowledgeNodeType.ts`).
+ *
+ * This is a DEFAULT discovery convenience only, never a write-time
+ * restriction: `businessTypeId` narrows what is shown here, but the
+ * qualifying-node write-time validation
+ * (`rewardProgramKnowledgeValidation.ts`'s `validateQualifyingNodes`) has
+ * and enforces no Business-Type scoping at all — an eligible canonical
+ * node outside this default scope remains selectable via
+ * `searchQualifyingNodes` below and is accepted identically at write
+ * time. An empty result for a valid, active Business Type with no
+ * governed `reward_program_category`/`standard_product`/
+ * `standard_service` content underneath it is a normal, supported outcome
+ * (mirrors `listQualifyingNodesForCategory`'s own disclosed empty-result
+ * precedent), never treated as an error.
+ */
+export async function listQualifyingNodesForBusinessType(
+  db: Firestore,
+  businessTypeId: string,
+  languageCode?: string,
+): Promise<CommerceKnowledgeOptionDto[]> {
+  const resolvedLanguage = resolveRequestedLanguage(languageCode);
+
+  const businessType = await getKnowledgeNodeById(db, businessTypeId);
+  if (
+    !businessType ||
+    businessType.nodeType !== "business_type" ||
+    businessType.status !== "active"
+  ) {
+    throw businessTypeNotFoundForNodeListingError(businessTypeId);
+  }
+
+  const categories = await listActiveSelectableNodes(db, "reward_program_category", businessTypeId);
+
+  const productLists = await Promise.all(
+    categories.map((category) =>
+      Promise.all([
+        listActiveSelectableNodes(db, "standard_product", category.id),
+        listActiveSelectableNodes(db, "standard_service", category.id),
+      ]),
+    ),
+  );
+
+  const flattened = productLists.flatMap(([products, services]) => [...products, ...services]);
+
+  const dtos: CommerceKnowledgeOptionDto[] = [];
+  for (const node of flattened) {
+    dtos.push(await toOptionDto(db, node, resolvedLanguage));
+  }
+  return dtos;
+}
+
+/**
+ * `PLATFORM-BASELINE-010B` (Founder decision `DEC-LOY-014` /
+ * `FD-REWARD-QUALIFICATION-001`): the qualifying-node selector's broader
+ * "escape hatch" — every `active` `standard_product`/`standard_service`
+ * node PLATFORM-WIDE (no `parentId`/Business-Type restriction at all),
+ * filtered by a simple case-insensitive substring match on the resolved
+ * display label. This is what makes a canonical node outside a Business's
+ * own default `listQualifyingNodesForBusinessType` scope actually
+ * reachable and selectable — the Founder decision explicitly requires
+ * this to remain possible, never gated behind Business Type. Not a search
+ * engine (`DEC-TECH-008` remains non-blocking, mirrors this file's
+ * existing precedent) — a plain, bounded, in-memory substring filter over
+ * the already-small `active` candidate set, resolved via the same
+ * `resolveDisplayLabel` EN/FR fallback every other read here uses.
+ *
+ * An empty/whitespace-only `searchText` returns every `active` qualifying
+ * node platform-wide (no filter applied) rather than erroring — the same
+ * "empty result is normal, not an error" posture the rest of this file
+ * uses, just inverted (no filter, not an empty list).
+ */
+export async function searchQualifyingNodes(
+  db: Firestore,
+  searchText: string,
+  languageCode?: string,
+): Promise<CommerceKnowledgeOptionDto[]> {
+  const resolvedLanguage = resolveRequestedLanguage(languageCode);
+  const [products, services] = await Promise.all([
+    listActiveSelectableNodes(db, "standard_product"),
+    listActiveSelectableNodes(db, "standard_service"),
+  ]);
+
+  const dtos: CommerceKnowledgeOptionDto[] = [];
+  for (const node of [...products, ...services]) {
+    dtos.push(await toOptionDto(db, node, resolvedLanguage));
+  }
+
+  const trimmed = searchText.trim().toLowerCase();
+  if (trimmed.length === 0) return dtos;
+  return dtos.filter((dto) => dto.displayLabel.toLowerCase().includes(trimmed));
 }
 
 /**

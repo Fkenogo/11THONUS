@@ -64,6 +64,23 @@ export async function validateCategoryReference(db: Firestore, categoryId: strin
   await assertNodeEligible(db, categoryId, ["reward_program_category"], invalidCategoryNodeError);
 }
 
+/**
+ * `PLATFORM-BASELINE-010B` (Founder decision `DEC-LOY-014` /
+ * `FD-REWARD-QUALIFICATION-001`): a Reward Program Category is no longer a
+ * required qualification prerequisite. `null`/`undefined` skips category
+ * validation entirely -- there is nothing to validate against. A supplied
+ * (non-null) category id is still independently re-validated exactly as
+ * before (`validateCategoryReference`, unchanged) -- Businesses that
+ * already have or still wish to set a category are unaffected.
+ */
+async function validateOptionalCategoryReference(
+  db: Firestore,
+  categoryId: string | null | undefined,
+): Promise<void> {
+  if (categoryId === null || categoryId === undefined) return;
+  await validateCategoryReference(db, categoryId);
+}
+
 export async function validateStandardRewardNodeReference(
   db: Firestore,
   nodeId: string | null | undefined,
@@ -93,12 +110,12 @@ export async function validateQualifyingNodes(
 export async function validateAllReferences(
   db: Firestore,
   input: {
-    readonly rewardProgramCategoryId: string;
+    readonly rewardProgramCategoryId: string | null;
     readonly standardRewardNodeId?: string | null;
     readonly qualifyingNodes: readonly QualifyingNode[];
   },
 ): Promise<void> {
-  await validateCategoryReference(db, input.rewardProgramCategoryId);
+  await validateOptionalCategoryReference(db, input.rewardProgramCategoryId);
   await validateStandardRewardNodeReference(db, input.standardRewardNodeId);
   await validateQualifyingNodes(db, input.qualifyingNodes);
 }

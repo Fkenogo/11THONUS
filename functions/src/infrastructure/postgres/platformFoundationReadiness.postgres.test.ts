@@ -188,6 +188,7 @@ describe("checkPlatformFoundationReadiness — actual shipped migrations directo
       "0012",
       "0013",
       "0014",
+      "0015",
     ]);
 
     const result = await checkPlatformFoundationReadiness(shippedReadinessDeps());

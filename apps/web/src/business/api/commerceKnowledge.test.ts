@@ -4,6 +4,8 @@ import {
   toCallListBusinessTypesForCategory,
   toCallListRewardProgramCategories,
   toCallListQualifyingNodesForCategory,
+  toCallListQualifyingNodesForBusinessType,
+  toCallSearchQualifyingNodes,
   toCallResolveKnowledgeNodeLabels,
 } from "./commerceKnowledge";
 
@@ -64,6 +66,55 @@ describe("toCallListQualifyingNodesForCategory", () => {
     );
 
     expect(result).toEqual([]);
+  });
+});
+
+/**
+ * `PLATFORM-BASELINE-010B` (Founder decision `DEC-LOY-014` /
+ * `FD-REWARD-QUALIFICATION-001`): the qualifying-node selector's DEFAULT
+ * discovery scope adapter.
+ */
+describe("toCallListQualifyingNodesForBusinessType", () => {
+  it("passes businessTypeId through and returns the qualifying-node options (possibly empty)", async () => {
+    const call = toCallListQualifyingNodesForBusinessType(async (payload) => {
+      expect(payload).toMatchObject({ businessTypeId: "bt-1" });
+      return { data: [] };
+    });
+
+    const result = await call(
+      { getIdToken: async () => "t", referenceType: "email" },
+      { businessTypeId: "bt-1" },
+    );
+
+    expect(result).toEqual([]);
+  });
+});
+
+/**
+ * `PLATFORM-BASELINE-010B`: the qualifying-node selector's broader,
+ * platform-wide "escape hatch" search adapter — no Business-Type
+ * restriction.
+ */
+describe("toCallSearchQualifyingNodes", () => {
+  it("passes searchText through and returns matching qualifying-node options", async () => {
+    const matches = [
+      {
+        id: "node-sedan-wash",
+        displayLabel: "Sedan Car Wash",
+        nodeType: "standard_service" as const,
+      },
+    ];
+    const call = toCallSearchQualifyingNodes(async (payload) => {
+      expect(payload).toMatchObject({ searchText: "sedan" });
+      return { data: matches };
+    });
+
+    const result = await call(
+      { getIdToken: async () => "t", referenceType: "email" },
+      { searchText: "sedan" },
+    );
+
+    expect(result).toEqual(matches);
   });
 });
 

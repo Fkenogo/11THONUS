@@ -1364,3 +1364,341 @@ describe("Reward Program corrected workflows (PLATFORM-BASELINE-005A-CORR-001)",
     expect(readModel.currentVersion?.id).toBe(v2.id);
   });
 });
+
+/**
+ * `PLATFORM-BASELINE-010B` (Founder decision `DEC-LOY-014` /
+ * `FD-REWARD-QUALIFICATION-001`): a Reward Program Category is no longer
+ * a required qualification prerequisite -- the Business-selected
+ * canonical `standard_product`/`standard_service` qualifying node(s) are
+ * the operative qualification definition. These tests prove the create
+ * path succeeds with `rewardProgramCategoryId: null`, that one or many
+ * qualifying products/services persist correctly, that invalid/fabricated/
+ * wrong-typed/ineligible qualifying-node ids still fail exactly as before
+ * (Business Type/category is not a second gate, but node-level validation
+ * is completely untouched), that an existing category-bearing program
+ * keeps working unchanged, and that publish-time (RF-3) validation
+ * remains authoritative.
+ */
+describe("Reward Program commands — PLATFORM-BASELINE-010B (Reward Program Category optional)", () => {
+  function categorylessDraftRequest(businessId: string, overrides: Record<string, unknown> = {}) {
+    return {
+      businessId,
+      displayName: "Buy 10 Coffees (no category)",
+      rewardProgramCategoryId: null,
+      rewardDescription: "One free coffee",
+      multipleUnitsAllowed: true,
+      sharedLoyaltyNumberAllowed: false,
+      effectiveFrom: new Date("2026-09-17T00:00:00.000Z"),
+      qualifyingNodes: [{ knowledgeNodeId: PRODUCT_NODE, businessDisplayName: null }],
+      ...overrides,
+    };
+  }
+
+  async function seedOwner(businessId: string) {
+    await seedBusiness(businessId);
+    await seedMembership({
+      membershipId: nextId("mem"),
+      userId: "owner-1",
+      businessId,
+      role: "owner",
+    });
+  }
+
+  // Item A: creation succeeds without rewardProgramCategoryId.
+  it("A: createRewardProgram succeeds with rewardProgramCategoryId: null", async () => {
+    const businessId = nextId("biz");
+    await seedOwner(businessId);
+
+    const result = await createRewardProgram(db, pool, {
+      userId: "owner-1",
+      request: categorylessDraftRequest(businessId) as never,
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+
+    expect(result.program.rewardProgramCategoryId).toBeNull();
+    expect(result.program.status).toBe("draft");
+    expect(result.version.status).toBe("draft");
+  });
+
+  // Item I: new rows can persist a NULL reward_program_category_id at the database layer.
+  it("I: the persisted reward_programs row has a NULL reward_program_category_id", async () => {
+    const businessId = nextId("biz");
+    await seedOwner(businessId);
+
+    const result = await createRewardProgram(db, pool, {
+      userId: "owner-1",
+      request: categorylessDraftRequest(businessId) as never,
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+
+    const row = await pool.query<{ reward_program_category_id: string | null }>(
+      "SELECT reward_program_category_id FROM reward_programs WHERE id = $1",
+      [result.program.id],
+    );
+    expect(row.rows[0].reward_program_category_id).toBeNull();
+  });
+
+  // Item B: one canonical qualifying product can be selected and persisted.
+  it("B: a single canonical qualifying product persists correctly", async () => {
+    const businessId = nextId("biz");
+    await seedOwner(businessId);
+
+    const result = await createRewardProgram(db, pool, {
+      userId: "owner-1",
+      request: categorylessDraftRequest(businessId, {
+        qualifyingNodes: [{ knowledgeNodeId: PRODUCT_NODE, businessDisplayName: null }],
+      }) as never,
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+
+    expect(result.version.qualifyingNodes).toEqual([
+      { knowledgeNodeId: PRODUCT_NODE, businessDisplayName: null },
+    ]);
+  });
+
+  // Item C: multiple canonical qualifying products/services can be selected and persisted.
+  it("C: multiple canonical qualifying products/services persist correctly", async () => {
+    const businessId = nextId("biz");
+    await seedOwner(businessId);
+
+    const result = await createRewardProgram(db, pool, {
+      userId: "owner-1",
+      request: categorylessDraftRequest(businessId, {
+        qualifyingNodes: [
+          { knowledgeNodeId: PRODUCT_NODE, businessDisplayName: "Black Coffee" },
+          { knowledgeNodeId: PRODUCT_NODE_2, businessDisplayName: "Medium Pizza" },
+        ],
+      }) as never,
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+
+    expect(result.version.qualifyingNodes).toEqual([
+      { knowledgeNodeId: PRODUCT_NODE, businessDisplayName: "Black Coffee" },
+      { knowledgeNodeId: PRODUCT_NODE_2, businessDisplayName: "Medium Pizza" },
+    ]);
+  });
+
+  // Item D: missing/nonexistent qualifying-node ids fail creation.
+  it("D: a nonexistent qualifying-node id fails creation, even with no category", async () => {
+    const businessId = nextId("biz");
+    await seedOwner(businessId);
+
+    await expect(
+      createRewardProgram(db, pool, {
+        userId: "owner-1",
+        request: categorylessDraftRequest(businessId, {
+          qualifyingNodes: [
+            { knowledgeNodeId: "does-not-exist-at-all", businessDisplayName: null },
+          ],
+        }) as never,
+        idempotencyKey: nextId("key"),
+        correlationId: nextId("corr"),
+      }),
+    ).rejects.toThrow(RewardProgramDomainError);
+
+    const count = await pool.query("SELECT count(*) FROM reward_programs WHERE business_id = $1", [
+      businessId,
+    ]);
+    expect(Number(count.rows[0].count)).toBe(0);
+  });
+
+  // Item E: fabricated canonical ids fail (distinct test for clarity, same mechanism as D).
+  it("E: a fabricated/guessed canonical id fails creation, never accepted merely by looking well-formed", async () => {
+    const businessId = nextId("biz");
+    await seedOwner(businessId);
+
+    await expect(
+      createRewardProgram(db, pool, {
+        userId: "owner-1",
+        request: categorylessDraftRequest(businessId, {
+          qualifyingNodes: [
+            { knowledgeNodeId: "fabricated-canonical-id-1234567890", businessDisplayName: null },
+          ],
+        }) as never,
+        idempotencyKey: nextId("key"),
+        correlationId: nextId("corr"),
+      }),
+    ).rejects.toThrow(RewardProgramDomainError);
+  });
+
+  // Item F: wrong Commerce-Knowledge node types (e.g. a business_type id) fail.
+  it("F: a wrong-typed node id (a business_type, not a standard_product/standard_service) fails as a qualifying node", async () => {
+    const businessId = nextId("biz");
+    await seedOwner(businessId);
+
+    await expect(
+      createRewardProgram(db, pool, {
+        userId: "owner-1",
+        request: categorylessDraftRequest(businessId, {
+          qualifyingNodes: [{ knowledgeNodeId: TYPE, businessDisplayName: null }],
+        }) as never,
+        idempotencyKey: nextId("key"),
+        correlationId: nextId("corr"),
+      }),
+    ).rejects.toThrow(RewardProgramDomainError);
+  });
+
+  // Item G: draft/in_review/otherwise-ineligible nodes fail as qualifying-node selections.
+  it("G: a draft (not-yet-active) canonical node fails as a qualifying node selection", async () => {
+    const businessId = nextId("biz");
+    await seedOwner(businessId);
+
+    const draftNodeId = nextId("draft_node");
+    await createKnowledgeNodePersisted(db, {
+      id: draftNodeId,
+      nodeType: "standard_product",
+      parentId: CATEGORY_NODE,
+      canonicalName: "Not Yet Active Product",
+      slug: `not-yet-active-${draftNodeId}`,
+      createdAt: CREATED_AT,
+    });
+    // Left in "draft" status deliberately -- never transitioned to active.
+
+    await expect(
+      createRewardProgram(db, pool, {
+        userId: "owner-1",
+        request: categorylessDraftRequest(businessId, {
+          qualifyingNodes: [{ knowledgeNodeId: draftNodeId, businessDisplayName: null }],
+        }) as never,
+        idempotencyKey: nextId("key"),
+        correlationId: nextId("corr"),
+      }),
+    ).rejects.toThrow(RewardProgramDomainError);
+  });
+
+  // Item H: an existing program with a non-null category remains readable/operational unchanged.
+  it("H: an existing category-bearing Reward Program remains fully operational unchanged", async () => {
+    const businessId = nextId("biz");
+    await seedOwner(businessId);
+
+    const created = await createRewardProgram(db, pool, {
+      userId: "owner-1",
+      request: baseDraftRequest(businessId) as never, // baseDraftRequest sets rewardProgramCategoryId: CATEGORY_NODE
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+    expect(created.program.rewardProgramCategoryId).toBe(CATEGORY_NODE);
+
+    const readModel = await getRewardProgram(db, pool, {
+      userId: "owner-1",
+      businessId,
+      rewardProgramId: created.program.id,
+    });
+    expect(readModel.program.rewardProgramCategoryId).toBe(CATEGORY_NODE);
+
+    const updated = await updateRewardProgramDraft(db, pool, {
+      userId: "owner-1",
+      request: {
+        businessId,
+        rewardProgramId: created.program.id,
+        versionId: created.version.id,
+        expectedRowVersion: created.version.rowVersion,
+        rewardDescription: "Still works with a category",
+        multipleUnitsAllowed: true,
+        sharedLoyaltyNumberAllowed: false,
+        effectiveFrom: created.version.effectiveFrom,
+        qualifyingNodes: created.version.qualifyingNodes,
+      } as never,
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+    expect(updated.rewardDescription).toBe("Still works with a category");
+
+    const published = await publishRewardProgramVersion(db, pool, {
+      userId: "owner-1",
+      request: { businessId, rewardProgramId: created.program.id, versionId: created.version.id },
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+    expect(published.status).toBe("active");
+  });
+
+  /**
+   * Item Q (Business Type is not a qualification gate): the write-time
+   * qualifying-node validation (`validateQualifyingNodes`) has no
+   * Business-Type or category scoping of its own -- a canonical
+   * `standard_product`/`standard_service` node is accepted purely on its
+   * own existence/type/eligibility, regardless of which
+   * `reward_program_category` (or none at all) the creating request
+   * names. `PRODUCT_NODE_2` here is a real, active, governed node that
+   * this specific request's (absent) category never named -- proving
+   * category/Business-Type is never consulted as a second gate at write
+   * time.
+   */
+  it("Q: a qualifying node is accepted purely on its own eligibility -- no Business-Type/category gate at write time", async () => {
+    const businessId = nextId("biz");
+    await seedOwner(businessId);
+
+    const result = await createRewardProgram(db, pool, {
+      userId: "owner-1",
+      request: categorylessDraftRequest(businessId, {
+        qualifyingNodes: [{ knowledgeNodeId: PRODUCT_NODE_2, businessDisplayName: null }],
+      }) as never,
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+
+    expect(result.version.qualifyingNodes).toEqual([
+      { knowledgeNodeId: PRODUCT_NODE_2, businessDisplayName: null },
+    ]);
+  });
+
+  // Item S: publish-time (RF-3) validation remains authoritative even with no category.
+  it("S: publish-time validation still rejects an invalid qualifying-node reference for a category-less program", async () => {
+    const businessId = nextId("biz");
+    await seedOwner(businessId);
+
+    // A dedicated, disposable node for this test -- retirement is a
+    // one-way transition (active -> retired -> archived only), so this
+    // must never be one of the shared fixture nodes other tests in this
+    // file rely on staying "active".
+    const disposableNodeId = nextId("disposable_product");
+    await createKnowledgeNodePersisted(db, {
+      id: disposableNodeId,
+      nodeType: "standard_product",
+      parentId: CATEGORY_NODE,
+      canonicalName: "Disposable Product For Retirement Test",
+      slug: `disposable-product-${disposableNodeId}`,
+      createdAt: CREATED_AT,
+    });
+    await transitionKnowledgeNodeStatusPersisted(db, disposableNodeId, "in_review", {
+      updatedAt: CREATED_AT,
+    });
+    await transitionKnowledgeNodeStatusPersisted(db, disposableNodeId, "active", {
+      updatedAt: CREATED_AT,
+    });
+
+    const created = await createRewardProgram(db, pool, {
+      userId: "owner-1",
+      request: categorylessDraftRequest(businessId, {
+        qualifyingNodes: [{ knowledgeNodeId: disposableNodeId, businessDisplayName: null }],
+      }) as never,
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+
+    // Retire the qualifying node between draft creation and publish --
+    // RF-3's authoritative pre-transaction Firestore read must still catch it.
+    await retireKnowledgeNodePersisted(db, disposableNodeId, {
+      updatedAt: new Date(),
+      replacementNodeId: PRODUCT_NODE,
+    });
+
+    await expect(
+      publishRewardProgramVersion(db, pool, {
+        userId: "owner-1",
+        request: {
+          businessId,
+          rewardProgramId: created.program.id,
+          versionId: created.version.id,
+        },
+        idempotencyKey: nextId("key"),
+        correlationId: nextId("corr"),
+      }),
+    ).rejects.toThrow(RewardProgramDomainError);
+  });
+});

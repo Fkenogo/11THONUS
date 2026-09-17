@@ -19,15 +19,22 @@ let rewardProgramsResult: {
 };
 let accessibleResult: { data: { businessId: string; role: string }[] };
 
-/** `PLATFORM-BASELINE-008`: the create-form category selector's candidate list. */
-let categoriesResult: {
+/**
+ * `PLATFORM-BASELINE-010B` (Founder decision `DEC-LOY-014` /
+ * `FD-REWARD-QUALIFICATION-001`): the qualifying-node selector's DEFAULT
+ * discovery scope (Business-Type-pre-filtered) — replaces the old
+ * category-scoped candidate list, which no longer exists in the create
+ * form at all.
+ */
+let qualifyingNodesResult: {
   data: CandidateOption[] | undefined;
   isLoading: boolean;
   isError: boolean;
+  isSuccess: boolean;
 };
 
-/** `PLATFORM-BASELINE-008`: the qualifying-node selector's candidate list — keyed by category id, so tests can vary it per-category if needed; a single shared list is enough for this file's scenarios. */
-let qualifyingNodesResult: {
+/** `PLATFORM-BASELINE-010B`: the qualifying-node selector's broader "escape hatch" search. */
+let searchResult: {
   data: CandidateOption[] | undefined;
   isLoading: boolean;
   isError: boolean;
@@ -44,18 +51,14 @@ vi.mock("../hooks/rewardProgramQueries", () => ({
 
 vi.mock("../hooks/businessQueries", () => ({
   useAccessibleBusinessesQuery: () => accessibleResult,
-  useRewardProgramCategoriesQuery: () => categoriesResult,
-  useQualifyingNodesForCategoryQuery: () => qualifyingNodesResult,
+  useQualifyingNodesForBusinessTypeQuery: () => qualifyingNodesResult,
+  useSearchQualifyingNodesQuery: () => searchResult,
   useKnowledgeNodeLabelsQuery: () => nodeLabelsResult,
 }));
 
 function resetSelectorMocks() {
-  categoriesResult = {
-    data: [{ id: "cat-1", displayLabel: "Salon Category", nodeType: "reward_program_category" }],
-    isLoading: false,
-    isError: false,
-  };
   qualifyingNodesResult = { data: [], isLoading: false, isError: false, isSuccess: true };
+  searchResult = { data: undefined, isLoading: false, isError: false, isSuccess: false };
   nodeLabelsResult = { data: [] };
 }
 
@@ -88,7 +91,7 @@ vi.mock("../hooks/rewardProgramMutations", () => ({
   }),
 }));
 
-const context: BusinessContext = { businessId: "biz-1" } as BusinessContext;
+const context: BusinessContext = { businessId: "biz-1", businessTypeId: "bt-1" } as BusinessContext;
 
 function renderPage() {
   return render(
@@ -124,11 +127,16 @@ function versionWire(overrides: Partial<RewardProgramVersionWire> = {}): RewardP
   };
 }
 
+/**
+ * `PLATFORM-BASELINE-010B`: `rewardProgramCategoryId` is `null` on every
+ * fixture program -- proving the page renders and functions correctly for
+ * a category-less program is the whole point of this package's UI change.
+ */
 const programWire = {
   id: "rp-1",
   businessId: "biz-1",
   displayName: "Buy 10 Coffees",
-  rewardProgramCategoryId: "cat-1",
+  rewardProgramCategoryId: null,
   sharedLoyaltyNumberAllowed: false,
   status: "draft" as const,
   currentVersionId: null,
@@ -233,6 +241,24 @@ describe("RewardProgramManagementPage (PLATFORM-BASELINE-005A)", () => {
     expect(screen.queryByLabelText(/reward quantity/i)).not.toBeInTheDocument();
   });
 
+  /**
+   * `PLATFORM-BASELINE-010B` (Founder decision `DEC-LOY-014` /
+   * `FD-REWARD-QUALIFICATION-001`, item M of the test plan): the Reward
+   * Program create form must have NO Reward Category control at all --
+   * not even as an optional/hidden field.
+   */
+  it("has no Reward Program Category control anywhere in the create form", async () => {
+    rewardProgramsResult = { data: [], isLoading: false, isError: false };
+    accessibleResult = { data: [{ businessId: "biz-1", role: "owner" }] };
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(screen.getByRole("button", { name: /create reward program/i }));
+
+    expect(screen.queryByLabelText(/reward program category/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/reward program category/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+  });
+
   it("opens the create form and displays the fixed-invariants note as read-only text", async () => {
     rewardProgramsResult = { data: [], isLoading: false, isError: false };
     accessibleResult = { data: [{ businessId: "biz-1", role: "owner" }] };
@@ -243,40 +269,22 @@ describe("RewardProgramManagementPage (PLATFORM-BASELINE-005A)", () => {
     expect(screen.getByText(/reward quantity: 1/i)).toBeInTheDocument();
   });
 
-  it("submitting the create form calls the create mutation with the entered fields", async () => {
+  it("submitting the create form calls the create mutation with the entered fields and no rewardProgramCategoryId", async () => {
     rewardProgramsResult = { data: [], isLoading: false, isError: false };
     accessibleResult = { data: [{ businessId: "biz-1", role: "owner" }] };
     const user = userEvent.setup();
     renderPage();
     await user.click(screen.getByRole("button", { name: /create reward program/i }));
     await user.type(screen.getByLabelText(/program name/i), "Buy 10 Coffees");
-    await user.selectOptions(screen.getByLabelText(/reward program category/i), "cat-1");
     await user.type(screen.getByLabelText(/reward description/i), "One free coffee");
     fireEvent.change(screen.getByLabelText(/effective from/i), { target: { value: "2026-09-13" } });
     await user.click(screen.getByRole("button", { name: /^create program$/i }));
     expect(mockCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ displayName: "Buy 10 Coffees", rewardProgramCategoryId: "cat-1" }),
+      expect.objectContaining({ displayName: "Buy 10 Coffees" }),
       expect.anything(),
     );
-  });
-
-  /**
-   * Review finding (PR #255): the category field used to be a `TextField`
-   * with `required`, which blocked native browser submission on an empty
-   * value before any mutation ever fired. Replacing it with a `Select`
-   * must not silently drop that constraint -- an empty selection should
-   * still fail native constraint validation, not reach the server.
-   */
-  it("the category selector is a required field (native constraint-validation, matching the prior TextField)", async () => {
-    rewardProgramsResult = { data: [], isLoading: false, isError: false };
-    accessibleResult = { data: [{ businessId: "biz-1", role: "owner" }] };
-    const user = userEvent.setup();
-    renderPage();
-    await user.click(screen.getByRole("button", { name: /create reward program/i }));
-
-    const categorySelect = screen.getByLabelText(/reward program category/i);
-    expect(categorySelect).toBeRequired();
-    expect((categorySelect as HTMLSelectElement).checkValidity()).toBe(false);
+    const [payload] = mockCreate.mock.calls[0];
+    expect(payload).not.toHaveProperty("rewardProgramCategoryId");
   });
 
   it("Owner sees edit-draft and publish actions on a draft program", () => {
@@ -437,40 +445,23 @@ describe("RewardProgramManagementPage (PLATFORM-BASELINE-005A)", () => {
   });
 
   /**
-   * `PLATFORM-BASELINE-008` — the qualifying-node selector replaces the
-   * old opaque comma-separated Firestore-id `TextField`. These tests
-   * prove: human-readable category/node options are shown; the operator
-   * never types a canonical id; canonical ids (never labels) are what
+   * `PLATFORM-BASELINE-008`, redesigned by `PLATFORM-BASELINE-010B` per
+   * Founder decision `DEC-LOY-014` / `FD-REWARD-QUALIFICATION-001` — the
+   * qualifying-node selector replaces the old opaque comma-separated
+   * Firestore-id `TextField`, and no longer requires or exposes a Reward
+   * Program Category at all. These tests prove: human-readable node
+   * options are shown, defaulted to the Business's own Business Type; the
+   * operator never types a canonical id anywhere, including via the
+   * search escape hatch (item N); canonical ids (never labels) are what
    * gets submitted; multi-selection works; a previously-selected node
-   * that is no longer an active candidate is preserved, not dropped; and
-   * the selector's own loading/error/empty states render.
+   * that is no longer an available candidate is preserved, not dropped;
+   * a node found ONLY via search (outside the default Business-Type
+   * scope) is still accepted by the create mutation identically to a
+   * default-scope node (items P/Q); and the selector's own
+   * loading/error/empty states render.
    */
-  describe("PLATFORM-BASELINE-008: qualifying-node selection", () => {
-    it("shows human-readable category options in the create form — never a raw id input", async () => {
-      rewardProgramsResult = { data: [], isLoading: false, isError: false };
-      accessibleResult = { data: [{ businessId: "biz-1", role: "owner" }] };
-      categoriesResult = {
-        data: [
-          { id: "cat-1", displayLabel: "Salon Category", nodeType: "reward_program_category" },
-          { id: "cat-2", displayLabel: "Cafe Category", nodeType: "reward_program_category" },
-        ],
-        isLoading: false,
-        isError: false,
-      };
-      const user = userEvent.setup();
-      renderPage();
-      await user.click(screen.getByRole("button", { name: /create reward program/i }));
-
-      const categorySelect = screen.getByLabelText(/reward program category/i);
-      expect(categorySelect.tagName).toBe("SELECT");
-      expect(screen.getByRole("option", { name: "Salon Category" })).toBeInTheDocument();
-      expect(screen.getByRole("option", { name: "Cafe Category" })).toBeInTheDocument();
-      // Before a category is chosen, the qualifying-node selector asks for
-      // one rather than showing (or requiring) any id.
-      expect(screen.getByText(/choose a category/i, { exact: false })).toBeInTheDocument();
-    });
-
-    it("shows qualifying-node checkboxes scoped to the chosen category and submits canonical ids, never labels", async () => {
+  describe("PLATFORM-BASELINE-010B: qualifying-node selection (no Category)", () => {
+    it("shows human-readable qualifying-node options by default — never a raw id input, and no category gate", async () => {
       rewardProgramsResult = { data: [], isLoading: false, isError: false };
       accessibleResult = { data: [{ businessId: "biz-1", role: "owner" }] };
       qualifyingNodesResult = {
@@ -485,7 +476,28 @@ describe("RewardProgramManagementPage (PLATFORM-BASELINE-005A)", () => {
       const user = userEvent.setup();
       renderPage();
       await user.click(screen.getByRole("button", { name: /create reward program/i }));
-      await user.selectOptions(screen.getByLabelText(/reward program category/i), "cat-1");
+
+      // Candidates render immediately -- no category must be chosen first.
+      expect(screen.getByLabelText("Haircut")).toBeInTheDocument();
+      expect(screen.getByLabelText("Shampoo")).toBeInTheDocument();
+      expect(screen.queryByText("node-haircut")).not.toBeInTheDocument();
+    });
+
+    it("shows qualifying-node checkboxes from the default Business-Type scope and submits canonical ids, never labels", async () => {
+      rewardProgramsResult = { data: [], isLoading: false, isError: false };
+      accessibleResult = { data: [{ businessId: "biz-1", role: "owner" }] };
+      qualifyingNodesResult = {
+        data: [
+          { id: "node-haircut", displayLabel: "Haircut", nodeType: "standard_service" },
+          { id: "node-shampoo", displayLabel: "Shampoo", nodeType: "standard_product" },
+        ],
+        isLoading: false,
+        isError: false,
+        isSuccess: true,
+      };
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(screen.getByRole("button", { name: /create reward program/i }));
 
       await user.type(screen.getByLabelText(/program name/i), "Buy 10 Haircuts");
       await user.type(screen.getByLabelText(/reward description/i), "One free haircut");
@@ -526,7 +538,6 @@ describe("RewardProgramManagementPage (PLATFORM-BASELINE-005A)", () => {
       const user = userEvent.setup();
       renderPage();
       await user.click(screen.getByRole("button", { name: /create reward program/i }));
-      await user.selectOptions(screen.getByLabelText(/reward program category/i), "cat-1");
       await user.type(screen.getByLabelText(/program name/i), "Multi");
       await user.type(screen.getByLabelText(/reward description/i), "desc");
       fireEvent.change(screen.getByLabelText(/effective from/i), {
@@ -540,6 +551,54 @@ describe("RewardProgramManagementPage (PLATFORM-BASELINE-005A)", () => {
           qualifyingNodes: [
             { knowledgeNodeId: "node-a", businessDisplayName: "Item A" },
             { knowledgeNodeId: "node-b", businessDisplayName: "Item B" },
+          ],
+        }),
+        expect.anything(),
+      );
+    });
+
+    /**
+     * `PLATFORM-BASELINE-010B` items P/Q: a canonical node found ONLY via
+     * the broader search escape hatch (i.e. NOT in the default
+     * Business-Type-scoped list) must still be selectable by label and
+     * accepted by the create mutation identically to a default-scope
+     * node -- proving Business Type is a discovery convenience, never a
+     * server-side qualification gate, all the way through this form.
+     */
+    it("accepts a qualifying node found only via the search escape hatch, outside the default Business-Type scope", async () => {
+      rewardProgramsResult = { data: [], isLoading: false, isError: false };
+      accessibleResult = { data: [{ businessId: "biz-1", role: "owner" }] };
+      // Default scope has nothing relevant...
+      qualifyingNodesResult = { data: [], isLoading: false, isError: false, isSuccess: true };
+      // ...but the broader search finds an eligible node elsewhere.
+      searchResult = {
+        data: [
+          { id: "node-sedan-wash", displayLabel: "Sedan Car Wash", nodeType: "standard_service" },
+        ],
+        isLoading: false,
+        isError: false,
+        isSuccess: true,
+      };
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(screen.getByRole("button", { name: /create reward program/i }));
+      await user.type(screen.getByLabelText(/program name/i), "Car Wash Rewards");
+      await user.type(screen.getByLabelText(/reward description/i), "One free wash");
+      fireEvent.change(screen.getByLabelText(/effective from/i), {
+        target: { value: "2026-09-13" },
+      });
+
+      // Found and selected by typed name only, never a pasted id.
+      await user.type(screen.getByLabelText(/search all products and services/i), "sedan");
+      const searchCheckbox = screen.getByRole("checkbox", { name: /sedan car wash/i });
+      expect(screen.queryByText("node-sedan-wash")).not.toBeInTheDocument();
+      await user.click(searchCheckbox);
+
+      await user.click(screen.getByRole("button", { name: /^create program$/i }));
+      expect(mockCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          qualifyingNodes: [
+            { knowledgeNodeId: "node-sedan-wash", businessDisplayName: "Sedan Car Wash" },
           ],
         }),
         expect.anything(),
@@ -579,7 +638,7 @@ describe("RewardProgramManagementPage (PLATFORM-BASELINE-005A)", () => {
       };
       rewardProgramsResult = { data: [draftWithRetiredNode], isLoading: false, isError: false };
       accessibleResult = { data: [{ businessId: "biz-1", role: "owner" }] };
-      // The live candidate list no longer contains "node-retired".
+      // The live candidate lists no longer contain "node-retired".
       qualifyingNodesResult = { data: [], isLoading: false, isError: false, isSuccess: true };
       nodeLabelsResult = { data: [{ id: "node-retired", displayLabel: null, status: "retired" }] };
       const user = userEvent.setup();
@@ -601,7 +660,7 @@ describe("RewardProgramManagementPage (PLATFORM-BASELINE-005A)", () => {
       );
     });
 
-    it("shows a loading state while qualifying-node candidates are being fetched", async () => {
+    it("shows a loading state while default qualifying-node candidates are being fetched", async () => {
       rewardProgramsResult = { data: [], isLoading: false, isError: false };
       accessibleResult = { data: [{ businessId: "biz-1", role: "owner" }] };
       qualifyingNodesResult = {
@@ -613,11 +672,10 @@ describe("RewardProgramManagementPage (PLATFORM-BASELINE-005A)", () => {
       const user = userEvent.setup();
       renderPage();
       await user.click(screen.getByRole("button", { name: /create reward program/i }));
-      await user.selectOptions(screen.getByLabelText(/reward program category/i), "cat-1");
       expect(screen.getByText(/loading products and services/i)).toBeInTheDocument();
     });
 
-    it("shows a safe, translated error state (never a raw exception) when qualifying-node candidates fail to load", async () => {
+    it("shows a safe, translated error state (never a raw exception) when default qualifying-node candidates fail to load", async () => {
       rewardProgramsResult = { data: [], isLoading: false, isError: false };
       accessibleResult = { data: [{ businessId: "biz-1", role: "owner" }] };
       qualifyingNodesResult = {
@@ -629,29 +687,17 @@ describe("RewardProgramManagementPage (PLATFORM-BASELINE-005A)", () => {
       const user = userEvent.setup();
       renderPage();
       await user.click(screen.getByRole("button", { name: /create reward program/i }));
-      await user.selectOptions(screen.getByLabelText(/reward program category/i), "cat-1");
       expect(screen.getByRole("alert")).toHaveTextContent(/couldn't load/i);
     });
 
-    it("shows an explicit empty state when a category has no eligible qualifying nodes", async () => {
+    it("shows an explicit empty state when the default Business-Type scope has no eligible qualifying nodes", async () => {
       rewardProgramsResult = { data: [], isLoading: false, isError: false };
       accessibleResult = { data: [{ businessId: "biz-1", role: "owner" }] };
       qualifyingNodesResult = { data: [], isLoading: false, isError: false, isSuccess: true };
       const user = userEvent.setup();
       renderPage();
       await user.click(screen.getByRole("button", { name: /create reward program/i }));
-      await user.selectOptions(screen.getByLabelText(/reward program category/i), "cat-1");
       expect(screen.getByText(/no products or services/i)).toBeInTheDocument();
-    });
-
-    it("shows a safe, translated error state for the category selector itself", async () => {
-      rewardProgramsResult = { data: [], isLoading: false, isError: false };
-      accessibleResult = { data: [{ businessId: "biz-1", role: "owner" }] };
-      categoriesResult = { data: undefined, isLoading: false, isError: true };
-      const user = userEvent.setup();
-      renderPage();
-      await user.click(screen.getByRole("button", { name: /create reward program/i }));
-      expect(screen.getByRole("alert")).toHaveTextContent(/couldn't load/i);
     });
   });
 });

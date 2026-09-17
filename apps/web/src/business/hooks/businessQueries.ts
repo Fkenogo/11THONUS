@@ -14,6 +14,8 @@ import {
   makeCallListBusinessTypesForCategory,
   makeCallListRewardProgramCategories,
   makeCallListQualifyingNodesForCategory,
+  makeCallListQualifyingNodesForBusinessType,
+  makeCallSearchQualifyingNodes,
   makeCallResolveKnowledgeNodeLabels,
 } from "../api/commerceKnowledge";
 import { makeCallListStaffInvitations, makeCallListStaffMemberships } from "../api/staffLists";
@@ -155,6 +157,63 @@ export function useQualifyingNodesForCategoryQuery(
         { categoryId: categoryId as string, languageCode },
       ),
     enabled: actorState.status === "ready" && Boolean(categoryId),
+    staleTime: Infinity,
+  });
+}
+
+/**
+ * `PLATFORM-BASELINE-010B` (Founder decision `DEC-LOY-014` /
+ * `FD-REWARD-QUALIFICATION-001`): the qualifying-node selector's DEFAULT
+ * discovery scope, pre-filtered to the Business's own `businessTypeId`.
+ * Mirrors `useQualifyingNodesForCategoryQuery` exactly, one level up the
+ * hierarchy.
+ */
+export function useQualifyingNodesForBusinessTypeQuery(
+  businessTypeId: string | undefined,
+  languageCode?: string,
+) {
+  const { auth, functions } = useBusinessApiPlatform();
+  const actorState = useAuthenticatedActor(auth);
+  return useQuery({
+    queryKey: businessQueryKeys.qualifyingNodesForBusinessType(
+      businessTypeId ?? "",
+      languageCode ?? "",
+    ),
+    queryFn: () =>
+      makeCallListQualifyingNodesForBusinessType(functions)(
+        actorState.status === "ready"
+          ? actorState.actor
+          : (() => {
+              throw new Error("actor not ready");
+            })(),
+        { businessTypeId: businessTypeId as string, languageCode },
+      ),
+    enabled: actorState.status === "ready" && Boolean(businessTypeId),
+    staleTime: Infinity,
+  });
+}
+
+/**
+ * `PLATFORM-BASELINE-010B`: the qualifying-node selector's broader,
+ * platform-wide "escape hatch" search — no Business-Type restriction.
+ * Disabled while `searchText` is empty (the selector only issues this
+ * query once the operator has actually typed something).
+ */
+export function useSearchQualifyingNodesQuery(searchText: string, languageCode?: string) {
+  const { auth, functions } = useBusinessApiPlatform();
+  const actorState = useAuthenticatedActor(auth);
+  return useQuery({
+    queryKey: businessQueryKeys.searchQualifyingNodes(searchText, languageCode ?? ""),
+    queryFn: () =>
+      makeCallSearchQualifyingNodes(functions)(
+        actorState.status === "ready"
+          ? actorState.actor
+          : (() => {
+              throw new Error("actor not ready");
+            })(),
+        { searchText, languageCode },
+      ),
+    enabled: actorState.status === "ready" && searchText.trim().length > 0,
     staleTime: Infinity,
   });
 }

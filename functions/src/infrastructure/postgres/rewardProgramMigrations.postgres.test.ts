@@ -11,6 +11,8 @@
 
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { mkdtemp, copyFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { loadPostgresConfig } from "./postgresConfig";
 import { createPostgresPool, closePostgresPool, type PlatformPostgresPool } from "./postgresPool";
@@ -70,7 +72,7 @@ afterAll(async () => {
 });
 
 describe("Reward Program migrations against a real PostgreSQL instance", () => {
-  it("discovers all fourteen migrations in version order", async () => {
+  it("discovers all fifteen migrations in version order", async () => {
     const files = await discoverMigrationFiles(migrationsDir);
     expect(files.map((f) => f.version)).toEqual([
       "0001",
@@ -87,6 +89,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0012",
       "0013",
       "0014",
+      "0015",
     ]);
   });
 
@@ -107,6 +110,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0012",
       "0013",
       "0014",
+      "0015",
     ]);
 
     for (const table of [
@@ -140,12 +144,13 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0012",
       "0013",
       "0014",
+      "0015",
     ]);
   });
 
   it("rolls back the full migration set and re-applies cleanly", async () => {
     await migrateUp(pool, migrationsDir);
-    await migrateDown(pool, migrationsDir, 14);
+    await migrateDown(pool, migrationsDir, 15);
 
     for (const table of [
       "reward_programs",
@@ -173,6 +178,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0012",
       "0013",
       "0014",
+      "0015",
     ]);
     const applied = await getAppliedMigrations(pool);
     expect(applied.map((a) => a.version)).toEqual([
@@ -190,6 +196,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0012",
       "0013",
       "0014",
+      "0015",
     ]);
   });
 
@@ -210,6 +217,20 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       );
       return result.rows[0].id;
     }
+
+    /**
+     * `PLATFORM-BASELINE-010B` (Founder decision `DEC-LOY-014` /
+     * `FD-REWARD-QUALIFICATION-001`): `reward_program_category_id` is now
+     * nullable at the database layer (migration `0015`).
+     */
+    it("allows a NULL reward_program_category_id on a new row", async () => {
+      const result = await pool.query<{ id: string; reward_program_category_id: string | null }>(
+        `INSERT INTO reward_programs (business_id, display_name, reward_program_category_id, status, created_by, updated_by)
+         VALUES ('biz-1', 'Test Program (no category)', NULL, 'draft', 'user-1', 'user-1')
+         RETURNING id, reward_program_category_id`,
+      );
+      expect(result.rows[0].reward_program_category_id).toBeNull();
+    });
 
     it("rejects required_verified_units != 10", async () => {
       const programId = await insertProgram();
@@ -374,6 +395,75 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         [programId],
       );
       expect(Number(drafts.rows[0].count)).toBe(1);
+    });
+  });
+
+  /**
+   * `PLATFORM-BASELINE-010B` test plan item J: the migration must succeed
+   * against a fixture table that already contains pre-existing rows, not
+   * just an empty table -- and every such existing row's non-null
+   * `reward_program_category_id` value must be left byte-for-byte
+   * unchanged (`DROP COLUMN ... NOT NULL` is a pure constraint
+   * relaxation, never a value rewrite).
+   */
+  describe("PLATFORM-BASELINE-010B: migration 0015 against pre-existing rows", () => {
+    it("applying 0001-0014 then 0015 against a table with existing non-null-category rows preserves every existing value and allows a new NULL row afterward", async () => {
+      // Apply only 0001-0014 first (the pre-010B baseline schema, copied
+      // into a scratch directory so `migrateUp` -- which always applies
+      // every file it finds -- cannot see 0015 yet), insert real rows
+      // under the OLD NOT NULL constraint, THEN point it at the real
+      // directory (which also has 0015) -- proving the migration itself
+      // (not just the final schema) is safe against a table that already
+      // has data, per its own doc comment.
+      const allFiles = await discoverMigrationFiles(migrationsDir);
+      const preBaselineFiles = allFiles.filter((f) => f.version !== "0015");
+      const scratchDir = await mkdtemp(path.join(tmpdir(), "pb010b-baseline-migrations-"));
+      try {
+        for (const file of preBaselineFiles) {
+          await copyFile(file.upPath, path.join(scratchDir, path.basename(file.upPath)));
+          if (file.downPath) {
+            await copyFile(file.downPath, path.join(scratchDir, path.basename(file.downPath)));
+          }
+        }
+        await migrateUp(pool, scratchDir);
+      } finally {
+        await rm(scratchDir, { recursive: true, force: true });
+      }
+
+      const seeded = await pool.query<{ id: string }>(
+        `INSERT INTO reward_programs (business_id, display_name, reward_program_category_id, status, created_by, updated_by)
+         VALUES
+           ('biz-pre-1', 'Pre-existing Program 1', 'cat-legacy-1', 'draft', 'user-1', 'user-1'),
+           ('biz-pre-2', 'Pre-existing Program 2', 'cat-legacy-2', 'active', 'user-1', 'user-1')
+         RETURNING id`,
+      );
+      expect(seeded.rows).toHaveLength(2);
+
+      const result = await migrateUp(pool, migrationsDir);
+      expect(result.applied).toEqual(["0015"]);
+
+      const preserved = await pool.query<{
+        business_id: string;
+        reward_program_category_id: string | null;
+      }>(
+        "SELECT business_id, reward_program_category_id FROM reward_programs ORDER BY business_id",
+      );
+      expect(preserved.rows).toEqual([
+        { business_id: "biz-pre-1", reward_program_category_id: "cat-legacy-1" },
+        { business_id: "biz-pre-2", reward_program_category_id: "cat-legacy-2" },
+      ]);
+
+      // And a brand-new row may now persist NULL, alongside the untouched
+      // pre-existing non-null rows.
+      const newRow = await pool.query<{ reward_program_category_id: string | null }>(
+        `INSERT INTO reward_programs (business_id, display_name, reward_program_category_id, status, created_by, updated_by)
+         VALUES ('biz-new', 'New Category-less Program', NULL, 'draft', 'user-1', 'user-1')
+         RETURNING reward_program_category_id`,
+      );
+      expect(newRow.rows[0].reward_program_category_id).toBeNull();
+
+      const total = await pool.query("SELECT count(*) FROM reward_programs");
+      expect(Number(total.rows[0].count)).toBe(3);
     });
   });
 });

@@ -262,7 +262,6 @@ export const en = {
       cancel: "Cancel",
       saving: "Saving…",
       fieldDisplayName: "Program name",
-      fieldCategory: "Reward Program category",
       fieldQualifyingNodes: "Qualifying products/services",
       fieldRewardDescription: "Reward description",
       fieldEffectiveFrom: "Effective from",
@@ -270,19 +269,20 @@ export const en = {
       fieldSharedLoyaltyNumberAllowed: "Allow a shared loyalty number",
       fixedInvariantsNote:
         "Verified Units Required: {{threshold}} and Reward Quantity: {{quantity}} are fixed platform rules and cannot be changed.",
-      category: {
-        loading: "Loading Reward Program categories…",
-        loadError: "We couldn't load Reward Program categories. Please try again.",
-        placeholder: "Choose a category",
-        empty: "No Reward Program categories are available yet. Contact platform support.",
-      },
       qualifyingNodeSelector: {
-        chooseCategoryFirst: "Choose a Reward Program category first.",
         loading: "Loading products and services…",
-        loadError: "We couldn't load products and services for this category. Please try again.",
-        empty: "No products or services are available for this category yet.",
+        loadError:
+          "We couldn't load products and services for your business type. Please try again.",
+        empty:
+          "No products or services are available for your business type yet. Use search below to find one.",
         unavailableLabel: "Previously selected item (name unavailable)",
         unavailableNote: "(no longer available — kept in this program's configuration)",
+        searchLabel: "Search all products and services",
+        searchPlaceholder: 'Search by name (e.g. "Black Coffee", "Sedan Car Wash")',
+        searchLoading: "Searching…",
+        searchError: "We couldn't run that search. Please try again.",
+        searchEmpty: "No products or services matched that search.",
+        searchResultsLabel: "Search results",
       },
       versionLabel: "Version {{version}}",
       status: {
