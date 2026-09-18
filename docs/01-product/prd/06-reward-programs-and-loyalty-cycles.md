@@ -85,6 +85,8 @@ Fields include:
 - Maximum Units per Purchase Record (optional)
 - Future promotional qualifiers
 
+> **Note (`DEC-LOY-016` / `FD-REWARD-QUALIFYING-ITEM-001`, 2026-09-18):** "Qualifying Products or Services" does not require a canonical Commerce Knowledge `standard_product`/`standard_service` reference in Phase 1. A Business defines its own qualifying item(s) directly; a Business-defined qualifying item is sufficient to participate in the 10+1 mechanism. Commerce Knowledge mapping remains available as **optional** classification (normalisation, reporting, analytics, discovery, future interoperability) and never gates whether an item may be used to qualify. "Product Category" (i.e. Reward Program Category) was separately made non-mandatory by Founder decision `FD-REWARD-QUALIFICATION-001`/`DEC-LOY-014` (2026-09-17, implemented `PLATFORM-BASELINE-010B`) — that annotation was not itself applied to this file by that task and is disclosed as a gap in the companion design report (§A1); this note extends the same Business-Qualification-Authority-vs-Commerce-Knowledge-Classification distinction one level deeper, to the qualifying item itself. §4.4's 10+1 mechanic is unaffected.
+
 ## 4.3 Reward
 
 Defines what the customer earns.

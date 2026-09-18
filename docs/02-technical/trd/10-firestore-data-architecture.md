@@ -605,6 +605,8 @@ approvedAt?: Timestamp;
 schemaVersion: number;  
 };
 
+> **Note (`DEC-LOY-016` / `FD-REWARD-QUALIFYING-ITEM-001`, 2026-09-18):** `qualifyingKnowledgeNodeIds: string[]` (and, in the actual PostgreSQL-authoritative implementation — `FD-PVL-001` — its equivalent `reward_program_version_qualifying_nodes.knowledge_node_id`) is no longer required to resolve to a canonical Commerce Knowledge `standard_product`/`standard_service` node for Phase 1. A Business-defined qualifying item is a first-class, sufficient qualification identity on its own; `knowledgeNodeId` becomes an optional classification reference (present only when the Business or platform has chosen to map the item), while `businessDisplayName` (already present per-node) or an equivalent Business-authored name field carries the mandatory, authoritative item identity when no canonical mapping exists. This does not change the Version Integrity Rule or the Threshold Rule below, and does not remove `standard_product`/`standard_service` as valid, still-supported canonical references for Businesses that choose to map. See the companion design report (`PLATFORM-BASELINE-011-REWARD-QUALIFYING-ITEM-001-ARCHITECTURE-CORRECTION-DESIGN-001`) for the conceptual schema-impact assessment — no migration is authorized or performed by this note.
+
 ### Version Integrity Rule
 
 Every Purchase Record and Loyalty Cycle shall reference the applicable Reward Program version.
