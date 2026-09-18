@@ -64,7 +64,14 @@ COMMENT ON COLUMN reward_program_version_qualifying_items.knowledge_node_id_at_v
 -- same node, the earliest (lowest version number) row's name wins,
 -- deterministically; the Business may rename the synthesized item
 -- afterward with no effect on any already-published version's own frozen
--- item_name_at_version snapshot (SS8).
+-- item_name_at_version snapshot (SS8). `rpv.version` alone does not fully
+-- order ties: two DIFFERENT Reward Programs owned by the same Business
+-- each number their own versions from 1, so a Business with two programs
+-- both referencing the same legacy node can have two "version 1" rows.
+-- `rp.id` (the owning program's own stable id) breaks that tie
+-- deterministically; `legacy.reward_program_version_id` is included as a
+-- final, always-unique tie-breaker so the winner is never
+-- plan-/order-dependent for any input, however constructed.
 INSERT INTO qualifying_items (business_id, name, knowledge_node_id, status, created_by, updated_by)
 SELECT DISTINCT ON (rp.business_id, legacy.knowledge_node_id)
   rp.business_id,
@@ -82,7 +89,8 @@ WHERE NOT EXISTS (
     AND qi.knowledge_node_id = legacy.knowledge_node_id
     AND qi.created_by = 'platform-baseline-013a1-0017-backfill'
 )
-ORDER BY rp.business_id, legacy.knowledge_node_id, rpv.version ASC;
+ORDER BY rp.business_id, legacy.knowledge_node_id, rpv.version ASC, rp.id ASC,
+  legacy.reward_program_version_id ASC;
 
 -- Step 2: one junction row per legacy qualifying-node reference, pointing
 -- at the synthesized item for its (Business, knowledge_node_id) pair,
@@ -106,3 +114,35 @@ JOIN qualifying_items qi
  AND qi.knowledge_node_id = legacy.knowledge_node_id
  AND qi.created_by = 'platform-baseline-013a1-0017-backfill'
 ON CONFLICT (reward_program_version_id, qualifying_item_id) DO NOTHING;
+
+-- Operational assumptions, disclosed rather than defended against with
+-- new machinery (PLATFORM-BASELINE-013A.1-CORR-001 F5/F7 -- evaluated and
+-- deliberately not hardened further, since doing so would either
+-- complicate this migration or invent a mechanism beyond PB-012's
+-- approved model):
+--
+-- 1. The fixed marker `'platform-baseline-013a1-0017-backfill'` is this
+--    migration's sole means of distinguishing its own synthesized rows
+--    from genuine Business-authored ones (both here and in 0017.down's
+--    rollback precondition, see that file). `created_by` is populated by
+--    application code, never raw end-user input, so a genuine collision
+--    with this exact string requires an internal defect in a future
+--    package -- not a reachable end-user action. Not defended against
+--    further.
+-- 2. If a synthesized item's `knowledge_node_id` is later remapped to
+--    NULL by a future package's own write path (e.g. an operator
+--    "unclassifying" it), 0017.down's marker-scoped DELETE
+--    (`WHERE created_by = marker AND knowledge_node_id IS NOT NULL`)
+--    would then skip that row, leaving it permanently in `qualifying_
+--    items` rather than being cleaned up by a rollback. This is a
+--    conservative failure mode -- it never deletes real data, it only
+--    ever retains a row a rollback would otherwise have removed -- and is
+--    accepted rather than tracked with an additional "was this row ever
+--    remapped" column, which SS5 does not otherwise need.
+-- 3. Manually re-executing this file's own INSERT statements by hand
+--    (outside `migrationRunner.ts`'s one-time-per-version application) is
+--    safe even after genuine, non-backfill items exist: both the
+--    `WHERE NOT EXISTS (...)` guard in Step 1 and the `JOIN qualifying_
+--    items qi ON ... AND qi.created_by = marker` in Step 2 scope
+--    themselves to marker-tagged rows only, so re-running never reads,
+--    matches, or duplicates a genuine item.

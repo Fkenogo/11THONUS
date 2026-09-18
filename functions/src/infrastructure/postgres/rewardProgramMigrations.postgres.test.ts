@@ -39,6 +39,9 @@ beforeAll(() => {
 });
 
 async function dropAll() {
+  // Defense-in-depth: the CORR-001 composite-FK probe test drops this
+  // itself in `finally`, but a crashed run could leave it behind.
+  await pool.query("DROP TABLE IF EXISTS purchase_binding_probe CASCADE");
   // PLATFORM-BASELINE-013A.1 tables first (they reference the Reward
   // Program tables and, for the junction, qualifying_items), then
   // PLATFORM-BASELINE-006A tables, then the Reward Program tables they
@@ -133,7 +136,19 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       const check = await pool.query("SELECT to_regclass($1) AS reg", [table]);
       expect(check.rows[0].reg, `expected table "${table}" to exist`).not.toBeNull();
     }
-  });
+    // Timeout rationale (PLATFORM-BASELINE-013A.1-CORR-001 F3): a single
+    // full `migrateUp` over all 17 migrations measured 1.9-3.8s across
+    // repeated clean runs on this host (which persistently runs several
+    // unrelated concurrent PostgreSQL containers) and 7.8s under one
+    // observed spike of unusually heavy contention -- comfortably inside
+    // vitest's 5000ms default most of the time, but not with reliable
+    // margin. 15000ms gives ~2x headroom over the single worst measured
+    // spike without masking a genuine regression (a real hang would still
+    // fail). Applied only to this and the handful of other tests below
+    // that perform a full `migrateUp`/`migrateDown` over the real
+    // migrations directory -- every other test in this file keeps
+    // vitest's plain defaults.
+  }, 15000);
 
   it("re-running migrateUp against an already-migrated database is a safe no-op", async () => {
     await migrateUp(pool, migrationsDir);
@@ -158,7 +173,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0016",
       "0017",
     ]);
-  });
+  }, 15000);
 
   it("rolls back the full migration set and re-applies cleanly", async () => {
     await migrateUp(pool, migrationsDir);
@@ -216,7 +231,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0016",
       "0017",
     ]);
-  });
+  }, 15000);
 
   describe("schema constraints", () => {
     // The outer top-level `afterEach` (`dropAll`) runs after every test in
@@ -493,7 +508,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
 
       const total = await pool.query("SELECT count(*) FROM reward_programs");
       expect(Number(total.rows[0].count)).toBe(3);
-    });
+    }, 15000);
   });
 
   /**
@@ -744,6 +759,85 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         );
         expect(legacy.rows[0].knowledge_node_id).toBe("node-legacy-1");
       });
+
+      /**
+       * PLATFORM-BASELINE-013A.1-CORR-001 F8 item 3 — the junction's two
+       * FK delete behaviors, per design SS6: `qualifying_item_id` is
+       * `ON DELETE RESTRICT` (a version's qualification definition must
+       * never be erasable by deleting an item row); `reward_program_
+       * version_id` is `ON DELETE CASCADE` (deleting a version legitimately
+       * removes its own qualification rows).
+       */
+      it("qualifying_item_id is ON DELETE RESTRICT and reward_program_version_id is ON DELETE CASCADE", async () => {
+        const programId = await insertProgram();
+        const versionId = await insertVersion(programId);
+        const itemId = await insertItem();
+        await pool.query(
+          `INSERT INTO reward_program_version_qualifying_items
+             (reward_program_version_id, qualifying_item_id, item_name_at_version)
+           VALUES ($1, $2, 'Black Coffee')`,
+          [versionId, itemId],
+        );
+
+        await expect(
+          pool.query("DELETE FROM qualifying_items WHERE id = $1", [itemId]),
+        ).rejects.toThrow(/foreign key/i);
+
+        await pool.query("DELETE FROM reward_program_versions WHERE id = $1", [versionId]);
+        const remaining = await pool.query(
+          "SELECT count(*) FROM reward_program_version_qualifying_items WHERE qualifying_item_id = $1",
+          [itemId],
+        );
+        expect(Number(remaining.rows[0].count)).toBe(0);
+
+        // The item itself (RESTRICT's subject) is untouched by the
+        // version's CASCADE-triggered junction-row removal.
+        const itemStillExists = await pool.query(
+          "SELECT count(*) FROM qualifying_items WHERE id = $1",
+          [itemId],
+        );
+        expect(Number(itemStillExists.rows[0].count)).toBe(1);
+      });
+
+      /**
+       * PLATFORM-BASELINE-013A.1-CORR-001 F8 item 4 — the additive
+       * `qualifying_items_identity_tuple_unique UNIQUE (id, business_id)`
+       * exists and behaves as intended: usable as a composite foreign-key
+       * target, the exact shape a future purchase-binding FK (design SS7)
+       * requires to reject a cross-Business `qualifying_item_id`
+       * relationally rather than by application precheck alone.
+       */
+      it("UNIQUE (id, business_id) on qualifying_items is usable as a composite foreign-key target and rejects a cross-Business tuple", async () => {
+        // A real (non-temp) table: PostgreSQL forbids a TEMP table's FK
+        // from referencing a non-temp table, so this can't be TEMP -- drop
+        // it explicitly in `finally`, since it isn't created by a
+        // migration and the outer `dropAll()` doesn't know about it.
+        await pool.query(
+          `CREATE TABLE purchase_binding_probe (
+             qualifying_item_id UUID NOT NULL,
+             business_id TEXT NOT NULL,
+             FOREIGN KEY (qualifying_item_id, business_id)
+               REFERENCES qualifying_items (id, business_id) ON DELETE RESTRICT
+           )`,
+        );
+        try {
+          const itemId = await insertItem({ businessId: "biz-probe" });
+
+          await pool.query(
+            "INSERT INTO purchase_binding_probe (qualifying_item_id, business_id) VALUES ($1, 'biz-probe')",
+            [itemId],
+          );
+
+          await expect(
+            pool.query(
+              "INSERT INTO purchase_binding_probe (qualifying_item_id, business_id) VALUES ($1, 'biz-WRONG')",
+              [itemId],
+            ),
+          ).rejects.toThrow(/foreign key/i);
+        } finally {
+          await pool.query("DROP TABLE purchase_binding_probe");
+        }
+      });
     });
 
     /**
@@ -821,7 +915,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         [versionId],
       );
       expect(Number(legacyStillThere.rows[0].count)).toBe(1);
-    });
+    }, 15000);
 
     it("the 0017 backfill SQL is idempotent: re-executing it against an already-backfilled database adds nothing", async () => {
       const preBackfillFiles = (await discoverMigrationFiles(migrationsDir)).filter(
@@ -873,7 +967,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         "SELECT count(*) FROM reward_program_version_qualifying_items",
       );
       expect(Number(junctionRows.rows[0].count)).toBe(1);
-    });
+    }, 15000);
 
     it("0017.down removes only the migration's own synthesized items and never a real Business-created item", async () => {
       const preBackfillFiles = (await discoverMigrationFiles(migrationsDir)).filter(
@@ -939,6 +1033,162 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       await migrateDown(pool, migrationsDir, 1);
       const itemsTableAfter = await pool.query("SELECT to_regclass('qualifying_items') AS reg");
       expect(itemsTableAfter.rows[0].reg).toBeNull();
-    });
+    }, 15000);
+
+    /**
+     * PLATFORM-BASELINE-013A.1-CORR-001 F4 — the principal correction.
+     * `0017.down` must refuse (not silently destroy) once a genuine,
+     * non-backfill Qualifying Item is bound into the junction table --
+     * distinct from the retained test above, where a genuine item exists
+     * but is never bound into `reward_program_version_qualifying_items`.
+     */
+    it("0017.down refuses to run when a genuine (non-backfill) Qualifying Item is bound into the junction table, and the genuine item plus its binding survive the refused rollback", async () => {
+      await migrateUp(pool, migrationsDir);
+
+      const programId = await insertProgram({ businessId: "biz-real" });
+      const versionId = await insertVersion(programId);
+      const genuineItemId = await insertItem({
+        businessId: "biz-real",
+        name: "Real Espresso",
+        createdBy: "user-real-owner",
+      });
+      await pool.query(
+        `INSERT INTO reward_program_version_qualifying_items
+             (reward_program_version_id, qualifying_item_id, item_name_at_version)
+           VALUES ($1, $2, 'Real Espresso')`,
+        [versionId, genuineItemId],
+      );
+
+      await expect(migrateDown(pool, migrationsDir, 1)).rejects.toThrow(
+        /Refusing to roll back migration 0017/,
+      );
+
+      // migrateDown wraps each file in its own transaction (BEGIN before
+      // running the .down.sql, ROLLBACK on error) -- the RAISE EXCEPTION
+      // fires before DROP TABLE is ever reached, so nothing this refused
+      // attempt touched is left in an intermediate state.
+      const junctionTable = await pool.query(
+        "SELECT to_regclass('reward_program_version_qualifying_items') AS reg",
+      );
+      expect(junctionTable.rows[0].reg).not.toBeNull();
+
+      const item = await pool.query<{ id: string; created_by: string }>(
+        "SELECT id, created_by FROM qualifying_items WHERE id = $1",
+        [genuineItemId],
+      );
+      expect(item.rows).toEqual([{ id: genuineItemId, created_by: "user-real-owner" }]);
+
+      const binding = await pool.query(
+        "SELECT count(*) FROM reward_program_version_qualifying_items WHERE qualifying_item_id = $1",
+        [genuineItemId],
+      );
+      expect(Number(binding.rows[0].count)).toBe(1);
+
+      // schema_migrations still records 0017 as applied -- the rollback
+      // never completed, matching the DELETE FROM schema_migrations
+      // never being reached.
+      const applied = await getAppliedMigrations(pool);
+      expect(applied.map((a) => a.version)).toContain("0017");
+    }, 15000);
+
+    /**
+     * PLATFORM-BASELINE-013A.1-CORR-001 F8 item 1 — multi-Business
+     * isolation: two different Businesses each recording the SAME
+     * canonical legacy `knowledge_node_id` must synthesize two
+     * independent Qualifying Items, never one shared row.
+     */
+    it("two Businesses referencing the same canonical legacy node produce two independent, correctly-scoped Business-owned Qualifying Items", async () => {
+      const preBackfillFiles = (await discoverMigrationFiles(migrationsDir)).filter(
+        (f) => f.version !== "0017",
+      );
+      const scratchDir = await mkdtemp(path.join(tmpdir(), "pb013a1-multi-business-"));
+      try {
+        for (const file of preBackfillFiles) {
+          await copyFile(file.upPath, path.join(scratchDir, path.basename(file.upPath)));
+          if (file.downPath) {
+            await copyFile(file.downPath, path.join(scratchDir, path.basename(file.downPath)));
+          }
+        }
+        await migrateUp(pool, scratchDir);
+      } finally {
+        await rm(scratchDir, { recursive: true, force: true });
+      }
+
+      const programA = await insertProgram({ businessId: "biz-multi-A" });
+      const versionA = await insertVersion(programA);
+      const programB = await insertProgram({ businessId: "biz-multi-B" });
+      const versionB = await insertVersion(programB);
+      await pool.query(
+        `INSERT INTO reward_program_version_qualifying_nodes (reward_program_version_id, knowledge_node_id, business_display_name)
+           VALUES ($1, 'node-shared-1', 'Shared Product (A''s name)'),
+                  ($2, 'node-shared-1', 'Shared Product (B''s name)')`,
+        [versionA, versionB],
+      );
+
+      await migrateUp(pool, migrationsDir);
+
+      const items = await pool.query<{ business_id: string; name: string; id: string }>(
+        "SELECT id, business_id, name FROM qualifying_items WHERE knowledge_node_id = 'node-shared-1' ORDER BY business_id",
+      );
+      expect(items.rows).toHaveLength(2);
+      expect(items.rows[0].business_id).toBe("biz-multi-A");
+      expect(items.rows[0].name).toBe("Shared Product (A's name)");
+      expect(items.rows[1].business_id).toBe("biz-multi-B");
+      expect(items.rows[1].name).toBe("Shared Product (B's name)");
+      expect(items.rows[0].id).not.toBe(items.rows[1].id);
+
+      // Each junction row points at ITS OWN Business's synthesized item,
+      // never the other Business's.
+      const junctionA = await pool.query<{ qualifying_item_id: string }>(
+        "SELECT qualifying_item_id FROM reward_program_version_qualifying_items WHERE reward_program_version_id = $1",
+        [versionA],
+      );
+      expect(junctionA.rows[0].qualifying_item_id).toBe(items.rows[0].id);
+    }, 15000);
+
+    /**
+     * PLATFORM-BASELINE-013A.1-CORR-001 F8 item 2 — a legacy row with no
+     * recorded `business_display_name` must fall back to the raw
+     * `knowledge_node_id` (SS13's disclosed, cosmetic risk 2), not fail or
+     * synthesize a NULL/empty name.
+     */
+    it("a legacy row with NULL business_display_name falls back to knowledge_node_id as the synthesized item's name", async () => {
+      const preBackfillFiles = (await discoverMigrationFiles(migrationsDir)).filter(
+        (f) => f.version !== "0017",
+      );
+      const scratchDir = await mkdtemp(path.join(tmpdir(), "pb013a1-null-fallback-"));
+      try {
+        for (const file of preBackfillFiles) {
+          await copyFile(file.upPath, path.join(scratchDir, path.basename(file.upPath)));
+          if (file.downPath) {
+            await copyFile(file.downPath, path.join(scratchDir, path.basename(file.downPath)));
+          }
+        }
+        await migrateUp(pool, scratchDir);
+      } finally {
+        await rm(scratchDir, { recursive: true, force: true });
+      }
+
+      const programId = await insertProgram({ businessId: "biz-null-display" });
+      const versionId = await insertVersion(programId);
+      await pool.query(
+        `INSERT INTO reward_program_version_qualifying_nodes (reward_program_version_id, knowledge_node_id, business_display_name)
+           VALUES ($1, 'node-noname-1', NULL)`,
+        [versionId],
+      );
+
+      await migrateUp(pool, migrationsDir);
+
+      const item = await pool.query<{ name: string }>(
+        "SELECT name FROM qualifying_items WHERE business_id = 'biz-null-display' AND knowledge_node_id = 'node-noname-1'",
+      );
+      expect(item.rows[0].name).toBe("node-noname-1");
+
+      const junction = await pool.query<{ item_name_at_version: string }>(
+        "SELECT item_name_at_version FROM reward_program_version_qualifying_items WHERE reward_program_version_id = $1",
+        [versionId],
+      );
+      expect(junction.rows[0].item_name_at_version).toBe("node-noname-1");
+    }, 15000);
   });
 });
