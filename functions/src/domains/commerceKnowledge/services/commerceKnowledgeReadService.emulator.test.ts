@@ -6,6 +6,8 @@ import {
   listBusinessTypesForCategory,
   listRewardProgramCategories,
   listQualifyingNodesForCategory,
+  listQualifyingNodesForBusinessType,
+  searchQualifyingNodes,
   resolveKnowledgeNodeLabels,
 } from "./commerceKnowledgeReadService";
 import {
@@ -501,5 +503,246 @@ describe("resolveKnowledgeNodeLabels", () => {
     expect(result).toEqual([
       { id: "svc_old", displayLabel: "Very Old Service", status: "archived" },
     ]);
+  });
+});
+
+/**
+ * `PLATFORM-BASELINE-010B` (Founder decision `DEC-LOY-014` /
+ * `FD-REWARD-QUALIFICATION-001`) — the qualifying-node selector's DEFAULT
+ * discovery scope: a two-hop traversal from a `business_type` id, through
+ * its `reward_program_category` children, down to their
+ * `standard_product`/`standard_service` children. Item O of the test
+ * plan: default Business-Type-scoped discovery returns the expected
+ * nodes for a given business type.
+ */
+describe("listQualifyingNodesForBusinessType (PLATFORM-BASELINE-010B)", () => {
+  it("O: lists active standard_product/standard_service nodes reachable from the given business type, across all of its reward_program_category children", async () => {
+    await seedRewardProgramHierarchy(); // ind_1 -> cat_beauty -> type_salon
+    await seedRewardProgramCategory("rpc_haircuts", "type_salon", "Haircuts");
+    await activateNode("rpc_haircuts");
+    await seedRewardProgramCategory("rpc_nails", "type_salon", "Nails");
+    await activateNode("rpc_nails");
+    await seedStandardService("svc_haircut", "rpc_haircuts", "Haircut");
+    await activateNode("svc_haircut");
+    await seedStandardProduct("prod_shampoo", "rpc_haircuts", "Shampoo");
+    await activateNode("prod_shampoo");
+    await seedStandardService("svc_manicure", "rpc_nails", "Manicure");
+    await activateNode("svc_manicure");
+
+    const result = await listQualifyingNodesForBusinessType(db, "type_salon");
+    expect(result.map((n) => n.id).sort()).toEqual(["prod_shampoo", "svc_haircut", "svc_manicure"]);
+  });
+
+  it("does not include nodes from a sibling business type's own reward_program_category", async () => {
+    await seedRewardProgramHierarchy();
+    await seedType("type_barbershop", "cat_beauty", "Barbershop");
+    await activateNode("type_barbershop");
+    await seedRewardProgramCategory("rpc_salon_haircuts", "type_salon", "Salon Haircuts");
+    await activateNode("rpc_salon_haircuts");
+    await seedRewardProgramCategory("rpc_barber_shaves", "type_barbershop", "Shaves");
+    await activateNode("rpc_barber_shaves");
+    await seedStandardService("svc_salon_haircut", "rpc_salon_haircuts", "Salon Haircut");
+    await activateNode("svc_salon_haircut");
+    await seedStandardService("svc_barber_shave", "rpc_barber_shaves", "Barber Shave");
+    await activateNode("svc_barber_shave");
+
+    const result = await listQualifyingNodesForBusinessType(db, "type_salon");
+    expect(result.map((n) => n.id)).toEqual(["svc_salon_haircut"]);
+  });
+
+  it("an empty result for a valid, active business type with no governed content underneath it is a normal outcome, never an error", async () => {
+    await seedRewardProgramHierarchy();
+
+    const result = await listQualifyingNodesForBusinessType(db, "type_salon");
+    expect(result).toEqual([]);
+  });
+
+  it("rejects an unknown businessTypeId", async () => {
+    await expect(
+      listQualifyingNodesForBusinessType(db, "type_does_not_exist"),
+    ).rejects.toMatchObject({ category: "RESOURCE_NOT_FOUND" });
+  });
+
+  it("rejects a businessTypeId that resolves but is not active (e.g. still draft)", async () => {
+    await seedRewardProgramHierarchy();
+    await seedType("type_draft_only", "cat_beauty", "Draft Only Type");
+    // never activated
+
+    await expect(listQualifyingNodesForBusinessType(db, "type_draft_only")).rejects.toMatchObject({
+      category: "RESOURCE_NOT_FOUND",
+    });
+  });
+
+  it("rejects a businessTypeId that resolves to a business_category, not a business_type", async () => {
+    await seedRewardProgramHierarchy();
+
+    await expect(listQualifyingNodesForBusinessType(db, "cat_beauty")).rejects.toMatchObject({
+      category: "RESOURCE_NOT_FOUND",
+    });
+  });
+});
+
+/**
+ * `PLATFORM-BASELINE-010B` — the qualifying-node selector's broader,
+ * platform-wide "escape hatch": no `parentId`/Business-Type restriction
+ * at all, a case-insensitive substring match on the resolved display
+ * label. Item P of the test plan: the broader search/discovery function
+ * can find an eligible canonical node outside the default Business-Type
+ * scope.
+ */
+describe("searchQualifyingNodes (PLATFORM-BASELINE-010B)", () => {
+  it("P: finds an eligible node OUTSIDE a given business type's default discovery scope, by a case-insensitive substring of its label", async () => {
+    await seedRewardProgramHierarchy(); // type_salon
+    await seedType("type_car_wash", "cat_beauty", "Car Wash"); // an unrelated business type
+    await activateNode("type_car_wash");
+    await seedRewardProgramCategory("rpc_car_services", "type_car_wash", "Car Services");
+    await activateNode("rpc_car_services");
+    await seedStandardService("svc_sedan_wash", "rpc_car_services", "Sedan Car Wash");
+    await activateNode("svc_sedan_wash");
+
+    // Not reachable via type_salon's default discovery scope at all.
+    const defaultScope = await listQualifyingNodesForBusinessType(db, "type_salon");
+    expect(defaultScope.map((n) => n.id)).not.toContain("svc_sedan_wash");
+
+    // But findable platform-wide by typed name, case-insensitively.
+    const found = await searchQualifyingNodes(db, "sedan");
+    expect(found.map((n) => n.id)).toEqual(["svc_sedan_wash"]);
+
+    const foundMixedCase = await searchQualifyingNodes(db, "SEDAN car");
+    expect(foundMixedCase.map((n) => n.id)).toEqual(["svc_sedan_wash"]);
+  });
+
+  it("excludes a retired/draft/in_review node from search results", async () => {
+    await seedRewardProgramHierarchy();
+    await seedRewardProgramCategory("rpc_haircuts", "type_salon", "Haircuts");
+    await activateNode("rpc_haircuts");
+    await seedStandardService("svc_retired", "rpc_haircuts", "Retired Haircut Style");
+    await activateNode("svc_retired");
+    await seedStandardService("svc_replacement", "rpc_haircuts", "Replacement Haircut Style");
+    await activateNode("svc_replacement");
+    await retireKnowledgeNodePersisted(db, "svc_retired", {
+      updatedAt: NOW,
+      replacementNodeId: "svc_replacement",
+    });
+    await seedStandardService("svc_draft", "rpc_haircuts", "Draft Haircut Style");
+    // never activated
+
+    const result = await searchQualifyingNodes(db, "haircut style");
+    expect(result.map((n) => n.id)).toEqual(["svc_replacement"]);
+  });
+
+  /**
+   * `PLATFORM-BASELINE-010B-CORR-001` (P2, item K): the confirmed finding
+   * was that this scanned everything for the empty case, not that empty
+   * input is a special error -- an empty/trivially-short (below
+   * `MIN_SEARCH_TEXT_LENGTH`) `searchText` must now perform NO scan at
+   * all, and return `[]` (not every node), never an error. Replaces the
+   * pre-correction "empty returns everything" test, which was itself the
+   * unbounded behavior this correction removes.
+   */
+  it("K: an empty or trivially short searchText returns [] with no platform-wide scan, never an error", async () => {
+    await seedRewardProgramHierarchy();
+    await seedRewardProgramCategory("rpc_haircuts", "type_salon", "Haircuts");
+    await activateNode("rpc_haircuts");
+    await seedStandardService("svc_haircut", "rpc_haircuts", "Haircut");
+    await activateNode("svc_haircut");
+    await seedStandardProduct("prod_shampoo", "rpc_haircuts", "Shampoo");
+    await activateNode("prod_shampoo");
+
+    expect(await searchQualifyingNodes(db, "")).toEqual([]);
+    expect(await searchQualifyingNodes(db, "   ")).toEqual([]);
+    expect(await searchQualifyingNodes(db, "h")).toEqual([]);
+  });
+
+  it("a search with no matches returns an empty array, never an error", async () => {
+    await seedRewardProgramHierarchy();
+    await seedRewardProgramCategory("rpc_haircuts", "type_salon", "Haircuts");
+    await activateNode("rpc_haircuts");
+    await seedStandardService("svc_haircut", "rpc_haircuts", "Haircut");
+    await activateNode("svc_haircut");
+
+    const result = await searchQualifyingNodes(db, "nonexistent-search-term-xyz");
+    expect(result).toEqual([]);
+  });
+
+  /**
+   * `PLATFORM-BASELINE-010B-CORR-001` (P2, item I): a single search
+   * response is capped at `MAX_SEARCH_RESULTS` (25) even when far more
+   * than that many active nodes match the given term.
+   */
+  it("I: a single search response is bounded even when many more active nodes match", async () => {
+    await seedRewardProgramHierarchy();
+    await seedRewardProgramCategory("rpc_haircuts", "type_salon", "Haircuts");
+    await activateNode("rpc_haircuts");
+    for (let index = 0; index < 30; index += 1) {
+      const id = `svc_bulk_${index}`;
+      await seedStandardService(id, "rpc_haircuts", `Bulk Matching Item ${index}`);
+      await activateNode(id);
+    }
+
+    const result = await searchQualifyingNodes(db, "bulk matching");
+    expect(result.length).toBeLessThanOrEqual(25);
+    expect(result.length).toBe(25);
+  });
+
+  /**
+   * `PLATFORM-BASELINE-010B-CORR-001` (P2, item M/N): only `active`
+   * `standard_product`/`standard_service` nodes are ever discoverable via
+   * search -- draft/in_review/retired/archived content never leaks
+   * through, whether or not the correction's bounds are in play. This is
+   * a corrected-behavior regression check on top of the pre-existing
+   * "excludes a retired/draft/in_review node" test above.
+   */
+  it("M/N: only active eligible standard_product/standard_service nodes are discoverable; other node types never leak through", async () => {
+    await seedRewardProgramHierarchy();
+    await seedRewardProgramCategory("rpc_haircuts", "type_salon", "Matchable Category Name");
+    await activateNode("rpc_haircuts"); // a reward_program_category, not a product/service
+    await seedStandardProduct("prod_matchable", "rpc_haircuts", "Matchable Product");
+    await activateNode("prod_matchable");
+
+    const result = await searchQualifyingNodes(db, "matchable");
+    expect(result.map((n) => n.id)).toEqual(["prod_matchable"]);
+    expect(
+      result.every((n) => n.nodeType === "standard_product" || n.nodeType === "standard_service"),
+    ).toBe(true);
+  });
+
+  /**
+   * `PLATFORM-BASELINE-010B-CORR-001` (P2, item P): EN/FR translation
+   * resolution/fallback still works correctly for a search result exactly
+   * as it does for every other read in this file (`resolveDisplayLabel`,
+   * unchanged by this correction).
+   */
+  it("P: resolves search result labels per requested language, with the same EN fallback every other read here uses", async () => {
+    await seedRewardProgramHierarchy();
+    await seedRewardProgramCategory("rpc_haircuts", "type_salon", "Haircuts");
+    await activateNode("rpc_haircuts");
+    await seedStandardService("svc_haircut_fr", "rpc_haircuts", "Coiffure Classique");
+    await activateNode("svc_haircut_fr");
+
+    const translationId = "knowledge_node_svc_haircut_fr_fr";
+    await createKnowledgeTranslationPersisted(db, {
+      entityType: "knowledge_node",
+      entityId: "svc_haircut_fr",
+      languageCode: "fr",
+      displayName: "Coupe de Cheveux",
+      createdAt: NOW,
+    });
+    await transitionKnowledgeTranslationStatusPersisted(db, translationId, "reviewed", {
+      updatedAt: NOW,
+    });
+    await transitionKnowledgeTranslationStatusPersisted(db, translationId, "published", {
+      updatedAt: NOW,
+    });
+
+    const frResult = await searchQualifyingNodes(db, "coupe", "fr");
+    expect(frResult.map((n) => n.displayLabel)).toEqual(["Coupe de Cheveux"]);
+
+    // The FR-only search term does not match the EN canonical name, so
+    // requesting EN for the same node finds it by its own (canonical,
+    // untranslated) name instead -- proving language scoping, not a
+    // shared/leaking cache between languages.
+    const enResult = await searchQualifyingNodes(db, "coiffure classique", "en");
+    expect(enResult.map((n) => n.displayLabel)).toEqual(["Coiffure Classique"]);
   });
 });

@@ -375,10 +375,22 @@ export async function transitionKnowledgeNodeStatusPersisted(
  * out any document that fails to parse (fail closed, mirrors
  * `listKnowledgeNodeChildren`).
  */
+/**
+ * `PLATFORM-BASELINE-010B-CORR-001` (P2, independent review finding
+ * `PLATFORM-BASELINE-010B-ITR-001`): an optional defensive technical cap
+ * on the number of documents this query itself reads from Firestore --
+ * the same "bound the underlying work, not a product-level result limit"
+ * posture `MAX_ANCESTOR_TRAVERSAL` above already uses. Callers that
+ * enumerate a small, already-scoped candidate set (a single Business
+ * Type's or Reward Program Category's children) have no need for it and
+ * omit it entirely, unchanged; only `searchQualifyingNodes`'s genuinely
+ * platform-wide scan supplies one (`commerceKnowledgeReadService.ts`).
+ */
 export async function listActiveSelectableNodes(
   db: Firestore,
   nodeType: KnowledgeNodeType,
   parentId?: string,
+  limit?: number,
 ): Promise<KnowledgeNode[]> {
   let query = db
     .collection(KNOWLEDGE_NODES_COLLECTION)
@@ -386,6 +398,9 @@ export async function listActiveSelectableNodes(
     .where("status", "==", "active");
   if (parentId !== undefined) {
     query = query.where("parentId", "==", parentId);
+  }
+  if (limit !== undefined) {
+    query = query.limit(limit);
   }
   const snapshot = await query.get();
   const nodes: KnowledgeNode[] = [];

@@ -52,6 +52,31 @@ export function rewardProgramVersionAlreadyPublishedElsewhereError(): RewardProg
   );
 }
 
+/**
+ * `PLATFORM-BASELINE-010B-CORR-001` (independent review finding
+ * `PLATFORM-BASELINE-010B-ITR-001` P1): a Reward Program Category became
+ * optional, but a Reward Program's qualifying canonical product/service
+ * node(s) remain its operative qualification definition -- a published
+ * version with zero qualifying nodes would qualify every purchase (or
+ * none, depending on downstream interpretation), which no governed
+ * decision (`FD-REWARD-QUALIFICATION-001`) ever authorized. A DRAFT may
+ * still carry zero qualifying nodes while configuration is incomplete;
+ * only PUBLICATION requires at least one.
+ */
+export function rewardProgramPublishRequiresQualifyingNodeError(): RewardProgramDomainError {
+  return new RewardProgramDomainError(
+    "VALIDATION_FAILED",
+    "A Reward Program version must have at least one qualifying Commerce Knowledge node before it can be published.",
+    [
+      {
+        field: "qualifyingNodes",
+        code: "required_for_publish",
+        messageKey: "rewardProgram.qualifyingNodes.requiredForPublish",
+      },
+    ],
+  );
+}
+
 export function invalidQualifyingNodeError(
   knowledgeNodeId: string,
   reason: string,

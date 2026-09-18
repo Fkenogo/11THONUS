@@ -24,7 +24,12 @@ export type RewardProgramWire = {
   id: string;
   businessId: string;
   displayName: string;
-  rewardProgramCategoryId: string;
+  /**
+   * Optional as of `PLATFORM-BASELINE-010B` (Founder decision `DEC-LOY-014`
+   * / `FD-REWARD-QUALIFICATION-001`) -- Phase 1 does not require a Reward
+   * Program Category; `null` means none was selected.
+   */
+  rewardProgramCategoryId: string | null;
   sharedLoyaltyNumberAllowed: boolean;
   status: "draft" | "active" | "paused" | "retired" | "archived";
   currentVersionId: string | null;
@@ -80,7 +85,13 @@ export type RewardProgramDraftFieldsRequest = {
 export type CreateRewardProgramRequest = RewardProgramDraftFieldsRequest & {
   businessId: string;
   displayName: string;
-  rewardProgramCategoryId: string;
+  /**
+   * Optional as of `PLATFORM-BASELINE-010B` (Founder decision `DEC-LOY-014`
+   * / `FD-REWARD-QUALIFICATION-001`) -- Phase 1 does not require a Reward
+   * Program Category. The create form no longer collects this field at
+   * all; omitted here mirrors omitting it on the wire.
+   */
+  rewardProgramCategoryId?: string | null;
   idempotencyKey: string;
 };
 

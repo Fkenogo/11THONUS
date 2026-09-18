@@ -453,3 +453,27 @@ export function rewardProgramCategoryNotFoundForNodeListingError(
     ],
   );
 }
+
+/**
+ * `PLATFORM-BASELINE-010B` addendum (Reward Program qualifying-node
+ * DEFAULT discovery scope, `DEC-LOY-014`/`FD-REWARD-QUALIFICATION-001`) —
+ * `listQualifyingNodesForBusinessType` was called with a `businessTypeId`
+ * that does not resolve to an existing, `active` `business_type` node.
+ * Mirrors `businessCategoryNotFoundForTypeListingError`'s established
+ * fail-closed-and-undifferentiated precedent exactly.
+ */
+export function businessTypeNotFoundForNodeListingError(
+  businessTypeId: string,
+): CommerceKnowledgeDomainError {
+  return new CommerceKnowledgeDomainError(
+    "RESOURCE_NOT_FOUND",
+    `Business Type "${businessTypeId}" does not resolve to an existing, active Commerce Knowledge business type.`,
+    [
+      {
+        field: "businessTypeId",
+        code: "not_found",
+        messageKey: "commerceKnowledge.businessType.notFound",
+      },
+    ],
+  );
+}

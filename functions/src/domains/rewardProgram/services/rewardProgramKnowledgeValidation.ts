@@ -31,6 +31,7 @@ import {
   invalidCategoryNodeError,
   invalidQualifyingNodeError,
   invalidStandardRewardNodeError,
+  rewardProgramPublishRequiresQualifyingNodeError,
 } from "../models/rewardProgramErrors";
 
 const QUALIFYING_NODE_TYPES: readonly KnowledgeNodeType[] = [
@@ -64,6 +65,23 @@ export async function validateCategoryReference(db: Firestore, categoryId: strin
   await assertNodeEligible(db, categoryId, ["reward_program_category"], invalidCategoryNodeError);
 }
 
+/**
+ * `PLATFORM-BASELINE-010B` (Founder decision `DEC-LOY-014` /
+ * `FD-REWARD-QUALIFICATION-001`): a Reward Program Category is no longer a
+ * required qualification prerequisite. `null`/`undefined` skips category
+ * validation entirely -- there is nothing to validate against. A supplied
+ * (non-null) category id is still independently re-validated exactly as
+ * before (`validateCategoryReference`, unchanged) -- Businesses that
+ * already have or still wish to set a category are unaffected.
+ */
+async function validateOptionalCategoryReference(
+  db: Firestore,
+  categoryId: string | null | undefined,
+): Promise<void> {
+  if (categoryId === null || categoryId === undefined) return;
+  await validateCategoryReference(db, categoryId);
+}
+
 export async function validateStandardRewardNodeReference(
   db: Firestore,
   nodeId: string | null | undefined,
@@ -84,6 +102,31 @@ export async function validateQualifyingNodes(
 }
 
 /**
+ * `PLATFORM-BASELINE-010B-CORR-001` (P1): the publication-only invariant
+ * -- a Reward Program's qualifying canonical product/service node(s) are
+ * its operative qualification definition, so a version with zero
+ * qualifying nodes must never reach `active`. This is deliberately NOT
+ * folded into `validateAllReferences` (which every draft create/edit call
+ * also runs): a draft is explicitly allowed to carry zero qualifying
+ * nodes while configuration is incomplete (`categoryId=null,
+ * qualifyingNodes=[]` remains a valid, persistable draft state), so
+ * enforcing this globally there would reject legitimate in-progress
+ * drafts. The publish command (`publishRewardProgramVersionCommand.ts`)
+ * is the one caller that invokes this, immediately alongside
+ * `validateAllReferences`, at the same pre-transaction authoritative
+ * validation point (RF-3 step 2) -- a direct/malicious callable request
+ * cannot reach the PostgreSQL publish transaction without passing both.
+ * Pure and synchronous: the node count is already known from the
+ * PostgreSQL-persisted draft, no Firestore read is needed to enforce
+ * this particular invariant.
+ */
+export function assertHasQualifyingNodeForPublish(nodes: readonly QualifyingNode[]): void {
+  if (nodes.length === 0) {
+    throw rewardProgramPublishRequiresQualifyingNodeError();
+  }
+}
+
+/**
  * The full authoritative validation pass a create/draft-edit/publish
  * command runs: category, optional standard reward node, and every
  * qualifying node. Callers run this once at draft add/change-time and
@@ -93,12 +136,12 @@ export async function validateQualifyingNodes(
 export async function validateAllReferences(
   db: Firestore,
   input: {
-    readonly rewardProgramCategoryId: string;
+    readonly rewardProgramCategoryId: string | null;
     readonly standardRewardNodeId?: string | null;
     readonly qualifyingNodes: readonly QualifyingNode[];
   },
 ): Promise<void> {
-  await validateCategoryReference(db, input.rewardProgramCategoryId);
+  await validateOptionalCategoryReference(db, input.rewardProgramCategoryId);
   await validateStandardRewardNodeReference(db, input.standardRewardNodeId);
   await validateQualifyingNodes(db, input.qualifyingNodes);
 }

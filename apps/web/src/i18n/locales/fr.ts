@@ -268,7 +268,6 @@ export const fr = {
       cancel: "Annuler",
       saving: "Enregistrement…",
       fieldDisplayName: "Nom du programme",
-      fieldCategory: "Catégorie du programme de fidélité",
       fieldQualifyingNodes: "Produits/services éligibles",
       fieldRewardDescription: "Description de la récompense",
       fieldEffectiveFrom: "En vigueur à partir du",
@@ -276,22 +275,20 @@ export const fr = {
       fieldSharedLoyaltyNumberAllowed: "Autoriser un numéro de fidélité partagé",
       fixedInvariantsNote:
         "Unités vérifiées requises : {{threshold}} et quantité de récompense : {{quantity}} sont des règles fixes de la plateforme et ne peuvent pas être modifiées.",
-      category: {
-        loading: "Chargement des catégories de programme de fidélité…",
-        loadError:
-          "Nous n'avons pas pu charger les catégories de programme de fidélité. Veuillez réessayer.",
-        placeholder: "Choisissez une catégorie",
-        empty:
-          "Aucune catégorie de programme de fidélité n'est disponible pour l'instant. Contactez le support de la plateforme.",
-      },
       qualifyingNodeSelector: {
-        chooseCategoryFirst: "Choisissez d'abord une catégorie de programme de fidélité.",
         loading: "Chargement des produits et services…",
         loadError:
-          "Nous n'avons pas pu charger les produits et services pour cette catégorie. Veuillez réessayer.",
-        empty: "Aucun produit ou service n'est disponible pour cette catégorie pour l'instant.",
+          "Nous n'avons pas pu charger les produits et services pour votre type d'entreprise. Veuillez réessayer.",
+        empty:
+          "Aucun produit ou service n'est disponible pour votre type d'entreprise pour l'instant. Utilisez la recherche ci-dessous.",
         unavailableLabel: "Élément précédemment sélectionné (nom indisponible)",
         unavailableNote: "(plus disponible — conservé dans la configuration de ce programme)",
+        searchLabel: "Rechercher tous les produits et services",
+        searchPlaceholder: "Rechercher par nom (ex. « Café noir », « Lavage de voiture »)",
+        searchLoading: "Recherche…",
+        searchError: "Nous n'avons pas pu effectuer cette recherche. Veuillez réessayer.",
+        searchEmpty: "Aucun produit ou service ne correspond à cette recherche.",
+        searchResultsLabel: "Résultats de recherche",
       },
       versionLabel: "Version {{version}}",
       status: {

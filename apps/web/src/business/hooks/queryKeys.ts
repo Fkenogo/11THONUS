@@ -19,6 +19,23 @@ export const businessQueryKeys = {
     ["commerceKnowledge", "rewardProgramCategories", languageCode] as const,
   qualifyingNodes: (categoryId: string, languageCode: string) =>
     ["commerceKnowledge", "qualifyingNodes", categoryId, languageCode] as const,
+  /**
+   * `PLATFORM-BASELINE-010B`: the qualifying-node selector's DEFAULT
+   * discovery scope (Business-Type-pre-filtered). `languageCode`-scoped
+   * for the same reason as `rewardProgramCategories`/`qualifyingNodes`
+   * above.
+   */
+  qualifyingNodesForBusinessType: (businessTypeId: string, languageCode: string) =>
+    ["commerceKnowledge", "qualifyingNodesForBusinessType", businessTypeId, languageCode] as const,
+  /**
+   * `PLATFORM-BASELINE-010B`: the qualifying-node selector's broader
+   * "escape hatch" search — keyed on the exact search text typed, so each
+   * distinct query is cached/refetched independently, and `languageCode`
+   * for the same EN/FR-cache-bleed reason as every other Commerce
+   * Knowledge read key above.
+   */
+  searchQualifyingNodes: (searchText: string, languageCode: string) =>
+    ["commerceKnowledge", "searchQualifyingNodes", searchText, languageCode] as const,
   knowledgeNodeLabels: (nodeIds: readonly string[], languageCode: string) =>
     ["commerceKnowledge", "nodeLabels", [...nodeIds].sort().join(","), languageCode] as const,
   staffInvitations: (businessId: string) => ["staffInvitations", businessId] as const,

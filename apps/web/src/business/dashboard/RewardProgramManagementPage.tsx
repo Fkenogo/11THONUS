@@ -17,11 +17,8 @@
 
 import { useState } from "react";
 import { useTranslation } from "../../i18n";
-import { Button, Checkbox, Select, TextField } from "../../components/ui/formPrimitives";
-import {
-  useAccessibleBusinessesQuery,
-  useRewardProgramCategoriesQuery,
-} from "../hooks/businessQueries";
+import { Button, Checkbox, TextField } from "../../components/ui/formPrimitives";
+import { useAccessibleBusinessesQuery } from "../hooks/businessQueries";
 import { useRewardProgramsQuery } from "../hooks/rewardProgramQueries";
 import {
   useCreateNextRewardProgramVersionMutation,
@@ -47,10 +44,15 @@ import type {
  * never silently clear configuration it does not own. The three fields
  * are loaded from the draft on `startEdit` and sent back unchanged until
  * product scope exposes them.
+ *
+ * `rewardProgramCategoryId` is deliberately NOT part of this form as of
+ * `PLATFORM-BASELINE-010B` (Founder decision `DEC-LOY-014` /
+ * `FD-REWARD-QUALIFICATION-001`) -- Phase 1 does not require a Reward
+ * Program Category at all, so the create form no longer collects one and
+ * the (already immutable) field is simply omitted from every request.
  */
 type DraftFormState = {
   displayName: string;
-  rewardProgramCategoryId: string;
   rewardDescription: string;
   /**
    * `PLATFORM-BASELINE-008`: canonical Commerce Knowledge qualifying-node
@@ -76,7 +78,6 @@ type DraftFormState = {
 function emptyDraftForm(): DraftFormState {
   return {
     displayName: "",
-    rewardProgramCategoryId: "",
     rewardDescription: "",
     qualifyingNodes: [],
     multipleUnitsAllowed: true,
@@ -89,19 +90,9 @@ function emptyDraftForm(): DraftFormState {
 }
 
 export function RewardProgramManagementPage({ context }: { context: BusinessContext }) {
-  const { t, i18n } = useTranslation("business");
+  const { t } = useTranslation("business");
   const accessibleQuery = useAccessibleBusinessesQuery();
   const rewardProgramsQuery = useRewardProgramsQuery(context.businessId);
-  /**
-   * `PLATFORM-BASELINE-008`: the create form's Reward Program category
-   * selector candidate list — human-readable Commerce Knowledge category
-   * options in place of a free-typed canonical id. An empty result is a
-   * normal, supported outcome (current Commerce Knowledge seed content has
-   * no `reward_program_category` nodes yet — a disclosed, pre-existing
-   * content gap, not a defect of this selector); the form shows an
-   * explicit note rather than a silently empty dropdown.
-   */
-  const rewardProgramCategoriesQuery = useRewardProgramCategoriesQuery(i18n.language);
 
   const myRole = accessibleQuery.data?.find(
     (business) => business.businessId === context.businessId,
@@ -144,7 +135,6 @@ export function RewardProgramManagementPage({ context }: { context: BusinessCont
     setEditingProgramId(entry.program.id);
     setEditForm({
       displayName: entry.program.displayName,
-      rewardProgramCategoryId: entry.program.rewardProgramCategoryId,
       rewardDescription: draft.rewardDescription,
       qualifyingNodes: draft.qualifyingNodes,
       multipleUnitsAllowed: draft.multipleUnitsAllowed,
@@ -162,7 +152,6 @@ export function RewardProgramManagementPage({ context }: { context: BusinessCont
     createMutation.mutate(
       {
         displayName: createForm.displayName,
-        rewardProgramCategoryId: createForm.rewardProgramCategoryId,
         rewardDescription: createForm.rewardDescription,
         multipleUnitsAllowed: createForm.multipleUnitsAllowed,
         sharedLoyaltyNumberAllowed: createForm.sharedLoyaltyNumberAllowed,
@@ -223,43 +212,16 @@ export function RewardProgramManagementPage({ context }: { context: BusinessCont
             onChange={(v) => setCreateForm((f) => ({ ...f, displayName: v }))}
             required
           />
-          {rewardProgramCategoriesQuery.isLoading ? (
-            <p className="text-sm text-[var(--color-muted-foreground)]">
-              {t("rewardProgram.category.loading")}
-            </p>
-          ) : rewardProgramCategoriesQuery.isError ? (
-            <div
-              role="alert"
-              className="rounded-md border border-[var(--color-border)] p-2 text-sm"
-            >
-              {t("rewardProgram.category.loadError")}
-            </div>
-          ) : (
-            <>
-              <Select
-                id="rp-create-category"
-                label={t("rewardProgram.fieldCategory")}
-                value={createForm.rewardProgramCategoryId}
-                onChange={(v) =>
-                  setCreateForm((f) => ({ ...f, rewardProgramCategoryId: v, qualifyingNodes: [] }))
-                }
-                placeholder={t("rewardProgram.category.placeholder")}
-                required
-                options={(rewardProgramCategoriesQuery.data ?? []).map((option) => ({
-                  value: option.id,
-                  label: option.displayLabel,
-                }))}
-              />
-              {(rewardProgramCategoriesQuery.data ?? []).length === 0 && (
-                <p className="text-sm text-[var(--color-muted-foreground)]">
-                  {t("rewardProgram.category.empty")}
-                </p>
-              )}
-            </>
-          )}
+          {/* PLATFORM-BASELINE-010B (Founder decision DEC-LOY-014 /
+              FD-REWARD-QUALIFICATION-001): Phase 1 does not require a
+              Reward Program Category -- the category selector is removed
+              from this form entirely, never rendered as an optional field
+              either. The qualifying-node picker below is the operative
+              qualification definition, defaulted to the Business's own
+              Business Type via `context.businessTypeId`. */}
           <QualifyingNodeSelector
             idPrefix="rp-create-qn"
-            categoryId={createForm.rewardProgramCategoryId}
+            businessTypeId={context.businessTypeId}
             selected={createForm.qualifyingNodes}
             onChange={(next) => setCreateForm((f) => ({ ...f, qualifyingNodes: next }))}
           />
@@ -406,13 +368,13 @@ export function RewardProgramManagementPage({ context }: { context: BusinessCont
                   onChange={(v) => setEditForm((f) => ({ ...f, rewardDescription: v }))}
                   required
                 />
-                {/* Category is fixed at creation and not draft-editable
-                    (`RewardProgramDraftFieldsRequest` carries no
-                    `rewardProgramCategoryId`) — the selector is scoped to
-                    the program's own existing category, never a re-pick. */}
+                {/* PLATFORM-BASELINE-010B: no category to scope by any
+                    more -- defaults to the Business's own Business Type,
+                    same as the create form, with the same search escape
+                    hatch for anything outside that default scope. */}
                 <QualifyingNodeSelector
                   idPrefix={`rp-edit-qn-${entry.program.id}`}
-                  categoryId={entry.program.rewardProgramCategoryId}
+                  businessTypeId={context.businessTypeId}
                   selected={editForm.qualifyingNodes}
                   onChange={(next) => setEditForm((f) => ({ ...f, qualifyingNodes: next }))}
                 />

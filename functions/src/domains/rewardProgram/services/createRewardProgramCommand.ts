@@ -32,7 +32,7 @@ import type {
 export type CreateRewardProgramRequest = {
   readonly businessId: string;
   readonly displayName: string;
-  readonly rewardProgramCategoryId: string;
+  readonly rewardProgramCategoryId: string | null;
   readonly rewardDescription: string;
   readonly standardRewardNodeId?: string | null;
   readonly multipleUnitsAllowed: boolean;

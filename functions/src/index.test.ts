@@ -646,9 +646,47 @@ describe("parseCreateRewardProgramRequest (mass-assignment boundary, PLATFORM-BA
     });
     expect(parsed.businessId).toBe("biz-1");
     expect(parsed.effectiveFrom).toBeInstanceOf(Date);
+    expect(parsed.rewardProgramCategoryId).toBe("cat-1");
     expect(parsed.qualifyingNodes).toEqual([
       { knowledgeNodeId: "node-1", businessDisplayName: null },
     ]);
+  });
+
+  /**
+   * `PLATFORM-BASELINE-010B` (Founder decision `DEC-LOY-014` /
+   * `FD-REWARD-QUALIFICATION-001`): Phase 1 does not require a Reward
+   * Program Category -- omitting it entirely must parse successfully,
+   * mirroring `standardRewardNodeId`'s established optional-string
+   * parsing pattern.
+   */
+  it("accepts a request with rewardProgramCategoryId omitted entirely, normalizing to null", () => {
+    const parsed = parseCreateRewardProgramRequest({
+      businessId: "biz-1",
+      displayName: "Buy 10 Coffees",
+      ...baseDraftFields(),
+    });
+    expect(parsed.rewardProgramCategoryId).toBeNull();
+  });
+
+  it("accepts a request with rewardProgramCategoryId explicitly null", () => {
+    const parsed = parseCreateRewardProgramRequest({
+      businessId: "biz-1",
+      displayName: "Buy 10 Coffees",
+      rewardProgramCategoryId: null,
+      ...baseDraftFields(),
+    });
+    expect(parsed.rewardProgramCategoryId).toBeNull();
+  });
+
+  it("still parses and rejects an empty-string rewardProgramCategoryId (supplied-but-invalid, not omitted)", () => {
+    expect(() =>
+      parseCreateRewardProgramRequest({
+        businessId: "biz-1",
+        displayName: "Buy 10 Coffees",
+        rewardProgramCategoryId: "",
+        ...baseDraftFields(),
+      }),
+    ).toThrow();
   });
 });
 

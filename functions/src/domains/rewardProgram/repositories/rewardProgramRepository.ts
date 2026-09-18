@@ -28,7 +28,7 @@ type ProgramDbRow = {
   id: string;
   business_id: string;
   display_name: string;
-  reward_program_category_id: string;
+  reward_program_category_id: string | null;
   shared_loyalty_number_allowed: boolean;
   status: RewardProgramStatus;
   current_version_id: string | null;
@@ -140,7 +140,7 @@ async function insertQualifyingNodes(
 export type CreateRewardProgramParams = {
   readonly businessId: string;
   readonly displayName: string;
-  readonly rewardProgramCategoryId: string;
+  readonly rewardProgramCategoryId: string | null;
   readonly actorId: string;
   readonly draft: RewardProgramVersionDraftInput;
   readonly requiredVerifiedUnits: number;

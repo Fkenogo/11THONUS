@@ -88,6 +88,8 @@ import {
   listBusinessTypesForCategory as listBusinessTypesForCategoryRead,
   listRewardProgramCategories as listRewardProgramCategoriesRead,
   listQualifyingNodesForCategory as listQualifyingNodesForCategoryRead,
+  listQualifyingNodesForBusinessType as listQualifyingNodesForBusinessTypeRead,
+  searchQualifyingNodes as searchQualifyingNodesRead,
   resolveKnowledgeNodeLabels as resolveKnowledgeNodeLabelsRead,
 } from "./domains/commerceKnowledge/services/commerceKnowledgeReadService";
 import {
@@ -1067,6 +1069,25 @@ function parseOptionalLanguageCode(value: unknown): string | undefined {
 }
 
 /**
+ * `searchQualifyingNodes` (`PLATFORM-BASELINE-010B`): unlike every other
+ * string field this transport parses, an EMPTY `searchText` is valid (it
+ * means "no filter, return every active qualifying node platform-wide" --
+ * see `searchQualifyingNodes`'s own doc comment) — this is the one place
+ * `parseNonEmptyString`'s reject-empty-string contract does not apply.
+ * `undefined`/`null` also normalizes to `""`. Any non-string value is
+ * still rejected.
+ */
+function parseOptionalSearchText(value: unknown): string {
+  if (value === undefined || value === null) return "";
+  if (typeof value !== "string") {
+    throw new HttpsError("invalid-argument", "commerce_knowledge_read_failed", {
+      field: "searchText",
+    });
+  }
+  return value;
+}
+
+/**
  * `listBusinessCategories` (`ENG-P3-002A`, design §13/§14/Phase H) —
  * requires authentication (`ED-P3-002-3`) but is not Business-scoped;
  * every currently-`active` `business_category` node is returned uniformly
@@ -1149,6 +1170,67 @@ export const listQualifyingNodesForCategory = onCall(async (request) => {
     return await listQualifyingNodesForCategoryRead(
       db,
       categoryId,
+      parseOptionalLanguageCode(value.languageCode),
+    );
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+/**
+ * `listQualifyingNodesForBusinessType` (`PLATFORM-BASELINE-010B`, Founder
+ * decision `DEC-LOY-014` / `FD-REWARD-QUALIFICATION-001`) — the Reward
+ * Program qualifying-node selector's DEFAULT discovery scope, pre-filtered
+ * to the Business's own Business Type. Same authentication-only,
+ * non-Business-scoped shape as `listQualifyingNodesForCategory`;
+ * `businessTypeId` is independently re-validated server-side inside the
+ * read service. This is a discovery convenience only — it never restricts
+ * what `createRewardProgram`/`updateRewardProgramDraft` will accept as a
+ * qualifying node (see `searchQualifyingNodes` below for the unrestricted
+ * escape hatch, and `validateQualifyingNodes` for the write-time
+ * authority, which has no Business-Type gate).
+ */
+export const listQualifyingNodesForBusinessType = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    const businessTypeId = parseNonEmptyString(value.businessTypeId);
+    return await listQualifyingNodesForBusinessTypeRead(
+      db,
+      businessTypeId,
+      parseOptionalLanguageCode(value.languageCode),
+    );
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+/**
+ * `searchQualifyingNodes` (`PLATFORM-BASELINE-010B`, Founder decision
+ * `DEC-LOY-014` / `FD-REWARD-QUALIFICATION-001`) — the qualifying-node
+ * selector's broader, platform-wide "escape hatch": lets an operator find
+ * and select an eligible canonical `standard_product`/`standard_service`
+ * node that lives outside their Business's default
+ * `listQualifyingNodesForBusinessType` discovery scope, by typed name —
+ * never by pasting a canonical id. Same authentication-only,
+ * non-Business-scoped shape as every other Commerce Knowledge read here.
+ * `searchText` may be empty (returns every active qualifying node
+ * platform-wide, see `searchQualifyingNodes`'s own doc comment).
+ */
+export const searchQualifyingNodes = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    const searchText = parseOptionalSearchText(value.searchText);
+    return await searchQualifyingNodesRead(
+      db,
+      searchText,
       parseOptionalLanguageCode(value.languageCode),
     );
   } catch (error) {
@@ -1729,12 +1811,22 @@ function parseRewardProgramDraftFields(value: Record<string, unknown>): {
  * the two fixed values server-side (`FIXED_REQUIRED_VERIFIED_UNITS`,
  * `FIXED_REWARD_QUANTITY`) regardless of anything the client sends.
  * Exported only for the mass-assignment regression test in `index.test.ts`.
+ *
+ * `rewardProgramCategoryId` is optional as of `PLATFORM-BASELINE-010B`
+ * (Founder decision `DEC-LOY-014` / `FD-REWARD-QUALIFICATION-001`) --
+ * mirrors `standardRewardNodeId`'s established optional-string parsing
+ * pattern (`parseRewardProgramDraftFields` above): absent/`null` parses to
+ * `null`, a supplied value is still parsed as a non-empty string and still
+ * independently re-validated server-side if present.
  */
 export function parseCreateRewardProgramRequest(value: Record<string, unknown>) {
   return {
     businessId: parseBusinessId(value.businessId),
     displayName: parseNonEmptyString(value.displayName),
-    rewardProgramCategoryId: parseNonEmptyString(value.rewardProgramCategoryId),
+    rewardProgramCategoryId:
+      value.rewardProgramCategoryId === undefined || value.rewardProgramCategoryId === null
+        ? null
+        : parseNonEmptyString(value.rewardProgramCategoryId),
     ...parseRewardProgramDraftFields(value),
   };
 }

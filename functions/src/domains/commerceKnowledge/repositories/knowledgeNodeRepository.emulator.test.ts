@@ -5,6 +5,7 @@ import {
   KNOWLEDGE_NODES_COLLECTION,
   createKnowledgeNodePersisted,
   getKnowledgeNodeById,
+  listActiveSelectableNodes,
   listKnowledgeNodeChildren,
   resolveHierarchyPlacement,
   retireKnowledgeNodePersisted,
@@ -377,5 +378,107 @@ describe("knowledgeNodeRepository — concurrency", () => {
 
     const stored = await getKnowledgeNodeById(db, "ind_food");
     expect(stored?.canonicalName).toBe("Food & Beverage");
+  });
+});
+
+/**
+ * `PLATFORM-BASELINE-010B-CORR-001` (P2, item J, independent review
+ * finding `PLATFORM-BASELINE-010B-ITR-001`): the optional `limit` param
+ * `searchQualifyingNodes` (`commerceKnowledgeReadService.ts`) supplies to
+ * bound its own Firestore read is exercised directly here at a small
+ * scale (a full 200+ document seed to exercise the real production bound
+ * would make this suite slow for no additional assurance — the mechanism
+ * being correct at N=2 is what proves it is correct at N=200 too, since
+ * it is a single `.limit(n)` call, not a size-dependent code path).
+ */
+describe("listActiveSelectableNodes — optional limit param (PLATFORM-BASELINE-010B-CORR-001)", () => {
+  /** `standard_product`'s only allowed parent type is `reward_program_category` (`knowledgeNodeType.ts`). */
+  async function seedRewardProgramCategoryParent(id: string) {
+    await createKnowledgeNodePersisted(db, {
+      id: "ind_food",
+      nodeType: "industry",
+      parentId: null,
+      canonicalName: "Food & Beverage",
+      slug: "food-beverage",
+      createdAt: now,
+    });
+    await transitionKnowledgeNodeStatusPersisted(db, "ind_food", "in_review", { updatedAt: now });
+    await transitionKnowledgeNodeStatusPersisted(db, "ind_food", "active", { updatedAt: now });
+
+    await createKnowledgeNodePersisted(db, {
+      id: "cat_food",
+      nodeType: "business_category",
+      parentId: "ind_food",
+      canonicalName: "Food & Beverage Category",
+      slug: "cat-food",
+      createdAt: now,
+    });
+    await transitionKnowledgeNodeStatusPersisted(db, "cat_food", "in_review", { updatedAt: now });
+    await transitionKnowledgeNodeStatusPersisted(db, "cat_food", "active", { updatedAt: now });
+
+    await createKnowledgeNodePersisted(db, {
+      id: "type_restaurant",
+      nodeType: "business_type",
+      parentId: "cat_food",
+      canonicalName: "Restaurant",
+      slug: "type-restaurant",
+      createdAt: now,
+    });
+    await transitionKnowledgeNodeStatusPersisted(db, "type_restaurant", "in_review", {
+      updatedAt: now,
+    });
+    await transitionKnowledgeNodeStatusPersisted(db, "type_restaurant", "active", {
+      updatedAt: now,
+    });
+
+    await createKnowledgeNodePersisted(db, {
+      id,
+      nodeType: "reward_program_category",
+      parentId: "type_restaurant",
+      canonicalName: "Meals",
+      slug: id,
+      createdAt: now,
+    });
+    await transitionKnowledgeNodeStatusPersisted(db, id, "in_review", { updatedAt: now });
+    await transitionKnowledgeNodeStatusPersisted(db, id, "active", { updatedAt: now });
+  }
+
+  it("J: caps the number of documents read/returned to the supplied limit, even when more active nodes exist", async () => {
+    await seedRewardProgramCategoryParent("rpc_meals");
+    for (const id of ["prod_a", "prod_b", "prod_c"]) {
+      await createKnowledgeNodePersisted(db, {
+        id,
+        nodeType: "standard_product",
+        parentId: "rpc_meals",
+        canonicalName: id,
+        slug: id,
+        createdAt: now,
+      });
+      await transitionKnowledgeNodeStatusPersisted(db, id, "in_review", { updatedAt: now });
+      await transitionKnowledgeNodeStatusPersisted(db, id, "active", { updatedAt: now });
+    }
+
+    const unbounded = await listActiveSelectableNodes(db, "standard_product");
+    expect(unbounded).toHaveLength(3);
+
+    const bounded = await listActiveSelectableNodes(db, "standard_product", undefined, 2);
+    expect(bounded).toHaveLength(2);
+  });
+
+  it("omitting limit preserves the exact prior unbounded behavior every other caller relies on", async () => {
+    await seedRewardProgramCategoryParent("rpc_meals");
+    await createKnowledgeNodePersisted(db, {
+      id: "prod_solo",
+      nodeType: "standard_product",
+      parentId: "rpc_meals",
+      canonicalName: "Solo Product",
+      slug: "prod-solo",
+      createdAt: now,
+    });
+    await transitionKnowledgeNodeStatusPersisted(db, "prod_solo", "in_review", { updatedAt: now });
+    await transitionKnowledgeNodeStatusPersisted(db, "prod_solo", "active", { updatedAt: now });
+
+    const result = await listActiveSelectableNodes(db, "standard_product");
+    expect(result.map((n) => n.id)).toEqual(["prod_solo"]);
   });
 });

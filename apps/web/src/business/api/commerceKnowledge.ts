@@ -34,6 +34,13 @@ export type ListQualifyingNodesForCategoryRequest = {
   categoryId: string;
   languageCode?: string;
 };
+/** `PLATFORM-BASELINE-010B`: the qualifying-node selector's DEFAULT discovery scope, pre-filtered to the Business's own Business Type. */
+export type ListQualifyingNodesForBusinessTypeRequest = {
+  businessTypeId: string;
+  languageCode?: string;
+};
+/** `PLATFORM-BASELINE-010B`: the qualifying-node selector's broader, platform-wide "escape hatch" — no Business-Type restriction. */
+export type SearchQualifyingNodesRequest = { searchText: string; languageCode?: string };
 export type ResolveKnowledgeNodeLabelsRequest = { nodeIds: string[]; languageCode?: string };
 
 type BoundCallable = (
@@ -116,6 +123,46 @@ export function makeCallListQualifyingNodesForCategory(
   return toCallListQualifyingNodesForCategory(
     httpsCallable(functions, "listQualifyingNodesForCategory"),
   );
+}
+
+export function toCallListQualifyingNodesForBusinessType(
+  callable: BoundCallable,
+): (
+  actor: AuthenticatedActor,
+  payload: ListQualifyingNodesForBusinessTypeRequest,
+) => Promise<CommerceKnowledgeOption[]> {
+  return toCallWithActor<ListQualifyingNodesForBusinessTypeRequest, CommerceKnowledgeOption[]>(
+    callable,
+  );
+}
+
+export function makeCallListQualifyingNodesForBusinessType(
+  functions: Functions,
+): (
+  actor: AuthenticatedActor,
+  payload: ListQualifyingNodesForBusinessTypeRequest,
+) => Promise<CommerceKnowledgeOption[]> {
+  return toCallListQualifyingNodesForBusinessType(
+    httpsCallable(functions, "listQualifyingNodesForBusinessType"),
+  );
+}
+
+export function toCallSearchQualifyingNodes(
+  callable: BoundCallable,
+): (
+  actor: AuthenticatedActor,
+  payload: SearchQualifyingNodesRequest,
+) => Promise<CommerceKnowledgeOption[]> {
+  return toCallWithActor<SearchQualifyingNodesRequest, CommerceKnowledgeOption[]>(callable);
+}
+
+export function makeCallSearchQualifyingNodes(
+  functions: Functions,
+): (
+  actor: AuthenticatedActor,
+  payload: SearchQualifyingNodesRequest,
+) => Promise<CommerceKnowledgeOption[]> {
+  return toCallSearchQualifyingNodes(httpsCallable(functions, "searchQualifyingNodes"));
 }
 
 type ResolveLabelsBoundCallable = (
