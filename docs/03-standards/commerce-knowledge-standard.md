@@ -292,6 +292,8 @@ Spa Treatment
 
 The list is curated by the platform and grows over time.
 
+> **Note (`DEC-LOY-016` / `FD-REWARD-QUALIFYING-ITEM-001`, 2026-09-18):** Reward Program Category remains optional for Phase 1 (per `DEC-LOY-014`/`FD-REWARD-QUALIFICATION-001`, 2026-09-17). This curated list is preserved for optional/future classification use; it is not a prerequisite for defining a qualifying item.
+
 ---
 
 # PART VIII — Standard Products & Services
@@ -329,6 +331,8 @@ Businesses can still market it as:
 "The Executive Cut"
 
 But the platform understands it as a Haircut.
+
+> **Note (`DEC-LOY-016` / `FD-REWARD-QUALIFYING-ITEM-001`, 2026-09-18):** "Each Reward Program maps to one or more standard products or services" is clarified for Phase 1: this mapping is **optional**, not mandatory. A Business may define and publish a qualifying item ("Premium Haircut," "Black Coffee") with no canonical `standard_product`/`standard_service` mapping at all — the worked example above remains valid and encouraged when a Business chooses to map, but the platform no longer requires "the platform understands it as a Haircut" to be true before the Business can use the item to qualify a Reward Program. Business Qualification Authority (what the Business is allowed to sell against) and Commerce Knowledge Classification (how the platform optionally categorizes it) are distinct; only the former is required.
 
 ---
 
@@ -539,10 +543,13 @@ Examples:
 - Standard Product/Service → searchable catalogue
 - Tags → multi-select
 
+> **Note (`DEC-LOY-016` / `FD-REWARD-QUALIFYING-ITEM-001`, 2026-09-18):** "Reward Program Category → dropdown" and "Standard Product/Service → searchable catalogue" are optional onboarding steps for Phase 1, not required ones (per `DEC-LOY-014` and this decision respectively). A Business's qualifying item(s) are entered directly as a Business-defined free-text field — see the amended free-text list below — with the searchable catalogue offered only as an optional classification aid.
+
 Free-text fields should be limited to:
 
 - Business name
 - Reward Program display name
+- Business-defined qualifying item name(s) — `DEC-LOY-016`/`FD-REWARD-QUALIFYING-ITEM-001` (2026-09-18): a Business's Phase 1 qualifying item(s) (e.g. "Black Coffee," "Premium Haircut") are Business-authored free text, optionally classifiable against the Standard Product/Service catalogue but never required to match it
 - Business description
 - Internal notes
 
