@@ -42,17 +42,18 @@ Documented in §3 above; applied verbatim in `0016`/`0017` (see §6 below).
 
 ## 6. Files modified
 
-Exactly seven files, all within `functions/src/infrastructure/postgres/`:
+Exactly eight files, all within `functions/`:
 
-1. `migrations/0016_create_qualifying_items.sql` — **new**.
-2. `migrations/0016_create_qualifying_items.down.sql` — **new**.
-3. `migrations/0017_create_reward_program_version_qualifying_items.sql` — **new**.
-4. `migrations/0017_create_reward_program_version_qualifying_items.down.sql` — **new**.
-5. `migrations/README.md` — **modified**: one additive paragraph describing the new package's migrations, matching the file's existing per-package convention.
-6. `rewardProgramMigrations.postgres.test.ts` — **modified**: `dropAll()` extended for the two new tables; the four pre-existing hardcoded 15-item version-list assertions extended to 17; the pre-existing `PLATFORM-BASELINE-010B` scratch-directory test's filter corrected from "everything except `0015`" (which silently became non-contiguous once `0016`/`0017` were added after it) to a strict prefix ending before `0015`, with its `applied` assertion updated accordingly; one new top-level `describe` block (`PLATFORM-BASELINE-013A.1: qualifying_items persistence foundation`) added with 15 new tests.
-7. `platformFoundationReadiness.postgres.test.ts` — **modified**: its own `afterEach` table-cleanup list extended for the two new tables (it also applies the real shipped `migrations/` directory); its one hardcoded 15-item applied-migration-list assertion extended to 17.
+1. `src/infrastructure/postgres/migrations/0016_create_qualifying_items.sql` — **new**.
+2. `src/infrastructure/postgres/migrations/0016_create_qualifying_items.down.sql` — **new**.
+3. `src/infrastructure/postgres/migrations/0017_create_reward_program_version_qualifying_items.sql` — **new**.
+4. `src/infrastructure/postgres/migrations/0017_create_reward_program_version_qualifying_items.down.sql` — **new**.
+5. `src/infrastructure/postgres/migrations/README.md` — **modified**: one additive paragraph describing the new package's migrations, matching the file's existing per-package convention.
+6. `src/infrastructure/postgres/rewardProgramMigrations.postgres.test.ts` — **modified**: `dropAll()` extended for the two new tables; the four pre-existing hardcoded 15-item version-list assertions extended to 17; the pre-existing `PLATFORM-BASELINE-010B` scratch-directory test's filter corrected from "everything except `0015`" (which silently became non-contiguous once `0016`/`0017` were added after it) to a strict prefix ending before `0015`, with its `applied` assertion updated accordingly; one new top-level `describe` block (`PLATFORM-BASELINE-013A.1: qualifying_items persistence foundation`) added with 15 new tests.
+7. `src/infrastructure/postgres/platformFoundationReadiness.postgres.test.ts` — **modified**: its own `afterEach` table-cleanup list extended for the two new tables (it also applies the real shipped `migrations/` directory); its one hardcoded 15-item applied-migration-list assertion extended to 17.
+8. `vitest.postgres.config.ts` — **modified**: `testTimeout` raised from vitest's 5000ms default to 20000ms (see §15 — a full `migrateUp` over the real migrations directory grows with every migration ever added, 17 as of this package, and the default was already tight on a loaded host; applies to every `*.postgres.test.ts` file, not only the ones this package touched, since the slowdown is a property of the migration count, not of any one file).
 
-No file under `functions/src/domains/`, `functions/src/index.ts`, `apps/`, or any config/dependency manifest was touched. No implementation report or governance file other than this report and the changes-log entry below was created or modified.
+No file under `functions/src/domains/`, `functions/src/index.ts`, `apps/`, or any dependency manifest was touched. No implementation report or governance file other than this report and the changes-log entry below was created or modified.
 
 ## 7. Migration(s) added
 
@@ -117,7 +118,9 @@ PLATFORM_ENV=test PLATFORM_POSTGRES_URL="postgres://postgres:postgres@localhost:
   pnpm exec vitest run --config vitest.postgres.config.ts src/infrastructure/postgres/
 ```
 
-Result: **4 test files, 53 tests, 53 passed, 0 failed.** (`rewardProgramMigrations.postgres.test.ts`: 30/30; `platformFoundationReadiness.postgres.test.ts`: 7/7; `migrationRunner.postgres.test.ts`: unaffected, passed; `postgresTransaction.postgres.test.ts`: unaffected, passed.) Re-run twice for stability; identical result both times.
+Result: **4 test files, 53 tests, 53 passed, 0 failed.** (`rewardProgramMigrations.postgres.test.ts`: 30/30; `platformFoundationReadiness.postgres.test.ts`: 7/7; `migrationRunner.postgres.test.ts`: unaffected, passed; `postgresTransaction.postgres.test.ts`: unaffected, passed.)
+
+**Investigated further rather than stopping at the first green run.** Two subsequent re-runs, made while other work in this session added load, showed different tests failing each time (`rejects reward_quantity != 1`, `applying 0001-0014 then 0015...`, `bootstraps a clean empty database...`, `re-running migrateUp...` — a different subset each run, several of them **pre-existing tests untouched by this package**), every failure either a `relation "..." already exists` (a prior test's teardown/hook not finishing before the next test's setup began) or `Test timed out in 5000ms` on an ordinary `migrateUp` call that otherwise completes in roughly 1 second. `docker ps` at the time showed **seven concurrent PostgreSQL containers** running on this host. Root cause: vitest's 5000ms default `testTimeout` was already tight for a full `migrateUp` over the real migrations directory under load, and this package's own two additional migrations (15 → 17) make it tighter for every future package too — not a defect in `0016`/`0017` or their tests (no assertion ever failed; every failure was a timeout or a teardown race). **Fixed** by raising `testTimeout` to 20000ms in `vitest.postgres.config.ts` (§6, item 8) — a file-wide config change since the slowdown is a property of the migration count, not of any single test file — then re-verified clean twice more, including one run captured at 172s total duration (vs. ~45s on a quiet host) that still passed all 53/53 with the higher timeout. Not classified as environmental on a single lucky re-run: the specific error shapes (timeout / relation-already-exists, never a wrong-value assertion), the confirmed host contention, and the fix's mechanism (a timeout, not a logic change) are the evidence.
 
 ```bash
 pnpm exec vitest run --config vitest.postgres.config.ts src/infrastructure/postgres/ src/domains/purchase src/domains/rewardProgram

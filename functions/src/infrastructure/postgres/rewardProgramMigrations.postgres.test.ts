@@ -216,7 +216,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0016",
       "0017",
     ]);
-  }, 20000);
+  });
 
   describe("schema constraints", () => {
     // The outer top-level `afterEach` (`dropAll`) runs after every test in
@@ -493,7 +493,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
 
       const total = await pool.query("SELECT count(*) FROM reward_programs");
       expect(Number(total.rows[0].count)).toBe(3);
-    }, 20000);
+    });
   });
 
   /**
@@ -821,7 +821,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         [versionId],
       );
       expect(Number(legacyStillThere.rows[0].count)).toBe(1);
-    }, 20000);
+    });
 
     it("the 0017 backfill SQL is idempotent: re-executing it against an already-backfilled database adds nothing", async () => {
       const preBackfillFiles = (await discoverMigrationFiles(migrationsDir)).filter(
@@ -873,7 +873,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         "SELECT count(*) FROM reward_program_version_qualifying_items",
       );
       expect(Number(junctionRows.rows[0].count)).toBe(1);
-    }, 20000);
+    });
 
     it("0017.down removes only the migration's own synthesized items and never a real Business-created item", async () => {
       const preBackfillFiles = (await discoverMigrationFiles(migrationsDir)).filter(
@@ -939,6 +939,6 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       await migrateDown(pool, migrationsDir, 1);
       const itemsTableAfter = await pool.query("SELECT to_regclass('qualifying_items') AS reg");
       expect(itemsTableAfter.rows[0].reg).toBeNull();
-    }, 20000);
+    });
   });
 });
