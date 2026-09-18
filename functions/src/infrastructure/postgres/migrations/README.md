@@ -27,6 +27,19 @@ Purchase / Verification transactional spine (`purchase_records`,
 `redemptions` remain un-created here — those belong to their own,
 separately authorized future implementation packages.
 
+`PLATFORM-BASELINE-013A.1` adds `0016`–`0017`: the additive,
+Business-owned `qualifying_items` persistence foundation
+(`qualifying_items`, `reward_program_version_qualifying_items`, plus a
+backfill from the legacy `reward_program_version_qualifying_nodes` table)
+— see
+`docs/05-implementation/reports/platform-baseline-012-business-owned-qualifying-item-implementation-readiness-design-2026-09-18.md`
+§5/§6/§13 for the full design rationale and
+`../rewardProgramMigrations.postgres.test.ts` for coverage. This package
+is persistence only: no application code reads or writes either new
+table yet, and `reward_program_version_qualifying_nodes` is retained
+unread, dropped only by a later, separately authorized, environment-gated
+migration.
+
 The migration runner's own bookkeeping table (`schema_migrations`) is
 created directly by `migrationRunner.ts`'s `ensureMigrationsTable` — it is
 migration-system metadata intrinsic to the mechanism, not a numbered

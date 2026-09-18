@@ -50,6 +50,11 @@ afterEach(async () => {
   // PLATFORM-BASELINE-006A: same for the Purchase-domain tables (reverse
   // dependency order), otherwise a dropped `schema_migrations` plus
   // leftover 006A tables breaks the next file's `migrateUp`.
+  // PLATFORM-BASELINE-013A.1: same for the additive qualifying_items
+  // persistence foundation (0016/0017) -- the junction table first since
+  // it references qualifying_items.
+  await pool.query("DROP TABLE IF EXISTS reward_program_version_qualifying_items CASCADE");
+  await pool.query("DROP TABLE IF EXISTS qualifying_items CASCADE");
   await pool.query("DROP TABLE IF EXISTS purchase_outbox CASCADE");
   await pool.query("DROP TABLE IF EXISTS notification_intents CASCADE");
   await pool.query("DROP TABLE IF EXISTS trust_events CASCADE");
@@ -189,6 +194,8 @@ describe("checkPlatformFoundationReadiness — actual shipped migrations directo
       "0013",
       "0014",
       "0015",
+      "0016",
+      "0017",
     ]);
 
     const result = await checkPlatformFoundationReadiness(shippedReadinessDeps());
