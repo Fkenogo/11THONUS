@@ -134,6 +134,14 @@ import {
   listRewardPrograms as listRewardProgramsQuery,
 } from "./domains/rewardProgram/services/rewardProgramQueries";
 import type { QualifyingNode } from "./domains/rewardProgram/models/rewardProgram";
+import { QualifyingItemDomainError } from "./domains/qualifyingItem/models/qualifyingItemErrors";
+import {
+  createQualifyingItem as createQualifyingItemCommand,
+  retireQualifyingItem as retireQualifyingItemCommand,
+  updateQualifyingItem as updateQualifyingItemCommand,
+} from "./domains/qualifyingItem/services/qualifyingItemCommands";
+import { listQualifyingItems as listQualifyingItemsQuery } from "./domains/qualifyingItem/services/qualifyingItemQueries";
+import type { QualifyingItemStatusFilter } from "./domains/qualifyingItem/repositories/qualifyingItemRepository";
 import { PurchaseDomainError } from "./domains/purchase/models/purchaseErrors";
 import { recordPurchase as recordPurchaseCommand } from "./domains/purchase/services/recordPurchaseCommand";
 import { verifyPurchase as verifyPurchaseCommand } from "./domains/purchase/services/verifyPurchaseCommand";
@@ -267,6 +275,15 @@ export function toHttpsError(error: unknown): HttpsError {
     return new HttpsError(
       CATEGORY_TO_HTTPS[error.category] ?? "internal",
       "reward_program_command_failed",
+    );
+  }
+  if (error instanceof QualifyingItemDomainError) {
+    // `PLATFORM-BASELINE-013A.2`: same stable-message posture -- the domain
+    // message (which may name a Business, item, or idempotency key) is never
+    // echoed.
+    return new HttpsError(
+      CATEGORY_TO_HTTPS[error.category] ?? "internal",
+      "qualifying_item_command_failed",
     );
   }
   if (error instanceof PurchaseDomainError) {
@@ -1985,6 +2002,193 @@ export const listRewardPrograms = onCall(async (request) => {
     return await listRewardProgramsQuery(db, getRewardProgramPostgresPool(), {
       userId,
       businessId: parseBusinessId(value.businessId),
+    });
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Qualifying Item (`PLATFORM-BASELINE-013A.2`, `DEC-LOY-016`/`DEC-LOY-017`).
+//
+// Business-owned Qualifying Items: the stable identity behind what a
+// Business actually sells. PostgreSQL-authoritative; these four callables are
+// the transport boundary only, every command lives in
+// `domains/qualifyingItem/services/`. All four are NEW -- no existing
+// Reward Program or Purchase request contract is altered (Reward Program
+// binding is `PLATFORM-BASELINE-013B`; purchase binding is
+// `PLATFORM-BASELINE-013C`). Every whitelist parser reads exactly the fields
+// the approved design governs -- no id, status, audit field, role, or actor
+// is ever accepted from client input, and Commerce Knowledge mapping
+// (`knowledgeNodeId`) is optional throughout. Writes require
+// `qualifyingItem.manage` (Owner/Manager); the read is membership-gated so
+// Staff can view/select without being able to manage.
+// ---------------------------------------------------------------------------
+
+function parseQualifyingItemString(value: unknown, field: string): string {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new HttpsError("invalid-argument", "qualifying_item_command_failed", { field });
+  }
+  return value;
+}
+
+/** Absent/`null` -> `null` (no classification); a supplied value must be a non-empty string. */
+function parseOptionalKnowledgeNodeId(value: unknown): string | null {
+  if (value === undefined || value === null) {
+    return null;
+  }
+  return parseQualifyingItemString(value, "knowledgeNodeId");
+}
+
+/** Exported only for the mass-assignment regression test in `qualifyingItemTransport.test.ts`. */
+export function parseCreateQualifyingItemRequest(value: Record<string, unknown>) {
+  return {
+    businessId: parseBusinessId(value.businessId),
+    name: parseQualifyingItemString(value.name, "name"),
+    knowledgeNodeId: parseOptionalKnowledgeNodeId(value.knowledgeNodeId),
+  };
+}
+
+/**
+ * `name` and `knowledgeNodeId` are each independently optional: omitted
+ * means "leave unchanged"; for `knowledgeNodeId`, `null` additionally means
+ * "clear the classification". At least one must be supplied -- enforced by
+ * the command (a domain `VALIDATION_FAILED`), not silently defaulted here.
+ * Exported only for the mass-assignment regression test.
+ */
+export function parseUpdateQualifyingItemRequest(value: Record<string, unknown>): {
+  businessId: string;
+  qualifyingItemId: string;
+  name?: string;
+  knowledgeNodeId?: string | null;
+} {
+  const parsed: {
+    businessId: string;
+    qualifyingItemId: string;
+    name?: string;
+    knowledgeNodeId?: string | null;
+  } = {
+    businessId: parseBusinessId(value.businessId),
+    qualifyingItemId: parseQualifyingItemString(value.qualifyingItemId, "qualifyingItemId"),
+  };
+  if (value.name !== undefined) {
+    parsed.name = parseQualifyingItemString(value.name, "name");
+  }
+  if (value.knowledgeNodeId !== undefined) {
+    parsed.knowledgeNodeId = parseOptionalKnowledgeNodeId(value.knowledgeNodeId);
+  }
+  return parsed;
+}
+
+/** Exported only for the mass-assignment regression test. */
+export function parseRetireQualifyingItemRequest(value: Record<string, unknown>) {
+  return {
+    businessId: parseBusinessId(value.businessId),
+    qualifyingItemId: parseQualifyingItemString(value.qualifyingItemId, "qualifyingItemId"),
+  };
+}
+
+const QUALIFYING_ITEM_STATUS_FILTERS: readonly QualifyingItemStatusFilter[] = [
+  "active",
+  "retired",
+  "all",
+];
+
+/** Exported only for the request-validation regression test. */
+export function parseListQualifyingItemsRequest(value: Record<string, unknown>): {
+  businessId: string;
+  statusFilter?: QualifyingItemStatusFilter;
+} {
+  const parsed: { businessId: string; statusFilter?: QualifyingItemStatusFilter } = {
+    businessId: parseBusinessId(value.businessId),
+  };
+  if (value.statusFilter !== undefined) {
+    if (
+      typeof value.statusFilter !== "string" ||
+      !QUALIFYING_ITEM_STATUS_FILTERS.includes(value.statusFilter as QualifyingItemStatusFilter)
+    ) {
+      throw new HttpsError("invalid-argument", "qualifying_item_command_failed", {
+        field: "statusFilter",
+      });
+    }
+    parsed.statusFilter = value.statusFilter as QualifyingItemStatusFilter;
+  }
+  return parsed;
+}
+
+export const createQualifyingItem = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId } = await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    const parsedRequest = parseCreateQualifyingItemRequest(value);
+    return await createQualifyingItemCommand(db, getRewardProgramPostgresPool(), {
+      userId,
+      request: parsedRequest,
+      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+      correlationId: randomUUID(),
+    });
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+export const updateQualifyingItem = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId } = await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    const parsedRequest = parseUpdateQualifyingItemRequest(value);
+    return await updateQualifyingItemCommand(db, getRewardProgramPostgresPool(), {
+      userId,
+      request: parsedRequest,
+      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+      correlationId: randomUUID(),
+    });
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+export const retireQualifyingItem = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId } = await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    const parsedRequest = parseRetireQualifyingItemRequest(value);
+    return await retireQualifyingItemCommand(db, getRewardProgramPostgresPool(), {
+      userId,
+      request: parsedRequest,
+      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+      correlationId: randomUUID(),
+    });
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+/**
+ * `listQualifyingItems` -- membership-gated read (`DEC-LOY-017`): any active
+ * member of the Business, Staff included, may view and select its items;
+ * viewing never requires (or confers) `qualifyingItem.manage`.
+ */
+export const listQualifyingItems = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId } = await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    const parsedRequest = parseListQualifyingItemsRequest(value);
+    return await listQualifyingItemsQuery(db, getRewardProgramPostgresPool(), {
+      userId,
+      ...parsedRequest,
     });
   } catch (error) {
     throw toHttpsError(error);
