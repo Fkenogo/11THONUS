@@ -98,6 +98,10 @@ import {
   isPurchasePermission,
   getPurchasePermissionEntry,
 } from "../models/purchasePermissionCatalogue";
+import {
+  isQualifyingItemPermission,
+  getQualifyingItemPermissionEntry,
+} from "../models/qualifyingItemPermissionCatalogue";
 import type { AuthorizationDecision, EvaluationInput, PermissionSource, ReasonCode } from "./types";
 import type { ErrorCategory } from "../../../shared/errors/errorCategories";
 
@@ -125,7 +129,8 @@ import type { ErrorCategory } from "../../../shared/errors/errorCategories";
  */
 const LEGACY_OPERATIONAL_SENSITIVE_STATUSES = new Set(["active", "trial"]);
 
-type PermissionClass = "sensitive" | "ordinary" | "rewardProgram" | "purchase" | "unknown";
+type PermissionClass =
+  "sensitive" | "ordinary" | "rewardProgram" | "purchase" | "qualifyingItem" | "unknown";
 
 function classifyPermission(permission: string): PermissionClass {
   if (isSensitivePermission(permission)) {
@@ -139,6 +144,9 @@ function classifyPermission(permission: string): PermissionClass {
   }
   if (isPurchasePermission(permission)) {
     return "purchase";
+  }
+  if (isQualifyingItemPermission(permission)) {
+    return "qualifyingItem";
   }
   return "unknown";
 }
@@ -255,6 +263,13 @@ export function evaluateAuthorizationDecision(input: EvaluationInput): Authoriza
     // eligibility gate shape as the catalogues above.
     const purchaseEntry = getPurchasePermissionEntry(request.permission);
     if (!purchaseEntry.eligibleBusinessStatuses.includes(business.business.status)) {
+      return deny(now, "BUSINESS_NOT_ACTIVE", "BUSINESS_INACTIVE");
+    }
+  } else if (permissionClass === "qualifyingItem") {
+    // `PLATFORM-BASELINE-013A.2` (`DEC-LOY-017`): fifth catalogue, same
+    // per-class lifecycle-eligibility gate shape as the catalogues above.
+    const qualifyingItemEntry = getQualifyingItemPermissionEntry(request.permission);
+    if (!qualifyingItemEntry.eligibleBusinessStatuses.includes(business.business.status)) {
       return deny(now, "BUSINESS_NOT_ACTIVE", "BUSINESS_INACTIVE");
     }
   }
@@ -383,6 +398,28 @@ export function evaluateAuthorizationDecision(input: EvaluationInput): Authoriza
     return deny(now, "NO_APPLICABLE_GRANT", "AUTH_FORBIDDEN", role);
   }
 
+  // Step 5d (`PLATFORM-BASELINE-013A.2`, `DEC-LOY-017`): Qualifying Item
+  // permissions resolve entirely through their own role-default table and
+  // return here, exactly mirroring Step 5a/5b/5c above (structural copy, not
+  // a new algorithm) — no override/inheritance path exists for this
+  // catalogue (Owner/Manager, never Staff; see
+  // `qualifyingItemPermissionCatalogue.ts`'s header note). There is
+  // deliberately no platform-administrator branch: authority is derived
+  // solely from the Business membership role resolved above.
+  if (isQualifyingItemPermission(permission)) {
+    const qualifyingItemEntry = getQualifyingItemPermissionEntry(permission);
+    if (qualifyingItemEntry.roleDefaults[role]) {
+      return {
+        allowed: true,
+        reasonCode: "ROLE_DEFAULT_ALLOW",
+        role,
+        permissionSource: "role-default",
+        evaluatedAt: now,
+      };
+    }
+    return deny(now, "NO_APPLICABLE_GRANT", "AUTH_FORBIDDEN", role);
+  }
+
   // Overrides embedded in the resolved membership only — an override
   // stamped for a different business or membership is never trusted
   // (§5.6 cross-business isolation, defence-in-depth beyond repository scoping).
@@ -480,7 +517,8 @@ export function evaluateAuthorizationDecision(input: EvaluationInput): Authoriza
   // at Step 5a, via its own dedicated `ORDINARY_PERMISSION_CATALOGUE`
   // role-default table — never this one; a Reward Program id
   // (`PLATFORM-BASELINE-005A`) always returns at Step 5b; a Purchase id
-  // (`PLATFORM-BASELINE-006A`) always returns at Step 5c; any other id
+  // (`PLATFORM-BASELINE-006A`) always returns at Step 5c; a Qualifying Item
+  // id (`PLATFORM-BASELINE-013A.2`) always returns at Step 5d; any other id
   // matches no role template here by construction (`SENSITIVE_PERMISSION_ROLE_TEMPLATES`
   // is derived exclusively from the sensitive catalogue's inheritable
   // entries — see `roleTemplate.ts`). Retained rather than removed as a
