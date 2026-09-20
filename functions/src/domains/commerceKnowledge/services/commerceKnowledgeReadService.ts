@@ -58,7 +58,8 @@ export type CommerceKnowledgeOptionDto = {
 /**
  * `PLATFORM-BASELINE-008`: a display-only resolution of a Commerce
  * Knowledge node's current label, for a canonical id a caller already
- * holds (e.g. a Reward Program version's persisted `qualifyingNodes`).
+ * holds (e.g. a Qualifying Item's optional classification mapping, or a
+ * Reward Program version's frozen `knowledgeNodeIdAtVersion` snapshot).
  * Unlike `CommerceKnowledgeOptionDto`, this is deliberately NOT restricted
  * to `active` nodes — its purpose is hydrating an EXISTING reference for
  * display (mirrors `isResolvableForExistingReference`'s "retirement never
@@ -384,7 +385,7 @@ export async function searchQualifyingNodes(
 /**
  * `PLATFORM-BASELINE-008`: display-only label resolution for a bounded
  * set of canonical Commerce Knowledge node ids a caller already holds
- * (e.g. hydrating a Reward Program draft's persisted `qualifyingNodes`
+ * (e.g. hydrating a Qualifying Item's optional classification mapping
  * for display).
  *
  * Gated by `isResolvableForExistingReference` (`active`/`retired`/

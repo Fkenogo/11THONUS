@@ -26,12 +26,12 @@ import type { Firestore } from "firebase-admin/firestore";
 import { getKnowledgeNodeById } from "../../commerceKnowledge/repositories/knowledgeNodeRepository";
 import { isEligibleForNewReference } from "../../commerceKnowledge/models/referenceEligibility";
 import type { KnowledgeNodeType } from "../../commerceKnowledge/models/knowledgeNodeType";
-import type { QualifyingNode } from "../models/rewardProgram";
+import type { QualifyingItemRef, QualifyingNode } from "../models/rewardProgram";
 import {
   invalidCategoryNodeError,
   invalidQualifyingNodeError,
   invalidStandardRewardNodeError,
-  rewardProgramPublishRequiresQualifyingNodeError,
+  rewardProgramPublishRequiresQualifyingItemError,
 } from "../models/rewardProgramErrors";
 
 const QUALIFYING_NODE_TYPES: readonly KnowledgeNodeType[] = [
@@ -39,7 +39,15 @@ const QUALIFYING_NODE_TYPES: readonly KnowledgeNodeType[] = [
   "standard_service",
 ];
 
-async function assertNodeEligible(
+/**
+ * Exported for the Business-owned qualification validator
+ * (`rewardProgramQualificationValidation.ts`, `PLATFORM-BASELINE-013B`):
+ * a Qualifying Item's OPTIONAL Commerce Knowledge classification, when
+ * present, must satisfy exactly the same eligibility predicate as every
+ * other canonical reference in this domain. The caller supplies its own
+ * `onInvalid` so the error stays in the caller's domain vocabulary.
+ */
+export async function assertNodeEligible(
   db: Firestore,
   nodeId: string,
   allowedTypes: readonly KnowledgeNodeType[],
@@ -90,6 +98,15 @@ export async function validateStandardRewardNodeReference(
   await assertNodeEligible(db, nodeId, QUALIFYING_NODE_TYPES, invalidStandardRewardNodeError);
 }
 
+/**
+ * Retained ONLY for the purchase write path (`recordPurchaseCommand.ts`),
+ * which still carries a canonical knowledge reference until
+ * `PLATFORM-BASELINE-013C` replaces it with `qualifyingItemId`. No Reward
+ * Program configuration path may call this -- Reward Program qualification
+ * binds Business-owned Qualifying Items
+ * (`rewardProgramQualificationValidation.ts`) since
+ * `PLATFORM-BASELINE-013B`.
+ */
 export async function validateQualifyingNodes(
   db: Firestore,
   nodes: readonly QualifyingNode[],
@@ -103,45 +120,52 @@ export async function validateQualifyingNodes(
 
 /**
  * `PLATFORM-BASELINE-010B-CORR-001` (P1): the publication-only invariant
- * -- a Reward Program's qualifying canonical product/service node(s) are
- * its operative qualification definition, so a version with zero
- * qualifying nodes must never reach `active`. This is deliberately NOT
- * folded into `validateAllReferences` (which every draft create/edit call
- * also runs): a draft is explicitly allowed to carry zero qualifying
- * nodes while configuration is incomplete (`categoryId=null,
- * qualifyingNodes=[]` remains a valid, persistable draft state), so
- * enforcing this globally there would reject legitimate in-progress
- * drafts. The publish command (`publishRewardProgramVersionCommand.ts`)
- * is the one caller that invokes this, immediately alongside
- * `validateAllReferences`, at the same pre-transaction authoritative
- * validation point (RF-3 step 2) -- a direct/malicious callable request
- * cannot reach the PostgreSQL publish transaction without passing both.
- * Pure and synchronous: the node count is already known from the
- * PostgreSQL-persisted draft, no Firestore read is needed to enforce
- * this particular invariant.
+ * -- a Reward Program's qualifying item(s) are its operative qualification
+ * definition, so a version with zero qualifying items must never reach
+ * `active`. This is deliberately NOT folded into `validateAllReferences`
+ * (which every draft create/edit call also runs): a draft is explicitly
+ * allowed to carry zero qualifying items while configuration is
+ * incomplete (`categoryId=null, qualifyingItemIds=[]` remains a valid,
+ * persistable draft state), so enforcing this globally there would reject
+ * legitimate in-progress drafts. The publish command
+ * (`publishRewardProgramVersionCommand.ts`) is the one caller that invokes
+ * this, alongside the qualification re-validation, at the same
+ * pre-transaction authoritative validation point (RF-3 step 2) -- a
+ * direct/malicious callable request cannot reach the PostgreSQL publish
+ * transaction without passing both. Pure and synchronous: the item count
+ * is already known from the PostgreSQL-persisted draft, no Firestore read
+ * is needed to enforce this particular invariant.
+ *
+ * `PLATFORM-BASELINE-013B` (`DEC-LOY-016`): counts Business-owned
+ * Qualifying Items, not canonical Commerce Knowledge nodes. Identity-model
+ * agnostic otherwise -- it counts, never inspects.
  */
-export function assertHasQualifyingNodeForPublish(nodes: readonly QualifyingNode[]): void {
-  if (nodes.length === 0) {
-    throw rewardProgramPublishRequiresQualifyingNodeError();
+export function assertHasQualifyingItemsForPublish(items: readonly QualifyingItemRef[]): void {
+  if (items.length === 0) {
+    throw rewardProgramPublishRequiresQualifyingItemError();
   }
 }
 
 /**
  * The full authoritative validation pass a create/draft-edit/publish
- * command runs: category, optional standard reward node, and every
- * qualifying node. Callers run this once at draft add/change-time and
- * again, unconditionally, immediately before starting the PostgreSQL
- * publish transaction (RF-3 step 4).
+ * command runs for the NON-qualification references: category and optional
+ * standard reward node.
+ *
+ * `PLATFORM-BASELINE-013B` (`DEC-LOY-016`): qualification itself is NO
+ * LONGER part of this pass -- it binds Business-owned Qualifying Items via
+ * `resolveQualifyingItemSnapshots`
+ * (`rewardProgramQualificationValidation.ts`), which the caller runs
+ * alongside this. Callers run both once at draft add/change-time and again,
+ * unconditionally, immediately before starting the PostgreSQL publish
+ * transaction (RF-3 step 4).
  */
 export async function validateAllReferences(
   db: Firestore,
   input: {
     readonly rewardProgramCategoryId: string | null;
     readonly standardRewardNodeId?: string | null;
-    readonly qualifyingNodes: readonly QualifyingNode[];
   },
 ): Promise<void> {
   await validateOptionalCategoryReference(db, input.rewardProgramCategoryId);
   await validateStandardRewardNodeReference(db, input.standardRewardNodeId);
-  await validateQualifyingNodes(db, input.qualifyingNodes);
 }

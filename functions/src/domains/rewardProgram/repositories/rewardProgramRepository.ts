@@ -7,13 +7,22 @@
  * connection/transaction, matching `postgresTransaction.ts`'s own
  * documented seam. No domain-service file above this layer imports `pg`
  * directly.
+ *
+ * Qualification binding (`PLATFORM-BASELINE-013B`, `DEC-LOY-016`): a
+ * version's qualification is its rows in
+ * `reward_program_version_qualifying_items`, keyed by stable
+ * Business-owned `qualifying_item_id` with frozen display snapshots. The
+ * superseded `reward_program_version_qualifying_nodes` table is retained
+ * but NEVER read or written here -- dropping it is deferred to the
+ * environment-gated `PLATFORM-BASELINE-013E` migration. There is exactly
+ * one qualification authority, not two.
  */
 
 import type { PoolClient } from "pg";
 import type { PlatformPostgresPool } from "../../../infrastructure/postgres/postgresPool";
 import type { PlatformPostgresTransaction } from "../../../infrastructure/postgres/postgresTransaction";
 import type {
-  QualifyingNode,
+  QualifyingItemRef,
   RewardProgramRow,
   RewardProgramStatus,
   RewardProgramVersionDraftInput,
@@ -80,7 +89,7 @@ type VersionDbRow = {
 
 function mapVersionRow(
   row: VersionDbRow,
-  qualifyingNodes: readonly QualifyingNode[],
+  qualifyingItems: readonly QualifyingItemRef[],
 ): RewardProgramVersionRow {
   return {
     id: row.id,
@@ -102,37 +111,57 @@ function mapVersionRow(
     updatedAt: row.updated_at,
     rowVersion: row.row_version,
     schemaVersion: row.schema_version,
-    qualifyingNodes,
+    qualifyingItems,
   };
 }
 
-async function fetchQualifyingNodes(db: Queryable, versionId: string): Promise<QualifyingNode[]> {
+/**
+ * Reads a version's qualification from the authoritative junction
+ * (`reward_program_version_qualifying_items`), in a stable order. Returns
+ * the FROZEN snapshots -- never the live `qualifying_items` row -- so a
+ * published version reproduces verbatim after a rename, remap, or
+ * retirement. The legacy `reward_program_version_qualifying_nodes` table
+ * is deliberately never consulted.
+ */
+async function fetchQualifyingItems(
+  db: Queryable,
+  versionId: string,
+): Promise<QualifyingItemRef[]> {
   const result = await db.query<{
-    knowledge_node_id: string;
-    business_display_name: string | null;
+    qualifying_item_id: string;
+    item_name_at_version: string;
+    knowledge_node_id_at_version: string | null;
   }>(
-    `SELECT knowledge_node_id, business_display_name
-       FROM reward_program_version_qualifying_nodes
+    `SELECT qualifying_item_id, item_name_at_version, knowledge_node_id_at_version
+       FROM reward_program_version_qualifying_items
       WHERE reward_program_version_id = $1
-      ORDER BY knowledge_node_id`,
+      ORDER BY item_name_at_version, qualifying_item_id`,
     [versionId],
   );
   return result.rows.map((r) => ({
-    knowledgeNodeId: r.knowledge_node_id,
-    businessDisplayName: r.business_display_name,
+    qualifyingItemId: r.qualifying_item_id,
+    itemNameAtVersion: r.item_name_at_version,
+    knowledgeNodeIdAtVersion: r.knowledge_node_id_at_version,
   }));
 }
 
-async function insertQualifyingNodes(
+/**
+ * Replaces a version's qualification rows wholesale with already-resolved
+ * frozen snapshots (the caller -- always a command -- resolved each id
+ * server-side via `resolveQualifyingItemSnapshots`). Simplest correct
+ * semantics for a mutable draft: no partial-diff merge logic.
+ */
+async function insertQualifyingItems(
   tx: PlatformPostgresTransaction,
   versionId: string,
-  nodes: readonly QualifyingNode[],
+  items: readonly QualifyingItemRef[],
 ): Promise<void> {
-  for (const node of nodes) {
+  for (const item of items) {
     await tx.query(
-      `INSERT INTO reward_program_version_qualifying_nodes (reward_program_version_id, knowledge_node_id, business_display_name)
-       VALUES ($1, $2, $3)`,
-      [versionId, node.knowledgeNodeId, node.businessDisplayName],
+      `INSERT INTO reward_program_version_qualifying_items
+         (reward_program_version_id, qualifying_item_id, item_name_at_version, knowledge_node_id_at_version)
+       VALUES ($1, $2, $3, $4)`,
+      [versionId, item.qualifyingItemId, item.itemNameAtVersion, item.knowledgeNodeIdAtVersion],
     );
   }
 }
@@ -145,6 +174,14 @@ export type CreateRewardProgramParams = {
   readonly draft: RewardProgramVersionDraftInput;
   readonly requiredVerifiedUnits: number;
   readonly rewardQuantity: number;
+  /**
+   * Already-resolved frozen snapshots for `draft.qualifyingItemIds`
+   * (`PLATFORM-BASELINE-013B`): the command validated each id and resolved
+   * its current name/classification server-side before opening this
+   * transaction. The repository stores them verbatim -- it never resolves
+   * an id itself.
+   */
+  readonly qualifyingItems: readonly QualifyingItemRef[];
 };
 
 /** Creates the program row and its version-1 draft in one transaction. Does not publish. */
@@ -188,9 +225,9 @@ export async function insertRewardProgramWithFirstDraft(
       params.actorId,
     ],
   );
-  await insertQualifyingNodes(tx, versionResult.rows[0].id, params.draft.qualifyingNodes);
+  await insertQualifyingItems(tx, versionResult.rows[0].id, params.qualifyingItems);
 
-  const version = mapVersionRow(versionResult.rows[0], params.draft.qualifyingNodes);
+  const version = mapVersionRow(versionResult.rows[0], params.qualifyingItems);
   return { program, version };
 }
 
@@ -241,8 +278,8 @@ export async function getVersionById(
   if (result.rows.length === 0) {
     return null;
   }
-  const qualifyingNodes = await fetchQualifyingNodes(db, versionId);
-  return mapVersionRow(result.rows[0], qualifyingNodes);
+  const qualifyingItems = await fetchQualifyingItems(db, versionId);
+  return mapVersionRow(result.rows[0], qualifyingItems);
 }
 
 /** For update commands: locks the draft row (`SELECT ... FOR UPDATE`) inside the caller's transaction. */
@@ -257,14 +294,16 @@ export async function getDraftVersionForUpdate(
   if (result.rows.length === 0) {
     return null;
   }
-  const qualifyingNodes = await fetchQualifyingNodes(tx, versionId);
-  return mapVersionRow(result.rows[0], qualifyingNodes);
+  const qualifyingItems = await fetchQualifyingItems(tx, versionId);
+  return mapVersionRow(result.rows[0], qualifyingItems);
 }
 
 export type UpdateDraftParams = {
   readonly versionId: string;
   readonly expectedRowVersion: number;
   readonly draft: RewardProgramVersionDraftInput;
+  /** Already-resolved frozen snapshots for `draft.qualifyingItemIds` -- stored verbatim. */
+  readonly qualifyingItems: readonly QualifyingItemRef[];
 };
 
 /**
@@ -309,15 +348,16 @@ export async function updateDraftVersion(
   if (result.rows.length === 0) {
     return null;
   }
-  // Qualifying nodes are replaced wholesale on every draft edit (simplest
-  // correct semantics for a mutable draft -- no partial-diff merge logic).
+  // Qualification rows are replaced wholesale on every draft edit
+  // (simplest correct semantics for a mutable draft -- no partial-diff
+  // merge logic).
   await tx.query(
-    `DELETE FROM reward_program_version_qualifying_nodes WHERE reward_program_version_id = $1`,
+    `DELETE FROM reward_program_version_qualifying_items WHERE reward_program_version_id = $1`,
     [params.versionId],
   );
-  await insertQualifyingNodes(tx, params.versionId, params.draft.qualifyingNodes);
-  const qualifyingNodes = await fetchQualifyingNodes(tx, params.versionId);
-  return mapVersionRow(result.rows[0], qualifyingNodes);
+  await insertQualifyingItems(tx, params.versionId, params.qualifyingItems);
+  const qualifyingItems = await fetchQualifyingItems(tx, params.versionId);
+  return mapVersionRow(result.rows[0], qualifyingItems);
 }
 
 /** Publishes a draft version: draft -> active, supersedes the prior active version, updates the program's current-version pointer. All in the caller's transaction. */
@@ -327,6 +367,14 @@ export async function publishVersion(
     readonly programId: string;
     readonly versionId: string;
     readonly actorUpdatedBy: string;
+    /**
+     * Freshly re-resolved frozen snapshots for the draft's CURRENT bindings
+     * (`PLATFORM-BASELINE-013B`): the publish command re-validated every
+     * bound item immediately before this transaction (RF-3 step 2), so the
+     * published snapshot is taken at publish time, not at the earlier
+     * draft-write time. Same membership, refreshed evidence.
+     */
+    readonly qualifyingItems: readonly QualifyingItemRef[];
   },
 ): Promise<RewardProgramVersionRow> {
   await tx.query(
@@ -345,6 +393,17 @@ export async function publishVersion(
       "publishVersion: draft version not found or already published (caller must pre-check).",
     );
   }
+  // Refresh the frozen qualification evidence at publish time: the
+  // snapshot records what qualified AT PUBLICATION, so a rename/remap of
+  // the live item between the last draft edit and publication is captured
+  // here. Membership cannot change on this path (the publish command
+  // re-validated exactly the draft's current bindings). Already-published
+  // versions are never touched by this statement.
+  await tx.query(
+    `DELETE FROM reward_program_version_qualifying_items WHERE reward_program_version_id = $1`,
+    [params.versionId],
+  );
+  await insertQualifyingItems(tx, params.versionId, params.qualifyingItems);
   // The program-level `shared_loyalty_number_allowed` column is the
   // approved current-value convenience projection (RF-2) -- it must track
   // the newly published version's authoritative snapshot in the SAME
@@ -367,8 +426,8 @@ export async function publishVersion(
       params.programId,
     ],
   );
-  const qualifyingNodes = await fetchQualifyingNodes(tx, params.versionId);
-  return mapVersionRow(publishResult.rows[0], qualifyingNodes);
+  const qualifyingItems = await fetchQualifyingItems(tx, params.versionId);
+  return mapVersionRow(publishResult.rows[0], qualifyingItems);
 }
 
 /** Creates version N+1 as a new draft, seeded from the current version's snapshot. Does not mutate the current version. */
@@ -379,6 +438,8 @@ export async function insertNextDraftVersion(
     readonly baseVersion: RewardProgramVersionRow;
     readonly actorId: string;
     readonly draft: RewardProgramVersionDraftInput;
+    /** Already-resolved frozen snapshots for `draft.qualifyingItemIds` -- stored verbatim. */
+    readonly qualifyingItems: readonly QualifyingItemRef[];
   },
 ): Promise<RewardProgramVersionRow> {
   const nextVersionNumber = params.baseVersion.version + 1;
@@ -404,8 +465,8 @@ export async function insertNextDraftVersion(
       params.actorId,
     ],
   );
-  await insertQualifyingNodes(tx, versionResult.rows[0].id, params.draft.qualifyingNodes);
-  return mapVersionRow(versionResult.rows[0], params.draft.qualifyingNodes);
+  await insertQualifyingItems(tx, versionResult.rows[0].id, params.qualifyingItems);
+  return mapVersionRow(versionResult.rows[0], params.qualifyingItems);
 }
 
 export async function listRewardProgramsForBusiness(
@@ -440,6 +501,6 @@ export async function getLatestVersionForProgram(
   if (result.rows.length === 0) {
     return null;
   }
-  const qualifyingNodes = await fetchQualifyingNodes(db, result.rows[0].id);
-  return mapVersionRow(result.rows[0], qualifyingNodes);
+  const qualifyingItems = await fetchQualifyingItems(db, result.rows[0].id);
+  return mapVersionRow(result.rows[0], qualifyingItems);
 }

@@ -1,17 +1,23 @@
 /**
- * Reward Program management (`PLATFORM-BASELINE-005A`).
+ * Reward Program management (`PLATFORM-BASELINE-005A`, re-bound to
+ * Business-owned Qualifying Items by `PLATFORM-BASELINE-013B` per
+ * `DEC-LOY-016` / `FD-REWARD-QUALIFYING-ITEM-001`).
  *
- * Minimum usable Business-facing surface: list existing programs, create a
- * new one, configure/edit a draft, publish it, and create the next
- * version. Deliberately bounded — no pause/retire/archive controls (not
- * implemented server-side in this package), no plan-capacity display, no
- * participant-facing surface. Server authorization remains mandatory
- * (`rewardProgram.manage`, Owner-only) — the role-based control visibility
- * here is convenience, never enforcement, matching this codebase's
- * existing Team Management precedent.
+ * Two surfaces, one page:
+ *
+ * 1. The Business's own Qualifying Item library -- add, rename, retire.
+ *    Items are Business-authored names ("Black Coffee"); no Commerce
+ *    Knowledge classification is required. Gated on
+ *    `qualifyingItem.manage` server-side (Owner/Manager); the role-based
+ *    visibility here is convenience, never enforcement.
+ * 2. Reward Program configuration -- list existing programs, create a new
+ *    one, configure/edit a draft through `QualifyingItemSelector` (stable
+ *    `qualifyingItemId` bindings, human-readable Business names), publish
+ *    it, and create the next version. Gated on `rewardProgram.manage`
+ *    server-side (Owner-only).
  *
  * `requiredVerifiedUnits`/`rewardQuantity` are rendered as fixed,
- * read-only platform-rule text — never an editable field — per the
+ * read-only platform-rule text -- never an editable field -- per the
  * approved design (Section 26).
  */
 
@@ -26,13 +32,17 @@ import {
   usePublishRewardProgramVersionMutation,
   useUpdateRewardProgramDraftMutation,
 } from "../hooks/rewardProgramMutations";
+import { useQualifyingItemsQuery } from "../hooks/qualifyingItemQueries";
+import {
+  useCreateQualifyingItemMutation,
+  useRetireQualifyingItemMutation,
+  useUpdateQualifyingItemMutation,
+} from "../hooks/qualifyingItemMutations";
 import { MutationError } from "../onboarding/MutationError";
-import { QualifyingNodeSelector } from "./QualifyingNodeSelector";
+import { QualifyingItemSelector } from "./QualifyingItemSelector";
 import type { BusinessContext } from "../api/businessContext";
-import type {
-  QualifyingNodeWire,
-  RewardProgramWithVersionsWire,
-} from "../api/rewardProgramMutations";
+import type { RewardProgramWithVersionsWire } from "../api/rewardProgramMutations";
+import type { QualifyingItemWire } from "../api/qualifyingItems";
 
 /**
  * The edit form round-trips the COMPLETE version snapshot
@@ -55,15 +65,13 @@ type DraftFormState = {
   displayName: string;
   rewardDescription: string;
   /**
-   * `PLATFORM-BASELINE-008`: canonical Commerce Knowledge qualifying-node
-   * selections, edited exclusively through `QualifyingNodeSelector` — the
-   * operator never types a canonical id (previously a comma-separated
-   * free-text field, `parseQualifyingNodeIds`). Preserves each node's
-   * existing `businessDisplayName` (never product-exposed as editable,
-   * Finding 4-style preservation) rather than resetting it to `null` on
-   * every edit.
+   * `PLATFORM-BASELINE-013B`: stable Business-owned Qualifying Item ids,
+   * edited exclusively through `QualifyingItemSelector` -- the operator
+   * never types an id and never sees one. Display names come from the
+   * Business's own item library (live) or the version's frozen snapshot
+   * (historical).
    */
-  qualifyingNodes: QualifyingNodeWire[];
+  qualifyingItemIds: string[];
   multipleUnitsAllowed: boolean;
   sharedLoyaltyNumberAllowed: boolean;
   effectiveFrom: string;
@@ -79,7 +87,7 @@ function emptyDraftForm(): DraftFormState {
   return {
     displayName: "",
     rewardDescription: "",
-    qualifyingNodes: [],
+    qualifyingItemIds: [],
     multipleUnitsAllowed: true,
     sharedLoyaltyNumberAllowed: false,
     effectiveFrom: new Date().toISOString().slice(0, 10),
@@ -89,15 +97,29 @@ function emptyDraftForm(): DraftFormState {
   };
 }
 
+/** Frozen display evidence per bound id, for retired/historical references. */
+function snapshotNamesOf(
+  version: { qualifyingItems: { qualifyingItemId: string; itemNameAtVersion: string }[] } | null,
+): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const item of version?.qualifyingItems ?? []) {
+    map.set(item.qualifyingItemId, item.itemNameAtVersion);
+  }
+  return map;
+}
+
 export function RewardProgramManagementPage({ context }: { context: BusinessContext }) {
   const { t } = useTranslation("business");
   const accessibleQuery = useAccessibleBusinessesQuery();
   const rewardProgramsQuery = useRewardProgramsQuery(context.businessId);
+  const qualifyingItemsQuery = useQualifyingItemsQuery(context.businessId);
 
   const myRole = accessibleQuery.data?.find(
     (business) => business.businessId === context.businessId,
   )?.role;
   const canManage = myRole === "owner";
+  // `DEC-LOY-017`: Managers may manage Qualifying Items (but not Reward Programs).
+  const canManageItems = myRole === "owner" || myRole === "manager";
 
   const [creating, setCreating] = useState(false);
   const [createForm, setCreateForm] = useState<DraftFormState>(emptyDraftForm());
@@ -108,6 +130,8 @@ export function RewardProgramManagementPage({ context }: { context: BusinessCont
   const updateDraftMutation = useUpdateRewardProgramDraftMutation(context.businessId);
   const publishMutation = usePublishRewardProgramVersionMutation(context.businessId);
   const createNextVersionMutation = useCreateNextRewardProgramVersionMutation(context.businessId);
+
+  const activeItems = qualifyingItemsQuery.data ?? [];
 
   if (rewardProgramsQuery.isLoading) {
     return (
@@ -136,7 +160,7 @@ export function RewardProgramManagementPage({ context }: { context: BusinessCont
     setEditForm({
       displayName: entry.program.displayName,
       rewardDescription: draft.rewardDescription,
-      qualifyingNodes: draft.qualifyingNodes,
+      qualifyingItemIds: draft.qualifyingItems.map((item) => item.qualifyingItemId),
       multipleUnitsAllowed: draft.multipleUnitsAllowed,
       sharedLoyaltyNumberAllowed: draft.sharedLoyaltyNumberAllowed,
       effectiveFrom: draft.effectiveFrom.slice(0, 10),
@@ -156,7 +180,7 @@ export function RewardProgramManagementPage({ context }: { context: BusinessCont
         multipleUnitsAllowed: createForm.multipleUnitsAllowed,
         sharedLoyaltyNumberAllowed: createForm.sharedLoyaltyNumberAllowed,
         effectiveFrom: new Date(createForm.effectiveFrom).toISOString(),
-        qualifyingNodes: createForm.qualifyingNodes,
+        qualifyingItemIds: createForm.qualifyingItemIds,
       },
       {
         onSuccess: () => {
@@ -182,7 +206,7 @@ export function RewardProgramManagementPage({ context }: { context: BusinessCont
         bulkReviewThreshold: editForm.bulkReviewThreshold,
         effectiveFrom: new Date(editForm.effectiveFrom).toISOString(),
         effectiveUntil: editForm.effectiveUntil,
-        qualifyingNodes: editForm.qualifyingNodes,
+        qualifyingItemIds: editForm.qualifyingItemIds,
       },
       { onSuccess: () => setEditingProgramId(null) },
     );
@@ -198,6 +222,15 @@ export function RewardProgramManagementPage({ context }: { context: BusinessCont
           </Button>
         )}
       </div>
+
+      {canManageItems && (
+        <QualifyingItemsSection
+          businessId={context.businessId}
+          items={activeItems}
+          isLoading={qualifyingItemsQuery.isLoading}
+          isError={qualifyingItemsQuery.isError}
+        />
+      )}
 
       {creating && (
         <form
@@ -216,14 +249,18 @@ export function RewardProgramManagementPage({ context }: { context: BusinessCont
               FD-REWARD-QUALIFICATION-001): Phase 1 does not require a
               Reward Program Category -- the category selector is removed
               from this form entirely, never rendered as an optional field
-              either. The qualifying-node picker below is the operative
-              qualification definition, defaulted to the Business's own
-              Business Type via `context.businessTypeId`. */}
-          <QualifyingNodeSelector
-            idPrefix="rp-create-qn"
-            businessTypeId={context.businessTypeId}
-            selected={createForm.qualifyingNodes}
-            onChange={(next) => setCreateForm((f) => ({ ...f, qualifyingNodes: next }))}
+              either. */}
+          {/* PLATFORM-BASELINE-013B (DEC-LOY-016): qualification binds the
+              Business's own Qualifying Items below -- the operative
+              qualification definition. */}
+          <QualifyingItemSelector
+            idPrefix="rp-create-qi"
+            items={activeItems}
+            isLoading={qualifyingItemsQuery.isLoading}
+            isError={qualifyingItemsQuery.isError}
+            selectedIds={createForm.qualifyingItemIds}
+            onChange={(next) => setCreateForm((f) => ({ ...f, qualifyingItemIds: next }))}
+            snapshotNames={snapshotNamesOf(null)}
           />
           <TextField
             id="rp-create-rewardDescription"
@@ -286,6 +323,10 @@ export function RewardProgramManagementPage({ context }: { context: BusinessCont
             {entry.currentVersion && editingProgramId !== entry.program.id && (
               <div className="mt-2 text-sm">
                 <p>{entry.currentVersion.rewardDescription}</p>
+                <BoundItemsList
+                  items={entry.currentVersion.qualifyingItems}
+                  label={t("rewardProgram.boundItemsLabel")}
+                />
                 <p className="text-[var(--color-muted-foreground)]">
                   {t("rewardProgram.versionLabel", { version: entry.currentVersion.version })} —{" "}
                   {t(`rewardProgram.versionStatus.${entry.currentVersion.status}`)}
@@ -298,6 +339,10 @@ export function RewardProgramManagementPage({ context }: { context: BusinessCont
               editingProgramId !== entry.program.id && (
                 <div className="mt-2 text-sm">
                   <p>{entry.draftVersion.rewardDescription}</p>
+                  <BoundItemsList
+                    items={entry.draftVersion.qualifyingItems}
+                    label={t("rewardProgram.boundItemsLabel")}
+                  />
                   <p className="text-[var(--color-muted-foreground)]">
                     {t("rewardProgram.versionLabel", { version: entry.draftVersion.version })} —{" "}
                     {t(`rewardProgram.versionStatus.${entry.draftVersion.status}`)}
@@ -349,7 +394,9 @@ export function RewardProgramManagementPage({ context }: { context: BusinessCont
                         bulkReviewThreshold: entry.currentVersion.bulkReviewThreshold,
                         effectiveFrom: new Date().toISOString(),
                         effectiveUntil: entry.currentVersion.effectiveUntil,
-                        qualifyingNodes: entry.currentVersion.qualifyingNodes,
+                        qualifyingItemIds: entry.currentVersion.qualifyingItems.map(
+                          (item) => item.qualifyingItemId,
+                        ),
                       })
                     }
                   >
@@ -359,7 +406,7 @@ export function RewardProgramManagementPage({ context }: { context: BusinessCont
               </div>
             )}
 
-            {editingProgramId === entry.program.id && (
+            {editingProgramId === entry.program.id && entry.draftVersion && (
               <div className="mt-3 space-y-3 border-t border-[var(--color-border)] pt-3">
                 <TextField
                   id={`rp-edit-rewardDescription-${entry.program.id}`}
@@ -368,15 +415,18 @@ export function RewardProgramManagementPage({ context }: { context: BusinessCont
                   onChange={(v) => setEditForm((f) => ({ ...f, rewardDescription: v }))}
                   required
                 />
-                {/* PLATFORM-BASELINE-010B: no category to scope by any
-                    more -- defaults to the Business's own Business Type,
-                    same as the create form, with the same search escape
-                    hatch for anything outside that default scope. */}
-                <QualifyingNodeSelector
-                  idPrefix={`rp-edit-qn-${entry.program.id}`}
-                  businessTypeId={context.businessTypeId}
-                  selected={editForm.qualifyingNodes}
-                  onChange={(next) => setEditForm((f) => ({ ...f, qualifyingNodes: next }))}
+                {/* PLATFORM-BASELINE-013B: the draft binds the Business's
+                    own Qualifying Items. A previously-bound item that has
+                    since been retired stays visible via its frozen
+                    snapshot name until explicitly removed. */}
+                <QualifyingItemSelector
+                  idPrefix={`rp-edit-qi-${entry.program.id}`}
+                  items={activeItems}
+                  isLoading={qualifyingItemsQuery.isLoading}
+                  isError={qualifyingItemsQuery.isError}
+                  selectedIds={editForm.qualifyingItemIds}
+                  onChange={(next) => setEditForm((f) => ({ ...f, qualifyingItemIds: next }))}
+                  snapshotNames={snapshotNamesOf(entry.draftVersion)}
                 />
                 <TextField
                   id={`rp-edit-effectiveFrom-${entry.program.id}`}
@@ -426,6 +476,207 @@ export function RewardProgramManagementPage({ context }: { context: BusinessCont
         ))}
       </ul>
     </main>
+  );
+}
+
+/** Renders a version's bound qualification as Business-authored names (never ids). */
+function BoundItemsList({
+  items,
+  label,
+}: {
+  items: readonly { qualifyingItemId: string; itemNameAtVersion: string }[];
+  label: string;
+}) {
+  if (items.length === 0) return null;
+  return (
+    <ul className="mt-1 list-disc pl-5">
+      <li className="list-none pl-0 text-[var(--color-muted-foreground)]">{label}</li>
+      {items.map((item) => (
+        <li key={item.qualifyingItemId}>{item.itemNameAtVersion}</li>
+      ))}
+    </ul>
+  );
+}
+
+/**
+ * The Business's own Qualifying Item library (`PLATFORM-BASELINE-013B`,
+ * `DEC-LOY-017`): add, rename, retire. No taxonomy interaction on this
+ * path -- names are Business-authored free text, optionally classifiable
+ * later (deferred classification UI is a separate package).
+ */
+function QualifyingItemsSection({
+  businessId,
+  items,
+  isLoading,
+  isError,
+}: {
+  businessId: string;
+  items: readonly QualifyingItemWire[];
+  isLoading: boolean;
+  isError: boolean;
+}) {
+  const { t } = useTranslation("business");
+  const [newName, setNewName] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [retireId, setRetireId] = useState<string | null>(null);
+
+  const createMutation = useCreateQualifyingItemMutation(businessId);
+  const updateMutation = useUpdateQualifyingItemMutation(businessId);
+  const retireMutation = useRetireQualifyingItemMutation(businessId);
+
+  function handleAdd(event: React.FormEvent) {
+    event.preventDefault();
+    const name = newName.trim();
+    if (name.length === 0) return;
+    createMutation.mutate(
+      { name },
+      {
+        onSuccess: () => setNewName(""),
+      },
+    );
+  }
+
+  function startRename(item: QualifyingItemWire) {
+    setEditingId(item.id);
+    setEditName(item.name);
+    setRetireId(null);
+  }
+
+  function handleRename(item: QualifyingItemWire) {
+    const name = editName.trim();
+    if (name.length === 0 || name === item.name) {
+      setEditingId(null);
+      return;
+    }
+    updateMutation.mutate(
+      { qualifyingItemId: item.id, name },
+      { onSuccess: () => setEditingId(null) },
+    );
+  }
+
+  return (
+    <section
+      aria-label={t("rewardProgram.qualifyingItems.sectionTitle")}
+      className="mb-6 rounded-md border border-[var(--color-border)] p-4"
+    >
+      <h2 className="font-semibold">{t("rewardProgram.qualifyingItems.sectionTitle")}</h2>
+      <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">
+        {t("rewardProgram.qualifyingItems.sectionHint")}
+      </p>
+
+      {isLoading && (
+        <p className="mt-2 text-sm text-[var(--color-muted-foreground)]">
+          {t("rewardProgram.qualifyingItems.loading")}
+        </p>
+      )}
+      {isError && (
+        <div
+          role="alert"
+          className="mt-2 rounded-md border border-[var(--color-border)] p-2 text-sm text-red-600"
+        >
+          {t("rewardProgram.qualifyingItems.loadError")}
+        </div>
+      )}
+
+      {!isLoading && !isError && items.length === 0 && (
+        <p className="mt-2 text-sm text-[var(--color-muted-foreground)]">
+          {t("rewardProgram.qualifyingItems.empty")}
+        </p>
+      )}
+
+      {items.length > 0 && (
+        <ul className="mt-2 space-y-2">
+          {items.map((item) => (
+            <li
+              key={item.id}
+              className="flex items-center justify-between gap-2 rounded-md border border-[var(--color-border)] p-2"
+            >
+              {editingId === item.id ? (
+                <form
+                  className="flex flex-1 items-center gap-2"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    handleRename(item);
+                  }}
+                >
+                  <TextField
+                    id={`qi-rename-${item.id}`}
+                    label={t("rewardProgram.qualifyingItems.renameLabel")}
+                    value={editName}
+                    onChange={setEditName}
+                    required
+                  />
+                  <Button type="submit" disabled={updateMutation.isPending}>
+                    {t("rewardProgram.qualifyingItems.saveAction")}
+                  </Button>
+                  <Button type="button" variant="secondary" onClick={() => setEditingId(null)}>
+                    {t("rewardProgram.cancel")}
+                  </Button>
+                </form>
+              ) : (
+                <>
+                  <span className="text-sm font-medium">{item.name}</span>
+                  <span className="flex gap-2">
+                    <Button type="button" variant="secondary" onClick={() => startRename(item)}>
+                      {t("rewardProgram.qualifyingItems.renameAction")}
+                    </Button>
+                    {retireId === item.id ? (
+                      <>
+                        <Button
+                          type="button"
+                          disabled={retireMutation.isPending}
+                          onClick={() =>
+                            retireMutation.mutate(
+                              { qualifyingItemId: item.id },
+                              { onSuccess: () => setRetireId(null) },
+                            )
+                          }
+                        >
+                          {t("rewardProgram.qualifyingItems.retireConfirmAction")}
+                        </Button>
+                        <Button type="button" variant="secondary" onClick={() => setRetireId(null)}>
+                          {t("rewardProgram.cancel")}
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => {
+                          setRetireId(item.id);
+                          setEditingId(null);
+                        }}
+                      >
+                        {t("rewardProgram.qualifyingItems.retireAction")}
+                      </Button>
+                    )}
+                  </span>
+                </>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      <MutationError error={updateMutation.error} />
+      <MutationError error={retireMutation.error} />
+
+      <form onSubmit={handleAdd} className="mt-3 flex items-end gap-2">
+        <TextField
+          id="qi-add-name"
+          label={t("rewardProgram.qualifyingItems.addLabel")}
+          value={newName}
+          onChange={setNewName}
+          required
+        />
+        <Button type="submit" disabled={createMutation.isPending}>
+          {createMutation.isPending
+            ? t("rewardProgram.saving")
+            : t("rewardProgram.qualifyingItems.addAction")}
+        </Button>
+      </form>
+      <MutationError error={createMutation.error} />
+    </section>
   );
 }
 

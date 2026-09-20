@@ -33,3 +33,21 @@ describe("businessQueryKeys — language-scoped Commerce Knowledge reads (PLATFO
     expect(en).toEqual(enReordered);
   });
 });
+
+/**
+ * `PLATFORM-BASELINE-013B`: the Business's own Qualifying Item library is
+ * Business-authored free text, stored once and never translated -- its
+ * query key is deliberately NOT language-scoped (one cached entry serves
+ * every locale), while remaining Business-scoped (no cross-Business cache
+ * bleed).
+ */
+describe("businessQueryKeys — Qualifying Item library (PLATFORM-BASELINE-013B)", () => {
+  it("qualifyingItems: distinct keys per Business, stable for the same Business, with no language dimension", () => {
+    const a = businessQueryKeys.qualifyingItems("biz-1");
+    const b = businessQueryKeys.qualifyingItems("biz-2");
+    const aAgain = businessQueryKeys.qualifyingItems("biz-1");
+    expect(a).not.toEqual(b);
+    expect(a).toEqual(aAgain);
+    expect(JSON.stringify(a)).not.toContain("en");
+  });
+});

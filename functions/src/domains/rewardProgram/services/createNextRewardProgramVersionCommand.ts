@@ -13,6 +13,7 @@ import type { PlatformPostgresPool } from "../../../infrastructure/postgres/post
 import { withPlatformTransaction } from "../../../infrastructure/postgres/postgresTransaction";
 import { authorizeRewardProgramManage } from "./rewardProgramAuthorization";
 import { validateAllReferences } from "./rewardProgramKnowledgeValidation";
+import { resolveQualifyingItemSnapshots } from "./rewardProgramQualificationValidation";
 import { rewardProgramRequestHash } from "./rewardProgramRequestHash";
 import {
   checkAndReserveIdempotencyKey,
@@ -24,7 +25,7 @@ import {
   insertNextDraftVersion,
 } from "../repositories/rewardProgramRepository";
 import { writeRewardProgramOutboxEntry } from "../repositories/rewardProgramOutboxRepository";
-import type { QualifyingNode, RewardProgramVersionRow } from "../models/rewardProgram";
+import type { RewardProgramVersionRow } from "../models/rewardProgram";
 import {
   rewardProgramCrossBusinessMismatchError,
   rewardProgramIdempotencyConflictError,
@@ -43,7 +44,8 @@ export type CreateNextRewardProgramVersionRequest = {
   readonly bulkReviewThreshold?: number | null;
   readonly effectiveFrom: Date;
   readonly effectiveUntil?: Date | null;
-  readonly qualifyingNodes: readonly QualifyingNode[];
+  /** Structural qualification identity (`PLATFORM-BASELINE-013B`): validated + snapshotted server-side. */
+  readonly qualifyingItemIds: readonly string[];
 };
 
 export async function createNextRewardProgramVersion(
@@ -69,8 +71,13 @@ export async function createNextRewardProgramVersion(
   await validateAllReferences(db, {
     rewardProgramCategoryId: existing.program.rewardProgramCategoryId,
     standardRewardNodeId: params.request.standardRewardNodeId,
-    qualifyingNodes: params.request.qualifyingNodes,
   });
+  const qualifyingItems = await resolveQualifyingItemSnapshots(
+    pool,
+    db,
+    params.request.businessId,
+    params.request.qualifyingItemIds,
+  );
 
   const contentFingerprint = JSON.stringify({
     rewardDescription: params.request.rewardDescription,
@@ -80,7 +87,7 @@ export async function createNextRewardProgramVersion(
     bulkReviewThreshold: params.request.bulkReviewThreshold ?? null,
     effectiveFrom: params.request.effectiveFrom.toISOString(),
     effectiveUntil: params.request.effectiveUntil?.toISOString() ?? null,
-    qualifyingNodes: params.request.qualifyingNodes,
+    qualifyingItemIds: params.request.qualifyingItemIds,
   });
   const requestHash = rewardProgramRequestHash(
     "createNextVersion",
@@ -134,8 +141,9 @@ export async function createNextRewardProgramVersion(
         bulkReviewThreshold: params.request.bulkReviewThreshold ?? null,
         effectiveFrom: params.request.effectiveFrom,
         effectiveUntil: params.request.effectiveUntil ?? null,
-        qualifyingNodes: params.request.qualifyingNodes,
+        qualifyingItemIds: params.request.qualifyingItemIds,
       },
+      qualifyingItems,
     });
 
     await writeRewardProgramOutboxEntry(tx, {

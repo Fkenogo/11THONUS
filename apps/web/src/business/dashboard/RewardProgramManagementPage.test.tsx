@@ -5,13 +5,11 @@ import { MemoryRouter } from "react-router-dom";
 import { RewardProgramManagementPage } from "./RewardProgramManagementPage";
 import { BusinessApiError } from "../api/businessCallableClient";
 import type { BusinessContext } from "../api/businessContext";
+import type { QualifyingItemWire } from "../api/qualifyingItems";
 import type {
   RewardProgramVersionWire,
   RewardProgramWithVersionsWire,
 } from "../api/rewardProgramMutations";
-
-type CandidateOption = { id: string; displayLabel: string; nodeType: string };
-type LabelResult = { id: string; displayLabel: string | null; status: string | null };
 
 let rewardProgramsResult: {
   data: RewardProgramWithVersionsWire[] | undefined;
@@ -21,29 +19,16 @@ let rewardProgramsResult: {
 let accessibleResult: { data: { businessId: string; role: string }[] };
 
 /**
- * `PLATFORM-BASELINE-010B` (Founder decision `DEC-LOY-014` /
- * `FD-REWARD-QUALIFICATION-001`): the qualifying-node selector's DEFAULT
- * discovery scope (Business-Type-pre-filtered) — replaces the old
- * category-scoped candidate list, which no longer exists in the create
- * form at all.
+ * `PLATFORM-BASELINE-013B` (`DEC-LOY-016`): the Business's own Qualifying
+ * Item library -- the selectable set for Reward Program configuration.
+ * Names are Business-authored; ids are stable UUIDs the operator never
+ * sees; `knowledgeNodeId: null` (unclassified) is fully valid.
  */
-let qualifyingNodesResult: {
-  data: CandidateOption[] | undefined;
+let qualifyingItemsResult: {
+  data: QualifyingItemWire[] | undefined;
   isLoading: boolean;
   isError: boolean;
-  isSuccess: boolean;
 };
-
-/** `PLATFORM-BASELINE-010B`: the qualifying-node selector's broader "escape hatch" search. */
-let searchResult: {
-  data: CandidateOption[] | undefined;
-  isLoading: boolean;
-  isError: boolean;
-  isSuccess: boolean;
-};
-
-/** `PLATFORM-BASELINE-008`: display-only label hydration for selected-but-not-candidate ids. */
-let nodeLabelsResult: { data: LabelResult[] | undefined };
 
 vi.mock("../hooks/rewardProgramQueries", () => ({
   useRewardProgramsQuery: () => rewardProgramsResult,
@@ -52,25 +37,27 @@ vi.mock("../hooks/rewardProgramQueries", () => ({
 
 vi.mock("../hooks/businessQueries", () => ({
   useAccessibleBusinessesQuery: () => accessibleResult,
-  useQualifyingNodesForBusinessTypeQuery: () => qualifyingNodesResult,
-  useSearchQualifyingNodesQuery: () => searchResult,
-  useKnowledgeNodeLabelsQuery: () => nodeLabelsResult,
 }));
 
-function resetSelectorMocks() {
-  qualifyingNodesResult = { data: [], isLoading: false, isError: false, isSuccess: true };
-  searchResult = { data: undefined, isLoading: false, isError: false, isSuccess: false };
-  nodeLabelsResult = { data: [] };
+vi.mock("../hooks/qualifyingItemQueries", () => ({
+  useQualifyingItemsQuery: () => qualifyingItemsResult,
+}));
+
+function resetItemMocks() {
+  qualifyingItemsResult = { data: [], isLoading: false, isError: false };
 }
 
 const mockCreate = vi.fn();
 const mockUpdateDraft = vi.fn();
 const mockPublish = vi.fn();
 const mockCreateNextVersion = vi.fn();
+const mockCreateItem = vi.fn();
+const mockUpdateItem = vi.fn();
+const mockRetireItem = vi.fn();
 
 /**
  * `PLATFORM-BASELINE-010B-CORR-001` item H: mutable so a test can simulate
- * the new server-side "publish requires >=1 qualifying node" governed
+ * the new server-side "publish requires >=1 qualifying item" governed
  * rejection surfacing through the page's existing `MutationError`
  * component, exactly like any other publish failure already does.
  */
@@ -100,6 +87,33 @@ vi.mock("../hooks/rewardProgramMutations", () => ({
   }),
 }));
 
+vi.mock("../hooks/qualifyingItemMutations", () => ({
+  useCreateQualifyingItemMutation: () => ({
+    mutate: (payload: unknown, options?: { onSuccess?: () => void }) => {
+      mockCreateItem(payload, options);
+      options?.onSuccess?.();
+    },
+    isPending: false,
+    error: null,
+  }),
+  useUpdateQualifyingItemMutation: () => ({
+    mutate: (payload: unknown, options?: { onSuccess?: () => void }) => {
+      mockUpdateItem(payload, options);
+      options?.onSuccess?.();
+    },
+    isPending: false,
+    error: null,
+  }),
+  useRetireQualifyingItemMutation: () => ({
+    mutate: (payload: unknown, options?: { onSuccess?: () => void }) => {
+      mockRetireItem(payload, options);
+      options?.onSuccess?.();
+    },
+    isPending: false,
+    error: null,
+  }),
+}));
+
 const context: BusinessContext = { businessId: "biz-1", businessTypeId: "bt-1" } as BusinessContext;
 
 function renderPage() {
@@ -109,6 +123,25 @@ function renderPage() {
     </MemoryRouter>,
   );
 }
+
+function itemWire(overrides: Partial<QualifyingItemWire> = {}): QualifyingItemWire {
+  return {
+    id: "item-coffee",
+    businessId: "biz-1",
+    name: "Black Coffee",
+    knowledgeNodeId: null,
+    status: "active",
+    createdAt: "2026-09-18T00:00:00.000Z",
+    createdBy: "user-1",
+    updatedAt: "2026-09-18T00:00:00.000Z",
+    updatedBy: "user-1",
+    schemaVersion: 1,
+    ...overrides,
+  };
+}
+
+const COFFEE_ITEM = itemWire();
+const PIZZA_ITEM = itemWire({ id: "item-pizza", name: "Medium Pizza" });
 
 function versionWire(overrides: Partial<RewardProgramVersionWire> = {}): RewardProgramVersionWire {
   return {
@@ -131,7 +164,13 @@ function versionWire(overrides: Partial<RewardProgramVersionWire> = {}): RewardP
     updatedAt: "2026-09-13T00:00:00.000Z",
     rowVersion: 1,
     schemaVersion: 1,
-    qualifyingNodes: [{ knowledgeNodeId: "node-1", businessDisplayName: null }],
+    qualifyingItems: [
+      {
+        qualifyingItemId: "item-coffee",
+        itemNameAtVersion: "Black Coffee",
+        knowledgeNodeIdAtVersion: null,
+      },
+    ],
     ...overrides,
   };
 }
@@ -203,8 +242,9 @@ const publishedProgramNoDraft: RewardProgramWithVersionsWire = {
 
 describe("RewardProgramManagementPage (PLATFORM-BASELINE-005A)", () => {
   beforeEach(() => {
-    resetSelectorMocks();
+    resetItemMocks();
     publishMutationError = null;
+    vi.clearAllMocks();
   });
 
   it("shows a loading state", () => {
@@ -324,13 +364,13 @@ describe("RewardProgramManagementPage (PLATFORM-BASELINE-005A)", () => {
 
   /**
    * `PLATFORM-BASELINE-010B-CORR-001` item H: the server-side "publish
-   * requires >=1 qualifying node" invariant is authoritative -- the UI
+   * requires >=1 qualifying item" invariant is authoritative -- the UI
    * cannot successfully publish an empty programme, and when the server
    * rejects it the operator sees the governed failure (the same
    * `MutationError` path every other publish failure already uses), not a
    * silently-succeeded publish and not a raw/blank error.
    */
-  it("PLATFORM-BASELINE-010B-CORR-001 item H: a governed publish rejection (e.g. zero qualifying nodes) surfaces via MutationError, and the program stays a draft", async () => {
+  it("PLATFORM-BASELINE-010B-CORR-001 item H: a governed publish rejection (e.g. zero qualifying items) surfaces via MutationError, and the program stays a draft", async () => {
     rewardProgramsResult = { data: [draftProgram], isLoading: false, isError: false };
     accessibleResult = { data: [{ businessId: "biz-1", role: "owner" }] };
     publishMutationError = new BusinessApiError("validation_failed");
@@ -425,14 +465,23 @@ describe("RewardProgramManagementPage (PLATFORM-BASELINE-005A)", () => {
         standardRewardNodeId: "std-node-7",
         bulkReviewThreshold: 25,
         effectiveUntil: "2027-01-31T00:00:00.000Z",
-        qualifyingNodes: [
-          { knowledgeNodeId: "node-1", businessDisplayName: null },
-          { knowledgeNodeId: "node-2", businessDisplayName: null },
+        qualifyingItems: [
+          {
+            qualifyingItemId: "item-coffee",
+            itemNameAtVersion: "Black Coffee",
+            knowledgeNodeIdAtVersion: null,
+          },
+          {
+            qualifyingItemId: "item-pizza",
+            itemNameAtVersion: "Medium Pizza",
+            knowledgeNodeIdAtVersion: null,
+          },
         ],
       }),
     };
     rewardProgramsResult = { data: [draftWithOptionals], isLoading: false, isError: false };
     accessibleResult = { data: [{ businessId: "biz-1", role: "owner" }] };
+    qualifyingItemsResult = { data: [COFFEE_ITEM, PIZZA_ITEM], isLoading: false, isError: false };
     const user = userEvent.setup();
     renderPage();
     await user.click(screen.getByRole("button", { name: /edit draft/i }));
@@ -447,10 +496,9 @@ describe("RewardProgramManagementPage (PLATFORM-BASELINE-005A)", () => {
         standardRewardNodeId: "std-node-7",
         bulkReviewThreshold: 25,
         effectiveUntil: "2027-01-31T00:00:00.000Z",
-        qualifyingNodes: [
-          { knowledgeNodeId: "node-1", businessDisplayName: null },
-          { knowledgeNodeId: "node-2", businessDisplayName: null },
-        ],
+        // The draft's bound item ids round-trip unchanged (structural
+        // identity, hydrated from the version's own snapshots).
+        qualifyingItemIds: ["item-coffee", "item-pizza"],
       }),
       expect.anything(),
     );
@@ -474,101 +522,87 @@ describe("RewardProgramManagementPage (PLATFORM-BASELINE-005A)", () => {
         effectiveUntil: null,
         multipleUnitsAllowed: true,
         sharedLoyaltyNumberAllowed: false,
-        qualifyingNodes: [{ knowledgeNodeId: "node-1", businessDisplayName: null }],
+        qualifyingItemIds: ["item-coffee"],
       }),
     );
   });
 
   /**
-   * `PLATFORM-BASELINE-008`, redesigned by `PLATFORM-BASELINE-010B` per
-   * Founder decision `DEC-LOY-014` / `FD-REWARD-QUALIFICATION-001` — the
-   * qualifying-node selector replaces the old opaque comma-separated
-   * Firestore-id `TextField`, and no longer requires or exposes a Reward
-   * Program Category at all. These tests prove: human-readable node
-   * options are shown, defaulted to the Business's own Business Type; the
-   * operator never types a canonical id anywhere, including via the
-   * search escape hatch (item N); canonical ids (never labels) are what
-   * gets submitted; multi-selection works; a previously-selected node
-   * that is no longer an available candidate is preserved, not dropped;
-   * a node found ONLY via search (outside the default Business-Type
-   * scope) is still accepted by the create mutation identically to a
-   * default-scope node (items P/Q); and the selector's own
-   * loading/error/empty states render.
+   * `PLATFORM-BASELINE-013B` (`DEC-LOY-016`): qualification binds the
+   * Business's OWN Qualifying Items -- human-readable Business names are
+   * shown, stable ids (never labels) are what gets submitted,
+   * multi-selection works, an unclassified item needs no taxonomy
+   * interaction, a previously-bound item that has since been retired is
+   * preserved via its frozen snapshot name (not dropped), and the
+   * selector's own loading/error/empty states render.
    */
-  describe("PLATFORM-BASELINE-010B: qualifying-node selection (no Category)", () => {
-    it("shows human-readable qualifying-node options by default — never a raw id input, and no category gate", async () => {
+  describe("PLATFORM-BASELINE-013B: Business-owned qualifying-item selection", () => {
+    it("shows human-readable Business item options by default — never a raw id input, and no taxonomy gate", async () => {
       rewardProgramsResult = { data: [], isLoading: false, isError: false };
       accessibleResult = { data: [{ businessId: "biz-1", role: "owner" }] };
-      qualifyingNodesResult = {
-        data: [
-          { id: "node-haircut", displayLabel: "Haircut", nodeType: "standard_service" },
-          { id: "node-shampoo", displayLabel: "Shampoo", nodeType: "standard_product" },
-        ],
+      qualifyingItemsResult = {
+        data: [COFFEE_ITEM, PIZZA_ITEM],
         isLoading: false,
         isError: false,
-        isSuccess: true,
       };
       const user = userEvent.setup();
       renderPage();
       await user.click(screen.getByRole("button", { name: /create reward program/i }));
 
-      // Candidates render immediately -- no category must be chosen first.
-      expect(screen.getByLabelText("Haircut")).toBeInTheDocument();
-      expect(screen.getByLabelText("Shampoo")).toBeInTheDocument();
-      expect(screen.queryByText("node-haircut")).not.toBeInTheDocument();
+      // Items render by Business name -- no taxonomy must be touched first.
+      expect(screen.getByLabelText("Black Coffee")).toBeInTheDocument();
+      expect(screen.getByLabelText("Medium Pizza")).toBeInTheDocument();
+      expect(screen.queryByText("item-coffee")).not.toBeInTheDocument();
+      // No taxonomy discovery UI on this path at all.
+      expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+      expect(screen.queryByLabelText(/search/i)).not.toBeInTheDocument();
     });
 
-    it("shows qualifying-node checkboxes from the default Business-Type scope and submits canonical ids, never labels", async () => {
+    it("shows item checkboxes and submits stable ids, never labels", async () => {
       rewardProgramsResult = { data: [], isLoading: false, isError: false };
       accessibleResult = { data: [{ businessId: "biz-1", role: "owner" }] };
-      qualifyingNodesResult = {
-        data: [
-          { id: "node-haircut", displayLabel: "Haircut", nodeType: "standard_service" },
-          { id: "node-shampoo", displayLabel: "Shampoo", nodeType: "standard_product" },
-        ],
+      qualifyingItemsResult = {
+        data: [COFFEE_ITEM, PIZZA_ITEM],
         isLoading: false,
         isError: false,
-        isSuccess: true,
       };
       const user = userEvent.setup();
       renderPage();
       await user.click(screen.getByRole("button", { name: /create reward program/i }));
 
-      await user.type(screen.getByLabelText(/program name/i), "Buy 10 Haircuts");
-      await user.type(screen.getByLabelText(/reward description/i), "One free haircut");
+      await user.type(screen.getByLabelText(/program name/i), "Buy 10 Coffees");
+      await user.type(screen.getByLabelText(/reward description/i), "One free coffee");
       fireEvent.change(screen.getByLabelText(/effective from/i), {
         target: { value: "2026-09-13" },
       });
 
-      // The operator sees and clicks human-readable labels — never an id.
-      const haircutCheckbox = screen.getByRole("checkbox", { name: /haircut/i });
-      const shampooCheckbox = screen.getByRole("checkbox", { name: /shampoo/i });
-      expect(screen.queryByText("node-haircut")).not.toBeInTheDocument();
-      await user.click(haircutCheckbox);
-      await user.click(shampooCheckbox);
+      // The operator sees and clicks human-readable names — never an id.
+      const coffeeCheckbox = screen.getByRole("checkbox", { name: "Black Coffee" });
+      const pizzaCheckbox = screen.getByRole("checkbox", { name: "Medium Pizza" });
+      expect(screen.queryByText("item-coffee")).not.toBeInTheDocument();
+      await user.click(coffeeCheckbox);
+      await user.click(pizzaCheckbox);
       // Deselect one to prove add/remove both work before submit.
-      await user.click(shampooCheckbox);
+      await user.click(pizzaCheckbox);
 
       await user.click(screen.getByRole("button", { name: /^create program$/i }));
       expect(mockCreate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          qualifyingNodes: [{ knowledgeNodeId: "node-haircut", businessDisplayName: "Haircut" }],
-        }),
+        expect.objectContaining({ qualifyingItemIds: ["item-coffee"] }),
         expect.anything(),
       );
+      const [payload] = mockCreate.mock.calls[0];
+      expect(payload).not.toHaveProperty("qualifyingNodes");
+      expect(payload).not.toHaveProperty("knowledgeNodeId");
+      expect(payload).not.toHaveProperty("businessDisplayName");
     });
 
-    it("supports selecting multiple qualifying nodes at once", async () => {
+    it("supports selecting multiple qualifying items at once", async () => {
       rewardProgramsResult = { data: [], isLoading: false, isError: false };
       accessibleResult = { data: [{ businessId: "biz-1", role: "owner" }] };
-      qualifyingNodesResult = {
-        data: [
-          { id: "node-a", displayLabel: "Item A", nodeType: "standard_product" },
-          { id: "node-b", displayLabel: "Item B", nodeType: "standard_product" },
-        ],
+      qualifyingItemsResult = {
+        data: [COFFEE_ITEM, PIZZA_ITEM],
         isLoading: false,
         isError: false,
-        isSuccess: true,
       };
       const user = userEvent.setup();
       renderPage();
@@ -578,161 +612,232 @@ describe("RewardProgramManagementPage (PLATFORM-BASELINE-005A)", () => {
       fireEvent.change(screen.getByLabelText(/effective from/i), {
         target: { value: "2026-09-13" },
       });
-      await user.click(screen.getByRole("checkbox", { name: /item a/i }));
-      await user.click(screen.getByRole("checkbox", { name: /item b/i }));
+      await user.click(screen.getByRole("checkbox", { name: "Black Coffee" }));
+      await user.click(screen.getByRole("checkbox", { name: "Medium Pizza" }));
       await user.click(screen.getByRole("button", { name: /^create program$/i }));
       expect(mockCreate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          qualifyingNodes: [
-            { knowledgeNodeId: "node-a", businessDisplayName: "Item A" },
-            { knowledgeNodeId: "node-b", businessDisplayName: "Item B" },
-          ],
-        }),
+        expect.objectContaining({ qualifyingItemIds: ["item-coffee", "item-pizza"] }),
         expect.anything(),
       );
     });
 
-    /**
-     * `PLATFORM-BASELINE-010B` items P/Q: a canonical node found ONLY via
-     * the broader search escape hatch (i.e. NOT in the default
-     * Business-Type-scoped list) must still be selectable by label and
-     * accepted by the create mutation identically to a default-scope
-     * node -- proving Business Type is a discovery convenience, never a
-     * server-side qualification gate, all the way through this form.
-     */
-    it("accepts a qualifying node found only via the search escape hatch, outside the default Business-Type scope", async () => {
+    it("allows an unclassified Business item with zero taxonomy interaction", async () => {
       rewardProgramsResult = { data: [], isLoading: false, isError: false };
       accessibleResult = { data: [{ businessId: "biz-1", role: "owner" }] };
-      // Default scope has nothing relevant...
-      qualifyingNodesResult = { data: [], isLoading: false, isError: false, isSuccess: true };
-      // ...but the broader search finds an eligible node elsewhere.
-      searchResult = {
-        data: [
-          { id: "node-sedan-wash", displayLabel: "Sedan Car Wash", nodeType: "standard_service" },
-        ],
-        isLoading: false,
-        isError: false,
-        isSuccess: true,
-      };
+      // knowledgeNodeId: null -- no classification anywhere in this flow.
+      qualifyingItemsResult = { data: [COFFEE_ITEM], isLoading: false, isError: false };
       const user = userEvent.setup();
       renderPage();
       await user.click(screen.getByRole("button", { name: /create reward program/i }));
-      await user.type(screen.getByLabelText(/program name/i), "Car Wash Rewards");
-      await user.type(screen.getByLabelText(/reward description/i), "One free wash");
+      await user.type(screen.getByLabelText(/program name/i), "Unclassified");
+      await user.type(screen.getByLabelText(/reward description/i), "desc");
       fireEvent.change(screen.getByLabelText(/effective from/i), {
         target: { value: "2026-09-13" },
       });
-
-      // Found and selected by typed name only, never a pasted id.
-      await user.type(screen.getByLabelText(/search all products and services/i), "sedan");
-      const searchCheckbox = screen.getByRole("checkbox", { name: /sedan car wash/i });
-      expect(screen.queryByText("node-sedan-wash")).not.toBeInTheDocument();
-      await user.click(searchCheckbox);
-
+      await user.click(screen.getByRole("checkbox", { name: "Black Coffee" }));
       await user.click(screen.getByRole("button", { name: /^create program$/i }));
       expect(mockCreate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          qualifyingNodes: [
-            { knowledgeNodeId: "node-sedan-wash", businessDisplayName: "Sedan Car Wash" },
-          ],
-        }),
+        expect.objectContaining({ qualifyingItemIds: ["item-coffee"] }),
         expect.anything(),
       );
     });
 
-    it("hydrates an existing draft's qualifying-node selections as checked when the node is still an active candidate", async () => {
-      const draftWithActiveNode: RewardProgramWithVersionsWire = {
+    it("hydrates an existing draft's item selections as checked when the item is still active", async () => {
+      const draftWithActiveItem: RewardProgramWithVersionsWire = {
         program: programWire,
         currentVersion: null,
-        draftVersion: versionWire({
-          qualifyingNodes: [{ knowledgeNodeId: "node-1", businessDisplayName: null }],
-        }),
+        draftVersion: versionWire(),
       };
-      rewardProgramsResult = { data: [draftWithActiveNode], isLoading: false, isError: false };
+      rewardProgramsResult = { data: [draftWithActiveItem], isLoading: false, isError: false };
       accessibleResult = { data: [{ businessId: "biz-1", role: "owner" }] };
-      qualifyingNodesResult = {
-        data: [{ id: "node-1", displayLabel: "Wash", nodeType: "standard_service" }],
-        isLoading: false,
-        isError: false,
-        isSuccess: true,
-      };
+      qualifyingItemsResult = { data: [COFFEE_ITEM], isLoading: false, isError: false };
       const user = userEvent.setup();
       renderPage();
       await user.click(screen.getByRole("button", { name: /edit draft/i }));
-      const washCheckbox = screen.getByRole("checkbox", { name: /wash/i });
-      expect(washCheckbox).toBeChecked();
+      const coffeeCheckbox = screen.getByRole("checkbox", { name: "Black Coffee" });
+      expect(coffeeCheckbox).toBeChecked();
     });
 
-    it("preserves a previously-selected node that is no longer an available candidate, flags it, and lets the operator remove it explicitly", async () => {
-      const draftWithRetiredNode: RewardProgramWithVersionsWire = {
+    it("preserves a previously-bound item that has since been retired, flags it, and lets the operator remove it explicitly", async () => {
+      const draftWithRetiredItem: RewardProgramWithVersionsWire = {
         program: programWire,
         currentVersion: null,
         draftVersion: versionWire({
-          qualifyingNodes: [{ knowledgeNodeId: "node-retired", businessDisplayName: "Old Item" }],
+          qualifyingItems: [
+            {
+              qualifyingItemId: "item-retired",
+              itemNameAtVersion: "Old Special",
+              knowledgeNodeIdAtVersion: null,
+            },
+          ],
         }),
       };
-      rewardProgramsResult = { data: [draftWithRetiredNode], isLoading: false, isError: false };
+      rewardProgramsResult = { data: [draftWithRetiredItem], isLoading: false, isError: false };
       accessibleResult = { data: [{ businessId: "biz-1", role: "owner" }] };
-      // The live candidate lists no longer contain "node-retired".
-      qualifyingNodesResult = { data: [], isLoading: false, isError: false, isSuccess: true };
-      nodeLabelsResult = { data: [{ id: "node-retired", displayLabel: null, status: "retired" }] };
+      // The live active list no longer contains "item-retired".
+      qualifyingItemsResult = { data: [COFFEE_ITEM], isLoading: false, isError: false };
       const user = userEvent.setup();
       renderPage();
       await user.click(screen.getByRole("button", { name: /edit draft/i }));
 
       // Never silently dropped: still shown, still checked, using the
-      // last-known stored label — never the raw canonical id.
-      const retiredCheckbox = screen.getByRole("checkbox", { name: /old item/i });
+      // frozen snapshot name — never the raw id.
+      const retiredCheckbox = screen.getByRole("checkbox", { name: /old special/i });
       expect(retiredCheckbox).toBeChecked();
-      expect(screen.queryByText("node-retired")).not.toBeInTheDocument();
+      expect(screen.queryByText("item-retired")).not.toBeInTheDocument();
 
       // The operator can explicitly remove it.
       await user.click(retiredCheckbox);
       await user.click(screen.getByRole("button", { name: /save draft/i }));
       expect(mockUpdateDraft).toHaveBeenCalledWith(
-        expect.objectContaining({ qualifyingNodes: [] }),
+        expect.objectContaining({ qualifyingItemIds: [] }),
         expect.anything(),
       );
     });
 
-    it("shows a loading state while default qualifying-node candidates are being fetched", async () => {
+    it("displays a published version's bound items by Business name (frozen snapshot), never by id", () => {
+      rewardProgramsResult = { data: [publishedProgramNoDraft], isLoading: false, isError: false };
+      accessibleResult = { data: [{ businessId: "biz-1", role: "owner" }] };
+      renderPage();
+      expect(screen.getByText("Black Coffee")).toBeInTheDocument();
+      expect(screen.queryByText("item-coffee")).not.toBeInTheDocument();
+    });
+
+    it("excludes retired items from new selection (active-only list)", async () => {
       rewardProgramsResult = { data: [], isLoading: false, isError: false };
       accessibleResult = { data: [{ businessId: "biz-1", role: "owner" }] };
-      qualifyingNodesResult = {
-        data: undefined,
-        isLoading: true,
-        isError: false,
-        isSuccess: false,
-      };
+      // The query is active-only server-side; a retired item never arrives here.
+      qualifyingItemsResult = { data: [COFFEE_ITEM], isLoading: false, isError: false };
       const user = userEvent.setup();
       renderPage();
       await user.click(screen.getByRole("button", { name: /create reward program/i }));
-      expect(screen.getByText(/loading products and services/i)).toBeInTheDocument();
+      expect(screen.getByLabelText("Black Coffee")).toBeInTheDocument();
+      expect(screen.queryByText(/old special/i)).not.toBeInTheDocument();
     });
 
-    it("shows a safe, translated error state (never a raw exception) when default qualifying-node candidates fail to load", async () => {
+    it("shows a loading state while qualifying items are being fetched", async () => {
       rewardProgramsResult = { data: [], isLoading: false, isError: false };
       accessibleResult = { data: [{ businessId: "biz-1", role: "owner" }] };
-      qualifyingNodesResult = {
-        data: undefined,
+      qualifyingItemsResult = { data: undefined, isLoading: true, isError: false };
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(screen.getByRole("button", { name: /create reward program/i }));
+      expect(screen.getByText(/loading your qualifying items/i)).toBeInTheDocument();
+    });
+
+    it("shows a safe, translated error state (never a raw exception) when qualifying items fail to load", async () => {
+      rewardProgramsResult = { data: [], isLoading: false, isError: false };
+      accessibleResult = { data: [{ businessId: "biz-1", role: "owner" }] };
+      qualifyingItemsResult = { data: undefined, isLoading: false, isError: true };
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(screen.getByRole("button", { name: /create reward program/i }));
+      // Both the library section and the draft selector surface the same
+      // translated failure (never a raw exception).
+      const alerts = screen.getAllByRole("alert");
+      expect(alerts.length).toBeGreaterThanOrEqual(1);
+      for (const alert of alerts) {
+        expect(alert).toHaveTextContent(/couldn't load/i);
+      }
+    });
+
+    it("shows an explicit empty state when the Business has no qualifying items yet", async () => {
+      rewardProgramsResult = { data: [], isLoading: false, isError: false };
+      accessibleResult = { data: [{ businessId: "biz-1", role: "owner" }] };
+      qualifyingItemsResult = { data: [], isLoading: false, isError: false };
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(screen.getByRole("button", { name: /create reward program/i }));
+      // Both the library section and the draft selector explain the empty library.
+      expect(screen.getAllByText(/no qualifying items yet/i).length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  /**
+   * `PLATFORM-BASELINE-013B` + `DEC-LOY-017`: the Business's own
+   * Qualifying Item library -- add, rename, retire -- served to Owners and
+   * Managers (never Staff for management), with no taxonomy interaction.
+   */
+  describe("PLATFORM-BASELINE-013B: Qualifying Item library management", () => {
+    it("Owner sees the items section and can add an item by name", async () => {
+      rewardProgramsResult = { data: [], isLoading: false, isError: false };
+      accessibleResult = { data: [{ businessId: "biz-1", role: "owner" }] };
+      const user = userEvent.setup();
+      renderPage();
+
+      expect(screen.getByText("Qualifying items")).toBeInTheDocument();
+      await user.type(screen.getByLabelText(/new item name/i), "Espresso");
+      await user.click(screen.getByRole("button", { name: /add item/i }));
+      expect(mockCreateItem).toHaveBeenCalledWith(
+        expect.objectContaining({ name: "Espresso" }),
+        expect.anything(),
+      );
+      const [payload] = mockCreateItem.mock.calls[0];
+      expect(payload).not.toHaveProperty("knowledgeNodeId");
+    });
+
+    it("lists active items by name and renames one inline", async () => {
+      rewardProgramsResult = { data: [], isLoading: false, isError: false };
+      accessibleResult = { data: [{ businessId: "biz-1", role: "owner" }] };
+      qualifyingItemsResult = {
+        data: [COFFEE_ITEM, PIZZA_ITEM],
         isLoading: false,
-        isError: true,
-        isSuccess: false,
+        isError: false,
       };
       const user = userEvent.setup();
       renderPage();
-      await user.click(screen.getByRole("button", { name: /create reward program/i }));
-      expect(screen.getByRole("alert")).toHaveTextContent(/couldn't load/i);
+
+      expect(screen.getByText("Black Coffee")).toBeInTheDocument();
+      expect(screen.getByText("Medium Pizza")).toBeInTheDocument();
+
+      await user.click(screen.getAllByRole("button", { name: /rename/i })[0]);
+      // Exact label: the section also renders a "New item name" add field.
+      await user.clear(screen.getByLabelText("Item name", { exact: true }));
+      await user.type(screen.getByLabelText("Item name", { exact: true }), "Black Coffee (Large)");
+      await user.click(screen.getByRole("button", { name: /^save$/i }));
+      expect(mockUpdateItem).toHaveBeenCalledWith(
+        expect.objectContaining({ qualifyingItemId: "item-coffee", name: "Black Coffee (Large)" }),
+        expect.anything(),
+      );
     });
 
-    it("shows an explicit empty state when the default Business-Type scope has no eligible qualifying nodes", async () => {
+    it("retires an item only after an explicit confirmation step", async () => {
       rewardProgramsResult = { data: [], isLoading: false, isError: false };
       accessibleResult = { data: [{ businessId: "biz-1", role: "owner" }] };
-      qualifyingNodesResult = { data: [], isLoading: false, isError: false, isSuccess: true };
+      qualifyingItemsResult = { data: [COFFEE_ITEM], isLoading: false, isError: false };
       const user = userEvent.setup();
       renderPage();
-      await user.click(screen.getByRole("button", { name: /create reward program/i }));
-      expect(screen.getByText(/no products or services/i)).toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: /^retire$/i }));
+      // First click only arms the confirmation -- nothing sent yet.
+      expect(mockRetireItem).not.toHaveBeenCalled();
+      await user.click(screen.getByRole("button", { name: /confirm retire/i }));
+      expect(mockRetireItem).toHaveBeenCalledWith(
+        expect.objectContaining({ qualifyingItemId: "item-coffee" }),
+        expect.anything(),
+      );
+    });
+
+    it("Manager sees the items section but no Reward Program management", () => {
+      rewardProgramsResult = { data: [], isLoading: false, isError: false };
+      accessibleResult = { data: [{ businessId: "biz-1", role: "manager" }] };
+      renderPage();
+
+      expect(screen.getByText("Qualifying items")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /create reward program/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("Staff sees neither the items section nor Reward Program management", () => {
+      rewardProgramsResult = { data: [draftProgram], isLoading: false, isError: false };
+      accessibleResult = { data: [{ businessId: "biz-1", role: "staff" }] };
+      renderPage();
+
+      expect(screen.queryByText("Qualifying items")).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /create reward program/i }),
+      ).not.toBeInTheDocument();
     });
   });
 });

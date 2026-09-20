@@ -591,7 +591,7 @@ function baseDraftFields() {
     multipleUnitsAllowed: true,
     sharedLoyaltyNumberAllowed: false,
     effectiveFrom: "2026-09-13T00:00:00.000Z",
-    qualifyingNodes: [{ knowledgeNodeId: "node-1" }],
+    qualifyingItemIds: ["3f2b8c1e-9d4a-4e6b-8a1c-0d5e7f9a2b3c"],
   };
 }
 
@@ -647,9 +647,55 @@ describe("parseCreateRewardProgramRequest (mass-assignment boundary, PLATFORM-BA
     expect(parsed.businessId).toBe("biz-1");
     expect(parsed.effectiveFrom).toBeInstanceOf(Date);
     expect(parsed.rewardProgramCategoryId).toBe("cat-1");
-    expect(parsed.qualifyingNodes).toEqual([
-      { knowledgeNodeId: "node-1", businessDisplayName: null },
-    ]);
+    expect(parsed.qualifyingItemIds).toEqual(["3f2b8c1e-9d4a-4e6b-8a1c-0d5e7f9a2b3c"]);
+  });
+
+  /**
+   * `PLATFORM-BASELINE-013B` (`DEC-LOY-016`): the superseded canonical
+   * qualification shape is structurally absent from the new contract -- a
+   * client cannot supply Commerce Knowledge ids or display names here at
+   * all. Legacy fields are dropped by the whitelist (never parsed, never
+   * forwarded), while an omitted `qualifyingItemIds` parses to `[]` (a
+   * legal incomplete draft; publication still requires >= 1 server-side).
+   */
+  it("drops the superseded canonical qualification fields and defaults omitted qualifyingItemIds to []", () => {
+    const parsed = parseCreateRewardProgramRequest({
+      businessId: "biz-1",
+      displayName: "Buy 10 Coffees",
+      rewardDescription: "One free coffee",
+      multipleUnitsAllowed: true,
+      sharedLoyaltyNumberAllowed: false,
+      effectiveFrom: "2026-09-13T00:00:00.000Z",
+      qualifyingNodes: [{ knowledgeNodeId: "node-1", businessDisplayName: "Coffee" }],
+      knowledgeNodeId: "node-1",
+      businessDisplayName: "Coffee",
+    });
+    expect(parsed).not.toHaveProperty("qualifyingNodes");
+    expect(parsed).not.toHaveProperty("knowledgeNodeId");
+    expect(parsed).not.toHaveProperty("businessDisplayName");
+    expect(parsed.qualifyingItemIds).toEqual([]);
+  });
+
+  it("rejects a non-array qualifyingItemIds", () => {
+    expect(() =>
+      parseCreateRewardProgramRequest({
+        businessId: "biz-1",
+        displayName: "x",
+        ...baseDraftFields(),
+        qualifyingItemIds: "not-an-array",
+      }),
+    ).toThrow();
+  });
+
+  it("rejects a blank entry inside qualifyingItemIds", () => {
+    expect(() =>
+      parseCreateRewardProgramRequest({
+        businessId: "biz-1",
+        displayName: "x",
+        ...baseDraftFields(),
+        qualifyingItemIds: ["   "],
+      }),
+    ).toThrow();
   });
 
   /**

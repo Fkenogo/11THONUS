@@ -43,6 +43,14 @@ export const businessQueryKeys = {
   rewardPrograms: (businessId: string) => ["rewardPrograms", businessId] as const,
   rewardProgram: (businessId: string, rewardProgramId: string) =>
     ["rewardProgram", businessId, rewardProgramId] as const,
+  /**
+   * `PLATFORM-BASELINE-013B`: the Business's own Qualifying Item library
+   * backing Reward Program configuration. Item names are Business-authored
+   * free text, stored once and never translated -- so unlike the Commerce
+   * Knowledge keys above, this key is deliberately NOT language-scoped: an
+   * EN result set serves an FR render identically.
+   */
+  qualifyingItems: (businessId: string) => ["qualifyingItems", businessId] as const,
   purchases: (businessId: string, status: string) => ["purchases", businessId, status] as const,
   purchase: (businessId: string, purchaseRecordId: string) =>
     ["purchase", businessId, purchaseRecordId] as const,

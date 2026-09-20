@@ -11,6 +11,7 @@ import type { PlatformPostgresPool } from "../../../infrastructure/postgres/post
 import { withPlatformTransaction } from "../../../infrastructure/postgres/postgresTransaction";
 import { authorizeRewardProgramManage } from "./rewardProgramAuthorization";
 import { validateAllReferences } from "./rewardProgramKnowledgeValidation";
+import { resolveQualifyingItemSnapshots } from "./rewardProgramQualificationValidation";
 import { rewardProgramRequestHash } from "./rewardProgramRequestHash";
 import {
   checkAndReserveIdempotencyKey,
@@ -21,7 +22,7 @@ import {
   getRewardProgramById,
   updateDraftVersion,
 } from "../repositories/rewardProgramRepository";
-import type { QualifyingNode, RewardProgramVersionRow } from "../models/rewardProgram";
+import type { RewardProgramVersionRow } from "../models/rewardProgram";
 import {
   rewardProgramCrossBusinessMismatchError,
   rewardProgramIdempotencyConflictError,
@@ -44,7 +45,8 @@ export type UpdateRewardProgramDraftRequest = {
   readonly bulkReviewThreshold?: number | null;
   readonly effectiveFrom: Date;
   readonly effectiveUntil?: Date | null;
-  readonly qualifyingNodes: readonly QualifyingNode[];
+  /** Structural qualification identity (`PLATFORM-BASELINE-013B`): validated + snapshotted server-side. */
+  readonly qualifyingItemIds: readonly string[];
 };
 
 export async function updateRewardProgramDraft(
@@ -75,8 +77,13 @@ export async function updateRewardProgramDraft(
   await validateAllReferences(db, {
     rewardProgramCategoryId: existingProgram.program.rewardProgramCategoryId,
     standardRewardNodeId: params.request.standardRewardNodeId,
-    qualifyingNodes: params.request.qualifyingNodes,
   });
+  const qualifyingItems = await resolveQualifyingItemSnapshots(
+    pool,
+    db,
+    params.request.businessId,
+    params.request.qualifyingItemIds,
+  );
 
   const contentFingerprint = JSON.stringify({
     rewardDescription: params.request.rewardDescription,
@@ -86,7 +93,7 @@ export async function updateRewardProgramDraft(
     bulkReviewThreshold: params.request.bulkReviewThreshold ?? null,
     effectiveFrom: params.request.effectiveFrom.toISOString(),
     effectiveUntil: params.request.effectiveUntil?.toISOString() ?? null,
-    qualifyingNodes: params.request.qualifyingNodes,
+    qualifyingItemIds: params.request.qualifyingItemIds,
   });
   const requestHash = rewardProgramRequestHash(
     "updateDraft",
@@ -133,8 +140,9 @@ export async function updateRewardProgramDraft(
         bulkReviewThreshold: params.request.bulkReviewThreshold ?? null,
         effectiveFrom: params.request.effectiveFrom,
         effectiveUntil: params.request.effectiveUntil ?? null,
-        qualifyingNodes: params.request.qualifyingNodes,
+        qualifyingItemIds: params.request.qualifyingItemIds,
       },
+      qualifyingItems,
     });
     if (!updated) {
       throw staleDraftUpdateError();

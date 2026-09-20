@@ -6,6 +6,17 @@
 > governed documentation source and is not part of the migrated documentation baseline.
 
 ---
+## 2026-09-20 — PLATFORM-BASELINE-013B — Reward Program → Business-Owned Qualifying Item Binding Implemented (Awaiting Independent Review)
+
+- **Task / status:** Implements exactly `PB-013B` per the corrected `PLATFORM-BASELINE-012` delivery sequence (Entry 241, CORR-001): Reward Program qualification binding cut over from the legacy canonical Commerce Knowledge qualifying-node model to the Business-owned Qualifying Item model (`DEC-LOY-016`/`FD-REWARD-QUALIFYING-ITEM-001`, role authority `DEC-LOY-017`), atomic backend + consuming UI in one merge. Entry `origin/main` verified exactly `60ed656ab084b778f474081434d3c3d3fde10872` (no drift). Isolated worktree, branch `feat/platform-baseline-013b-reward-qualifying-item-binding`. Primary checkout untouched. PR opened, **not merged**, per instruction.
+- **What changed:** structural identity is now `qualifyingItemId` end to end (model `QualifyingItemRef`, repository reads/writes `reward_program_version_qualifying_items` with frozen `item_name_at_version`/`knowledge_node_id_at_version` snapshots, all four commands validate + snapshot server-side with Business-isolated non-disclosure, transport `parseQualifyingItemIds`, publish re-validates + refreshes snapshots at publish time); `QualifyingItemSelector` replaces `QualifyingNodeSelector`; item library section (add/rename/two-step retire, Owner/Manager) on the management page; `QualifyingItemWire` + qualifying-item API/hooks/query-keys; EN/FR copy replaced (`qualifyingItems.*`, `qualifyingItemSelector.*`). Legacy `reward_program_version_qualifying_nodes` retained, untouched, unread (drop deferred to PB-013E). No migration, no dependency, no config change.
+- **Non-regression (verified by diff + suites):** zero diff to every non-test purchase file (contract, persistence, Trust Events, UI) incl. `purchaseRequestHash`; zero diff to the 10+1 engine, permissions implementation, migrations; `rewardProgram.manage` still Owner-only (Manager denied, asserted); PB-008/PB-010B protections retained and green.
+- **Validation:** functions unit 162 files/1847 tests pass; postgres 8 files/226 tests pass (RP 49 incl. 10 new PB-013B tests, purchase 37 green); web 123 files/890 tests pass; typecheck/lint/build/`git diff --check` clean; emulator suite 810 pass with 3 files/54 failures proven pre-existing-environmental (missing Auth emulator; identical failure on the unmodified base worktree). Playwright has no Reward Program spec — nothing applicable.
+- **Disposition: `PLATFORM-BASELINE-013B` — IMPLEMENTED / AWAITING INDEPENDENT REVIEW.** Full report: `docs/05-implementation/reports/platform-baseline-013b-reward-qualifying-item-binding-implementation-report-2026-09-20.md`. `PB-013C`/`D`/`E` not started.
+- **Rollback:** revert the PR merge as one atomic unit; no migration to roll back.
+
+---
+
 ## 2026-09-19 — PLATFORM-BASELINE-013A.2-MERGE-CLOSE-001 — Merge & Closure of PR #261 (Business-Owned Qualifying Item Domain, Permission & Callable Foundation)
 
 - **Task / status:** Merge/closure only for `PLATFORM-BASELINE-013A.2` (PR #261) at the independently reviewed head `3b29ade6cbaab44cf78bafba7f19fe3f9df93bb7` (independent review `PLATFORM-BASELINE-013A.2-ITR-001` disposition **A — INDEPENDENTLY VERIFIED / APPROVABLE**; zero P0/P1/P2 findings; three P3 observations explicitly non-blocking). No implementation code modified.
