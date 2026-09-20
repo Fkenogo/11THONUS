@@ -337,7 +337,7 @@ export const fr = {
       fieldArtifactValue: "Numéro de fidélité ou référence QR",
       fieldQuantity: "Quantité",
       fieldQuantityError: "Saisissez un nombre entier supérieur ou égal à 1.",
-      fieldItemLabel: "Libellé de l'article",
+      fieldQualifyingItem: "Article",
       fieldPurchaseDate: "Date d'achat",
       fieldNotes: "Notes (visibles par le client)",
       recordSubmit: "Enregistrer l'achat",

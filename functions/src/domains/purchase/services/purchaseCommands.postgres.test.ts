@@ -345,11 +345,14 @@ async function seedCustomer(
  * purchase request types, persistence, idempotency identity, and Trust
  * Events under test are untouched by this setup change.
  */
-async function createQualifyingItemForTest(businessId: string): Promise<string> {
+async function createQualifyingItemForTest(
+  businessId: string,
+  name = "PVL Test Item",
+): Promise<string> {
   const item = await withPlatformTransaction(pool, async (tx) =>
     insertQualifyingItem(tx, {
       businessId,
-      name: "PVL Test Item",
+      name,
       knowledgeNodeId: null,
       actorId: "test-seed",
     }),
@@ -363,7 +366,7 @@ async function createPublishedProgram(params: {
   sharedLoyaltyNumberAllowed: boolean;
   multipleUnitsAllowed: boolean;
   rewardDescription?: string;
-}): Promise<{ programId: string; versionId: string }> {
+}): Promise<{ programId: string; versionId: string; qualifyingItemId: string }> {
   const qualifyingItemId = await createQualifyingItemForTest(params.businessId);
   const created = await createRewardProgram(db, pool, {
     userId: params.ownerId,
@@ -390,7 +393,7 @@ async function createPublishedProgram(params: {
     idempotencyKey: nextId("key_pub"),
     correlationId: nextId("corr_pub"),
   });
-  return { programId: created.program.id, versionId: published.id };
+  return { programId: created.program.id, versionId: published.id, qualifyingItemId };
 }
 
 async function setupBusinessWithProgram(params: {
@@ -402,6 +405,7 @@ async function setupBusinessWithProgram(params: {
   recorderId: string;
   programId: string;
   versionId: string;
+  qualifyingItemId: string;
   customer: { customerId: string; ln: string; qr: string };
 }> {
   const businessId = nextId("biz");
@@ -415,20 +419,26 @@ async function setupBusinessWithProgram(params: {
     businessId,
     role: params.recorderRole ?? "staff",
   });
-  const { programId, versionId } = await createPublishedProgram({
+  const { programId, versionId, qualifyingItemId } = await createPublishedProgram({
     businessId,
     ownerId,
     sharedLoyaltyNumberAllowed: params.sharedLoyaltyNumberAllowed,
     multipleUnitsAllowed: params.multipleUnitsAllowed,
   });
   const customer = await seedCustomer(nextId("s"));
-  return { businessId, recorderId, programId, versionId, customer };
+  return { businessId, recorderId, programId, versionId, qualifyingItemId, customer };
 }
 
-function baseRecordRequest(overrides: Record<string, unknown> = {}) {
+/**
+ * Base purchase body. `PLATFORM-BASELINE-013C`: the structural item identity
+ * (`qualifyingItemId`) is the first argument -- the server derives the
+ * human-readable `itemLabel` from the locked version's frozen snapshot, so no
+ * item label is ever supplied by a caller.
+ */
+function baseRecordRequest(qualifyingItemId: string, overrides: Record<string, unknown> = {}) {
   return {
     quantity: 2,
-    itemLabel: "Coffee",
+    qualifyingItemId,
     purchaseDate: new Date("2026-09-14T10:00:00.000Z"),
     ...overrides,
   };
@@ -454,7 +464,7 @@ describe("recordPurchase — artifact policy, program eligibility, quantity, ide
       request: {
         businessId: s.businessId,
         rewardProgramId: s.programId,
-        ...baseRecordRequest({ loyaltyNumberValue: s.customer.ln }),
+        ...baseRecordRequest(s.qualifyingItemId, { loyaltyNumberValue: s.customer.ln }),
       },
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
@@ -477,7 +487,7 @@ describe("recordPurchase — artifact policy, program eligibility, quantity, ide
       request: {
         businessId: s.businessId,
         rewardProgramId: s.programId,
-        ...baseRecordRequest({ qrReference: s.customer.qr }),
+        ...baseRecordRequest(s.qualifyingItemId, { qrReference: s.customer.qr }),
       },
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
@@ -497,7 +507,7 @@ describe("recordPurchase — artifact policy, program eligibility, quantity, ide
         request: {
           businessId: s.businessId,
           rewardProgramId: s.programId,
-          ...baseRecordRequest({ loyaltyNumberValue: s.customer.ln }),
+          ...baseRecordRequest(s.qualifyingItemId, { loyaltyNumberValue: s.customer.ln }),
         },
         idempotencyKey: nextId("key"),
         correlationId: nextId("corr"),
@@ -516,7 +526,7 @@ describe("recordPurchase — artifact policy, program eligibility, quantity, ide
       request: {
         businessId: s.businessId,
         rewardProgramId: s.programId,
-        ...baseRecordRequest({ qrReference: s.customer.qr }),
+        ...baseRecordRequest(s.qualifyingItemId, { qrReference: s.customer.qr }),
       },
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
@@ -549,7 +559,7 @@ describe("recordPurchase — artifact policy, program eligibility, quantity, ide
         request: {
           businessId: s.businessId,
           rewardProgramId: s.programId,
-          ...baseRecordRequest({ qrReference: staleQr }),
+          ...baseRecordRequest(s.qualifyingItemId, { qrReference: staleQr }),
         },
         idempotencyKey: nextId("key"),
         correlationId: nextId("corr"),
@@ -597,7 +607,9 @@ describe("recordPurchase — artifact policy, program eligibility, quantity, ide
         request: {
           businessId,
           rewardProgramId: created.program.id,
-          ...baseRecordRequest({ loyaltyNumberValue: customer.ln }),
+          ...baseRecordRequest("00000000-0000-0000-0000-000000000000", {
+            loyaltyNumberValue: customer.ln,
+          }),
         },
         idempotencyKey: nextId("key"),
         correlationId: nextId("corr"),
@@ -626,7 +638,7 @@ describe("recordPurchase — artifact policy, program eligibility, quantity, ide
         request: {
           businessId: otherBiz,
           rewardProgramId: s.programId,
-          ...baseRecordRequest({ loyaltyNumberValue: s.customer.ln }),
+          ...baseRecordRequest(s.qualifyingItemId, { loyaltyNumberValue: s.customer.ln }),
         },
         idempotencyKey: nextId("key"),
         correlationId: nextId("corr"),
@@ -646,7 +658,10 @@ describe("recordPurchase — artifact policy, program eligibility, quantity, ide
         request: {
           businessId: s.businessId,
           rewardProgramId: s.programId,
-          ...baseRecordRequest({ loyaltyNumberValue: s.customer.ln, quantity: 0 }),
+          ...baseRecordRequest(s.qualifyingItemId, {
+            loyaltyNumberValue: s.customer.ln,
+            quantity: 0,
+          }),
         },
         idempotencyKey: nextId("key"),
         correlationId: nextId("corr"),
@@ -665,7 +680,10 @@ describe("recordPurchase — artifact policy, program eligibility, quantity, ide
         request: {
           businessId: s.businessId,
           rewardProgramId: s.programId,
-          ...baseRecordRequest({ loyaltyNumberValue: s.customer.ln, quantity: 3 }),
+          ...baseRecordRequest(s.qualifyingItemId, {
+            loyaltyNumberValue: s.customer.ln,
+            quantity: 3,
+          }),
         },
         idempotencyKey: nextId("key"),
         correlationId: nextId("corr"),
@@ -676,7 +694,10 @@ describe("recordPurchase — artifact policy, program eligibility, quantity, ide
       request: {
         businessId: s.businessId,
         rewardProgramId: s.programId,
-        ...baseRecordRequest({ loyaltyNumberValue: s.customer.ln, quantity: 1 }),
+        ...baseRecordRequest(s.qualifyingItemId, {
+          loyaltyNumberValue: s.customer.ln,
+          quantity: 1,
+        }),
       },
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
@@ -695,7 +716,7 @@ describe("recordPurchase — artifact policy, program eligibility, quantity, ide
       request: {
         businessId: s.businessId,
         rewardProgramId: s.programId,
-        ...baseRecordRequest({ loyaltyNumberValue: s.customer.ln }),
+        ...baseRecordRequest(s.qualifyingItemId, { loyaltyNumberValue: s.customer.ln }),
       },
       idempotencyKey: key,
       correlationId: nextId("corr"),
@@ -705,7 +726,7 @@ describe("recordPurchase — artifact policy, program eligibility, quantity, ide
       request: {
         businessId: s.businessId,
         rewardProgramId: s.programId,
-        ...baseRecordRequest({ loyaltyNumberValue: s.customer.ln }),
+        ...baseRecordRequest(s.qualifyingItemId, { loyaltyNumberValue: s.customer.ln }),
       },
       idempotencyKey: key,
       correlationId: nextId("corr"),
@@ -718,7 +739,10 @@ describe("recordPurchase — artifact policy, program eligibility, quantity, ide
         request: {
           businessId: s.businessId,
           rewardProgramId: s.programId,
-          ...baseRecordRequest({ loyaltyNumberValue: s.customer.ln, quantity: 5 }),
+          ...baseRecordRequest(s.qualifyingItemId, {
+            loyaltyNumberValue: s.customer.ln,
+            quantity: 5,
+          }),
         },
         idempotencyKey: key,
         correlationId: nextId("corr"),
@@ -736,7 +760,7 @@ describe("recordPurchase — artifact policy, program eligibility, quantity, ide
       request: {
         businessId: s.businessId,
         rewardProgramId: s.programId,
-        ...baseRecordRequest({ loyaltyNumberValue: s.customer.ln }),
+        ...baseRecordRequest(s.qualifyingItemId, { loyaltyNumberValue: s.customer.ln }),
       },
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
@@ -758,6 +782,215 @@ describe("recordPurchase — artifact policy, program eligibility, quantity, ide
 });
 
 // ---------------------------------------------------------------------------
+// PLATFORM-BASELINE-013C — purchase → Business-owned Qualifying Item.
+// ---------------------------------------------------------------------------
+
+describe("recordPurchase — Business-owned Qualifying Item authority (PLATFORM-BASELINE-013C)", () => {
+  it("records a same-Business qualifying item and persists the structural id + server-derived snapshot (unclassified item is valid)", async () => {
+    const s = await setupBusinessWithProgram({
+      sharedLoyaltyNumberAllowed: true,
+      multipleUnitsAllowed: true,
+    });
+    const result = await recordPurchase(db, pool, {
+      userId: s.recorderId,
+      request: {
+        businessId: s.businessId,
+        rewardProgramId: s.programId,
+        ...baseRecordRequest(s.qualifyingItemId, { loyaltyNumberValue: s.customer.ln }),
+      },
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+    expect(result.purchase.qualifyingItemId).toBe(s.qualifyingItemId);
+    // Server-derived snapshot from the locked version's frozen name -- never a
+    // client-supplied label -- and the retained knowledge_node_id stays NULL.
+    expect(result.purchase.itemLabel).toBe("PVL Test Item");
+    expect(result.purchase.knowledgeNodeId).toBeNull();
+
+    const row = await pool.query<{
+      qualifying_item_id: string;
+      item_label: string;
+      knowledge_node_id: string | null;
+    }>(
+      `SELECT qualifying_item_id, item_label, knowledge_node_id FROM purchase_records WHERE id = $1`,
+      [result.purchase.id],
+    );
+    expect(row.rows[0].qualifying_item_id).toBe(s.qualifyingItemId);
+    expect(row.rows[0].item_label).toBe("PVL Test Item");
+    expect(row.rows[0].knowledge_node_id).toBeNull();
+  });
+
+  it("rejects fabricated, malformed, foreign-Business, and non-qualifying ids identically with no record written", async () => {
+    const s = await setupBusinessWithProgram({
+      sharedLoyaltyNumberAllowed: true,
+      multipleUnitsAllowed: true,
+    });
+
+    // A second Business with its own genuine qualifying item (foreign id).
+    const otherBiz = nextId("biz");
+    await seedBusiness(otherBiz);
+    const foreignItemId = await createQualifyingItemForTest(otherBiz, "Foreign Item");
+
+    // A same-Business item that is deliberately NOT on the locked version.
+    const unboundItemId = await createQualifyingItemForTest(s.businessId, "Unbound Item");
+
+    const candidateIds = [
+      "11111111-1111-4111-8111-111111111111", // fabricated (well-formed UUID)
+      "not-a-uuid", // malformed
+      foreignItemId, // foreign Business
+      unboundItemId, // same Business, not on the version
+    ];
+
+    const errors: PurchaseDomainError[] = [];
+    for (const itemId of candidateIds) {
+      let rejected = false;
+      try {
+        await recordPurchase(db, pool, {
+          userId: s.recorderId,
+          request: {
+            businessId: s.businessId,
+            rewardProgramId: s.programId,
+            ...baseRecordRequest(itemId, { loyaltyNumberValue: s.customer.ln }),
+          },
+          idempotencyKey: nextId("key"),
+          correlationId: nextId("corr"),
+        });
+      } catch (error) {
+        rejected = true;
+        expect(error).toBeInstanceOf(PurchaseDomainError);
+        errors.push(error as PurchaseDomainError);
+      }
+      expect(rejected, `expected "${itemId}" to be rejected`).toBe(true);
+    }
+
+    // Identical category AND message for every case: no cross-Business
+    // existence disclosure (a foreign id is indistinguishable from a
+    // fabricated one).
+    expect(new Set(errors.map((e) => e.category))).toEqual(new Set(["VALIDATION_FAILED"]));
+    expect(new Set(errors.map((e) => e.message))).toEqual(
+      new Set(["The selected qualifying item is not available for this Reward Program."]),
+    );
+    expect(await count("purchase_records")).toBe(0);
+  });
+
+  it("ignores a client-injected itemLabel/knowledgeNodeId: the persisted label is the server-derived version snapshot", async () => {
+    const s = await setupBusinessWithProgram({
+      sharedLoyaltyNumberAllowed: true,
+      multipleUnitsAllowed: true,
+    });
+    const result = await recordPurchase(db, pool, {
+      userId: s.recorderId,
+      request: {
+        businessId: s.businessId,
+        rewardProgramId: s.programId,
+        ...baseRecordRequest(s.qualifyingItemId, {
+          loyaltyNumberValue: s.customer.ln,
+          itemLabel: "ATTACKER LABEL",
+          knowledgeNodeId: "attacker-node",
+        }),
+      } as never,
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+    expect(result.purchase.itemLabel).toBe("PVL Test Item");
+    expect(result.purchase.knowledgeNodeId).toBeNull();
+  });
+
+  it("idempotency distinguishes different qualifyingItemIds (fingerprint is not item-blind)", async () => {
+    const businessId = nextId("biz");
+    const ownerId = nextId("owner");
+    const recorderId = nextId("rec");
+    await seedBusiness(businessId);
+    await seedMembership({
+      membershipId: nextId("mem"),
+      userId: ownerId,
+      businessId,
+      role: "owner",
+    });
+    await seedMembership({
+      membershipId: nextId("mem"),
+      userId: recorderId,
+      businessId,
+      role: "staff",
+    });
+    const itemA = await createQualifyingItemForTest(businessId, "Item A");
+    const itemB = await createQualifyingItemForTest(businessId, "Item B");
+    const created = await createRewardProgram(db, pool, {
+      userId: ownerId,
+      request: {
+        businessId,
+        displayName: "Two-item program",
+        rewardProgramCategoryId: "pvl_rpcat",
+        rewardDescription: "One free coffee",
+        multipleUnitsAllowed: true,
+        sharedLoyaltyNumberAllowed: true,
+        effectiveFrom: new Date("2026-09-14T00:00:00.000Z"),
+        qualifyingItemIds: [itemA, itemB],
+      } as never,
+      idempotencyKey: nextId("key_prog"),
+      correlationId: nextId("corr_prog"),
+    });
+    await publishRewardProgramVersion(db, pool, {
+      userId: ownerId,
+      request: { businessId, rewardProgramId: created.program.id, versionId: created.version.id },
+      idempotencyKey: nextId("key_pub"),
+      correlationId: nextId("corr_pub"),
+    });
+    const customer = await seedCustomer(nextId("s"));
+    const sharedKey = nextId("key_same");
+    const requestFor = (qualifyingItemId: string) => ({
+      userId: recorderId,
+      request: {
+        businessId,
+        rewardProgramId: created.program.id,
+        ...baseRecordRequest(qualifyingItemId, { loyaltyNumberValue: customer.ln }),
+      },
+      idempotencyKey: sharedKey,
+      correlationId: nextId("corr"),
+    });
+
+    const first = await recordPurchase(db, pool, requestFor(itemA));
+    expect(first.purchase.qualifyingItemId).toBe(itemA);
+    expect(first.purchase.itemLabel).toBe("Item A");
+
+    // Same key, otherwise identical request, DIFFERENT qualifying item ->
+    // conflict, never a silent duplicate of the first item.
+    await expect(recordPurchase(db, pool, requestFor(itemB))).rejects.toThrow(PurchaseDomainError);
+    expect(await count("purchase_records")).toBe(1);
+  });
+
+  it("purchase.recorded carries the opaque qualifyingItemId; wrong_item dispute stays coherent", async () => {
+    const s = await setupBusinessWithProgram({
+      sharedLoyaltyNumberAllowed: true,
+      multipleUnitsAllowed: true,
+    });
+    const rec = await recordPurchase(db, pool, {
+      userId: s.recorderId,
+      request: {
+        businessId: s.businessId,
+        rewardProgramId: s.programId,
+        ...baseRecordRequest(s.qualifyingItemId, { loyaltyNumberValue: s.customer.ln }),
+      },
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+    const events = await listTrustEventsForPurchase(pool, rec.purchase.id);
+    expect(events.map((e) => e.eventType)).toEqual(["purchase.recorded"]);
+    expect(events[0].payload.qualifyingItemId).toBe(s.qualifyingItemId);
+
+    const disputed = await raisePurchaseDispute(db, pool, {
+      customerIdentityId: s.customer.customerId,
+      request: { purchaseRecordId: rec.purchase.id, reason: "wrong_item" },
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+    expect(disputed.purchase.disputeReason).toBe("wrong_item");
+    expect(disputed.purchase.qualifyingItemId).toBe(s.qualifyingItemId);
+    expect(disputed.purchase.itemLabel).toBe("PVL Test Item");
+  });
+});
+
+// ---------------------------------------------------------------------------
 // verifyPurchase.
 // ---------------------------------------------------------------------------
 
@@ -772,7 +1005,7 @@ describe("verifyPurchase — ownership, states, races, replay, rollback", () => 
       request: {
         businessId: s.businessId,
         rewardProgramId: s.programId,
-        ...baseRecordRequest({ loyaltyNumberValue: s.customer.ln, quantity }),
+        ...baseRecordRequest(s.qualifyingItemId, { loyaltyNumberValue: s.customer.ln, quantity }),
       },
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
@@ -925,7 +1158,10 @@ describe("verifyPurchase — ownership, states, races, replay, rollback", () => 
       request: {
         businessId: s.businessId,
         rewardProgramId: s.programId,
-        ...baseRecordRequest({ loyaltyNumberValue: s.customer.ln, quantity: 1 }),
+        ...baseRecordRequest(s.qualifyingItemId, {
+          loyaltyNumberValue: s.customer.ln,
+          quantity: 1,
+        }),
       },
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
@@ -1016,7 +1252,10 @@ describe("idempotency — two truly concurrent SAME-KEY requests (CORR-001)", ()
       request: {
         businessId: s.businessId,
         rewardProgramId: s.programId,
-        ...baseRecordRequest({ loyaltyNumberValue: s.customer.ln, quantity: 10 }),
+        ...baseRecordRequest(s.qualifyingItemId, {
+          loyaltyNumberValue: s.customer.ln,
+          quantity: 10,
+        }),
       },
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
@@ -1179,7 +1418,10 @@ describe("idempotency — two truly concurrent SAME-KEY requests (CORR-001)", ()
     });
     const sharedKey = nextId("key_same");
     // Identical request bodies → identical request fingerprints.
-    const body = baseRecordRequest({ loyaltyNumberValue: s.customer.ln, quantity: 3 });
+    const body = baseRecordRequest(s.qualifyingItemId, {
+      loyaltyNumberValue: s.customer.ln,
+      quantity: 3,
+    });
     const call = () =>
       recordPurchase(db, pool, {
         userId: s.recorderId,
@@ -1246,7 +1488,10 @@ describe("idempotency — two truly concurrent SAME-KEY requests (CORR-001)", ()
       request: {
         businessId: s.businessId,
         rewardProgramId: s.programId,
-        ...baseRecordRequest({ loyaltyNumberValue: s.customer.ln, quantity: 2 }),
+        ...baseRecordRequest(s.qualifyingItemId, {
+          loyaltyNumberValue: s.customer.ln,
+          quantity: 2,
+        }),
       },
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
@@ -1256,7 +1501,10 @@ describe("idempotency — two truly concurrent SAME-KEY requests (CORR-001)", ()
       request: {
         businessId: s.businessId,
         rewardProgramId: s.programId,
-        ...baseRecordRequest({ loyaltyNumberValue: s.customer.ln, quantity: 3 }),
+        ...baseRecordRequest(s.qualifyingItemId, {
+          loyaltyNumberValue: s.customer.ln,
+          quantity: 3,
+        }),
       },
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
@@ -1317,7 +1565,10 @@ describe("cycles — allocation, concurrency, threshold, rewards", () => {
       request: {
         businessId: s.businessId,
         rewardProgramId: s.programId,
-        ...baseRecordRequest({ loyaltyNumberValue: s.customer.ln, quantity: 8 }),
+        ...baseRecordRequest(s.qualifyingItemId, {
+          loyaltyNumberValue: s.customer.ln,
+          quantity: 8,
+        }),
       },
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
@@ -1333,7 +1584,10 @@ describe("cycles — allocation, concurrency, threshold, rewards", () => {
       request: {
         businessId: s.businessId,
         rewardProgramId: s.programId,
-        ...baseRecordRequest({ loyaltyNumberValue: s.customer.ln, quantity: 4 }),
+        ...baseRecordRequest(s.qualifyingItemId, {
+          loyaltyNumberValue: s.customer.ln,
+          quantity: 4,
+        }),
       },
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
@@ -1368,7 +1622,10 @@ describe("cycles — allocation, concurrency, threshold, rewards", () => {
       request: {
         businessId: s.businessId,
         rewardProgramId: s.programId,
-        ...baseRecordRequest({ loyaltyNumberValue: s.customer.ln, quantity: 3 }),
+        ...baseRecordRequest(s.qualifyingItemId, {
+          loyaltyNumberValue: s.customer.ln,
+          quantity: 3,
+        }),
       },
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
@@ -1378,7 +1635,10 @@ describe("cycles — allocation, concurrency, threshold, rewards", () => {
       request: {
         businessId: s.businessId,
         rewardProgramId: s.programId,
-        ...baseRecordRequest({ loyaltyNumberValue: s.customer.ln, quantity: 2 }),
+        ...baseRecordRequest(s.qualifyingItemId, {
+          loyaltyNumberValue: s.customer.ln,
+          quantity: 2,
+        }),
       },
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
@@ -1418,7 +1678,10 @@ describe("cycles — allocation, concurrency, threshold, rewards", () => {
       request: {
         businessId: s.businessId,
         rewardProgramId: s.programId,
-        ...baseRecordRequest({ loyaltyNumberValue: s.customer.ln, quantity: 9 }),
+        ...baseRecordRequest(s.qualifyingItemId, {
+          loyaltyNumberValue: s.customer.ln,
+          quantity: 9,
+        }),
       },
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
@@ -1434,7 +1697,10 @@ describe("cycles — allocation, concurrency, threshold, rewards", () => {
       request: {
         businessId: s.businessId,
         rewardProgramId: s.programId,
-        ...baseRecordRequest({ loyaltyNumberValue: s.customer.ln, quantity: 2 }),
+        ...baseRecordRequest(s.qualifyingItemId, {
+          loyaltyNumberValue: s.customer.ln,
+          quantity: 2,
+        }),
       },
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
@@ -1444,7 +1710,10 @@ describe("cycles — allocation, concurrency, threshold, rewards", () => {
       request: {
         businessId: s.businessId,
         rewardProgramId: s.programId,
-        ...baseRecordRequest({ loyaltyNumberValue: s.customer.ln, quantity: 2 }),
+        ...baseRecordRequest(s.qualifyingItemId, {
+          loyaltyNumberValue: s.customer.ln,
+          quantity: 2,
+        }),
       },
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
@@ -1528,7 +1797,7 @@ describe("cycles — allocation, concurrency, threshold, rewards", () => {
       request: {
         businessId,
         rewardProgramId: created.program.id,
-        ...baseRecordRequest({ loyaltyNumberValue: customer.ln, quantity: 10 }),
+        ...baseRecordRequest(v1ItemId, { loyaltyNumberValue: customer.ln, quantity: 10 }),
       },
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
@@ -1581,7 +1850,10 @@ describe("cycles — allocation, concurrency, threshold, rewards", () => {
       request: {
         businessId: s.businessId,
         rewardProgramId: s.programId,
-        ...baseRecordRequest({ loyaltyNumberValue: s.customer.ln, quantity: 10 }),
+        ...baseRecordRequest(s.qualifyingItemId, {
+          loyaltyNumberValue: s.customer.ln,
+          quantity: 10,
+        }),
       },
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
@@ -1644,7 +1916,10 @@ describe("trust events — repeatable vs one-time cardinality (CORR-003)", () =>
       request: {
         businessId: s.businessId,
         rewardProgramId: s.programId,
-        ...baseRecordRequest({ loyaltyNumberValue: s.customer.ln, quantity: 2 }),
+        ...baseRecordRequest(s.qualifyingItemId, {
+          loyaltyNumberValue: s.customer.ln,
+          quantity: 2,
+        }),
       },
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
@@ -1654,7 +1929,10 @@ describe("trust events — repeatable vs one-time cardinality (CORR-003)", () =>
       request: {
         businessId: s.businessId,
         rewardProgramId: s.programId,
-        ...baseRecordRequest({ loyaltyNumberValue: s.customer.ln, quantity: 3 }),
+        ...baseRecordRequest(s.qualifyingItemId, {
+          loyaltyNumberValue: s.customer.ln,
+          quantity: 3,
+        }),
       },
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
@@ -1716,7 +1994,10 @@ describe("rejectPurchase — every reason, no units", () => {
       request: {
         businessId: s.businessId,
         rewardProgramId: s.programId,
-        ...baseRecordRequest({ loyaltyNumberValue: s.customer.ln, quantity: 2 }),
+        ...baseRecordRequest(s.qualifyingItemId, {
+          loyaltyNumberValue: s.customer.ln,
+          quantity: 2,
+        }),
       },
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
@@ -1753,7 +2034,10 @@ describe("raisePurchaseDispute — every reason, no units, holding state", () =>
       request: {
         businessId: s.businessId,
         rewardProgramId: s.programId,
-        ...baseRecordRequest({ loyaltyNumberValue: s.customer.ln, quantity: 2 }),
+        ...baseRecordRequest(s.qualifyingItemId, {
+          loyaltyNumberValue: s.customer.ln,
+          quantity: 2,
+        }),
       },
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
@@ -1802,7 +2086,10 @@ describe("reads — isolation, ownership, side-effect freedom", () => {
       request: {
         businessId: s.businessId,
         rewardProgramId: s.programId,
-        ...baseRecordRequest({ loyaltyNumberValue: s.customer.ln, quantity: 2 }),
+        ...baseRecordRequest(s.qualifyingItemId, {
+          loyaltyNumberValue: s.customer.ln,
+          quantity: 2,
+        }),
       },
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
@@ -1863,7 +2150,10 @@ describe("reads — isolation, ownership, side-effect freedom", () => {
       request: {
         businessId: s.businessId,
         rewardProgramId: s.programId,
-        ...baseRecordRequest({ loyaltyNumberValue: s.customer.ln, quantity: 10 }),
+        ...baseRecordRequest(s.qualifyingItemId, {
+          loyaltyNumberValue: s.customer.ln,
+          quantity: 10,
+        }),
       },
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),

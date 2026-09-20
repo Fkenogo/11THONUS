@@ -64,7 +64,26 @@ export type PurchaseRecordRow = {
   readonly recordedByUserId: string;
   readonly recordedByRole: RecorderRole;
   readonly quantity: number;
+  /**
+   * Structural Business-owned purchase-item identity (`PLATFORM-BASELINE-
+   * 013C`, `DEC-LOY-016`): the stable `qualifying_items.id` the operator
+   * selected, proven server-side to be on the locked version's frozen
+   * qualification set. `null` only for legacy rows recorded before
+   * migration `0018`; every new Purchase supplies it. Never client-supplied
+   * by name/classification, never a Commerce Knowledge id.
+   */
+  readonly qualifyingItemId: string | null;
+  /**
+   * Frozen, server-derived human-readable item snapshot at transaction time
+   * (from the locked version's `item_name_at_version`). Display/evidence
+   * only -- never qualification authority, never client-supplied.
+   */
   readonly itemLabel: string;
+  /**
+   * Retained, no longer written (`PLATFORM-BASELINE-013C`, PB-012 §17A
+   * CF-1). Never promoted to QualifyingItem authority; `null` on every new
+   * Purchase.
+   */
   readonly knowledgeNodeId: string | null;
   readonly unitValueMinor: number | null;
   readonly currency: string | null;

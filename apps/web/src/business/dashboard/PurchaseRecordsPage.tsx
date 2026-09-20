@@ -30,7 +30,7 @@ type RecordFormState = {
   artifactKind: "loyalty_number" | "qr_identity";
   artifactValue: string;
   quantity: string;
-  itemLabel: string;
+  qualifyingItemId: string;
   purchaseDate: string;
   notes: string;
 };
@@ -41,7 +41,7 @@ function emptyRecordForm(): RecordFormState {
     artifactKind: "loyalty_number",
     artifactValue: "",
     quantity: "1",
-    itemLabel: "",
+    qualifyingItemId: "",
     purchaseDate: todayDateInputValue(),
     notes: "",
   };
@@ -76,6 +76,25 @@ export function PurchaseRecordsPage({ context }: { context: BusinessContext }) {
     (entry) => entry.program.status === "active" && entry.program.currentVersionId !== null,
   );
 
+  // The qualifying items offered are the SELECTED program's own frozen
+  // version bindings -- already loaded by `useRewardProgramsQuery`, no new
+  // callable or authorization surface. The operator picks a Business-authored
+  // name; the option value is the opaque `qualifyingItemId` the server
+  // validates. `PLATFORM-BASELINE-013C`.
+  const formProgram = activePrograms.find((entry) => entry.program.id === form.rewardProgramId);
+  const formQualifyingItems = formProgram?.currentVersion?.qualifyingItems ?? [];
+
+  function selectProgram(rewardProgramId: string) {
+    const entry = activePrograms.find((p) => p.program.id === rewardProgramId);
+    const items = entry?.currentVersion?.qualifyingItems ?? [];
+    setForm((current) => ({
+      ...current,
+      rewardProgramId,
+      // Pre-select when the programme has exactly one qualifying item.
+      qualifyingItemId: items.length === 1 ? items[0].qualifyingItemId : "",
+    }));
+  }
+
   async function submitRecord(event: React.FormEvent) {
     event.preventDefault();
     setRecorded(false);
@@ -91,7 +110,7 @@ export function PurchaseRecordsPage({ context }: { context: BusinessContext }) {
         ? { loyaltyNumberValue: form.artifactValue.trim() }
         : { qrReference: form.artifactValue.trim() }),
       quantity,
-      itemLabel: form.itemLabel.trim(),
+      qualifyingItemId: form.qualifyingItemId,
       purchaseDate: resolvePurchaseDateInstant(form.purchaseDate),
       ...(form.notes.trim().length > 0 ? { notes: form.notes.trim() } : {}),
     });
@@ -115,7 +134,7 @@ export function PurchaseRecordsPage({ context }: { context: BusinessContext }) {
             {t("purchase.fieldProgram")}
             <select
               value={form.rewardProgramId}
-              onChange={(event) => setForm({ ...form, rewardProgramId: event.target.value })}
+              onChange={(event) => selectProgram(event.target.value)}
               required
               className="rounded-md border border-[var(--color-border)] bg-transparent p-2"
             >
@@ -166,13 +185,23 @@ export function PurchaseRecordsPage({ context }: { context: BusinessContext }) {
             errorMessage={quantityError ? t("purchase.fieldQuantityError") : undefined}
             required
           />
-          <TextField
-            id="purchase-record-item"
-            label={t("purchase.fieldItemLabel")}
-            value={form.itemLabel}
-            onChange={(value) => setForm({ ...form, itemLabel: value })}
-            required
-          />
+          <label className="flex flex-col gap-1 text-sm">
+            {t("purchase.fieldQualifyingItem")}
+            <select
+              value={form.qualifyingItemId}
+              onChange={(event) => setForm({ ...form, qualifyingItemId: event.target.value })}
+              required
+              disabled={form.rewardProgramId === "" || formQualifyingItems.length === 0}
+              className="rounded-md border border-[var(--color-border)] bg-transparent p-2 disabled:opacity-50"
+            >
+              <option value="">—</option>
+              {formQualifyingItems.map((item) => (
+                <option key={item.qualifyingItemId} value={item.qualifyingItemId}>
+                  {item.itemNameAtVersion}
+                </option>
+              ))}
+            </select>
+          </label>
           <TextField
             id="purchase-record-date"
             label={t("purchase.fieldPurchaseDate")}

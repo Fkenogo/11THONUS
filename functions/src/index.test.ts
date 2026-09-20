@@ -837,14 +837,16 @@ describe("toHttpsError (reward program idempotency transport mapping, PLATFORM-B
  * status are server-resolved/server-derived and must be structurally
  * absent from the parsed request.
  */
-describe("parseRecordPurchaseRequest (mass-assignment boundary, PLATFORM-BASELINE-006A)", () => {
-  it("drops authority-sensitive fields a client might try to inject", () => {
+describe("parseRecordPurchaseRequest (mass-assignment boundary, PLATFORM-BASELINE-006A; item authority PLATFORM-BASELINE-013C)", () => {
+  it("drops authority-sensitive fields a client might try to inject, including the superseded item fields", () => {
     const malicious = {
       businessId: "biz-1",
       rewardProgramId: "rp-1",
       loyaltyNumberValue: "ABC234",
       quantity: 2,
+      qualifyingItemId: "3f2b8c1e-9d4a-4e6b-8a1c-0d5e7f9a2b3c",
       itemLabel: "Coffee",
+      knowledgeNodeId: "node-1",
       purchaseDate: "2026-09-14T10:00:00.000Z",
       customerIdentityId: "attacker-chosen-customer",
       customerId: "attacker-chosen-customer",
@@ -856,6 +858,11 @@ describe("parseRecordPurchaseRequest (mass-assignment boundary, PLATFORM-BASELIN
       canonicalLoyaltyNumberValue: "ATTACKER",
     };
     const parsed = parseRecordPurchaseRequest(malicious);
+    // `itemLabel` is no longer a request field at all: the server derives it
+    // from the locked version's frozen snapshot. A client cannot supply it,
+    // nor a Commerce Knowledge id as qualification authority.
+    expect(parsed).not.toHaveProperty("itemLabel");
+    expect(parsed).not.toHaveProperty("knowledgeNodeId");
     expect(parsed).not.toHaveProperty("customerIdentityId");
     expect(parsed).not.toHaveProperty("customerId");
     expect(parsed).not.toHaveProperty("rewardProgramVersionId");
@@ -864,6 +871,7 @@ describe("parseRecordPurchaseRequest (mass-assignment boundary, PLATFORM-BASELIN
     expect(parsed).not.toHaveProperty("status");
     expect(parsed).not.toHaveProperty("verifiedAt");
     expect(parsed).not.toHaveProperty("canonicalLoyaltyNumberValue");
+    expect(parsed.qualifyingItemId).toBe("3f2b8c1e-9d4a-4e6b-8a1c-0d5e7f9a2b3c");
     expect(parsed.loyaltyNumberValue).toBe("ABC234");
   });
 
@@ -873,24 +881,26 @@ describe("parseRecordPurchaseRequest (mass-assignment boundary, PLATFORM-BASELIN
       rewardProgramId: "rp-1",
       qrReference: "qr_ref_1",
       quantity: 1,
-      itemLabel: "Tea",
+      qualifyingItemId: "3f2b8c1e-9d4a-4e6b-8a1c-0d5e7f9a2b3c",
       purchaseDate: "2026-09-14T10:00:00.000Z",
       unitValueMinor: 500,
       currency: "RWF",
     });
     expect(parsed.qrReference).toBe("qr_ref_1");
     expect(parsed.loyaltyNumberValue).toBeUndefined();
+    expect(parsed.qualifyingItemId).toBe("3f2b8c1e-9d4a-4e6b-8a1c-0d5e7f9a2b3c");
     expect(parsed.purchaseDate).toBeInstanceOf(Date);
   });
 
-  it("rejects missing/invalid fields", () => {
+  it("rejects missing/invalid fields, including a missing or blank qualifyingItemId", () => {
     expect(() => parseRecordPurchaseRequest({})).toThrow();
     expect(() =>
       parseRecordPurchaseRequest({
         businessId: "biz-1",
         rewardProgramId: "rp-1",
-        quantity: 0,
-        itemLabel: "x",
+        loyaltyNumberValue: "ABC234",
+        quantity: 1,
+        // qualifyingItemId omitted
         purchaseDate: "2026-09-14T10:00:00.000Z",
       }),
     ).toThrow();
@@ -900,7 +910,26 @@ describe("parseRecordPurchaseRequest (mass-assignment boundary, PLATFORM-BASELIN
         rewardProgramId: "rp-1",
         loyaltyNumberValue: "ABC234",
         quantity: 1,
-        itemLabel: "x",
+        qualifyingItemId: "   ",
+        purchaseDate: "2026-09-14T10:00:00.000Z",
+      }),
+    ).toThrow();
+    expect(() =>
+      parseRecordPurchaseRequest({
+        businessId: "biz-1",
+        rewardProgramId: "rp-1",
+        quantity: 0,
+        qualifyingItemId: "3f2b8c1e-9d4a-4e6b-8a1c-0d5e7f9a2b3c",
+        purchaseDate: "2026-09-14T10:00:00.000Z",
+      }),
+    ).toThrow();
+    expect(() =>
+      parseRecordPurchaseRequest({
+        businessId: "biz-1",
+        rewardProgramId: "rp-1",
+        loyaltyNumberValue: "ABC234",
+        quantity: 1,
+        qualifyingItemId: "3f2b8c1e-9d4a-4e6b-8a1c-0d5e7f9a2b3c",
         purchaseDate: "not-a-date",
       }),
     ).toThrow();

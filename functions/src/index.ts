@@ -2257,10 +2257,13 @@ function parsePurchasePagination(value: Record<string, unknown>): {
 
 /**
  * Whitelist parser: exactly `businessId`, `rewardProgramId`, one presented
- * artifact (`loyaltyNumberValue` XOR `qrReference`), and the commercial
- * snapshot fields. No Customer Identity id, no program version, no
- * recorder identity/role, no status — all server-resolved or
- * server-derived. Exported only for the mass-assignment regression test.
+ * artifact (`loyaltyNumberValue` XOR `qrReference`), the structural
+ * Business-owned `qualifyingItemId`, and the commercial snapshot fields.
+ * No Customer Identity id, no program version, no recorder identity/role,
+ * no status, no item name (`itemLabel`), and no Commerce Knowledge id — all
+ * server-resolved or server-derived (`PLATFORM-BASELINE-013C`; the item
+ * name is derived from the locked version's frozen snapshot). Exported only
+ * for the mass-assignment regression test.
  */
 export function parseRecordPurchaseRequest(value: Record<string, unknown>) {
   return {
@@ -2269,8 +2272,7 @@ export function parseRecordPurchaseRequest(value: Record<string, unknown>) {
     loyaltyNumberValue: parseOptionalPurchaseString(value.loyaltyNumberValue, "loyaltyNumberValue"),
     qrReference: parseOptionalPurchaseString(value.qrReference, "qrReference"),
     quantity: parsePurchaseQuantity(value.quantity),
-    itemLabel: parseNonEmptyString(value.itemLabel),
-    knowledgeNodeId: parseOptionalPurchaseString(value.knowledgeNodeId, "knowledgeNodeId"),
+    qualifyingItemId: parseNonEmptyString(value.qualifyingItemId),
     unitValueMinor:
       value.unitValueMinor === undefined || value.unitValueMinor === null
         ? undefined
