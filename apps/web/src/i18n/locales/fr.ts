@@ -268,27 +268,36 @@ export const fr = {
       cancel: "Annuler",
       saving: "Enregistrement…",
       fieldDisplayName: "Nom du programme",
-      fieldQualifyingNodes: "Produits/services éligibles",
+      fieldQualifyingItems: "Éléments éligibles",
+      boundItemsLabel: "Éléments éligibles :",
       fieldRewardDescription: "Description de la récompense",
       fieldEffectiveFrom: "En vigueur à partir du",
       fieldMultipleUnitsAllowed: "Autoriser plusieurs unités par achat",
       fieldSharedLoyaltyNumberAllowed: "Autoriser un numéro de fidélité partagé",
       fixedInvariantsNote:
         "Unités vérifiées requises : {{threshold}} et quantité de récompense : {{quantity}} sont des règles fixes de la plateforme et ne peuvent pas être modifiées.",
-      qualifyingNodeSelector: {
-        loading: "Chargement des produits et services…",
-        loadError:
-          "Nous n'avons pas pu charger les produits et services pour votre type d'entreprise. Veuillez réessayer.",
+      qualifyingItemSelector: {
+        loading: "Chargement de vos éléments éligibles…",
+        loadError: "Nous n'avons pas pu charger vos éléments éligibles. Veuillez réessayer.",
         empty:
-          "Aucun produit ou service n'est disponible pour votre type d'entreprise pour l'instant. Utilisez la recherche ci-dessous.",
+          "Aucun élément éligible pour l'instant. Ajoutez-en un ci-dessous — aucun catalogue ni catégorie requis.",
         unavailableLabel: "Élément précédemment sélectionné (nom indisponible)",
         unavailableNote: "(plus disponible — conservé dans la configuration de ce programme)",
-        searchLabel: "Rechercher tous les produits et services",
-        searchPlaceholder: "Rechercher par nom (ex. « Café noir », « Lavage de voiture »)",
-        searchLoading: "Recherche…",
-        searchError: "Nous n'avons pas pu effectuer cette recherche. Veuillez réessayer.",
-        searchEmpty: "Aucun produit ou service ne correspond à cette recherche.",
-        searchResultsLabel: "Résultats de recherche",
+      },
+      qualifyingItems: {
+        sectionTitle: "Éléments éligibles",
+        sectionHint:
+          "Nommez ce que votre entreprise vend (p. ex. « Café noir »). Ce sont vos propres éléments — aucun catalogue requis.",
+        loading: "Chargement des éléments éligibles…",
+        loadError: "Nous n'avons pas pu charger vos éléments éligibles. Veuillez réessayer.",
+        empty: "Aucun élément éligible pour l'instant. Ajoutez le premier ci-dessous.",
+        addLabel: "Nom du nouvel élément",
+        addAction: "Ajouter l'élément",
+        renameAction: "Renommer",
+        renameLabel: "Nom de l'élément",
+        saveAction: "Enregistrer",
+        retireAction: "Retirer",
+        retireConfirmAction: "Confirmer le retrait",
       },
       versionLabel: "Version {{version}}",
       status: {

@@ -48,6 +48,13 @@ import { getRewardProgram, listRewardPrograms } from "./rewardProgramQueries";
 import { rewardProgramRequestHash } from "./rewardProgramRequestHash";
 import { withPlatformTransaction } from "../../../infrastructure/postgres/postgresTransaction";
 import { publishVersion } from "../repositories/rewardProgramRepository";
+import { insertQualifyingItem } from "../../qualifyingItem/repositories/qualifyingItemRepository";
+import {
+  retireQualifyingItem as retireQualifyingItemRow,
+  updateQualifyingItem as updateQualifyingItemRow,
+} from "../../qualifyingItem/repositories/qualifyingItemRepository";
+import { authorizeQualifyingItemManage } from "../../qualifyingItem/services/qualifyingItemAuthorization";
+import type { QualifyingItem } from "../../qualifyingItem/models/qualifyingItem";
 import { RewardProgramDomainError } from "../models/rewardProgramErrors";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -95,12 +102,14 @@ afterAll(async () => {
 });
 
 afterEach(async () => {
+  await pool.query("DELETE FROM reward_program_version_qualifying_items");
   await pool.query("DELETE FROM reward_program_version_qualifying_nodes");
   await pool.query("DELETE FROM reward_program_outbox");
   await pool.query("DELETE FROM idempotency_keys");
   await pool.query("UPDATE reward_programs SET current_version_id = NULL");
   await pool.query("DELETE FROM reward_program_versions");
   await pool.query("DELETE FROM reward_programs");
+  await pool.query("DELETE FROM qualifying_items");
 
   for (const collection of ["businesses", "businessMemberships"]) {
     const snapshot = await db.collection(collection).get();
@@ -227,9 +236,37 @@ function baseDraftRequest(businessId: string, overrides: Record<string, unknown>
     multipleUnitsAllowed: true,
     sharedLoyaltyNumberAllowed: false,
     effectiveFrom: new Date("2026-09-13T00:00:00.000Z"),
-    qualifyingNodes: [{ knowledgeNodeId: PRODUCT_NODE, businessDisplayName: null }],
+    qualifyingItemIds: [],
     ...overrides,
   };
+}
+
+/**
+ * Test-only Qualifying Item seeding (`PLATFORM-BASELINE-013B`): inserts an
+ * `active` item owned by `businessId` directly through the repository
+ * (no authorization/validation layer -- the command-level tests below prove
+ * those). `knowledgeNodeId` defaults to `null`: an unclassified item is
+ * fully valid (`DEC-LOY-016`) and performs zero Commerce Knowledge reads.
+ */
+async function createItem(
+  businessId: string,
+  name: string,
+  knowledgeNodeId: string | null = null,
+): Promise<QualifyingItem> {
+  return withPlatformTransaction(pool, async (tx) =>
+    insertQualifyingItem(tx, { businessId, name, knowledgeNodeId, actorId: "test-seed" }),
+  );
+}
+
+async function retireItem(businessId: string, itemId: string): Promise<void> {
+  await withPlatformTransaction(pool, async (tx) => {
+    await retireQualifyingItemRow(tx, { businessId, id: itemId, actorId: "test-seed" });
+  });
+}
+
+/** Maps a version's frozen qualification snapshots back to plain structural ids (draft hydration shape). */
+function snapshotIds(version: { qualifyingItems: readonly { qualifyingItemId: string }[] }) {
+  return version.qualifyingItems.map((item) => item.qualifyingItemId);
 }
 
 describe("Reward Program commands — cross-store integration", () => {
@@ -387,7 +424,7 @@ describe("Reward Program commands — cross-store integration", () => {
     ).rejects.toThrow(RewardProgramDomainError);
   });
 
-  it("createRewardProgram: rejects an inactive/wrong-type qualifying node before any PostgreSQL write", async () => {
+  it("createRewardProgram: rejects a fabricated Qualifying Item id before any PostgreSQL write (no existence disclosure)", async () => {
     const businessId = nextId("biz");
     await seedBusiness(businessId);
     await seedMembership({
@@ -397,16 +434,20 @@ describe("Reward Program commands — cross-store integration", () => {
       role: "owner",
     });
 
-    await expect(
-      createRewardProgram(db, pool, {
+    try {
+      await createRewardProgram(db, pool, {
         userId: "owner-1",
         request: baseDraftRequest(businessId, {
-          qualifyingNodes: [{ knowledgeNodeId: "does-not-exist", businessDisplayName: null }],
+          qualifyingItemIds: ["3f2b8c1e-9d4a-4e6b-8a1c-0d5e7f9a2b3c"],
         }) as never,
         idempotencyKey: nextId("key"),
         correlationId: nextId("corr"),
-      }),
-    ).rejects.toThrow(RewardProgramDomainError);
+      });
+      expect.unreachable("fabricated item id must reject");
+    } catch (error) {
+      expect(error).toBeInstanceOf(RewardProgramDomainError);
+      expect((error as RewardProgramDomainError).category).toBe("RESOURCE_NOT_FOUND");
+    }
 
     const count = await pool.query("SELECT count(*) FROM reward_programs WHERE business_id = $1", [
       businessId,
@@ -423,10 +464,11 @@ describe("Reward Program commands — cross-store integration", () => {
       businessId,
       role: "owner",
     });
+    const item = await createItem(businessId, "Black Coffee");
 
     const created = await createRewardProgram(db, pool, {
       userId: "owner-1",
-      request: baseDraftRequest(businessId) as never,
+      request: baseDraftRequest(businessId, { qualifyingItemIds: [item.id] }) as never,
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
     });
@@ -442,7 +484,7 @@ describe("Reward Program commands — cross-store integration", () => {
         multipleUnitsAllowed: true,
         sharedLoyaltyNumberAllowed: false,
         effectiveFrom: created.version.effectiveFrom,
-        qualifyingNodes: created.version.qualifyingNodes,
+        qualifyingItemIds: snapshotIds(created.version),
       } as never,
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
@@ -462,7 +504,7 @@ describe("Reward Program commands — cross-store integration", () => {
           multipleUnitsAllowed: true,
           sharedLoyaltyNumberAllowed: false,
           effectiveFrom: created.version.effectiveFrom,
-          qualifyingNodes: created.version.qualifyingNodes,
+          qualifyingItemIds: snapshotIds(created.version),
         } as never,
         idempotencyKey: nextId("key"),
         correlationId: nextId("corr"),
@@ -488,7 +530,7 @@ describe("Reward Program commands — cross-store integration", () => {
           multipleUnitsAllowed: true,
           sharedLoyaltyNumberAllowed: false,
           effectiveFrom: created.version.effectiveFrom,
-          qualifyingNodes: created.version.qualifyingNodes,
+          qualifyingItemIds: snapshotIds(created.version),
         } as never,
         idempotencyKey: nextId("key"),
         correlationId: nextId("corr"),
@@ -505,10 +547,11 @@ describe("Reward Program commands — cross-store integration", () => {
       businessId,
       role: "owner",
     });
+    const item = await createItem(businessId, "Black Coffee");
 
     const created = await createRewardProgram(db, pool, {
       userId: "owner-1",
-      request: baseDraftRequest(businessId) as never,
+      request: baseDraftRequest(businessId, { qualifyingItemIds: [item.id] }) as never,
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
     });
@@ -549,7 +592,7 @@ describe("Reward Program commands — cross-store integration", () => {
     ).rejects.toThrow(RewardProgramDomainError);
   });
 
-  it("publishRewardProgramVersion: rejects publication when a qualifying node is not active (validated before any PostgreSQL write)", async () => {
+  it("publishRewardProgramVersion: rejects binding an item whose Commerce Knowledge classification is not active (validated before any PostgreSQL write)", async () => {
     const businessId = nextId("biz");
     await seedBusiness(businessId);
     await seedMembership({
@@ -558,6 +601,7 @@ describe("Reward Program commands — cross-store integration", () => {
       businessId,
       role: "owner",
     });
+    const item = await createItem(businessId, "Black Coffee");
 
     const inactiveNodeId = nextId("node");
     await createKnowledgeNodePersisted(db, {
@@ -569,17 +613,53 @@ describe("Reward Program commands — cross-store integration", () => {
       createdAt: CREATED_AT,
     });
     // Left in "draft" status -- never activated.
+    const unclassifiedItem = await createItem(businessId, "Unclassified Item");
 
     const created = await createRewardProgram(db, pool, {
       userId: "owner-1",
       request: baseDraftRequest(businessId, {
-        qualifyingNodes: [{ knowledgeNodeId: PRODUCT_NODE, businessDisplayName: null }],
+        qualifyingItemIds: [item.id],
       }) as never,
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
     });
 
-    // Edit the draft to reference the not-yet-active node, then attempt publish — must be rejected.
+    // An unclassified item carries no mapping to validate -- binding it to
+    // the draft succeeds with zero Commerce Knowledge involvement.
+    const updated = await updateRewardProgramDraft(db, pool, {
+      userId: "owner-1",
+      request: {
+        businessId,
+        rewardProgramId: created.program.id,
+        versionId: created.version.id,
+        expectedRowVersion: created.version.rowVersion,
+        rewardDescription: created.version.rewardDescription,
+        multipleUnitsAllowed: true,
+        sharedLoyaltyNumberAllowed: false,
+        effectiveFrom: created.version.effectiveFrom,
+        qualifyingItemIds: [unclassifiedItem.id],
+      } as never,
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+    expect(updated.qualifyingItems).toHaveLength(1);
+
+    // But an item is never creatable here with a bad mapping -- the
+    // classification gate lives at item-creation time, and the Reward
+    // Program path re-checks a PRESENT mapping. Prove the re-check: map the
+    // live item to the never-activated node directly at the repository
+    // layer (bypassing the command's own validation, exactly as a mapping
+    // that became ineligible AFTER item creation would present), then
+    // attempt a draft edit referencing it -- must be rejected.
+    await withPlatformTransaction(pool, async (tx) => {
+      await updateQualifyingItemRow(tx, {
+        businessId,
+        id: item.id,
+        actorId: "test-seed",
+        knowledgeNodeId: inactiveNodeId,
+      });
+    });
+
     await expect(
       updateRewardProgramDraft(db, pool, {
         userId: "owner-1",
@@ -587,12 +667,12 @@ describe("Reward Program commands — cross-store integration", () => {
           businessId,
           rewardProgramId: created.program.id,
           versionId: created.version.id,
-          expectedRowVersion: created.version.rowVersion,
+          expectedRowVersion: updated.rowVersion,
           rewardDescription: created.version.rewardDescription,
           multipleUnitsAllowed: true,
           sharedLoyaltyNumberAllowed: false,
           effectiveFrom: created.version.effectiveFrom,
-          qualifyingNodes: [{ knowledgeNodeId: inactiveNodeId, businessDisplayName: null }],
+          qualifyingItemIds: [item.id],
         } as never,
         idempotencyKey: nextId("key"),
         correlationId: nextId("corr"),
@@ -606,7 +686,7 @@ describe("Reward Program commands — cross-store integration", () => {
     expect(stillDraft.rows[0].status).toBe("draft");
   });
 
-  it("publishRewardProgramVersion: a historical published version remains valid after its qualifying node is later retired", async () => {
+  it("publishRewardProgramVersion: a historical published version remains readable after its Qualifying Item is later retired", async () => {
     const businessId = nextId("biz");
     await seedBusiness(businessId);
     await seedMembership({
@@ -616,26 +696,14 @@ describe("Reward Program commands — cross-store integration", () => {
       role: "owner",
     });
 
-    const nodeToRetire = nextId("node");
-    await createKnowledgeNodePersisted(db, {
-      id: nodeToRetire,
-      nodeType: "standard_product",
-      parentId: CATEGORY_NODE,
-      canonicalName: "Will be retired",
-      slug: nodeToRetire,
-      createdAt: CREATED_AT,
-    });
-    await transitionKnowledgeNodeStatusPersisted(db, nodeToRetire, "in_review", {
-      updatedAt: CREATED_AT,
-    });
-    await transitionKnowledgeNodeStatusPersisted(db, nodeToRetire, "active", {
-      updatedAt: CREATED_AT,
-    });
+    // Unclassified item: retirement here exercises the item lifecycle
+    // alone, with no Commerce Knowledge involvement on either side.
+    const item = await createItem(businessId, "Seasonal Special");
 
     const created = await createRewardProgram(db, pool, {
       userId: "owner-1",
       request: baseDraftRequest(businessId, {
-        qualifyingNodes: [{ knowledgeNodeId: nodeToRetire, businessDisplayName: null }],
+        qualifyingItemIds: [item.id],
       }) as never,
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
@@ -648,14 +716,20 @@ describe("Reward Program commands — cross-store integration", () => {
       correlationId: nextId("corr"),
     });
     expect(published.status).toBe("active");
+    expect(published.qualifyingItems).toEqual([
+      {
+        qualifyingItemId: item.id,
+        itemNameAtVersion: "Seasonal Special",
+        knowledgeNodeIdAtVersion: null,
+      },
+    ]);
 
-    // Retire the node AFTER publication.
-    await retireKnowledgeNodePersisted(db, nodeToRetire, {
-      updatedAt: new Date(),
-      replacementNodeId: PRODUCT_NODE,
-    });
+    // Retire the item AFTER publication -- retirement is terminal for NEW
+    // bindings but must never break the already-existing version.
+    await retireItem(businessId, item.id);
 
-    // The historical published version must still be readable and unaffected.
+    // The historical published version must still be readable, with its
+    // frozen snapshot intact (no dependency on the mutable live row).
     const stillReadable = await getRewardProgram(db, pool, {
       userId: "owner-1",
       businessId,
@@ -663,6 +737,13 @@ describe("Reward Program commands — cross-store integration", () => {
     });
     expect(stillReadable.currentVersion?.status).toBe("active");
     expect(stillReadable.currentVersion?.id).toBe(published.id);
+    expect(stillReadable.currentVersion?.qualifyingItems).toEqual([
+      {
+        qualifyingItemId: item.id,
+        itemNameAtVersion: "Seasonal Special",
+        knowledgeNodeIdAtVersion: null,
+      },
+    ]);
   });
 
   it("createNextRewardProgramVersion: creates version 2 as a new draft, preserves version 1, rejects a second simultaneous draft", async () => {
@@ -674,10 +755,11 @@ describe("Reward Program commands — cross-store integration", () => {
       businessId,
       role: "owner",
     });
+    const item = await createItem(businessId, "Black Coffee");
 
     const created = await createRewardProgram(db, pool, {
       userId: "owner-1",
-      request: baseDraftRequest(businessId) as never,
+      request: baseDraftRequest(businessId, { qualifyingItemIds: [item.id] }) as never,
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
     });
@@ -697,7 +779,7 @@ describe("Reward Program commands — cross-store integration", () => {
         multipleUnitsAllowed: true,
         sharedLoyaltyNumberAllowed: false,
         effectiveFrom: created.version.effectiveFrom,
-        qualifyingNodes: created.version.qualifyingNodes,
+        qualifyingItemIds: snapshotIds(created.version),
       } as never,
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
@@ -723,7 +805,7 @@ describe("Reward Program commands — cross-store integration", () => {
           multipleUnitsAllowed: true,
           sharedLoyaltyNumberAllowed: false,
           effectiveFrom: created.version.effectiveFrom,
-          qualifyingNodes: created.version.qualifyingNodes,
+          qualifyingItemIds: snapshotIds(created.version),
         } as never,
         idempotencyKey: nextId("key"),
         correlationId: nextId("corr"),
@@ -793,10 +875,11 @@ describe("Reward Program corrected workflows (PLATFORM-BASELINE-005A-CORR-001)",
       businessId,
       role: "owner",
     });
+    const item = await createItem(businessId, "Black Coffee");
 
     await createRewardProgram(db, pool, {
       userId: "owner-1",
-      request: baseDraftRequest(businessId) as never,
+      request: baseDraftRequest(businessId, { qualifyingItemIds: [item.id] }) as never,
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
     });
@@ -829,7 +912,7 @@ describe("Reward Program corrected workflows (PLATFORM-BASELINE-005A-CORR-001)",
         multipleUnitsAllowed: true,
         sharedLoyaltyNumberAllowed: false,
         effectiveFrom: fetched.draftVersion?.effectiveFrom ?? new Date(),
-        qualifyingNodes: fetched.draftVersion?.qualifyingNodes ?? [],
+        qualifyingItemIds: fetched.draftVersion ? snapshotIds(fetched.draftVersion) : [],
       } as never,
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
@@ -858,10 +941,11 @@ describe("Reward Program corrected workflows (PLATFORM-BASELINE-005A-CORR-001)",
       businessId,
       role: "owner",
     });
+    const item = await createItem(businessId, "Black Coffee");
 
     const created = await createRewardProgram(db, pool, {
       userId: "owner-1",
-      request: baseDraftRequest(businessId) as never,
+      request: baseDraftRequest(businessId, { qualifyingItemIds: [item.id] }) as never,
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
     });
@@ -880,7 +964,7 @@ describe("Reward Program corrected workflows (PLATFORM-BASELINE-005A-CORR-001)",
         multipleUnitsAllowed: true,
         sharedLoyaltyNumberAllowed: false,
         effectiveFrom: created.version.effectiveFrom,
-        qualifyingNodes: created.version.qualifyingNodes,
+        qualifyingItemIds: snapshotIds(created.version),
       } as never,
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
@@ -916,7 +1000,7 @@ describe("Reward Program corrected workflows (PLATFORM-BASELINE-005A-CORR-001)",
         multipleUnitsAllowed: true,
         sharedLoyaltyNumberAllowed: false,
         effectiveFrom: refetched.draftVersion?.effectiveFrom ?? new Date(),
-        qualifyingNodes: refetched.draftVersion?.qualifyingNodes ?? [],
+        qualifyingItemIds: refetched.draftVersion ? snapshotIds(refetched.draftVersion) : [],
       } as never,
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
@@ -1073,7 +1157,7 @@ describe("Reward Program corrected workflows (PLATFORM-BASELINE-005A-CORR-001)",
         multipleUnitsAllowed: true,
         sharedLoyaltyNumberAllowed: false,
         effectiveFrom: created.version.effectiveFrom,
-        qualifyingNodes: created.version.qualifyingNodes,
+        qualifyingItemIds: snapshotIds(created.version),
       } as never,
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
@@ -1094,7 +1178,7 @@ describe("Reward Program corrected workflows (PLATFORM-BASELINE-005A-CORR-001)",
           multipleUnitsAllowed: true,
           sharedLoyaltyNumberAllowed: false,
           effectiveFrom: created.version.effectiveFrom,
-          qualifyingNodes: created.version.qualifyingNodes,
+          qualifyingItemIds: snapshotIds(created.version),
         } as never,
         idempotencyKey: nextId("key"),
         correlationId: nextId("corr"),
@@ -1129,7 +1213,7 @@ describe("Reward Program corrected workflows (PLATFORM-BASELINE-005A-CORR-001)",
         multipleUnitsAllowed: true,
         sharedLoyaltyNumberAllowed: false,
         effectiveFrom: created.version.effectiveFrom,
-        qualifyingNodes: created.version.qualifyingNodes,
+        qualifyingItemIds: snapshotIds(created.version),
       } as never,
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
@@ -1163,7 +1247,7 @@ describe("Reward Program corrected workflows (PLATFORM-BASELINE-005A-CORR-001)",
       multipleUnitsAllowed: true,
       sharedLoyaltyNumberAllowed: false,
       effectiveFrom: created.version.effectiveFrom,
-      qualifyingNodes: created.version.qualifyingNodes,
+      qualifyingItemIds: snapshotIds(created.version),
     };
     // The exact hash this request deterministically produces (the pure
     // helper the command itself uses), seeded as an in-flight reservation.
@@ -1180,7 +1264,7 @@ describe("Reward Program corrected workflows (PLATFORM-BASELINE-005A-CORR-001)",
         bulkReviewThreshold: null,
         effectiveFrom: draftRequest.effectiveFrom,
         effectiveUntil: null,
-        qualifyingNodes: draftRequest.qualifyingNodes,
+        qualifyingItemIds: draftRequest.qualifyingItemIds,
       }),
     );
     // The reservation must be held under the SAME idempotency key the call
@@ -1244,7 +1328,7 @@ describe("Reward Program corrected workflows (PLATFORM-BASELINE-005A-CORR-001)",
           multipleUnitsAllowed: true,
           sharedLoyaltyNumberAllowed: false,
           effectiveFrom: created.version.effectiveFrom,
-          qualifyingNodes: created.version.qualifyingNodes,
+          qualifyingItemIds: snapshotIds(created.version),
         } as never,
         idempotencyKey: heldKey,
         correlationId: nextId("corr"),
@@ -1265,10 +1349,14 @@ describe("Reward Program corrected workflows (PLATFORM-BASELINE-005A-CORR-001)",
       businessId,
       role: "owner",
     });
+    const item = await createItem(businessId, "Black Coffee");
 
     const created = await createRewardProgram(db, pool, {
       userId: "owner-1",
-      request: baseDraftRequest(businessId, { sharedLoyaltyNumberAllowed: false }) as never,
+      request: baseDraftRequest(businessId, {
+        sharedLoyaltyNumberAllowed: false,
+        qualifyingItemIds: [item.id],
+      }) as never,
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
     });
@@ -1289,7 +1377,7 @@ describe("Reward Program corrected workflows (PLATFORM-BASELINE-005A-CORR-001)",
         multipleUnitsAllowed: true,
         sharedLoyaltyNumberAllowed: true,
         effectiveFrom: created.version.effectiveFrom,
-        qualifyingNodes: created.version.qualifyingNodes,
+        qualifyingItemIds: snapshotIds(created.version),
       } as never,
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
@@ -1304,6 +1392,7 @@ describe("Reward Program corrected workflows (PLATFORM-BASELINE-005A-CORR-001)",
         programId: created.program.id,
         versionId: v2.id,
         actorUpdatedBy: "owner-1",
+        qualifyingItems: [...v2.qualifyingItems],
       });
       throw new Error("simulated publication failure");
     }).catch(() => undefined);
@@ -1368,16 +1457,15 @@ describe("Reward Program corrected workflows (PLATFORM-BASELINE-005A-CORR-001)",
 /**
  * `PLATFORM-BASELINE-010B` (Founder decision `DEC-LOY-014` /
  * `FD-REWARD-QUALIFICATION-001`): a Reward Program Category is no longer
- * a required qualification prerequisite -- the Business-selected
- * canonical `standard_product`/`standard_service` qualifying node(s) are
- * the operative qualification definition. These tests prove the create
- * path succeeds with `rewardProgramCategoryId: null`, that one or many
- * qualifying products/services persist correctly, that invalid/fabricated/
- * wrong-typed/ineligible qualifying-node ids still fail exactly as before
- * (Business Type/category is not a second gate, but node-level validation
- * is completely untouched), that an existing category-bearing program
- * keeps working unchanged, and that publish-time (RF-3) validation
- * remains authoritative.
+ * a required qualification prerequisite -- the Business-owned Qualifying
+ * Items (`PLATFORM-BASELINE-013B`, `DEC-LOY-016`) are the operative
+ * qualification definition. These tests prove the create path succeeds
+ * with `rewardProgramCategoryId: null`, that one or many Business-owned
+ * items persist correctly, that invalid/fabricated/foreign/retired item
+ * ids still fail exactly as before (category is not a second gate, but
+ * item-level validation is fully effective), that an existing
+ * category-bearing program keeps working unchanged, and that publish-time
+ * (RF-3) validation remains authoritative.
  */
 describe("Reward Program commands — PLATFORM-BASELINE-010B (Reward Program Category optional)", () => {
   function categorylessDraftRequest(businessId: string, overrides: Record<string, unknown> = {}) {
@@ -1389,7 +1477,7 @@ describe("Reward Program commands — PLATFORM-BASELINE-010B (Reward Program Cat
       multipleUnitsAllowed: true,
       sharedLoyaltyNumberAllowed: false,
       effectiveFrom: new Date("2026-09-17T00:00:00.000Z"),
-      qualifyingNodes: [{ knowledgeNodeId: PRODUCT_NODE, businessDisplayName: null }],
+      qualifyingItemIds: [],
       ...overrides,
     };
   }
@@ -1440,50 +1528,62 @@ describe("Reward Program commands — PLATFORM-BASELINE-010B (Reward Program Cat
     expect(row.rows[0].reward_program_category_id).toBeNull();
   });
 
-  // Item B: one canonical qualifying product can be selected and persisted.
-  it("B: a single canonical qualifying product persists correctly", async () => {
+  // Item B: one Business-owned qualifying item can be selected and persisted.
+  it("B: a single Business-owned qualifying item persists correctly", async () => {
     const businessId = nextId("biz");
     await seedOwner(businessId);
+    const item = await createItem(businessId, "Black Coffee");
 
     const result = await createRewardProgram(db, pool, {
       userId: "owner-1",
       request: categorylessDraftRequest(businessId, {
-        qualifyingNodes: [{ knowledgeNodeId: PRODUCT_NODE, businessDisplayName: null }],
+        qualifyingItemIds: [item.id],
       }) as never,
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
     });
 
-    expect(result.version.qualifyingNodes).toEqual([
-      { knowledgeNodeId: PRODUCT_NODE, businessDisplayName: null },
+    expect(result.version.qualifyingItems).toEqual([
+      {
+        qualifyingItemId: item.id,
+        itemNameAtVersion: "Black Coffee",
+        knowledgeNodeIdAtVersion: null,
+      },
     ]);
   });
 
-  // Item C: multiple canonical qualifying products/services can be selected and persisted.
-  it("C: multiple canonical qualifying products/services persist correctly", async () => {
+  // Item C: multiple Business-owned qualifying items can be selected and persisted.
+  it("C: multiple Business-owned qualifying items persist correctly", async () => {
     const businessId = nextId("biz");
     await seedOwner(businessId);
+    const coffee = await createItem(businessId, "Black Coffee");
+    const pizza = await createItem(businessId, "Medium Pizza");
 
     const result = await createRewardProgram(db, pool, {
       userId: "owner-1",
       request: categorylessDraftRequest(businessId, {
-        qualifyingNodes: [
-          { knowledgeNodeId: PRODUCT_NODE, businessDisplayName: "Black Coffee" },
-          { knowledgeNodeId: PRODUCT_NODE_2, businessDisplayName: "Medium Pizza" },
-        ],
+        qualifyingItemIds: [coffee.id, pizza.id],
       }) as never,
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
     });
 
-    expect(result.version.qualifyingNodes).toEqual([
-      { knowledgeNodeId: PRODUCT_NODE, businessDisplayName: "Black Coffee" },
-      { knowledgeNodeId: PRODUCT_NODE_2, businessDisplayName: "Medium Pizza" },
+    expect(result.version.qualifyingItems).toEqual([
+      {
+        qualifyingItemId: coffee.id,
+        itemNameAtVersion: "Black Coffee",
+        knowledgeNodeIdAtVersion: null,
+      },
+      {
+        qualifyingItemId: pizza.id,
+        itemNameAtVersion: "Medium Pizza",
+        knowledgeNodeIdAtVersion: null,
+      },
     ]);
   });
 
-  // Item D: missing/nonexistent qualifying-node ids fail creation.
-  it("D: a nonexistent qualifying-node id fails creation, even with no category", async () => {
+  // Item D: missing/nonexistent Qualifying Item ids fail creation.
+  it("D: a nonexistent Qualifying Item id fails creation, even with no category", async () => {
     const businessId = nextId("biz");
     await seedOwner(businessId);
 
@@ -1491,9 +1591,7 @@ describe("Reward Program commands — PLATFORM-BASELINE-010B (Reward Program Cat
       createRewardProgram(db, pool, {
         userId: "owner-1",
         request: categorylessDraftRequest(businessId, {
-          qualifyingNodes: [
-            { knowledgeNodeId: "does-not-exist-at-all", businessDisplayName: null },
-          ],
+          qualifyingItemIds: ["11111111-2222-4333-8444-555555555555"],
         }) as never,
         idempotencyKey: nextId("key"),
         correlationId: nextId("corr"),
@@ -1506,18 +1604,54 @@ describe("Reward Program commands — PLATFORM-BASELINE-010B (Reward Program Cat
     expect(Number(count.rows[0].count)).toBe(0);
   });
 
-  // Item E: fabricated canonical ids fail (distinct test for clarity, same mechanism as D).
-  it("E: a fabricated/guessed canonical id fails creation, never accepted merely by looking well-formed", async () => {
+  // Item E: fabricated/guessed Qualifying Item ids fail (distinct test for clarity, same mechanism as D).
+  it("E: a fabricated/guessed Qualifying Item id fails creation, never accepted merely by looking well-formed", async () => {
     const businessId = nextId("biz");
     await seedOwner(businessId);
+
+    try {
+      await createRewardProgram(db, pool, {
+        userId: "owner-1",
+        request: categorylessDraftRequest(businessId, {
+          qualifyingItemIds: ["aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"],
+        }) as never,
+        idempotencyKey: nextId("key"),
+        correlationId: nextId("corr"),
+      });
+      expect.unreachable("fabricated item id must reject");
+    } catch (error) {
+      expect(error).toBeInstanceOf(RewardProgramDomainError);
+      // No existence disclosure: identical category to a genuinely absent id.
+      expect((error as RewardProgramDomainError).category).toBe("RESOURCE_NOT_FOUND");
+    }
+  });
+
+  // Item F: an item whose PRESENT Commerce Knowledge classification is
+  // wrong-typed fails -- the classification gate is re-checked at bind
+  // time, not only at item-creation time.
+  it("F: an item carrying a wrong-typed classification mapping fails as a qualifying item", async () => {
+    const businessId = nextId("biz");
+    await seedOwner(businessId);
+    const item = await createItem(businessId, "Black Coffee");
+
+    // TYPE is a business_type, not a standard_product/standard_service.
+    // Applied at the repository layer to simulate a mapping that became
+    // ineligible after the item was created (the command path itself would
+    // never write such a mapping).
+    await withPlatformTransaction(pool, async (tx) => {
+      await updateQualifyingItemRow(tx, {
+        businessId,
+        id: item.id,
+        actorId: "test-seed",
+        knowledgeNodeId: TYPE,
+      });
+    });
 
     await expect(
       createRewardProgram(db, pool, {
         userId: "owner-1",
         request: categorylessDraftRequest(businessId, {
-          qualifyingNodes: [
-            { knowledgeNodeId: "fabricated-canonical-id-1234567890", businessDisplayName: null },
-          ],
+          qualifyingItemIds: [item.id],
         }) as never,
         idempotencyKey: nextId("key"),
         correlationId: nextId("corr"),
@@ -1525,25 +1659,8 @@ describe("Reward Program commands — PLATFORM-BASELINE-010B (Reward Program Cat
     ).rejects.toThrow(RewardProgramDomainError);
   });
 
-  // Item F: wrong Commerce-Knowledge node types (e.g. a business_type id) fail.
-  it("F: a wrong-typed node id (a business_type, not a standard_product/standard_service) fails as a qualifying node", async () => {
-    const businessId = nextId("biz");
-    await seedOwner(businessId);
-
-    await expect(
-      createRewardProgram(db, pool, {
-        userId: "owner-1",
-        request: categorylessDraftRequest(businessId, {
-          qualifyingNodes: [{ knowledgeNodeId: TYPE, businessDisplayName: null }],
-        }) as never,
-        idempotencyKey: nextId("key"),
-        correlationId: nextId("corr"),
-      }),
-    ).rejects.toThrow(RewardProgramDomainError);
-  });
-
-  // Item G: draft/in_review/otherwise-ineligible nodes fail as qualifying-node selections.
-  it("G: a draft (not-yet-active) canonical node fails as a qualifying node selection", async () => {
+  // Item G: an item whose PRESENT classification mapping is not yet active fails.
+  it("G: an item carrying a draft (not-yet-active) classification mapping fails as a qualifying item", async () => {
     const businessId = nextId("biz");
     await seedOwner(businessId);
 
@@ -1557,12 +1674,21 @@ describe("Reward Program commands — PLATFORM-BASELINE-010B (Reward Program Cat
       createdAt: CREATED_AT,
     });
     // Left in "draft" status deliberately -- never transitioned to active.
+    const item = await createItem(businessId, "Black Coffee");
+    await withPlatformTransaction(pool, async (tx) => {
+      await updateQualifyingItemRow(tx, {
+        businessId,
+        id: item.id,
+        actorId: "test-seed",
+        knowledgeNodeId: draftNodeId,
+      });
+    });
 
     await expect(
       createRewardProgram(db, pool, {
         userId: "owner-1",
         request: categorylessDraftRequest(businessId, {
-          qualifyingNodes: [{ knowledgeNodeId: draftNodeId, businessDisplayName: null }],
+          qualifyingItemIds: [item.id],
         }) as never,
         idempotencyKey: nextId("key"),
         correlationId: nextId("corr"),
@@ -1574,10 +1700,11 @@ describe("Reward Program commands — PLATFORM-BASELINE-010B (Reward Program Cat
   it("H: an existing category-bearing Reward Program remains fully operational unchanged", async () => {
     const businessId = nextId("biz");
     await seedOwner(businessId);
+    const item = await createItem(businessId, "Black Coffee");
 
     const created = await createRewardProgram(db, pool, {
       userId: "owner-1",
-      request: baseDraftRequest(businessId) as never, // baseDraftRequest sets rewardProgramCategoryId: CATEGORY_NODE
+      request: baseDraftRequest(businessId, { qualifyingItemIds: [item.id] }) as never, // baseDraftRequest sets rewardProgramCategoryId: CATEGORY_NODE
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
     });
@@ -1601,7 +1728,7 @@ describe("Reward Program commands — PLATFORM-BASELINE-010B (Reward Program Cat
         multipleUnitsAllowed: true,
         sharedLoyaltyNumberAllowed: false,
         effectiveFrom: created.version.effectiveFrom,
-        qualifyingNodes: created.version.qualifyingNodes,
+        qualifyingItemIds: snapshotIds(created.version),
       } as never,
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
@@ -1618,37 +1745,41 @@ describe("Reward Program commands — PLATFORM-BASELINE-010B (Reward Program Cat
   });
 
   /**
-   * Item Q (Business Type is not a qualification gate): the write-time
-   * qualifying-node validation (`validateQualifyingNodes`) has no
-   * Business-Type or category scoping of its own -- a canonical
-   * `standard_product`/`standard_service` node is accepted purely on its
-   * own existence/type/eligibility, regardless of which
+   * Item Q (category is not a qualification gate): the write-time
+   * qualification validation has no category scoping of its own -- a
+   * Business-owned Qualifying Item is accepted purely on its own
+   * existence/ownership/eligibility, regardless of which
    * `reward_program_category` (or none at all) the creating request
-   * names. `PRODUCT_NODE_2` here is a real, active, governed node that
-   * this specific request's (absent) category never named -- proving
-   * category/Business-Type is never consulted as a second gate at write
-   * time.
+   * names. The item here carries a real, active classification mapping to
+   * `PRODUCT_NODE_2` that this specific request's (absent) category never
+   * named -- proving category is never consulted as a second gate at write
+   * time, while the mapping itself is still validated.
    */
-  it("Q: a qualifying node is accepted purely on its own eligibility -- no Business-Type/category gate at write time", async () => {
+  it("Q: a qualifying item is accepted purely on its own eligibility -- no category gate at write time", async () => {
     const businessId = nextId("biz");
     await seedOwner(businessId);
+    const item = await createItem(businessId, "Medium Pizza", PRODUCT_NODE_2);
 
     const result = await createRewardProgram(db, pool, {
       userId: "owner-1",
       request: categorylessDraftRequest(businessId, {
-        qualifyingNodes: [{ knowledgeNodeId: PRODUCT_NODE_2, businessDisplayName: null }],
+        qualifyingItemIds: [item.id],
       }) as never,
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
     });
 
-    expect(result.version.qualifyingNodes).toEqual([
-      { knowledgeNodeId: PRODUCT_NODE_2, businessDisplayName: null },
+    expect(result.version.qualifyingItems).toEqual([
+      {
+        qualifyingItemId: item.id,
+        itemNameAtVersion: "Medium Pizza",
+        knowledgeNodeIdAtVersion: PRODUCT_NODE_2,
+      },
     ]);
   });
 
   // Item S: publish-time (RF-3) validation remains authoritative even with no category.
-  it("S: publish-time validation still rejects an invalid qualifying-node reference for a category-less program", async () => {
+  it("S: publish-time validation still rejects an item whose classification mapping became ineligible for a category-less program", async () => {
     const businessId = nextId("biz");
     await seedOwner(businessId);
 
@@ -1671,18 +1802,19 @@ describe("Reward Program commands — PLATFORM-BASELINE-010B (Reward Program Cat
     await transitionKnowledgeNodeStatusPersisted(db, disposableNodeId, "active", {
       updatedAt: CREATED_AT,
     });
+    const item = await createItem(businessId, "Disposable Special", disposableNodeId);
 
     const created = await createRewardProgram(db, pool, {
       userId: "owner-1",
       request: categorylessDraftRequest(businessId, {
-        qualifyingNodes: [{ knowledgeNodeId: disposableNodeId, businessDisplayName: null }],
+        qualifyingItemIds: [item.id],
       }) as never,
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
     });
 
-    // Retire the qualifying node between draft creation and publish --
-    // RF-3's authoritative pre-transaction Firestore read must still catch it.
+    // Retire the item's classification mapping between draft creation and
+    // publish -- RF-3's authoritative pre-transaction read must still catch it.
     await retireKnowledgeNodePersisted(db, disposableNodeId, {
       updatedAt: new Date(),
       replacementNodeId: PRODUCT_NODE,
@@ -1705,14 +1837,16 @@ describe("Reward Program commands — PLATFORM-BASELINE-010B (Reward Program Cat
 
 /**
  * `PLATFORM-BASELINE-010B-CORR-001` P1 (independent review finding
- * `PLATFORM-BASELINE-010B-ITR-001`): `rewardProgramCategoryId: null` +
- * `qualifyingNodes: []` must remain a valid DRAFT state (configuration
- * still in progress) but must never reach `active` -- the qualifying
- * canonical node(s) are a Reward Program's operative qualification
- * definition, so publication with none is ungoverned. Letters below map
- * directly to the correction task's "TESTS MUST PROVE AT MINIMUM" list.
+ * `PLATFORM-BASELINE-010B-ITR-001`), re-based on Business-owned items by
+ * `PLATFORM-BASELINE-013B` (`DEC-LOY-016`): `rewardProgramCategoryId:
+ * null` + `qualifyingItemIds: []` must remain a valid DRAFT state
+ * (configuration still in progress) but must never reach `active` -- the
+ * qualifying Business-owned item(s) are a Reward Program's operative
+ * qualification definition, so publication with none is ungoverned.
+ * Letters below map directly to the correction task's "TESTS MUST PROVE AT
+ * MINIMUM" list.
  */
-describe("Reward Program commands — PLATFORM-BASELINE-010B-CORR-001 (publish requires >=1 qualifying node)", () => {
+describe("Reward Program commands — PLATFORM-BASELINE-010B-CORR-001 (publish requires >=1 qualifying item)", () => {
   async function seedOwner(businessId: string) {
     await seedBusiness(businessId);
     await seedMembership({
@@ -1732,13 +1866,13 @@ describe("Reward Program commands — PLATFORM-BASELINE-010B-CORR-001 (publish r
       multipleUnitsAllowed: true,
       sharedLoyaltyNumberAllowed: false,
       effectiveFrom: new Date("2026-09-17T00:00:00.000Z"),
-      qualifyingNodes: [],
+      qualifyingItemIds: [],
       ...overrides,
     };
   }
 
-  // A: draft creation with category=null + qualifyingNodes=[] remains permitted.
-  it("A: creates a draft with rewardProgramCategoryId: null and qualifyingNodes: [] (incomplete configuration in progress)", async () => {
+  // A: draft creation with category=null + qualifyingItemIds=[] remains permitted.
+  it("A: creates a draft with rewardProgramCategoryId: null and qualifyingItemIds: [] (incomplete configuration in progress)", async () => {
     const businessId = nextId("biz");
     await seedOwner(businessId);
 
@@ -1750,12 +1884,12 @@ describe("Reward Program commands — PLATFORM-BASELINE-010B-CORR-001 (publish r
     });
 
     expect(result.program.rewardProgramCategoryId).toBeNull();
-    expect(result.version.qualifyingNodes).toEqual([]);
+    expect(result.version.qualifyingItems).toEqual([]);
     expect(result.version.status).toBe("draft");
   });
 
-  // B: publishing category=null + qualifyingNodes=[] is rejected with a governed domain error.
-  it("B: rejects publishing a version with rewardProgramCategoryId: null and zero qualifying nodes", async () => {
+  // B: publishing category=null + qualifyingItemIds=[] is rejected with a governed domain error.
+  it("B: rejects publishing a version with rewardProgramCategoryId: null and zero qualifying items", async () => {
     const businessId = nextId("biz");
     await seedOwner(businessId);
 
@@ -1789,15 +1923,16 @@ describe("Reward Program commands — PLATFORM-BASELINE-010B-CORR-001 (publish r
     expect(readModel.draftVersion?.status).toBe("draft");
   });
 
-  // C: publishing with one valid canonical qualifying node succeeds.
-  it("C: publishes successfully with one valid qualifying node and no category", async () => {
+  // C: publishing with one valid Business-owned qualifying item succeeds.
+  it("C: publishes successfully with one valid qualifying item and no category", async () => {
     const businessId = nextId("biz");
     await seedOwner(businessId);
+    const item = await createItem(businessId, "Black Coffee");
 
     const created = await createRewardProgram(db, pool, {
       userId: "owner-1",
       request: emptyDraftRequest(businessId, {
-        qualifyingNodes: [{ knowledgeNodeId: PRODUCT_NODE, businessDisplayName: null }],
+        qualifyingItemIds: [item.id],
       }) as never,
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
@@ -1811,20 +1946,26 @@ describe("Reward Program commands — PLATFORM-BASELINE-010B-CORR-001 (publish r
     });
 
     expect(published.status).toBe("active");
+    expect(published.qualifyingItems).toEqual([
+      {
+        qualifyingItemId: item.id,
+        itemNameAtVersion: "Black Coffee",
+        knowledgeNodeIdAtVersion: null,
+      },
+    ]);
   });
 
-  // D: publishing with multiple valid canonical qualifying nodes succeeds.
-  it("D: publishes successfully with multiple valid qualifying nodes and no category", async () => {
+  // D: publishing with multiple valid Business-owned qualifying items succeeds.
+  it("D: publishes successfully with multiple valid qualifying items and no category", async () => {
     const businessId = nextId("biz");
     await seedOwner(businessId);
+    const coffee = await createItem(businessId, "Black Coffee");
+    const pizza = await createItem(businessId, "Medium Pizza");
 
     const created = await createRewardProgram(db, pool, {
       userId: "owner-1",
       request: emptyDraftRequest(businessId, {
-        qualifyingNodes: [
-          { knowledgeNodeId: PRODUCT_NODE, businessDisplayName: "Black Coffee" },
-          { knowledgeNodeId: PRODUCT_NODE_2, businessDisplayName: "Medium Pizza" },
-        ],
+        qualifyingItemIds: [coffee.id, pizza.id],
       }) as never,
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
@@ -1838,20 +1979,20 @@ describe("Reward Program commands — PLATFORM-BASELINE-010B-CORR-001 (publish r
     });
 
     expect(published.status).toBe("active");
-    expect(published.qualifyingNodes).toHaveLength(2);
+    expect(published.qualifyingItems).toHaveLength(2);
   });
 
   // E: category=null does not itself cause rejection -- only an empty
-  // qualifyingNodes list does (proven independently of C: a category IS
-  // present here, isolating that the invariant is about node count only,
+  // qualifyingItemIds list does (proven independently of C: a category IS
+  // present here, isolating that the invariant is about item count only,
   // never about category presence).
-  it("E: a non-null category with zero qualifying nodes is rejected for the same reason as a null category -- category presence is never what is being checked", async () => {
+  it("E: a non-null category with zero qualifying items is rejected for the same reason as a null category -- category presence is never what is being checked", async () => {
     const businessId = nextId("biz");
     await seedOwner(businessId);
 
     const created = await createRewardProgram(db, pool, {
       userId: "owner-1",
-      request: baseDraftRequest(businessId, { qualifyingNodes: [] }) as never,
+      request: baseDraftRequest(businessId, { qualifyingItemIds: [] }) as never,
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
     });
@@ -1871,10 +2012,10 @@ describe("Reward Program commands — PLATFORM-BASELINE-010B-CORR-001 (publish r
     ).rejects.toThrow(RewardProgramDomainError);
   });
 
-  // F: existing invalid-node validation remains effective for a
-  // category-less draft (fabricated id) -- the new invariant is additive,
-  // it does not replace or weaken `validateQualifyingNodes`.
-  it("F: publishing a category-less draft with a fabricated qualifying-node id still fails on the pre-existing reference-eligibility check", async () => {
+  // F: the item-identity validation remains effective for a
+  // category-less draft (fabricated id) -- the minimum-one-item invariant
+  // is additive, it does not replace or weaken item reference validation.
+  it("F: creating a category-less draft with a fabricated Qualifying Item id still fails on the reference-eligibility check", async () => {
     const businessId = nextId("biz");
     await seedOwner(businessId);
 
@@ -1882,9 +2023,7 @@ describe("Reward Program commands — PLATFORM-BASELINE-010B-CORR-001 (publish r
       createRewardProgram(db, pool, {
         userId: "owner-1",
         request: emptyDraftRequest(businessId, {
-          qualifyingNodes: [
-            { knowledgeNodeId: "fabricated-corr-001-id", businessDisplayName: null },
-          ],
+          qualifyingItemIds: ["22222222-3333-4444-8555-666666666666"],
         }) as never,
         idempotencyKey: nextId("key"),
         correlationId: nextId("corr"),
@@ -1893,21 +2032,22 @@ describe("Reward Program commands — PLATFORM-BASELINE-010B-CORR-001 (publish r
   });
 
   // G: a malicious/direct callable request cannot bypass the
-  // minimum-one-qualifying-node publication invariant by editing a draft
-  // down to zero nodes and then calling `publishRewardProgramVersion`
+  // minimum-one-qualifying-item publication invariant by editing a draft
+  // down to zero items and then calling `publishRewardProgramVersion`
   // directly (the same, and only, code path a real callable uses --
   // `publishRewardProgramVersion` re-reads the draft's persisted
-  // `qualifyingNodes` from PostgreSQL itself; the callable boundary's
-  // request payload carries no client-suppliable `qualifyingNodes` field
+  // `qualifyingItems` from PostgreSQL itself; the callable boundary's
+  // request payload carries no client-suppliable `qualifyingItemIds` field
   // at all, so there is no alternate input to manipulate).
-  it("G: editing a draft down to zero qualifying nodes then calling publishRewardProgramVersion directly is still rejected", async () => {
+  it("G: editing a draft down to zero qualifying items then calling publishRewardProgramVersion directly is still rejected", async () => {
     const businessId = nextId("biz");
     await seedOwner(businessId);
+    const item = await createItem(businessId, "Black Coffee");
 
     const created = await createRewardProgram(db, pool, {
       userId: "owner-1",
       request: emptyDraftRequest(businessId, {
-        qualifyingNodes: [{ knowledgeNodeId: PRODUCT_NODE, businessDisplayName: null }],
+        qualifyingItemIds: [item.id],
       }) as never,
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
@@ -1924,12 +2064,12 @@ describe("Reward Program commands — PLATFORM-BASELINE-010B-CORR-001 (publish r
         multipleUnitsAllowed: true,
         sharedLoyaltyNumberAllowed: false,
         effectiveFrom: created.version.effectiveFrom,
-        qualifyingNodes: [],
+        qualifyingItemIds: [],
       } as never,
       idempotencyKey: nextId("key"),
       correlationId: nextId("corr"),
     });
-    expect(updated.qualifyingNodes).toEqual([]);
+    expect(updated.qualifyingItems).toEqual([]);
 
     await expect(
       publishRewardProgramVersion(db, pool, {
@@ -1939,6 +2079,477 @@ describe("Reward Program commands — PLATFORM-BASELINE-010B-CORR-001 (publish r
           rewardProgramId: created.program.id,
           versionId: created.version.id,
         },
+        idempotencyKey: nextId("key"),
+        correlationId: nextId("corr"),
+      }),
+    ).rejects.toThrow(RewardProgramDomainError);
+  });
+});
+
+/**
+ * `PLATFORM-BASELINE-013B` (Reward Program -> Business-owned Qualifying
+ * Item binding, `DEC-LOY-016` / `FD-REWARD-QUALIFYING-ITEM-001`): the
+ * authoritative identity is `qualifyingItemId`, never a canonical Commerce
+ * Knowledge id. These tests prove the binding contract end to end --
+ * create / draft-update / next-version / publish -- plus the
+ * Business-isolation, retirement, frozen-snapshot, and single-authority
+ * properties the package guarantees.
+ */
+describe("Reward Program commands — PLATFORM-BASELINE-013B (Business-owned Qualifying Item binding)", () => {
+  async function seedOwner(businessId: string) {
+    await seedBusiness(businessId);
+    await seedMembership({
+      membershipId: nextId("mem"),
+      userId: "owner-1",
+      businessId,
+      role: "owner",
+    });
+  }
+
+  function draftRequest(businessId: string, qualifyingItemIds: readonly string[]) {
+    return {
+      businessId,
+      displayName: "Buy 10 Coffees",
+      rewardProgramCategoryId: null,
+      rewardDescription: "One free coffee",
+      multipleUnitsAllowed: true,
+      sharedLoyaltyNumberAllowed: false,
+      effectiveFrom: new Date("2026-09-18T00:00:00.000Z"),
+      qualifyingItemIds: [...qualifyingItemIds],
+    };
+  }
+
+  it("binds one active unclassified Qualifying Item (knowledgeNodeId = NULL is fully valid)", async () => {
+    const businessId = nextId("biz");
+    await seedOwner(businessId);
+    const item = await createItem(businessId, "Black Coffee");
+
+    const result = await createRewardProgram(db, pool, {
+      userId: "owner-1",
+      request: draftRequest(businessId, [item.id]) as never,
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+
+    expect(result.version.qualifyingItems).toEqual([
+      {
+        qualifyingItemId: item.id,
+        itemNameAtVersion: "Black Coffee",
+        knowledgeNodeIdAtVersion: null,
+      },
+    ]);
+
+    // Persisted verbatim in the new junction table...
+    const junction = await pool.query(
+      `SELECT qualifying_item_id, item_name_at_version, knowledge_node_id_at_version
+         FROM reward_program_version_qualifying_items WHERE reward_program_version_id = $1`,
+      [result.version.id],
+    );
+    expect(junction.rows).toEqual([
+      {
+        qualifying_item_id: item.id,
+        item_name_at_version: "Black Coffee",
+        knowledge_node_id_at_version: null,
+      },
+    ]);
+    // ...and nowhere else: the legacy table is never written (no dual authority).
+    const legacy = await pool.query("SELECT count(*) FROM reward_program_version_qualifying_nodes");
+    expect(Number(legacy.rows[0].count)).toBe(0);
+  });
+
+  it("binds multiple active Qualifying Items, including a classified one", async () => {
+    const businessId = nextId("biz");
+    await seedOwner(businessId);
+    const coffee = await createItem(businessId, "Black Coffee");
+    const pizza = await createItem(businessId, "Medium Pizza", PRODUCT_NODE);
+
+    const result = await createRewardProgram(db, pool, {
+      userId: "owner-1",
+      request: draftRequest(businessId, [coffee.id, pizza.id]) as never,
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+
+    expect(result.version.qualifyingItems).toEqual([
+      {
+        qualifyingItemId: coffee.id,
+        itemNameAtVersion: "Black Coffee",
+        knowledgeNodeIdAtVersion: null,
+      },
+      {
+        qualifyingItemId: pizza.id,
+        itemNameAtVersion: "Medium Pizza",
+        knowledgeNodeIdAtVersion: PRODUCT_NODE,
+      },
+    ]);
+  });
+
+  it("rejects duplicate Qualifying Item ids in one version", async () => {
+    const businessId = nextId("biz");
+    await seedOwner(businessId);
+    const item = await createItem(businessId, "Black Coffee");
+
+    await expect(
+      createRewardProgram(db, pool, {
+        userId: "owner-1",
+        request: draftRequest(businessId, [item.id, item.id]) as never,
+        idempotencyKey: nextId("key"),
+        correlationId: nextId("corr"),
+      }),
+    ).rejects.toThrow(RewardProgramDomainError);
+  });
+
+  it("rejects a foreign-Business Qualifying Item without existence disclosure (identical to fabricated)", async () => {
+    const businessA = nextId("biz");
+    const businessB = nextId("biz");
+    await seedOwner(businessA);
+    await seedBusiness(businessB);
+    await seedMembership({
+      membershipId: nextId("mem"),
+      userId: "owner-2",
+      businessId: businessB,
+      role: "owner",
+    });
+    const foreignItem = await createItem(businessB, "Someone Else's Coffee");
+
+    let foreignError: unknown;
+    try {
+      await createRewardProgram(db, pool, {
+        userId: "owner-1",
+        request: draftRequest(businessA, [foreignItem.id]) as never,
+        idempotencyKey: nextId("key"),
+        correlationId: nextId("corr"),
+      });
+    } catch (error) {
+      foreignError = error;
+    }
+    expect(foreignError).toBeInstanceOf(RewardProgramDomainError);
+    expect((foreignError as RewardProgramDomainError).category).toBe("RESOURCE_NOT_FOUND");
+
+    let fabricatedError: unknown;
+    try {
+      await createRewardProgram(db, pool, {
+        userId: "owner-1",
+        request: draftRequest(businessA, ["99999999-8888-4777-8666-555555555555"]) as never,
+        idempotencyKey: nextId("key"),
+        correlationId: nextId("corr"),
+      });
+    } catch (error) {
+      fabricatedError = error;
+    }
+    expect(fabricatedError).toBeInstanceOf(RewardProgramDomainError);
+    expect((fabricatedError as RewardProgramDomainError).category).toBe("RESOURCE_NOT_FOUND");
+    // Indistinguishable: same category AND same message.
+    expect((foreignError as Error).message).toBe((fabricatedError as Error).message);
+
+    const count = await pool.query("SELECT count(*) FROM reward_programs WHERE business_id = $1", [
+      businessA,
+    ]);
+    expect(Number(count.rows[0].count)).toBe(0);
+  });
+
+  it("rejects a malformed Qualifying Item id as not found (never a raw database error)", async () => {
+    const businessId = nextId("biz");
+    await seedOwner(businessId);
+
+    try {
+      await createRewardProgram(db, pool, {
+        userId: "owner-1",
+        request: draftRequest(businessId, ["not-a-uuid"]) as never,
+        idempotencyKey: nextId("key"),
+        correlationId: nextId("corr"),
+      });
+      expect.unreachable("malformed item id must reject");
+    } catch (error) {
+      expect(error).toBeInstanceOf(RewardProgramDomainError);
+      expect((error as RewardProgramDomainError).category).toBe("RESOURCE_NOT_FOUND");
+    }
+  });
+
+  it("rejects a retired item on every new-binding path (create, draft update, next version) with a caller-actionable reason", async () => {
+    const businessId = nextId("biz");
+    await seedOwner(businessId);
+    const live = await createItem(businessId, "Black Coffee");
+    const retired = await createItem(businessId, "Old Special");
+    await retireItem(businessId, retired.id);
+
+    // Create path.
+    await expect(
+      createRewardProgram(db, pool, {
+        userId: "owner-1",
+        request: draftRequest(businessId, [retired.id]) as never,
+        idempotencyKey: nextId("key"),
+        correlationId: nextId("corr"),
+      }),
+    ).rejects.toMatchObject({ category: "INVALID_STATE_TRANSITION" });
+
+    const created = await createRewardProgram(db, pool, {
+      userId: "owner-1",
+      request: draftRequest(businessId, [live.id]) as never,
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+
+    // Draft-update path.
+    await expect(
+      updateRewardProgramDraft(db, pool, {
+        userId: "owner-1",
+        request: {
+          businessId,
+          rewardProgramId: created.program.id,
+          versionId: created.version.id,
+          expectedRowVersion: created.version.rowVersion,
+          rewardDescription: created.version.rewardDescription,
+          multipleUnitsAllowed: true,
+          sharedLoyaltyNumberAllowed: false,
+          effectiveFrom: created.version.effectiveFrom,
+          qualifyingItemIds: [retired.id],
+        } as never,
+        idempotencyKey: nextId("key"),
+        correlationId: nextId("corr"),
+      }),
+    ).rejects.toMatchObject({ category: "INVALID_STATE_TRANSITION" });
+
+    await publishRewardProgramVersion(db, pool, {
+      userId: "owner-1",
+      request: { businessId, rewardProgramId: created.program.id, versionId: created.version.id },
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+
+    // Next-version path.
+    await expect(
+      createNextRewardProgramVersion(db, pool, {
+        userId: "owner-1",
+        request: {
+          businessId,
+          rewardProgramId: created.program.id,
+          rewardDescription: "v2",
+          multipleUnitsAllowed: true,
+          sharedLoyaltyNumberAllowed: false,
+          effectiveFrom: created.version.effectiveFrom,
+          qualifyingItemIds: [retired.id],
+        } as never,
+        idempotencyKey: nextId("key"),
+        correlationId: nextId("corr"),
+      }),
+    ).rejects.toMatchObject({ category: "INVALID_STATE_TRANSITION" });
+  });
+
+  it("rejects publication when the bound item was retired between the last draft edit and publish", async () => {
+    const businessId = nextId("biz");
+    await seedOwner(businessId);
+    const item = await createItem(businessId, "Black Coffee");
+
+    const created = await createRewardProgram(db, pool, {
+      userId: "owner-1",
+      request: draftRequest(businessId, [item.id]) as never,
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+
+    await retireItem(businessId, item.id);
+
+    await expect(
+      publishRewardProgramVersion(db, pool, {
+        userId: "owner-1",
+        request: { businessId, rewardProgramId: created.program.id, versionId: created.version.id },
+        idempotencyKey: nextId("key"),
+        correlationId: nextId("corr"),
+      }),
+    ).rejects.toMatchObject({ category: "INVALID_STATE_TRANSITION" });
+
+    const readModel = await getRewardProgram(db, pool, {
+      userId: "owner-1",
+      businessId,
+      rewardProgramId: created.program.id,
+    });
+    expect(readModel.draftVersion?.status).toBe("draft");
+    expect(readModel.currentVersion).toBeNull();
+  });
+
+  it("freezes the published snapshot at publish time: a rename between draft save and publish is captured, and a later rename never moves the published version", async () => {
+    const businessId = nextId("biz");
+    await seedOwner(businessId);
+    const item = await createItem(businessId, "Black Coffee");
+
+    const created = await createRewardProgram(db, pool, {
+      userId: "owner-1",
+      request: draftRequest(businessId, [item.id]) as never,
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+    expect(created.version.qualifyingItems[0].itemNameAtVersion).toBe("Black Coffee");
+
+    // Rename between draft save and publish.
+    await withPlatformTransaction(pool, async (tx) => {
+      await updateQualifyingItemRow(tx, {
+        businessId,
+        id: item.id,
+        actorId: "owner-1",
+        name: "Black Coffee (Large)",
+      });
+    });
+
+    const published = await publishRewardProgramVersion(db, pool, {
+      userId: "owner-1",
+      request: { businessId, rewardProgramId: created.program.id, versionId: created.version.id },
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+    expect(published.qualifyingItems).toEqual([
+      {
+        qualifyingItemId: item.id,
+        itemNameAtVersion: "Black Coffee (Large)",
+        knowledgeNodeIdAtVersion: null,
+      },
+    ]);
+
+    // Rename again AFTER publication: v1 keeps its frozen snapshot.
+    await withPlatformTransaction(pool, async (tx) => {
+      await updateQualifyingItemRow(tx, {
+        businessId,
+        id: item.id,
+        actorId: "owner-1",
+        name: "Black Coffee (Venti)",
+      });
+    });
+
+    const readModel = await getRewardProgram(db, pool, {
+      userId: "owner-1",
+      businessId,
+      rewardProgramId: created.program.id,
+    });
+    expect(readModel.currentVersion?.qualifyingItems).toEqual([
+      {
+        qualifyingItemId: item.id,
+        itemNameAtVersion: "Black Coffee (Large)",
+        knowledgeNodeIdAtVersion: null,
+      },
+    ]);
+
+    // A version created AFTER the rename snapshots the new name.
+    const v2 = await createNextRewardProgramVersion(db, pool, {
+      userId: "owner-1",
+      request: {
+        businessId,
+        rewardProgramId: created.program.id,
+        rewardDescription: "v2",
+        multipleUnitsAllowed: true,
+        sharedLoyaltyNumberAllowed: false,
+        effectiveFrom: created.version.effectiveFrom,
+        qualifyingItemIds: [item.id],
+      } as never,
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+    expect(v2.qualifyingItems).toEqual([
+      {
+        qualifyingItemId: item.id,
+        itemNameAtVersion: "Black Coffee (Venti)",
+        knowledgeNodeIdAtVersion: null,
+      },
+    ]);
+  });
+
+  it("freezes the optional classification snapshot: remapping the live item after publication never moves the published version", async () => {
+    const businessId = nextId("biz");
+    await seedOwner(businessId);
+    const item = await createItem(businessId, "Medium Pizza", PRODUCT_NODE);
+
+    const created = await createRewardProgram(db, pool, {
+      userId: "owner-1",
+      request: draftRequest(businessId, [item.id]) as never,
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+    const published = await publishRewardProgramVersion(db, pool, {
+      userId: "owner-1",
+      request: { businessId, rewardProgramId: created.program.id, versionId: created.version.id },
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+    expect(published.qualifyingItems).toEqual([
+      {
+        qualifyingItemId: item.id,
+        itemNameAtVersion: "Medium Pizza",
+        knowledgeNodeIdAtVersion: PRODUCT_NODE,
+      },
+    ]);
+
+    // Clear the live classification after publication.
+    await withPlatformTransaction(pool, async (tx) => {
+      await updateQualifyingItemRow(tx, {
+        businessId,
+        id: item.id,
+        actorId: "owner-1",
+        knowledgeNodeId: null,
+      });
+    });
+
+    const readModel = await getRewardProgram(db, pool, {
+      userId: "owner-1",
+      businessId,
+      rewardProgramId: created.program.id,
+    });
+    expect(readModel.currentVersion?.qualifyingItems).toEqual([
+      {
+        qualifyingItemId: item.id,
+        itemNameAtVersion: "Medium Pizza",
+        knowledgeNodeIdAtVersion: PRODUCT_NODE,
+      },
+    ]);
+  });
+
+  it("Manager remains denied Reward Program management (rewardProgram.manage not widened)", async () => {
+    const businessId = nextId("biz");
+    await seedBusiness(businessId);
+    await seedMembership({
+      membershipId: nextId("mem-owner"),
+      userId: "owner-1",
+      businessId,
+      role: "owner",
+    });
+    await seedMembership({
+      membershipId: nextId("mem-manager"),
+      userId: "manager-1",
+      businessId,
+      role: "manager",
+    });
+    const item = await createItem(businessId, "Black Coffee");
+
+    // Manager may manage Qualifying Items (DEC-LOY-017)...
+    await expect(
+      authorizeQualifyingItemManage(db, "manager-1", businessId),
+    ).resolves.toBeUndefined();
+
+    // ...but must still be denied every Reward Program write, including publish.
+    const created = await createRewardProgram(db, pool, {
+      userId: "owner-1",
+      request: draftRequest(businessId, [item.id]) as never,
+      idempotencyKey: nextId("key"),
+      correlationId: nextId("corr"),
+    });
+    await expect(
+      publishRewardProgramVersion(db, pool, {
+        userId: "manager-1",
+        request: { businessId, rewardProgramId: created.program.id, versionId: created.version.id },
+        idempotencyKey: nextId("key"),
+        correlationId: nextId("corr"),
+      }),
+    ).rejects.toThrow(RewardProgramDomainError);
+    await expect(
+      createNextRewardProgramVersion(db, pool, {
+        userId: "manager-1",
+        request: {
+          businessId,
+          rewardProgramId: created.program.id,
+          rewardDescription: "v2",
+          multipleUnitsAllowed: true,
+          sharedLoyaltyNumberAllowed: false,
+          effectiveFrom: created.version.effectiveFrom,
+          qualifyingItemIds: [item.id],
+        } as never,
         idempotencyKey: nextId("key"),
         correlationId: nextId("corr"),
       }),

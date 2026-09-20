@@ -204,14 +204,18 @@ const MIN_SEARCH_TEXT_LENGTH = 2;
 
 /**
  * `PLATFORM-BASELINE-010B`, bounded by `PLATFORM-BASELINE-010B-CORR-001`
- * (P2): the qualifying-node selector's broader, platform-wide "escape
- * hatch" search — no Business-Type restriction. Disabled while the
- * (caller-debounced -- see `QualifyingNodeSelector`'s use of
- * `useDebouncedValue`) `searchText` is shorter than
- * `MIN_SEARCH_TEXT_LENGTH` trimmed characters, so neither a bare keystroke
- * nor an empty box ever issues a request. The server enforces the same
- * bound independently and authoritatively; this is a client-side
- * request-avoidance courtesy, not the security boundary.
+ * (P2): the former qualifying-node selector's broader, platform-wide
+ * "escape hatch" search -- no Business-Type restriction. Retained
+ * unchanged as the optional-classification discovery surface
+ * (`PLATFORM-BASELINE-013B` re-based Reward Program qualification on
+ * Business-owned items; this Commerce Knowledge read is classification
+ * aid only, consumed by the deferred `PLATFORM-BASELINE-013D` picker).
+ * Disabled while the (caller-debounced -- see `useDebouncedValue`)
+ * `searchText` is shorter than `MIN_SEARCH_TEXT_LENGTH` trimmed
+ * characters, so neither a bare keystroke nor an empty box ever issues a
+ * request. The server enforces the same bound independently and
+ * authoritatively; this is a client-side request-avoidance courtesy, not
+ * the security boundary.
  */
 export function useSearchQualifyingNodesQuery(searchText: string, languageCode?: string) {
   const { auth, functions } = useBusinessApiPlatform();
@@ -234,10 +238,10 @@ export function useSearchQualifyingNodesQuery(searchText: string, languageCode?:
 
 /**
  * `PLATFORM-BASELINE-008`: display-only label hydration for a bounded set
- * of already-selected canonical Commerce Knowledge node ids (a Reward
- * Program draft's persisted `qualifyingNodes`) — works for `retired`/
- * `archived` ids too, unlike `useQualifyingNodesForCategoryQuery`'s
- * `active`-only candidate list.
+ * of already-selected canonical Commerce Knowledge node ids (e.g. a
+ * Qualifying Item's optional classification mapping) -- works for
+ * `retired`/`archived` ids too, unlike
+ * `useQualifyingNodesForCategoryQuery`'s `active`-only candidate list.
  */
 export function useKnowledgeNodeLabelsQuery(nodeIds: readonly string[], languageCode?: string) {
   const { auth, functions } = useBusinessApiPlatform();

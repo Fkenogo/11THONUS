@@ -262,27 +262,35 @@ export const en = {
       cancel: "Cancel",
       saving: "Saving…",
       fieldDisplayName: "Program name",
-      fieldQualifyingNodes: "Qualifying products/services",
+      fieldQualifyingItems: "Qualifying items",
+      boundItemsLabel: "Qualifying items:",
       fieldRewardDescription: "Reward description",
       fieldEffectiveFrom: "Effective from",
       fieldMultipleUnitsAllowed: "Allow multiple units per purchase",
       fieldSharedLoyaltyNumberAllowed: "Allow a shared loyalty number",
       fixedInvariantsNote:
         "Verified Units Required: {{threshold}} and Reward Quantity: {{quantity}} are fixed platform rules and cannot be changed.",
-      qualifyingNodeSelector: {
-        loading: "Loading products and services…",
-        loadError:
-          "We couldn't load products and services for your business type. Please try again.",
-        empty:
-          "No products or services are available for your business type yet. Use search below to find one.",
+      qualifyingItemSelector: {
+        loading: "Loading your qualifying items…",
+        loadError: "We couldn't load your qualifying items. Please try again.",
+        empty: "No qualifying items yet. Add one below -- no catalogue or category needed.",
         unavailableLabel: "Previously selected item (name unavailable)",
         unavailableNote: "(no longer available — kept in this program's configuration)",
-        searchLabel: "Search all products and services",
-        searchPlaceholder: 'Search by name (e.g. "Black Coffee", "Sedan Car Wash")',
-        searchLoading: "Searching…",
-        searchError: "We couldn't run that search. Please try again.",
-        searchEmpty: "No products or services matched that search.",
-        searchResultsLabel: "Search results",
+      },
+      qualifyingItems: {
+        sectionTitle: "Qualifying items",
+        sectionHint:
+          "Name what your business sells (e.g. “Black Coffee”). These are your own items -- no catalogue needed.",
+        loading: "Loading qualifying items…",
+        loadError: "We couldn't load your qualifying items. Please try again.",
+        empty: "No qualifying items yet. Add your first one below.",
+        addLabel: "New item name",
+        addAction: "Add item",
+        renameAction: "Rename",
+        renameLabel: "Item name",
+        saveAction: "Save",
+        retireAction: "Retire",
+        retireConfirmAction: "Confirm retire",
       },
       versionLabel: "Version {{version}}",
       status: {

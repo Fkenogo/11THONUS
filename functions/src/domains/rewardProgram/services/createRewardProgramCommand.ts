@@ -11,6 +11,7 @@ import type { PlatformPostgresPool } from "../../../infrastructure/postgres/post
 import { withPlatformTransaction } from "../../../infrastructure/postgres/postgresTransaction";
 import { authorizeRewardProgramManage } from "./rewardProgramAuthorization";
 import { validateAllReferences } from "./rewardProgramKnowledgeValidation";
+import { resolveQualifyingItemSnapshots } from "./rewardProgramQualificationValidation";
 import { rewardProgramRequestHash } from "./rewardProgramRequestHash";
 import {
   checkAndReserveIdempotencyKey,
@@ -23,11 +24,7 @@ import {
   rewardProgramIdempotencyConflictError,
   rewardProgramIdempotencyInProgressError,
 } from "../models/rewardProgramErrors";
-import type {
-  QualifyingNode,
-  RewardProgramRow,
-  RewardProgramVersionRow,
-} from "../models/rewardProgram";
+import type { RewardProgramRow, RewardProgramVersionRow } from "../models/rewardProgram";
 
 export type CreateRewardProgramRequest = {
   readonly businessId: string;
@@ -40,7 +37,14 @@ export type CreateRewardProgramRequest = {
   readonly bulkReviewThreshold?: number | null;
   readonly effectiveFrom: Date;
   readonly effectiveUntil?: Date | null;
-  readonly qualifyingNodes: readonly QualifyingNode[];
+  /**
+   * Structural qualification identity (`PLATFORM-BASELINE-013B`): stable
+   * Business-owned Qualifying Item ids. Each id is validated server-side
+   * (existence, same-Business ownership, active, optional classification
+   * eligibility) and resolved into its frozen snapshot before anything is
+   * persisted.
+   */
+  readonly qualifyingItemIds: readonly string[];
 };
 
 export type CreateRewardProgramResult = {
@@ -63,7 +67,20 @@ export async function createRewardProgram(
   // eligibility gate for the `rewardProgram` catalogue -- no separate
   // check is needed here (would duplicate the evaluator's own job).
   await authorizeRewardProgramManage(db, params.userId, params.request.businessId);
-  await validateAllReferences(db, params.request);
+  // Category / standard-reward references are validated exactly as before.
+  // Qualification binds Business-owned Qualifying Items instead (resolved
+  // + snapshotted below). A draft may carry zero items; publication
+  // requires at least one (publish command, authoritative).
+  await validateAllReferences(db, {
+    rewardProgramCategoryId: params.request.rewardProgramCategoryId,
+    standardRewardNodeId: params.request.standardRewardNodeId,
+  });
+  const qualifyingItems = await resolveQualifyingItemSnapshots(
+    pool,
+    db,
+    params.request.businessId,
+    params.request.qualifyingItemIds,
+  );
 
   const contentFingerprint = JSON.stringify({
     displayName: params.request.displayName,
@@ -75,7 +92,7 @@ export async function createRewardProgram(
     bulkReviewThreshold: params.request.bulkReviewThreshold ?? null,
     effectiveFrom: params.request.effectiveFrom.toISOString(),
     effectiveUntil: params.request.effectiveUntil?.toISOString() ?? null,
-    qualifyingNodes: params.request.qualifyingNodes,
+    qualifyingItemIds: params.request.qualifyingItemIds,
   });
   const requestHash = rewardProgramRequestHash(
     "create",
@@ -118,8 +135,9 @@ export async function createRewardProgram(
         bulkReviewThreshold: params.request.bulkReviewThreshold ?? null,
         effectiveFrom: params.request.effectiveFrom,
         effectiveUntil: params.request.effectiveUntil ?? null,
-        qualifyingNodes: params.request.qualifyingNodes,
+        qualifyingItemIds: params.request.qualifyingItemIds,
       },
+      qualifyingItems,
     });
 
     await writeRewardProgramOutboxEntry(tx, {

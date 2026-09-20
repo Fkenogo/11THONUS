@@ -109,6 +109,43 @@ describe("LanguageSwitcher", () => {
   });
 });
 
+/**
+ * `PLATFORM-BASELINE-013B` (`DEC-LOY-016`): every changed customer-facing
+ * Reward Program key resolves in English (primary) and French -- no
+ * raw-key fallback in either locale.
+ */
+describe("Reward Program Qualifying Item copy (PLATFORM-BASELINE-013B, EN/FR)", () => {
+  it("resolves the new EN copy", async () => {
+    await i18n.changeLanguage("en");
+    expect(i18n.t("business:rewardProgram.fieldQualifyingItems")).toBe("Qualifying items");
+    expect(i18n.t("business:rewardProgram.boundItemsLabel")).toBe("Qualifying items:");
+    expect(i18n.t("business:rewardProgram.qualifyingItems.sectionTitle")).toBe("Qualifying items");
+    expect(i18n.t("business:rewardProgram.qualifyingItems.addAction")).toBe("Add item");
+    expect(i18n.t("business:rewardProgram.qualifyingItems.retireConfirmAction")).toBe(
+      "Confirm retire",
+    );
+    expect(i18n.t("business:rewardProgram.qualifyingItemSelector.loading")).toBe(
+      "Loading your qualifying items…",
+    );
+  });
+
+  it("resolves the new FR copy", async () => {
+    await i18n.changeLanguage("fr");
+    expect(i18n.t("business:rewardProgram.fieldQualifyingItems")).toBe("Éléments éligibles");
+    expect(i18n.t("business:rewardProgram.boundItemsLabel")).toBe("Éléments éligibles :");
+    expect(i18n.t("business:rewardProgram.qualifyingItems.sectionTitle")).toBe(
+      "Éléments éligibles",
+    );
+    expect(i18n.t("business:rewardProgram.qualifyingItems.addAction")).toBe("Ajouter l'élément");
+    expect(i18n.t("business:rewardProgram.qualifyingItems.retireConfirmAction")).toBe(
+      "Confirmer le retrait",
+    );
+    expect(i18n.t("business:rewardProgram.qualifyingItemSelector.loading")).toBe(
+      "Chargement de vos éléments éligibles…",
+    );
+  });
+});
+
 describe("applyPreferredLanguage (authenticated-profile integration point)", () => {
   it("applies a supported preferredLanguage", async () => {
     expect(applyPreferredLanguage("fr")).toBe("fr");

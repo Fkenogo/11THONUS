@@ -61,6 +61,8 @@ import {
 import { createRewardProgram } from "../../rewardProgram/services/createRewardProgramCommand";
 import { publishRewardProgramVersion } from "../../rewardProgram/services/publishRewardProgramVersionCommand";
 import { createNextRewardProgramVersion } from "../../rewardProgram/services/createNextRewardProgramVersionCommand";
+import { insertQualifyingItem } from "../../qualifyingItem/repositories/qualifyingItemRepository";
+import { withPlatformTransaction } from "../../../infrastructure/postgres/postgresTransaction";
 import { recordPurchase } from "./recordPurchaseCommand";
 import { verifyPurchase } from "./verifyPurchaseCommand";
 import { rejectPurchase } from "./rejectPurchaseCommand";
@@ -211,12 +213,14 @@ afterEach(async () => {
   await pool.query("DELETE FROM verified_units");
   await pool.query("DELETE FROM purchase_record_events");
   await pool.query("DELETE FROM purchase_records");
+  await pool.query("DELETE FROM reward_program_version_qualifying_items");
   await pool.query("DELETE FROM reward_program_version_qualifying_nodes");
   await pool.query("DELETE FROM reward_program_outbox");
   await pool.query("DELETE FROM idempotency_keys");
   await pool.query("UPDATE reward_programs SET current_version_id = NULL");
   await pool.query("DELETE FROM reward_program_versions");
   await pool.query("DELETE FROM reward_programs");
+  await pool.query("DELETE FROM qualifying_items");
 
   for (const collection of [
     "businesses",
@@ -333,6 +337,26 @@ async function seedCustomer(
   return { customerId, ln, qr };
 }
 
+/**
+ * Test-only Reward Program qualification setup (`PLATFORM-BASELINE-013B`):
+ * these suites prove the PURCHASE contract, so the Reward Program under
+ * test is configured with an unclassified Business-owned Qualifying Item
+ * (`knowledgeNodeId = NULL`, zero Commerce Knowledge involvement). The
+ * purchase request types, persistence, idempotency identity, and Trust
+ * Events under test are untouched by this setup change.
+ */
+async function createQualifyingItemForTest(businessId: string): Promise<string> {
+  const item = await withPlatformTransaction(pool, async (tx) =>
+    insertQualifyingItem(tx, {
+      businessId,
+      name: "PVL Test Item",
+      knowledgeNodeId: null,
+      actorId: "test-seed",
+    }),
+  );
+  return item.id;
+}
+
 async function createPublishedProgram(params: {
   businessId: string;
   ownerId: string;
@@ -340,6 +364,7 @@ async function createPublishedProgram(params: {
   multipleUnitsAllowed: boolean;
   rewardDescription?: string;
 }): Promise<{ programId: string; versionId: string }> {
+  const qualifyingItemId = await createQualifyingItemForTest(params.businessId);
   const created = await createRewardProgram(db, pool, {
     userId: params.ownerId,
     request: {
@@ -350,7 +375,7 @@ async function createPublishedProgram(params: {
       multipleUnitsAllowed: params.multipleUnitsAllowed,
       sharedLoyaltyNumberAllowed: params.sharedLoyaltyNumberAllowed,
       effectiveFrom: new Date("2026-09-14T00:00:00.000Z"),
-      qualifyingNodes: [{ knowledgeNodeId: "pvl_product", businessDisplayName: null }],
+      qualifyingItemIds: [qualifyingItemId],
     } as never,
     idempotencyKey: nextId("key_prog"),
     correlationId: nextId("corr_prog"),
@@ -560,7 +585,7 @@ describe("recordPurchase — artifact policy, program eligibility, quantity, ide
         multipleUnitsAllowed: true,
         sharedLoyaltyNumberAllowed: true,
         effectiveFrom: new Date("2026-09-14T00:00:00.000Z"),
-        qualifyingNodes: [{ knowledgeNodeId: "pvl_product", businessDisplayName: null }],
+        qualifyingItemIds: [await createQualifyingItemForTest(businessId)],
       } as never,
       idempotencyKey: nextId("key_prog"),
       correlationId: nextId("corr_prog"),
@@ -1474,6 +1499,7 @@ describe("cycles — allocation, concurrency, threshold, rewards", () => {
       businessId,
       role: "staff",
     });
+    const v1ItemId = await createQualifyingItemForTest(businessId);
     const created = await createRewardProgram(db, pool, {
       userId: ownerId,
       request: {
@@ -1484,7 +1510,7 @@ describe("cycles — allocation, concurrency, threshold, rewards", () => {
         multipleUnitsAllowed: true,
         sharedLoyaltyNumberAllowed: true,
         effectiveFrom: new Date("2026-09-14T00:00:00.000Z"),
-        qualifyingNodes: [{ knowledgeNodeId: "pvl_product", businessDisplayName: null }],
+        qualifyingItemIds: [v1ItemId],
       } as never,
       idempotencyKey: nextId("key_prog"),
       correlationId: nextId("corr_prog"),
@@ -1520,7 +1546,7 @@ describe("cycles — allocation, concurrency, threshold, rewards", () => {
         multipleUnitsAllowed: true,
         sharedLoyaltyNumberAllowed: true,
         effectiveFrom: new Date("2026-09-14T00:00:00.000Z"),
-        qualifyingNodes: [{ knowledgeNodeId: "pvl_product", businessDisplayName: null }],
+        qualifyingItemIds: [v1ItemId],
       } as never,
       idempotencyKey: nextId("key_v2"),
       correlationId: nextId("corr_v2"),

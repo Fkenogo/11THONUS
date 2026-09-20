@@ -49,7 +49,7 @@ function payloadFor(programId: string, description: string) {
     multipleUnitsAllowed: true,
     sharedLoyaltyNumberAllowed: false,
     effectiveFrom: "2026-09-13T00:00:00.000Z",
-    qualifyingNodes: [{ knowledgeNodeId: "node-1", businessDisplayName: null }],
+    qualifyingItemIds: ["3f2b8c1e-9d4a-4e6b-8a1c-0d5e7f9a2b3c"],
   };
 }
 

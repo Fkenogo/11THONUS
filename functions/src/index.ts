@@ -133,7 +133,6 @@ import {
   getRewardProgram as getRewardProgramQuery,
   listRewardPrograms as listRewardProgramsQuery,
 } from "./domains/rewardProgram/services/rewardProgramQueries";
-import type { QualifyingNode } from "./domains/rewardProgram/models/rewardProgram";
 import { QualifyingItemDomainError } from "./domains/qualifyingItem/models/qualifyingItemErrors";
 import {
   createQualifyingItem as createQualifyingItemCommand,
@@ -1774,22 +1773,24 @@ function parseOptionalIsoDate(value: unknown, field: string): Date | undefined {
   return parseIsoDate(value, field);
 }
 
-function parseQualifyingNodes(value: unknown): QualifyingNode[] {
+/**
+ * `PLATFORM-BASELINE-013B` (`DEC-LOY-016`): the Reward Program write
+ * contract carries Business-owned Qualifying Item ids
+ * (`qualifyingItemIds: string[]`) -- never canonical Commerce Knowledge
+ * ids, never display names. The server validates each id (existence,
+ * same-Business ownership, active, optional classification eligibility)
+ * and resolves the frozen snapshot itself; a client cannot assert a name
+ * or a classification here at all. A draft may carry zero ids;
+ * publication requires at least one (enforced server-side, publish
+ * command).
+ */
+function parseQualifyingItemIds(value: unknown): string[] {
   if (!Array.isArray(value)) {
     throw new HttpsError("invalid-argument", "reward_program_command_failed", {
-      field: "qualifyingNodes",
+      field: "qualifyingItemIds",
     });
   }
-  return value.map((entry) => {
-    const record = (entry ?? {}) as Record<string, unknown>;
-    return {
-      knowledgeNodeId: parseNonEmptyString(record.knowledgeNodeId),
-      businessDisplayName:
-        record.businessDisplayName === undefined || record.businessDisplayName === null
-          ? null
-          : parseNonEmptyString(record.businessDisplayName),
-    };
-  });
+  return value.map((entry) => parseNonEmptyString(entry));
 }
 
 function parseRewardProgramDraftFields(value: Record<string, unknown>): {
@@ -1800,7 +1801,7 @@ function parseRewardProgramDraftFields(value: Record<string, unknown>): {
   bulkReviewThreshold?: number | null;
   effectiveFrom: Date;
   effectiveUntil?: Date | null;
-  qualifyingNodes: QualifyingNode[];
+  qualifyingItemIds: string[];
 } {
   return {
     rewardDescription: parseNonEmptyString(value.rewardDescription),
@@ -1816,7 +1817,7 @@ function parseRewardProgramDraftFields(value: Record<string, unknown>): {
         : Number(value.bulkReviewThreshold),
     effectiveFrom: parseIsoDate(value.effectiveFrom, "effectiveFrom"),
     effectiveUntil: parseOptionalIsoDate(value.effectiveUntil, "effectiveUntil") ?? null,
-    qualifyingNodes: parseQualifyingNodes(value.qualifyingNodes ?? []),
+    qualifyingItemIds: parseQualifyingItemIds(value.qualifyingItemIds ?? []),
   };
 }
 

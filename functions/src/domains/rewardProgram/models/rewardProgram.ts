@@ -4,8 +4,11 @@
  * PostgreSQL-authoritative (Founder-confirmed,
  * `PLATFORM-BASELINE-005-FOUNDER-DISPOSITION-001` FD-1). Mirrors the
  * approved design report's schema exactly (`reward_programs`,
- * `reward_program_versions`, `reward_program_version_qualifying_nodes` —
- * table/column names PROPOSED BY PLATFORM-BASELINE-005, not inherited).
+ * `reward_program_versions`, `reward_program_version_qualifying_items` --
+ * table/column names PROPOSED BY PLATFORM-BASELINE-005, not inherited;
+ * the qualifying-items junction REPLACED the original
+ * `reward_program_version_qualifying_nodes` in `PLATFORM-BASELINE-013B`,
+ * per `DEC-LOY-016`).
  *
  * Business/Customer-Identity/Commerce-Knowledge references are opaque
  * Firestore-owned ids (`TEXT`, never a PostgreSQL FK) — validated
@@ -42,7 +45,7 @@ export type RewardProgramRow = {
    * Optional as of `PLATFORM-BASELINE-010B` (Founder decision `DEC-LOY-014`
    * / `FD-REWARD-QUALIFICATION-001`): Phase 1 does not require a Reward
    * Program Category. `null` means no category was selected -- never
-   * treated as "unset"/"invalid". The version's `qualifyingNodes` remain
+   * treated as "unset"/"invalid". The version's `qualifyingItems` remain
    * the operative qualification authority regardless of this value.
    */
   rewardProgramCategoryId: string | null;
@@ -60,6 +63,28 @@ export type RewardProgramRow = {
 export type QualifyingNode = {
   readonly knowledgeNodeId: string;
   readonly businessDisplayName: string | null;
+};
+
+/**
+ * A Business-owned qualification binding on a Reward Program version
+ * (`PLATFORM-BASELINE-013B`, `DEC-LOY-016` / `FD-REWARD-QUALIFYING-ITEM-001`).
+ *
+ * The STRUCTURAL qualification identity is `qualifyingItemId` -- a stable
+ * `qualifying_items.id` owned by the Reward Program's own Business.
+ * `itemNameAtVersion` is the frozen Business-authored display-name snapshot
+ * taken at draft-write time and refreshed at publish time (`NOT NULL` in
+ * `reward_program_version_qualifying_items`); it is historical/display
+ * evidence only and never qualification authority. Renaming the live item
+ * never alters an already-published version's snapshot.
+ * `knowledgeNodeIdAtVersion` is the frozen copy of the item's OPTIONAL
+ * Commerce Knowledge classification at snapshot time (`NULL` when the item
+ * carries no mapping); it is enrichment only, never re-validated at read
+ * time.
+ */
+export type QualifyingItemRef = {
+  readonly qualifyingItemId: string;
+  readonly itemNameAtVersion: string;
+  readonly knowledgeNodeIdAtVersion: string | null;
 };
 
 /** `reward_program_versions` row -- the immutable historical commercial authority once published. */
@@ -85,7 +110,13 @@ export type RewardProgramVersionRow = {
   /** Optimistic-concurrency field for draft edits (Section 19) -- callers must pass this back unchanged to `updateRewardProgramDraft`. */
   rowVersion: number;
   readonly schemaVersion: number;
-  readonly qualifyingNodes: readonly QualifyingNode[];
+  /**
+   * Authoritative per-version qualification snapshot (RF-2): the
+   * Business-owned Qualifying Items bound to this version, each with its
+   * frozen display evidence. Sourced from
+   * `reward_program_version_qualifying_items` (`PLATFORM-BASELINE-013B`).
+   */
+  readonly qualifyingItems: readonly QualifyingItemRef[];
 };
 
 /**
@@ -117,5 +148,12 @@ export type RewardProgramVersionDraftInput = {
   readonly bulkReviewThreshold?: number | null;
   readonly effectiveFrom: Date;
   readonly effectiveUntil?: Date | null;
-  readonly qualifyingNodes: readonly QualifyingNode[];
+  /**
+   * Structural qualification identity (`PLATFORM-BASELINE-013B`): stable
+   * Business-owned `qualifying_items.id` values belonging to the Reward
+   * Program's own Business. The command resolves each id server-side into
+   * its frozen snapshot (`QualifyingItemRef`); the client never supplies a
+   * name or a Commerce Knowledge id here.
+   */
+  readonly qualifyingItemIds: readonly string[];
 };

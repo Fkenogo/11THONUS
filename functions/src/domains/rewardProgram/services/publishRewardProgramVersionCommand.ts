@@ -19,9 +19,10 @@ import type { PlatformPostgresPool } from "../../../infrastructure/postgres/post
 import { withPlatformTransaction } from "../../../infrastructure/postgres/postgresTransaction";
 import { authorizeRewardProgramManage } from "./rewardProgramAuthorization";
 import {
-  assertHasQualifyingNodeForPublish,
+  assertHasQualifyingItemsForPublish,
   validateAllReferences,
 } from "./rewardProgramKnowledgeValidation";
+import { resolveQualifyingItemSnapshots } from "./rewardProgramQualificationValidation";
 import { rewardProgramRequestHash } from "./rewardProgramRequestHash";
 import {
   checkAndReserveIdempotencyKey,
@@ -105,22 +106,36 @@ export async function publishRewardProgramVersion(
     throw rewardProgramVersionNotDraftError();
   }
 
-  // Step 1.5 (`PLATFORM-BASELINE-010B-CORR-001` P1): the publication-only
-  // "at least one qualifying node" invariant -- a draft may legitimately
-  // carry zero qualifying nodes, but nothing may ever publish with none.
-  // Checked from the already-read `draftPreview`, no extra Firestore read.
-  assertHasQualifyingNodeForPublish(draftPreview.qualifyingNodes);
+  // Step 1.5 (`PLATFORM-BASELINE-010B-CORR-001` P1, re-based on
+  // Business-owned items by `PLATFORM-BASELINE-013B`): the
+  // publication-only "at least one qualifying item" invariant -- a draft
+  // may legitimately carry zero qualifying items, but nothing may ever
+  // publish with none. Checked from the already-read `draftPreview`, no
+  // extra Firestore read.
+  assertHasQualifyingItemsForPublish(draftPreview.qualifyingItems);
 
-  // Step 2: authoritative Firestore validation, BEFORE the PostgreSQL
-  // transaction begins -- this read is never part of that transaction's
-  // conflict set (RF-3, item F). A node retiring in the window between
-  // this line and the transaction's commit is the disclosed, accepted
-  // race (RF-3, item G) -- not eliminated by this design.
+  // Step 2: authoritative validation, BEFORE the PostgreSQL transaction
+  // begins -- these reads are never part of that transaction's conflict
+  // set (RF-3, item F). Qualification is re-validated against the CURRENT
+  // live items (an item retired after the last draft edit fails here, so a
+  // retired item can never be published into a new active version, while
+  // already-published versions are never retroactively invalidated). A
+  // node retiring in the window between this line and the transaction's
+  // commit is the disclosed, accepted race (RF-3, item G) -- not
+  // eliminated by this design.
   await validateAllReferences(db, {
     rewardProgramCategoryId: existing.program.rewardProgramCategoryId,
     standardRewardNodeId: draftPreview.standardRewardNodeId,
-    qualifyingNodes: draftPreview.qualifyingNodes,
   });
+  // Fresh snapshots at publish time: the published version's frozen
+  // evidence records what qualified AT PUBLICATION (a rename/remap of the
+  // live item since the last draft edit is captured, not lost).
+  const qualifyingItems = await resolveQualifyingItemSnapshots(
+    pool,
+    db,
+    params.request.businessId,
+    draftPreview.qualifyingItems.map((item) => item.qualifyingItemId),
+  );
 
   // Step 3: only now does the PostgreSQL publication transaction begin.
   return withPlatformTransaction(pool, async (tx) => {
@@ -153,6 +168,7 @@ export async function publishRewardProgramVersion(
       programId: params.request.rewardProgramId,
       versionId: params.request.versionId,
       actorUpdatedBy: params.userId,
+      qualifyingItems,
     });
 
     await writeRewardProgramOutboxEntry(tx, {

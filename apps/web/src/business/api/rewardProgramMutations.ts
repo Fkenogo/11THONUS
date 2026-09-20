@@ -15,9 +15,18 @@
 import { httpsCallable, type Functions } from "firebase/functions";
 import { toCallWithActor, type AuthenticatedActor } from "./businessCallableClient";
 
-export type QualifyingNodeWire = {
-  knowledgeNodeId: string;
-  businessDisplayName: string | null;
+/**
+ * A version's frozen qualification binding (`PLATFORM-BASELINE-013B`,
+ * `DEC-LOY-016`): the STRUCTURAL identity is `qualifyingItemId` (a stable
+ * Business-owned Qualifying Item id). `itemNameAtVersion` is the frozen
+ * Business-authored display snapshot -- the human-readable record, never
+ * authority. `knowledgeNodeIdAtVersion` is the frozen copy of the item's
+ * OPTIONAL classification (`null` when the item carries no mapping).
+ */
+export type QualifyingItemWire = {
+  qualifyingItemId: string;
+  itemNameAtVersion: string;
+  knowledgeNodeIdAtVersion: string | null;
 };
 
 export type RewardProgramWire = {
@@ -60,7 +69,7 @@ export type RewardProgramVersionWire = {
   updatedAt: string;
   rowVersion: number;
   schemaVersion: number;
-  qualifyingNodes: QualifyingNodeWire[];
+  qualifyingItems: QualifyingItemWire[];
 };
 
 export type RewardProgramWithVersionsWire = {
@@ -79,7 +88,13 @@ export type RewardProgramDraftFieldsRequest = {
   bulkReviewThreshold?: number | null;
   effectiveFrom: string;
   effectiveUntil?: string | null;
-  qualifyingNodes: QualifyingNodeWire[];
+  /**
+   * Structural qualification identity (`PLATFORM-BASELINE-013B`): stable
+   * Business-owned Qualifying Item ids. The server validates each id and
+   * resolves the frozen snapshot itself -- names and Commerce Knowledge
+   * ids are never accepted here.
+   */
+  qualifyingItemIds: string[];
 };
 
 export type CreateRewardProgramRequest = RewardProgramDraftFieldsRequest & {

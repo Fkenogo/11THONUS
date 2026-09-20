@@ -55,28 +55,88 @@ export function rewardProgramVersionAlreadyPublishedElsewhereError(): RewardProg
 /**
  * `PLATFORM-BASELINE-010B-CORR-001` (independent review finding
  * `PLATFORM-BASELINE-010B-ITR-001` P1): a Reward Program Category became
- * optional, but a Reward Program's qualifying canonical product/service
- * node(s) remain its operative qualification definition -- a published
- * version with zero qualifying nodes would qualify every purchase (or
- * none, depending on downstream interpretation), which no governed
- * decision (`FD-REWARD-QUALIFICATION-001`) ever authorized. A DRAFT may
- * still carry zero qualifying nodes while configuration is incomplete;
+ * optional, but a Reward Program's qualifying item(s) remain its operative
+ * qualification definition -- a published version with zero qualifying
+ * items would qualify every purchase (or none, depending on downstream
+ * interpretation), which no governed decision ever authorized. A DRAFT may
+ * still carry zero qualifying items while configuration is incomplete;
  * only PUBLICATION requires at least one.
+ *
+ * `PLATFORM-BASELINE-013B` (`DEC-LOY-016`): the counted items are
+ * Business-owned Qualifying Items, not canonical Commerce Knowledge nodes.
  */
-export function rewardProgramPublishRequiresQualifyingNodeError(): RewardProgramDomainError {
+export function rewardProgramPublishRequiresQualifyingItemError(): RewardProgramDomainError {
   return new RewardProgramDomainError(
     "VALIDATION_FAILED",
-    "A Reward Program version must have at least one qualifying Commerce Knowledge node before it can be published.",
+    "A Reward Program version must have at least one qualifying item before it can be published.",
     [
       {
-        field: "qualifyingNodes",
+        field: "qualifyingItemIds",
         code: "required_for_publish",
-        messageKey: "rewardProgram.qualifyingNodes.requiredForPublish",
+        messageKey: "rewardProgram.qualifyingItems.requiredForPublish",
       },
     ],
   );
 }
 
+/**
+ * A Business-owned Qualifying Item reference that cannot be bound to a
+ * Reward Program version (`PLATFORM-BASELINE-013B`).
+ *
+ * Anti-fabrication boundary: a foreign-Business, fabricated, or malformed
+ * id is deliberately indistinguishable from an absent one
+ * (`RESOURCE_NOT_FOUND`, no existence disclosure). A same-Business item
+ * that exists but is retired is a different, caller-actionable reason
+ * (`INVALID_STATE_TRANSITION`).
+ */
+export function qualifyingItemReferenceNotFoundError(): RewardProgramDomainError {
+  return new RewardProgramDomainError("RESOURCE_NOT_FOUND", "Qualifying Item not found.", [
+    {
+      field: "qualifyingItemIds",
+      code: "invalid_reference",
+      messageKey: "rewardProgram.qualifyingItem.invalid",
+    },
+  ]);
+}
+
+export function qualifyingItemReferenceNotActiveError(): RewardProgramDomainError {
+  return new RewardProgramDomainError(
+    "INVALID_STATE_TRANSITION",
+    "This Qualifying Item is retired and cannot be added to a new Reward Program version.",
+    [
+      {
+        field: "qualifyingItemIds",
+        code: "not_active",
+        messageKey: "rewardProgram.qualifyingItem.notActive",
+      },
+    ],
+  );
+}
+
+export function invalidQualifyingItemReferenceError(
+  qualifyingItemId: string,
+  reason: string,
+): RewardProgramDomainError {
+  return new RewardProgramDomainError(
+    "VALIDATION_FAILED",
+    `Qualifying Item "${qualifyingItemId}" is not eligible: ${reason}.`,
+    [
+      {
+        field: "qualifyingItemIds",
+        code: "invalid_reference",
+        messageKey: "rewardProgram.qualifyingItem.invalid",
+      },
+    ],
+  );
+}
+
+/**
+ * Retained ONLY for the purchase write path (`recordPurchaseCommand.ts`),
+ * which still carries a canonical knowledge reference until
+ * `PLATFORM-BASELINE-013C` replaces it with `qualifyingItemId`. No Reward
+ * Program configuration path may use this -- Reward Program qualification
+ * is Business-owned (`QualifyingItemRef`) since `PLATFORM-BASELINE-013B`.
+ */
 export function invalidQualifyingNodeError(
   knowledgeNodeId: string,
   reason: string,
