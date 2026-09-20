@@ -129,7 +129,7 @@ Zero diff to `verifyPurchaseCommand`, verified-unit/loyalty-cycle repositories, 
 
 ## 24. CI result on exact head
 
-To be recorded from the PR's exact-head CI run after push (see §PR below). Local validation above is the pre-push gate.
+PR #265 head `e0c608f4745c583f096dbfb6c7693693d11e23c7`: CI run `35505524536` **SUCCESS** (completed 2026-09-20, full "Build, Lint, Test, Emulator Validation" workflow on the exact pushed head — no intervening commits). Recorded here by a docs-only follow-up commit; the follow-up head's own CI re-run is the final gate (see PR checks).
 
 ## 25. Dependencies added
 
