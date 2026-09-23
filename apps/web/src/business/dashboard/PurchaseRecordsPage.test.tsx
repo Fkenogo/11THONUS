@@ -15,18 +15,19 @@ let detailResult: {
       }
     | undefined;
 };
-let programsResult: {
-  data:
-    | {
-        program: {
-          id: string;
-          displayName: string;
-          status: string;
-          currentVersionId: string | null;
-        };
-      }[]
-    | undefined;
+
+type ProgramEntry = {
+  program: {
+    id: string;
+    displayName: string;
+    status: string;
+    currentVersionId: string | null;
+  };
+  currentVersion: {
+    qualifyingItems: { qualifyingItemId: string; itemNameAtVersion: string }[];
+  } | null;
 };
+let programsResult: { data: ProgramEntry[] | undefined };
 
 vi.mock("../hooks/purchaseQueries", () => ({
   usePurchasesQuery: () => purchasesResult,
@@ -45,6 +46,21 @@ vi.mock("../hooks/purchaseMutations", () => ({
 
 const context: BusinessContext = { businessId: "biz-1" } as BusinessContext;
 
+function programEntry(overrides: Partial<ProgramEntry> = {}): ProgramEntry {
+  return {
+    program: {
+      id: "rp-1",
+      displayName: "Coffees",
+      status: "active",
+      currentVersionId: "v-1",
+    },
+    currentVersion: {
+      qualifyingItems: [{ qualifyingItemId: "item-1", itemNameAtVersion: "Black Coffee" }],
+    },
+    ...overrides,
+  };
+}
+
 function purchaseWire(overrides: Partial<PurchaseRecordWire> = {}): PurchaseRecordWire {
   return {
     id: "p-1",
@@ -61,6 +77,7 @@ function purchaseWire(overrides: Partial<PurchaseRecordWire> = {}): PurchaseReco
     recordedByUserId: "staff-1",
     recordedByRole: "staff",
     quantity: 2,
+    qualifyingItemId: "item-1",
     itemLabel: "Coffee",
     knowledgeNodeId: null,
     unitValueMinor: null,
@@ -87,6 +104,11 @@ function renderPage() {
   );
 }
 
+/** Program select, then qualifying-item select, then the status filter. */
+function selects() {
+  return screen.getAllByRole("combobox");
+}
+
 afterEach(async () => {
   await i18n.changeLanguage("en");
   vi.clearAllMocks();
@@ -96,18 +118,7 @@ describe("PurchaseRecordsPage", () => {
   it("renders the record form and empty list in English", () => {
     purchasesResult = { data: { purchases: [] } };
     detailResult = { data: undefined };
-    programsResult = {
-      data: [
-        {
-          program: {
-            id: "rp-1",
-            displayName: "Coffees",
-            status: "active",
-            currentVersionId: "v-1",
-          },
-        },
-      ],
-    };
+    programsResult = { data: [programEntry()] };
     renderPage();
     expect(screen.getByText("Purchases")).toBeInTheDocument();
     expect(screen.getByText("Record a purchase")).toBeInTheDocument();
@@ -125,28 +136,35 @@ describe("PurchaseRecordsPage", () => {
     expect(screen.getByText("Aucun achat enregistré pour le moment.")).toBeInTheDocument();
   });
 
-  it("submits the record form with exactly one artifact (no customer identity)", async () => {
+  /**
+   * PLATFORM-BASELINE-013C — the free-text item field is gone; the operator
+   * picks a Business-authored name and the wire carries the opaque
+   * `qualifyingItemId`. The single item is pre-selected, so the operator never
+   * sees or types a UUID.
+   */
+  it("offers a named item option, exposes no UUID, has no free-text item field, and pre-selects a single item", () => {
     purchasesResult = { data: { purchases: [] } };
     detailResult = { data: undefined };
-    programsResult = {
-      data: [
-        {
-          program: {
-            id: "rp-1",
-            displayName: "Coffees",
-            status: "active",
-            currentVersionId: "v-1",
-          },
-        },
-      ],
-    };
+    programsResult = { data: [programEntry()] };
+    renderPage();
+
+    expect(screen.queryByLabelText("Item label")).not.toBeInTheDocument();
+    fireEvent.change(selects()[0], { target: { value: "rp-1" } });
+
+    expect(screen.getByRole("option", { name: "Black Coffee" })).toBeInTheDocument();
+    expect(screen.queryByText(/item-1/)).not.toBeInTheDocument();
+    expect((screen.getByLabelText("Item") as HTMLSelectElement).value).toBe("item-1");
+  });
+
+  it("submits the record form with exactly one artifact and the selected qualifyingItemId", async () => {
+    purchasesResult = { data: { purchases: [] } };
+    detailResult = { data: undefined };
+    programsResult = { data: [programEntry()] };
     renderPage();
     fireEvent.change(screen.getByLabelText("Loyalty Number or QR reference"), {
       target: { value: "ABC234" },
     });
-    fireEvent.change(screen.getByLabelText("Item label"), { target: { value: "Coffee" } });
-    const selects = screen.getAllByRole("combobox");
-    fireEvent.change(selects[0], { target: { value: "rp-1" } });
+    fireEvent.change(selects()[0], { target: { value: "rp-1" } });
     fireEvent.click(screen.getByRole("button", { name: "Record purchase" }));
     expect(mockRecord).toHaveBeenCalledTimes(1);
     const payload = mockRecord.mock.calls[0][0] as Record<string, unknown>;
@@ -154,35 +172,51 @@ describe("PurchaseRecordsPage", () => {
       rewardProgramId: "rp-1",
       loyaltyNumberValue: "ABC234",
       quantity: 1,
-      itemLabel: "Coffee",
+      qualifyingItemId: "item-1",
     });
+    expect(payload).not.toHaveProperty("itemLabel");
+    expect(payload).not.toHaveProperty("knowledgeNodeId");
     expect(payload).not.toHaveProperty("customerIdentityId");
     expect(payload).not.toHaveProperty("rewardProgramVersionId");
   });
 
-  it("submits the exact typed integer quantity", async () => {
+  it("requires an explicit choice when a programme has several items", async () => {
     purchasesResult = { data: { purchases: [] } };
     detailResult = { data: undefined };
     programsResult = {
       data: [
-        {
-          program: {
-            id: "rp-1",
-            displayName: "Coffees",
-            status: "active",
-            currentVersionId: "v-1",
+        programEntry({
+          currentVersion: {
+            qualifyingItems: [
+              { qualifyingItemId: "item-1", itemNameAtVersion: "Black Coffee" },
+              { qualifyingItemId: "item-2", itemNameAtVersion: "Cappuccino" },
+            ],
           },
-        },
+        }),
       ],
     };
     renderPage();
     fireEvent.change(screen.getByLabelText("Loyalty Number or QR reference"), {
       target: { value: "ABC234" },
     });
-    fireEvent.change(screen.getByLabelText("Item label"), { target: { value: "Coffee" } });
+    fireEvent.change(selects()[0], { target: { value: "rp-1" } });
+    // No auto-selection with more than one item.
+    expect((screen.getByLabelText("Item") as HTMLSelectElement).value).toBe("");
+    fireEvent.change(screen.getByLabelText("Item"), { target: { value: "item-2" } });
+    fireEvent.click(screen.getByRole("button", { name: "Record purchase" }));
+    expect(mockRecord.mock.calls[0][0]).toMatchObject({ qualifyingItemId: "item-2" });
+  });
+
+  it("submits the exact typed integer quantity", async () => {
+    purchasesResult = { data: { purchases: [] } };
+    detailResult = { data: undefined };
+    programsResult = { data: [programEntry()] };
+    renderPage();
+    fireEvent.change(screen.getByLabelText("Loyalty Number or QR reference"), {
+      target: { value: "ABC234" },
+    });
     fireEvent.change(screen.getByLabelText("Quantity"), { target: { value: "7" } });
-    const selects = screen.getAllByRole("combobox");
-    fireEvent.change(selects[0], { target: { value: "rp-1" } });
+    fireEvent.change(selects()[0], { target: { value: "rp-1" } });
     fireEvent.click(screen.getByRole("button", { name: "Record purchase" }));
     expect(mockRecord).toHaveBeenCalledTimes(1);
     expect(mockRecord.mock.calls[0][0]).toMatchObject({ quantity: 7 });
@@ -196,26 +230,13 @@ describe("PurchaseRecordsPage", () => {
   ])("rejects %s without calling the purchase mutation", (_label, rawQuantity) => {
     purchasesResult = { data: { purchases: [] } };
     detailResult = { data: undefined };
-    programsResult = {
-      data: [
-        {
-          program: {
-            id: "rp-1",
-            displayName: "Coffees",
-            status: "active",
-            currentVersionId: "v-1",
-          },
-        },
-      ],
-    };
+    programsResult = { data: [programEntry()] };
     renderPage();
     fireEvent.change(screen.getByLabelText("Loyalty Number or QR reference"), {
       target: { value: "ABC234" },
     });
-    fireEvent.change(screen.getByLabelText("Item label"), { target: { value: "Coffee" } });
     fireEvent.change(screen.getByLabelText("Quantity"), { target: { value: rawQuantity } });
-    const selects = screen.getAllByRole("combobox");
-    fireEvent.change(selects[0], { target: { value: "rp-1" } });
+    fireEvent.change(selects()[0], { target: { value: "rp-1" } });
     fireEvent.click(screen.getByRole("button", { name: "Record purchase" }));
     expect(mockRecord).not.toHaveBeenCalled();
     expect(screen.getByRole("alert")).toHaveTextContent("Enter a whole number of 1 or more.");
@@ -224,26 +245,13 @@ describe("PurchaseRecordsPage", () => {
   it("clears the quantity error once the field is edited again", () => {
     purchasesResult = { data: { purchases: [] } };
     detailResult = { data: undefined };
-    programsResult = {
-      data: [
-        {
-          program: {
-            id: "rp-1",
-            displayName: "Coffees",
-            status: "active",
-            currentVersionId: "v-1",
-          },
-        },
-      ],
-    };
+    programsResult = { data: [programEntry()] };
     renderPage();
     fireEvent.change(screen.getByLabelText("Loyalty Number or QR reference"), {
       target: { value: "ABC234" },
     });
-    fireEvent.change(screen.getByLabelText("Item label"), { target: { value: "Coffee" } });
     fireEvent.change(screen.getByLabelText("Quantity"), { target: { value: "2abc" } });
-    const selects = screen.getAllByRole("combobox");
-    fireEvent.change(selects[0], { target: { value: "rp-1" } });
+    fireEvent.change(selects()[0], { target: { value: "rp-1" } });
     fireEvent.click(screen.getByRole("button", { name: "Record purchase" }));
     expect(screen.getByRole("alert")).toHaveTextContent("Enter a whole number of 1 or more.");
     fireEvent.change(screen.getByLabelText("Quantity"), { target: { value: "3" } });
@@ -295,27 +303,14 @@ describe("PurchaseRecordsPage — purchase date / timezone (CORR-003)", () => {
     fireEvent.change(screen.getByLabelText("Loyalty Number or QR reference"), {
       target: { value: "ABC234" },
     });
-    fireEvent.change(screen.getByLabelText("Item label"), { target: { value: "Coffee" } });
-    const selects = screen.getAllByRole("combobox");
-    fireEvent.change(selects[0], { target: { value: "rp-1" } });
+    fireEvent.change(selects()[0], { target: { value: "rp-1" } });
     fireEvent.click(screen.getByRole("button", { name: "Record purchase" }));
   }
 
   function setUpPrograms() {
     purchasesResult = { data: { purchases: [] } };
     detailResult = { data: undefined };
-    programsResult = {
-      data: [
-        {
-          program: {
-            id: "rp-1",
-            displayName: "Coffees",
-            status: "active",
-            currentVersionId: "v-1",
-          },
-        },
-      ],
-    };
+    programsResult = { data: [programEntry()] };
   }
 
   it("records today's default date during UTC+2 local morning without producing a future instant", () => {

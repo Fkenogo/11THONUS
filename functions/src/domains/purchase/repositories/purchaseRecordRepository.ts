@@ -48,6 +48,7 @@ type PurchaseDbRow = {
   recorded_by_user_id: string;
   recorded_by_role: RecorderRole;
   quantity: number;
+  qualifying_item_id: string | null;
   item_label: string;
   knowledge_node_id: string | null;
   unit_value_minor: number | null;
@@ -81,6 +82,7 @@ function mapPurchaseRow(row: PurchaseDbRow): PurchaseRecordRow {
     recordedByUserId: row.recorded_by_user_id,
     recordedByRole: row.recorded_by_role,
     quantity: row.quantity,
+    qualifyingItemId: row.qualifying_item_id,
     itemLabel: row.item_label,
     knowledgeNodeId: row.knowledge_node_id,
     unitValueMinor: row.unit_value_minor,
@@ -113,8 +115,10 @@ export type InsertPurchaseRecordParams = {
   readonly recordedByUserId: string;
   readonly recordedByRole: RecorderRole;
   readonly quantity: number;
+  /** Structural Business-owned item identity (`PLATFORM-BASELINE-013C`) -- always supplied by the command. */
+  readonly qualifyingItemId: string;
+  /** Server-derived frozen display snapshot (`item_name_at_version` of the locked version's binding). */
   readonly itemLabel: string;
-  readonly knowledgeNodeId: string | null;
   readonly unitValueMinor: number | null;
   readonly currency: string | null;
   readonly purchaseDate: Date;
@@ -132,7 +136,7 @@ export async function insertPurchaseRecord(
        (business_id, customer_identity_id, presented_artifact_type, presented_artifact_reference,
         canonical_loyalty_number_value, reward_program_id, reward_program_version_id,
         shared_loyalty_number_allowed, multiple_units_allowed, branch_id,
-        recorded_by_user_id, recorded_by_role, quantity, item_label, knowledge_node_id,
+        recorded_by_user_id, recorded_by_role, quantity, qualifying_item_id, item_label,
         unit_value_minor, currency, purchase_date, notes, status, correlation_id)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,'waiting_for_customer',$20)
      RETURNING *`,
@@ -150,8 +154,8 @@ export async function insertPurchaseRecord(
       params.recordedByUserId,
       params.recordedByRole,
       params.quantity,
+      params.qualifyingItemId,
       params.itemLabel,
-      params.knowledgeNodeId,
       params.unitValueMinor,
       params.currency,
       params.purchaseDate,

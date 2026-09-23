@@ -92,6 +92,36 @@ export async function lockRewardProgramVersionById(
 }
 
 /**
+ * Reads the locked version's frozen binding for a supplied Qualifying Item
+ * (`PLATFORM-BASELINE-013C`). Runs inside the creation transaction against
+ * the SAME version row whose terms were just locked and proven, so a
+ * concurrent publish or version move cannot race this check (PB-012 §17A
+ * CF-2). Returns the frozen `item_name_at_version` snapshot, or `null` when
+ * the id is not on this version's qualification set -- foreign-Business,
+ * fabricated, non-qualifying, and malformed ids are all indistinguishable
+ * here by design (no cross-Business existence disclosure). Deliberately
+ * does NOT consult `qualifying_items.status`: retirement blocks new draft
+ * bindings, never a purchase against an already-published version (PB-012
+ * §7 Q6). The caller must have already confirmed the id is UUID-shaped; a
+ * non-UUID operand would surface a raw driver error.
+ */
+export async function readLockedVersionQualifyingItem(
+  tx: PlatformPostgresTransaction,
+  params: { readonly versionId: string; readonly qualifyingItemId: string },
+): Promise<{ readonly itemNameAtVersion: string } | null> {
+  const result = await tx.query<{ item_name_at_version: string }>(
+    `SELECT item_name_at_version
+       FROM reward_program_version_qualifying_items
+      WHERE reward_program_version_id = $1 AND qualifying_item_id = $2`,
+    [params.versionId, params.qualifyingItemId],
+  );
+  if (result.rows.length === 0) {
+    return null;
+  }
+  return { itemNameAtVersion: result.rows[0].item_name_at_version };
+}
+
+/**
  * Non-locking read of a version's reward terms for Reward creation and
  * version-delta logging. Published versions are immutable (005A: only
  * drafts are editable, publication only flips status), so no lock is

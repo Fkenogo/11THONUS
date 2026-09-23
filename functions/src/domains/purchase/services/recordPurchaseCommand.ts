@@ -9,9 +9,13 @@
  *  4. resolve the Customer artifact in Firestore (provisional — acceptance
  *     is decided in-transaction at step 10);
  *  5. validate live Firestore-owned authorities (Business, membership,
- *     current-QR-if-QR-path, Branch, Commerce Knowledge);
+ *     current-QR-if-QR-path, Branch);
  *  6. BEGIN PostgreSQL transaction;
  *  7. lock Reward Program; 8. lock current Reward Program Version;
+ *  8.5 prove the supplied Business-owned Qualifying Item is on the LOCKED
+ *     version's frozen qualification set and derive the display snapshot
+ *     (`PLATFORM-BASELINE-013C`; never Commerce Knowledge, never a
+ *     client-supplied name);
  *  9. prove program∈Business, program active, version is current/active,
  *     and read the locked `sharedLoyaltyNumberAllowed` /
  *     `multipleUnitsAllowed`;
@@ -50,7 +54,7 @@ import { getLoyaltyNumberAssignmentForIdentity } from "../../loyaltyNumber/repos
 import { createLoyaltyNumber } from "../../loyaltyNumber/models/loyaltyNumber";
 import { createQrReference } from "../../qrIdentity/models/qrReference";
 import { readDefaultBranchForBusiness } from "../../business/repositories/businessRepository";
-import { validateQualifyingNodes } from "../../rewardProgram/services/rewardProgramKnowledgeValidation";
+import { isWellFormedQualifyingItemId } from "../../qualifyingItem/models/qualifyingItem";
 import { authorizePurchaseRecord } from "./purchaseAuthorization";
 import { purchaseRequestHash } from "./purchaseRequestHash";
 import {
@@ -60,6 +64,7 @@ import {
 import {
   lockRewardProgramById,
   lockRewardProgramVersionById,
+  readLockedVersionQualifyingItem,
 } from "../repositories/purchaseProgramScopeRepository";
 import { insertTrustEvent } from "../repositories/trustEventRepository";
 import { insertNotificationIntent } from "../repositories/purchaseOutboxRepository";
@@ -70,6 +75,7 @@ import {
   purchaseIdempotencyConflictError,
   purchaseIdempotencyInProgressError,
   purchaseProgramError,
+  purchaseQualifyingItemError,
   purchaseQuantityError,
   purchaseSharedPolicyError,
   purchaseValidationError,
@@ -81,8 +87,13 @@ export type RecordPurchaseRequest = {
   readonly loyaltyNumberValue?: string | null;
   readonly qrReference?: string | null;
   readonly quantity: number;
-  readonly itemLabel: string;
-  readonly knowledgeNodeId?: string | null;
+  /**
+   * Structural Business-owned item identity (`PLATFORM-BASELINE-013C`).
+   * Required; resolved server-side against the LOCKED version's frozen
+   * qualification set. The client never supplies a name, a Commerce
+   * Knowledge id, or a Reward Program/version id.
+   */
+  readonly qualifyingItemId: string;
   readonly unitValueMinor?: number | null;
   readonly currency?: string | null;
   readonly purchaseDate: Date;
@@ -137,8 +148,11 @@ export async function recordPurchase(
   if (!Number.isInteger(request.quantity) || request.quantity < 1) {
     throw purchaseQuantityError("Quantity must be an integer of at least 1.");
   }
-  if (request.itemLabel.trim().length === 0) {
-    throw purchaseValidationError("An item label is required.");
+  if (
+    typeof request.qualifyingItemId !== "string" ||
+    request.qualifyingItemId.trim().length === 0
+  ) {
+    throw purchaseValidationError("A qualifying item is required.");
   }
   if (!(request.purchaseDate instanceof Date) || Number.isNaN(request.purchaseDate.getTime())) {
     throw purchaseValidationError("A valid purchase date is required.");
@@ -179,8 +193,7 @@ export async function recordPurchase(
     artifactReference: artifact.reference,
     rewardProgramId: request.rewardProgramId,
     quantity: request.quantity,
-    itemLabel: request.itemLabel,
-    knowledgeNodeId: request.knowledgeNodeId ?? null,
+    qualifyingItemId: request.qualifyingItemId,
     unitValueMinor: request.unitValueMinor ?? null,
     currency: request.currency ?? null,
     purchaseDate: request.purchaseDate.toISOString(),
@@ -227,14 +240,13 @@ export async function recordPurchase(
   }
   const canonicalLoyaltyNumberValue = assignment.loyaltyNumber as string;
 
-  // Step 5b: default Branch (informational metadata) + Commerce Knowledge
-  // ref (iff present) — authoritative Firestore reads before the PG txn.
+  // Step 5b: default Branch (informational metadata) — authoritative
+  // Firestore read before the PG txn. Commerce Knowledge is no longer
+  // consulted on this path: a purchase's item identity is the Business-owned
+  // `qualifyingItemId`, proven in-transaction against the locked version's
+  // frozen set. Any optional Commerce Knowledge classification belongs to
+  // the live item and is never a purchase qualification requirement.
   const branch = await readDefaultBranchForBusiness(db, request.businessId);
-  if (request.knowledgeNodeId != null && request.knowledgeNodeId.trim().length > 0) {
-    await validateQualifyingNodes(db, [
-      { knowledgeNodeId: request.knowledgeNodeId, businessDisplayName: null },
-    ]);
-  }
 
   return withPlatformTransaction(pool, async (tx) => {
     // Steps 7–8: lock Program + current Version.
@@ -252,6 +264,27 @@ export async function recordPurchase(
     if (!version || version.rewardProgramId !== program.id || version.status !== "active") {
       throw purchaseProgramError("The Reward Program has no active published version.");
     }
+
+    // Step 8.5: prove the supplied Business Qualifying Item is on the LOCKED
+    // version's frozen qualification set and derive the human-readable item
+    // snapshot server-side (`PLATFORM-BASELINE-013C`). The locked version is
+    // the same row just proven current+active, so a concurrent publish
+    // cannot race this check (PB-012 §17A CF-2). Foreign-Business,
+    // fabricated, non-qualifying, and malformed ids all reject identically
+    // (no cross-Business existence disclosure). Retirement is deliberately
+    // NOT consulted: it blocks new draft bindings, never a purchase against
+    // an already-published version (PB-012 §7 Q6).
+    if (!isWellFormedQualifyingItemId(request.qualifyingItemId)) {
+      throw purchaseQualifyingItemError();
+    }
+    const boundItem = await readLockedVersionQualifyingItem(tx, {
+      versionId: version.id,
+      qualifyingItemId: request.qualifyingItemId,
+    });
+    if (!boundItem) {
+      throw purchaseQualifyingItemError();
+    }
+    const itemLabel = boundItem.itemNameAtVersion;
 
     // Step 10: shared-gate on the LOCKED version (FD-PVL-005).
     if (artifact.type === "loyalty_number" && !version.sharedLoyaltyNumberAllowed) {
@@ -298,8 +331,8 @@ export async function recordPurchase(
       recordedByUserId: params.userId,
       recordedByRole: role,
       quantity: request.quantity,
-      itemLabel: request.itemLabel,
-      knowledgeNodeId: request.knowledgeNodeId ?? null,
+      qualifyingItemId: request.qualifyingItemId,
+      itemLabel,
       unitValueMinor: request.unitValueMinor ?? null,
       currency: request.currency ?? null,
       purchaseDate: request.purchaseDate,
@@ -338,6 +371,7 @@ export async function recordPurchase(
       payload: {
         rewardProgramId: purchase.rewardProgramId,
         rewardProgramVersionId: purchase.rewardProgramVersionId,
+        qualifyingItemId: purchase.qualifyingItemId,
         quantity: purchase.quantity,
         presentedArtifactType: purchase.presentedArtifactType,
       },

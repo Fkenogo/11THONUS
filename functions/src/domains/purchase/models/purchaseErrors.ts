@@ -55,6 +55,21 @@ export function purchaseProgramError(message: string): PurchaseDomainError {
   return new PurchaseDomainError("VALIDATION_FAILED", message);
 }
 
+/**
+ * Uniform rejection for a purchase item that is not on the locked version's
+ * qualification set (`PLATFORM-BASELINE-013C`). Deliberately identical for a
+ * fabricated id, a foreign-Business id, a non-qualifying Business item, and
+ * a malformed id -- the client learns only that the selection is not valid
+ * for this Reward Program, never whether a foreign-Business id exists
+ * (PB-012 §7/§10, §17A CF-2).
+ */
+export function purchaseQualifyingItemError(): PurchaseDomainError {
+  return new PurchaseDomainError(
+    "VALIDATION_FAILED",
+    "The selected qualifying item is not available for this Reward Program.",
+  );
+}
+
 export function purchaseSharedPolicyError(): PurchaseDomainError {
   return new PurchaseDomainError(
     "VALIDATION_FAILED",

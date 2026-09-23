@@ -26,6 +26,7 @@ export type PurchaseRecordWire = {
   recordedByUserId: string;
   recordedByRole: "staff" | "manager" | "owner";
   quantity: number;
+  qualifyingItemId: string | null;
   itemLabel: string;
   knowledgeNodeId: string | null;
   unitValueMinor: number | null;
@@ -70,8 +71,13 @@ export type RecordPurchaseRequest = {
   loyaltyNumberValue?: string;
   qrReference?: string;
   quantity: number;
-  itemLabel: string;
-  knowledgeNodeId?: string | null;
+  /**
+   * Structural Business-owned Qualifying Item id (`PLATFORM-BASELINE-013C`).
+   * Selected from the Reward Program's own `currentVersion.qualifyingItems`;
+   * the server resolves the display name and validates the binding. No item
+   * name, Commerce Knowledge id, or program version crosses the wire.
+   */
+  qualifyingItemId: string;
   unitValueMinor?: number | null;
   currency?: string | null;
   purchaseDate: string;

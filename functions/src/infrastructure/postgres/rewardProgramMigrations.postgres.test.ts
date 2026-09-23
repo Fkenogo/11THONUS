@@ -79,7 +79,7 @@ afterAll(async () => {
 });
 
 describe("Reward Program migrations against a real PostgreSQL instance", () => {
-  it("discovers all seventeen migrations in version order", async () => {
+  it("discovers all eighteen migrations in version order", async () => {
     const files = await discoverMigrationFiles(migrationsDir);
     expect(files.map((f) => f.version)).toEqual([
       "0001",
@@ -99,6 +99,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0015",
       "0016",
       "0017",
+      "0018",
     ]);
   });
 
@@ -122,6 +123,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0015",
       "0016",
       "0017",
+      "0018",
     ]);
 
     for (const table of [
@@ -172,12 +174,13 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0015",
       "0016",
       "0017",
+      "0018",
     ]);
   }, 15000);
 
   it("rolls back the full migration set and re-applies cleanly", async () => {
     await migrateUp(pool, migrationsDir);
-    await migrateDown(pool, migrationsDir, 17);
+    await migrateDown(pool, migrationsDir, 18);
 
     for (const table of [
       "reward_programs",
@@ -210,6 +213,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0015",
       "0016",
       "0017",
+      "0018",
     ]);
     const applied = await getAppliedMigrations(pool);
     expect(applied.map((a) => a.version)).toEqual([
@@ -230,6 +234,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0015",
       "0016",
       "0017",
+      "0018",
     ]);
   }, 15000);
 
@@ -484,7 +489,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       // 0015 -- and apply cleanly here too; neither touches
       // reward_programs.reward_program_category_id, so they do not affect
       // this test's own assertions below.
-      expect(result.applied).toEqual(["0015", "0016", "0017"]);
+      expect(result.applied).toEqual(["0015", "0016", "0017", "0018"]);
 
       const preserved = await pool.query<{
         business_id: string;
@@ -851,7 +856,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
      */
     it("the 0017 backfill synthesizes exactly one qualifying item and one equivalent junction row per legacy reference, and existing rows survive byte-for-byte", async () => {
       const allFiles = await discoverMigrationFiles(migrationsDir);
-      const preBackfillFiles = allFiles.filter((f) => f.version !== "0017");
+      const preBackfillFiles = allFiles.filter((f) => f.version < "0017");
       const scratchDir = await mkdtemp(path.join(tmpdir(), "pb013a1-pre-backfill-migrations-"));
       try {
         for (const file of preBackfillFiles) {
@@ -874,7 +879,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       );
 
       const result = await migrateUp(pool, migrationsDir);
-      expect(result.applied).toEqual(["0017"]);
+      expect(result.applied).toEqual(["0017", "0018"]);
 
       const synthesized = await pool.query<{
         id: string;
@@ -919,7 +924,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
 
     it("the 0017 backfill SQL is idempotent: re-executing it against an already-backfilled database adds nothing", async () => {
       const preBackfillFiles = (await discoverMigrationFiles(migrationsDir)).filter(
-        (f) => f.version !== "0017",
+        (f) => f.version < "0017",
       );
       const scratchDir = await mkdtemp(path.join(tmpdir(), "pb013a1-idempotent-backfill-"));
       try {
@@ -971,7 +976,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
 
     it("0017.down removes only the migration's own synthesized items and never a real Business-created item", async () => {
       const preBackfillFiles = (await discoverMigrationFiles(migrationsDir)).filter(
-        (f) => f.version !== "0017",
+        (f) => f.version < "0017",
       );
       const scratchDir = await mkdtemp(path.join(tmpdir(), "pb013a1-down-precondition-"));
       try {
@@ -1010,7 +1015,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       });
 
       // Roll back ONLY 0017 (the junction table + its backfill), not 0016.
-      await migrateDown(pool, migrationsDir, 1);
+      await migrateDown(pool, migrationsDir, 2);
 
       const junctionTable = await pool.query(
         "SELECT to_regclass('reward_program_version_qualifying_items') AS reg",
@@ -1030,7 +1035,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       // by design: a package that merged atomically reverts atomically,
       // and a full PB-013A.1 rollback is only safe when no real Business
       // has created its own item yet, per the design's own precondition).
-      await migrateDown(pool, migrationsDir, 1);
+      await migrateDown(pool, migrationsDir, 2);
       const itemsTableAfter = await pool.query("SELECT to_regclass('qualifying_items') AS reg");
       expect(itemsTableAfter.rows[0].reg).toBeNull();
     }, 15000);
@@ -1059,7 +1064,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         [versionId, genuineItemId],
       );
 
-      await expect(migrateDown(pool, migrationsDir, 1)).rejects.toThrow(
+      await expect(migrateDown(pool, migrationsDir, 2)).rejects.toThrow(
         /Refusing to roll back migration 0017/,
       );
 
@@ -1099,7 +1104,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
      */
     it("two Businesses referencing the same canonical legacy node produce two independent, correctly-scoped Business-owned Qualifying Items", async () => {
       const preBackfillFiles = (await discoverMigrationFiles(migrationsDir)).filter(
-        (f) => f.version !== "0017",
+        (f) => f.version < "0017",
       );
       const scratchDir = await mkdtemp(path.join(tmpdir(), "pb013a1-multi-business-"));
       try {
@@ -1154,7 +1159,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
      */
     it("a legacy row with NULL business_display_name falls back to knowledge_node_id as the synthesized item's name", async () => {
       const preBackfillFiles = (await discoverMigrationFiles(migrationsDir)).filter(
-        (f) => f.version !== "0017",
+        (f) => f.version < "0017",
       );
       const scratchDir = await mkdtemp(path.join(tmpdir(), "pb013a1-null-fallback-"));
       try {
@@ -1190,5 +1195,143 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       );
       expect(junction.rows[0].item_name_at_version).toBe("node-noname-1");
     }, 15000);
+  });
+
+  /**
+   * `PLATFORM-BASELINE-013C` — the additive purchase-binding column and its
+   * two composite foreign keys. Design: PB-012 §7/§10/§13. These prove the
+   * relational guarantees directly against raw SQL (the second layer behind
+   * the application's in-transaction membership check): a cross-Business or
+   * non-qualifying item is structurally impossible, a legacy NULL is exempt,
+   * and a recorded item can never be deleted away.
+   */
+  describe("PLATFORM-BASELINE-013C: purchase_records qualifying-item binding", () => {
+    beforeEach(async () => {
+      await migrateUp(pool, migrationsDir);
+    });
+
+    async function insertProgram(businessId: string): Promise<string> {
+      const result = await pool.query<{ id: string }>(
+        `INSERT INTO reward_programs (business_id, display_name, reward_program_category_id, status, created_by, updated_by)
+         VALUES ($1, 'Test Program', 'cat-1', 'draft', 'user-1', 'user-1') RETURNING id`,
+        [businessId],
+      );
+      return result.rows[0].id;
+    }
+
+    async function insertVersion(programId: string): Promise<string> {
+      const result = await pool.query<{ id: string }>(
+        `INSERT INTO reward_program_versions
+           (reward_program_id, version, required_verified_units, reward_quantity, shared_loyalty_number_allowed, reward_description, effective_from, status, created_by)
+         VALUES ($1, 1, 10, 1, false, 'desc', now(), 'draft', 'user-1') RETURNING id`,
+        [programId],
+      );
+      return result.rows[0].id;
+    }
+
+    async function insertItem(businessId: string, name: string): Promise<string> {
+      const result = await pool.query<{ id: string }>(
+        `INSERT INTO qualifying_items (business_id, name, knowledge_node_id, status, created_by, updated_by)
+         VALUES ($1, $2, NULL, 'active', 'user-1', 'user-1') RETURNING id`,
+        [businessId, name],
+      );
+      return result.rows[0].id;
+    }
+
+    async function bindItem(versionId: string, itemId: string): Promise<void> {
+      await pool.query(
+        `INSERT INTO reward_program_version_qualifying_items
+           (reward_program_version_id, qualifying_item_id, item_name_at_version)
+         VALUES ($1, $2, 'Bound Item')`,
+        [versionId, itemId],
+      );
+    }
+
+    async function insertPurchase(params: {
+      businessId: string;
+      programId: string;
+      versionId: string;
+      qualifyingItemId: string | null;
+    }): Promise<void> {
+      await pool.query(
+        `INSERT INTO purchase_records
+           (business_id, customer_identity_id, presented_artifact_type, presented_artifact_reference,
+            canonical_loyalty_number_value, reward_program_id, reward_program_version_id,
+            shared_loyalty_number_allowed, multiple_units_allowed, branch_id,
+            recorded_by_user_id, recorded_by_role, quantity, qualifying_item_id, item_label,
+            purchase_date, correlation_id)
+         VALUES ($1, 'cust-1', 'loyalty_number', 'ABC234',
+                 'ABC234', $2, $3,
+                 false, true, 'branch-1',
+                 'user-1', 'staff', 1, $4, 'Snapshot',
+                 now(), 'corr-1')`,
+        [params.businessId, params.programId, params.versionId, params.qualifyingItemId],
+      );
+    }
+
+    it("allows a legacy NULL qualifying_item_id and accepts a same-Business, version-bound item", async () => {
+      const businessId = "biz-013c-ok";
+      const programId = await insertProgram(businessId);
+      const versionId = await insertVersion(programId);
+      const itemId = await insertItem(businessId, "Black Coffee");
+      await bindItem(versionId, itemId);
+
+      await insertPurchase({ businessId, programId, versionId, qualifyingItemId: null });
+      await insertPurchase({ businessId, programId, versionId, qualifyingItemId: itemId });
+
+      const rows = await pool.query<{ qualifying_item_id: string | null }>(
+        `SELECT qualifying_item_id FROM purchase_records ORDER BY created_at, id`,
+      );
+      expect(rows.rows.map((r) => r.qualifying_item_id)).toEqual([null, itemId]);
+    });
+
+    it("rejects a purchase item that belongs to another Business (purchase_records_item_in_business)", async () => {
+      const businessId = "biz-013c-A";
+      const programId = await insertProgram(businessId);
+      const versionId = await insertVersion(programId);
+      const ownItem = await insertItem(businessId, "A Item");
+      await bindItem(versionId, ownItem);
+      const foreignItem = await insertItem("biz-013c-B", "B Item");
+
+      await expect(
+        insertPurchase({ businessId, programId, versionId, qualifyingItemId: foreignItem }),
+      ).rejects.toThrow(/purchase_records_item_in_business/);
+    });
+
+    it("rejects a same-Business item that is not on the purchase's version (purchase_records_item_in_version)", async () => {
+      const businessId = "biz-013c-unbound";
+      const programId = await insertProgram(businessId);
+      const versionId = await insertVersion(programId);
+      const boundItem = await insertItem(businessId, "Bound");
+      await bindItem(versionId, boundItem);
+      const unboundItem = await insertItem(businessId, "Unbound");
+
+      await expect(
+        insertPurchase({ businessId, programId, versionId, qualifyingItemId: unboundItem }),
+      ).rejects.toThrow(/purchase_records_item_in_version/);
+    });
+
+    it("pins a recorded purchase's item and its version binding with ON DELETE RESTRICT", async () => {
+      const businessId = "biz-013c-restrict";
+      const programId = await insertProgram(businessId);
+      const versionId = await insertVersion(programId);
+      const itemId = await insertItem(businessId, "Restricted Item");
+      await bindItem(versionId, itemId);
+      await insertPurchase({ businessId, programId, versionId, qualifyingItemId: itemId });
+
+      // The version binding cannot be removed while a purchase references it
+      // (purchase_records_item_in_version, RESTRICT)...
+      await expect(
+        pool.query(
+          `DELETE FROM reward_program_version_qualifying_items WHERE qualifying_item_id = $1`,
+          [itemId],
+        ),
+      ).rejects.toThrow(/purchase_records_item_in_version/);
+      // ...and the item itself cannot be removed while either the binding or
+      // the recorded purchase references it.
+      await expect(
+        pool.query(`DELETE FROM qualifying_items WHERE id = $1`, [itemId]),
+      ).rejects.toThrow();
+    });
   });
 });
