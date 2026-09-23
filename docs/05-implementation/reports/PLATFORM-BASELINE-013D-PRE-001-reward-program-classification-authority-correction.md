@@ -4,7 +4,7 @@
 **Entry `origin/main`:** `640caaf74f9203cad3ec6debcf575e8605989e23`  
 **Branch:** `codex/platform-baseline-013d-pre-001`  
 **Worktree:** `/private/tmp/11thonus-pb013d-pre-001`  
-**PR:** To be recorded after opening.  
+**PR:** [#269](https://github.com/Fkenogo/11THONUS/pull/269), OPEN (not merged).
 **Scope:** Reward Program Qualifying Item snapshot authority only.
 
 ## 1. Analysis before modification
@@ -64,6 +64,6 @@ No dependencies, config, schema, migrations, seeds, permissions, purchase/10+1 b
 
 ## 8. Repository and PR state
 
-Files changed are limited to the Reward Program resolver and its four callers, Reward Program behavioral tests, this report, and the documentation change log. Exact PR number/state and final pushed head will be added after opening. Exact-head CI status will be recorded after GitHub reports it. No unrelated production files are included.
+Files changed are limited to the Reward Program resolver and its four callers, Reward Program behavioral tests, this report, and the documentation change log. PR #269 is OPEN and targets `main` at `640caaf74f9203cad3ec6debcf575e8605989e23`. Implementation commit `baddd2f5d80648d4bacb5311fcc981663bb03be3` had exact-head CI run `35862080118` **SUCCESS**. This report/change-log metadata update creates a documentation-only PR head; its exact-head CI is checked separately. No unrelated production files are included.
 
 The original dirty checkout remains untouched. No merge has been performed. The temporary detached assessment worktree from the prior read-only assessment is not present in this work session; only this task's isolated worktree is in use.
