@@ -40,6 +40,8 @@ import {
 } from "../hooks/qualifyingItemMutations";
 import { MutationError } from "../onboarding/MutationError";
 import { QualifyingItemSelector } from "./QualifyingItemSelector";
+import { QualifyingItemClassificationEditor } from "./QualifyingItemClassificationEditor";
+import { useKnowledgeNodeLabelsQuery } from "../hooks/businessQueries";
 import type { BusinessContext } from "../api/businessContext";
 import type { RewardProgramWithVersionsWire } from "../api/rewardProgramMutations";
 import type { QualifyingItemWire } from "../api/qualifyingItems";
@@ -109,7 +111,7 @@ function snapshotNamesOf(
 }
 
 export function RewardProgramManagementPage({ context }: { context: BusinessContext }) {
-  const { t } = useTranslation("business");
+  const { t, i18n } = useTranslation("business");
   const accessibleQuery = useAccessibleBusinessesQuery();
   const rewardProgramsQuery = useRewardProgramsQuery(context.businessId);
   const qualifyingItemsQuery = useQualifyingItemsQuery(context.businessId);
@@ -132,6 +134,22 @@ export function RewardProgramManagementPage({ context }: { context: BusinessCont
   const createNextVersionMutation = useCreateNextRewardProgramVersionMutation(context.businessId);
 
   const activeItems = qualifyingItemsQuery.data ?? [];
+  const frozenNodeIds = (rewardProgramsQuery.data ?? []).flatMap((entry) =>
+    [entry.currentVersion, entry.draftVersion].flatMap((version) =>
+      (version?.qualifyingItems ?? []).flatMap((item) =>
+        item.knowledgeNodeIdAtVersion ? [item.knowledgeNodeIdAtVersion] : [],
+      ),
+    ),
+  );
+  const classificationLanguage = i18n.language.startsWith("fr") ? "fr" : "en";
+  const frozenLabelsQuery = useKnowledgeNodeLabelsQuery(
+    [...new Set(frozenNodeIds)],
+    classificationLanguage,
+  );
+  const frozenLabels = new Map(
+    (frozenLabelsQuery.data ?? []).map((item) => [item.id, item.displayLabel]),
+  );
+  const classificationMutation = useUpdateQualifyingItemMutation(context.businessId);
 
   if (rewardProgramsQuery.isLoading) {
     return (
@@ -226,9 +244,15 @@ export function RewardProgramManagementPage({ context }: { context: BusinessCont
       {canManageItems && (
         <QualifyingItemsSection
           businessId={context.businessId}
+          businessTypeId={context.businessTypeId}
           items={activeItems}
           isLoading={qualifyingItemsQuery.isLoading}
           isError={qualifyingItemsQuery.isError}
+          updateClassification={(item, knowledgeNodeId) =>
+            classificationMutation.mutate({ qualifyingItemId: item.id, knowledgeNodeId })
+          }
+          classificationSaving={classificationMutation.isPending}
+          classificationError={classificationMutation.error}
         />
       )}
 
@@ -326,6 +350,10 @@ export function RewardProgramManagementPage({ context }: { context: BusinessCont
                 <BoundItemsList
                   items={entry.currentVersion.qualifyingItems}
                   label={t("rewardProgram.boundItemsLabel")}
+                  classificationLabel={t("rewardProgram.classification.label")}
+                  classificationNone={t("rewardProgram.classification.none")}
+                  classificationUnavailable={t("rewardProgram.classification.unavailable")}
+                  classificationLabels={frozenLabels}
                 />
                 <p className="text-[var(--color-muted-foreground)]">
                   {t("rewardProgram.versionLabel", { version: entry.currentVersion.version })} —{" "}
@@ -342,6 +370,10 @@ export function RewardProgramManagementPage({ context }: { context: BusinessCont
                   <BoundItemsList
                     items={entry.draftVersion.qualifyingItems}
                     label={t("rewardProgram.boundItemsLabel")}
+                    classificationLabel={t("rewardProgram.classification.label")}
+                    classificationNone={t("rewardProgram.classification.none")}
+                    classificationUnavailable={t("rewardProgram.classification.unavailable")}
+                    classificationLabels={frozenLabels}
                   />
                   <p className="text-[var(--color-muted-foreground)]">
                     {t("rewardProgram.versionLabel", { version: entry.draftVersion.version })} —{" "}
@@ -483,16 +515,37 @@ export function RewardProgramManagementPage({ context }: { context: BusinessCont
 function BoundItemsList({
   items,
   label,
+  classificationLabel,
+  classificationNone,
+  classificationUnavailable,
+  classificationLabels,
 }: {
-  items: readonly { qualifyingItemId: string; itemNameAtVersion: string }[];
+  items: readonly {
+    qualifyingItemId: string;
+    itemNameAtVersion: string;
+    knowledgeNodeIdAtVersion: string | null;
+  }[];
   label: string;
+  classificationLabel: string;
+  classificationNone: string;
+  classificationUnavailable: string;
+  classificationLabels: ReadonlyMap<string, string | null>;
 }) {
   if (items.length === 0) return null;
   return (
     <ul className="mt-1 list-disc pl-5">
       <li className="list-none pl-0 text-[var(--color-muted-foreground)]">{label}</li>
       {items.map((item) => (
-        <li key={item.qualifyingItemId}>{item.itemNameAtVersion}</li>
+        <li key={item.qualifyingItemId}>
+          {item.itemNameAtVersion}
+          <span className="ml-2 text-xs text-[var(--color-muted-foreground)]">
+            {classificationLabel}:{" "}
+            {item.knowledgeNodeIdAtVersion
+              ? (classificationLabels.get(item.knowledgeNodeIdAtVersion) ??
+                classificationUnavailable)
+              : classificationNone}
+          </span>
+        </li>
       ))}
     </ul>
   );
@@ -506,14 +559,22 @@ function BoundItemsList({
  */
 function QualifyingItemsSection({
   businessId,
+  businessTypeId,
   items,
   isLoading,
   isError,
+  updateClassification,
+  classificationSaving,
+  classificationError,
 }: {
   businessId: string;
+  businessTypeId: string | undefined;
   items: readonly QualifyingItemWire[];
   isLoading: boolean;
   isError: boolean;
+  updateClassification: (item: QualifyingItemWire, knowledgeNodeId: string | null) => void;
+  classificationSaving: boolean;
+  classificationError: unknown;
 }) {
   const { t } = useTranslation("business");
   const [newName, setNewName] = useState("");
@@ -616,7 +677,16 @@ function QualifyingItemsSection({
                 </form>
               ) : (
                 <>
-                  <span className="text-sm font-medium">{item.name}</span>
+                  <div className="flex-1">
+                    <span className="text-sm font-medium">{item.name}</span>
+                    <QualifyingItemClassificationEditor
+                      item={item}
+                      businessTypeId={businessTypeId}
+                      onAssign={(id) => updateClassification(item, id)}
+                      onRemove={() => updateClassification(item, null)}
+                      isSaving={classificationSaving}
+                    />
+                  </div>
                   <span className="flex gap-2">
                     <Button type="button" variant="secondary" onClick={() => startRename(item)}>
                       {t("rewardProgram.qualifyingItems.renameAction")}
@@ -659,6 +729,7 @@ function QualifyingItemsSection({
         </ul>
       )}
       <MutationError error={updateMutation.error} />
+      <MutationError error={classificationError} />
       <MutationError error={retireMutation.error} />
 
       <form onSubmit={handleAdd} className="mt-3 flex items-end gap-2">

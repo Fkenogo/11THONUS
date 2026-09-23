@@ -292,6 +292,18 @@ export const en = {
         retireAction: "Retire",
         retireConfirmAction: "Confirm retire",
       },
+      classification: {
+        label: "Optional classification",
+        none: "No classification assigned",
+        unavailable: "Classification unavailable",
+        optionalHint: "Classification is optional and does not affect item qualification.",
+        searchLabel: "Search Commerce Knowledge",
+        loading: "Searching classifications…",
+        loadError: "We couldn't load classifications. Please try again.",
+        noResults: "No matching classifications found.",
+        suggestions: "Suggested classifications",
+        removeAction: "Remove classification",
+      },
       versionLabel: "Version {{version}}",
       status: {
         draft: "Draft",

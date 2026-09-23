@@ -37,6 +37,27 @@ vi.mock("../hooks/rewardProgramQueries", () => ({
 
 vi.mock("../hooks/businessQueries", () => ({
   useAccessibleBusinessesQuery: () => accessibleResult,
+  useKnowledgeNodeLabelsQuery: (ids: string[]) => ({
+    data: ids.map((id) => ({
+      id,
+      displayLabel: id === "resolved-node" ? "Coffee beverages" : null,
+    })),
+    isLoading: false,
+    isError: false,
+  }),
+  useQualifyingNodesForBusinessTypeQuery: () => ({
+    data: [{ id: "suggested-node", displayLabel: "Coffee products", nodeType: "standard_product" }],
+    isLoading: false,
+    isError: false,
+  }),
+  useSearchQualifyingNodesQuery: (search: string) => ({
+    data:
+      search.trim().length >= 2
+        ? [{ id: "candidate-node", displayLabel: "Coffee beverages", nodeType: "standard_product" }]
+        : [],
+    isLoading: false,
+    isError: false,
+  }),
 }));
 
 vi.mock("../hooks/qualifyingItemQueries", () => ({
@@ -553,9 +574,9 @@ describe("RewardProgramManagementPage (PLATFORM-BASELINE-005A)", () => {
       expect(screen.getByLabelText("Black Coffee")).toBeInTheDocument();
       expect(screen.getByLabelText("Medium Pizza")).toBeInTheDocument();
       expect(screen.queryByText("item-coffee")).not.toBeInTheDocument();
-      // No taxonomy discovery UI on this path at all.
+      // Reward Program qualification remains independent of optional taxonomy discovery.
       expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
-      expect(screen.queryByLabelText(/search/i)).not.toBeInTheDocument();
+      expect(screen.getAllByLabelText(/search commerce knowledge/i)).toHaveLength(2);
     });
 
     it("shows item checkboxes and submits stable ids, never labels", async () => {
@@ -774,6 +795,102 @@ describe("RewardProgramManagementPage (PLATFORM-BASELINE-005A)", () => {
       );
       const [payload] = mockCreateItem.mock.calls[0];
       expect(payload).not.toHaveProperty("knowledgeNodeId");
+    });
+
+    it("assigns and removes optional classification without replacing the Business item name", async () => {
+      rewardProgramsResult = { data: [], isLoading: false, isError: false };
+      accessibleResult = { data: [{ businessId: "biz-1", role: "owner" }] };
+      qualifyingItemsResult = { data: [COFFEE_ITEM], isLoading: false, isError: false };
+      const user = userEvent.setup();
+      const view = renderPage();
+
+      expect(screen.getByText("Black Coffee")).toBeInTheDocument();
+      expect(screen.getByText(/no classification assigned/i)).toBeInTheDocument();
+      await user.type(screen.getByLabelText(/search commerce knowledge/i), "coffee");
+      await user.click(await screen.findByRole("button", { name: "Coffee beverages" }));
+      expect(mockUpdateItem.mock.calls[0][0]).toMatchObject({
+        qualifyingItemId: "item-coffee",
+        knowledgeNodeId: "candidate-node",
+      });
+      qualifyingItemsResult = {
+        data: [itemWire({ knowledgeNodeId: "candidate-node" })],
+        isLoading: false,
+        isError: false,
+      };
+      view.rerender(
+        <MemoryRouter>
+          <RewardProgramManagementPage context={context} />
+        </MemoryRouter>,
+      );
+      await user.click(screen.getByRole("button", { name: /remove classification/i }));
+      expect(mockUpdateItem.mock.calls.at(-1)?.[0]).toMatchObject({
+        qualifyingItemId: "item-coffee",
+        knowledgeNodeId: null,
+      });
+    });
+
+    it("offers Business-Type-scoped suggestions as optional classification choices", async () => {
+      rewardProgramsResult = { data: [], isLoading: false, isError: false };
+      accessibleResult = { data: [{ businessId: "biz-1", role: "manager" }] };
+      qualifyingItemsResult = { data: [COFFEE_ITEM], isLoading: false, isError: false };
+      const user = userEvent.setup();
+      renderPage();
+
+      await user.click(screen.getByRole("button", { name: "Coffee products" }));
+      expect(mockUpdateItem.mock.calls[0][0]).toMatchObject({
+        qualifyingItemId: "item-coffee",
+        knowledgeNodeId: "suggested-node",
+      });
+      expect(screen.queryByText("suggested-node")).not.toBeInTheDocument();
+      expect(screen.getByText("Black Coffee")).toBeInTheDocument();
+    });
+
+    it("renders frozen Business item names when historical classification is unavailable without exposing its id", () => {
+      const frozen = versionWire({
+        status: "active",
+        qualifyingItems: [
+          {
+            qualifyingItemId: "item-coffee",
+            itemNameAtVersion: "Black Coffee (frozen)",
+            knowledgeNodeIdAtVersion: "deleted-node-uuid",
+          },
+        ],
+      });
+      rewardProgramsResult = {
+        data: [{ ...publishedProgramWithDraft, currentVersion: frozen, draftVersion: null }],
+        isLoading: false,
+        isError: false,
+      };
+      accessibleResult = { data: [{ businessId: "biz-1", role: "owner" }] };
+      renderPage();
+
+      expect(screen.getByText("Black Coffee (frozen)")).toBeInTheDocument();
+      expect(screen.getByText(/classification unavailable/i)).toBeInTheDocument();
+      expect(screen.queryByText("deleted-node-uuid")).not.toBeInTheDocument();
+    });
+
+    it("shows a resolved frozen classification as secondary to the Business-authored name", () => {
+      const frozen = versionWire({
+        status: "active",
+        qualifyingItems: [
+          {
+            qualifyingItemId: "item-coffee",
+            itemNameAtVersion: "Black Coffee (frozen)",
+            knowledgeNodeIdAtVersion: "resolved-node",
+          },
+        ],
+      });
+      rewardProgramsResult = {
+        data: [{ ...publishedProgramWithDraft, currentVersion: frozen, draftVersion: null }],
+        isLoading: false,
+        isError: false,
+      };
+      accessibleResult = { data: [{ businessId: "biz-1", role: "owner" }] };
+      renderPage();
+
+      expect(screen.getByText("Black Coffee (frozen)")).toBeInTheDocument();
+      expect(screen.getByText(/Coffee beverages/)).toBeInTheDocument();
+      expect(screen.queryByText("resolved-node")).not.toBeInTheDocument();
     });
 
     it("lists active items by name and renames one inline", async () => {

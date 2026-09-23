@@ -299,6 +299,19 @@ export const fr = {
         retireAction: "Retirer",
         retireConfirmAction: "Confirmer le retrait",
       },
+      classification: {
+        label: "Classification facultative",
+        none: "Aucune classification attribuée",
+        unavailable: "Classification indisponible",
+        optionalHint:
+          "La classification est facultative et n'affecte pas l'éligibilité de l'article.",
+        searchLabel: "Rechercher dans Commerce Knowledge",
+        loading: "Recherche des classifications…",
+        loadError: "Impossible de charger les classifications. Veuillez réessayer.",
+        noResults: "Aucune classification correspondante trouvée.",
+        suggestions: "Classifications suggérées",
+        removeAction: "Supprimer la classification",
+      },
       versionLabel: "Version {{version}}",
       status: {
         draft: "Brouillon",
