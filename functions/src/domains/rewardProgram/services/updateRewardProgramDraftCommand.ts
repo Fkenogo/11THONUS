@@ -80,7 +80,6 @@ export async function updateRewardProgramDraft(
   });
   const qualifyingItems = await resolveQualifyingItemSnapshots(
     pool,
-    db,
     params.request.businessId,
     params.request.qualifyingItemIds,
   );
