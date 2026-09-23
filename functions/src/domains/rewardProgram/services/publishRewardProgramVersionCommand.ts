@@ -132,7 +132,6 @@ export async function publishRewardProgramVersion(
   // live item since the last draft edit is captured, not lost).
   const qualifyingItems = await resolveQualifyingItemSnapshots(
     pool,
-    db,
     params.request.businessId,
     draftPreview.qualifyingItems.map((item) => item.qualifyingItemId),
   );

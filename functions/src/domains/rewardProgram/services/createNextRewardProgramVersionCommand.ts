@@ -74,7 +74,6 @@ export async function createNextRewardProgramVersion(
   });
   const qualifyingItems = await resolveQualifyingItemSnapshots(
     pool,
-    db,
     params.request.businessId,
     params.request.qualifyingItemIds,
   );

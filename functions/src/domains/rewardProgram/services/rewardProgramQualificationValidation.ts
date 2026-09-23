@@ -18,11 +18,10 @@
  *      `active` -- a retired item is terminal for new bindings, reported
  *      as `INVALID_STATE_TRANSITION`, a caller-actionable reason that
  *      reveals nothing beyond the caller's own Business);
- *   4. the item's OPTIONAL Commerce Knowledge classification, when one is
- *      present, is itself eligible (the unchanged `assertNodeEligible`
- *      predicate -- existence, `standard_product`/`standard_service`,
- *      `active`). An item with `knowledgeNodeId = NULL` performs zero
- *      Commerce Knowledge reads: there is nothing to validate against.
+ *   4. the item's optional Commerce Knowledge classification is copied as
+ *      metadata only. Its existence, type, or lifecycle status does not
+ *      affect Business-owned qualification; assignment-time validation is
+ *      owned by the Qualifying Item commands.
  *
  * On success returns the frozen snapshots the caller's persistence layer
  * stores on the version's junction rows (`itemNameAtVersion` from the
@@ -36,7 +35,6 @@
  * Reading a historical version never consults `qualifying_items.status`.
  */
 
-import type { Firestore } from "firebase-admin/firestore";
 import type { PoolClient } from "pg";
 import type { PlatformPostgresPool } from "../../../infrastructure/postgres/postgresPool";
 import { getQualifyingItem } from "../../qualifyingItem/repositories/qualifyingItemRepository";
@@ -47,15 +45,8 @@ import {
   qualifyingItemReferenceNotActiveError,
   qualifyingItemReferenceNotFoundError,
 } from "../models/rewardProgramErrors";
-import { assertNodeEligible } from "./rewardProgramKnowledgeValidation";
-import type { KnowledgeNodeType } from "../../commerceKnowledge/models/knowledgeNodeType";
 
 type Queryable = PoolClient | PlatformPostgresPool;
-
-const CLASSIFICATION_NODE_TYPES: readonly KnowledgeNodeType[] = [
-  "standard_product",
-  "standard_service",
-];
 
 /**
  * Validates `qualifyingItemIds` for a NEW binding on `businessId`'s Reward
@@ -65,7 +56,6 @@ const CLASSIFICATION_NODE_TYPES: readonly KnowledgeNodeType[] = [
  */
 export async function resolveQualifyingItemSnapshots(
   queryable: Queryable,
-  db: Firestore,
   businessId: string,
   qualifyingItemIds: readonly string[],
 ): Promise<QualifyingItemRef[]> {
@@ -91,15 +81,6 @@ export async function resolveQualifyingItemSnapshots(
     }
     if (item.status !== "active") {
       throw qualifyingItemReferenceNotActiveError();
-    }
-
-    // Optional classification only: validated exactly when present, never
-    // when absent (an unclassified item performs no Commerce Knowledge
-    // read of any kind).
-    if (item.knowledgeNodeId !== null) {
-      await assertNodeEligible(db, item.knowledgeNodeId, CLASSIFICATION_NODE_TYPES, (reason) =>
-        invalidQualifyingItemReferenceError(qualifyingItemId, reason),
-      );
     }
 
     snapshots.push({

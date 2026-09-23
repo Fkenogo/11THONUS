@@ -40,11 +40,12 @@ const QUALIFYING_NODE_TYPES: readonly KnowledgeNodeType[] = [
 ];
 
 /**
- * Exported for the Business-owned qualification validator
- * (`rewardProgramQualificationValidation.ts`, `PLATFORM-BASELINE-013B`):
- * a Qualifying Item's OPTIONAL Commerce Knowledge classification, when
- * present, must satisfy exactly the same eligibility predicate as every
- * other canonical reference in this domain. The caller supplies its own
+ * Exported for Reward Program Commerce Knowledge references such as
+ * category and standard-reward nodes, plus retained legacy
+ * `QualifyingNode` compatibility validation. Business Qualifying Item
+ * classification is validated when assigned in the Qualifying Item
+ * commands; Reward Program item snapshot resolution must not call this
+ * helper for that optional metadata. The caller supplies its own
  * `onInvalid` so the error stays in the caller's domain vocabulary.
  */
 export async function assertNodeEligible(
