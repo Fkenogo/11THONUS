@@ -8,13 +8,15 @@
 
 **Worktree:** `/private/tmp/11thonus-pb013d`
 
-**PR / final head / exact-head CI:** pending push and PR creation; this report will be completed with those values before final disposition.
+**PR:** [#271](https://github.com/Fkenogo/11THONUS/pull/271), OPEN against `main`, mergeable. Implementation commit/head `35cde61838e44e78e1d7ec69de5a32727b8c0543`.
+
+**Exact-head CI:** run `35887934375` passed on implementation head `35cde61838e44e78e1d7ec69de5a32727b8c0543` (Build, Lint, Test, Emulator Validation). The report/change-log follow-up will update the PR head and trigger another exact-head CI run before stopping.
 
 **Scope:** the PB-013D optional classification experience and historical classification display only.
 
 ## 1. Entry gate and worktree safety
 
-`git fetch origin` completed before implementation. `origin/main` was exactly the expected SHA `20dd06d283fb4151004cdee416b7bf80a14f9e22`. Migration `0019` was absent; migrations through `0018` were present. The current programme records show PB-013A.1/A.2/B/C and PB-013D-PRE-001 closed, PB-013D not started, and PB-013E not started. No local or remote PB-013D implementation branch existed; the only matching implementation-predecessor branch was PB-013D-PRE-001, already merged into this base. GitHub PR listing was unavailable during the initial entry check, so active PR overlap was not independently verifiable at that moment. The relevant PB-013D-PRE-001 PR is already represented by the merged base and makes no classification UI changes.
+`git fetch origin` completed before implementation; a final origin recheck also confirmed `origin/main` remained at the expected SHA `20dd06d283fb4151004cdee416b7bf80a14f9e22`. Migration `0019` was absent; migrations through `0018` were present. The current programme records show PB-013A.1/A.2/B/C and PB-013D-PRE-001 closed, PB-013D not started, and PB-013E not started. No local or remote PB-013D implementation branch existed; the only matching implementation-predecessor branch was PB-013D-PRE-001, already merged into this base. GitHub PR metadata was initially unavailable, then checked successfully: PRs #269/#270 are merged and there is no open overlapping PB-013D PR.
 
 Implementation used an isolated worktree based directly on `origin/main`. The primary checkout, carrying extensive unrelated dirty work on `docs/11thonus-cf-001-cloudflare-assessment-001`, was not used for edits, cleaned, reset, or otherwise modified.
 
@@ -65,9 +67,8 @@ No dependency, config, permission, schema, migration, purchase, or 10+1 file cha
 
 ## 6. Tests and validation
 
-- Focused Reward Program UI suite: **34/34 passed**.
 - Focused Reward Program management UI suite on the final test tree: **36/36 passed**.
-- Full web suite on the final test tree: **895 passed, 1 failed** across 123 files. The sole failure was an existing selection-flow UI test timing out at 5s under the full-suite load; the same Reward Program test file passed in isolation (36/36). A previous full run also hit an unrelated `PhoneAuthHarnessPage` retry-latency ceiling; its focused rerun passed (39/39). No test was weakened or deleted.
+- Full web suite on the final test tree: **895 passed, 1 failed** across 123 files. The sole failure was an existing selection-flow UI test timing out at 5s under the full-suite load; the same Reward Program test file passed in isolation (36/36). A previous full run also hit an unrelated `PhoneAuthHarnessPage` retry-latency ceiling; its focused rerun passed (39/39). No test was weakened or deleted. GitHub's exact-head CI subsequently passed all unit/component tests, Playwright E2E, PostgreSQL integration, and Firebase emulator validation.
 - Functions unit suite: **162 files, 1,847 tests passed**.
 - PostgreSQL suite with isolated PostgreSQL plus Auth/Firestore emulators: **8 files, 236 tests passed**.
 - Firebase emulator suite: **65 files, 864 passed, 3 skipped**.
@@ -76,7 +77,7 @@ No dependency, config, permission, schema, migration, purchase, or 10+1 file cha
 - Build: passed; Vite reported the existing large-chunk advisory.
 - Prettier check on changed source/locales: passed.
 - Playwright: repository E2E specs contain no Reward Program or Qualifying Item flow, so no applicable Playwright spec exists.
-- `git diff --check`: pending final documentation and commit review.
+- `git diff --check`: passed on the implementation commit; will be repeated after this report/change-log follow-up.
 
 The standard PostgreSQL port `54329` was occupied by a pre-existing container. Tests ran against a newly isolated disposable PostgreSQL container on port `54330` and temporary Auth/Firestore emulator ports. A preliminary PostgreSQL-only invocation without emulators failed in suites requiring Firestore and was superseded by the passing combined run. No repository config was changed. The initial parallel test/build attempt was SIGTERM-terminated due to resource contention; serial build rerun passed. Runtime was Node 24 although repository package engine requests Node 20; pnpm surfaced the existing engine warning.
 
@@ -86,6 +87,6 @@ No dependency was added. No configuration, database schema, migration, seed, per
 
 ## 8. PR and final disposition
 
-PR number/state, final head SHA, exact-head CI result, and final unrelated-change verification will be recorded after push and PR creation. No merge will be performed. PB-013E will not begin.
+The implementation commit and its exact-head CI are recorded above. This documentation-only report/change-log follow-up updates the PR head; its exact-head CI is being checked before final disposition. No merge will be performed. PB-013E will not begin.
 
 **Final expected disposition:** `PLATFORM-BASELINE-013D — IMPLEMENTED / AWAITING INDEPENDENT REVIEW`.
