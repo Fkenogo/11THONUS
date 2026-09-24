@@ -3,7 +3,7 @@
 **Status:** corrected; awaiting narrow independent re-review. PR #271 remains open and unmerged.  
 **Entry base:** `20dd06d283fb4151004cdee416b7bf80a14f9e22`  
 **Entry head:** `11862515ede7033c15fa97435579a3cc0c8fe279`  
-**Final head / exact-head CI:** pending final commit and CI.
+**Implementation head / exact-head CI:** `7fd0e6e91844b17ac304e6eab35fe2a4d039a5c2`; run `35988800725`, rerun attempt 2 passed all checks. Attempt 1 on the same SHA timed out in the untouched `functions/src/shared/outbox/outboxProcessor.emulator.test.ts:176`; rerun passed without a code change. The following Markdown tracking update requires its own exact-head CI run.
 
 ## Root cause and design
 
@@ -39,7 +39,7 @@ This is the smallest design that preserves successful cache entries independentl
 - Changed-file Prettier check: passed.
 - Web production build: passed with the existing Vite large-chunk advisory.
 - `git diff --check`: passed.
-- Exact-head CI: pending final commit and CI run.
+- Exact-head CI run `35988800725`: passed on rerun attempt 2 at implementation head `7fd0e6e91844b17ac304e6eab35fe2a4d039a5c2`, including Build, Lint, Format, Typecheck, unit/component tests, PostgreSQL integration, Playwright E2E, and Firebase Emulator validation. Attempt 1 on the same SHA failed only on the unrelated 5-second outbox emulator test timeout noted above.
 
 ## Authority and scope
 
