@@ -141,13 +141,16 @@ export function RewardProgramManagementPage({ context }: { context: BusinessCont
       ),
     ),
   );
+  const currentNodeIds = activeItems.flatMap((item) =>
+    item.knowledgeNodeId ? [item.knowledgeNodeId] : [],
+  );
   const classificationLanguage = i18n.language.startsWith("fr") ? "fr" : "en";
-  const frozenLabelsQuery = useKnowledgeNodeLabelsQuery(
-    [...new Set(frozenNodeIds)],
+  const classificationLabelsQuery = useKnowledgeNodeLabelsQuery(
+    [...new Set([...currentNodeIds, ...frozenNodeIds])],
     classificationLanguage,
   );
-  const frozenLabels = new Map(
-    (frozenLabelsQuery.data ?? []).map((item) => [item.id, item.displayLabel]),
+  const classificationLabels = new Map(
+    (classificationLabelsQuery.data ?? []).map((item) => [item.id, item.displayLabel]),
   );
   const classificationMutation = useUpdateQualifyingItemMutation(context.businessId);
 
@@ -246,6 +249,7 @@ export function RewardProgramManagementPage({ context }: { context: BusinessCont
           businessId={context.businessId}
           businessTypeId={context.businessTypeId}
           items={activeItems}
+          classificationLabels={classificationLabels}
           isLoading={qualifyingItemsQuery.isLoading}
           isError={qualifyingItemsQuery.isError}
           updateClassification={(item, knowledgeNodeId) =>
@@ -353,7 +357,7 @@ export function RewardProgramManagementPage({ context }: { context: BusinessCont
                   classificationLabel={t("rewardProgram.classification.label")}
                   classificationNone={t("rewardProgram.classification.none")}
                   classificationUnavailable={t("rewardProgram.classification.unavailable")}
-                  classificationLabels={frozenLabels}
+                  classificationLabels={classificationLabels}
                 />
                 <p className="text-[var(--color-muted-foreground)]">
                   {t("rewardProgram.versionLabel", { version: entry.currentVersion.version })} —{" "}
@@ -373,7 +377,7 @@ export function RewardProgramManagementPage({ context }: { context: BusinessCont
                     classificationLabel={t("rewardProgram.classification.label")}
                     classificationNone={t("rewardProgram.classification.none")}
                     classificationUnavailable={t("rewardProgram.classification.unavailable")}
-                    classificationLabels={frozenLabels}
+                    classificationLabels={classificationLabels}
                   />
                   <p className="text-[var(--color-muted-foreground)]">
                     {t("rewardProgram.versionLabel", { version: entry.draftVersion.version })} —{" "}
@@ -553,14 +557,14 @@ function BoundItemsList({
 
 /**
  * The Business's own Qualifying Item library (`PLATFORM-BASELINE-013B`,
- * `DEC-LOY-017`): add, rename, retire. No taxonomy interaction on this
- * path -- names are Business-authored free text, optionally classifiable
- * later (deferred classification UI is a separate package).
+ * `DEC-LOY-017`): add, rename, retire, and optionally classify. The
+ * Business-authored name remains the item's independent identity.
  */
 function QualifyingItemsSection({
   businessId,
   businessTypeId,
   items,
+  classificationLabels,
   isLoading,
   isError,
   updateClassification,
@@ -570,6 +574,7 @@ function QualifyingItemsSection({
   businessId: string;
   businessTypeId: string | undefined;
   items: readonly QualifyingItemWire[];
+  classificationLabels: ReadonlyMap<string, string | null>;
   isLoading: boolean;
   isError: boolean;
   updateClassification: (item: QualifyingItemWire, knowledgeNodeId: string | null) => void;
@@ -682,6 +687,11 @@ function QualifyingItemsSection({
                     <QualifyingItemClassificationEditor
                       item={item}
                       businessTypeId={businessTypeId}
+                      classificationLabel={
+                        item.knowledgeNodeId
+                          ? (classificationLabels.get(item.knowledgeNodeId) ?? undefined)
+                          : undefined
+                      }
                       onAssign={(id) => updateClassification(item, id)}
                       onRemove={() => updateClassification(item, null)}
                       isSaving={classificationSaving}

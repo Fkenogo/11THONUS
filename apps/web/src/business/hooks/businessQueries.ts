@@ -18,6 +18,7 @@ import {
   makeCallSearchQualifyingNodes,
   makeCallResolveKnowledgeNodeLabels,
 } from "../api/commerceKnowledge";
+import type { KnowledgeNodeLabel } from "../api/commerceKnowledge";
 import { makeCallListStaffInvitations, makeCallListStaffMemberships } from "../api/staffLists";
 import { businessQueryKeys } from "./queryKeys";
 
@@ -246,18 +247,35 @@ export function useSearchQualifyingNodesQuery(searchText: string, languageCode?:
 export function useKnowledgeNodeLabelsQuery(nodeIds: readonly string[], languageCode?: string) {
   const { auth, functions } = useBusinessApiPlatform();
   const actorState = useAuthenticatedActor(auth);
+  const normalizedNodeIds = [...new Set(nodeIds)].sort();
   return useQuery({
-    queryKey: businessQueryKeys.knowledgeNodeLabels(nodeIds, languageCode ?? ""),
-    queryFn: () =>
-      makeCallResolveKnowledgeNodeLabels(functions)(
+    queryKey: businessQueryKeys.knowledgeNodeLabels(normalizedNodeIds, languageCode ?? ""),
+    queryFn: async () => {
+      const actor =
         actorState.status === "ready"
           ? actorState.actor
           : (() => {
               throw new Error("actor not ready");
-            })(),
-        { nodeIds: [...nodeIds], languageCode },
-      ),
-    enabled: actorState.status === "ready" && nodeIds.length > 0,
+            })();
+      const resolveLabels = makeCallResolveKnowledgeNodeLabels(functions);
+      const labels: KnowledgeNodeLabel[] = [];
+
+      // The callable accepts at most 100 ids. Resolve sequentially so a
+      // large historical set cannot fan out into unbounded concurrent calls.
+      // Keep successful chunks if one read is unavailable; absent labels use
+      // the caller's neutral unavailable presentation.
+      for (let offset = 0; offset < normalizedNodeIds.length; offset += 100) {
+        const batch = normalizedNodeIds.slice(offset, offset + 100);
+        try {
+          labels.push(...(await resolveLabels(actor, { nodeIds: batch, languageCode })));
+        } catch {
+          // Label hydration is display-only. A failed batch must not suppress
+          // successful labels from other batches or affect qualification.
+        }
+      }
+      return labels;
+    },
+    enabled: actorState.status === "ready" && normalizedNodeIds.length > 0,
     staleTime: Infinity,
   });
 }

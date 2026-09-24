@@ -17,6 +17,7 @@ let rewardProgramsResult: {
   isError: boolean;
 };
 let accessibleResult: { data: { businessId: string; role: string }[] };
+let labelQueryInputs: string[][];
 
 /**
  * `PLATFORM-BASELINE-013B` (`DEC-LOY-016`): the Business's own Qualifying
@@ -37,14 +38,24 @@ vi.mock("../hooks/rewardProgramQueries", () => ({
 
 vi.mock("../hooks/businessQueries", () => ({
   useAccessibleBusinessesQuery: () => accessibleResult,
-  useKnowledgeNodeLabelsQuery: (ids: string[]) => ({
-    data: ids.map((id) => ({
-      id,
-      displayLabel: id === "resolved-node" ? "Coffee beverages" : null,
-    })),
-    isLoading: false,
-    isError: false,
-  }),
+  useKnowledgeNodeLabelsQuery: (ids: string[]) => {
+    labelQueryInputs.push([...ids]);
+    return {
+      data: ids.map((id) => ({
+        id,
+        displayLabel:
+          id === "resolved-node" || id === "candidate-node"
+            ? "Coffee beverages"
+            : id.startsWith("current-node-")
+              ? `Current classification ${id.slice("current-node-".length)}`
+              : id.startsWith("historical-node-")
+                ? `Classification ${id.slice("historical-node-".length)}`
+                : null,
+      })),
+      isLoading: false,
+      isError: false,
+    };
+  },
   useQualifyingNodesForBusinessTypeQuery: () => ({
     data: [{ id: "suggested-node", displayLabel: "Coffee products", nodeType: "standard_product" }],
     isLoading: false,
@@ -263,6 +274,7 @@ const publishedProgramNoDraft: RewardProgramWithVersionsWire = {
 
 describe("RewardProgramManagementPage (PLATFORM-BASELINE-005A)", () => {
   beforeEach(() => {
+    labelQueryInputs = [];
     resetItemMocks();
     publishMutationError = null;
     vi.clearAllMocks();
@@ -867,6 +879,56 @@ describe("RewardProgramManagementPage (PLATFORM-BASELINE-005A)", () => {
       expect(screen.getByText("Black Coffee (frozen)")).toBeInTheDocument();
       expect(screen.getByText(/classification unavailable/i)).toBeInTheDocument();
       expect(screen.queryByText("deleted-node-uuid")).not.toBeInTheDocument();
+    });
+
+    it("renders names and resolved labels across more than 100 frozen classifications in one page lookup", () => {
+      const frozenItems = Array.from({ length: 105 }, (_, index) => ({
+        qualifyingItemId: `item-${index}`,
+        itemNameAtVersion: `Business item ${index}`,
+        knowledgeNodeIdAtVersion:
+          index === 52 ? "missing-frozen-node-uuid" : `historical-node-${index}`,
+      }));
+      const frozen = versionWire({ status: "active", qualifyingItems: frozenItems });
+      rewardProgramsResult = {
+        data: [{ ...publishedProgramWithDraft, currentVersion: frozen, draftVersion: null }],
+        isLoading: false,
+        isError: false,
+      };
+      accessibleResult = { data: [{ businessId: "biz-1", role: "owner" }] };
+      renderPage();
+
+      expect(labelQueryInputs).toHaveLength(1);
+      expect(labelQueryInputs[0]).toHaveLength(105);
+      expect(screen.getByText("Business item 0")).toBeInTheDocument();
+      expect(screen.getByText(/Classification 0/)).toBeInTheDocument();
+      expect(screen.getByText(/Classification 104/)).toBeInTheDocument();
+      expect(screen.getByText(/classification unavailable/i)).toBeInTheDocument();
+      expect(screen.queryByText("missing-frozen-node-uuid")).not.toBeInTheDocument();
+    });
+
+    it("resolves many current item labels once in the parent and preserves unclassified items", () => {
+      rewardProgramsResult = { data: [], isLoading: false, isError: false };
+      accessibleResult = { data: [{ businessId: "biz-1", role: "manager" }] };
+      qualifyingItemsResult = {
+        data: Array.from({ length: 20 }, (_, index) =>
+          itemWire({
+            id: `current-item-${index}`,
+            name: `Current Business item ${index}`,
+            knowledgeNodeId: index === 7 ? null : `current-node-${index}`,
+          }),
+        ),
+        isLoading: false,
+        isError: false,
+      };
+      renderPage();
+
+      expect(labelQueryInputs).toHaveLength(1);
+      expect(labelQueryInputs[0]).toHaveLength(19);
+      expect(screen.getByText("Current Business item 0")).toBeInTheDocument();
+      expect(screen.getByText("Current Business item 7")).toBeInTheDocument();
+      expect(screen.getByText("Current classification 0")).toBeInTheDocument();
+      expect(screen.queryAllByText(/classification unavailable/i)).toHaveLength(0);
+      expect(screen.getByText("No classification assigned")).toBeInTheDocument();
     });
 
     it("shows a resolved frozen classification as secondary to the Business-authored name", () => {

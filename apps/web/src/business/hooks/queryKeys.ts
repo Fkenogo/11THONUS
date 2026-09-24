@@ -37,7 +37,12 @@ export const businessQueryKeys = {
   searchQualifyingNodes: (searchText: string, languageCode: string) =>
     ["commerceKnowledge", "searchQualifyingNodes", searchText, languageCode] as const,
   knowledgeNodeLabels: (nodeIds: readonly string[], languageCode: string) =>
-    ["commerceKnowledge", "nodeLabels", [...nodeIds].sort().join(","), languageCode] as const,
+    [
+      "commerceKnowledge",
+      "nodeLabels",
+      [...new Set(nodeIds)].sort().join(","),
+      languageCode,
+    ] as const,
   staffInvitations: (businessId: string) => ["staffInvitations", businessId] as const,
   staffMemberships: (businessId: string) => ["staffMemberships", businessId] as const,
   rewardPrograms: (businessId: string) => ["rewardPrograms", businessId] as const,

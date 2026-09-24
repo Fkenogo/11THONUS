@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useTranslation } from "../../i18n";
 import { Button, TextField } from "../../components/ui/formPrimitives";
 import {
-  useKnowledgeNodeLabelsQuery,
   useQualifyingNodesForBusinessTypeQuery,
   useSearchQualifyingNodesQuery,
 } from "../hooks/businessQueries";
@@ -13,12 +12,14 @@ import type { QualifyingItemWire } from "../api/qualifyingItems";
 export function QualifyingItemClassificationEditor({
   item,
   businessTypeId,
+  classificationLabel,
   onAssign,
   onRemove,
   isSaving,
 }: {
   item: QualifyingItemWire;
   businessTypeId: string | undefined;
+  classificationLabel: string | undefined;
   onAssign: (knowledgeNodeId: string) => void;
   onRemove: () => void;
   isSaving: boolean;
@@ -29,18 +30,12 @@ export function QualifyingItemClassificationEditor({
   const debouncedSearch = useDebouncedValue(search, 300);
   const suggestions = useQualifyingNodesForBusinessTypeQuery(businessTypeId, languageCode);
   const candidates = useSearchQualifyingNodesQuery(debouncedSearch, languageCode);
-  const currentLabel = useKnowledgeNodeLabelsQuery(
-    item.knowledgeNodeId ? [item.knowledgeNodeId] : [],
-    languageCode,
-  );
-  const current = currentLabel.data?.[0];
-
   return (
     <div className="mt-2 w-full rounded bg-[var(--color-muted)] p-2">
       <p className="text-xs font-medium">{t("rewardProgram.classification.label")}</p>
       {item.knowledgeNodeId ? (
         <div className="mt-1 flex flex-wrap items-center gap-2 text-sm">
-          <span>{current?.displayLabel ?? t("rewardProgram.classification.unavailable")}</span>
+          <span>{classificationLabel ?? t("rewardProgram.classification.unavailable")}</span>
           <Button type="button" variant="secondary" disabled={isSaving} onClick={onRemove}>
             {t("rewardProgram.classification.removeAction")}
           </Button>

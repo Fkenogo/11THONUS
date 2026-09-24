@@ -6,6 +6,19 @@
 > governed documentation source and is not part of the migrated documentation baseline.
 
 ---
+## 2026-09-24 — PLATFORM-BASELINE-013D-CORR-001 — Bounded Classification Label Resolution (Corrected / Awaiting Narrow Independent Re-review)
+
+- **Task / status:** Bounded correction on existing PR #271 from required entry head `599542da0300fe5cbf2f68b7f78563b267d7c7e0`, base `main` at `20dd06d283fb4151004cdee416b7bf80a14f9e22`. Entry-head exact CI run `35889179425` passed; final corrected head CI is required before final disposition. PR remains OPEN and is not merged.
+- **Root causes addressed:** historical frozen label lookup sent an unbounded unique ID set to a resolver capped at 100, causing all labels in an oversized request to fall back; each current item editor independently mounted one label query, causing one callable per classified item.
+- **Correction:** RewardProgramManagementPage deduplicates current-item and frozen-version CK IDs and makes one page-level query. The existing label hook normalizes/sorts IDs for a stable language-scoped cache key, then resolves sequential requests of no more than 100 IDs. Successful results merge; a failed chunk does not discard labels from successful chunks, and unavailable IDs retain neutral fallback copy. Each editor receives its label as a prop; item suggestions, search, assignment, and removal are unchanged.
+- **Tests:** real query-hook coverage uses 205 unique IDs plus a duplicate; asserts sequential `[100, 100, 5]` requests, no request over 100, merged labels across successful chunks, neutral fallback for one failed chunk, and separate EN/FR results. UI coverage renders 105 frozen IDs, checks labels and fallback while retaining Business item names and hiding raw UUIDs; 20 current items make one parent lookup containing 19 classified IDs, and one item remains unclassified and usable. Existing assign/remove coverage remains. Focused tests 44/44; full web suite 900/900 across 124 files.
+- **Validation:** typecheck, lint, build, and changed-file Prettier check passed. Existing lint warning (`BusinessApiContext.tsx:26`, React Refresh) and existing Vite large-chunk advisory remain. No backend callable/parser/API contract changed, so no functions suite rerun was applicable. `git diff --check` and final-head CI required before stopping.
+- **Boundaries:** no dependencies, config, schema, migration, permissions, purchase, `purchaseRequestHash`, qualification, publication, or 10+1 mechanics changed. `qualifyingItemId` remains authority; classification is optional; assignment-time validation remains. PB-013B P3-3 remains OPEN/out of scope; PB-013E not started; migration `0019` untouched.
+- **Review:** both P2 review threads will receive root cause, exact correction, and test evidence replies after final exact-head CI. They remain unresolved for independent re-review.
+- **Report:** `docs/05-implementation/reports/platform-baseline-013d-corr-001-bounded-classification-label-resolution-2026-09-24.md`.
+- **Rollback:** revert only this correction commit on PR #271 to restore pre-correction label lookup behavior. Do not merge or start PB-013E.
+
+---
 ## 2026-09-23 — PLATFORM-BASELINE-013D — Qualifying Item Classification Experience (Implemented / Awaiting Independent Review)
 
 - **Task / status:** PB-013D implementation on isolated branch `codex/platform-baseline-013d`, from expected entry `origin/main` SHA `20dd06d283fb4151004cdee416b7bf80a14f9e22`. Primary dirty checkout was preserved. PR #271 is OPEN against `main`; implementation head `35cde61838e44e78e1d7ec69de5a32727b8c0543`; exact-head CI run `35887934375` SUCCESS. A final report/change-log follow-up changes the PR head and will receive its own exact-head CI validation.
