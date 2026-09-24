@@ -48,8 +48,8 @@ Added a real TanStack Query hook test that supplies 205 unique IDs plus a duplic
 - Lint: passed with the existing `BusinessApiContext.tsx:26` React Refresh warning.
 - Build: passed with the existing large-chunk advisory.
 - Prettier check on changed TypeScript files: passed.
-- `git diff --check`: required on the final tree before push.
-- No functions tests were necessary: callable/parser/shared API contracts were not changed. Exact-head CI is required and will be recorded by the PR checks before final disposition.
+- `git diff --check`: passed before the correction commit.
+- No functions tests were necessary: callable/parser/shared API contracts were not changed. Exact-head CI run `35966924054` passed on correction commit `b804153c1f484b58cfe4e53f4dba2ac1eaae2abb`; this report-only follow-up is checked on the new PR head before final disposition.
 
 ## Files changed
 
@@ -64,6 +64,6 @@ Added a real TanStack Query hook test that supplies 205 unique IDs plus a duplic
 
 ## Rollback and remaining review
 
-Revert the correction commit on PR #271 to restore the prior display-label lookup behavior; do not revert the existing PB-013D implementation unless a separate decision directs it. Both P2 review threads will receive root cause, correction, and test evidence replies after exact-head CI. They remain unresolved for independent re-review. Do not merge and do not begin PB-013E.
+Revert the correction commit on PR #271 to restore the prior display-label lookup behavior; do not revert the existing PB-013D implementation unless a separate decision directs it. After exact-head CI passed, both P2 review threads received root-cause, correction, and test-evidence replies. Both remain unresolved for independent re-review. Do not merge and do not begin PB-013E.
 
 **Final disposition:** `PLATFORM-BASELINE-013D — CORRECTED / AWAITING NARROW INDEPENDENT RE-REVIEW`.
