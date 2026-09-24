@@ -3,7 +3,7 @@
  * actor is `"ready"` — no call fires while auth state is still resolving.
  */
 
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useBusinessApiPlatform } from "../BusinessApiContext";
 import { useAuthenticatedActor } from "./useAuthenticatedActor";
 import { makeCallGetOwnedBusinesses } from "../api/ownedBusinesses";
@@ -18,6 +18,7 @@ import {
   makeCallSearchQualifyingNodes,
   makeCallResolveKnowledgeNodeLabels,
 } from "../api/commerceKnowledge";
+import type { KnowledgeNodeLabel } from "../api/commerceKnowledge";
 import { makeCallListStaffInvitations, makeCallListStaffMemberships } from "../api/staffLists";
 import { businessQueryKeys } from "./queryKeys";
 
@@ -246,20 +247,52 @@ export function useSearchQualifyingNodesQuery(searchText: string, languageCode?:
 export function useKnowledgeNodeLabelsQuery(nodeIds: readonly string[], languageCode?: string) {
   const { auth, functions } = useBusinessApiPlatform();
   const actorState = useAuthenticatedActor(auth);
-  return useQuery({
-    queryKey: businessQueryKeys.knowledgeNodeLabels(nodeIds, languageCode ?? ""),
-    queryFn: () =>
-      makeCallResolveKnowledgeNodeLabels(functions)(
-        actorState.status === "ready"
-          ? actorState.actor
-          : (() => {
-              throw new Error("actor not ready");
-            })(),
-        { nodeIds: [...nodeIds], languageCode },
-      ),
-    enabled: actorState.status === "ready" && nodeIds.length > 0,
-    staleTime: Infinity,
+  const queryClient = useQueryClient();
+  const normalizedNodeIds = [...new Set(nodeIds)].sort();
+  const batches = Array.from({ length: Math.ceil(normalizedNodeIds.length / 100) }, (_, index) =>
+    normalizedNodeIds.slice(index * 100, (index + 1) * 100),
+  );
+  const batchResults = useQueries({
+    queries: batches.map((batch, index) => {
+      const queryKey = businessQueryKeys.knowledgeNodeLabels(batch, languageCode ?? "");
+      const previousBatchKey =
+        index > 0
+          ? businessQueryKeys.knowledgeNodeLabels(batches[index - 1], languageCode ?? "")
+          : undefined;
+      const previousBatchStatus = previousBatchKey
+        ? queryClient.getQueryState(previousBatchKey)?.status
+        : undefined;
+
+      return {
+        queryKey,
+        queryFn: () => {
+          if (actorState.status !== "ready") throw new Error("actor not ready");
+          return makeCallResolveKnowledgeNodeLabels(functions)(actorState.actor, {
+            nodeIds: batch,
+            languageCode,
+          });
+        },
+        // A later batch starts once the preceding one settles, whether it
+        // succeeded or failed. This keeps resolver traffic sequential while
+        // allowing successful batches to render alongside a neutral fallback.
+        enabled:
+          actorState.status === "ready" &&
+          (index === 0 || previousBatchStatus === "success" || previousBatchStatus === "error"),
+        // Each batch owns its cache/retry state. A failed batch has no data,
+        // so TanStack Query can retry it on normal focus/reconnect/remount
+        // events without re-fetching successful, indefinitely fresh batches.
+        staleTime: Infinity,
+        retry: false,
+      };
+    }),
   });
+  const settled = batchResults.every((result) => result.isSuccess || result.isError);
+  return {
+    data: batchResults.flatMap((result) => result.data ?? []) as KnowledgeNodeLabel[],
+    isLoading: batchResults.some((result) => result.isLoading),
+    isError: batchResults.some((result) => result.isError),
+    isSuccess: settled && batchResults.every((result) => result.isSuccess),
+  };
 }
 
 export function useStaffInvitationsQuery(businessId: string | undefined) {

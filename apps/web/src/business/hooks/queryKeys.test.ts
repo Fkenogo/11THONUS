@@ -29,8 +29,13 @@ describe("businessQueryKeys — language-scoped Commerce Knowledge reads (PLATFO
     const en = businessQueryKeys.knowledgeNodeLabels(["node-a", "node-b"], "en");
     const fr = businessQueryKeys.knowledgeNodeLabels(["node-a", "node-b"], "fr");
     const enReordered = businessQueryKeys.knowledgeNodeLabels(["node-b", "node-a"], "en");
+    const enDuplicated = businessQueryKeys.knowledgeNodeLabels(
+      ["node-b", "node-a", "node-a"],
+      "en",
+    );
     expect(en).not.toEqual(fr);
     expect(en).toEqual(enReordered);
+    expect(en).toEqual(enDuplicated);
   });
 });
 
