@@ -18,6 +18,8 @@ let rewardProgramsResult: {
 };
 let accessibleResult: { data: { businessId: string; role: string }[] };
 let labelQueryInputs: string[][];
+let labelQueryError: boolean;
+let unresolvedLabelIds: Set<string>;
 
 /**
  * `PLATFORM-BASELINE-013B` (`DEC-LOY-016`): the Business's own Qualifying
@@ -41,19 +43,21 @@ vi.mock("../hooks/businessQueries", () => ({
   useKnowledgeNodeLabelsQuery: (ids: string[]) => {
     labelQueryInputs.push([...ids]);
     return {
-      data: ids.map((id) => ({
-        id,
-        displayLabel:
-          id === "resolved-node" || id === "candidate-node"
-            ? "Coffee beverages"
-            : id.startsWith("current-node-")
-              ? `Current classification ${id.slice("current-node-".length)}`
-              : id.startsWith("historical-node-")
-                ? `Classification ${id.slice("historical-node-".length)}`
-                : null,
-      })),
+      data: ids
+        .filter((id) => !unresolvedLabelIds.has(id))
+        .map((id) => ({
+          id,
+          displayLabel:
+            id === "resolved-node" || id === "candidate-node"
+              ? "Coffee beverages"
+              : id.startsWith("current-node-")
+                ? `Current classification ${id.slice("current-node-".length)}`
+                : id.startsWith("historical-node-")
+                  ? `Classification ${id.slice("historical-node-".length)}`
+                  : null,
+        })),
       isLoading: false,
-      isError: false,
+      isError: labelQueryError,
     };
   },
   useQualifyingNodesForBusinessTypeQuery: () => ({
@@ -275,6 +279,8 @@ const publishedProgramNoDraft: RewardProgramWithVersionsWire = {
 describe("RewardProgramManagementPage (PLATFORM-BASELINE-005A)", () => {
   beforeEach(() => {
     labelQueryInputs = [];
+    labelQueryError = false;
+    unresolvedLabelIds = new Set();
     resetItemMocks();
     publishMutationError = null;
     vi.clearAllMocks();
@@ -879,6 +885,33 @@ describe("RewardProgramManagementPage (PLATFORM-BASELINE-005A)", () => {
       expect(screen.getByText("Black Coffee (frozen)")).toBeInTheDocument();
       expect(screen.getByText(/classification unavailable/i)).toBeInTheDocument();
       expect(screen.queryByText("deleted-node-uuid")).not.toBeInTheDocument();
+    });
+
+    it("keeps frozen Business names visible when a label batch remains in error", () => {
+      const frozen = versionWire({
+        status: "active",
+        qualifyingItems: [
+          {
+            qualifyingItemId: "item-coffee",
+            itemNameAtVersion: "Black Coffee (frozen)",
+            knowledgeNodeIdAtVersion: "temporarily-unavailable-uuid",
+          },
+        ],
+      });
+      rewardProgramsResult = {
+        data: [{ ...publishedProgramWithDraft, currentVersion: frozen, draftVersion: null }],
+        isLoading: false,
+        isError: false,
+      };
+      accessibleResult = { data: [{ businessId: "biz-1", role: "owner" }] };
+      labelQueryError = true;
+      unresolvedLabelIds = new Set(["temporarily-unavailable-uuid"]);
+      renderPage();
+
+      expect(screen.getByText("Black Coffee (frozen)")).toBeInTheDocument();
+      expect(screen.getByText(/classification unavailable/i)).toBeInTheDocument();
+      expect(screen.queryByText("temporarily-unavailable-uuid")).not.toBeInTheDocument();
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     });
 
     it("renders names and resolved labels across more than 100 frozen classifications in one page lookup", () => {
