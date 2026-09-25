@@ -109,3 +109,64 @@ Branch `codex/platform-baseline-013e` pushed; PR opened against `main` (number r
 **Rollback:** revert the correction commit(s) on PR #273 (pre-correction gate restored). Do NOT merge; do NOT start PB-013B P3-3.
 
 **Final disposition:** `PLATFORM-BASELINE-013E — CORRECTED / AWAITING NARROW INDEPENDENT RE-REVIEW`.
+
+## 10. PLATFORM-BASELINE-013E-CORR-002 — bound the 0019 legacy-evidence gate and complete its operational safety contract (2026-09-25, same PR #273, unmerged)
+
+**Entry gate (verified before any change):** PR #273 OPEN/unmerged; head exactly `d5070ccc3026d32b050b65443505cbc550f56b81` (the CORR-001 head — no drift); base `7c4e7cc62b7bb264b4dd9c3d47fe04b10693c6a1`; exact-head CI `36147689880` SUCCESS; the P1/CORR-001 review thread present and `isResolved: false`. Work in an isolated worktree on the PR branch; primary dirty checkout untouched.
+
+**Independent review disposition being addressed:** `PB-013E-CORR-001-ITR-001` = **B — CORRECTION INCOMPLETE**, two bounded findings: (F1) CORR-001's legs (b)/(c) admit a manually injected legacy row on a draft version that was never actually backfilled for that version (leg (b) via a shared (Business, node) marker from another version/program; leg (c) node-unconstrained via any same-Business marker binding); (F2) the draft→published fail-closed behaviour is incompletely disclosed (rename/reclassify named, but rebind/removal and multi-version frozen-name conflicts omitted).
+
+**Timestamp-predicate analysis (required before changing code).** Question: can `reward_program_versions.created_at < schema_migrations.applied_at('0017')` safely distinguish pre-0017 from post-0017 versions? **Answer: YES.** Evidence: `0002_create_reward_program_versions.sql` defines `created_at TIMESTAMPTZ NOT NULL DEFAULT now()`; `migrationRunner.ts` defines `schema_migrations.applied_at TIMESTAMPTZ NOT NULL DEFAULT now()` and records it in the SAME transaction that runs 0017's up SQL. Both columns are `TIMESTAMPTZ` (UTC) — no timezone/type mismatch. No production or test INSERT sets `created_at` explicitly (both `insertRewardProgramWithFirstDraft` and `insertNextDraftVersion` omit it, relying on the DEFAULT; `UPDATE` never touches it). 0017's own up SQL creates **no** versions (it only synthesizes `qualifying_items` and junction rows), so every legitimately backfilled version was created in a transaction strictly earlier than 0017's application transaction, hence `created_at < applied_at`. Postgres `now()` is the transaction-start timestamp, so the ordering is exact per-transaction, not per-statement. Residual anomalies are fail-safe or out-of-band: (i) a clock BACKWARD-jump after 0017 could make a post-0017 version appear older — but a post-0017 version can still never carry a legitimate legacy row (zero runtime writers), so exploiting it still requires manual injection; (ii) a clock backward-jump before 0017 could misclassify a pre-0017 draft as post-0017 — that only *disables* legs (b)/(c), i.e. fails closed, never opens the gate. No fixture, import, backfill, timestamp override, or migration-mechanism path produces a false positive. Conclusion: the predicate is sound and is the bounded correction applied.
+
+**Root cause addressed:** CORR-001's draft escape legs keyed on *provenance existence* rather than *version age*, so a post-0017 draft (which can never legitimately own a legacy row) could inherit another version's marker and slip past the gate. CORR-002 requires the version itself to predate 0017, closing both F1 sub-cases while preserving every legitimate pre-0017 draft-evolution path.
+
+**Exact Gate 2 after correction (`0019_drop_legacy_qualifying_nodes.sql`):** a legacy row is represented when ANY of — (a) EXACT current-junction match (version + `knowledge_node_id_at_version` + `item_name_at_version = COALESCE(business_display_name, knowledge_node_id)`) — unchanged, the only leg for non-draft versions; (b) DRAFT PROVENANCE: `rpv.status = 'draft'` AND `rpv.created_at < applied_0017_at` AND a 0017 marker item exists for the same (Business, `knowledge_node_id`); (c) DRAFT STRUCTURAL DESCENT: `rpv.status = 'draft'` AND `rpv.created_at < applied_0017_at` AND the current junction binds a same-Business marker item. `applied_0017_at` is read once from `schema_migrations` (Gate 1 already guarantees its presence; the `IS NOT NULL` guards make the legs fail closed if it were ever absent). Gate 1, the RESTRICT DROP, the down migration, and migrations 0001–0018 are all byte-identical/unmodified.
+
+**Provenance semantics (documented in the migration header):** the 0017 marker is Business/node-level, not per-version/per-row — Step 1 synthesizes one item per distinct (Business, `knowledge_node_id`) pair shared by all referencing legacy rows. The marker proves "0017 backfilled at least one legacy reference for this (Business, node)", never "this specific version's row was backfilled". No version-level provenance column exists and none was added.
+
+**Tests (`rewardProgramMigrations.postgres.test.ts` only):**
+- *Post-0017 false positives closed (new):* CORR-002 A (post-0017 draft + manual legacy row sharing the backfilled (Business, node) → 0019 RAISES; table + row remain, 0019 unrecorded, new structures untouched) and CORR-002 B (post-0017 draft + manual legacy row for a never-backfilled node + junction bound to a same-Business marker item → 0019 RAISES; the exact node-unconstrained leg-(c) shape).
+- *Pre-0017 draft evolution preserved (existing, still green):* A (unchanged), B (rebound), C (removed binding), D1 (renamed item), D2 (reclassified item).
+- *Draft→published fail-closed (new):* CORR-002 draft→published (pre-0017 draft rebound to a genuine item, then published → 0019 RAISES; table + row remain, 0019 unrecorded, status `active` intact). E./F. (published + removed evidence) retained as the removal/atomicity case.
+
+**Operator preflight / recovery procedure (documented operational contract; no automated repair built):**
+1. Confirm `schema_migrations` records `0017` as applied.
+2. Run/read the 0019 preflight gate (a failing gate is itself the diagnostic; a read-only diagnostic query is documented in the report below).
+3. If the gate passes: take/confirm the pre-0019 logical backup per existing operational practice, then apply `0019`.
+4. If the gate fails: DO NOT bypass the gate; DO NOT manually delete legacy rows; DO NOT edit historical migrations.
+5. Identify each failing legacy row and its Reward Program, version, version status, Business, legacy CK node, and the current qualifying-item/version snapshot.
+6. Determine whether the mismatch is legitimate post-backfill evolution or genuinely unmigrated evidence.
+7. Require explicit operator/Founder disposition before any target-specific remediation.
+
+**Read-only diagnostic/preflight query (non-mutating):**
+```sql
+SELECT
+  l.reward_program_version_id,
+  rpv.reward_program_id,
+  rpv.status                  AS version_status,
+  rpv.version                 AS version_number,
+  rp.business_id,
+  rpv.created_at,
+  (SELECT applied_at FROM schema_migrations WHERE version = '0017') AS applied_0017_at,
+  rpv.created_at < (SELECT applied_at FROM schema_migrations WHERE version = '0017') AS version_predates_0017,
+  l.knowledge_node_id         AS legacy_node,
+  l.business_display_name     AS legacy_display_name,
+  EXISTS (
+    SELECT 1 FROM reward_program_version_qualifying_items m
+    WHERE m.reward_program_version_id = l.reward_program_version_id
+      AND m.knowledge_node_id_at_version = l.knowledge_node_id
+      AND m.item_name_at_version = COALESCE(l.business_display_name, l.knowledge_node_id)
+  ) AS has_exact_representation
+FROM reward_program_version_qualifying_nodes l
+JOIN reward_program_versions rpv ON rpv.id = l.reward_program_version_id
+JOIN reward_programs rp ON rp.id = rpv.reward_program_id;
+```
+Rows with `has_exact_representation = FALSE` are the ones the gate will refuse; `version_status` and `version_predates_0017` tell the operator whether the mismatch is a legitimate post-backfill evolution (draft or published) or an out-of-band anomaly.
+
+**Residual pre-0017 manual-injection limitation (documented, not hidden):** a PRE-0017 draft combined with a POST-0017 manual SQL insertion into the legacy table is still indistinguishable from genuinely migrated history, because the schema has no version-level provenance and CORR-002 adds none. This residual is **bounded**: (1) product runtime has zero writers to the legacy table; (2) it requires out-of-band/manual database mutation; (3) the target deployment is protected by the preflight check + pre-drop backup + the fail-closed non-draft gate. Analysis confirms the residual is not materially more dangerous than stated — it cannot lose any published/committed history (exact-match leg (a) still protects every non-draft version) and can only ever drop a manually injected, stale, draft-only row.
+
+**Scope confirmation:** exactly the `0019_drop_legacy_qualifying_nodes.sql` up migration + `rewardProgramMigrations.postgres.test.ts` + this addendum + Entry 257 + the `IMPLEMENTATION_CHANGES.md` record. `0019.down` unchanged (structural shell only). Retained/untouched: `listQualifyingNodesForCategory`; `purchase_records.qualifying_item_id` nullability and `purchase_records.knowledge_node_id`; PB-013D classification; permissions; API contracts; purchase/10+1; PB-013B P3-3 (OPEN); TRD10; migrations 0001–0017. No dependency or config change.
+
+**Rollback:** revert the CORR-002 commit on PR #273 (CORR-001 gate restored). Do NOT merge; do NOT start PB-013B P3-3.
+
+**Final disposition:** `PLATFORM-BASELINE-013E — CORRECTED / AWAITING FINAL NARROW INDEPENDENT RE-REVIEW`.

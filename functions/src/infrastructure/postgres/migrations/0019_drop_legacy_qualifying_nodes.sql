@@ -20,7 +20,8 @@
 --
 -- Gate 2 proves every legacy row has its expected migrated
 -- representation. A legacy row counts as represented when ANY of the
--- following holds (PLATFORM-BASELINE-013E-CORR-001):
+-- following holds (PLATFORM-BASELINE-013E-CORR-001, bounded by
+-- PLATFORM-BASELINE-013E-CORR-002):
 --
 -- (a) EXACT MATCH, using 0017's own transformation semantics: one
 --     reward_program_version_qualifying_items row with the same
@@ -33,8 +34,10 @@
 --     equivalently represented, byte-for-byte, forever.
 --
 -- (b) DRAFT PROVENANCE: the legacy row's version is still a mutable
---     draft (status 'draft') AND a 0017-synthesized Qualifying Item
---     (qualifying_items.created_by =
+--     draft (status 'draft'), the version ITSELF predates migration
+--     0017 (reward_program_versions.created_at < the recorded
+--     schema_migrations.applied_at for '0017'), AND a 0017-synthesized
+--     Qualifying Item (qualifying_items.created_by =
 --     'platform-baseline-013a1-0017-backfill') exists for the same
 --     owning Business and the same knowledge_node_id. That marker row
 --     is created by 0017 Step 1 for exactly this legacy reference, and
@@ -45,14 +48,42 @@
 --     emptied afterwards.
 --
 -- (c) DRAFT STRUCTURAL DESCENT: the legacy row's version is still a
---     mutable draft AND its current junction still binds a
---     0017-synthesized (marker-created) item owned by the same
---     Business. This covers the deeper evolution where the live item
---     itself was renamed/reclassified through the legitimate
---     item-update path and the draft re-saved with refreshed frozen
---     snapshots: neither the junction nor the live item still carries
---     the legacy (node, name) pair, but the draft's bindings still
---     structurally descend from the backfill.
+--     mutable draft AND the version ITSELF predates migration 0017, and
+--     its current junction still binds a 0017-synthesized
+--     (marker-created) item owned by the same Business. This covers the
+--     deeper evolution where the live item itself was renamed/
+--     reclassified through the legitimate item-update path and the
+--     draft re-saved with refreshed frozen snapshots: neither the
+--     junction nor the live item still carries the legacy (node, name)
+--     pair, but the draft's bindings still structurally descend from
+--     the backfill.
+--
+-- CORR-002 provenance bound: the draft escape legs (b)/(c) apply ONLY
+-- to versions that predate migration 0017, because a version created
+-- after 0017 can never have a legitimate legacy row -- the product has
+-- zero runtime writers to reward_program_version_qualifying_nodes, so
+-- any legacy row on a post-0017 version is out-of-band/manual SQL and
+-- must fail closed. The bound is `rpv.created_at <
+-- schema_migrations.applied_at('0017')`; both columns are TIMESTAMPTZ
+-- (UTC), and 0017's own up SQL creates no versions, so every
+-- legitimately backfilled version predates the recorded application
+-- time. (See the PB-013E report §10 for the residual clock-skew /
+-- manual-injection analysis.)
+--
+-- PROVENANCE SEMANTICS: the 0017 marker is Business/node-level, NOT
+-- per-version or per-row -- Step 1 synthesizes ONE item per distinct
+-- (Business, knowledge_node_id) pair, and that single item is shared
+-- by every legacy row (across versions and programs of the same
+-- Business) referencing that node. The marker therefore proves "0017
+-- backfilled at least one legacy reference for this (Business, node)",
+-- not "this specific version's row was backfilled". There is no
+-- version-level provenance column in the schema, and CORR-002 does not
+-- add one. The residual consequence -- a PRE-0017 draft whose legacy
+-- table receives a POST-0017 manual SQL insertion cannot be
+-- distinguished from genuinely migrated history -- is accepted and
+-- documented in the PB-013E report §10 (bounded: zero runtime writers,
+-- requires out-of-band manual mutation, and the fail-closed non-draft
+-- gate plus preflight + backup protect the target environment).
 --
 -- Mutability is read from reward_program_versions.status, the same
 -- lifecycle authority the command layer enforces (only 'draft' rows
@@ -72,13 +103,23 @@
 -- un-backfilled legacy evidence must be investigated by hand, never
 -- silently dropped.
 --
--- Known conservative edge (fail-closed, by design): a version published
--- AFTER 0017 whose live item was renamed/reclassified between the
--- backfill and publication carries publish-refreshed snapshots that no
--- longer byte-match the legacy row. That immutable version blocks 0019
--- for hand verification rather than being silently dropped. No product
--- write path can produce this without an explicit item rename/remap,
--- and blocking is the safe direction.
+-- PUBLISHED / NON-DRAFT FAIL-CLOSED CASES (intentional refusal, NOT
+-- data corruption -- these are ambiguous historical states requiring
+-- operator verification): once a version is published ('active' or
+-- 'superseded'), only exact representation leg (a) applies. Legitimate
+-- pre-0017 draft evolution followed by publication can therefore leave
+-- a legacy row without an exact current-junction match, and 0019 will
+-- REFUSE to drop. That covers at minimum:
+--   * live-item rename between backfill and publication;
+--   * classification remap (knowledge_node_id change) before publish;
+--   * classification removal (knowledge_node_id -> NULL) before publish;
+--   * item rebind / binding removal before publish;
+--   * multi-version frozen-name conflicts (0017 Step 1 picks one
+--     canonical live name, while publish re-snapshots every version
+--     from that same live name).
+-- Each of these is fail-closed by design: 0019 raises, the legacy table
+-- remains, and the operator follows the preflight/recovery procedure in
+-- the PB-013E report §10 rather than bypassing the gate.
 --
 -- The DROP uses default RESTRICT semantics (no CASCADE clause).
 -- CASCADE is intentionally prohibited: it would silently drop any
@@ -105,8 +146,16 @@ END $$;
 
 DO $$
 DECLARE
+  applied_0017_at TIMESTAMPTZ;
   unrepresented_count INTEGER;
 BEGIN
+  -- The recorded application time of the backfill, used to bound the
+  -- draft escape legs (b)/(c) to versions that predate 0017. Gate 1 has
+  -- already guaranteed this row exists; the explicit IS NOT NULL guards
+  -- in (b)/(c) additionally fail closed (leg unavailable) if it were ever
+  -- absent.
+  SELECT applied_at INTO applied_0017_at FROM schema_migrations WHERE version = '0017';
+
   SELECT COUNT(*) INTO unrepresented_count
   FROM reward_program_version_qualifying_nodes legacy
   WHERE NOT EXISTS (
@@ -119,8 +168,9 @@ BEGIN
         COALESCE(legacy.business_display_name, legacy.knowledge_node_id)
   )
   AND NOT EXISTS (
-    -- (b) draft provenance: still-mutable version + the 0017-synthesized
-    -- item for this exact (Business, knowledge_node_id) reference.
+    -- (b) draft provenance: still-mutable version, the version itself
+    -- predating migration 0017, plus the 0017-synthesized item for this
+    -- exact (Business, knowledge_node_id) reference.
     SELECT 1
     FROM reward_program_versions rpv
     JOIN reward_programs rp ON rp.id = rpv.reward_program_id
@@ -130,10 +180,13 @@ BEGIN
      AND qi.created_by = 'platform-baseline-013a1-0017-backfill'
     WHERE rpv.id = legacy.reward_program_version_id
       AND rpv.status = 'draft'
+      AND applied_0017_at IS NOT NULL
+      AND rpv.created_at < applied_0017_at
   )
   AND NOT EXISTS (
-    -- (c) draft structural descent: still-mutable version whose current
-    -- junction still binds a 0017-synthesized item of the same Business.
+    -- (c) draft structural descent: still-mutable version, the version
+    -- itself predating migration 0017, whose current junction still binds
+    -- a 0017-synthesized item of the same Business.
     SELECT 1
     FROM reward_program_versions rpv
     JOIN reward_programs rp ON rp.id = rpv.reward_program_id
@@ -145,11 +198,13 @@ BEGIN
      AND qi.created_by = 'platform-baseline-013a1-0017-backfill'
     WHERE rpv.id = legacy.reward_program_version_id
       AND rpv.status = 'draft'
+      AND applied_0017_at IS NOT NULL
+      AND rpv.created_at < applied_0017_at
   );
 
   IF unrepresented_count > 0 THEN
     RAISE EXCEPTION
-      'PLATFORM-BASELINE-013E / 0019: refusing to drop reward_program_version_qualifying_nodes -- % legacy row(s) have no equivalent reward_program_version_qualifying_items representation (exact version/node/name match, draft backfill provenance, or draft structural descent). Investigate the 0017 backfill on this database before retrying.',
+      'PLATFORM-BASELINE-013E / 0019: refusing to drop reward_program_version_qualifying_nodes -- % legacy row(s) have no equivalent reward_program_version_qualifying_items representation (exact version/node/name match, or draft provenance/structural descent for a version that predates migration 0017). Investigate the 0017 backfill on this database before retrying.',
       unrepresented_count;
   END IF;
 END $$;
