@@ -66,6 +66,9 @@ afterEach(async () => {
   await pool.query("DROP TABLE IF EXISTS verified_units CASCADE");
   await pool.query("DROP TABLE IF EXISTS purchase_record_events CASCADE");
   await pool.query("DROP TABLE IF EXISTS purchase_records CASCADE");
+  // `PLATFORM-BASELINE-013E`: `IF EXISTS` -- harmless once 0019 has
+  // dropped the table; kept so this teardown stays robust however the
+  // migration set evolves.
   await pool.query("DROP TABLE IF EXISTS reward_program_version_qualifying_nodes CASCADE");
   await pool.query("DROP TABLE IF EXISTS reward_program_outbox CASCADE");
   await pool.query("DROP TABLE IF EXISTS idempotency_keys CASCADE");
@@ -197,6 +200,7 @@ describe("checkPlatformFoundationReadiness — actual shipped migrations directo
       "0016",
       "0017",
       "0018",
+      "0019",
     ]);
 
     const result = await checkPlatformFoundationReadiness(shippedReadinessDeps());

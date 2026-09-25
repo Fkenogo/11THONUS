@@ -1195,16 +1195,16 @@ export const listQualifyingNodesForCategory = onCall(async (request) => {
 
 /**
  * `listQualifyingNodesForBusinessType` (`PLATFORM-BASELINE-010B`, Founder
- * decision `DEC-LOY-014` / `FD-REWARD-QUALIFICATION-001`) — the Reward
- * Program qualifying-node selector's DEFAULT discovery scope, pre-filtered
- * to the Business's own Business Type. Same authentication-only,
- * non-Business-scoped shape as `listQualifyingNodesForCategory`;
- * `businessTypeId` is independently re-validated server-side inside the
- * read service. This is a discovery convenience only — it never restricts
- * what `createRewardProgram`/`updateRewardProgramDraft` will accept as a
- * qualifying node (see `searchQualifyingNodes` below for the unrestricted
- * escape hatch, and `validateQualifyingNodes` for the write-time
- * authority, which has no Business-Type gate).
+ * decision `DEC-LOY-014` / `FD-REWARD-QUALIFICATION-001`) — the optional
+ * classification suggestion scope, pre-filtered to the Business's own
+ * Business Type. Same authentication-only, non-Business-scoped shape as
+ * `listQualifyingNodesForCategory`; `businessTypeId` is independently
+ * re-validated server-side inside the read service. This is a discovery
+ * convenience for optional Commerce Knowledge classification only — it
+ * never affects Reward Program qualification, which binds Business-owned
+ * Qualifying Items (`qualifyingItemIds`) with no Commerce Knowledge gate
+ * (see `searchQualifyingNodes` below for the unrestricted classification
+ * escape hatch).
  */
 export const listQualifyingNodesForBusinessType = onCall(async (request) => {
   const value = (request.data ?? {}) as Record<string, unknown>;

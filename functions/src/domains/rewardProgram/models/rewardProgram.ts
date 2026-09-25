@@ -8,7 +8,8 @@
  * table/column names PROPOSED BY PLATFORM-BASELINE-005, not inherited;
  * the qualifying-items junction REPLACED the original
  * `reward_program_version_qualifying_nodes` in `PLATFORM-BASELINE-013B`,
- * per `DEC-LOY-016`).
+ * per `DEC-LOY-016` (the superseded table itself was dropped by
+ * migration `0019` in `PLATFORM-BASELINE-013E`).
  *
  * Business/Customer-Identity/Commerce-Knowledge references are opaque
  * Firestore-owned ids (`TEXT`, never a PostgreSQL FK) — validated
@@ -58,11 +59,6 @@ export type RewardProgramRow = {
   updatedAt: Date;
   updatedBy: string;
   readonly schemaVersion: number;
-};
-
-export type QualifyingNode = {
-  readonly knowledgeNodeId: string;
-  readonly businessDisplayName: string | null;
 };
 
 /**

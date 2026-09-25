@@ -214,7 +214,6 @@ afterEach(async () => {
   await pool.query("DELETE FROM purchase_record_events");
   await pool.query("DELETE FROM purchase_records");
   await pool.query("DELETE FROM reward_program_version_qualifying_items");
-  await pool.query("DELETE FROM reward_program_version_qualifying_nodes");
   await pool.query("DELETE FROM reward_program_outbox");
   await pool.query("DELETE FROM idempotency_keys");
   await pool.query("UPDATE reward_programs SET current_version_id = NULL");

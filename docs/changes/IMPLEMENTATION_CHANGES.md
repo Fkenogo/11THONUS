@@ -6,6 +6,19 @@
 > governed documentation source and is not part of the migrated documentation baseline.
 
 ---
+## 2026-09-25 — PLATFORM-BASELINE-013E-001 — Legacy Qualification Model Cleanup (Implemented / Awaiting Independent Review)
+
+- **Task / status:** `PLATFORM-BASELINE-013E-001` implementation on branch `codex/platform-baseline-013e` from entry `origin/main` `7c4e7cc62b7bb264b4dd9c3d47fe04b10693c6a1` (zero advancement; readiness re-verified, no STOP). Both Founder preconditions applied: backend `listQualifyingNodesForCategory` callable/service/tests RETAINED; `purchase_records.qualifying_item_id` NOT NULL tightening and `knowledge_node_id` removal explicitly OUT. Isolated worktree; primary dirty checkout untouched. PR OPEN against `main`; NOT merged.
+- **Migration `0019`:** `0019_drop_legacy_qualifying_nodes.sql` validates (Gate 1: `0017` recorded; Gate 2: per-legacy-row junction representation per 0017 Step 2 semantics, no naive global count) then `DROP TABLE reward_program_version_qualifying_nodes` with default RESTRICT (CASCADE prohibited). `.down.sql` recreates the 0003 structure only — documented lossy (COALESCE collapse, canonical-name choice, remap breaks, deleted versions, Firestore drift); real recovery needs a pre-0019 backup. Purchase columns untouched; 0001–0018 byte-identical.
+- **Dead code removed:** `validateQualifyingNodes`, `QualifyingNode`, `invalidQualifyingNodeError` (+ exclusive imports; stale comments reworded); web `useQualifyingNodesForCategoryQuery`, `businessQueryKeys.qualifyingNodes` (+ key test), category adapters + request type + adapter test. Live PB-013D classification, permissions, API contracts, purchase/10+1, PB-013B P3-3 (OPEN/unchanged) untouched.
+- **Tests:** new 0019 A/B/C/D/F suite (empty drop, seeded byte-exact survival, fail-closed refusal, product smoke, structural down + re-apply); lists extended to nineteen; Case K/idempotency/0017.down capped at pre-0019 scratch; legacy-pinning assertions removed with the table; backfill/whitelist/authority suites retained.
+- **Validation:** PG 238, functions unit 1847, web unit 902, emulator 864 + 3 skipped, Playwright 37/37, typechecks, lint (0 errors), prettier, both builds, `git diff --check` — green. Env notes: disposable PG 54331, temp firebase config (UI disabled; repo file untouched), one self-caught scratch-prefix defect fixed.
+- **Carry-forwards:** PB-013B P3-3 OPEN; TRD10 §10.9.2 correction separate; purchase-column policy separate.
+- **Files:** 2 migrations + 1 report added; 6 backend + 5 web + 5 test files modified; 0 deleted; no dependency/config change.
+- **Rollback:** revert PR for code/tests; `0019.down` restores empty shell only — data recovery needs the pre-drop backup.
+- **Disposition: `PLATFORM-BASELINE-013E — IMPLEMENTED / AWAITING INDEPENDENT REVIEW`.** Full record: `docs/05-implementation/reports/platform-baseline-013e-legacy-qualification-model-cleanup-implementation-report-2026-09-25.md`.
+
+---
 ## 2026-09-24 — PLATFORM-BASELINE-013D-MERGE-CLOSE-001 — Merge & Closure of PR #271 (Qualifying Item Classification Experience)
 
 - **Task / status:** Merge/closure only for `PLATFORM-BASELINE-013D` (PR #271) at the independently reviewed head `735667d5a1a952857d15c2b5ff6a6f76f8d9ac8d` (independent review disposition **A — CORRECTION INDEPENDENTLY VERIFIED / APPROVABLE**; zero P0/P1/P2 findings; two P3 observations explicitly non-blocking test-hardening notes, no correction cycle). No implementation code modified by this closure.

@@ -12,10 +12,10 @@
  * version's qualification is its rows in
  * `reward_program_version_qualifying_items`, keyed by stable
  * Business-owned `qualifying_item_id` with frozen display snapshots. The
- * superseded `reward_program_version_qualifying_nodes` table is retained
- * but NEVER read or written here -- dropping it is deferred to the
- * environment-gated `PLATFORM-BASELINE-013E` migration. There is exactly
- * one qualification authority, not two.
+ * superseded `reward_program_version_qualifying_nodes` table was dropped
+ * by migration `0019` (`PLATFORM-BASELINE-013E`) after its fail-closed
+ * equivalence gate proved every legacy row represented -- it is never
+ * consulted here. There is exactly one qualification authority, not two.
  */
 
 import type { PoolClient } from "pg";
@@ -120,8 +120,8 @@ function mapVersionRow(
  * (`reward_program_version_qualifying_items`), in a stable order. Returns
  * the FROZEN snapshots -- never the live `qualifying_items` row -- so a
  * published version reproduces verbatim after a rename, remap, or
- * retirement. The legacy `reward_program_version_qualifying_nodes` table
- * is deliberately never consulted.
+ * retirement. (The superseded legacy junction table was dropped by
+ * migration `0019` and is never consulted.)
  */
 async function fetchQualifyingItems(
   db: Queryable,
