@@ -1256,12 +1256,18 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
   });
 
   /**
-   * `PLATFORM-BASELINE-013E` — migration `0019` drops the superseded
-   * legacy `reward_program_version_qualifying_nodes` table after a
-   * fail-closed equivalence gate. No blanket `beforeEach` here: tests
-   * B-C must control migration application precisely (pre-0017 scratch
-   * directory, legacy seeding, then 0017/0018 with or without 0019),
-   * mirroring the Case K technique above.
+   * `PLATFORM-BASELINE-013E` (+ `PLATFORM-BASELINE-013E-CORR-001`) —
+   * migration `0019` drops the superseded legacy
+   * `reward_program_version_qualifying_nodes` table after a fail-closed
+   * gate. The gate requires an exact migrated representation for every
+   * legacy row on an immutable (published/superseded) version, while a
+   * legacy row on a still-mutable draft is also satisfied by 0017
+   * backfill provenance (marker item for the same Business/node) or by
+   * structural descent (the draft still binds a backfill-synthesized
+   * item). No blanket `beforeEach` here: tests must control migration
+   * application precisely (pre-0017 scratch directory, legacy seeding,
+   * then 0017/0018 with or without 0019), mirroring the Case K
+   * technique above.
    */
   describe("PLATFORM-BASELINE-013E: drop legacy qualifying-nodes table (0019)", () => {
     async function copyMigrationsBefore(scratchDir: string, version: string): Promise<void> {
@@ -1317,7 +1323,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       }
     }, 15000);
 
-    it("B. seeded legacy data migrated by 0017 survives 0019 in the new authoritative structures", async () => {
+    it("A. unchanged backfilled legacy row: seeded legacy data migrated by 0017 survives 0019 in the new authoritative structures", async () => {
       const scratchDir = await mkdtemp(path.join(tmpdir(), "pb013e-pre-0019-migrations-"));
       try {
         await copyMigrationsBefore(scratchDir, "0017");
@@ -1373,7 +1379,276 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       ]);
     }, 15000);
 
-    it("C. fails closed: a legacy row with no migrated representation aborts 0019 and the table remains", async () => {
+    /**
+     * PLATFORM-BASELINE-013E-CORR-001 TEST B (core P1 regression) — a
+     * draft legitimately edited AFTER the 0017 backfill must not block
+     * 0019. The draft edit mirrors `updateDraftVersion`'s wholesale
+     * replacement semantics exactly (DELETE all of the version's junction
+     * rows, then INSERT the new bindings); the legacy table is
+     * intentionally never updated. The 0017-synthesized marker item
+     * survives (junction writes never touch `qualifying_items`), proving
+     * the backfill processed this exact legacy reference.
+     */
+    it("B. (P1 regression) a draft rebound after the 0017 backfill still lets 0019 drop the legacy table", async () => {
+      const preDir = await mkdtemp(path.join(tmpdir(), "pb013e-corr001-b-pre-"));
+      try {
+        await copyMigrationsBefore(preDir, "0017");
+        await migrateUp(pool, preDir);
+      } finally {
+        await rm(preDir, { recursive: true, force: true });
+      }
+
+      const businessId = "biz-013e-corr001-evolved";
+      const programId = await insertProgram(businessId);
+      const versionId = await insertVersion(programId);
+      await pool.query(
+        `INSERT INTO reward_program_version_qualifying_nodes (reward_program_version_id, knowledge_node_id, business_display_name)
+         VALUES ($1, 'node-legacy-1', 'Legacy Espresso')`,
+        [versionId],
+      );
+
+      const midDir = await mkdtemp(path.join(tmpdir(), "pb013e-corr001-b-mid-"));
+      try {
+        await copyMigrationsBefore(midDir, "0019");
+        const mid = await migrateUp(pool, midDir);
+        expect(mid.applied).toEqual(["0017", "0018"]);
+      } finally {
+        await rm(midDir, { recursive: true, force: true });
+      }
+
+      // Legitimate post-backfill draft edit: wholesale junction
+      // replacement binding a genuine, Business-owned item with a
+      // different name and classification. The legacy row is untouched.
+      const genuine = await pool.query<{ id: string }>(
+        `INSERT INTO qualifying_items (business_id, name, knowledge_node_id, status, created_by, updated_by)
+         VALUES ($1, 'Cold Brew', 'node-new-9', 'active', 'user-1', 'user-1') RETURNING id`,
+        [businessId],
+      );
+      await pool.query(
+        "DELETE FROM reward_program_version_qualifying_items WHERE reward_program_version_id = $1",
+        [versionId],
+      );
+      await pool.query(
+        `INSERT INTO reward_program_version_qualifying_items
+           (reward_program_version_id, qualifying_item_id, item_name_at_version, knowledge_node_id_at_version)
+         VALUES ($1, $2, 'Cold Brew', 'node-new-9')`,
+        [versionId, genuine.rows[0].id],
+      );
+
+      const result = await migrateUp(pool, migrationsDir);
+      expect(result.applied).toEqual(["0019"]);
+      expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
+
+      // The backfill's own evidence survives the drop: the marker item
+      // for the legacy reference still exists, and the draft's current
+      // (evolved) binding is intact.
+      const marker = await pool.query(
+        `SELECT count(*) FROM qualifying_items
+          WHERE business_id = $1 AND knowledge_node_id = 'node-legacy-1'
+            AND created_by = 'platform-baseline-013a1-0017-backfill'`,
+        [businessId],
+      );
+      expect(Number(marker.rows[0].count)).toBe(1);
+      const junction = await pool.query(
+        `SELECT count(*) FROM reward_program_version_qualifying_items
+          WHERE reward_program_version_id = $1 AND qualifying_item_id = $2`,
+        [versionId, genuine.rows[0].id],
+      );
+      expect(Number(junction.rows[0].count)).toBe(1);
+    }, 15000);
+
+    /**
+     * PLATFORM-BASELINE-013E-CORR-001 TEST C — a draft whose
+     * legacy-derived binding was later removed entirely (a state the
+     * wholesale-replacement draft semantics allow) must not block 0019.
+     */
+    it("C. a draft with its legacy-derived binding removed after the 0017 backfill still lets 0019 drop the legacy table", async () => {
+      const preDir = await mkdtemp(path.join(tmpdir(), "pb013e-corr001-c-pre-"));
+      try {
+        await copyMigrationsBefore(preDir, "0017");
+        await migrateUp(pool, preDir);
+      } finally {
+        await rm(preDir, { recursive: true, force: true });
+      }
+
+      const businessId = "biz-013e-corr001-removed";
+      const programId = await insertProgram(businessId);
+      const versionId = await insertVersion(programId);
+      await pool.query(
+        `INSERT INTO reward_program_version_qualifying_nodes (reward_program_version_id, knowledge_node_id, business_display_name)
+         VALUES ($1, 'node-legacy-1', 'Legacy Espresso')`,
+        [versionId],
+      );
+
+      const midDir = await mkdtemp(path.join(tmpdir(), "pb013e-corr001-c-mid-"));
+      try {
+        await copyMigrationsBefore(midDir, "0019");
+        const mid = await migrateUp(pool, midDir);
+        expect(mid.applied).toEqual(["0017", "0018"]);
+      } finally {
+        await rm(midDir, { recursive: true, force: true });
+      }
+
+      // Legitimate post-backfill draft edit: the binding is removed
+      // (empty junction for this draft version). The legacy row and the
+      // backfill-synthesized item are untouched.
+      await pool.query(
+        "DELETE FROM reward_program_version_qualifying_items WHERE reward_program_version_id = $1",
+        [versionId],
+      );
+
+      const result = await migrateUp(pool, migrationsDir);
+      expect(result.applied).toEqual(["0019"]);
+      expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
+
+      const marker = await pool.query(
+        `SELECT count(*) FROM qualifying_items
+          WHERE business_id = $1 AND knowledge_node_id = 'node-legacy-1'
+            AND created_by = 'platform-baseline-013a1-0017-backfill'`,
+        [businessId],
+      );
+      expect(Number(marker.rows[0].count)).toBe(1);
+    }, 15000);
+
+    /**
+     * PLATFORM-BASELINE-013E-CORR-001 TEST D — a draft whose live item
+     * was renamed (D1) or reclassified (D2) through the legitimate
+     * item-update path, with the draft then re-saved so its frozen
+     * snapshots refresh (exactly what `updateQualifyingItem` followed by
+     * `updateDraftVersion` produces), must not block 0019. D2 is the
+     * deeper case: the marker item itself no longer carries the legacy
+     * classification, so only the draft's structural descent from the
+     * backfill (it still binds the synthesized item) proves migration.
+     */
+    it("D1. a draft re-saved after its backfilled item was renamed still lets 0019 drop the legacy table", async () => {
+      const preDir = await mkdtemp(path.join(tmpdir(), "pb013e-corr001-d1-pre-"));
+      try {
+        await copyMigrationsBefore(preDir, "0017");
+        await migrateUp(pool, preDir);
+      } finally {
+        await rm(preDir, { recursive: true, force: true });
+      }
+
+      const businessId = "biz-013e-corr001-renamed";
+      const programId = await insertProgram(businessId);
+      const versionId = await insertVersion(programId);
+      await pool.query(
+        `INSERT INTO reward_program_version_qualifying_nodes (reward_program_version_id, knowledge_node_id, business_display_name)
+         VALUES ($1, 'node-legacy-1', 'Legacy Espresso')`,
+        [versionId],
+      );
+
+      const midDir = await mkdtemp(path.join(tmpdir(), "pb013e-corr001-d1-mid-"));
+      try {
+        await copyMigrationsBefore(midDir, "0019");
+        const mid = await migrateUp(pool, midDir);
+        expect(mid.applied).toEqual(["0017", "0018"]);
+      } finally {
+        await rm(midDir, { recursive: true, force: true });
+      }
+
+      // Legitimate product path: rename the live item, then re-save the
+      // draft so its frozen snapshot refreshes to the new name.
+      const marker = await pool.query<{ id: string }>(
+        `SELECT id FROM qualifying_items
+          WHERE business_id = $1 AND knowledge_node_id = 'node-legacy-1'
+            AND created_by = 'platform-baseline-013a1-0017-backfill'`,
+        [businessId],
+      );
+      expect(marker.rows).toHaveLength(1);
+      const markerId = marker.rows[0].id;
+      await pool.query(
+        "UPDATE qualifying_items SET name = 'Legacy Espresso Renamed' WHERE id = $1",
+        [markerId],
+      );
+      await pool.query(
+        "DELETE FROM reward_program_version_qualifying_items WHERE reward_program_version_id = $1",
+        [versionId],
+      );
+      await pool.query(
+        `INSERT INTO reward_program_version_qualifying_items
+           (reward_program_version_id, qualifying_item_id, item_name_at_version, knowledge_node_id_at_version)
+         VALUES ($1, $2, 'Legacy Espresso Renamed', 'node-legacy-1')`,
+        [versionId, markerId],
+      );
+
+      const result = await migrateUp(pool, migrationsDir);
+      expect(result.applied).toEqual(["0019"]);
+      expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
+    }, 15000);
+
+    it("D2. a draft re-saved after its backfilled item was reclassified still lets 0019 drop the legacy table", async () => {
+      const preDir = await mkdtemp(path.join(tmpdir(), "pb013e-corr001-d2-pre-"));
+      try {
+        await copyMigrationsBefore(preDir, "0017");
+        await migrateUp(pool, preDir);
+      } finally {
+        await rm(preDir, { recursive: true, force: true });
+      }
+
+      const businessId = "biz-013e-corr001-remapped";
+      const programId = await insertProgram(businessId);
+      const versionId = await insertVersion(programId);
+      await pool.query(
+        `INSERT INTO reward_program_version_qualifying_nodes (reward_program_version_id, knowledge_node_id, business_display_name)
+         VALUES ($1, 'node-legacy-1', 'Legacy Espresso')`,
+        [versionId],
+      );
+
+      const midDir = await mkdtemp(path.join(tmpdir(), "pb013e-corr001-d2-mid-"));
+      try {
+        await copyMigrationsBefore(midDir, "0019");
+        const mid = await migrateUp(pool, midDir);
+        expect(mid.applied).toEqual(["0017", "0018"]);
+      } finally {
+        await rm(midDir, { recursive: true, force: true });
+      }
+
+      // Legitimate product path: reclassify the live item to another
+      // optional CK node, then re-save the draft so its frozen snapshots
+      // refresh. Neither the junction nor the live item still carries
+      // the legacy (node, name) pair -- only the draft's structural
+      // binding of the backfill-synthesized item proves migration.
+      const marker = await pool.query<{ id: string }>(
+        `SELECT id FROM qualifying_items
+          WHERE business_id = $1 AND knowledge_node_id = 'node-legacy-1'
+            AND created_by = 'platform-baseline-013a1-0017-backfill'`,
+        [businessId],
+      );
+      expect(marker.rows).toHaveLength(1);
+      const markerId = marker.rows[0].id;
+      await pool.query(
+        "UPDATE qualifying_items SET name = 'Remapped Blend', knowledge_node_id = 'node-remapped-7' WHERE id = $1",
+        [markerId],
+      );
+      await pool.query(
+        "DELETE FROM reward_program_version_qualifying_items WHERE reward_program_version_id = $1",
+        [versionId],
+      );
+      await pool.query(
+        `INSERT INTO reward_program_version_qualifying_items
+           (reward_program_version_id, qualifying_item_id, item_name_at_version, knowledge_node_id_at_version)
+         VALUES ($1, $2, 'Remapped Blend', 'node-remapped-7')`,
+        [versionId, markerId],
+      );
+
+      const result = await migrateUp(pool, migrationsDir);
+      expect(result.applied).toEqual(["0019"]);
+      expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
+    }, 15000);
+
+    /**
+     * PLATFORM-BASELINE-013E-CORR-001 TESTS E (fail-closed on
+     * historical evidence) + F (failure atomicity) — the same
+     * evidence destruction as TEST C, but against a PUBLISHED
+     * (immutable) version, MUST abort 0019. Draft provenance legs
+     * (b)/(c) are unavailable to non-draft versions by construction, so
+     * a published row with no exact migrated representation blocks the
+     * drop. The aborted run must leave everything untouched: legacy
+     * table + rows remain, 0019 is not recorded, and no destructive
+     * schema change occurs.
+     */
+    it("E./F. fails closed on unmigrated historical (published) evidence: 0019 aborts atomically and the legacy table and rows remain", async () => {
       const preDir = await mkdtemp(path.join(tmpdir(), "pb013e-pre-0019-seed-"));
       try {
         await copyMigrationsBefore(preDir, "0017");
@@ -1390,8 +1665,10 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         [versionId],
       );
 
-      // Apply 0017+0018 only (scratch copy without 0019), then destroy
-      // the migrated evidence so the legacy row is unrepresented.
+      // Apply 0017+0018 only (scratch copy without 0019), publish the
+      // version (draft -> active: immutable history from here on), then
+      // destroy the migrated evidence so the published legacy row is
+      // unrepresented.
       const midDir = await mkdtemp(path.join(tmpdir(), "pb013e-mid-0019-seed-"));
       try {
         await copyMigrationsBefore(midDir, "0019");
@@ -1400,6 +1677,9 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       } finally {
         await rm(midDir, { recursive: true, force: true });
       }
+      await pool.query("UPDATE reward_program_versions SET status = 'active' WHERE id = $1", [
+        versionId,
+      ]);
       await pool.query(
         "DELETE FROM reward_program_version_qualifying_items WHERE reward_program_version_id = $1",
         [versionId],
@@ -1409,8 +1689,9 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         /refusing to drop reward_program_version_qualifying_nodes/,
       );
 
-      // Fail-closed proof: the table and its evidence row survive, and
-      // 0019 is NOT recorded as applied.
+      // Fail-closed + atomicity proof: the table and its evidence row
+      // survive, 0019 is NOT recorded as applied, and the new
+      // authoritative structures are untouched by the aborted run.
       expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(true);
       const legacy = await pool.query(
         "SELECT count(*) FROM reward_program_version_qualifying_nodes WHERE reward_program_version_id = $1",
@@ -1419,9 +1700,16 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       expect(Number(legacy.rows[0].count)).toBe(1);
       const applied = await getAppliedMigrations(pool);
       expect(applied.map((a) => a.version)).not.toContain("0019");
+      expect(await tableExists("reward_program_version_qualifying_items")).toBe(true);
+      expect(await tableExists("qualifying_items")).toBe(true);
+      const versions = await pool.query(
+        "SELECT status FROM reward_program_versions WHERE id = $1",
+        [versionId],
+      );
+      expect(versions.rows).toEqual([{ status: "active" }]);
     }, 15000);
 
-    it("D. post-0019 product smoke: bind, publish-shape, and hydrate qualification evidence from the new structures only", async () => {
+    it("G. post-0019 product smoke: bind, publish-shape, and hydrate qualification evidence from the new structures only", async () => {
       await migrateUp(pool, migrationsDir);
       expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
 
@@ -1464,7 +1752,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       ]);
     }, 15000);
 
-    it("F. 0019.down recreates the historical table structure only, with no fabricated rows, and 0019 re-applies", async () => {
+    it("down-migration: 0019.down recreates the historical table structure only, with no fabricated rows, and 0019 re-applies", async () => {
       await migrateUp(pool, migrationsDir);
       expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
 

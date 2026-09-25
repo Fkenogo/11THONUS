@@ -6,6 +6,19 @@
 > governed documentation source and is not part of the migrated documentation baseline.
 
 ---
+## 2026-09-25 — PLATFORM-BASELINE-013E-CORR-001 — 0019 Equivalence-Gate Correction for Legitimately Evolved Drafts (Corrected / Awaiting Narrow Independent Re-Review)
+
+- **Task / entry gate:** correction on PR #273 (branch `codex/platform-baseline-013e`): PR OPEN/unmerged; head exactly `fe26931422aae6085ad64bffe4cbf6792555e4cd` (no drift); base `7c4e7cc62b7bb264b4dd9c3d47fe04b10693c6a1`; exact-head CI green; P1 thread present on the 0019 migration. Isolated worktree; primary dirty checkout untouched. NOT merged; PB-013B P3-3 NOT started; TRD10 untouched.
+- **Confirmed P1 root cause:** shipped Gate 2 required every legacy row to byte-match the CURRENT junction, but draft edits replace the junction wholesale while the legacy table is never updated — legitimate post-0017 draft evolution (remove/rename/remap) aborted `0019`. Proven pre-fix: new tests B/C/D1/D2 failed on the old gate.
+- **Revised gate (0019 up migration only; 0017 byte-identical):** legacy row represented when (a) exact current-junction match (ONLY leg for immutable active/superseded versions), OR (b) version still `draft` + marker item (`created_by = 'platform-baseline-013a1-0017-backfill'`) for same (Business, node), OR (c) version still `draft` + current junction binds a same-Business marker item. Gate 1 unchanged; no global count; CK never authority; RESTRICT drop unchanged; down migration unchanged (structural shell only).
+- **Tests:** A (unchanged), B (rebound draft — core P1 regression), C (removed binding), D1 (renamed item + re-saved draft), D2 (reclassified item + re-saved draft), E./F. (published evidence destroyed → RAISES; table + rows remain; 0019 unrecorded; structures untouched), G (smoke), down-migration (shell + re-apply). Old fail-closed-on-draft test removed by necessity.
+- **Validation:** migration file 45/45; full PG 8 files/242; functions unit 162/1847; web unit 124/902; typecheck; lint 0 errors; prettier; both builds; `git diff --check` clean. Exact-head CI awaited; P1 thread replied, left unresolved.
+- **Retained:** `listQualifyingNodesForCategory`; purchase column nullability/`knowledge_node_id`; PB-013D; permissions; contracts; P3-3 OPEN; TRD10 untouched. No dependency/config change.
+- **Files:** 1 migration + 1 migration-test file modified; 1 report addendum (§9); this record; Entry 256 in the documentation-changes log.
+- **Rollback:** revert correction commit(s) on PR #273; `0019.down` restores empty shell only — data recovery needs the pre-drop backup.
+- **Disposition: `PLATFORM-BASELINE-013E — CORRECTED / AWAITING NARROW INDEPENDENT RE-REVIEW`.** Full record: `docs/05-implementation/reports/platform-baseline-013e-legacy-qualification-model-cleanup-implementation-report-2026-09-25.md` (§9).
+
+---
 ## 2026-09-25 — PLATFORM-BASELINE-013E-001 — Legacy Qualification Model Cleanup (Implemented / Awaiting Independent Review)
 
 - **Task / status:** `PLATFORM-BASELINE-013E-001` implementation on branch `codex/platform-baseline-013e` from entry `origin/main` `7c4e7cc62b7bb264b4dd9c3d47fe04b10693c6a1` (zero advancement; readiness re-verified, no STOP). Both Founder preconditions applied: backend `listQualifyingNodesForCategory` callable/service/tests RETAINED; `purchase_records.qualifying_item_id` NOT NULL tightening and `knowledge_node_id` removal explicitly OUT. Isolated worktree; primary dirty checkout untouched. PR OPEN against `main`; NOT merged.
