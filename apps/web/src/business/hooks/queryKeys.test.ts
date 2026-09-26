@@ -50,3 +50,18 @@ describe("businessQueryKeys — Qualifying Item library (PLATFORM-BASELINE-013B)
     expect(JSON.stringify(a)).not.toContain("en");
   });
 });
+
+/** `BUSINESS-REWARD-CYCLE-VISIBILITY-001`: Business-scoped, no cross-Business cache bleed. */
+describe("businessQueryKeys — Business Reward / Loyalty-Cycle visibility", () => {
+  it("rewards and cycle-progress keys are distinct per Business and from each other", () => {
+    expect(businessQueryKeys.businessAvailableRewards("biz-1")).not.toEqual(
+      businessQueryKeys.businessAvailableRewards("biz-2"),
+    );
+    expect(businessQueryKeys.businessCycleProgress("biz-1")).not.toEqual(
+      businessQueryKeys.businessCycleProgress("biz-2"),
+    );
+    expect(businessQueryKeys.businessAvailableRewards("biz-1")).not.toEqual(
+      businessQueryKeys.businessCycleProgress("biz-1"),
+    );
+  });
+});

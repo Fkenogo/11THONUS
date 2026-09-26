@@ -20,6 +20,7 @@ import {
   parsePublishRewardProgramVersionRequest,
   parseCreateNextRewardProgramVersionRequest,
   parseRecordPurchaseRequest,
+  parseBusinessLoyaltyVisibilityRequest,
   parseKnowledgeNodeIds,
   toHttpsError,
 } from "./index";
@@ -1001,5 +1002,49 @@ describe("parseKnowledgeNodeIds (request validation, PLATFORM-BASELINE-008)", ()
   it("accepts exactly 100 ids", () => {
     const exactly100 = Array.from({ length: 100 }, (_, i) => `id-${i}`);
     expect(parseKnowledgeNodeIds(exactly100)).toHaveLength(100);
+  });
+});
+
+/**
+ * `BUSINESS-REWARD-CYCLE-VISIBILITY-001`: the Business reward/cycle read
+ * transport accepts exactly `businessId`, an optional `rewardProgramId`
+ * filter, and pagination. Role, Customer identity, and state are never
+ * client-supplied.
+ */
+describe("parseBusinessLoyaltyVisibilityRequest (whitelist boundary, BUSINESS-REWARD-CYCLE-VISIBILITY-001)", () => {
+  it("drops injected authority/identity fields and keeps only the whitelist", () => {
+    const parsed = parseBusinessLoyaltyVisibilityRequest({
+      businessId: "biz-1",
+      rewardProgramId: "rp-1",
+      limit: 10,
+      offset: 5,
+      role: "owner",
+      userId: "attacker",
+      customerIdentityId: "attacker-chosen-customer",
+      state: "redeemed",
+      targetBusinessId: "biz-2",
+    });
+    expect(parsed).toEqual({ businessId: "biz-1", rewardProgramId: "rp-1", limit: 10, offset: 5 });
+  });
+
+  it("treats an absent/null program filter as no filter", () => {
+    expect(parseBusinessLoyaltyVisibilityRequest({ businessId: "biz-1" })).toEqual({
+      businessId: "biz-1",
+      rewardProgramId: undefined,
+    });
+    expect(
+      parseBusinessLoyaltyVisibilityRequest({ businessId: "biz-1", rewardProgramId: null })
+        .rewardProgramId,
+    ).toBeUndefined();
+  });
+
+  it("rejects a missing businessId, a blank program filter, and non-integer pagination", () => {
+    expect(() => parseBusinessLoyaltyVisibilityRequest({})).toThrow();
+    expect(() =>
+      parseBusinessLoyaltyVisibilityRequest({ businessId: "biz-1", rewardProgramId: "  " }),
+    ).toThrow();
+    expect(() =>
+      parseBusinessLoyaltyVisibilityRequest({ businessId: "biz-1", limit: 1.5 }),
+    ).toThrow();
   });
 });

@@ -6,6 +6,20 @@
 > governed documentation source and is not part of the migrated documentation baseline.
 
 ---
+## 2026-09-26 — BUSINESS-REWARD-CYCLE-VISIBILITY-001 — Business-facing Reward / Loyalty-Cycle Visibility (Implemented / Awaiting Independent Review)
+
+- **Task / status:** implementation from entry `origin/main` `65fc7ad0f5149e598613ade6896deeb5a3f99a95` on branch `claude/cool-davinci-ke9sfo` (clean checkout; no dirty primary checkout in this environment). Next package per the Master Programme Resumption Assessment and `PLATFORM-BASELINE-009` §11. Not merged.
+- **Role authority:** Owner + Manager only; Staff and Platform Administrators have no access. Membership-derived read gate `authorizeBusinessLoyaltyVisibilityRead` (Business reads are not catalogue-gated per `businessCallerAuthority.ts` §21; role narrowing mirrors `resolveAuthorizedBusinessForOwnerAction`; PRD1 §6.3/§7.3/§8.2–§8.3). No new permission.
+- **Backend:** new read repository `businessLoyaltyVisibilityRepository.ts` (SELECT-only, anchored on `business_id`, `reward_programs` joined on `(id, business_id)`); services `listAvailableRewardsForBusiness`, `listLoyaltyCycleProgressForBusiness` in `purchaseQueries.ts`; whitelisted callables of the same names in `index.ts`. The Customer is identified by the Business's own Purchase-Record Loyalty Number. No Customer Identity, auth-provider, row, or Commerce Knowledge ids are exposed.
+- **Web:** read-only `CustomerRewardsProgressPage` at `dashboard/customer-rewards` plus a nav entry. Mobile-first; loading/empty/populated/error+retry states; Staff notice with no read issued; no action controls; EN/FR. Dev-only harness fixtures and a real-browser spec. A date-format crash on non-BCP-47 locale tags was found in the real browser and fixed (`baseLanguage`), with a regression test.
+- **Validation:** new PG+emulator suite 14/14 (tenant-isolation and Staff tests proven by mutation); all PG 259/259; functions unit 1850; emulator 864+3 skipped; web unit 919; Playwright 41/41; typecheck, lint (0 errors), prettier clean.
+- **Boundaries:** read-only — no redemption, fulfilment, cancellation, reversal, cycle/purchase/verification mutation, Trust Event, Notification Intent or new state. **Reward redemption was NOT implemented.** **PB-013B P3-3 remains OPEN / UNRESOLVED**: publish path untouched; it must be fixed before the target deployment of the publication path or production Reward Program authoring Experience Assembly, whichever comes first. No migration; 0019 not executed; no auth, billing, dependency, or config change; no deployment.
+- **Programme sync:** minimal dated notes in `CDR-001` §2 (Capabilities 4/5/6, no status promoted) and Master Workflow §17. EIP/Prompt Register retrofit is left separate.
+- **Files:** 9 added (5 web incl. tests, 3 functions incl. test, 1 e2e spec) + 1 report; 12 modified (functions 4, web 8) + 2 programme docs + this record + Entry 259 in `documentation-changes-log.md`.
+- **Rollback:** revert the implementation commit; no schema/data/config rollback.
+- Full record: `docs/05-implementation/reports/business-reward-cycle-visibility-001-implementation-report-2026-09-26.md`.
+
+---
 ## 2026-09-26 — TRD10-QUALIFYING-ITEM-ALIGNMENT-001-MERGE-CLOSE-001 — Merge & Closure of PR #275 (TRD10 Reward Program Qualification Alignment)
 
 - **Task / status:** merge and administrative closure only (documentation-only alignment; no implementation work). `TRD10-QUALIFYING-ITEM-ALIGNMENT-001 — APPROVED / MERGED / CLOSED`.

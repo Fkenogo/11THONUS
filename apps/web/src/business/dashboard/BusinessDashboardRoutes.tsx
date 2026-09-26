@@ -16,6 +16,7 @@ import { TeamManagementPage } from "./TeamManagementPage";
 import { DashboardTermsPage } from "./DashboardTermsPage";
 import { RewardProgramManagementPage } from "./RewardProgramManagementPage";
 import { PurchaseRecordsPage } from "./PurchaseRecordsPage";
+import { CustomerRewardsProgressPage } from "./CustomerRewardsProgressPage";
 
 export function BusinessDashboardRoutes({ context }: { context: BusinessContext }) {
   return (
@@ -28,6 +29,10 @@ export function BusinessDashboardRoutes({ context }: { context: BusinessContext 
         <Route path="terms" element={<DashboardTermsPage context={context} />} />
         <Route path="reward-programs" element={<RewardProgramManagementPage context={context} />} />
         <Route path="purchases" element={<PurchaseRecordsPage context={context} />} />
+        <Route
+          path="customer-rewards"
+          element={<CustomerRewardsProgressPage context={context} />}
+        />
       </Route>
     </Routes>
   );
