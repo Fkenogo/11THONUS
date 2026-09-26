@@ -626,14 +626,14 @@ schemaVersion: number;
 >    - Commerce Knowledge is not consulted to evaluate purchase qualification.
 > 6. **Superseded Legacy Model (Migration 0019 / PB-013E)**:
 >    - The legacy `reward_program_version_qualifying_nodes` junction table, which formerly bound versions directly to Commerce Knowledge canonical node IDs with `businessDisplayProductNames` maps (DEC-LOY-015), has been architecturally superseded and removed from the active schema in repository architecture via migration `0019_drop_legacy_qualifying_nodes.sql`.
->    - Migration 0019 drops the legacy junction table and its fallback lookups. The legacy table must not be described as an active or equivalent structure.
+>    - Migration 0019 drops the legacy junction table. The broader PB-013E implementation removes proven-dead legacy qualification-model runtime and web surfaces while retaining current Commerce Knowledge classification capabilities. The legacy table must not be described as an active or equivalent structure.
 > 7. **Migration 0019 Deployment & Preflight Operational Contract**:
 >    - While migration 0019 exists in repository architecture, its execution in deployed environments is strictly conditional. Repository merge does **NOT** equal deployed database migration.
 >    - Destructive target-environment execution of migration 0019 requires:
->      1. Prior operational confirmation and execution of migration 0017;
->      2. Strict read-only preflight verification (`docs/05-implementation/reports/PLATFORM-BASELINE-013D-PRE-001-reward-program-classification-authority-correction.md`);
->      3. Investigation of preflight anomalies or mismatched version counts;
->      4. Explicit business/operational disposition of ambiguous rows before schema drop;
+>      1. Prior operational confirmation that migration 0017 ran and is recorded in `schema_migrations`;
+>      2. Strict read-only target-environment preflight verification following the operational safety contract and non-mutating preflight query defined in `docs/05-implementation/reports/platform-baseline-013e-legacy-qualification-model-cleanup-implementation-report-2026-09-25.md` (§10);
+>      3. Investigation of preflight anomalies or Gate 2 fail-closed verification failures;
+>      4. Explicit business/operational disposition of ambiguous historical rows before schema drop;
 >      5. Verified pre-0019 logical backup of the target database.
 > 8. **Historical Immutability**: Like all version attributes, the set of bound qualifying items and their snapshot attributes are immutable once a version is published. Modifying qualification rules requires authoring and publishing a new reward program version.
 > 9. **Storage Authority Boundary**: Cloud Firestore remains authoritative for its existing operational domains (Business identity, workforce memberships, Customer profile/identity triad, Branch). The PostgreSQL loyalty engine (`FD-PVL-001`) is authoritative for the Reward Program, Versioning, Qualifying Item, Purchase Record, and Verification transactional lifecycle spine.
