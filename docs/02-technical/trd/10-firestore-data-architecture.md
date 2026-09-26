@@ -2,7 +2,7 @@
 > **Version:** 1.0 · **Status:** Draft for approval (pre-freeze) · **Classification:** Authoritative Technical  
 > **Governing document:** 11thONUS Platform Constitution; PRD  
 > **Source-of-truth path:** `docs/02-technical/trd/10-firestore-data-architecture.md`  
-> **Last controlled update:** 2026-08-07 (`DEC-PROD-012` Option D — §10.6.2 `gender` removed from the MVP `customerProfiles` schema; future-additive governance note added). Previously: 2026-07-16 (Phase 3B — §10.10.1 schema gains optional monetary fields + non-influence rule per DEC-DATA-003)
+> **Last controlled update:** 2026-09-26 (Alignment with DEC-LOY-016, DEC-LOY-017, and PB-013A-E sequence: §10.9.2 Reward Program Qualification Model updated for Business-owned Qualifying Item authority, version binding via `reward_program_version_qualifying_items`, purchase qualification by `qualifyingItemId`, optional Commerce Knowledge classification only, legacy junction supersession under migration 0019, and migration 0019 target preflight/backup operational requirements). Previously: 2026-08-07 (`DEC-PROD-012` Option D — §10.6.2 `gender` removed from the MVP `customerProfiles` schema; future-additive governance note added). Previously: 2026-07-16 (Phase 3B — §10.10.1 schema gains optional monetary fields + non-influence rule per DEC-DATA-003)
 
 # 11thONUS
 
@@ -605,7 +605,38 @@ approvedAt?: Timestamp;
 schemaVersion: number;  
 };
 
-> **Note (`DEC-LOY-016` / `FD-REWARD-QUALIFYING-ITEM-001`, 2026-09-18):** `qualifyingKnowledgeNodeIds: string[]` (and, in the actual PostgreSQL-authoritative implementation — `FD-PVL-001` — its equivalent `reward_program_version_qualifying_nodes.knowledge_node_id`) is no longer required to resolve to a canonical Commerce Knowledge `standard_product`/`standard_service` node for Phase 1. A Business-defined qualifying item is a first-class, sufficient qualification identity on its own; `knowledgeNodeId` becomes an optional classification reference (present only when the Business or platform has chosen to map the item), while `businessDisplayName` (already present per-node) or an equivalent Business-authored name field carries the mandatory, authoritative item identity when no canonical mapping exists. This does not change the Version Integrity Rule or the Threshold Rule below, and does not remove `standard_product`/`standard_service` as valid, still-supported canonical references for Businesses that choose to map. See the companion design report (`PLATFORM-BASELINE-011-REWARD-QUALIFYING-ITEM-001-ARCHITECTURE-CORRECTION-DESIGN-001`) for the conceptual schema-impact assessment — no migration is authorized or performed by this note.
+> **Authoritative Qualification Architecture Note (`DEC-LOY-016`, `DEC-LOY-017`, PB-013A–E sequence):**
+> 1. **Qualifying Item Authority**: Structural qualification authority is held exclusively by business-owned Qualifying Items (`qualifyingItemId`), NOT by canonical Commerce Knowledge category or node IDs. A Qualifying Item is an independent Business-scoped entity with stable identity (`id` UUID), business ownership (`businessId`), business-authored name (`name`, 1–100 characters), active/retired lifecycle status (`status`: `active` | `retired`), optional Commerce Knowledge mapping (`knowledgeNodeId`), and audit timestamps (`createdAt`, `updatedAt`).
+> 2. **Role Authority for Qualifying Items (`DEC-LOY-017` / `FD-QUALIFYING-ITEM-ROLE-AUTHORITY-001`)**:
+>    - Business `Owner` and `Manager` may create, update, and manage Qualifying Items (`qualifyingItem.manage`).
+>    - Business `Staff` may view and select Qualifying Items during operational workflows (e.g., purchase recording) but cannot author or modify them.
+>    - Platform Administrator has no automatic Business Qualifying Item authority.
+>    - Reward program version management (`rewardProgram.manage`) remains a distinct privilege from Qualifying Item catalog authoring (`qualifyingItem.manage`).
+> 3. **Reward Program Version Binding (`reward_program_version_qualifying_items`)**:
+>    - In the PostgreSQL loyalty transactional spine (`FD-PVL-001`), Reward Program versions bind to Qualifying Items via the authoritative junction table `reward_program_version_qualifying_items` (migration 0017 / PB-013C).
+>    - Each bound item preserves historical version snapshots: `qualifying_item_id`, frozen business-authored item name (`item_name_at_version`), and nullable Commerce Knowledge node snapshot (`knowledge_node_id_at_version`).
+>    - Multiple qualifying items may be bound to a single version; qualification is evaluated as OR logic across configured qualifying items.
+> 4. **Commerce Knowledge as Classification/Enrichment Only**:
+>    - Commerce Knowledge (CK) classification (`knowledgeNodeId`) is strictly optional enrichment.
+>    - While CK existence and catalog eligibility are validated at assignment or modification time, Commerce Knowledge is **NEVER** structural qualification authority for Reward Programs and **NEVER** qualification authority for purchases.
+>    - If a mapped Commerce Knowledge node becomes unavailable, retired, or ineligible in the platform catalog later, the Qualifying Item and the Reward Program version binding remain valid and operational.
+> 5. **Purchase Qualification Authority**:
+>    - Purchase qualification and stamp/point progression are evaluated strictly against `qualifyingItemId` and exact membership in the locked active Reward Program version (`reward_program_version_qualifying_items`).
+>    - The purchase record stores `qualifying_item_id` and frozen display evidence `item_label` (derived server-side at recording time from the qualifying item or version snapshot).
+>    - Commerce Knowledge is not consulted to evaluate purchase qualification.
+> 6. **Superseded Legacy Model (Migration 0019 / PB-013E)**:
+>    - The legacy `reward_program_version_qualifying_nodes` junction table, which formerly bound versions directly to Commerce Knowledge canonical node IDs with `businessDisplayProductNames` maps (DEC-LOY-015), has been architecturally superseded and removed from the active schema in repository architecture via migration `0019_drop_legacy_qualifying_nodes.sql`.
+>    - Migration 0019 drops the legacy junction table. The broader PB-013E implementation removes proven-dead legacy qualification-model runtime and web surfaces while retaining current Commerce Knowledge classification capabilities. The legacy table must not be described as an active or equivalent structure.
+> 7. **Migration 0019 Deployment & Preflight Operational Contract**:
+>    - While migration 0019 exists in repository architecture, its execution in deployed environments is strictly conditional. Repository merge does **NOT** equal deployed database migration.
+>    - Destructive target-environment execution of migration 0019 requires:
+>      1. Prior operational confirmation that migration 0017 ran and is recorded in `schema_migrations`;
+>      2. Strict read-only target-environment preflight verification following the operational safety contract and non-mutating preflight query defined in `docs/05-implementation/reports/platform-baseline-013e-legacy-qualification-model-cleanup-implementation-report-2026-09-25.md` (§10);
+>      3. Investigation of preflight anomalies or Gate 2 fail-closed verification failures;
+>      4. Explicit business/operational disposition of ambiguous historical rows before schema drop;
+>      5. Verified pre-0019 logical backup of the target database.
+> 8. **Historical Immutability**: Like all version attributes, the set of bound qualifying items and their snapshot attributes are immutable once a version is published. Modifying qualification rules requires authoring and publishing a new reward program version.
+> 9. **Storage Authority Boundary**: Cloud Firestore remains authoritative for its existing operational domains (Business identity, workforce memberships, Customer profile/identity triad, Branch). The PostgreSQL loyalty engine (`FD-PVL-001`) is authoritative for the Reward Program, Versioning, Qualifying Item, Purchase Record, and Verification transactional lifecycle spine.
 
 ### Version Integrity Rule
 
