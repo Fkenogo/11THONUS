@@ -6,6 +6,17 @@
 > governed documentation source and is not part of the migrated documentation baseline.
 
 ---
+## 2026-09-26 — TRD10-QUALIFYING-ITEM-ALIGNMENT-001-MERGE-CLOSE-001 — Merge & Closure of PR #275 (TRD10 Reward Program Qualification Alignment)
+
+- **Task / status:** merge and administrative closure only (documentation-only alignment; no implementation work). `TRD10-QUALIFYING-ITEM-ALIGNMENT-001 — APPROVED / MERGED / CLOSED`.
+- **Entry verification:** PR #275 OPEN/unmerged; head exactly `376eaac82d1d6e2916a62923a8a4897f928f22d2` (no drift, no new commits); base and pre-merge `origin/main` both `2b5d50d2280f9f4ce99ee2014f3db224d59356c6`; exact-head CI run `36236307889` SUCCESS on failed-job rerun (first attempt failed solely on a transient Firebase Emulator 5000ms timeout in `knowledgeNodeRepository.emulator.test.ts:324`; preceding docs-only head `16e40f7` run `36235295525` was green); `MERGEABLE`/`CLEAN`; single-file docs diff (`docs/02-technical/trd/10-firestore-data-architecture.md`, +33/−2); no new findings. Two pre-existing Codex threads dispositioned with replies and resolved: P1 (0019 preflight authority) ADDRESSED — head points preflight to the PB-013E implementation report §10 (file verified present); P2 (Firestore/PostgreSQL wording) NO NEW CONTRADICTION — bounded Storage Authority Boundary statement, residual observations concern pre-existing surrounding TRD material outside this alignment's scope.
+- **Merge:** regular merge commit `f341af6baa345d887337f152c1e70b5c665c1df5`, parents `2b5d50d2280f9f4ce99ee2014f3db224d59356c6` (previous main) and approved head `376eaac82d1d6e2916a62923a8a4897f928f22d2`; pre-merge main had not advanced, so no reconciliation was needed. Resulting `origin/main` is `f341af6baa345d887337f152c1e70b5c665c1df5`. PR changed 1 file (+33/−2); merged TRD file verified byte-identical to the approved head; no unrelated files entered through the merge.
+- **Boundary confirmation:** no application code, tests, migrations, schemas, dependencies, or CI configuration changed; migration 0019 NOT executed and NOT authorised for target-environment execution (merged in repository architecture only; the deployment safety procedure — 0017 confirmation, read-only preflight, Gate 2 investigation, ambiguous-row disposition, verified logical backup — remains separately applicable); no deployment; no database state changed; PB-013A–E not reopened.
+- **Carry-forward:** **PB-013B P3-3 remains OPEN / UNRESOLVED** — untouched by this closure and not started.
+- **Files changed by this closure:** this record only.
+- **Rollback:** revert this closure entry (documentation only); for PR merge rollback only under separate Founder direction: `git revert -m 1 f341af6baa345d887337f152c1e70b5c665c1df5`. No schema/data rollback required.
+
+---
 ## 2026-09-26 — PLATFORM-BASELINE-013E-MERGE-CLOSE-001 — Merge & Closure of PR #273 (Legacy Qualification Model Cleanup)
 
 - **Task / status:** merge and administrative closure only. Final independent technical approval was disposition **A — FINAL INDEPENDENTLY VERIFIED / APPROVABLE**, with no P0/P1/P2 findings and no further correction cycle authorised. PR #273 is MERGED; `PLATFORM-BASELINE-013E — APPROVED / MERGED / CLOSED`.
