@@ -3,7 +3,6 @@ import {
   toCallListBusinessCategories,
   toCallListBusinessTypesForCategory,
   toCallListRewardProgramCategories,
-  toCallListQualifyingNodesForCategory,
   toCallListQualifyingNodesForBusinessType,
   toCallSearchQualifyingNodes,
   toCallResolveKnowledgeNodeLabels,
@@ -50,22 +49,6 @@ describe("toCallListRewardProgramCategories", () => {
     const result = await call({ getIdToken: async () => "t", referenceType: "email" }, {});
 
     expect(result).toEqual(rewardProgramCategories);
-  });
-});
-
-describe("toCallListQualifyingNodesForCategory", () => {
-  it("passes categoryId through and returns the qualifying-node options (possibly empty)", async () => {
-    const call = toCallListQualifyingNodesForCategory(async (payload) => {
-      expect(payload).toMatchObject({ categoryId: "rpc-1" });
-      return { data: [] };
-    });
-
-    const result = await call(
-      { getIdToken: async () => "t", referenceType: "email" },
-      { categoryId: "rpc-1" },
-    );
-
-    expect(result).toEqual([]);
   });
 });
 

@@ -399,7 +399,6 @@ describe("Z — rewardProgram.manage is not widened (service half)", () => {
     for (const table of [
       "reward_programs",
       "reward_program_versions",
-      "reward_program_version_qualifying_nodes",
       "reward_program_version_qualifying_items",
     ]) {
       const { rows } = await pool.query(`SELECT count(*)::int AS n FROM ${table}`);

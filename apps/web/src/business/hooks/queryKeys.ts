@@ -17,13 +17,10 @@ export const businessQueryKeys = {
    */
   rewardProgramCategories: (languageCode: string) =>
     ["commerceKnowledge", "rewardProgramCategories", languageCode] as const,
-  qualifyingNodes: (categoryId: string, languageCode: string) =>
-    ["commerceKnowledge", "qualifyingNodes", categoryId, languageCode] as const,
   /**
    * `PLATFORM-BASELINE-010B`: the qualifying-node selector's DEFAULT
    * discovery scope (Business-Type-pre-filtered). `languageCode`-scoped
-   * for the same reason as `rewardProgramCategories`/`qualifyingNodes`
-   * above.
+   * for the same reason as `rewardProgramCategories` above.
    */
   qualifyingNodesForBusinessType: (businessTypeId: string, languageCode: string) =>
     ["commerceKnowledge", "qualifyingNodesForBusinessType", businessTypeId, languageCode] as const,

@@ -130,30 +130,6 @@ export function invalidQualifyingItemReferenceError(
   );
 }
 
-/**
- * Retained ONLY for the purchase write path (`recordPurchaseCommand.ts`),
- * which still carries a canonical knowledge reference until
- * `PLATFORM-BASELINE-013C` replaces it with `qualifyingItemId`. No Reward
- * Program configuration path may use this -- Reward Program qualification
- * is Business-owned (`QualifyingItemRef`) since `PLATFORM-BASELINE-013B`.
- */
-export function invalidQualifyingNodeError(
-  knowledgeNodeId: string,
-  reason: string,
-): RewardProgramDomainError {
-  return new RewardProgramDomainError(
-    "VALIDATION_FAILED",
-    `Qualifying Commerce Knowledge node "${knowledgeNodeId}" is not eligible: ${reason}.`,
-    [
-      {
-        field: "qualifyingNodes",
-        code: "invalid_reference",
-        messageKey: "rewardProgram.qualifyingNode.invalid",
-      },
-    ],
-  );
-}
-
 export function invalidCategoryNodeError(reason: string): RewardProgramDomainError {
   return new RewardProgramDomainError(
     "VALIDATION_FAILED",

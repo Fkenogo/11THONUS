@@ -258,14 +258,13 @@ export async function listQualifyingNodesForCategory(
  * the fixed Commerce Knowledge hierarchy adjacency in
  * `knowledgeNodeType.ts`).
  *
- * This is a DEFAULT discovery convenience only, never a write-time
- * restriction: `businessTypeId` narrows what is shown here, but the
- * qualifying-node write-time validation
- * (`rewardProgramKnowledgeValidation.ts`'s `validateQualifyingNodes`) has
- * and enforces no Business-Type scoping at all — an eligible canonical
- * node outside this default scope remains selectable via
- * `searchQualifyingNodes` below and is accepted identically at write
- * time. An empty result for a valid, active Business Type with no
+ * This is a DEFAULT discovery convenience for optional
+ * classification only, never a qualification restriction:
+ * `businessTypeId` narrows what is shown here, but Reward Program
+ * qualification binds Business-owned Qualifying Items by id and is
+ * unaffected by this scope -- an eligible canonical node outside this
+ * default scope remains suggestible via `searchQualifyingNodes` below
+ * for optional classification. An empty result for a valid, active Business Type with no
  * governed `reward_program_category`/`standard_product`/
  * `standard_service` content underneath it is a normal, supported outcome
  * (mirrors `listQualifyingNodesForCategory`'s own disclosed empty-result

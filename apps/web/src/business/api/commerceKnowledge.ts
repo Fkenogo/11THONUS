@@ -30,10 +30,6 @@ export type KnowledgeNodeLabel = {
 
 export type ListBusinessCategoriesRequest = { languageCode?: string };
 export type ListBusinessTypesForCategoryRequest = { categoryId: string; languageCode?: string };
-export type ListQualifyingNodesForCategoryRequest = {
-  categoryId: string;
-  languageCode?: string;
-};
 /** `PLATFORM-BASELINE-010B`: the qualifying-node selector's DEFAULT discovery scope, pre-filtered to the Business's own Business Type. */
 export type ListQualifyingNodesForBusinessTypeRequest = {
   businessTypeId: string;
@@ -101,28 +97,6 @@ export function makeCallListRewardProgramCategories(
   payload: ListBusinessCategoriesRequest,
 ) => Promise<CommerceKnowledgeOption[]> {
   return toCallListRewardProgramCategories(httpsCallable(functions, "listRewardProgramCategories"));
-}
-
-export function toCallListQualifyingNodesForCategory(
-  callable: BoundCallable,
-): (
-  actor: AuthenticatedActor,
-  payload: ListQualifyingNodesForCategoryRequest,
-) => Promise<CommerceKnowledgeOption[]> {
-  return toCallWithActor<ListQualifyingNodesForCategoryRequest, CommerceKnowledgeOption[]>(
-    callable,
-  );
-}
-
-export function makeCallListQualifyingNodesForCategory(
-  functions: Functions,
-): (
-  actor: AuthenticatedActor,
-  payload: ListQualifyingNodesForCategoryRequest,
-) => Promise<CommerceKnowledgeOption[]> {
-  return toCallListQualifyingNodesForCategory(
-    httpsCallable(functions, "listQualifyingNodesForCategory"),
-  );
 }
 
 export function toCallListQualifyingNodesForBusinessType(

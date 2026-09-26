@@ -26,10 +26,9 @@ import type { Firestore } from "firebase-admin/firestore";
 import { getKnowledgeNodeById } from "../../commerceKnowledge/repositories/knowledgeNodeRepository";
 import { isEligibleForNewReference } from "../../commerceKnowledge/models/referenceEligibility";
 import type { KnowledgeNodeType } from "../../commerceKnowledge/models/knowledgeNodeType";
-import type { QualifyingItemRef, QualifyingNode } from "../models/rewardProgram";
+import type { QualifyingItemRef } from "../models/rewardProgram";
 import {
   invalidCategoryNodeError,
-  invalidQualifyingNodeError,
   invalidStandardRewardNodeError,
   rewardProgramPublishRequiresQualifyingItemError,
 } from "../models/rewardProgramErrors";
@@ -41,12 +40,18 @@ const QUALIFYING_NODE_TYPES: readonly KnowledgeNodeType[] = [
 
 /**
  * Exported for Reward Program Commerce Knowledge references such as
- * category and standard-reward nodes, plus retained legacy
- * `QualifyingNode` compatibility validation. Business Qualifying Item
+ * category and standard-reward nodes. Business Qualifying Item
  * classification is validated when assigned in the Qualifying Item
  * commands; Reward Program item snapshot resolution must not call this
  * helper for that optional metadata. The caller supplies its own
  * `onInvalid` so the error stays in the caller's domain vocabulary.
+ *
+ * (`PLATFORM-BASELINE-013E`: the legacy canonical-node qualification
+ * validator `validateQualifyingNodes` was removed here -- Business-owned
+ * Qualifying Items are qualification authority since
+ * `PLATFORM-BASELINE-013B`, and the purchase write path stopped
+ * carrying a canonical knowledge reference in
+ * `PLATFORM-BASELINE-013C`.)
  */
 export async function assertNodeEligible(
   db: Firestore,
@@ -97,26 +102,6 @@ export async function validateStandardRewardNodeReference(
 ): Promise<void> {
   if (!nodeId) return;
   await assertNodeEligible(db, nodeId, QUALIFYING_NODE_TYPES, invalidStandardRewardNodeError);
-}
-
-/**
- * Retained ONLY for the purchase write path (`recordPurchaseCommand.ts`),
- * which still carries a canonical knowledge reference until
- * `PLATFORM-BASELINE-013C` replaces it with `qualifyingItemId`. No Reward
- * Program configuration path may call this -- Reward Program qualification
- * binds Business-owned Qualifying Items
- * (`rewardProgramQualificationValidation.ts`) since
- * `PLATFORM-BASELINE-013B`.
- */
-export async function validateQualifyingNodes(
-  db: Firestore,
-  nodes: readonly QualifyingNode[],
-): Promise<void> {
-  for (const node of nodes) {
-    await assertNodeEligible(db, node.knowledgeNodeId, QUALIFYING_NODE_TYPES, (reason) =>
-      invalidQualifyingNodeError(node.knowledgeNodeId, reason),
-    );
-  }
 }
 
 /**

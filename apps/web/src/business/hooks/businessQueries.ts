@@ -13,7 +13,6 @@ import {
   makeCallListBusinessCategories,
   makeCallListBusinessTypesForCategory,
   makeCallListRewardProgramCategories,
-  makeCallListQualifyingNodesForCategory,
   makeCallListQualifyingNodesForBusinessType,
   makeCallSearchQualifyingNodes,
   makeCallResolveKnowledgeNodeLabels,
@@ -136,38 +135,10 @@ export function useRewardProgramCategoriesQuery(languageCode?: string) {
 }
 
 /**
- * `PLATFORM-BASELINE-008`: the Reward Program qualifying-node selector's
- * candidate list for a given (already-known) Reward Program category id.
- * Mirrors `useBusinessTypesQuery` exactly.
- */
-export function useQualifyingNodesForCategoryQuery(
-  categoryId: string | undefined,
-  languageCode?: string,
-) {
-  const { auth, functions } = useBusinessApiPlatform();
-  const actorState = useAuthenticatedActor(auth);
-  return useQuery({
-    queryKey: businessQueryKeys.qualifyingNodes(categoryId ?? "", languageCode ?? ""),
-    queryFn: () =>
-      makeCallListQualifyingNodesForCategory(functions)(
-        actorState.status === "ready"
-          ? actorState.actor
-          : (() => {
-              throw new Error("actor not ready");
-            })(),
-        { categoryId: categoryId as string, languageCode },
-      ),
-    enabled: actorState.status === "ready" && Boolean(categoryId),
-    staleTime: Infinity,
-  });
-}
-
-/**
  * `PLATFORM-BASELINE-010B` (Founder decision `DEC-LOY-014` /
  * `FD-REWARD-QUALIFICATION-001`): the qualifying-node selector's DEFAULT
  * discovery scope, pre-filtered to the Business's own `businessTypeId`.
- * Mirrors `useQualifyingNodesForCategoryQuery` exactly, one level up the
- * hierarchy.
+ * Mirrors `useBusinessTypesQuery` exactly, one level up the hierarchy.
  */
 export function useQualifyingNodesForBusinessTypeQuery(
   businessTypeId: string | undefined,
@@ -241,8 +212,8 @@ export function useSearchQualifyingNodesQuery(searchText: string, languageCode?:
  * `PLATFORM-BASELINE-008`: display-only label hydration for a bounded set
  * of already-selected canonical Commerce Knowledge node ids (e.g. a
  * Qualifying Item's optional classification mapping) -- works for
- * `retired`/`archived` ids too, unlike
- * `useQualifyingNodesForCategoryQuery`'s `active`-only candidate list.
+ * `retired`/`archived` ids too, unlike the `active`-only candidate-list
+ * reads above.
  */
 export function useKnowledgeNodeLabelsQuery(nodeIds: readonly string[], languageCode?: string) {
   const { auth, functions } = useBusinessApiPlatform();

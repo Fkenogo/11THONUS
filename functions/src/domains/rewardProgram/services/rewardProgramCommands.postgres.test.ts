@@ -103,7 +103,6 @@ afterAll(async () => {
 
 afterEach(async () => {
   await pool.query("DELETE FROM reward_program_version_qualifying_items");
-  await pool.query("DELETE FROM reward_program_version_qualifying_nodes");
   await pool.query("DELETE FROM reward_program_outbox");
   await pool.query("DELETE FROM idempotency_keys");
   await pool.query("UPDATE reward_programs SET current_version_id = NULL");
@@ -2208,7 +2207,9 @@ describe("Reward Program commands — PLATFORM-BASELINE-013B (Business-owned Qua
       },
     ]);
 
-    // Persisted verbatim in the new junction table...
+    // Persisted verbatim in the new junction table -- the single
+    // qualification authority (`PLATFORM-BASELINE-013E` dropped the
+    // legacy table, so non-duality is structural, not asserted).
     const junction = await pool.query(
       `SELECT qualifying_item_id, item_name_at_version, knowledge_node_id_at_version
          FROM reward_program_version_qualifying_items WHERE reward_program_version_id = $1`,
@@ -2221,9 +2222,6 @@ describe("Reward Program commands — PLATFORM-BASELINE-013B (Business-owned Qua
         knowledge_node_id_at_version: null,
       },
     ]);
-    // ...and nowhere else: the legacy table is never written (no dual authority).
-    const legacy = await pool.query("SELECT count(*) FROM reward_program_version_qualifying_nodes");
-    expect(Number(legacy.rows[0].count)).toBe(0);
   });
 
   it("binds multiple active Qualifying Items, including a classified one", async () => {
