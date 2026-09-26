@@ -6,6 +6,21 @@
 > governed documentation source and is not part of the migrated documentation baseline.
 
 ---
+## 2026-09-26 — PLATFORM-BASELINE-013E-MERGE-CLOSE-001 — Merge & Closure of PR #273 (Legacy Qualification Model Cleanup)
+
+- **Task / status:** merge and administrative closure only. Final independent technical approval was disposition **A — FINAL INDEPENDENTLY VERIFIED / APPROVABLE**, with no P0/P1/P2 findings and no further correction cycle authorised. PR #273 is MERGED; `PLATFORM-BASELINE-013E — APPROVED / MERGED / CLOSED`.
+- **Entry verification:** PR OPEN/unmerged and MERGEABLE; base and pre-merge `origin/main` both `7c4e7cc62b7bb264b4dd9c3d47fe04b10693c6a1`; exact approved head `245514b492aeae2e061d62cd10f771bafc6e4bc2`; exact-head CI run `36161783220` SUCCESS; no new substantive finding. Current P1 migration-0019 thread carried its CORR-001/CORR-002 correction replies in the reviewed state pending independent re-review.
+- **Merge:** regular merge commit `29754e63a7391164f63bb78c320a467af543849f`, parents `7c4e7cc62b7bb264b4dd9c3d47fe04b10693c6a1` and approved head `245514b492aeae2e061d62cd10f771bafc6e4bc2`; pre-merge main had not advanced, so no reconciliation was needed. Resulting `origin/main` is `29754e63a7391164f63bb78c320a467af543849f`. PR changed 21 files (+1,452/−228); the merge commit's second parent is the exact approved head and its tree is `d80ac53db74708662a7baea6445b0ab5334e92de`.
+- **Post-merge CI:** run `36230653310` on the merge commit SUCCESS; build, lint, format, typecheck, unit/component, PostgreSQL, Playwright, and Firebase Emulator Suite stages passed.
+- **Migration 0019 boundary:** reviewed up/down pair drops only the superseded `reward_program_version_qualifying_nodes` table using RESTRICT; purchase columns remain intentionally retained. The up migration verifies 0017 is recorded and applies its fail-closed row-evidence gates before DROP. It is environment-sensitive and is not authorization to apply blindly to deployed databases.
+- **Deployment contract:** confirm 0017; perform documented read-only target preflight; investigate gate failures; obtain explicit disposition for ambiguous historical rows; confirm a pre-0019 logical backup; only then apply 0019. Insufficient evidence continues to abort transactionally. No deployment or manual migration execution occurred.
+- **Down/backup:** `0019.down` is structural-only and lossy; historical data recovery requires the pre-0019 logical backup. No migration was applied by this task.
+- **Non-regression:** PB-013D authority, purchase and 10+1, permissions/API boundaries remain intact. `listQualifyingNodesForCategory` and `purchase_records` columns remain intentionally retained. No dependencies/config changes or schema/migration changes beyond reviewed 0019 entered PR #273.
+- **Carry-forward:** PB-013B P3-3 remains OPEN. TRD10 §10.9.2 alignment remains OUTSTANDING on a separate documentation track. Target deployment preflight and backup remain required. Neither carry-forward task was started.
+- **Programme:** PB-013A.1, PB-013A.2, PB-013B, PB-013C, PB-013D-PRE-001, PB-013D, and PB-013E CLOSED; PB-013B P3-3 OPEN; TRD10 alignment outstanding separately.
+- **Closure files:** this record and Entry 258 in `docs/00-governance/documentation-changes-log.md` only. No code diff in the closure PR. For PR merge rollback only under separate direction: `git revert -m 1 29754e63a7391164f63bb78c320a467af543849f`; `0019.down` does not restore data.
+
+---
 ## 2026-09-25 — PLATFORM-BASELINE-013E-CORR-002 — Bound the 0019 Legacy-Evidence Gate and Complete Its Operational Safety Contract (Corrected / Awaiting Final Narrow Independent Re-Review)
 
 - **Task / entry gate:** correction on PR #273 (branch `codex/platform-baseline-013e`): PR OPEN/unmerged; head exactly `d5070ccc3026d32b050b65443505cbc550f56b81` (CORR-001 head, no drift); base `7c4e7cc62b7bb264b4dd9c3d47fe04b10693c6a1`; exact-head CI `36147689880` SUCCESS; P1/CORR-001 thread `isResolved:false`. Isolated worktree; primary dirty checkout untouched. NOT merged; PB-013B P3-3 NOT started; TRD10 untouched.
