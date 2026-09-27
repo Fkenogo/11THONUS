@@ -384,6 +384,8 @@ A task is not complete merely because code exists (TRD22 §22.41; [Definition of
 
 ## 17. Current Next Action
 
+- **Currency note — [2026-09-26, `BUSINESS-REWARD-CYCLE-VISIBILITY-001`, factual only; no status or authorization changed].** Since the 2026-09-03 bullet below, the `PLATFORM-BASELINE` series (tracked in `docs/changes/IMPLEMENTATION_CHANGES.md`, not in this document's numbering) merged the PostgreSQL Reward Program, Purchase / Verification, Verified Unit, Loyalty Cycle and Reward-availability engine and Business-owned Qualifying Items (PRs #251, #253, #260, #261, #265, #267, #271, #273). `BUSINESS-REWARD-CYCLE-VISIBILITY-001` adds read-only Owner/Manager Business visibility of Customer Rewards and Cycle progress. Capability statuses are unchanged here — see `CDR-001` §2's dated notes. Redemption is not implemented; PB-013B P3-3 remains OPEN; migration `0019` is not executed in any environment; nothing is deployed.
+
 **Current position and next action — corrected 2026-08-07 (`ENG-P2-ARCH-CORR-005`, resolving Review-002 Finding R2-01), further updated 2026-08-07 (`DEC-PROD-012` closure — Option D; `ENG-P2-001-02` unblocked), further updated 2026-08-07 (`CAP-P2-004` — `ENG-P2-001-02` merged; concern-level completion reporting adopted per `DEC-GOV-008`), further updated 2026-08-07 (`CAP-P2-006` — G1/G2 recorded (`DEC-GOV-009`/`DEC-GOV-010`); Customer Identity's remaining concern-completion items and the next governed action now uniquely determined). This block supersedes the historical narrative below (preserved for audit continuity).**
 
 - **Phase 0:** Complete. **Phase 1:** Complete (`ENG-P1-001`/`-002`/`-003` merged; Phase 1 Exit Approved `ENG-P1-EXIT-001`, 2026-07-31).

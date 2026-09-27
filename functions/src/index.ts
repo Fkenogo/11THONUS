@@ -152,6 +152,8 @@ import {
   listPurchasesWaitingForCustomer as listPurchasesWaitingForCustomerQuery,
   getPurchaseRecordForCustomer as getPurchaseRecordForCustomerQuery,
   listAvailableRewardsForCustomer as listAvailableRewardsForCustomerQuery,
+  listAvailableRewardsForBusiness as listAvailableRewardsForBusinessQuery,
+  listLoyaltyCycleProgressForBusiness as listLoyaltyCycleProgressForBusinessQuery,
 } from "./domains/purchase/services/purchaseQueries";
 
 setGlobalOptions({ region: PLATFORM_REGION, maxInstances: 10 });
@@ -2454,6 +2456,56 @@ export const listAvailableRewardsForCustomer = onCall(async (request) => {
     );
     return await listAvailableRewardsForCustomerQuery(getPurchasePostgresPool(), {
       customerIdentityId,
+    });
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+/**
+ * Business Reward / Loyalty-Cycle visibility (`BUSINESS-REWARD-CYCLE-
+ * VISIBILITY-001`). Read-only; Owner/Manager only (membership-derived, not
+ * catalogue-gated — see `authorizeBusinessLoyaltyVisibilityRead`). Whitelist
+ * transport: exactly `businessId`, an optional `rewardProgramId` filter, and
+ * pagination — no Customer id, role, or status crosses the wire.
+ */
+export function parseBusinessLoyaltyVisibilityRequest(value: Record<string, unknown>) {
+  return {
+    businessId: parseBusinessId(value.businessId),
+    rewardProgramId:
+      value.rewardProgramId === undefined || value.rewardProgramId === null
+        ? undefined
+        : parseNonEmptyString(value.rewardProgramId),
+    ...parsePurchasePagination(value),
+  };
+}
+
+export const listAvailableRewardsForBusiness = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId } = await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    return await listAvailableRewardsForBusinessQuery(db, getPurchasePostgresPool(), {
+      userId,
+      ...parseBusinessLoyaltyVisibilityRequest(value),
+    });
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+export const listLoyaltyCycleProgressForBusiness = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId } = await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    return await listLoyaltyCycleProgressForBusinessQuery(db, getPurchasePostgresPool(), {
+      userId,
+      ...parseBusinessLoyaltyVisibilityRequest(value),
     });
   } catch (error) {
     throw toHttpsError(error);

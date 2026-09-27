@@ -20,6 +20,10 @@ import { businessQueryKeys } from "../../business/hooks/queryKeys";
 import type { AccessibleBusinessSummary } from "../../business/api/accessibleBusinesses";
 import type { BusinessContext } from "../../business/api/businessContext";
 import type { StaffInvitationSummary, StaffMembershipSummary } from "../../business/api/staffLists";
+import type {
+  BusinessAvailableRewardWire,
+  BusinessLoyaltyCycleProgressWire,
+} from "../../business/api/businessLoyaltyVisibility";
 
 /**
  * A real Firebase `Auth`/`Functions` instance is never constructed here — this harness never
@@ -119,6 +123,67 @@ const HARNESS_ACCESSIBLE: AccessibleBusinessSummary[] = [
   },
 ];
 harnessQueryClient.setQueryData(businessQueryKeys.accessible(), HARNESS_ACCESSIBLE);
+
+/**
+ * `BUSINESS-REWARD-CYCLE-VISIBILITY-001` — local fixture data for the
+ * read-only Customer Rewards screen, pre-seeded under the exact keys its
+ * hooks read (same zero-network pattern as the Team fixtures above). The
+ * values are shaped exactly like the server read model; nothing here adds a
+ * state or rule the server does not return. A long Reward Program name and
+ * reward description exercise real viewport overflow.
+ */
+const HARNESS_REWARDS: BusinessAvailableRewardWire[] = [
+  {
+    rewardProgramId: "harness-rp-1",
+    rewardProgramName: "Signature Haircut Loyalty Programme for Returning Clients",
+    customerLoyaltyNumber: "ABC234",
+    rewardDescription: "One complimentary signature haircut including wash and blow-dry finish",
+    rewardQuantity: 1,
+    state: "available",
+    availableAt: "2026-09-25T09:30:00.000Z",
+    cycleSequenceNumber: 1,
+  },
+];
+const HARNESS_CYCLES: BusinessLoyaltyCycleProgressWire[] = [
+  {
+    rewardProgramId: "harness-rp-1",
+    rewardProgramName: "Signature Haircut Loyalty Programme for Returning Clients",
+    customerLoyaltyNumber: "ABC234",
+    cycleSequenceNumber: 1,
+    cycleState: "reward_available",
+    allocatedUnits: 10,
+    threshold: 10,
+    unitsToReward: 0,
+    pendingUnits: 2,
+    reward: {
+      state: "available",
+      rewardDescription: "One complimentary signature haircut including wash and blow-dry finish",
+      availableAt: "2026-09-25T09:30:00.000Z",
+    },
+    updatedAt: "2026-09-25T09:30:00.000Z",
+  },
+  {
+    rewardProgramId: "harness-rp-2",
+    rewardProgramName: "Beard Trim Club",
+    customerLoyaltyNumber: "DEF345",
+    cycleSequenceNumber: 2,
+    cycleState: "active",
+    allocatedUnits: 3,
+    threshold: 10,
+    unitsToReward: 7,
+    pendingUnits: 0,
+    reward: null,
+    updatedAt: "2026-09-24T15:00:00.000Z",
+  },
+];
+harnessQueryClient.setQueryData(
+  businessQueryKeys.businessAvailableRewards(HARNESS_CONTEXT.businessId),
+  { rewards: HARNESS_REWARDS },
+);
+harnessQueryClient.setQueryData(
+  businessQueryKeys.businessCycleProgress(HARNESS_CONTEXT.businessId),
+  { cycles: HARNESS_CYCLES },
+);
 
 export function DashboardHarnessPage() {
   return (

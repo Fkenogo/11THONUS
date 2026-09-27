@@ -56,4 +56,13 @@ export const businessQueryKeys = {
   purchases: (businessId: string, status: string) => ["purchases", businessId, status] as const,
   purchase: (businessId: string, purchaseRecordId: string) =>
     ["purchase", businessId, purchaseRecordId] as const,
+  /**
+   * `BUSINESS-REWARD-CYCLE-VISIBILITY-001`: Business-scoped, read-only
+   * Customer Reward / Loyalty-Cycle visibility. Not language-scoped (no
+   * translated server content); Business-scoped so no cross-Business
+   * cache bleed.
+   */
+  businessAvailableRewards: (businessId: string) =>
+    ["businessAvailableRewards", businessId] as const,
+  businessCycleProgress: (businessId: string) => ["businessCycleProgress", businessId] as const,
 };

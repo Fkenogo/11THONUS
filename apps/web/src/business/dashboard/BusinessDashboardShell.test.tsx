@@ -59,6 +59,15 @@ describe("BusinessDashboardShell", () => {
     expect(within(nav).getByRole("link", { name: "Business Terms" })).toBeInTheDocument();
   });
 
+  it("exposes the read-only Customer Rewards destination (BUSINESS-REWARD-CYCLE-VISIBILITY-001)", () => {
+    renderShell();
+    const nav = screen.getByRole("navigation", { name: "Business Dashboard navigation" });
+    expect(within(nav).getByRole("link", { name: "Customer Rewards" })).toHaveAttribute(
+      "href",
+      "/business/biz-123/dashboard/customer-rewards",
+    );
+  });
+
   it("identifies the current section via aria-current", () => {
     renderShell("/business/biz-123/dashboard/team");
     const nav = screen.getByRole("navigation", { name: "Business Dashboard navigation" });

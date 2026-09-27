@@ -11,6 +11,11 @@
  *   `getPurchaseRecordForCustomer` (with timeline),
  *   `listAvailableRewardsForCustomer` (minimum reward read, no redemption
  *   surface).
+ * - Business Reward / Loyalty-Cycle visibility
+ *   (`BUSINESS-REWARD-CYCLE-VISIBILITY-001`; Owner/Manager only, same-
+ *   Business enforced in SQL): `listAvailableRewardsForBusiness`,
+ *   `listLoyaltyCycleProgressForBusiness`. Read-only — no redemption,
+ *   fulfilment, or state transition of any kind.
  *
  * Stable deterministic ordering everywhere (`created_at DESC, id DESC`;
  * events `occurred_at ASC, id ASC`); limit/offset pagination with bounded
@@ -19,7 +24,18 @@
 
 import type { Firestore } from "firebase-admin/firestore";
 import type { PlatformPostgresPool } from "../../../infrastructure/postgres/postgresPool";
-import { authorizeBusinessPurchaseRead } from "./purchaseAuthorization";
+import {
+  authorizeBusinessLoyaltyVisibilityRead,
+  authorizeBusinessPurchaseRead,
+} from "./purchaseAuthorization";
+import {
+  listAvailableRewardsForBusinessRows,
+  listCurrentCycleProgressForBusinessRows,
+} from "../repositories/businessLoyaltyVisibilityRepository";
+import type {
+  BusinessAvailableReward,
+  BusinessLoyaltyCycleProgress,
+} from "../models/businessLoyaltyVisibility";
 import {
   getPurchaseRecordById,
   listPurchaseRecordEvents,
@@ -169,4 +185,67 @@ export async function listAvailableRewardsForCustomer(
 ): Promise<{ readonly rewards: RewardRow[] }> {
   const rewards = await listAvailableRewardRows(pool, params.customerIdentityId);
   return { rewards };
+}
+
+function parseRewardProgramFilter(value: unknown): string | null {
+  if (value == null) {
+    return null;
+  }
+  if (typeof value === "string" && value.trim().length > 0) {
+    return value;
+  }
+  throw purchaseValidationError("Reward Program filter must be a non-empty string.");
+}
+
+/**
+ * Available Rewards held by Customers of the calling Business
+ * (`BUSINESS-REWARD-CYCLE-VISIBILITY-001`). Owner/Manager only; the
+ * Business scope comes from the authorized `businessId`, never from row
+ * data, and the SQL itself is anchored on that Business.
+ */
+export async function listAvailableRewardsForBusiness(
+  db: Firestore,
+  pool: PlatformPostgresPool,
+  params: {
+    readonly userId: string;
+    readonly businessId: string;
+    readonly rewardProgramId?: unknown;
+    readonly limit?: number | null;
+    readonly offset?: number | null;
+  },
+): Promise<{ readonly rewards: BusinessAvailableReward[] }> {
+  await authorizeBusinessLoyaltyVisibilityRead(db, params.userId, params.businessId);
+  const { limit, offset } = parsePagination(params);
+  const rewards = await listAvailableRewardsForBusinessRows(pool, params.businessId, {
+    rewardProgramId: parseRewardProgramFilter(params.rewardProgramId),
+    limit,
+    offset,
+  });
+  return { rewards };
+}
+
+/**
+ * Each Customer's current Loyalty Cycle progress for the calling Business's
+ * Reward Programs (`BUSINESS-REWARD-CYCLE-VISIBILITY-001`). Owner/Manager
+ * only; derived entirely from the authoritative PostgreSQL loyalty spine.
+ */
+export async function listLoyaltyCycleProgressForBusiness(
+  db: Firestore,
+  pool: PlatformPostgresPool,
+  params: {
+    readonly userId: string;
+    readonly businessId: string;
+    readonly rewardProgramId?: unknown;
+    readonly limit?: number | null;
+    readonly offset?: number | null;
+  },
+): Promise<{ readonly cycles: BusinessLoyaltyCycleProgress[] }> {
+  await authorizeBusinessLoyaltyVisibilityRead(db, params.userId, params.businessId);
+  const { limit, offset } = parsePagination(params);
+  const cycles = await listCurrentCycleProgressForBusinessRows(pool, params.businessId, {
+    rewardProgramId: parseRewardProgramFilter(params.rewardProgramId),
+    limit,
+    offset,
+  });
+  return { cycles };
 }
