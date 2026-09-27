@@ -645,6 +645,21 @@ Example:
 
 A user must not be allowed to manage ownership without being an owner.
 
+## 12.5 Role membership vs operational capability
+
+Role membership and operational capability are related but not identical. Roles organise
+permissions; the governing authorization rule for a sensitive action checks the explicit
+permission held by the authenticated user's membership (including defaults, grants, and
+revocations resolved live server-side) — never the organisational title alone.
+
+For redemption confirmation (`DEC-LOY-018`, `CAPABILITY-6-REDEMPTION-DECISION-001`, 2026-09-27):
+Owner and Manager hold the redemption-confirmation capability by default (per the §11 matrix
+row, preserved — defaults are initial governed grants, revocable per membership). A holder of
+`staff.assignPermissions` may grant or revoke it on individual trusted memberships — including
+Staff — with no promotion to Manager required; granting it confers no role change, staff
+management, or ownership powers. Every redemption attributes the actual authenticated confirmer.
+No new job titles are created by this rule.
+
 # 13\. Business Membership Lifecycle
 
 ## 13.1 Invitation

@@ -118,6 +118,17 @@ VERIFIED`: no `FD-COM-001` file was modified by PR #241 or this administrative c
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
 
 ---
+## Entry 261 — `CAPABILITY-6-REDEMPTION-DECISION-001`: Capability 6 Redemption Product Truth Recorded (`DEC-LOY-018`) — Authority Only, No Implementation
+
+**Date:** 2026-09-27 · **Type:** Founder-decision recording + authority alignment · **No implementation, migration, config, dependency, authentication, billing, prototype, or deployment change.**
+
+- **Decision:** `DEC-LOY-018` (Founder direction `FD-REDEMPTION-AUTHORITY-001`, new evidence file) — D-1 adopts the PRD07/TRD redemption interaction unchanged; D-2 makes confirmation authority explicit permission-based, not title-based (Owner + Manager by default per the preserved PRD01 matrix; delegation to trusted memberships incl. Staff via `staff.assignPermissions` holders, no promotion; revocation effective at next attempt; confirmer attribution; shared accounts prohibited; no Platform Administrator default; Customers excluded); bounded `DEC-SEC-003` redemption slice resolved (Status stays `OPEN_ENGINEERING`); D-3 excludes reversal mechanics (`DEC-LOY-004` preserved); suspension axes preserved (`DEC-LOY-011` vs PRD06 §5, no new paused-programme rule). The prior unapproved `Owner + Manager only` draft is explicitly not adopted. Register Summary CONFIRMED 66→67, Total 118→119.
+- **Documents modified (decision-driven corrections, history preserved):** `decision-register.md` (header banner, `DEC-LOY-018` row, `DEC-SEC-003` Notes addendum, summary); `07-reward-redemption.md` (MVP freeze note); `01-accounts-roles-and-permissions.md` (§12.5 role-vs-capability); `CDR-001` (Capability 6 dated note — implementation NOT started, Capability NOT complete); `11thonus-master-workflow.md` (§17 frontier note); this log; `IMPLEMENTATION_CHANGES.md`. No TRD/security text change required (TRD11 §11.26 and TRD12 already express the permission-based, live-resolution model).
+- **Carry-forwards:** redemption engine (`ENG-P8-001`/`ENG-P8-002`) NOT started, NOT authorized; permission-catalogue minting left to the implementation package (must NOT reuse `reward.override`); Trust Event / intent names are bounded implementation design; `DEC-SEC-003` full mechanism stays OPEN; `DEC-LOY-013(a)` paused-programme edge stays OPEN; PB-013B P3-3 OPEN / UNRESOLVED (separate boundary, untouched); migration 0019 not executed; prototype untouched; nothing deployed.
+- **Final disposition: `CAPABILITY 6 REDEMPTION PRODUCT TRUTH — FOUNDER DIRECTION RECORDED; IMPLEMENTATION NOT YET STARTED`.**
+
+---
+
 ## Entry 260 — `BUSINESS-REWARD-CYCLE-VISIBILITY-001-MERGE-CLOSE-001`: PR #277 Merged Following Independent Approval — Business Reward/Cycle Visibility Closed
 
 **Date:** 2026-09-27 · **Type:** merge/closure record · **No implementation, migration, config, dependency, authentication, billing, or decision-register change in this closure PR.**
