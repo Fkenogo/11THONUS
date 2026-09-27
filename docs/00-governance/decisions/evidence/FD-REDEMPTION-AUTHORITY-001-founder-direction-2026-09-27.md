@@ -39,8 +39,10 @@ the permission-based model below.
   confirmation; cycle progression follows existing authority. No customer confirmation tap, no PIN,
   no one-time code/token, no offline redemption.
 - **D-2 authority:** a redemption may be confirmed by an authenticated Business user who holds the
-  explicit governed capability to confirm redemption for that Business. Default holders: Owner and
-  Manager (preserved from the PRD01 permissions matrix, not assumed from titles). Delegation: a
+  explicit governed capability to confirm redemption for that Business. Default holders: Owner
+  (Owner floor; not ordinary-override revocable) and Manager (revocable and re-grantable) —
+  preserved from the PRD01 permissions matrix, not assumed from titles. [Clarified by
+  `CAPABILITY-6-REDEMPTION-DECISION-001-CORR-001`: the Owner-floor invariant is unchanged.] Delegation: a
   holder of the existing `staff.assignPermissions` capability (Owner by default; Manager only if
   explicitly granted it) may grant/revoke redemption-confirmation authority on individual
   memberships, including Staff, without any role promotion. Revocation takes effect at the next

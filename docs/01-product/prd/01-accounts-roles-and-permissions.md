@@ -652,9 +652,12 @@ permissions; the governing authorization rule for a sensitive action checks the 
 permission held by the authenticated user's membership (including defaults, grants, and
 revocations resolved live server-side) — never the organisational title alone.
 
-For redemption confirmation (`DEC-LOY-018`, `CAPABILITY-6-REDEMPTION-DECISION-001`, 2026-09-27):
-Owner and Manager hold the redemption-confirmation capability by default (per the §11 matrix
-row, preserved — defaults are initial governed grants, revocable per membership). A holder of
+For redemption confirmation (`DEC-LOY-018`, `CAPABILITY-6-REDEMPTION-DECISION-001`, 2026-09-27,
+corrected by `CAPABILITY-6-REDEMPTION-DECISION-001-CORR-001`):
+Owner holds the redemption-confirmation capability by default via the existing Owner floor
+(ordinary membership overrides cannot revoke it — the Owner-floor invariant is unchanged).
+Manager holds it by default (per the §11 matrix row, preserved) and a Manager default may be
+explicitly revoked and later re-granted through the normal governed override mechanism. A holder of
 `staff.assignPermissions` may grant or revoke it on individual trusted memberships — including
 Staff — with no promotion to Manager required; granting it confers no role change, staff
 management, or ownership powers. Every redemption attributes the actual authenticated confirmer.
