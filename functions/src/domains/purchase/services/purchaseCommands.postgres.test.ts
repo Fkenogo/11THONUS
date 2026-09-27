@@ -205,6 +205,8 @@ afterEach(async () => {
   await pool.query("DELETE FROM purchase_outbox");
   await pool.query("DELETE FROM notification_intents");
   await pool.query("DELETE FROM trust_events");
+  // CAPABILITY-6-REDEMPTION-ENGINE-001 (0020): redemptions references rewards.
+  await pool.query("DELETE FROM redemptions");
   await pool.query("DELETE FROM rewards");
   await pool.query("DELETE FROM verified_unit_allocation_events");
   await pool.query("DELETE FROM verified_unit_allocations");

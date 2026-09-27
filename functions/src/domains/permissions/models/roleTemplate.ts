@@ -14,12 +14,11 @@
  *
  * What *is* precisely specified by the approved design is the Sensitive
  * Permission Catalogue's own "Inherit?"/"Default state" columns (§3.2,
- * `sensitivePermissionCatalogue.ts`): exactly two entries
- * (`customer.viewProtectedProfile`, `report.exportFinancial`) are
- * inheritable, and both default to Owner+Manager. `DEFAULT_ROLE_TEMPLATES`
- * below is derived entirely from that single source of truth — not
- * duplicated/hand-maintained data — so it can never drift from the
- * catalogue.
+ * `sensitivePermissionCatalogue.ts`, plus `DEC-LOY-018`'s
+ * `redemption.confirm`): each inheritable entry defaults to Owner+Manager.
+ * `DEFAULT_ROLE_TEMPLATES` below is derived entirely from that single
+ * source of truth — not duplicated/hand-maintained data — so it can never
+ * drift from the catalogue.
  *
  * Structural invariant (`DEC-ID-003`, `ENG-P2-004-DESIGN-001` §3.3):
  * a role template's default permissions may **never** include a sensitive
@@ -100,9 +99,9 @@ export function isPermissionInRoleTemplateDefault(
 }
 
 /**
- * Every catalogue-inheritable sensitive permission (§3.2 rows 7–8),
- * derived at module-load time from `sensitivePermissionCatalogue.ts` —
- * never hand-duplicated.
+ * Every catalogue-inheritable sensitive permission (design §3.2 rows 7–8,
+ * plus `DEC-LOY-018`'s `redemption.confirm`), derived at module-load time
+ * from `sensitivePermissionCatalogue.ts` — never hand-duplicated.
  */
 const CATALOGUE_INHERITABLE_IDS: readonly PermissionId[] =
   getInheritableSensitivePermissionEntries().map((entry) => entry.id);
@@ -111,9 +110,9 @@ const CATALOGUE_INHERITABLE_IDS: readonly PermissionId[] =
  * **Not a complete role-default permission baseline.** This is the
  * *sensitive-permission-catalogue-derived subset only* of each role's
  * defaults — the only role-default content this design precisely
- * specifies: Owner and Manager both default to the catalogue's two
+ * specifies: Owner and Manager both default to the catalogue's
  * inheritable entries; Staff defaults to none of them (design §3.2 rows
- * 7–8). It deliberately excludes the entire non-sensitive baseline
+ * 7–8, plus `DEC-LOY-018`'s `redemption.confirm`). It deliberately excludes the entire non-sensitive baseline
  * (e.g. `redemption.process` — and, before `PLATFORM-BASELINE-006A`,
  * `purchase.record`) — no governed
  * document mints identifiers for that baseline (see this file's header

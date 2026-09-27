@@ -94,3 +94,47 @@ export function purchaseIdempotencyInProgressError(): PurchaseDomainError {
     "The same purchase request is already being processed; retry shortly.",
   );
 }
+
+/**
+ * Redemption confirmation errors (`CAPABILITY-6-REDEMPTION-ENGINE-001`,
+ * `DEC-LOY-018`).
+ *
+ * Same posture as every other Purchase-domain error: a domain-local message
+ * that `index.ts`'s `toHttpsError` never echoes, so a client learns the
+ * outcome category and nothing about any other Business's Reward ids,
+ * Customer identities, or the identity of the confirming member.
+ */
+
+/**
+ * The Reward id does not resolve to a Reward at all. Deliberately identical
+ * for a fabricated id, a malformed id, and a Reward belonging to a
+ * different Business — tenant existence is never disclosed.
+ */
+export function redemptionRewardNotFoundError(rewardId: string): PurchaseDomainError {
+  return new PurchaseDomainError("RESOURCE_NOT_FOUND", `Reward "${rewardId}" was not found.`);
+}
+
+/**
+ * The caller's Business membership does not own the Reward. Kept
+ * indistinguishable from a not-found Reward for a caller with no other
+ * relationship to it, so tenant probing learns nothing.
+ */
+export function redemptionTenantIsolationError(): PurchaseDomainError {
+  return new PurchaseDomainError(
+    "AUTH_FORBIDDEN",
+    "Not authorized to redeem this Reward: it belongs to a different Business.",
+  );
+}
+
+/**
+ * The Reward is not in the one state Product Truth permits redemption from
+ * (`available`) — already `redeemed`, or otherwise not redeemable. There
+ * is no other transition available to this command, and no reversal,
+ * cancellation, or restoration path exists here (`DEC-LOY-004`).
+ */
+export function redemptionStaleStateError(actual: string): PurchaseDomainError {
+  return new PurchaseDomainError(
+    "INVALID_STATE_TRANSITION",
+    `Reward cannot be redeemed from state "${actual}" (expected "available").`,
+  );
+}

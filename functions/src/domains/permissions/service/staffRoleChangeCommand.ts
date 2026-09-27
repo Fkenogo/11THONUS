@@ -3,7 +3,7 @@
  *
  * Governed by `staff.assignRole` (`ENG-P2-004-CORR-002`'s catalogue entry —
  * Owner-only, non-delegable: `explicitGrantRequired: false`,
- * `explicitGrantEligibleRole: null`, `explicitRevocationSupported: false`),
+ * `explicitGrantEligibleRoles: null`, `explicitRevocationSupported: false`),
  * evaluated exclusively through `authorizeAndExecute`, exactly the same
  * consumption discipline `staffMembershipLifecycleCommand.ts` uses for
  * `staff.manage` — this file never re-implements or duplicates the

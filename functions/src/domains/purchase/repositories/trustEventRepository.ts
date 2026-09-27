@@ -36,8 +36,8 @@ type TrustEventDbRow = {
   event_type: TrustEventType;
   event_version: number;
   source_domain: string;
-  causal_purchase_record_id: string;
-  source_purchase_record_event_id: string;
+  causal_purchase_record_id: string | null;
+  source_purchase_record_event_id: string | null;
   subject_type: TrustSubjectType;
   subject_id: string;
   subject_verified_unit_id: string | null;
@@ -88,8 +88,14 @@ function mapTrustEventRow(row: TrustEventDbRow): TrustEventRow {
 
 export type InsertTrustEventParams = {
   readonly eventType: TrustEventType;
-  readonly causalPurchaseRecordId: string;
-  readonly sourcePurchaseRecordEventId: string;
+  /**
+   * Causal Purchase root — required for purchase-caused events, `null`
+   * for redemption-caused events (caused by a Business confirmation, not
+   * a Purchase transition; `0020` shape CHECK).
+   */
+  readonly causalPurchaseRecordId: string | null;
+  /** Source-transition anchor — required for purchase-caused events, `null` for redemption-caused ones. */
+  readonly sourcePurchaseRecordEventId: string | null;
   readonly subjectType: TrustSubjectType;
   readonly subjectId: string;
   readonly subjectVerifiedUnitId?: string | null;

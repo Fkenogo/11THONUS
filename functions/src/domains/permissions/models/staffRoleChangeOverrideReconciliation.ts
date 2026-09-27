@@ -16,13 +16,16 @@
  * validity rule is invented here; `permissionOverride.ts` is imported
  * unmodified.
  *
- * A grant is role-scoped (`explicitGrantEligibleRole` names exactly one
- * role), so a grant valid for the old role is always invalid for the other
- * of {"manager", "staff"} and vice versa. A revoke has no role dependency
- * in the existing contract (only `explicitRevocationSupported`, a static
- * catalogue flag) — so a revoke, once valid, remains valid across every
- * role a membership could hold. This module does not special-case that
- * distinction; it falls out of reusing `createPermissionOverride` as-is.
+ * A grant is role-scoped (the entry's `explicitGrantEligibleRoles` set
+ * names which roles may hold it): a single-eligible-role grant valid for
+ * the old role is always invalid for the other of {"manager", "staff"}
+ * and vice versa, while a multi-eligible-role grant (currently only
+ * `redemption.confirm`, eligible for both) survives a manager↔staff
+ * change. A revoke has no role dependency in the existing contract (only
+ * `explicitRevocationSupported`, a static catalogue flag) — so a revoke,
+ * once valid, remains valid across every role a membership could hold.
+ * This module does not special-case that distinction; it falls out of
+ * reusing `createPermissionOverride` as-is.
  */
 
 import { createPermissionOverride } from "./permissionOverride";

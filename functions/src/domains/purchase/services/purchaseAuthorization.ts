@@ -14,11 +14,22 @@
  */
 
 import type { Firestore } from "firebase-admin/firestore";
-import { evaluatePermission } from "../../permissions/service/evaluatePermissionService";
+import {
+  evaluatePermission,
+  evaluatePermissionWithContext,
+} from "../../permissions/service/evaluatePermissionService";
 import { getBusinessMembershipByUserAndBusiness } from "../../permissions/repositories/businessMembershipRepository";
 import { PurchaseDomainError } from "../models/purchaseErrors";
 import type { ErrorCategory } from "../../../shared/errors/errorCategories";
 import type { RecorderRole } from "../models/purchase";
+
+/**
+ * The closed set of Business roles that may ever be recorded as the
+ * confirming member's role. Mirrors `redemptions.confirmed_by_role`'s CHECK
+ * constraint exactly — audit context only; accountability itself is always
+ * the individual membership id, never this role.
+ */
+export type RedemptionConfirmerRole = Extract<RecorderRole, "owner" | "manager" | "staff">;
 
 export async function authorizePurchaseRecord(
   db: Firestore,
@@ -100,4 +111,63 @@ export async function authorizeBusinessLoyaltyVisibilityRead(
       "Not authorized to view Customer rewards and progress for this Business.",
     );
   }
+}
+
+/**
+ * Redemption confirmation authority (`CAPABILITY-6-REDEMPTION-ENGINE-001`,
+ * `DEC-LOY-018` D-2 / `FD-REDEMPTION-AUTHORITY-001`).
+ *
+ * Resolved LIVE at the point of confirmation through the single existing
+ * permission architecture — `evaluatePermissionWithContext` — never from
+ * client-supplied role/authority and never from a cached decision. That is
+ * what makes a permission revoked between page load and confirmation stop
+ * authorising the confirmation: the membership document and its overrides
+ * are re-read on every attempt.
+ *
+ * There is no redemption-specific branch here and no second authorization
+ * architecture. `redemption.confirm` is an ordinary sensitive-catalogue
+ * entry, so this function does exactly what `authorizePurchaseRecord`
+ * already does for `purchase.record`: call the evaluator, translate a
+ * refusal into the domain's stable AUTH error, and return the role the
+ * evaluator itself resolved so it can be recorded as audit context.
+ *
+ * The evaluator has no Platform Administrator path and Customers hold no
+ * Business membership, so both reduce to the same fail-closed refusal here
+ * without a special case. The returned `membershipId` is the RESOLVED
+ * membership's own id (individual attribution, `DEC-ID-002`) — never a
+ * generic role string standing in for an accountable person.
+ */
+export async function authorizeRedemptionConfirm(
+  db: Firestore,
+  userId: string,
+  businessId: string,
+): Promise<{ readonly role: RedemptionConfirmerRole; readonly membershipId: string }> {
+  const { decision, membership } = await evaluatePermissionWithContext(db, {
+    userId,
+    businessId,
+    permission: "redemption.confirm",
+  });
+  if (!decision.allowed) {
+    throw new PurchaseDomainError(
+      (decision.errorCategory as ErrorCategory | undefined) ?? "AUTH_FORBIDDEN",
+      "Not authorized to confirm reward redemptions for this Business.",
+    );
+  }
+  if (membership.kind !== "found") {
+    // Unreachable while `decision.allowed` is true (the evaluator denies
+    // every no-membership case), but kept so attribution can never be
+    // recorded without a resolved membership to attribute it to.
+    throw new PurchaseDomainError(
+      "AUTH_FORBIDDEN",
+      "Not authorized to confirm reward redemptions for this Business.",
+    );
+  }
+  const role = decision.role;
+  if (role !== "owner" && role !== "manager" && role !== "staff") {
+    throw new PurchaseDomainError(
+      "AUTH_FORBIDDEN",
+      "Not authorized to confirm reward redemptions for this Business.",
+    );
+  }
+  return { role, membershipId: membership.membership.id };
 }

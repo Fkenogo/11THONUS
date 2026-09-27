@@ -35,7 +35,11 @@
 import type { PermissionId } from "./permissionId";
 import { isWellFormedPermissionId } from "./permissionId";
 import type { Role } from "./role";
-import { isSensitivePermission, getSensitivePermissionEntry } from "./sensitivePermissionCatalogue";
+import {
+  isSensitivePermission,
+  getSensitivePermissionEntry,
+  isRoleEligibleForExplicitGrant,
+} from "./sensitivePermissionCatalogue";
 import {
   invalidPermissionIdError,
   malformedPermissionOverrideDirectionError,
@@ -100,17 +104,19 @@ export function createPermissionOverride(input: CreatePermissionOverrideInput): 
       if (!entry.explicitGrantRequired) {
         throw permissionOverrideDirectionNotSupportedError(input.permissionId, input.direction);
       }
-      // The catalogue names exactly one role eligible to receive an
+      // The catalogue names the set of roles eligible to receive an
       // explicit grant of this permission (design §3.2's "(Manager)"/
-      // "for Staff" qualifiers) — not "any non-owner role." Rejecting a
-      // mismatched targetRole here is validating a static catalogue
-      // fact, not performing runtime precedence evaluation (that
-      // remains ENG-P2-004B's concern).
-      if (input.targetRole !== entry.explicitGrantEligibleRole) {
+      // "for Staff" qualifiers, generalised by `DEC-LOY-018` to a set so
+      // one permission can cover both Manager re-grant and Staff
+      // delegation) — not "any non-owner role." Rejecting a mismatched
+      // targetRole here is validating a static catalogue fact, not
+      // performing runtime precedence evaluation (that remains
+      // ENG-P2-004B's concern).
+      if (!isRoleEligibleForExplicitGrant(entry, input.targetRole)) {
         throw permissionOverrideRoleNotEligibleForGrantError(
           input.permissionId,
           input.targetRole,
-          entry.explicitGrantEligibleRole,
+          entry.explicitGrantEligibleRoles,
         );
       }
     }

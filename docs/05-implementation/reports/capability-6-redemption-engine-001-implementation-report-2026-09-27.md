@@ -1,0 +1,193 @@
+# `CAPABILITY-6-REDEMPTION-ENGINE-001` — Capability 6 Redemption Engine Implementation Report
+
+> **Date:** 2026-09-27 · **Task:** `CAPABILITY-6-REDEMPTION-ENGINE-001`
+> **Classification:** Implementation Report — primary-source document, written once at the time of the task
+> **Entry `origin/main`:** `87c679c63dc79afe9b29cff793b93cee562904fb`
+> **Branch / worktree:** `feat/capability-6-redemption-engine-001` (isolated clean worktree; Founder's primary checkout untouched)
+> **Governing authority:** `DEC-LOY-018` (Decision Register) via `FD-REDEMPTION-AUTHORITY-001`
+
+---
+
+## 1. Scope actually delivered
+
+The **server-authoritative Business redemption confirmation engine**: taking a persisted Reward from
+`available` to the existing governed `redeemed` state, attributable to the individual authenticated
+Business member who confirmed it, under a distinct governed permission, with live re-evaluation,
+idempotency, concurrency safety, tenant isolation, Trust evidence and governed notification intents.
+
+This is an **engine/backend capability package only**. It is not the production redemption experience.
+
+Explicitly **not** delivered, by boundary: production redemption UI; any change to the separate
+11thONUS prototype repository (the Experience Reference); redemption reversal; PB-013B P3-3 work;
+commercial/billing work; auth-provider migration; Cloudflare/deployment work.
+
+---
+
+## 2. Pre-change architecture analysis (what the repository actually contained)
+
+Findings that shaped the implementation, read from the code rather than assumed:
+
+**Reward domain.** `rewards` (`0012_rewards.sql`) already carried the full governed lifecycle
+`CHECK (state IN ('available','redeemed','cancelled','expired'))` and the composite FK chain
+`rewards_match_cycle` / `rewards_governing_version`. The Reward is created exactly once by the
+`verifyPurchase` threshold sub-transaction at exactly 10 allocated units
+(`loyaltyCycleRepository.ts::insertRewardForCycle`), with terms snapshot from the Cycle's governing
+version. **The `redeemed` state already existed** — this package implemented the transition into it,
+not a new state. Reward reads (`listAvailableRewardsForCustomer`, and the `BUSINESS-REWARD-CYCLE-VISIBILITY-001`
+Business read) already filter `state = 'available'`, so a redeemed Reward disappears from both with
+no read-model query change.
+
+**Loyalty cycle domain.** A cycle is opened under the stream lock, accumulates verified units, and at
+exactly 10 flips to `reward_available` in the *same* transaction that creates the Reward. It is
+therefore already complete when the Reward becomes available. **Redemption requires no cycle
+mutation**: no closure, no next-cycle creation, no overflow/pending movement. Confirmed by reading
+`verifyPurchaseCommand.ts` and proven by an explicit regression test.
+
+**Authorization architecture.** Permission catalogues are per-domain modules registered into the
+closed `SENSITIVE_PERMISSION_IDS` set; `evaluateAuthorizationDecision` is a pure function and
+`evaluatePermissionWithContext` is the single live-resolving service. Sensitive entries carried a
+single-role `explicitGrantEligibleRole: Role | null`, which could express *one* eligible role — enough
+for `staff.assignPermissions` (Owner default, Manager grant) but structurally unable to express
+DEC-LOY-018's Manager re-grant **and** Staff grant on the same permission.
+
+**Existing schema.** The rewards/cycles schema did **not** represent redemption evidence. The
+migrations README already reserved a `redemptions` table name for a "separately authorized future
+implementation package", which is this package. A migration was therefore justified on evidence, not
+convenience.
+
+---
+
+## 3. Product Truth authorities used
+
+| Authority | What it settled here |
+|---|---|
+| `DEC-LOY-018` (via `FD-REDEMPTION-AUTHORITY-001`) | Redemption mechanics; permission-based confirmation authority; D-1 interaction; D-2 defaults/delegation; D-3 reversal exclusion; attribution |
+| `FD-REDEMPTION-AUTHORITY-001` §4 | The permission must be a **distinct module** (`DEC-LOY-017` precedent) and must **NOT** reuse `reward.override` |
+| `DEC-LOY-017` | Precedent: a new authority is minted in its own disjoint catalogue module, not by widening an unrelated catalogue |
+| PRD01 §11 / §12.5 | Owner + Manager hold redemption confirmation by default; the Owner-floor invariant |
+| PRD07 §18, TRD11 §11.26 | Governed redemption notification intents |
+| `DEC-LOY-011`, PRD06 §5 | Suspension / retired-programme axes preserved; redemption confirmation stays eligible during commercial suspension |
+| `DEC-ID-002` | Shared accounts prohibited; individual attribution |
+| `DEC-LOY-004` | Reversal excluded |
+| `DEC-SEC-003` | Bounded redemption security slice; the residual quick-switch question stays OPEN |
+| `DEC-LOY-013(a)` | Paused-programme edge stays unruled; no new rule invented |
+
+**No new Product Truth was invented.** No redemption evidence, PIN, code, customer confirmation, staff
+title, voucher, branch restriction, monetary value, expiry rule, offline behaviour, or new lifecycle
+state was created.
+
+**Deferred decisions reopened:** none. No deferred Product/Architecture/Commercial/Security/Operational
+decision was necessary for this authorised outcome, so none was reopened. `DEC-SEC-003`'s residual
+quick-switch question and `DEC-LOY-013(a)`'s paused-programme edge remain exactly as they were.
+
+---
+
+## 4. Implementation strategy
+
+**4.1 Permission capability.** `redemption.confirm`, minted in a structurally separate module
+`domains/permissions/models/redemptionPermissionCatalogue.ts` (the `DEC-LOY-017` precedent), registered
+into the sensitive catalogue so it inherits Owner floor, override administration, and mandatory audit
+through the *existing* architecture. There is no redemption-specific evaluator branch.
+
+**4.2 Eligibility generalisation (the smallest coherent change).**
+`explicitGrantEligibleRole: Role | null` → `explicitGrantEligibleRoles: readonly Role[] | null`, plus a
+single `isRoleEligibleForExplicitGrant(entry, role)` predicate. Every existing entry passes a
+single-element array, so no existing permission's behaviour changed; `redemption.confirm` is the only
+entry with two (`["manager","staff"]`). `createPermissionOverride` remains the sole authority for
+whether an override is constructible, and `evaluateAuthorizationDecision` revalidates eligibility
+independently, so the constructor, the evaluator, and the reconciliation module all consume the same
+predicate. The full existing permission suites (626 tests) pass unchanged, which is the regression
+evidence that eligibility did not silently widen.
+
+**4.3 Redemption command.** `confirmRedemptionCommand.ts`: live `redemption.confirm` evaluation →
+idempotency peek → one PostgreSQL transaction (reserve key → `SELECT … FOR UPDATE` the Reward →
+re-check existence/ownership/state → conditional `available → redeemed` → redemption evidence row →
+Trust Events → Notification Intents → complete key). The client supplies only `businessId` and
+`rewardId`; the transport whitelist (`parseConfirmRedemptionRequest`) excludes every other field.
+
+**4.4 Concurrency.** Four independent layers, deliberately: the idempotency key, the row lock, the
+conditional `UPDATE … WHERE state = 'available'`, and the `redemptions_one_per_reward` UNIQUE
+constraint. Two authorised members confirming the same Reward simultaneously produce exactly one
+transition and exactly one `reward.redeemed` Trust Event.
+
+---
+
+## 5. Schema / migration
+
+`0020_redemption_store.sql` (+ `.down.sql`) — four additive, backward-compatible changes as a single
+deployment unit (the command writes all of them in one transaction):
+
+- **A.** `rewards (id, loyalty_cycle_id)` UNIQUE — the composite-FK target that lets a redemption prove
+  the Reward it redeems is the very Reward of the Cycle it names.
+- **B.** `redemptions` — one row per redeemed Reward. `UNIQUE (reward_id)` (exactly-once backstop) plus
+  the composite FK chain `redemptions_reward_in_cycle`, `redemptions_match_cycle`,
+  `redemptions_governing_version`. Individual attribution columns
+  (`confirmed_by_user_id`, `confirmed_by_membership_id`, `confirmed_by_role`). **No cancellation or
+  reversal fields** (`DEC-LOY-004`).
+- **C.** `trust_events` — two new governed types (`reward.redeemed`, `loyalty_cycle.reward_redeemed`)
+  mirroring the availability pair. The causal Purchase columns become NULLABLE because redemption is
+  caused by a Business confirmation, not a Purchase transition; a shape CHECK preserves the spine
+  invariant (NOT NULL) for every purchase-caused type and requires NULL for redemption-caused types.
+- **D.** `notification_intents` — two new governed types anchored on the redemption via a
+  `source_redemption_id` FK, with the same one-per-(source, type, recipient) dedup the existing
+  purchase index provides, enforced by a partial unique index.
+
+**Deliberately not widened:** `purchase_outbox`. Every event type and its `aggregate_id` FK are
+Purchase-Record-scoped, and a Business-confirmed redemption has no causal Purchase Record. Widening it
+would invent a mechanism rather than reuse one.
+
+`0019` was **not executed** in any environment by this task. Historical migrations were not altered.
+
+---
+
+## 6. Evidence the existing permission semantics were preserved
+
+- Full permissions domain suite: **626 tests pass unchanged** (no pre-existing expectation edited).
+- `evaluatePermission.corr003.test.ts` Phase G was extended to *prove* the only exclusions from the
+  legacy `{trial, active}` gate are `staff.manage` (the pre-existing `CORR-003` override) and
+  `redemption.confirm` (its own `DEC-LOY-011` suspension override) — an exclusion by governed design,
+  not by drift.
+- `redemptionPermissionCatalogue.test.ts` proves `redemption.confirm` is claimed by **no other
+  catalogue** and is never `reward.override`.
+- The new integration suite proves at the behavioural level that a Staff redemption grant confers no
+  unrelated permission and does not promote the member.
+
+---
+
+## 7. Verification results
+
+| Suite | Result |
+|---|---|
+| Unit / pure (`npm test`) | **164 files, 1894 tests — all pass** |
+| PostgreSQL + Firestore Emulator (`npm run test:postgres`) | **10 files, 288 tests — all pass** |
+| Typecheck (`npm run typecheck`) | clean |
+
+New integration suite `confirmRedemptionCommand.postgres.test.ts` (**29 tests**) covers: state
+transition and its atomicity; explicit proof the Cycle is not mutated and no next cycle is created;
+already-redeemed and non-redeemable-state rejection; tenant isolation in both directions; the full
+Owner / Manager / Staff / Platform Administrator / Customer permission matrix including revoke and
+re-grant; live re-resolution after revocation and after suspension; grant confers no unrelated
+permission; idempotent replay, key conflict, two-member race, and double-click; the UNIQUE schema
+backstop; Trust Event pair with NULL Purchase causation; both notification intents; and both
+available-reward reads.
+
+---
+
+## 8. Programme alignment (facts, not aspirations)
+
+- **Redemption engine implemented** on `feat/capability-6-redemption-engine-001`.
+- **Capability 6 is NOT complete.** The engine implementation alone does not satisfy the governing
+  capability definition: Experience Reference refinement and production Experience Assembly are
+  both still pending, and nothing is deployed.
+- **Experience Reference refinement:** still pending. The 11thONUS prototype repository is untouched
+  and is the next step after engine acceptance.
+- **Production Experience Assembly:** still pending. No production redemption UI was built.
+- **Reversal:** excluded. No undo, admin reversal, reward restoration, or negative cycle adjustment exists.
+- **PB-013B P3-3:** **remains `OPEN / UNRESOLVED`, untouched.** Dependency assessment: this package
+  neither invokes nor modifies the Reward Program publication path. `createRewardProgram` /
+  `publishRewardProgramVersion` appear in the new test file **only as test setup** for producing a real
+  published program; no code under test reads, writes, or activates a publication snapshot. The
+  activation boundary is therefore not crossed and the fix is not absorbed here.
+- **Deployment status:** nothing deployed. No Cloudfire/hosting/database action was taken.
+- **Migration 0019 status:** not executed by this task. `0020` is authored but not applied to any
+  deployed database; it is applied only in the local test database.

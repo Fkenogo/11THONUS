@@ -51,6 +51,8 @@ async function dropAll() {
   await pool.query("DROP TABLE IF EXISTS purchase_outbox CASCADE");
   await pool.query("DROP TABLE IF EXISTS notification_intents CASCADE");
   await pool.query("DROP TABLE IF EXISTS trust_events CASCADE");
+  // CAPABILITY-6-REDEMPTION-ENGINE-001 (0020): redemptions references rewards/loyalty_cycles
+  await pool.query("DROP TABLE IF EXISTS redemptions CASCADE");
   await pool.query("DROP TABLE IF EXISTS rewards CASCADE");
   await pool.query("DROP TABLE IF EXISTS verified_unit_allocation_events CASCADE");
   await pool.query("DROP TABLE IF EXISTS verified_unit_allocations CASCADE");
@@ -83,7 +85,7 @@ afterAll(async () => {
 });
 
 describe("Reward Program migrations against a real PostgreSQL instance", () => {
-  it("discovers all nineteen migrations in version order", async () => {
+  it("discovers all twenty migrations in version order", async () => {
     const files = await discoverMigrationFiles(migrationsDir);
     expect(files.map((f) => f.version)).toEqual([
       "0001",
@@ -105,6 +107,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0017",
       "0018",
       "0019",
+      "0020",
     ]);
   });
 
@@ -130,6 +133,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0017",
       "0018",
       "0019",
+      "0020",
     ]);
 
     for (const table of [
@@ -139,6 +143,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "reward_program_outbox",
       "qualifying_items",
       "reward_program_version_qualifying_items",
+      "redemptions",
     ]) {
       const check = await pool.query("SELECT to_regclass($1) AS reg", [table]);
       expect(check.rows[0].reg, `expected table "${table}" to exist`).not.toBeNull();
@@ -190,12 +195,13 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0017",
       "0018",
       "0019",
+      "0020",
     ]);
   }, 15000);
 
   it("rolls back the full migration set and re-applies cleanly", async () => {
     await migrateUp(pool, migrationsDir);
-    await migrateDown(pool, migrationsDir, 19);
+    await migrateDown(pool, migrationsDir, 20);
 
     for (const table of [
       "reward_programs",
@@ -204,6 +210,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "reward_program_outbox",
       "qualifying_items",
       "reward_program_version_qualifying_items",
+      "redemptions",
     ]) {
       const check = await pool.query("SELECT to_regclass($1) AS reg", [table]);
       expect(check.rows[0].reg, `expected table "${table}" to be dropped`).toBeNull();
@@ -230,6 +237,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0017",
       "0018",
       "0019",
+      "0020",
     ]);
     const applied = await getAppliedMigrations(pool);
     expect(applied.map((a) => a.version)).toEqual([
@@ -252,6 +260,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0017",
       "0018",
       "0019",
+      "0020",
     ]);
   }, 15000);
 
@@ -480,7 +489,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       // empty); none touches
       // reward_programs.reward_program_category_id, so they do not affect
       // this test's own assertions below.
-      expect(result.applied).toEqual(["0015", "0016", "0017", "0018", "0019"]);
+      expect(result.applied).toEqual(["0015", "0016", "0017", "0018", "0019", "0020"]);
 
       const preserved = await pool.query<{
         business_id: string;
@@ -1343,7 +1352,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       );
 
       const result = await migrateUp(pool, migrationsDir);
-      expect(result.applied).toEqual(["0017", "0018", "0019"]);
+      expect(result.applied).toEqual(["0017", "0018", "0019", "0020"]);
 
       expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
 
@@ -1438,7 +1447,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       );
 
       const result = await migrateUp(pool, migrationsDir);
-      expect(result.applied).toEqual(["0019"]);
+      expect(result.applied).toEqual(["0019", "0020"]);
       expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
 
       // The backfill's own evidence survives the drop: the marker item
@@ -1500,7 +1509,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       );
 
       const result = await migrateUp(pool, migrationsDir);
-      expect(result.applied).toEqual(["0019"]);
+      expect(result.applied).toEqual(["0019", "0020"]);
       expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
 
       const marker = await pool.query(
@@ -1575,7 +1584,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       );
 
       const result = await migrateUp(pool, migrationsDir);
-      expect(result.applied).toEqual(["0019"]);
+      expect(result.applied).toEqual(["0019", "0020"]);
       expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
     }, 15000);
 
@@ -1635,7 +1644,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       );
 
       const result = await migrateUp(pool, migrationsDir);
-      expect(result.applied).toEqual(["0019"]);
+      expect(result.applied).toEqual(["0019", "0020"]);
       expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
     }, 15000);
 
@@ -1996,7 +2005,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         [versionId, item.rows[0].id],
       );
 
-      await migrateDown(pool, migrationsDir, 1);
+      await migrateDown(pool, migrationsDir, 2);
 
       // Structural shell only: table exists, is empty, keeps the 0003
       // shape -- history is NOT reconstructed.
@@ -2024,7 +2033,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
 
       // Re-applying 0019 over the empty shell drops it again.
       const reapplied = await migrateUp(pool, migrationsDir);
-      expect(reapplied.applied).toEqual(["0019"]);
+      expect(reapplied.applied).toEqual(["0019", "0020"]);
       expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
     }, 15000);
   });

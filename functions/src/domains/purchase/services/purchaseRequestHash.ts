@@ -17,3 +17,22 @@ export function purchaseRequestHash(
 ): string {
   return `purchase.${operation}:${actorId}:${businessId}:${targetId}:${contentFingerprint}`;
 }
+
+/**
+ * Redemption confirmation request hash (`CAPABILITY-6-REDEMPTION-ENGINE-001`,
+ * `DEC-LOY-018`). Same actor + scope + target + fingerprint discipline as
+ * `purchaseRequestHash`, and deliberately bound to the CONFIRMING MEMBER so
+ * two authorised members of the same Business attempting the same Reward
+ * under the same key are a genuine conflict rather than a silent replay of
+ * one another's confirmation — no shared account, no shared
+ * accountability (`DEC-ID-002`).
+ */
+export function redemptionRequestHash(
+  operation: "confirm",
+  actorId: string,
+  businessId: string,
+  rewardId: string,
+  contentFingerprint: string,
+): string {
+  return `redemption.${operation}:${actorId}:${businessId}:${rewardId}:${contentFingerprint}`;
+}
