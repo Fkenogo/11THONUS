@@ -16,7 +16,7 @@
 - **Next programme boundary (recorded, NOT started):** `CAPABILITY 6 REDEMPTION ENGINE IMPLEMENTATION — READY FOR AUTHORISATION, NOT STARTED` (expected scope: redemption domain/transition, Business confirmation command, explicit permission + eligibility generalisation, live re-verification, attribution, idempotency/concurrency, tenant isolation, Trust evidence, read-model consequences, governed notifications/intents, tests; no reversal unless separately authorised).
 - **Boundaries preserved:** no redemption engine; no catalogue/evaluator code; no Trust Events; no UI; no reversal; no migration (0019 not executed); PB-013B P3-3 OPEN / UNRESOLVED (separate); no auth/billing/deployment change; prototype untouched.
 - **Files changed by this closure:** `docs/00-governance/documentation-changes-log.md` (Entry 262); this record.
-- **Risk and rollback:** no deployment, migration, or config change — nothing to roll back operationally. Code rollback, if separately directed, is `git revert -m 1 6a1dd69c013bdfe11cfb137b3932e8a57f8d3496` as one atomic revert; revert this closure commit separately for the log entries.
+- **Risk and rollback:** no deployment, migration, or config change — nothing to roll back operationally. Code rollback, if separately directed, must revert in order: this closure commit first, then `git revert -m 1 6a1dd69c013bdfe11cfb137b3932e8a57f8d3496` as the merge revert (reverting the merge first conflicts in both change logs — order verified empirically during review); revert this closure commit separately for the log entries.
 - **Final disposition:** `CAPABILITY-6-REDEMPTION-DECISION-001 — APPROVED / MERGED / CLOSED`.
 
 ---
