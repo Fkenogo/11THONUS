@@ -7,6 +7,20 @@
 
 ---
 
+## 2026-09-27 — CAPABILITY-6-REDEMPTION-DECISION-001-MERGE-CLOSE-001 — Founder Approval, Controlled Merge & Closure of PR #279
+
+- **Task / status:** Merge/closure only for `CAPABILITY-6-REDEMPTION-DECISION-001` / `DEC-LOY-018` (PR #279) at the corrected, reviewed head `06e5d2011d60cdc86c4a16558cbf311d6e398819` (Founder disposition APPROVED). No implementation code modified.
+- **Entry verification:** PR #279 OPEN/unmerged; head exactly `06e5d2011d60cdc86c4a16558cbf311d6e398819`; base and pre-merge `origin/main` both `09ffa9b2c9bb2625eca422e65171355256d75b92` (zero advancement — no reconciliation necessary); `MERGEABLE`/`CLEAN`; exact-head CI SUCCESS (`Build, Lint, Test, Emulator Validation`); both P2 review threads replied and RESOLVED; no new P0/P1/P2 findings.
+- **Merge:** regular merge commit using the repository's merge-commit convention (`gh pr merge 279 --merge`; no squash, rebase, or head rewrite). Merge commit `6a1dd69c013bdfe11cfb137b3932e8a57f8d3496`; parents exactly `09ffa9b2c9bb2625eca422e65171355256d75b92` + `06e5d2011d60cdc86c4a16558cbf311d6e398819`. Post-merge `origin/main` = `6a1dd69c013bdfe11cfb137b3932e8a57f8d3496`; PR #279 MERGED. Merged tree verified: approved `DEC-LOY-018` authority present; 8 files, docs-only.
+- **Authority merged (summary):** D-1 interaction adopted; permission-based confirmation (Owner: Owner-floor default, not ordinarily revocable; Manager: default, revocable, re-grantable; Staff/trusted users: explicit grant, no promotion; no Platform Administrator default; Customers excluded; shared accounts prohibited; individual attribution); bounded `DEC-SEC-003` slice; reversal excluded; suspension axes preserved. Implementation consequence: smallest coherent grant-eligibility generalisation in the future package, no evaluator bypass.
+- **Next programme boundary (recorded, NOT started):** `CAPABILITY 6 REDEMPTION ENGINE IMPLEMENTATION — READY FOR AUTHORISATION, NOT STARTED` (expected scope: redemption domain/transition, Business confirmation command, explicit permission + eligibility generalisation, live re-verification, attribution, idempotency/concurrency, tenant isolation, Trust evidence, read-model consequences, governed notifications/intents, tests; no reversal unless separately authorised).
+- **Boundaries preserved:** no redemption engine; no catalogue/evaluator code; no Trust Events; no UI; no reversal; no migration (0019 not executed); PB-013B P3-3 OPEN / UNRESOLVED (separate); no auth/billing/deployment change; prototype untouched.
+- **Files changed by this closure:** `docs/00-governance/documentation-changes-log.md` (Entry 262); this record.
+- **Risk and rollback:** no deployment, migration, or config change — nothing to roll back operationally. Code rollback, if separately directed, is `git revert -m 1 6a1dd69c013bdfe11cfb137b3932e8a57f8d3496` as one atomic revert; revert this closure commit separately for the log entries.
+- **Final disposition:** `CAPABILITY-6-REDEMPTION-DECISION-001 — APPROVED / MERGED / CLOSED`.
+
+---
+
 ## 2026-09-27 — CAPABILITY-6-REDEMPTION-DECISION-001 — Capability 6 Redemption Product Truth Recorded (`DEC-LOY-018`)
 
 - **Task / status:** authority-alignment only, from entry `origin/main` `09ffa9b2c9bb2625eca422e65171355256d75b92` on branch `docs/capability-6-redemption-decision-001` (isolated clean worktree; dirty primary checkout untouched). No implementation. No PR merged by this task.
