@@ -257,7 +257,15 @@ would invent a mechanism rather than reuse one.
 > correction passes (308/308); passes in isolation (7/7); untouched. No schema change — no new
 > migration; the untouched migration suite (49 tests) remains green.
 
-New integration suite `confirmRedemptionCommand.postgres.test.ts` (**36 tests**) covers: state
+> **Test-count currency note (`CAPABILITY-6-REDEMPTION-ENGINE-001-MERGE-CLOSE-001`, 2026-09-28).** The
+> suite described immediately below was **36 tests when first written** (original implementation); it
+> was **39** after `CORR-002` and is **44** on the merged head after `CORR-003`, with the separate
+> `confirmRedemptionLockOrder.postgres.test.ts` adding **4** — a combined redemption-focused count of
+> **48**. The narrative below is the original description of what the suite covers; its inline count
+> is retained as the historical value it records, not restated as the final figure.
+
+New integration suite `confirmRedemptionCommand.postgres.test.ts` (**36 tests when first written** —
+see the currency note directly above) covers: state
 transition and failure atomicity (a late transaction failure rolls back Reward, Cycle, next Cycle,
 evidence, allocation, events and intents, and the idempotency reservation with them); **the
 governed Loyalty Cycle lifecycle — `reward_available →

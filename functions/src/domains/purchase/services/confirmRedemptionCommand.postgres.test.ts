@@ -1827,7 +1827,13 @@ async function totalCreditQuantity(customerId: string): Promise<number> {
   return Number(result.rows[0].total);
 }
 
-/** A1 and A2 are the same commercial instant, so the outcome must not be timing. */
+/**
+ * The two overflow Purchases carry EXPLICIT, DISTINCT commercial instants: the
+ * V1 purchase happened earlier commercially (`PENDING_V1_DATE`), the V2 purchase
+ * later (`PENDING_V2_DATE`). The dates are deliberately distinct so the governing
+ * outcome is decided by commercial chronology, never by which allocation row
+ * happens to be inserted first.
+ */
 const PENDING_V1_DATE = new Date("2026-09-27T09:00:00.000Z");
 const PENDING_V2_DATE = new Date("2026-09-27T21:00:00.000Z");
 
