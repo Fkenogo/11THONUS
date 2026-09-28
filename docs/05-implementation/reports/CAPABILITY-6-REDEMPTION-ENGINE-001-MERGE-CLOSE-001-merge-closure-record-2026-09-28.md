@@ -22,7 +22,7 @@ This record closes the accepted Redemption Engine implementation package only. I
 
 The independent disposition was **APPROVE — READY FOR FOUNDER MERGE REVIEW**. F-1 deterministic first-allocation order, N1 lock-order/deadlock, and N2 governing version are resolved; no P0/P1/P2 finding remained as an unresolved implementation blocker at the accepted head.
 
-GitHub still reports four historical review threads as technically unresolved: the audit-decision and mutation-boundary authorization threads are non-outdated; the earlier mutation-boundary and tenant-indistinguishability threads are outdated; a later malformed-UUID P2 thread is non-outdated. These were not dismissed or marked resolved by this closure. The final independent disposition and accepted implementation evidence are recorded above; thread metadata is distinct from the review's finding disposition. The final PR body records the review disposition and CORR-003 accepted head.
+GitHub still reports four historical review threads as technically unresolved: the audit-decision P1 and malformed-UUID P2 threads are non-outdated; the mutation-boundary authorization P1 and tenant-indistinguishability P2 threads are outdated. These threads' metadata remains unresolved; this closure does not dismiss or mark the threads resolved. Separately, the accepted correction sequence was independently reviewed, and the final disposition found no remaining P0/P1/P2 implementation blocker. Thread metadata and substantive finding disposition are distinct; the final PR body records the review disposition and CORR-003 accepted head.
 
 ## 3. Merge evidence
 
@@ -63,11 +63,12 @@ Verification was performed against a detached worktree at the exact merged main 
 
 ## 6. Change inventory, commands, and rollback
 
-Closure PR changes only:
+Closure PR changes only these documentation/governance records (the fourth file is required by `docs/README.md` §6 Rule 1):
 
 1. This closure record.
 2. `docs/05-implementation/11thonus-master-workflow.md` — dated currency note.
 3. `docs/changes/IMPLEMENTATION_CHANGES.md` — append-only changes-tracking entry.
+4. `docs/00-governance/documentation-changes-log.md` — required append-only documentation-change audit entry.
 
 Commands/evidence used included: `git fetch origin --prune`; `git rev-parse`; `git status`; `git diff --check`; PR/run/API queries via `gh pr view`, `gh api`, and `gh run view`; merge ancestry/file inventory via `git rev-list` and `git diff-tree`; exact-merged-SHA detached worktree; Firebase Emulator + PostgreSQL test execution (`pnpm exec firebase emulators:exec --only firestore --project demo-11thonus ... pnpm --filter functions test:postgres`); focused log/result inspection. Hygiene validation ran formatting, typecheck, ESLint, focused redemption/lock-order tests, and exact-head CI, as recorded in the implementation report and CI run.
 
