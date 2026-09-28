@@ -92,6 +92,18 @@ state was created.
 decision was necessary for this authorised outcome, so none was reopened. `DEC-SEC-003`'s residual
 quick-switch question and `DEC-LOY-013(a)`'s paused-programme edge remain exactly as they were.
 
+> **CORR-002 (2026-09-28) — one bounded clarification became necessary for the authorised outcome and
+> was recorded, not invented:** which Reward Program version governs a Loyalty Cycle opened by the
+> redemption continuation path. Per the programme principle (deferred decisions are resolved when the
+> current authorised outcome depends on them), a dated Notes addendum was appended to the existing
+> `DEC-LOY-008` (Status CONFIRMED unchanged; no new decision identifier): a Cycle's governing version
+> is the version of the FIRST Verified Unit allocated into it — the verify path opens under its
+> opening Purchase's creation-time snapshot (`DEC-PROD-014`); redemption opens under the first
+> pending position's version in forward-allocation order, or provisionally under the completed
+> Cycle's version when opened empty with first-future-allocation adoption in verify. Programme-
+> current-at-redemption is explicitly NOT approved. The CORR-001 "current version" determination is
+> superseded (see `IMPLEMENTATION_CHANGES.md` CORR-002 entry).
+
 ---
 
 ## 4. Implementation strategy
@@ -117,10 +129,23 @@ re-check existence/ownership/state → conditional `available → redeemed` → 
 Trust Events → Notification Intents → complete key). The client supplies only `businessId` and
 `rewardId`; the transport whitelist (`parseConfirmRedemptionRequest`) excludes every other field.
 
+> **CORRECTED (`CAPABILITY-6-REDEMPTION-ENGINE-001-CORR-002`).** The transaction above locked the
+> Reward FIRST and the stream/cycle afterwards — inverting the canonical global lock order
+> (idempotency → purchase → stream → cycle → reward → appends) and deadlocking with a concurrent
+> verify (PostgreSQL `40P01`: redemption held Reward + key-share(Cycle) wanting Stream while verify
+> held Stream wanting Cycle). The command now takes a non-locking business-scoped Reward peek for
+> lock-key discovery, then locks stream → governing cycle → Reward, with every precondition still
+> decided off the locked row plus the conditional transition. The next Cycle opens under the first
+> forward-allocated unit's version (provisional continuity version when opened empty), and verify
+> adopts the first allocation's version into an empty Cycle — programme-current-at-redemption is
+> removed. No second locking framework; the existing repository helpers are reused.
+
 **4.4 Concurrency.** Four independent layers, deliberately: the idempotency key, the row lock, the
 conditional `UPDATE … WHERE state = 'available'`, and the `redemptions_one_per_reward` UNIQUE
 constraint. Two authorised members confirming the same Reward simultaneously produce exactly one
-transition and exactly one `reward.redeemed` Trust Event.
+transition and exactly one `reward.redeemed` Trust Event. **CORR-002 adds the fifth, structural
+guarantee: canonical lock ordering, proven by deterministic lock-order tests including the old
+order reproducing the reported `40P01` on a live database.**
 
 ---
 
@@ -171,9 +196,24 @@ would invent a mechanism rather than reuse one.
 | Suite | Result |
 |---|---|
 | Unit / pure (`npm test`) | **164 files, 1894 tests — all pass** |
-| PostgreSQL (`npm run test:postgres`) | **10 files, 296 tests — all pass** |
+| PostgreSQL (`npm run test:postgres`) | **11 files, 303 tests — all pass** |
 | Firebase Emulator (`emulators:validate`) | **65 files, 864 passed / 3 skipped — exit 0** |
 | Typecheck (`npm run typecheck`) | clean |
+
+> **CORR-002 (2026-09-28) verification delta.** PostgreSQL grew from 10 files / 296 tests to 11 files
+> / 303: new `confirmRedemptionLockOrder.postgres.test.ts` (4 tests — both serializations through the
+> real repository helpers, true-concurrency B-blocks-on-A's-stream then resolves, and the OLD lock
+> order scripted manually reproducing the reported `40P01`), plus three post-redemption version-
+> binding scenarios in the redemption suite (39 tests: no-change continuity; V2-published-while-
+> waiting with a normal-path control proving identical Rewards; mixed-version pendings proving
+> first-pending governance and V1-terms threshold). The P1 REGRESSION test no longer deletes the
+> redemption-opened Cycle — it earns INTO it through the normal verify path and proves Reward B
+> belongs to it. Threshold assertions strengthened (exactly one current cycle / one next Reward /
+> governed Trust pair / `reward_available_customer` intent / no duplicates). Full-suite runs are
+> green except the known structural `platformFoundationReadiness` shared-DB flake (fails identically
+> on the pristine head; untouched) and slow-seed 5s-timeout flakes on this machine (same); both
+> pre-existing P3s. No schema change — no new migration; 0001→0020, 0019→0020 and the rollback-guard
+> paths remain green via the untouched migration suite (49 tests).
 
 New integration suite `confirmRedemptionCommand.postgres.test.ts` (**36 tests**) covers: state
 transition and failure atomicity (a late transaction failure rolls back Reward, Cycle, next Cycle,
@@ -209,7 +249,9 @@ fail-closed guard refuses rollback while redemption evidence exists.
   neither invokes nor modifies the Reward Program publication path. `createRewardProgram` /
   `publishRewardProgramVersion` appear in the new test file **only as test setup** for producing a real
   published program; no code under test reads, writes, or activates a publication snapshot. The
-  activation boundary is therefore not crossed and the fix is not absorbed here.
+  activation boundary is therefore not crossed and the fix is not absorbed here. **CORR-002
+  (2026-09-28): still NOT CROSSED** — the correction only reads published versions/current-cycle
+  data; `createNextRewardProgramVersion` joins the test-setup-only list alongside the above.
 - **Deployment status:** nothing deployed. No Cloudfire/hosting/database action was taken.
 - **Migration 0019 status:** not executed by this task. `0020` is authored but not applied to any
   deployed database; it is applied only in the local test database.

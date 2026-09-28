@@ -107,6 +107,13 @@ function mapRewardRow(row: RewardDbRow): RewardRow {
  * Locks the persisted Reward row for the current transaction. The lock is
  * what serialises concurrent confirmations; the caller re-reads `state`
  * from the LOCKED row (never from client input) before transitioning.
+ *
+ * Canonical lock order (`CAPABILITY-6-REDEMPTION-ENGINE-001-CORR-002`):
+ * this lock is taken only AFTER the stream and governing-cycle locks
+ * (idempotency → stream → cycle → reward → appends). Locking the Reward
+ * first inverts the verify path (which holds stream + cycle and then takes
+ * a key-share on the cycle through its reward insert) and deadlocks with
+ * PostgreSQL `40P01`. See `confirmRedemptionCommand` for the full order.
  */
 export async function lockRewardById(
   tx: PlatformPostgresTransaction,
@@ -115,6 +122,39 @@ export async function lockRewardById(
   const result = await tx.query<RewardDbRow>(`SELECT * FROM rewards WHERE id = $1 FOR UPDATE`, [
     rewardId,
   ]);
+  if (result.rows.length === 0) {
+    return null;
+  }
+  return mapRewardRow(result.rows[0]);
+}
+
+/**
+ * Non-locking read of one Reward row, scoped to the calling Business.
+ *
+ * Used ONLY for lock-key discovery: the redemption transaction must take
+ * the stream and governing-cycle locks BEFORE the Reward lock (canonical
+ * order), but the stream key and the governing cycle id live on the Reward
+ * row. This peek takes no lock, so it cannot participate in a lock-order
+ * inversion — and NOTHING read here is authority. Tenant, state, and every
+ * other precondition are re-read from the `FOR UPDATE` row taken later;
+ * the row is server-generated and immutable in every field this peek
+ * consumes, but the command does not rely on that: a Reward that changed
+ * between this peek and the lock is caught by the locked-row checks and
+ * the conditional transition.
+ *
+ * Scoped by Business so a foreign id takes no foreign-stream lock at all:
+ * a Reward of another Business (or a nonexistent id) simply reads as
+ * absent here, and the locked-row tenant check remains as defence in
+ * depth. Both cases report the identical indistinguishable not-found.
+ */
+export async function peekRewardScopeById(
+  db: Queryable,
+  params: { readonly rewardId: string; readonly businessId: string },
+): Promise<RewardRow | null> {
+  const result = await db.query<RewardDbRow>(
+    `SELECT * FROM rewards WHERE id = $1 AND business_id = $2`,
+    [params.rewardId, params.businessId],
+  );
   if (result.rows.length === 0) {
     return null;
   }

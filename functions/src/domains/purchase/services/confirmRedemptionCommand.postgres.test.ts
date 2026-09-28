@@ -42,6 +42,7 @@ import {
 } from "../../../infrastructure/postgres/migrationRunner";
 import { withPlatformTransaction } from "../../../infrastructure/postgres/postgresTransaction";
 import { createRewardProgram } from "../../rewardProgram/services/createRewardProgramCommand";
+import { createNextRewardProgramVersion } from "../../rewardProgram/services/createNextRewardProgramVersionCommand";
 import { publishRewardProgramVersion } from "../../rewardProgram/services/publishRewardProgramVersionCommand";
 import { insertQualifyingItem } from "../../qualifyingItem/repositories/qualifyingItemRepository";
 import { recordPurchase } from "./recordPurchaseCommand";
@@ -505,30 +506,30 @@ describe("confirmRedemption — state transition (DEC-LOY-018)", () => {
     );
   });
 
-  it("REGRESSION (independent review P1): after redemption the Customer can keep earning — the old Cycle no longer blocks the next one", async () => {
+  it("REGRESSION (independent review P1): after redemption the Customer keeps earning INTO the redemption-opened next Cycle", async () => {
     const world = await seedWorld();
     const rewardId = await availableRewardId(world);
     const result = await confirm(world, { userId: world.owner, rewardId });
+    const nextCycleId = result.nextLoyaltyCycleId;
 
-    // The review reproduced this exact database failure: while the completed
-    // Cycle remained `reward_available`, the partial unique index
-    // `loyalty_cycles_one_current_per_customer_program` rejected ANY new
-    // current Cycle for this customer+program, permanently. Remove the next
-    // Cycle the redemption opened, then prove the slot is genuinely free —
-    // which it was not before the correction.
-    await pool.query(`DELETE FROM loyalty_cycles WHERE id = $1`, [result.nextLoyaltyCycleId]);
-    const attempt = await pool.query(
-      `INSERT INTO loyalty_cycles
-         (business_id, customer_identity_id, reward_program_id, opened_under_version_id,
-          sequence_number, state, allocated_units, correlation_id)
-       SELECT business_id, customer_identity_id, reward_program_id, opened_under_version_id,
-              99, 'active', 0, 'probe'
-         FROM loyalty_cycles WHERE sequence_number = 1`,
-    );
-    expect(attempt.rowCount).toBe(1);
-    await pool.query(`DELETE FROM loyalty_cycles WHERE correlation_id = 'probe'`);
+    // The completed Cycle released the single-current-Cycle slot and the
+    // redemption-opened next Cycle now occupies it: a second current Cycle
+    // still cannot exist (DEC-LOY-002 partial unique index backstop).
+    await expect(
+      pool.query(
+        `INSERT INTO loyalty_cycles
+           (business_id, customer_identity_id, reward_program_id, opened_under_version_id,
+            sequence_number, state, allocated_units, correlation_id)
+         SELECT business_id, customer_identity_id, reward_program_id, opened_under_version_id,
+                99, 'active', 0, 'probe'
+           FROM loyalty_cycles WHERE id = $1`,
+        [nextCycleId],
+      ),
+    ).rejects.toThrow();
 
-    // And the real path: the Customer can now earn toward the NEXT Reward.
+    // The real path, WITHOUT deleting the redemption-created next Cycle:
+    // 10 fresh units through the normal verify path allocate directly into
+    // it and reach the next threshold.
     await earnUnits({
       businessId: world.businessId,
       recorderId: world.owner,
@@ -541,6 +542,15 @@ describe("confirmRedemption — state transition (DEC-LOY-018)", () => {
     });
     expect(rewards).toHaveLength(1);
     expect(rewards[0].state).toBe("available");
+
+    // Reward B belongs to the ACTUAL next Cycle the redemption opened —
+    // the Customer continued earning in it, not in a replacement.
+    expect(rewards[0].loyaltyCycleId).toBe(nextCycleId);
+    const next = await pool.query<{ state: string; allocated_units: number }>(
+      `SELECT state, allocated_units FROM loyalty_cycles WHERE id = $1`,
+      [nextCycleId],
+    );
+    expect(next.rows[0]).toEqual({ state: "reward_available", allocated_units: 10 });
 
     // Exactly one current Cycle at all times (DEC-LOY-002).
     const current = await pool.query<{ count: string }>(
@@ -1139,11 +1149,24 @@ describe("confirmRedemption — pending Verified Unit forward allocation (FD-PVL
 
     expect(result.unitsAllocatedForward).toBe(0);
     expect(result.nextReward).toBeNull();
-    const next = await pool.query<{ state: string; allocated_units: number }>(
-      `SELECT state, allocated_units FROM loyalty_cycles WHERE id = $1`,
-      [result.nextLoyaltyCycleId],
+    const next = await pool.query<{
+      state: string;
+      allocated_units: number;
+      opened_under_version_id: string;
+    }>(`SELECT state, allocated_units, opened_under_version_id FROM loyalty_cycles WHERE id = $1`, [
+      result.nextLoyaltyCycleId,
+    ]);
+    expect(next.rows[0].state).toBe("active");
+    expect(next.rows[0].allocated_units).toBe(0);
+    // Empty next Cycle: provisional continuity version (the completed
+    // Cycle's governor — no earning exists yet to bind). The first future
+    // verification adopts its own version before any unit lands
+    // (`CAPABILITY-6-REDEMPTION-ENGINE-001-CORR-002`).
+    const completed = await pool.query<{ opened_under_version_id: string }>(
+      `SELECT opened_under_version_id FROM loyalty_cycles WHERE id = $1`,
+      [result.completedLoyaltyCycleId],
     );
-    expect(next.rows[0]).toEqual({ state: "active", allocated_units: 0 });
+    expect(next.rows[0].opened_under_version_id).toBe(completed.rows[0].opened_under_version_id);
   });
 
   it("allocates pending units into the next Cycle in order, conserving total quantity", async () => {
@@ -1244,6 +1267,333 @@ describe("confirmRedemption — pending Verified Unit forward allocation (FD-PVL
     });
     expect(rewards).toHaveLength(1);
     expect(rewards[0].id).toBe(result.nextReward?.id);
+
+    // Threshold-crossing disclosure, asserted exactly:
+    // - exactly one current Cycle (the next one, `reward_available`);
+    // - exactly one next Reward (no duplicate via `rewards_one_per_cycle`);
+    // - the governed availability Trust pair for the threshold crossing;
+    // - the Customer availability intent anchored on THIS redemption.
+    const current = await pool.query<{ count: string }>(
+      `SELECT count(*) FROM loyalty_cycles
+        WHERE customer_identity_id = $1 AND state IN ('active','reward_available')`,
+      [customerId],
+    );
+    expect(Number(current.rows[0].count)).toBe(1);
+    const nextRewards = await pool.query<{ count: string }>(
+      `SELECT count(*) FROM rewards WHERE loyalty_cycle_id = $1`,
+      [result.nextLoyaltyCycleId],
+    );
+    expect(Number(nextRewards.rows[0].count)).toBe(1);
+    expect(result.nextReward?.state).toBe("available");
+    const rewardAvailableEvents = await pool.query<{ count: string }>(
+      `SELECT count(*) FROM trust_events
+        WHERE event_type = 'reward.available' AND subject_reward_id = $1`,
+      [result.nextReward?.id],
+    );
+    expect(Number(rewardAvailableEvents.rows[0].count)).toBe(1);
+    const cycleAvailableEvents = await pool.query<{ count: string }>(
+      `SELECT count(*) FROM trust_events
+        WHERE event_type = 'loyalty_cycle.reward_available'
+          AND subject_loyalty_cycle_id = $1`,
+      [result.nextLoyaltyCycleId],
+    );
+    expect(Number(cycleAvailableEvents.rows[0].count)).toBe(1);
+    const customerIntents = await pool.query<{ count: string }>(
+      `SELECT count(*) FROM notification_intents
+        WHERE intent_type = 'reward_available_customer'
+          AND source_redemption_id = $1`,
+      [result.redemption.id],
+    );
+    expect(Number(customerIntents.rows[0].count)).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Post-redemption Loyalty Cycle version binding
+// (`CAPABILITY-6-REDEMPTION-ENGINE-001-CORR-002`, DEC-LOY-008 addendum
+// 2026-09-28 / DEC-PROD-014).
+//
+// Product Truth under test: a Loyalty Cycle's governing version is the
+// version of the FIRST Verified Unit allocated into it — the same rule the
+// normal verify path implements by opening under its opening Purchase's
+// creation-time snapshot version. The programme version current at
+// redemption time MUST NOT govern the next Cycle: V1 earns "Free Coffee",
+// V2 earns "Free Cake", and equivalent earning must produce the same
+// Reward whichever path opened the Cycle.
+// ---------------------------------------------------------------------------
+
+async function currentVersionId(programId: string): Promise<string | null> {
+  const result = await pool.query<{ current_version_id: string | null }>(
+    `SELECT current_version_id FROM reward_programs WHERE id = $1`,
+    [programId],
+  );
+  return result.rows[0].current_version_id;
+}
+
+async function cycleVersion(cycleId: string): Promise<string> {
+  const result = await pool.query<{ opened_under_version_id: string }>(
+    `SELECT opened_under_version_id FROM loyalty_cycles WHERE id = $1`,
+    [cycleId],
+  );
+  return result.rows[0].opened_under_version_id;
+}
+
+async function rewardTerms(rewardId: string): Promise<{
+  versionId: string;
+  description: string;
+  cycleId: string;
+  state: string;
+}> {
+  const result = await pool.query<{
+    reward_program_version_id: string;
+    reward_description: string;
+    loyalty_cycle_id: string;
+    state: string;
+  }>(
+    `SELECT reward_program_version_id, reward_description, loyalty_cycle_id, state
+       FROM rewards WHERE id = $1`,
+    [rewardId],
+  );
+  const row = result.rows[0];
+  return {
+    versionId: row.reward_program_version_id,
+    description: row.reward_description,
+    cycleId: row.loyalty_cycle_id,
+    state: row.state,
+  };
+}
+
+/** Publishes a second program version with a different reward description. Setup only. */
+async function publishSecondVersion(params: {
+  businessId: string;
+  ownerId: string;
+  program: Program;
+  rewardDescription: string;
+}): Promise<string> {
+  const next = await createNextRewardProgramVersion(db, pool, {
+    userId: params.ownerId,
+    request: {
+      businessId: params.businessId,
+      rewardProgramId: params.program.programId,
+      rewardDescription: params.rewardDescription,
+      multipleUnitsAllowed: true,
+      sharedLoyaltyNumberAllowed: true,
+      effectiveFrom: new Date("2026-09-27T12:00:00.000Z"),
+      qualifyingItemIds: [params.program.qualifyingItemId],
+    } as never,
+    idempotencyKey: nextId("key"),
+    correlationId: nextId("corr"),
+  });
+  const published = await publishRewardProgramVersion(db, pool, {
+    userId: params.ownerId,
+    request: {
+      businessId: params.businessId,
+      rewardProgramId: params.program.programId,
+      versionId: next.id,
+    },
+    idempotencyKey: nextId("key"),
+    correlationId: nextId("corr"),
+  });
+  return published.id;
+}
+
+async function countCurrentCycles(customerId: string): Promise<number> {
+  const result = await pool.query<{ count: string }>(
+    `SELECT count(*) FROM loyalty_cycles
+      WHERE customer_identity_id = $1 AND state IN ('active','reward_available')`,
+    [customerId],
+  );
+  return Number(result.rows[0].count);
+}
+
+describe("confirmRedemption — post-redemption Cycle version binding (CORR-002)", () => {
+  it("Scenario 1 — no version change: the next Cycle follows the same version rule as normal opening", async () => {
+    const world = await seedWorld();
+    const v1 = await currentVersionId(world.program.programId);
+    const rewardId = await availableRewardId(world);
+
+    const result = await confirm(world, { userId: world.owner, rewardId });
+
+    // The completed Cycle was governed by V1, and the empty next Cycle
+    // provisionally continues V1 — identical to what the normal path would
+    // have opened for V1 earning.
+    expect(await cycleVersion(result.completedLoyaltyCycleId)).toBe(v1);
+    expect(await cycleVersion(result.nextLoyaltyCycleId)).toBe(v1);
+
+    await earnUnits({
+      businessId: world.businessId,
+      recorderId: world.owner,
+      program: world.program,
+      customer: world.customer,
+      quantity: 10,
+    });
+    const { rewards } = await listAvailableRewardsForCustomer(pool, {
+      customerIdentityId: world.customer.customerId,
+    });
+    expect(rewards).toHaveLength(1);
+    const terms = await rewardTerms(rewards[0].id);
+    expect(terms.cycleId).toBe(result.nextLoyaltyCycleId);
+    expect(terms.versionId).toBe(v1);
+    expect(terms.description).toBe("Free Coffee");
+    expect(await countCurrentCycles(world.customer.customerId)).toBe(1);
+  });
+
+  it("Scenario 2 — V2 published after Reward A was earned: equivalent new earning produces the same Reward on both paths", async () => {
+    const world = await seedWorld();
+    const v1 = await currentVersionId(world.program.programId);
+    const rewardAId = await availableRewardId(world);
+
+    // V2 ("Free Cake") publishes while Reward A waits to be redeemed.
+    const v2 = await publishSecondVersion({
+      businessId: world.businessId,
+      ownerId: world.owner,
+      program: world.program,
+      rewardDescription: "Free Cake",
+    });
+    expect(v2).not.toBe(v1);
+    expect(await currentVersionId(world.program.programId)).toBe(v2);
+
+    const result = await confirm(world, { userId: world.owner, rewardId: rewardAId });
+
+    // The already-earned Reward is NOT rebound by the publication it waited
+    // through, and the empty next Cycle does NOT take programme-current:
+    // it provisionally continues V1 until earning begins it.
+    expect((await rewardTerms(rewardAId)).versionId).toBe(v1);
+    expect((await rewardTerms(rewardAId)).description).toBe("Free Coffee");
+    expect(await cycleVersion(result.nextLoyaltyCycleId)).toBe(v1);
+
+    // New earning begins AFTER redemption (V2-bound purchases). The first
+    // unit adopts V2 into the redemption-opened Cycle — the same rule as a
+    // normally opened Cycle.
+    await earnUnits({
+      businessId: world.businessId,
+      recorderId: world.owner,
+      program: world.program,
+      customer: world.customer,
+      quantity: 10,
+    });
+    const { rewards } = await listAvailableRewardsForCustomer(pool, {
+      customerIdentityId: world.customer.customerId,
+    });
+    expect(rewards).toHaveLength(1);
+    const termsB = await rewardTerms(rewards[0].id);
+    expect(termsB.cycleId).toBe(result.nextLoyaltyCycleId);
+    expect(termsB.versionId).toBe(v2);
+    expect(termsB.description).toBe("Free Cake");
+    expect(await cycleVersion(result.nextLoyaltyCycleId)).toBe(v2);
+    expect(await countCurrentCycles(world.customer.customerId)).toBe(1);
+
+    // The normal-path control: a second customer earns the equivalent 10
+    // V2 units with their Cycle opened purely by verification. Same
+    // earning, same Reward — no path-dependent divergence.
+    const control = await seedCustomer();
+    await earnUnits({
+      businessId: world.businessId,
+      recorderId: world.owner,
+      program: world.program,
+      customer: control,
+      quantity: 10,
+    });
+    const controlRewards = await listAvailableRewardsForCustomer(pool, {
+      customerIdentityId: control.customerId,
+    });
+    expect(controlRewards.rewards).toHaveLength(1);
+    const termsN = await rewardTerms(controlRewards.rewards[0].id);
+    expect(termsN.versionId).toBe(v2);
+    expect(termsN.description).toBe("Free Cake");
+    expect(termsB.description).toBe(termsN.description);
+    expect(termsB.versionId).toBe(termsN.versionId);
+  });
+
+  it("Scenario 3 — pending units at redemption: the first pending unit in forward order governs, and later mixed fills do not rebind", async () => {
+    const world = await seedWorld();
+    const v1 = await currentVersionId(world.program.programId);
+    const rewardAId = await availableRewardId(world);
+    const customerId = world.customer.customerId;
+
+    // 4 V1 units overflow to pending (cycle 1 is full), then V2 publishes,
+    // then 3 V2 units overflow to pending behind them.
+    await earnUnits({
+      businessId: world.businessId,
+      recorderId: world.owner,
+      program: world.program,
+      customer: world.customer,
+      quantity: 4,
+    });
+    const v2 = await publishSecondVersion({
+      businessId: world.businessId,
+      ownerId: world.owner,
+      program: world.program,
+      rewardDescription: "Free Cake",
+    });
+    await earnUnits({
+      businessId: world.businessId,
+      recorderId: world.owner,
+      program: world.program,
+      customer: world.customer,
+      quantity: 3,
+    });
+    const pendingBefore = await pendingPositions(customerId);
+    expect(pendingBefore).toHaveLength(2);
+    // Deterministic forward order: the V1 overflow waits ahead of the V2
+    // overflow (same order the forward allocator consumes).
+    const versionsBefore = await pool.query<{ reward_program_version_id: string }>(
+      `SELECT reward_program_version_id FROM verified_unit_allocations
+        WHERE customer_identity_id = $1 AND state = 'pending'
+        ORDER BY created_at ASC, verified_unit_id ASC, allocation_order ASC`,
+      [customerId],
+    );
+    expect(versionsBefore.rows.map((r) => r.reward_program_version_id)).toEqual([v1, v2]);
+
+    const result = await confirm(world, { userId: world.owner, rewardId: rewardAId });
+
+    // The next Cycle is governed by the FIRST pending unit (V1) — even
+    // though V2 is programme-current at redemption time. Current-version
+    // binding would have produced "Free Cake" here; the approved rule
+    // produces "Free Coffee".
+    expect(await cycleVersion(result.nextLoyaltyCycleId)).toBe(v1);
+    expect(result.unitsAllocatedForward).toBe(7);
+    expect(result.nextReward).toBeNull();
+
+    // Each position keeps its own earning version (mixed fill under V1
+    // governance — exactly as a normally opened V1 Cycle fills).
+    const allocatedVersions = await pool.query<{
+      allocated_quantity: number;
+      reward_program_version_id: string;
+    }>(
+      `SELECT allocated_quantity, reward_program_version_id FROM verified_unit_allocations
+        WHERE loyalty_cycle_id = $1 AND state = 'allocated'
+        ORDER BY created_at ASC`,
+      [result.nextLoyaltyCycleId],
+    );
+    expect(allocatedVersions.rows).toHaveLength(2);
+    expect(allocatedVersions.rows[0]).toMatchObject({
+      allocated_quantity: 4,
+      reward_program_version_id: v1,
+    });
+    expect(allocatedVersions.rows[1]).toMatchObject({
+      allocated_quantity: 3,
+      reward_program_version_id: v2,
+    });
+
+    // 3 more V2 units complete the Cycle: the threshold Reward follows the
+    // FIRST unit's version (V1 "Free Coffee"), not the later fills.
+    await earnUnits({
+      businessId: world.businessId,
+      recorderId: world.owner,
+      program: world.program,
+      customer: world.customer,
+      quantity: 3,
+    });
+    const { rewards } = await listAvailableRewardsForCustomer(pool, {
+      customerIdentityId: customerId,
+    });
+    expect(rewards).toHaveLength(1);
+    const termsB = await rewardTerms(rewards[0].id);
+    expect(termsB.cycleId).toBe(result.nextLoyaltyCycleId);
+    expect(termsB.versionId).toBe(v1);
+    expect(termsB.description).toBe("Free Coffee");
+    expect(await countCurrentCycles(customerId)).toBe(1);
   });
 });
 

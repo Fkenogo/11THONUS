@@ -194,6 +194,58 @@ export async function openCycleUnderStreamLock(
   return mapCycleRow(cycle.rows[0]);
 }
 
+/**
+ * Binds an EMPTY Cycle to the first earning activity allocated into it
+ * (`CAPABILITY-6-REDEMPTION-ENGINE-001-CORR-002`, DEC-LOY-008 addendum
+ * 2026-09-28 / DEC-PROD-014).
+ *
+ * Product Truth: a Loyalty Cycle's governing version is the version of the
+ * FIRST Verified Unit allocated into it — the same rule the verify path
+ * has always implemented by opening a Cycle under its opening Purchase's
+ * creation-time snapshot version. A Cycle opened by a redemption is
+ * necessarily opened EMPTY (no earning activity exists yet to bind: it
+ * opens with a provisional continuity version purely to satisfy the
+ * non-null schema), so when the first future verification allocates into
+ * a Cycle that has never held a unit, the Cycle adopts that unit's
+ * version. After that moment the version is immutable: this update is
+ * conditional on `allocated_units = 0`, so it can never rebind a Cycle
+ * that already holds earning.
+ *
+ * `allocated_units` only ever increases (`addAllocatedUnitsToCycle` is the
+ * sole writer and it only adds; no reversal path decrements it), so `= 0`
+ * reliably means "no Verified Unit has ever been allocated here".
+ * Returns `null` when the Cycle is no longer empty — the caller fails
+ * closed (that outcome is impossible while holding the stream + cycle
+ * locks, so it indicates a bug, never a race).
+ *
+ * Relational safety: an empty Cycle has no Reward (`rewards_one_per_cycle`
+ * is created only at the threshold) and no redemption evidence (which
+ * names only the completed governing Cycle), so no
+ * `(id, opened_under_version_id)` dependent row can exist yet; allocation
+ * positions join the Cycle by id alone and keep their own unit version.
+ * The adopted version always belongs to the same program (the allocating
+ * Purchase's creation-bound version), preserving
+ * `loyalty_cycles_version_in_program`.
+ */
+export async function adoptCycleGoverningVersionForFirstAllocation(
+  tx: PlatformPostgresTransaction,
+  params: {
+    readonly cycleId: string;
+    readonly versionId: string;
+  },
+): Promise<LoyaltyCycleRow | null> {
+  const result = await tx.query<CycleDbRow>(
+    `UPDATE loyalty_cycles SET opened_under_version_id = $2, updated_at = now()
+       WHERE id = $1 AND allocated_units = 0
+       RETURNING *`,
+    [params.cycleId, params.versionId],
+  );
+  if (result.rows.length === 0) {
+    return null;
+  }
+  return mapCycleRow(result.rows[0]);
+}
+
 /** Adds allocated units to the locked Cycle; the 0–10 CHECK backstops overfill. */
 export async function addAllocatedUnitsToCycle(
   tx: PlatformPostgresTransaction,

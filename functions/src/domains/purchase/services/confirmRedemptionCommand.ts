@@ -21,14 +21,29 @@
  *  2. peek the idempotency key (a genuine same-key/same-request replay of
  *     an already-completed confirmation returns the stored result without
  *     re-running any precondition);
- *  3. one transaction: reserve the key → LOCK the Reward → re-check
- *     existence/ownership/state → re-evaluate authority AT the mutation
- *     boundary → conditional `available → redeemed` → write the redemption
- *     evidence row → complete the governing Loyalty Cycle
- *     (`reward_available → reward_redeemed`) → open the next Loyalty Cycle →
- *     forward-allocate pending Verified Units (reaching the threshold creates
- *     the next Reward) → Trust Events → Notification Intents → complete the
- *     key → COMMIT.
+ *  3. one transaction in canonical global lock order
+ *     (idempotency → stream → cycle → reward → appends): reserve the key →
+ *     NON-LOCKING Reward peek for lock-key discovery only → lock the
+ *     stream → lock the governing Cycle → LOCK the Reward → re-check
+ *     existence/ownership/state off the LOCKED row → re-evaluate authority
+ *     AT the mutation boundary → conditional `available → redeemed` →
+ *     write the redemption evidence row → complete the governing Loyalty
+ *     Cycle (`reward_available → reward_redeemed`) → open the next Loyalty
+ *     Cycle under the first forward-allocated unit's version (provisional
+ *     continuity version when opened empty) → forward-allocate pending
+ *     Verified Units (reaching the threshold creates the next Reward) →
+ *     Trust Events → Notification Intents → complete the key → COMMIT.
+ *
+ * The Reward lock NEVER precedes the stream/cycle locks: locking the
+ * Reward first and then inserting redemption evidence (which takes a
+ * key-share on the governing Cycle through its FKs) before locking the
+ * stream inverts the verify path — which holds stream + current-cycle and
+ * then takes a key-share on the cycle through its own reward insert — and
+ * deadlocks with PostgreSQL `40P01`
+ * (`CAPABILITY-6-REDEMPTION-ENGINE-001-CORR-002`). The pre-lock peek takes
+ * no lock, so it cannot invert anything; every precondition is still
+ * decided off the locked row plus the conditional transition, so no race
+ * opens between validation and mutation.
  *
  * Exactly-once is enforced at four independent layers: the idempotency
  * key, the `FOR UPDATE` lock, the conditional `UPDATE … WHERE state =
@@ -59,6 +74,7 @@ import { redemptionRequestHash } from "./purchaseRequestHash";
 import { authorizeRedemptionConfirm } from "./purchaseAuthorization";
 import {
   lockRewardById,
+  peekRewardScopeById,
   transitionRewardToRedeemed,
   insertRedemption,
 } from "../repositories/redemptionRepository";
@@ -77,10 +93,7 @@ import {
   markCycleRewardRedeemed,
   openCycleUnderStreamLock,
 } from "../repositories/loyaltyCycleRepository";
-import {
-  readProgramCurrentVersionId,
-  readVersionRewardTerms,
-} from "../repositories/purchaseProgramScopeRepository";
+import { readVersionRewardTerms } from "../repositories/purchaseProgramScopeRepository";
 import type { RedemptionRow, RewardRow } from "../models/purchase";
 import {
   purchaseIdempotencyConflictError,
@@ -190,7 +203,49 @@ export async function confirmRedemption(
       throw purchaseIdempotencyConflictError();
     }
 
-    // Lock first, then read every authoritative field off the LOCKED row.
+    // Canonical global lock order (idempotency → stream → cycle → reward
+    // → appends; `CAPABILITY-6-REDEMPTION-ENGINE-001-CORR-002`). The Reward
+    // id is known from the request but its stream key and governing cycle
+    // id live on the row, so the transaction peeks the row WITHOUT a lock
+    // purely to discover which stream/cycle locks to take. The peek takes
+    // no lock and decides nothing: existence, ownership, and state are all
+    // re-decided off the `FOR UPDATE` row below, and the conditional
+    // transition remains the backstop — so a Reward that changes between
+    // the peek and the lock cannot slip through.
+    //
+    // The peek is scoped to the calling Business, so a foreign id takes no
+    // foreign-stream lock at all and reads as absent — the same
+    // indistinguishable not-found a nonexistent id produces.
+    const peeked = await peekRewardScopeById(tx, {
+      rewardId,
+      businessId: params.businessId,
+    });
+    if (!peeked) {
+      throw redemptionRewardNotFoundError(rewardId);
+    }
+
+    // Stream first (serializes every same-customer/program lifecycle
+    // transaction — verify and redemption alike), exactly as the verify
+    // transaction does.
+    await ensureAndLockCycleStream(tx, {
+      businessId: peeked.businessId,
+      customerIdentityId: peeked.customerIdentityId,
+      rewardProgramId: peeked.rewardProgramId,
+    });
+
+    // Governing cycle BEFORE the Reward. This is the inversion the
+    // correction removes: previously the Reward was locked first and the
+    // redemption-evidence insert then held a key-share on this cycle while
+    // waiting for the stream — while a concurrent verify held the stream
+    // and waited for this same cycle (`lockCurrentCycle` `FOR UPDATE`
+    // conflicts with the key-share). PostgreSQL `40P01`.
+    const governingCycle = await lockCycleById(tx, peeked.loyaltyCycleId);
+    if (!governingCycle) {
+      throw redemptionCycleStateError("missing");
+    }
+
+    // Lock second, then read every authoritative field off the LOCKED row —
+    // never off the peek, never off the request.
     const locked = await lockRewardById(tx, rewardId);
     if (!locked) {
       throw redemptionRewardNotFoundError(rewardId);
@@ -259,33 +314,10 @@ export async function confirmRedemption(
       correlationId: params.correlationId,
     });
 
-    // ---------------------------------------------------------------------
-    // Loyalty Cycle lifecycle — TRD11 §11.26 ("close Loyalty Cycle; create
-    // next Loyalty Cycle; allocate pending Verified Units"), DEC-LOY-002,
-    // DEC-LOY-008/`FD-PVL-002` option (a), PRD06/TRD10 §10.11.2.
-    //
-    // The cycle is NOT complete when the Reward becomes available. It is
-    // `reward_available` — a CURRENT state (the partial unique index
-    // `loyalty_cycles_one_current_per_customer_program` and `lockCurrentCycle`
-    // both count `active`/`reward_available` as current). Redemption is the
-    // event that ends the Cycle's currency: only `reward_redeemed` releases
-    // the single-current-Cycle slot so the Customer can keep earning. Leaving
-    // the Cycle in `reward_available` blocks the next Cycle permanently.
-    //
-    // Lock ordering matches the verify transaction (stream before cycle); the
-    // Reward row is already locked above, and no code path takes stream before
-    // reward, so there is no cycle in the lock graph.
-    // ---------------------------------------------------------------------
-    await ensureAndLockCycleStream(tx, {
-      businessId: reward.businessId,
-      customerIdentityId: reward.customerIdentityId,
-      rewardProgramId: reward.rewardProgramId,
-    });
-
-    const governingCycle = await lockCycleById(tx, reward.loyaltyCycleId);
-    if (!governingCycle) {
-      throw redemptionCycleStateError("missing");
-    }
+    // The stream and governing-cycle locks above are already held (taken
+    // before the Reward lock, in canonical order), so the close below
+    // cannot wait on anything the verify path holds out of order — the
+    // `40P01` inversion is gone, not retried.
     const completedCycle = await markCycleRewardRedeemed(tx, reward.loyaltyCycleId);
     if (!completedCycle) {
       // Lost the conditional close (or the Cycle was never reward_available).
@@ -293,20 +325,39 @@ export async function confirmRedemption(
       throw redemptionCycleStateError(governingCycle.state);
     }
 
-    // Next Cycle opens under the programme's CURRENT version. DEC-PROD-014's
-    // creation-time snapshot binds a *Purchase Record*; a Cycle opened by a
-    // redemption has no Purchase to bind, and PRD06 §6 protects historical
-    // Cycles by requiring them to keep referencing the version that governed
-    // them — a Cycle opening now is governed by the rules in force now. If the
-    // programme has no current version (a degenerate state in which a Reward
-    // was nevertheless earned), fall back to the just-completed Cycle's
-    // governing version so the Customer can always continue earning.
-    const currentVersionId = await readProgramCurrentVersionId(tx, reward.rewardProgramId);
+    // Next-cycle version binding (`CAPABILITY-6-REDEMPTION-ENGINE-001-CORR-002`,
+    // DEC-LOY-008 addendum 2026-09-28 / DEC-PROD-014): a Cycle's governing
+    // version is the version of the FIRST Verified Unit allocated into it —
+    // the same rule the verify path implements by opening under its opening
+    // Purchase's creation-time snapshot version. The programme version that
+    // happens to be current at redemption time MUST NOT govern: it would
+    // make equivalent earning produce different Rewards depending on which
+    // path opened the cycle.
+    //
+    // The pending positions are listed BEFORE the open (still after the
+    // stream/cycle locks, so no order is inverted — no other path locks
+    // pending rows, and same-stream redemptions already serialize on the
+    // stream) because the FIRST position in deterministic forward-allocation
+    // order is the first unit the new Cycle will hold, hence its governor.
+    // With no pending units the Cycle opens EMPTY under the completed
+    // Cycle's version as a provisional continuity value (the non-null
+    // schema requires a version; no earning exists yet to bind) — and the
+    // verify path adopts the first future allocation's version before any
+    // unit lands (`adoptCycleGoverningVersionForFirstAllocation`), so the
+    // provisional value can never decide Reward terms.
+    const pendingPositions = await listPendingAllocationPositions(tx, {
+      customerIdentityId: reward.customerIdentityId,
+      rewardProgramId: reward.rewardProgramId,
+    });
+    const firstForwardVersionId =
+      pendingPositions.length > 0
+        ? pendingPositions[0].rewardProgramVersionId
+        : completedCycle.openedUnderVersionId;
     let nextCycle = await openCycleUnderStreamLock(tx, {
       businessId: reward.businessId,
       customerIdentityId: reward.customerIdentityId,
       rewardProgramId: reward.rewardProgramId,
-      openedUnderVersionId: currentVersionId ?? completedCycle.openedUnderVersionId,
+      openedUnderVersionId: firstForwardVersionId,
       correlationId: params.correlationId,
     });
 
@@ -319,10 +370,6 @@ export async function confirmRedemption(
     // reaches 10 it becomes `reward_available` (its own Reward) and the
     // remaining pending units wait for the following redemption, exactly as an
     // ordinary over-threshold verify leaves them pending.
-    const pendingPositions = await listPendingAllocationPositions(tx, {
-      customerIdentityId: reward.customerIdentityId,
-      rewardProgramId: reward.rewardProgramId,
-    });
     let capacity = LOYALTY_CYCLE_THRESHOLD - nextCycle.allocatedUnits;
     let allocatedForward = 0;
     const convertedPositionIds: string[] = [];
