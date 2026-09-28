@@ -460,7 +460,7 @@ describe("confirmRedemption — state transition (DEC-LOY-018)", () => {
     expect(persisted?.confirmedByUserId).toBe(world.owner);
   });
 
-  it("does NOT mutate the Loyalty Cycle — the cycle stays exactly reward_available", async () => {
+  it("completes the governing Cycle (reward_available → reward_redeemed) and opens the next one", async () => {
     const world = await seedWorld();
     const rewardId = await availableRewardId(world);
     const cycleRow = `SELECT state, allocated_units FROM loyalty_cycles
@@ -470,18 +470,85 @@ describe("confirmRedemption — state transition (DEC-LOY-018)", () => {
     ]);
     expect(before.rows[0]).toEqual({ state: "reward_available", allocated_units: 10 });
 
-    await confirm(world, { userId: world.owner, rewardId });
+    const result = await confirm(world, { userId: world.owner, rewardId });
 
+    // TRD11 §11.26 "close Loyalty Cycle"; `reward_redeemed` is a canonical
+    // stored Cycle state (PRD06 state-model note, TRD10 §10.11.2).
     const after = await pool.query<{ state: string; allocated_units: number }>(cycleRow, [
       rewardId,
     ]);
-    expect(after.rows[0]).toEqual({ state: "reward_available", allocated_units: 10 });
-    // No next cycle is created by redemption either.
-    const cycles = await pool.query<{ count: string }>(
-      `SELECT count(*) FROM loyalty_cycles WHERE customer_identity_id = $1`,
+    expect(after.rows[0]).toEqual({ state: "reward_redeemed", allocated_units: 10 });
+    expect(result.completedLoyaltyCycleId).toBe(
+      (
+        await pool.query<{ id: string }>(
+          `SELECT loyalty_cycle_id AS id FROM rewards WHERE id = $1`,
+          [rewardId],
+        )
+      ).rows[0].id,
+    );
+
+    // TRD11 §11.26 "create next Loyalty Cycle".
+    const cycles = await pool.query<{ state: string; sequence_number: number }>(
+      `SELECT state, sequence_number FROM loyalty_cycles
+        WHERE customer_identity_id = $1 ORDER BY sequence_number`,
       [world.customer.customerId],
     );
-    expect(Number(cycles.rows[0].count)).toBe(1);
+    expect(cycles.rows).toHaveLength(2);
+    expect(cycles.rows[1]).toEqual({ state: "active", sequence_number: 2 });
+    expect(result.nextLoyaltyCycleId).toBe(
+      (
+        await pool.query<{ id: string }>(
+          `SELECT id FROM loyalty_cycles WHERE sequence_number = 2 AND customer_identity_id = $1`,
+          [world.customer.customerId],
+        )
+      ).rows[0].id,
+    );
+  });
+
+  it("REGRESSION (independent review P1): after redemption the Customer can keep earning — the old Cycle no longer blocks the next one", async () => {
+    const world = await seedWorld();
+    const rewardId = await availableRewardId(world);
+    const result = await confirm(world, { userId: world.owner, rewardId });
+
+    // The review reproduced this exact database failure: while the completed
+    // Cycle remained `reward_available`, the partial unique index
+    // `loyalty_cycles_one_current_per_customer_program` rejected ANY new
+    // current Cycle for this customer+program, permanently. Remove the next
+    // Cycle the redemption opened, then prove the slot is genuinely free —
+    // which it was not before the correction.
+    await pool.query(`DELETE FROM loyalty_cycles WHERE id = $1`, [result.nextLoyaltyCycleId]);
+    const attempt = await pool.query(
+      `INSERT INTO loyalty_cycles
+         (business_id, customer_identity_id, reward_program_id, opened_under_version_id,
+          sequence_number, state, allocated_units, correlation_id)
+       SELECT business_id, customer_identity_id, reward_program_id, opened_under_version_id,
+              99, 'active', 0, 'probe'
+         FROM loyalty_cycles WHERE sequence_number = 1`,
+    );
+    expect(attempt.rowCount).toBe(1);
+    await pool.query(`DELETE FROM loyalty_cycles WHERE correlation_id = 'probe'`);
+
+    // And the real path: the Customer can now earn toward the NEXT Reward.
+    await earnUnits({
+      businessId: world.businessId,
+      recorderId: world.owner,
+      program: world.program,
+      customer: world.customer,
+      quantity: 10,
+    });
+    const { rewards } = await listAvailableRewardsForCustomer(pool, {
+      customerIdentityId: world.customer.customerId,
+    });
+    expect(rewards).toHaveLength(1);
+    expect(rewards[0].state).toBe("available");
+
+    // Exactly one current Cycle at all times (DEC-LOY-002).
+    const current = await pool.query<{ count: string }>(
+      `SELECT count(*) FROM loyalty_cycles
+        WHERE customer_identity_id = $1 AND state IN ('active','reward_available')`,
+      [world.customer.customerId],
+    );
+    expect(Number(current.rows[0].count)).toBe(1);
   });
 
   it("refuses to redeem an already-redeemed reward and leaves no second evidence row", async () => {
@@ -532,13 +599,44 @@ describe("confirmRedemption — tenant isolation", () => {
 
     // `a.owner` is fully authorised — in a, for a's own reward. Naming b's
     // reward against a's business must still fail: ownership is a property
-    // of the persisted Reward, never of the request.
+    // of the persisted Reward, never of the request. The outcome is
+    // deliberately the SAME not-found result a nonexistent id produces, so
+    // the difference between the two cannot be used to probe another
+    // tenant's Reward ids.
     await expect(confirm(a, { userId: a.owner, rewardId: bRewardId })).rejects.toMatchObject({
-      category: "AUTH_FORBIDDEN",
+      category: "RESOURCE_NOT_FOUND",
     });
 
     expect(await countRows("redemptions", bRewardId)).toBe(0);
     expect(await rewardState(bRewardId)).toBe("available");
+  });
+
+  it("reports a foreign reward identically to a nonexistent one (no cross-tenant enumeration)", async () => {
+    const a = await seedWorld();
+    const b = await seedWorld();
+    const foreignId = await availableRewardId(b);
+    const nonexistentId = "00000000-0000-4000-8000-000000000000";
+
+    const foreign = await confirm(a, { userId: a.owner, rewardId: foreignId }).catch((e) => e);
+    const nonexistent = await confirm(a, { userId: a.owner, rewardId: nonexistentId }).catch(
+      (e) => e,
+    );
+
+    expect(foreign.category).toBe(nonexistent.category);
+    // The message names the id the caller themselves supplied, so it differs
+    // only by that echoed input — never by whether the Reward exists or which
+    // tenant owns it. `toHttpsError` does not relay the message to the client.
+    expect(foreign.message).toBe(nonexistent.message.replace(nonexistentId, foreignId));
+    expect(foreign.message).toContain(foreignId);
+  });
+
+  it("rejects a malformed (non-UUID) reward id as not-found rather than a database error", async () => {
+    const world = await seedWorld();
+    // `rewards.id` is a UUID column; a non-UUID value would otherwise raise
+    // PostgreSQL 22P02 and surface as an internal error.
+    await expect(
+      confirm(world, { userId: world.owner, rewardId: "not-a-uuid" }),
+    ).rejects.toMatchObject({ category: "RESOURCE_NOT_FOUND" });
   });
 
   it("a membership in another Business confers no access, even with an explicit grant", async () => {
@@ -547,7 +645,9 @@ describe("confirmRedemption — tenant isolation", () => {
     const aRewardId = await availableRewardId(a);
 
     // A member of b, explicitly granted redemption.confirm, tries a's reward
-    // while naming b as the business. Permission alone is not ownership.
+    // while naming b as the business. Permission alone is not ownership. The
+    // outcome is the indistinguishable not-found, exactly as for any id that
+    // is not a Reward of the named Business.
     const intruder = nextId("intruder");
     await seedMembership({
       userId: intruder,
@@ -557,7 +657,7 @@ describe("confirmRedemption — tenant isolation", () => {
     });
 
     await expect(confirm(b, { userId: intruder, rewardId: aRewardId })).rejects.toMatchObject({
-      category: "AUTH_FORBIDDEN",
+      category: "RESOURCE_NOT_FOUND",
     });
     expect(await rewardState(aRewardId)).toBe("available");
   });
@@ -822,7 +922,12 @@ describe("confirmRedemption — idempotency and concurrency", () => {
       `SELECT count(*) FROM notification_intents WHERE source_redemption_id IS NOT NULL`,
     );
     expect(Number(intents.rows[0].count)).toBe(2);
-  });
+    // Two simultaneous full redemption transactions serialise on the Reward
+    // row lock; under full-suite load the loser can wait long enough to
+    // exceed vitest's 5s default per-test timeout, so this race carries an
+    // explicit timeout. The assertions above (not the timeout) prove
+    // exactly-once.
+  }, 30000);
 
   it("the same member double-clicking (identical key, simultaneous) commits exactly one transition", async () => {
     const world = await seedWorld();
@@ -851,7 +956,9 @@ describe("confirmRedemption — idempotency and concurrency", () => {
       [rewardId],
     );
     expect(Number(events.rows[0].count)).toBe(1);
-  });
+    // Same explicit timeout rationale as the two-member race above: two
+    // simultaneous full transactions under full-suite load.
+  }, 30000);
 
   it("the schema itself refuses a second redemption row for one reward (UNIQUE backstop)", async () => {
     const world = await seedWorld();
@@ -998,5 +1105,233 @@ describe("confirmRedemption — evidence and read consequences", () => {
       businessId: world.businessId,
     });
     expect(after.rewards).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Loyalty Cycle lifecycle + pending Verified Unit forward allocation
+// (TRD11 §11.26, DEC-LOY-002, DEC-LOY-008/`FD-PVL-002` option (a)).
+// ---------------------------------------------------------------------------
+
+async function pendingPositions(customerId: string) {
+  const result = await pool.query<{
+    id: string;
+    loyalty_cycle_id: string | null;
+    allocated_quantity: number;
+    state: string;
+  }>(
+    `SELECT id, loyalty_cycle_id, allocated_quantity, state
+       FROM verified_unit_allocations
+      WHERE customer_identity_id = $1 AND state = 'pending'
+      ORDER BY created_at, verified_unit_id, allocation_order`,
+    [customerId],
+  );
+  return result.rows;
+}
+
+describe("confirmRedemption — pending Verified Unit forward allocation (FD-PVL-002)", () => {
+  it("no pending units: the next Cycle is still created in the correct governed state", async () => {
+    const world = await seedWorld();
+    const rewardId = await availableRewardId(world);
+    expect(await pendingPositions(world.customer.customerId)).toHaveLength(0);
+
+    const result = await confirm(world, { userId: world.owner, rewardId });
+
+    expect(result.unitsAllocatedForward).toBe(0);
+    expect(result.nextReward).toBeNull();
+    const next = await pool.query<{ state: string; allocated_units: number }>(
+      `SELECT state, allocated_units FROM loyalty_cycles WHERE id = $1`,
+      [result.nextLoyaltyCycleId],
+    );
+    expect(next.rows[0]).toEqual({ state: "active", allocated_units: 0 });
+  });
+
+  it("allocates pending units into the next Cycle in order, conserving total quantity", async () => {
+    const world = await seedWorld();
+    const rewardId = await availableRewardId(world);
+    const customerId = world.customer.customerId;
+
+    // Earn 10 (fills cycle 1 → Reward), then 4 more which cannot fit and
+    // therefore become PENDING overflow (DEC-LOY-008 option (a)).
+    await earnUnits({
+      businessId: world.businessId,
+      recorderId: world.owner,
+      program: world.program,
+      customer: world.customer,
+      quantity: 4,
+    });
+    const before = await pendingPositions(customerId);
+    expect(before).toHaveLength(1);
+    expect(before[0].allocated_quantity).toBe(4);
+
+    const result = await confirm(world, { userId: world.owner, rewardId });
+
+    // FD-PVL-002: pending units apply forward once the reward is redeemed and
+    // the next cycle is created.
+    expect(result.unitsAllocatedForward).toBe(4);
+    expect(await pendingPositions(customerId)).toHaveLength(0);
+
+    const next = await pool.query<{ state: string; allocated_units: number }>(
+      `SELECT state, allocated_units FROM loyalty_cycles WHERE id = $1`,
+      [result.nextLoyaltyCycleId],
+    );
+    expect(next.rows[0]).toEqual({ state: "active", allocated_units: 4 });
+
+    // The whole pending position moved IN PLACE (row count unchanged), and a
+    // single pending_to_allocated history event was appended (design §15/§33.2(e)).
+    const moved = await pool.query<{ count: string }>(
+      `SELECT count(*) FROM verified_unit_allocations WHERE id = $1`,
+      [before[0].id],
+    );
+    expect(Number(moved.rows[0].count)).toBe(1);
+    const events = await pool.query<{ count: string }>(
+      `SELECT count(*) FROM verified_unit_allocation_events
+        WHERE allocation_position_id = $1 AND reason = 'pending_to_allocated'`,
+      [before[0].id],
+    );
+    expect(Number(events.rows[0].count)).toBe(1);
+  });
+
+  it("overflow crossing the threshold: 10 pending units make the NEXT reward available and leave the remainder pending", async () => {
+    const world = await seedWorld();
+    const rewardId = await availableRewardId(world);
+    const customerId = world.customer.customerId;
+
+    await earnUnits({
+      businessId: world.businessId,
+      recorderId: world.owner,
+      program: world.program,
+      customer: world.customer,
+      quantity: 13,
+    });
+    const before = await pendingPositions(customerId);
+    expect(before[0].allocated_quantity).toBe(13);
+
+    const result = await confirm(world, { userId: world.owner, rewardId });
+
+    // DEC-LOY-002 forbids two current Cycles, so allocation fills the new
+    // Cycle to exactly 10 and stops; the remaining 3 wait, exactly as an
+    // ordinary over-threshold verify leaves overflow pending.
+    expect(result.unitsAllocatedForward).toBe(10);
+    expect(result.nextReward).not.toBeNull();
+    expect(result.nextReward?.state).toBe("available");
+
+    const nextCycle = await pool.query<{ state: string; allocated_units: number }>(
+      `SELECT state, allocated_units FROM loyalty_cycles WHERE id = $1`,
+      [result.nextLoyaltyCycleId],
+    );
+    expect(nextCycle.rows[0]).toEqual({ state: "reward_available", allocated_units: 10 });
+
+    // Quantity-conserving split: 10 allocated + 3 still pending = 13, and the
+    // credit row is untouched.
+    const after = await pendingPositions(customerId);
+    expect(after).toHaveLength(1);
+    expect(after[0].allocated_quantity).toBe(3);
+    const allocatedSum = await pool.query<{ total: string }>(
+      `SELECT COALESCE(SUM(allocated_quantity),0) AS total FROM verified_unit_allocations
+        WHERE customer_identity_id = $1`,
+      [customerId],
+    );
+    const creditSum = await pool.query<{ total: string }>(
+      `SELECT COALESCE(SUM(quantity),0) AS total FROM verified_units WHERE customer_identity_id = $1`,
+      [customerId],
+    );
+    expect(Number(allocatedSum.rows[0].total)).toBe(Number(creditSum.rows[0].total));
+
+    // The customer now holds two rewards across two completed/available cycles.
+    const { rewards } = await listAvailableRewardsForCustomer(pool, {
+      customerIdentityId: customerId,
+    });
+    expect(rewards).toHaveLength(1);
+    expect(rewards[0].id).toBe(result.nextReward?.id);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Failure atomicity: every write in the redemption transaction commits
+// together or not at all.
+// ---------------------------------------------------------------------------
+
+describe("confirmRedemption — failure atomicity", () => {
+  it("a late transaction failure rolls back everything: Reward, Cycle, next Cycle, evidence, allocation, events, intents", async () => {
+    const world = await seedWorld();
+    const rewardId = await availableRewardId(world);
+    const customerId = world.customer.customerId;
+    const key = nextId("key");
+
+    // Pending overflow present BEFORE the redemption, so the test can prove
+    // no partial forward allocation survives the rollback.
+    await earnUnits({
+      businessId: world.businessId,
+      recorderId: world.owner,
+      program: world.program,
+      customer: world.customer,
+      quantity: 4,
+    });
+    expect(await pendingPositions(customerId)).toHaveLength(1);
+
+    // Force a failure AFTER all logical work: pre-seed a conflicting
+    // one-time `reward.redeemed` Trust Event for this Reward subject, so the
+    // command's own event insert violates
+    // `trust_events_one_time_subject_event` after the Reward transition, the
+    // redemption row, the Cycle close, the next-Cycle open and the forward
+    // allocation have all executed inside the same transaction.
+    await pool.query(
+      `INSERT INTO trust_events
+         (event_type, causal_purchase_record_id, source_purchase_record_event_id,
+          subject_type, subject_id, subject_reward_id,
+          business_id, customer_identity_id, actor_type, actor_id,
+          correlation_id, payload)
+       VALUES ('reward.redeemed', NULL, NULL,
+          'reward', $1, $1,
+          $2, $3, 'owner', $4,
+          'conflict-seed', '{}')`,
+      [rewardId, world.businessId, customerId, world.owner],
+    );
+
+    await expect(
+      confirm(world, { userId: world.owner, rewardId, idempotencyKey: key }),
+    ).rejects.toThrow();
+
+    // Nothing committed: Reward still available, governing Cycle untouched,
+    // no next Cycle, no redemption evidence, pending allocation undisturbed,
+    // no redemption Trust Events, no redemption notification intents.
+    expect(await rewardState(rewardId)).toBe("available");
+    const cycle = await pool.query<{ state: string; allocated_units: number }>(
+      `SELECT state, allocated_units FROM loyalty_cycles
+        WHERE id = (SELECT loyalty_cycle_id FROM rewards WHERE id = $1)`,
+      [rewardId],
+    );
+    expect(cycle.rows[0]).toEqual({ state: "reward_available", allocated_units: 10 });
+    const cycles = await pool.query<{ count: string }>(
+      `SELECT count(*) FROM loyalty_cycles WHERE customer_identity_id = $1`,
+      [customerId],
+    );
+    expect(Number(cycles.rows[0].count)).toBe(1);
+    expect(await countRows("redemptions", rewardId)).toBe(0);
+    const pendingAfter = await pendingPositions(customerId);
+    expect(pendingAfter).toHaveLength(1);
+    expect(pendingAfter[0].allocated_quantity).toBe(4);
+    const redeemedEvents = await pool.query<{ count: string }>(
+      `SELECT count(*) FROM trust_events
+        WHERE event_type IN ('reward.redeemed', 'loyalty_cycle.reward_redeemed')`,
+      [],
+    );
+    // Only the deliberately pre-seeded conflicting row survives.
+    expect(Number(redeemedEvents.rows[0].count)).toBe(1);
+    const redemptionIntents = await pool.query<{ count: string }>(
+      `SELECT count(*) FROM notification_intents WHERE source_redemption_id IS NOT NULL`,
+      [],
+    );
+    expect(Number(redemptionIntents.rows[0].count)).toBe(0);
+
+    // The idempotency reservation rolled back with the transaction: removing
+    // the poison row and retrying with the SAME key succeeds.
+    await pool.query(`DELETE FROM trust_events WHERE correlation_id = 'conflict-seed'`);
+    const result = await confirm(world, { userId: world.owner, rewardId, idempotencyKey: key });
+    expect(await rewardState(rewardId)).toBe("redeemed");
+    expect(result.nextLoyaltyCycleId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+    );
   });
 });

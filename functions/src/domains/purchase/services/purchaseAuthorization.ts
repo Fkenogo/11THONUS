@@ -18,6 +18,7 @@ import {
   evaluatePermission,
   evaluatePermissionWithContext,
 } from "../../permissions/service/evaluatePermissionService";
+import { recordSensitiveDecisionStandalone } from "../../permissions/service/permissionAuditService";
 import { getBusinessMembershipByUserAndBusiness } from "../../permissions/repositories/businessMembershipRepository";
 import { PurchaseDomainError } from "../models/purchaseErrors";
 import type { ErrorCategory } from "../../../shared/errors/errorCategories";
@@ -141,12 +142,43 @@ export async function authorizeRedemptionConfirm(
   db: Firestore,
   userId: string,
   businessId: string,
+  params: { readonly idempotencyKey: string; readonly requireAudit: boolean },
 ): Promise<{ readonly role: RedemptionConfirmerRole; readonly membershipId: string }> {
   const { decision, membership } = await evaluatePermissionWithContext(db, {
     userId,
     businessId,
     permission: "redemption.confirm",
   });
+
+  // `redemption.confirm` is registered with `auditRequirement: "mandatory"`, so
+  // every accountable decision about it — allow AND deny — must be audited
+  // (004C). The established `authorizeAndExecute` boundary composes that audit
+  // write with the protected mutation inside ONE Firestore transaction; this
+  // command's mutation is a PostgreSQL transaction, which cannot be nested in a
+  // Firestore one, so the audit is written through the same
+  // `recordSensitiveDecision` primitive in its own transaction. The invariant
+  // 004C protects — a sensitive decision is never acted on without its audit
+  // record — still holds, and it is written BEFORE this function returns, so
+  // no redemption can commit without it.
+  //
+  // `requireAudit: false` is used only for the mid-transaction revalidation
+  // (see `confirmRedemptionCommand`): that second read must not emit a second
+  // decision record for the same attempt, because the first evaluation of the
+  // same (userId, businessId, permission, idempotencyKey) is the accountable
+  // one and `recordSensitiveDecision` is itself idempotent per event.
+  if (params.requireAudit) {
+    await recordSensitiveDecisionStandalone(
+      db,
+      {
+        decision,
+        request: { userId, businessId, permission: "redemption.confirm" },
+        membershipId: membership.kind === "found" ? membership.membership.id : undefined,
+        idempotencyKey: params.idempotencyKey,
+      },
+      new Date(),
+    );
+  }
+
   if (!decision.allowed) {
     throw new PurchaseDomainError(
       (decision.errorCategory as ErrorCategory | undefined) ?? "AUTH_FORBIDDEN",

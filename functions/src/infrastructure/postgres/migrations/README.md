@@ -66,10 +66,19 @@ chain) with individual-attribution columns and **no** cancellation or
 reversal fields (`DEC-LOY-004`); two new governed Trust Event types
 (`reward.redeemed`, `loyalty_cycle.reward_redeemed`) with the causal
 Purchase columns made NULLABLE under a shape CHECK that keeps them NOT NULL
-for every purchase-caused type; and two new governed Notification Intent
+for every purchase-caused type — and, by the CORR-001 correction, a widened
+causation shape for the existing availability pair (`reward.available` /
+`loyalty_cycle.reward_available`, plus the `reward_available_customer`
+intent): a forward allocation of pending Verified Units into the newly opened
+Cycle can carry it straight to the threshold and make the next Reward
+available under redemption causation (NULL Purchase columns, anchored on the
+Redemption), because those units came from several Purchases and have no
+single causal Purchase Record; and two new governed Notification Intent
 types (`reward_redeemed_customer`, `reward_redeemed_business`) anchored on
 a new `source_redemption_id` FK with the same per-recipient dedup the
-purchase intents have. `purchase_outbox` is deliberately NOT widened — it
+purchase intents have. The `0020` down migration refuses outright when any
+redemption evidence row exists (fail-closed guard — recovery of a populated
+database requires a pre-0020 backup). `purchase_outbox` is deliberately NOT widened — it
 is Purchase-Record-scoped and a Business-confirmed redemption has no causal
 Purchase Record. See
 `docs/05-implementation/reports/capability-6-redemption-engine-001-implementation-report-2026-09-27.md`

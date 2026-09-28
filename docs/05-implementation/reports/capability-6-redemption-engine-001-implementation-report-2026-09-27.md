@@ -38,10 +38,22 @@ Business read) already filter `state = 'available'`, so a redeemed Reward disapp
 no read-model query change.
 
 **Loyalty cycle domain.** A cycle is opened under the stream lock, accumulates verified units, and at
-exactly 10 flips to `reward_available` in the *same* transaction that creates the Reward. It is
-therefore already complete when the Reward becomes available. **Redemption requires no cycle
-mutation**: no closure, no next-cycle creation, no overflow/pending movement. Confirmed by reading
-`verifyPurchaseCommand.ts` and proven by an explicit regression test.
+exactly 10 flips to `reward_available` in the *same* transaction that creates the Reward.
+
+> **CORRECTED (`CAPABILITY-6-REDEMPTION-ENGINE-001-CORR-001`).** The original version of this report
+> stated the opposite — that the cycle is "already complete when the Reward becomes available" and that
+> "redemption requires no cycle mutation". **That was wrong, and independent review proved it against
+> a live database.** `reward_available` is a *current* cycle state: both
+> `loyalty_cycles_one_current_per_customer_program` and `lockCurrentCycle` count
+> `active`/`reward_available` as current. A cycle left in `reward_available` therefore keeps the
+> single-current-cycle slot taken, and the next cycle can never be opened — the Customer could never
+> earn again after redeeming. The canonical stored state that ends a cycle, `reward_redeemed`, exists
+> in PRD06, TRD10 §10.11.2 and the `0010` schema CHECK but had **no writer anywhere in the
+> repository**. TRD11 §11.26 requires the redemption flow to "close Loyalty Cycle; create next
+> Loyalty Cycle; allocate pending Verified Units"; DEC-LOY-002 and DEC-LOY-008/`FD-PVL-002`
+> option (a) define what that means. Redemption now performs all of it in the same transaction as the
+> Reward transition. The test that previously asserted "does NOT mutate the Loyalty Cycle" was
+> removed and replaced with the Product-Truth lifecycle tests.
 
 **Authorization architecture.** Permission catalogues are per-domain modules registered into the
 closed `SENSITIVE_PERMISSION_IDS` set; `evaluateAuthorizationDecision` is a pure function and
@@ -159,17 +171,27 @@ would invent a mechanism rather than reuse one.
 | Suite | Result |
 |---|---|
 | Unit / pure (`npm test`) | **164 files, 1894 tests — all pass** |
-| PostgreSQL + Firestore Emulator (`npm run test:postgres`) | **10 files, 288 tests — all pass** |
+| PostgreSQL (`npm run test:postgres`) | **10 files, 296 tests — all pass** |
+| Firebase Emulator (`emulators:validate`) | **65 files, 864 passed / 3 skipped — exit 0** |
 | Typecheck (`npm run typecheck`) | clean |
 
-New integration suite `confirmRedemptionCommand.postgres.test.ts` (**29 tests**) covers: state
-transition and its atomicity; explicit proof the Cycle is not mutated and no next cycle is created;
-already-redeemed and non-redeemable-state rejection; tenant isolation in both directions; the full
+New integration suite `confirmRedemptionCommand.postgres.test.ts` (**36 tests**) covers: state
+transition and failure atomicity (a late transaction failure rolls back Reward, Cycle, next Cycle,
+evidence, allocation, events and intents, and the idempotency reservation with them); **the
+governed Loyalty Cycle lifecycle — `reward_available →
+reward_redeemed`, next-Cycle creation, and pending Verified Unit forward allocation including the
+quantity-conserving split at the threshold, plus a regression test that reproduces the independent
+review's database failure and proves the Customer can keep earning**; already-redeemed and
+non-redeemable-state rejection; tenant isolation in both directions with cross-tenant enumeration
+resistance; the full
 Owner / Manager / Staff / Platform Administrator / Customer permission matrix including revoke and
 re-grant; live re-resolution after revocation and after suspension; grant confers no unrelated
-permission; idempotent replay, key conflict, two-member race, and double-click; the UNIQUE schema
+permission; idempotent replay, key conflict, two-member race, and double-click (the two
+simultaneous-transaction races carry explicit 30s timeouts — the corrected transaction is heavier
+and exceeded vitest's 5s default under full-suite load); the UNIQUE schema
 backstop; Trust Event pair with NULL Purchase causation; both notification intents; and both
-available-reward reads.
+available-reward reads. `rewardProgramMigrations.postgres.test.ts` additionally proves the `0020`
+fail-closed guard refuses rollback while redemption evidence exists.
 
 ---
 

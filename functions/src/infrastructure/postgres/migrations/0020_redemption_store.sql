@@ -23,14 +23,14 @@
 --    command's conditional `available → redeemed` transition and the
 --    one-time Trust dedup below.
 -- C. `trust_events`: two new governed event types (`reward.redeemed`,
---    `loyalty_cycle.reward_redeemed`) mirroring the availability pair
---    (`reward.available` + `loyalty_cycle.reward_available`). Redemption is
---    caused by a Business confirmation, not by a Purchase lifecycle
---    transition, so the causal Purchase columns become NULLABLE — with a
---    shape CHECK preserving the spine invariant for every purchase-caused
---    type (still NOT NULL there) and requiring NULL there for
---    redemption-caused types. The one-time subject-event dedup index covers
---    the two new types (lifetime uniqueness per subject).
+--    `loyalty_cycle.reward_redeemed`) plus a widened causation shape for
+--    the existing availability pair. Redemption is caused by a Business
+--    confirmation, not by a Purchase lifecycle transition, so the causal
+--    Purchase columns become NULLABLE — with a shape CHECK preserving the
+--    spine invariant for every purchase-caused type (still NOT NULL there)
+--    and requiring NULL for redemption-caused types. The one-time
+--    subject-event dedup index covers the two new types (lifetime
+--    uniqueness per subject).
 -- D. `notification_intents`: two new governed intent types
 --    (`reward_redeemed_customer`, `reward_redeemed_business` — PRD07 §18,
 --    TRD11 §11.26). Redemption intents are anchored on the redemption, not
@@ -92,6 +92,22 @@ CREATE INDEX redemptions_business_idx ON redemptions (business_id, redeemed_at D
 CREATE INDEX redemptions_customer_idx ON redemptions (customer_identity_id, redeemed_at DESC);
 
 -- B. Trust Events: governed redemption disclosure.
+--
+-- Redemption is caused by a Business confirmation, not by a Purchase
+-- lifecycle transition, so it has no causal Purchase Record. The causal
+-- Purchase columns therefore become NULLABLE for the redemption-caused
+-- types, and the shape CHECK below keeps them strictly NOT NULL for every
+-- type that really is Purchase-caused.
+--
+-- `reward.available` and `loyalty_cycle.reward_available` are caused by a
+-- Purchase ONLY when the threshold is crossed by a fresh verification. They
+-- are ALSO legitimately caused by a redemption, because a forward
+-- allocation of pending Verified Units into the newly opened Cycle can
+-- carry that Cycle straight to the 10-unit threshold and make the next
+-- Reward available at that moment (BR-064/FR-RL-001). Those two types
+-- therefore accept NULL causation; the Purchase-lifecycle types still may
+-- not. The one-time subject-event dedup index continues to cover them all
+-- (lifetime uniqueness per subject).
 ALTER TABLE trust_events DROP CONSTRAINT trust_events_event_type_check;
 ALTER TABLE trust_events ADD CONSTRAINT trust_events_event_type_check
   CHECK (event_type IN ('purchase.recorded','purchase.verified',
@@ -103,10 +119,18 @@ ALTER TABLE trust_events ALTER COLUMN source_purchase_record_event_id DROP NOT N
 ALTER TABLE trust_events ADD CONSTRAINT trust_events_causal_shape CHECK (
   (event_type IN ('purchase.recorded','purchase.verified',
     'purchase.rejected','purchase.disputed','verified_units.issued',
-    'loyalty_cycle.allocated','loyalty_cycle.reward_available',
-    'reward.available')
+    'loyalty_cycle.allocated')
     AND causal_purchase_record_id IS NOT NULL
     AND source_purchase_record_event_id IS NOT NULL) OR
+  -- The availability pair is caused either way round, but exactly one way:
+  -- a fresh verification anchors it on its Purchase Record, and a redemption
+  -- forward-allocation anchors it on the Redemption (it has no single causal
+  -- Purchase Record, because the units came from several).
+  (event_type IN ('reward.available','loyalty_cycle.reward_available')
+    AND ((causal_purchase_record_id IS NOT NULL
+        AND source_purchase_record_event_id IS NOT NULL)
+      OR (causal_purchase_record_id IS NULL
+        AND source_purchase_record_event_id IS NULL))) OR
   (event_type IN ('reward.redeemed','loyalty_cycle.reward_redeemed')
     AND causal_purchase_record_id IS NULL
     AND source_purchase_record_event_id IS NULL));
@@ -128,11 +152,22 @@ ALTER TABLE notification_intents ALTER COLUMN source_purchase_record_event_id DR
 ALTER TABLE notification_intents ADD COLUMN source_redemption_id UUID NULL REFERENCES redemptions (id) ON DELETE RESTRICT;
 ALTER TABLE notification_intents ADD CONSTRAINT notification_intents_source_shape CHECK (
   (intent_type IN ('purchase_recorded_customer','purchase_verified_business',
-    'purchase_rejected_business','purchase_disputed_business',
-    'reward_available_customer')
+    'purchase_rejected_business','purchase_disputed_business')
     AND purchase_record_id IS NOT NULL
     AND source_purchase_record_event_id IS NOT NULL
     AND source_redemption_id IS NULL) OR
+  -- `reward_available_customer` is governed (PRD07 §18) whenever a Reward
+  -- becomes available. That is normally a Purchase-driven threshold
+  -- crossing, but a redemption can also cause it when forward-allocating
+  -- pending Verified Units into the new Cycle reaches 10 — and that one has
+  -- no single causal Purchase Record (the units came from several), so it is
+  -- anchored on the redemption instead.
+  (intent_type = 'reward_available_customer'
+    AND (
+      (purchase_record_id IS NOT NULL AND source_purchase_record_event_id IS NOT NULL
+        AND source_redemption_id IS NULL)
+      OR (purchase_record_id IS NULL AND source_purchase_record_event_id IS NULL
+        AND source_redemption_id IS NOT NULL))) OR
   (intent_type IN ('reward_redeemed_customer','reward_redeemed_business')
     AND purchase_record_id IS NULL
     AND source_purchase_record_event_id IS NULL

@@ -16,9 +16,14 @@
  * (`UNIQUE (reward_id)`) makes a second redemption row impossible even if
  * the application check were bypassed.
  *
- * No cycle mutation: a cycle is already `reward_available` (complete) when
- * the Reward is created, and stays exactly that way. Redemption moves only
- * the Reward's own state and records who confirmed it.
+ * Cycle lifecycle (`CAPABILITY-6-REDEMPTION-ENGINE-001-CORR-001`, TRD11
+ * §11.26): `reward_available` is a CURRENT cycle state — the partial unique
+ * index `loyalty_cycles_one_current_per_customer_program` and
+ * `lockCurrentCycle` both count `active`/`reward_available` as current — so
+ * the governing Cycle is closed `reward_available → reward_redeemed` by the
+ * redemption command in the same transaction, the next Cycle is opened, and
+ * pending Verified Units forward-allocate into it. Only `reward_redeemed`
+ * releases the single-current-Cycle slot (DEC-LOY-002).
  */
 
 import type { PoolClient } from "pg";

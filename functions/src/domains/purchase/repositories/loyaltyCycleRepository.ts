@@ -115,6 +115,26 @@ function mapCycleRow(row: CycleDbRow): LoyaltyCycleRow {
   };
 }
 
+/**
+ * Locks one Cycle by id, whatever its state. Used by the redemption
+ * transaction to read the governing Cycle's state before the conditional
+ * `reward_available → reward_redeemed` close, so a lost race can be reported
+ * against the real state rather than a guess.
+ */
+export async function lockCycleById(
+  tx: PlatformPostgresTransaction,
+  cycleId: string,
+): Promise<LoyaltyCycleRow | null> {
+  const result = await tx.query<CycleDbRow>(
+    `SELECT * FROM loyalty_cycles WHERE id = $1 FOR UPDATE`,
+    [cycleId],
+  );
+  if (result.rows.length === 0) {
+    return null;
+  }
+  return mapCycleRow(result.rows[0]);
+}
+
 /** The single current (`active`/`reward_available`) Cycle, locked. Null when none exists yet. */
 export async function lockCurrentCycle(
   tx: PlatformPostgresTransaction,
@@ -199,6 +219,37 @@ export async function markCycleRewardAvailable(
       RETURNING *`,
     [cycleId],
   );
+  return mapCycleRow(result.rows[0]);
+}
+
+/**
+ * Completes the governing Cycle at redemption (`CAPABILITY-6-REDEMPTION-ENGINE-001`
+ * correction, TRD11 §11.26 "close Loyalty Cycle", DEC-LOY-002).
+ *
+ * `reward_redeemed` is a canonical stored Cycle state (PRD06 §state-model note;
+ * TRD10 §10.11.2 `status`), and it is the ONLY state that ends a Cycle's
+ * currency: the partial unique index `loyalty_cycles_one_current_per_customer_program`
+ * and `lockCurrentCycle` treat `active`/`reward_available` as "current". A Cycle
+ * left in `reward_available` therefore still counts as current and blocks the
+ * next Cycle forever.
+ *
+ * CONDITIONAL on `state = 'reward_available'` and returns `null` when the Cycle
+ * is not in that state, so a lost race fails closed rather than closing a Cycle
+ * that never held a redeemable Reward.
+ */
+export async function markCycleRewardRedeemed(
+  tx: PlatformPostgresTransaction,
+  cycleId: string,
+): Promise<LoyaltyCycleRow | null> {
+  const result = await tx.query<CycleDbRow>(
+    `UPDATE loyalty_cycles SET state = 'reward_redeemed', updated_at = now()
+      WHERE id = $1 AND state = 'reward_available'
+      RETURNING *`,
+    [cycleId],
+  );
+  if (result.rows.length === 0) {
+    return null;
+  }
   return mapCycleRow(result.rows[0]);
 }
 
@@ -319,6 +370,140 @@ export async function sumAllocatedPositionsForCycle(
     [cycleId],
   );
   return Number(result.rows[0].total);
+}
+
+/**
+ * The Customer's outstanding PENDING Verified Unit positions for one
+ * Reward Program, in the deterministic forward-allocation order fixed by the
+ * `PLATFORM-BASELINE-006` design §15 ("`(occurred_at, verified_unit_id,
+ * allocation_order)` order") and backed by the existing
+ * `verified_unit_allocations_pending_idx`, so the same index serves both the
+ * filter and the ordering.
+ *
+ * Locked `FOR UPDATE` because a redemption converts them: two redemptions
+ * racing the same Customer+Program must serialise here rather than both
+ * converting the same pending row. (Both would already serialise on the
+ * shared `loyalty_cycle_streams` parent lock, which every cycle-closing
+ * transaction takes first — this lock is defence in depth for the positions
+ * themselves.)
+ */
+export async function listPendingAllocationPositions(
+  tx: PlatformPostgresTransaction,
+  params: { readonly customerIdentityId: string; readonly rewardProgramId: string },
+): Promise<AllocationPositionRow[]> {
+  const result = await tx.query<PositionDbRow>(
+    `SELECT * FROM verified_unit_allocations
+      WHERE customer_identity_id = $1 AND reward_program_id = $2 AND state = 'pending'
+      ORDER BY created_at ASC, verified_unit_id ASC, allocation_order ASC
+      FOR UPDATE`,
+    [params.customerIdentityId, params.rewardProgramId],
+  );
+  return result.rows.map(mapPositionRow);
+}
+
+export type ConvertPendingPositionParams = {
+  readonly position: AllocationPositionRow;
+  readonly loyaltyCycleId: string;
+  /** How much of this position moves into the new Cycle (1..position quantity). */
+  readonly quantity: number;
+  readonly correlationId: string;
+};
+
+export type ConvertPendingPositionResult = {
+  /** The CURRENT position row that now holds the allocated quantity. */
+  readonly allocatedPositionId: string;
+  readonly allocatedQuantity: number;
+  /** `0` when the whole position moved in place (no remainder row exists). */
+  readonly remainingPendingQuantity: number;
+};
+
+/**
+ * Moves part or all of one PENDING Verified Unit position into the newly
+ * opened Cycle — the forward allocation `FD-PVL-002` option (a) / `DEC-LOY-008`
+ * requires after a Reward is redeemed and the next Cycle is created.
+ *
+ * Two governed shapes, both quantity-conserving (design §15, §33.2(e)/(H)):
+ *
+ * - **Whole position fits** → converted IN PLACE (`pending → allocated` on the
+ *   SAME row). Row count is unchanged, so `SUM(positions)` — the hard
+ *   conservation invariant `credit.quantity = SUM(current positions)` — is
+ *   preserved with no new quantity row ever created.
+ * - **Position exceeds the remaining capacity** → quantity-conserving SPLIT:
+ *   the existing pending row keeps the remainder, and ONE new CURRENT position
+ *   row carries the allocated part. The credit row is never touched and the
+ *   per-credit sum still equals the credit quantity.
+ *
+ * Every movement appends exactly one `pending_to_allocated` allocation event
+ * (history), which the table's shape CHECK already requires to carry
+ * `from_cycle_id IS NULL` and `to_cycle_id IS NOT NULL`.
+ */
+export async function convertPendingPositionToAllocated(
+  tx: PlatformPostgresTransaction,
+  params: ConvertPendingPositionParams,
+): Promise<ConvertPendingPositionResult> {
+  const { position, loyaltyCycleId, quantity, correlationId } = params;
+  if (quantity < 1 || quantity > position.allocatedQuantity) {
+    throw new Error(
+      `Refusing to convert ${quantity} of a ${position.allocatedQuantity}-unit pending position.`,
+    );
+  }
+  const remainder = position.allocatedQuantity - quantity;
+
+  let allocatedPositionId: string;
+  if (remainder === 0) {
+    const moved = await tx.query<PositionDbRow>(
+      `UPDATE verified_unit_allocations
+          SET loyalty_cycle_id = $1, state = 'allocated', updated_at = now()
+        WHERE id = $2 AND state = 'pending' AND loyalty_cycle_id IS NULL
+        RETURNING *`,
+      [loyaltyCycleId, position.id],
+    );
+    if (moved.rows.length === 0) {
+      throw new Error(`Pending allocation position ${position.id} was no longer convertible.`);
+    }
+    allocatedPositionId = position.id;
+  } else {
+    const kept = await tx.query<PositionDbRow>(
+      `UPDATE verified_unit_allocations
+          SET allocated_quantity = $1, updated_at = now()
+        WHERE id = $2 AND state = 'pending' AND loyalty_cycle_id IS NULL
+        RETURNING *`,
+      [remainder, position.id],
+    );
+    if (kept.rows.length === 0) {
+      throw new Error(`Pending allocation position ${position.id} was no longer splittable.`);
+    }
+    const created = await insertAllocationPosition(tx, {
+      verifiedUnitId: position.verifiedUnitId,
+      loyaltyCycleId,
+      businessId: position.businessId,
+      customerIdentityId: position.customerIdentityId,
+      rewardProgramId: position.rewardProgramId,
+      rewardProgramVersionId: position.rewardProgramVersionId,
+      allocatedQuantity: quantity,
+      allocationOrder: position.allocationOrder,
+      state: "allocated",
+    });
+    allocatedPositionId = created.id;
+  }
+
+  await appendAllocationEvent(tx, {
+    allocationPositionId: allocatedPositionId,
+    verifiedUnitId: position.verifiedUnitId,
+    fromState: "pending",
+    toState: "allocated",
+    fromCycleId: null,
+    toCycleId: loyaltyCycleId,
+    quantity,
+    reason: "pending_to_allocated",
+    correlationId,
+  });
+
+  return {
+    allocatedPositionId,
+    allocatedQuantity: quantity,
+    remainingPendingQuantity: remainder,
+  };
 }
 
 type AllocationEventDbRow = {

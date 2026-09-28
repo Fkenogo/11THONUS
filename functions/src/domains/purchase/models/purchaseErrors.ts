@@ -115,18 +115,6 @@ export function redemptionRewardNotFoundError(rewardId: string): PurchaseDomainE
 }
 
 /**
- * The caller's Business membership does not own the Reward. Kept
- * indistinguishable from a not-found Reward for a caller with no other
- * relationship to it, so tenant probing learns nothing.
- */
-export function redemptionTenantIsolationError(): PurchaseDomainError {
-  return new PurchaseDomainError(
-    "AUTH_FORBIDDEN",
-    "Not authorized to redeem this Reward: it belongs to a different Business.",
-  );
-}
-
-/**
  * The Reward is not in the one state Product Truth permits redemption from
  * (`available`) — already `redeemed`, or otherwise not redeemable. There
  * is no other transition available to this command, and no reversal,
@@ -136,5 +124,19 @@ export function redemptionStaleStateError(actual: string): PurchaseDomainError {
   return new PurchaseDomainError(
     "INVALID_STATE_TRANSITION",
     `Reward cannot be redeemed from state "${actual}" (expected "available").`,
+  );
+}
+
+/**
+ * The Reward's governing Loyalty Cycle was not in `reward_available`, so it
+ * cannot be closed as a redeemed Cycle. Fail closed rather than redeem a
+ * Reward whose Cycle lifecycle is not what Product Truth describes — the whole
+ * transaction (Reward state, redemption evidence, Trust Events, intents) rolls
+ * back, so no partial redemption can survive.
+ */
+export function redemptionCycleStateError(actual: string): PurchaseDomainError {
+  return new PurchaseDomainError(
+    "INVALID_STATE_TRANSITION",
+    `The Reward's governing Loyalty Cycle cannot be completed from state "${actual}" (expected "reward_available").`,
   );
 }
