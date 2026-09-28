@@ -4,7 +4,7 @@
  * Grant/revoke administration for another membership's `PermissionOverride`
  * configuration — governed by `staff.assignPermissions`
  * (`sensitivePermissionCatalogue.ts` — Owner by default,
- * `explicitGrantEligibleRole: "manager"`), evaluated exclusively through
+ * `explicitGrantEligibleRoles: ["manager"]`), evaluated exclusively through
  * `authorizeAndExecute`, the same consumption discipline
  * `staffRoleChangeCommand.ts`/`staffMembershipLifecycleCommand.ts` already
  * use for their own sensitive permission. This file never re-implements or

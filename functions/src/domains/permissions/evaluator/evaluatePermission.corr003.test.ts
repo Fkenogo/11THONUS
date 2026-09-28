@@ -39,7 +39,9 @@ const STAFF_MANAGE_ELIGIBLE_STATUSES = [
 ] as const;
 const STAFF_MANAGE_INELIGIBLE_STATUSES = ["suspended", "expired", "closed", "archived"] as const;
 
-const OTHER_SENSITIVE_IDS = SENSITIVE_PERMISSION_IDS.filter((id) => id !== "staff.manage");
+const OTHER_SENSITIVE_IDS = SENSITIVE_PERMISSION_IDS.filter(
+  (id) => id !== "staff.manage" && id !== "redemption.confirm",
+);
 
 function membership(
   overrides: Partial<EvaluationBusinessMembership> = {},
@@ -73,9 +75,17 @@ function inputFor(
 
 // ---------------------------------------------------------------------------
 // Phase G — legacy Sensitive fallback: every Sensitive id OTHER than
-// staff.manage must retain exactly the pre-CORR-003 {trial, active} gate.
+// staff.manage (CORR-003 override) and redemption.confirm (DEC-LOY-018 /
+// DEC-LOY-011 suspension override — lifecycle matrix proven in
+// evaluatePermission.redemption.test.ts) must retain exactly the
+// pre-CORR-003 {trial, active} gate.
 // ---------------------------------------------------------------------------
-describe("ENG-P2-004-CORR-003 Phase G — legacy Sensitive fallback (every non-staff.manage id, all 8 statuses)", () => {
+describe("ENG-P2-004-CORR-003 Phase G — legacy Sensitive fallback (every non-staff.manage, non-redemption.confirm id, all 8 statuses)", () => {
+  it("redemption.confirm is the only Phase G exclusion besides staff.manage, by governed override (not by drift)", () => {
+    expect([...OTHER_SENSITIVE_IDS, "staff.manage", "redemption.confirm"].sort()).toEqual(
+      [...SENSITIVE_PERMISSION_IDS].sort(),
+    );
+  });
   for (const permission of OTHER_SENSITIVE_IDS) {
     describe(`${permission}`, () => {
       it.each([

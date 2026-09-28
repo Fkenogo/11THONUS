@@ -199,3 +199,60 @@ describe("createPermissionOverride", () => {
     ).not.toThrow();
   });
 });
+
+describe("createPermissionOverride — DEC-LOY-018 multi-role generalisation", () => {
+  it("permits a redemption.confirm grant to Manager (re-grant after revocation)", () => {
+    expect(() =>
+      createPermissionOverride({
+        ...BASE_INPUT,
+        permissionId: "redemption.confirm",
+        direction: "grant",
+        targetRole: "manager",
+      }),
+    ).not.toThrow();
+  });
+
+  it("permits a redemption.confirm grant to Staff (delegation without promotion)", () => {
+    expect(() =>
+      createPermissionOverride({
+        ...BASE_INPUT,
+        permissionId: "redemption.confirm",
+        direction: "grant",
+        targetRole: "staff",
+      }),
+    ).not.toThrow();
+  });
+
+  it("still rejects a redemption.confirm grant targeting an Owner", () => {
+    expect(() =>
+      createPermissionOverride({
+        ...BASE_INPUT,
+        permissionId: "redemption.confirm",
+        direction: "grant",
+        targetRole: "owner",
+      }),
+    ).toThrow(PermissionDomainError);
+  });
+
+  it("still rejects a Manager-only grant to Staff (generalisation widens nothing existing)", () => {
+    expect(() =>
+      createPermissionOverride({
+        ...BASE_INPUT,
+        permissionId: "staff.manage",
+        direction: "grant",
+        targetRole: "staff",
+      }),
+    ).toThrow(PermissionDomainError);
+  });
+
+  it("still rejects a Staff-only grant to Manager", () => {
+    expect(() =>
+      createPermissionOverride({
+        ...BASE_INPUT,
+        permissionId: "report.exportFinancial",
+        direction: "grant",
+        targetRole: "manager",
+      }),
+    ).toThrow(PermissionDomainError);
+  });
+});

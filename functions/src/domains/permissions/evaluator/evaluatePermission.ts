@@ -81,6 +81,7 @@ import type { Role } from "../models/role";
 import {
   isSensitivePermission,
   getSensitivePermissionEntry,
+  isRoleEligibleForExplicitGrant,
 } from "../models/sensitivePermissionCatalogue";
 import {
   SENSITIVE_PERMISSION_ROLE_TEMPLATES,
@@ -455,11 +456,13 @@ export function evaluateAuthorizationDecision(input: EvaluationInput): Authoriza
 
   // Step 7: explicit grant (§4.1.5) — satisfies sensitivity too, but only
   // for a role the catalogue actually names as grant-eligible for this
-  // permission (§3.2's per-row "Explicit grant required?" role
-  // qualifier). `createPermissionOverride` already enforces this at
-  // construction time, but `EvaluationInput`/overrides are independently
-  // constructible repository-owned data, so this is revalidated here
-  // rather than trusted on presence alone (Codex review, PR #107).
+  // permission (design §3.2's per-row "Explicit grant required?" role
+  // qualifier, generalised by `DEC-LOY-018` from one role to a set —
+  // `isRoleEligibleForExplicitGrant`). `createPermissionOverride` already
+  // enforces this at construction time, but `EvaluationInput`/overrides
+  // are independently constructible repository-owned data, so this is
+  // revalidated here rather than trusted on presence alone (Codex review,
+  // PR #107).
   //
   // An applicable grant that fails eligibility now fails CLOSED
   // (AUTH_FORBIDDEN) rather than being treated as absent and falling
@@ -481,7 +484,7 @@ export function evaluateAuthorizationDecision(input: EvaluationInput): Authoriza
   if (grantOverride) {
     if (isSensitivePermission(permission)) {
       const entry = getSensitivePermissionEntry(permission);
-      if (entry.explicitGrantRequired && entry.explicitGrantEligibleRole === role) {
+      if (entry.explicitGrantRequired && isRoleEligibleForExplicitGrant(entry, role)) {
         return {
           allowed: true,
           reasonCode: "EXPLICIT_GRANT",

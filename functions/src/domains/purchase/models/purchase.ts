@@ -210,6 +210,33 @@ export type RewardRow = {
   readonly schemaVersion: number;
 };
 
+/**
+ * Redemption evidence row (`CAPABILITY-6-REDEMPTION-ENGINE-001`,
+ * `DEC-LOY-018` — the redemption store: redemption facts + `redeemed_at`).
+ *
+ * One row per redeemed Reward (`UNIQUE(reward_id)`). Individual
+ * attribution (`DEC-ID-002`): the actual authenticated Business member who
+ * confirmed — user id, membership id, and the role the evaluator resolved
+ * at confirm time. No cancellation/reversal fields (`DEC-LOY-004`
+ * boundary — reversal is a separate package, never retrofitted here).
+ */
+export type RedemptionRow = {
+  readonly id: string;
+  readonly rewardId: string;
+  readonly loyaltyCycleId: string;
+  readonly businessId: string;
+  readonly customerIdentityId: string;
+  readonly rewardProgramId: string;
+  readonly rewardProgramVersionId: string;
+  readonly confirmedByUserId: string;
+  readonly confirmedByMembershipId: string;
+  readonly confirmedByRole: string;
+  readonly idempotencyKey: string;
+  readonly redeemedAt: Date;
+  readonly correlationId: string;
+  readonly schemaVersion: number;
+};
+
 export type TrustEventType =
   | "purchase.recorded"
   | "purchase.verified"
@@ -218,7 +245,9 @@ export type TrustEventType =
   | "verified_units.issued"
   | "loyalty_cycle.allocated"
   | "loyalty_cycle.reward_available"
-  | "reward.available";
+  | "reward.available"
+  | "reward.redeemed"
+  | "loyalty_cycle.reward_redeemed";
 
 export type TrustSubjectType = "purchase_record" | "verified_unit" | "loyalty_cycle" | "reward";
 
@@ -227,8 +256,16 @@ export type TrustEventRow = {
   readonly eventType: TrustEventType;
   readonly eventVersion: number;
   readonly sourceDomain: string;
-  readonly causalPurchaseRecordId: string;
-  readonly sourcePurchaseRecordEventId: string;
+  /**
+   * Causal Purchase root. Present for every purchase-caused event;
+   * `null` for redemption-caused events (`reward.redeemed`,
+   * `loyalty_cycle.reward_redeemed`), which are caused by a Business
+   * confirmation rather than a Purchase lifecycle transition
+   * (`0020_redemption_store.sql`'s shape CHECK enforces exactly this
+   * split at the database layer).
+   */
+  readonly causalPurchaseRecordId: string | null;
+  readonly sourcePurchaseRecordEventId: string | null;
   readonly subjectType: TrustSubjectType;
   readonly subjectId: string;
   readonly subjectVerifiedUnitId: string | null;
@@ -252,13 +289,19 @@ export type NotificationIntentType =
   | "purchase_verified_business"
   | "purchase_rejected_business"
   | "purchase_disputed_business"
-  | "reward_available_customer";
+  | "reward_available_customer"
+  | "reward_redeemed_customer"
+  | "reward_redeemed_business";
 
 export type NotificationIntentRow = {
   readonly id: string;
   readonly intentType: NotificationIntentType;
-  readonly purchaseRecordId: string;
-  readonly sourcePurchaseRecordEventId: string;
+  /** `null` for redemption-caused intents (anchored on the redemption instead). */
+  readonly purchaseRecordId: string | null;
+  /** `null` for redemption-caused intents (anchored on the redemption instead). */
+  readonly sourcePurchaseRecordEventId: string | null;
+  /** Set only for redemption-caused intents (`0020` shape CHECK). */
+  readonly sourceRedemptionId: string | null;
   readonly recipientType: "customer" | "business";
   readonly recipientId: string;
   readonly payload: Record<string, unknown>;
@@ -280,4 +323,8 @@ export type PurchaseOutboxEventType =
 
 /** Generic PG idempotency operation types for this domain (design §17). */
 export type PurchaseIdempotencyOperation =
-  "purchase.create" | "purchase.verify" | "purchase.reject" | "purchase.dispute";
+  | "purchase.create"
+  | "purchase.verify"
+  | "purchase.reject"
+  | "purchase.dispute"
+  | "redemption.confirm";

@@ -23,6 +23,7 @@ import type { PermissionId } from "./permissionId";
 import type { Role } from "./role";
 import type { BusinessLifecycleStatus } from "../evaluator/types";
 import { unrecognisedSensitivePermissionError } from "./permissionErrors";
+import { REDEMPTION_CONFIRM_CATALOGUE_ENTRY } from "./redemptionPermissionCatalogue";
 
 /**
  * Whether a permission's default state is Owner-only, or Owner+Manager by
@@ -53,18 +54,28 @@ export type SensitivePermissionCatalogueEntry = {
   /** Design §3.2 "Explicit grant required?" column. */
   readonly explicitGrantRequired: boolean;
   /**
-   * Design §3.2's "Explicit grant required?" column names, in
-   * parentheses, exactly which role may receive the grant — e.g. "Yes
-   * (for Manager)" for rows 1/2/4/5/6, "Yes for Staff" for rows 7/8 (a
+   * Design §3.2's "Explicit grant required?" column, generalised by
+   * `CAPABILITY-6-REDEMPTION-DECISION-001-CORR-001`/`DEC-LOY-018` from a
+   * single role to the set of roles that may receive an explicit grant.
+   *
+   * Previously every grantable entry named exactly one role — "Yes (for
+   * Manager)" for rows 1/2/4/5/6, "Yes for Staff" for rows 7/8 (a
    * different role than their `owner_and_manager_default` state, since
    * Owner/Manager already hold those by default — an explicit grant
-   * would only ever be needed to extend them to Staff). `null` when
-   * `explicitGrantRequired` is `false` (row 3, no grant path at all).
-   * This is not a design invention — it is the literal role qualifier
-   * the design's own table already specifies, captured as structured
-   * data instead of being collapsed into a bare boolean.
+   * would only ever be needed to extend them to Staff). `redemption.confirm`
+   * is the first entry naming two roles (`["manager", "staff"]`): Manager
+   * re-grant after explicit revocation, and Staff/trusted-member grant.
+   * `null` when `explicitGrantRequired` is `false` (no grant path at all).
+   *
+   * This is not a design invention — it generalises the literal role
+   * qualifier(s) the design's own table already specifies, captured as
+   * structured data instead of being collapsed into a bare boolean.
+   * Every pre-redemption entry keeps its exact previous eligibility as a
+   * single-element set (regression-pinned by
+   * `sensitivePermissionCatalogue.test.ts`), so no existing permission's
+   * grant behaviour widens.
    */
-  readonly explicitGrantEligibleRole: Role | null;
+  readonly explicitGrantEligibleRoles: readonly Role[] | null;
   /** Design §3.2 "Explicit revoke supported?" column. */
   readonly explicitRevocationSupported: boolean;
   /** Design §3.2 "Audit req." column — every entry is "Mandatory" per the approved catalogue. */
@@ -88,8 +99,13 @@ export type SensitivePermissionCatalogueEntry = {
 };
 
 /**
- * The eight catalogue entries, in the design's own table order
- * (`ENG-P2-004-DESIGN-001` §3.2, rows 1–8).
+ * The catalogue entries, in the design's own table order
+ * (`ENG-P2-004-DESIGN-001` §3.2, rows 1–8) plus `ENG-P2-004-CORR-002`'s
+ * `staff.assignRole`, plus `DEC-LOY-018`'s `redemption.confirm` — whose
+ * definition lives in its own structurally separate module
+ * (`redemptionPermissionCatalogue.ts`, `DEC-LOY-017` precedent) and is
+ * registered here so the existing sensitive evaluation, override, and
+ * audit architecture governs it with no redemption-specific bypass.
  */
 export const SENSITIVE_PERMISSION_CATALOGUE: readonly SensitivePermissionCatalogueEntry[] = [
   {
@@ -99,7 +115,7 @@ export const SENSITIVE_PERMISSION_CATALOGUE: readonly SensitivePermissionCatalog
     defaultState: "owner_only",
     inheritAllowed: false,
     explicitGrantRequired: true,
-    explicitGrantEligibleRole: "manager",
+    explicitGrantEligibleRoles: ["manager"],
     explicitRevocationSupported: true,
     auditRequirement: "mandatory",
     rationale: ["a"],
@@ -119,7 +135,7 @@ export const SENSITIVE_PERMISSION_CATALOGUE: readonly SensitivePermissionCatalog
     defaultState: "owner_only",
     inheritAllowed: false,
     explicitGrantRequired: true,
-    explicitGrantEligibleRole: "manager",
+    explicitGrantEligibleRoles: ["manager"],
     explicitRevocationSupported: true,
     auditRequirement: "mandatory",
     rationale: ["a", "d"],
@@ -136,7 +152,7 @@ export const SENSITIVE_PERMISSION_CATALOGUE: readonly SensitivePermissionCatalog
     // "Yes (Manager)" shape rows 1/2/4/5/6 use. `explicitGrantRequired:
     // true` here would wrongly imply a Manager grant path exists.
     explicitGrantRequired: false,
-    explicitGrantEligibleRole: null,
+    explicitGrantEligibleRoles: null,
     explicitRevocationSupported: false,
     auditRequirement: "mandatory",
     rationale: ["a"],
@@ -155,7 +171,7 @@ export const SENSITIVE_PERMISSION_CATALOGUE: readonly SensitivePermissionCatalog
     // targeting an Owner membership, and no non-owner grant path is
     // modeled anywhere in this catalogue for this entry.
     explicitGrantRequired: false,
-    explicitGrantEligibleRole: null,
+    explicitGrantEligibleRoles: null,
     explicitRevocationSupported: false,
     auditRequirement: "mandatory",
     rationale: ["a"],
@@ -167,7 +183,7 @@ export const SENSITIVE_PERMISSION_CATALOGUE: readonly SensitivePermissionCatalog
     defaultState: "owner_only",
     inheritAllowed: false,
     explicitGrantRequired: true,
-    explicitGrantEligibleRole: "manager",
+    explicitGrantEligibleRoles: ["manager"],
     explicitRevocationSupported: true,
     auditRequirement: "mandatory",
     rationale: ["d"],
@@ -179,7 +195,7 @@ export const SENSITIVE_PERMISSION_CATALOGUE: readonly SensitivePermissionCatalog
     defaultState: "owner_only",
     inheritAllowed: false,
     explicitGrantRequired: true,
-    explicitGrantEligibleRole: "manager",
+    explicitGrantEligibleRoles: ["manager"],
     explicitRevocationSupported: true,
     auditRequirement: "mandatory",
     rationale: ["c"],
@@ -191,7 +207,7 @@ export const SENSITIVE_PERMISSION_CATALOGUE: readonly SensitivePermissionCatalog
     defaultState: "owner_only",
     inheritAllowed: false,
     explicitGrantRequired: true,
-    explicitGrantEligibleRole: "manager",
+    explicitGrantEligibleRoles: ["manager"],
     explicitRevocationSupported: true,
     auditRequirement: "mandatory",
     rationale: ["c"],
@@ -207,7 +223,7 @@ export const SENSITIVE_PERMISSION_CATALOGUE: readonly SensitivePermissionCatalog
     // Design §3.2 row 7: "No (role-default), Yes for Staff" — Owner and
     // Manager already hold this by default (defaultState above); an
     // explicit grant only ever makes sense to extend it to Staff.
-    explicitGrantEligibleRole: "staff",
+    explicitGrantEligibleRoles: ["staff"],
     explicitRevocationSupported: true,
     auditRequirement: "mandatory",
     rationale: ["b"],
@@ -220,11 +236,14 @@ export const SENSITIVE_PERMISSION_CATALOGUE: readonly SensitivePermissionCatalog
     inheritAllowed: true,
     explicitGrantRequired: true,
     // Design §3.2 row 8: same "Yes for Staff" pattern as row 7 above.
-    explicitGrantEligibleRole: "staff",
+    explicitGrantEligibleRoles: ["staff"],
     explicitRevocationSupported: true,
     auditRequirement: "mandatory",
     rationale: ["c"],
   },
+  // `DEC-LOY-018` (`CAPABILITY-6-REDEMPTION-ENGINE-001`): defined in its own
+  // module, registered here — see `redemptionPermissionCatalogue.ts`.
+  REDEMPTION_CONFIRM_CATALOGUE_ENTRY,
 ] as const;
 
 export const SENSITIVE_PERMISSION_IDS: readonly PermissionId[] = SENSITIVE_PERMISSION_CATALOGUE.map(
@@ -247,6 +266,23 @@ export function getSensitivePermissionEntry(
     throw unrecognisedSensitivePermissionError(permissionId);
   }
   return entry;
+}
+
+/**
+ * Explicit-grant eligibility read (`DEC-LOY-018` generalisation): whether
+ * `role` is one of the catalogue entry's grant-eligible roles. A `null`
+ * eligible set (no grant path) is never eligible. Single shared predicate
+ * for the construction-time check (`permissionOverride.ts`) and the
+ * runtime revalidation (`evaluatePermission.ts` Step 7) so the two can
+ * never disagree about what "eligible" means.
+ */
+export function isRoleEligibleForExplicitGrant(
+  entry: SensitivePermissionCatalogueEntry,
+  role: Role,
+): boolean {
+  return (
+    entry.explicitGrantEligibleRoles !== null && entry.explicitGrantEligibleRoles.includes(role)
+  );
 }
 
 /**

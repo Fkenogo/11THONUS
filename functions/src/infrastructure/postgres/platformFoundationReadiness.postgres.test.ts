@@ -58,6 +58,10 @@ afterEach(async () => {
   await pool.query("DROP TABLE IF EXISTS purchase_outbox CASCADE");
   await pool.query("DROP TABLE IF EXISTS notification_intents CASCADE");
   await pool.query("DROP TABLE IF EXISTS trust_events CASCADE");
+  // `CAPABILITY-6-REDEMPTION-ENGINE-001` (0020): `redemptions` references
+  // rewards/loyalty_cycles, so it must go first — `DROP TABLE rewards
+  // CASCADE` would only drop the FK constraint and leave the table behind.
+  await pool.query("DROP TABLE IF EXISTS redemptions CASCADE");
   await pool.query("DROP TABLE IF EXISTS rewards CASCADE");
   await pool.query("DROP TABLE IF EXISTS verified_unit_allocation_events CASCADE");
   await pool.query("DROP TABLE IF EXISTS verified_unit_allocations CASCADE");
@@ -201,6 +205,7 @@ describe("checkPlatformFoundationReadiness — actual shipped migrations directo
       "0017",
       "0018",
       "0019",
+      "0020",
     ]);
 
     const result = await checkPlatformFoundationReadiness(shippedReadinessDeps());

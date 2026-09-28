@@ -167,11 +167,11 @@ export function permissionOverrideDirectionNotSupportedError(
 export function permissionOverrideRoleNotEligibleForGrantError(
   permissionId: string,
   targetRole: string,
-  eligibleRole: string | null,
+  eligibleRoles: readonly string[] | null,
 ): PermissionDomainError {
   return new PermissionDomainError(
     "VALIDATION_FAILED",
-    `Permission "${permissionId}" cannot be explicitly granted to role "${targetRole}" — ENG-P2-004-DESIGN-001 §3.2 names only "${eligibleRole ?? "no role"}" as eligible for an explicit grant of this permission.`,
+    `Permission "${permissionId}" cannot be explicitly granted to role "${targetRole}" — the catalogue names only ${eligibleRoles === null ? "no role" : eligibleRoles.map((r) => `"${r}"`).join(", ")} as eligible for an explicit grant of this permission (ENG-P2-004-DESIGN-001 §3.2, generalised by DEC-LOY-018).`,
   );
 }
 

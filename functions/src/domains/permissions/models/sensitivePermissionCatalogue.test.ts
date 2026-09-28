@@ -19,10 +19,11 @@ const EXPECTED_IDS = [
   "reward.override",
   "customer.viewProtectedProfile",
   "report.exportFinancial",
+  "redemption.confirm",
 ] as const;
 
 describe("SENSITIVE_PERMISSION_CATALOGUE", () => {
-  it("has exactly the nine entries (eight design-specified plus ENG-P2-004-CORR-002's staff.assignRole), in order", () => {
+  it("has exactly the ten entries (eight design-specified plus ENG-P2-004-CORR-002's staff.assignRole plus DEC-LOY-018's redemption.confirm), in order", () => {
     expect(SENSITIVE_PERMISSION_CATALOGUE.map((entry) => entry.id)).toEqual(EXPECTED_IDS);
   });
 
@@ -41,11 +42,15 @@ describe("SENSITIVE_PERMISSION_CATALOGUE", () => {
     }
   });
 
-  it("marks exactly rows 7-8 (customer.viewProtectedProfile, report.exportFinancial) as inheritable", () => {
+  it("marks exactly customer.viewProtectedProfile, report.exportFinancial and redemption.confirm as inheritable", () => {
     const inheritable = SENSITIVE_PERMISSION_CATALOGUE.filter((e) => e.inheritAllowed).map(
       (e) => e.id,
     );
-    expect(inheritable).toEqual(["customer.viewProtectedProfile", "report.exportFinancial"]);
+    expect(inheritable).toEqual([
+      "customer.viewProtectedProfile",
+      "report.exportFinancial",
+      "redemption.confirm",
+    ]);
   });
 
   it("marks rows 1-6 plus staff.assignRole as owner_only and non-inheritable", () => {
@@ -66,7 +71,11 @@ describe("SENSITIVE_PERMISSION_CATALOGUE", () => {
   });
 
   it("marks rows 7-8 as owner_and_manager_default", () => {
-    for (const id of ["customer.viewProtectedProfile", "report.exportFinancial"]) {
+    for (const id of [
+      "customer.viewProtectedProfile",
+      "report.exportFinancial",
+      "redemption.confirm",
+    ]) {
       expect(getSensitivePermissionEntry(id).defaultState).toBe("owner_and_manager_default");
     }
   });
@@ -91,14 +100,14 @@ describe("SENSITIVE_PERMISSION_CATALOGUE", () => {
     expect(entry.explicitRevocationSupported).toBe(true);
   });
 
-  it("business.transferOwnership has no explicit-grant-eligible role", () => {
+  it("business.transferOwnership has no explicit-grant-eligible roles", () => {
     expect(
-      getSensitivePermissionEntry("business.transferOwnership").explicitGrantEligibleRole,
+      getSensitivePermissionEntry("business.transferOwnership").explicitGrantEligibleRoles,
     ).toBe(null);
   });
 
-  it("staff.assignRole has no explicit-grant-eligible role (no Manager/Staff grant path exists)", () => {
-    expect(getSensitivePermissionEntry("staff.assignRole").explicitGrantEligibleRole).toBe(null);
+  it("staff.assignRole has no explicit-grant-eligible roles (no Manager/Staff grant path exists)", () => {
+    expect(getSensitivePermissionEntry("staff.assignRole").explicitGrantEligibleRoles).toBe(null);
   });
 
   it("staff.assignRole's meaning matches the Founder-approved MVP policy", () => {
@@ -114,18 +123,32 @@ describe("SENSITIVE_PERMISSION_CATALOGUE", () => {
     "transaction.reverse",
     "reward.override",
   ])(
-    "%s names Manager as the only explicit-grant-eligible role (design §3.2 'Yes (Manager)')",
+    "%s names exactly [Manager] as the explicit-grant-eligible roles (design §3.2 'Yes (Manager)' — DEC-LOY-018 generalisation must not widen this)",
     (id) => {
-      expect(getSensitivePermissionEntry(id).explicitGrantEligibleRole).toBe("manager");
+      expect(getSensitivePermissionEntry(id).explicitGrantEligibleRoles).toEqual(["manager"]);
     },
   );
 
   it.each(["customer.viewProtectedProfile", "report.exportFinancial"])(
-    "%s names Staff as the only explicit-grant-eligible role (design §3.2 'Yes for Staff' — Owner/Manager already default to it)",
+    "%s names exactly [Staff] as the explicit-grant-eligible roles (design §3.2 'Yes for Staff' — Owner/Manager already default to it; DEC-LOY-018 generalisation must not widen this)",
     (id) => {
-      expect(getSensitivePermissionEntry(id).explicitGrantEligibleRole).toBe("staff");
+      expect(getSensitivePermissionEntry(id).explicitGrantEligibleRoles).toEqual(["staff"]);
     },
   );
+
+  it("redemption.confirm names exactly [Manager, Staff] (DEC-LOY-018: Manager re-grant plus Staff grant)", () => {
+    expect(getSensitivePermissionEntry("redemption.confirm").explicitGrantEligibleRoles).toEqual([
+      "manager",
+      "staff",
+    ]);
+  });
+
+  it("redemption.confirm is the registered definition from its own structurally separate module (DEC-LOY-017 precedent)", async () => {
+    const { REDEMPTION_CONFIRM_CATALOGUE_ENTRY } = await import("./redemptionPermissionCatalogue");
+    expect(getSensitivePermissionEntry("redemption.confirm")).toBe(
+      REDEMPTION_CONFIRM_CATALOGUE_ENTRY,
+    );
+  });
 });
 
 describe("SENSITIVE_PERMISSION_CATALOGUE — eligibleBusinessStatuses (ENG-P2-004-CORR-003)", () => {
@@ -138,7 +161,15 @@ describe("SENSITIVE_PERMISSION_CATALOGUE — eligibleBusinessStatuses (ENG-P2-00
     ]);
   });
 
-  it.each(EXPECTED_IDS.filter((id) => id !== "staff.manage"))(
+  it("redemption.confirm carries exactly the DEC-LOY-011 suspension override: trial, active, suspended", () => {
+    expect(getSensitivePermissionEntry("redemption.confirm").eligibleBusinessStatuses).toEqual([
+      "trial",
+      "active",
+      "suspended",
+    ]);
+  });
+
+  it.each(EXPECTED_IDS.filter((id) => id !== "staff.manage" && id !== "redemption.confirm"))(
     "%s carries no eligibleBusinessStatuses override (legacy {trial, active} fallback applies)",
     (id) => {
       expect(getSensitivePermissionEntry(id).eligibleBusinessStatuses).toBeUndefined();
@@ -175,8 +206,12 @@ describe("getSensitivePermissionEntry", () => {
 });
 
 describe("getInheritableSensitivePermissionEntries", () => {
-  it("returns exactly the two inheritable entries", () => {
+  it("returns exactly the three inheritable entries", () => {
     const ids = getInheritableSensitivePermissionEntries().map((e) => e.id);
-    expect(ids).toEqual(["customer.viewProtectedProfile", "report.exportFinancial"]);
+    expect(ids).toEqual([
+      "customer.viewProtectedProfile",
+      "report.exportFinancial",
+      "redemption.confirm",
+    ]);
   });
 });

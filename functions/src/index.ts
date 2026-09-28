@@ -146,6 +146,7 @@ import { recordPurchase as recordPurchaseCommand } from "./domains/purchase/serv
 import { verifyPurchase as verifyPurchaseCommand } from "./domains/purchase/services/verifyPurchaseCommand";
 import { rejectPurchase as rejectPurchaseCommand } from "./domains/purchase/services/rejectPurchaseCommand";
 import { raisePurchaseDispute as raisePurchaseDisputeCommand } from "./domains/purchase/services/raisePurchaseDisputeCommand";
+import { confirmRedemption as confirmRedemptionCommand } from "./domains/purchase/services/confirmRedemptionCommand";
 import {
   listPurchasesForBusiness as listPurchasesForBusinessQuery,
   getPurchaseRecordForBusiness as getPurchaseRecordForBusinessQuery,
@@ -2362,6 +2363,57 @@ export const raisePurchaseDispute = onCall(async (request) => {
         purchaseRecordId: parseNonEmptyString(value.purchaseRecordId),
         reason: value.reason,
       },
+      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+      correlationId: randomUUID(),
+    });
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+/**
+ * Whitelist parser: exactly `businessId` and `rewardId`.
+ *
+ * Deliberately minimal — `CAPABILITY-6-REDEMPTION-ENGINE-001` /
+ * `DEC-LOY-018`. A redemption confirmation is a statement ABOUT one
+ * persisted Reward, so every other field that could conceivably be sent
+ * (Customer Identity id, Reward state, Business ownership, cycle, program,
+ * program version, confirmer identity or role, redeemed-at timestamp) is
+ * excluded by the whitelist and server-resolved instead. The client can say
+ * "redeem this reward for this business"; it can say nothing about the
+ * Reward's state, who owns it, or who is confirming it. Exported for the
+ * mass-assignment regression test.
+ */
+export function parseConfirmRedemptionRequest(value: Record<string, unknown>) {
+  return {
+    businessId: parseBusinessId(value.businessId),
+    rewardId: parseNonEmptyString(value.rewardId),
+  };
+}
+
+/**
+ * Capability 6 — server-authoritative Business redemption confirmation
+ * (`CAPABILITY-6-REDEMPTION-ENGINE-001`, `DEC-LOY-018`).
+ *
+ * Business-authenticated only: a Customer or Platform Administrator call
+ * resolves to a user with no Business membership, fails the LIVE
+ * `redemption.confirm` evaluation inside the command, and writes nothing.
+ * The command performs the permission evaluation itself (Owner floor,
+ * Manager default/revoke/re-grant, Staff explicit grant) so the authority
+ * is re-resolved server-side on every attempt — no client-supplied role or
+ * authority is ever read.
+ */
+export const confirmRedemption = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId } = await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    return await confirmRedemptionCommand(db, getPurchasePostgresPool(), {
+      userId,
+      ...parseConfirmRedemptionRequest(value),
+      request: { rewardId: parseNonEmptyString(value.rewardId) },
       idempotencyKey: parseNonEmptyString(value.idempotencyKey),
       correlationId: randomUUID(),
     });

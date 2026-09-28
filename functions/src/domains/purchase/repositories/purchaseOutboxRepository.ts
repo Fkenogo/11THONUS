@@ -23,8 +23,9 @@ type Queryable = PoolClient | PlatformPostgresPool;
 type NotificationIntentDbRow = {
   id: string;
   intent_type: NotificationIntentType;
-  purchase_record_id: string;
-  source_purchase_record_event_id: string;
+  purchase_record_id: string | null;
+  source_purchase_record_event_id: string | null;
+  source_redemption_id: string | null;
   recipient_type: "customer" | "business";
   recipient_id: string;
   payload: Record<string, unknown>;
@@ -40,6 +41,7 @@ function mapIntentRow(row: NotificationIntentDbRow): NotificationIntentRow {
     intentType: row.intent_type,
     purchaseRecordId: row.purchase_record_id,
     sourcePurchaseRecordEventId: row.source_purchase_record_event_id,
+    sourceRedemptionId: row.source_redemption_id,
     recipientType: row.recipient_type,
     recipientId: row.recipient_id,
     payload:
@@ -55,8 +57,12 @@ function mapIntentRow(row: NotificationIntentDbRow): NotificationIntentRow {
 
 export type InsertNotificationIntentParams = {
   readonly intentType: NotificationIntentType;
-  readonly purchaseRecordId: string;
-  readonly sourcePurchaseRecordEventId: string;
+  /** Purchase anchor — required for purchase-caused intents, `null` for redemption-caused ones. */
+  readonly purchaseRecordId: string | null;
+  /** Source-transition anchor — required for purchase-caused intents, `null` for redemption-caused ones. */
+  readonly sourcePurchaseRecordEventId: string | null;
+  /** Redemption anchor — required for redemption-caused intents, `null` otherwise (`0020` shape CHECK). */
+  readonly sourceRedemptionId?: string | null;
   readonly recipientType: "customer" | "business";
   readonly recipientId: string;
   readonly payload: Record<string, unknown>;
@@ -70,13 +76,14 @@ export async function insertNotificationIntent(
   const result = await tx.query<NotificationIntentDbRow>(
     `INSERT INTO notification_intents
        (intent_type, purchase_record_id, source_purchase_record_event_id,
-        recipient_type, recipient_id, payload, correlation_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7)
+        source_redemption_id, recipient_type, recipient_id, payload, correlation_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
      RETURNING *`,
     [
       params.intentType,
       params.purchaseRecordId,
       params.sourcePurchaseRecordEventId,
+      params.sourceRedemptionId ?? null,
       params.recipientType,
       params.recipientId,
       JSON.stringify(params.payload),

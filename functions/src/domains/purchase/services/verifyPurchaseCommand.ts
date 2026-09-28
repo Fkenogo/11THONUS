@@ -45,6 +45,7 @@ import {
 import { insertVerifiedUnitCredit } from "../repositories/verifiedUnitRepository";
 import {
   LOYALTY_CYCLE_THRESHOLD,
+  adoptCycleGoverningVersionForFirstAllocation,
   ensureAndLockCycleStream,
   lockCurrentCycle,
   openCycleUnderStreamLock,
@@ -205,6 +206,34 @@ export async function verifyPurchase(
         openedUnderVersionId: purchase.rewardProgramVersionId,
         correlationId: params.correlationId,
       });
+    }
+
+    // First-allocation version binding (`CAPABILITY-6-REDEMPTION-ENGINE-001-CORR-002`,
+    // DEC-LOY-008 addendum 2026-09-28 / DEC-PROD-014): a Cycle's governing
+    // version is the version of the FIRST Verified Unit allocated into it.
+    // A Cycle opened by this path already carries its opening Purchase's
+    // version, so this is a no-op for it. A Cycle opened EMPTY by a
+    // redemption (provisional continuity version, no earning yet) adopts
+    // the first earning activity's version here, before any unit lands —
+    // so equivalent earning produces the same Reward whichever path opened
+    // the Cycle. Never rebinds a non-empty Cycle (conditional inside).
+    if (
+      cycle.allocatedUnits === 0 &&
+      cycle.openedUnderVersionId !== purchase.rewardProgramVersionId
+    ) {
+      const adopted = await adoptCycleGoverningVersionForFirstAllocation(tx, {
+        cycleId: cycle.id,
+        versionId: purchase.rewardProgramVersionId,
+      });
+      if (!adopted) {
+        // Impossible while holding the stream + cycle locks (nothing else
+        // can allocate here) — fail closed rather than allocate under a
+        // version the first unit did not determine.
+        throw purchaseValidationError(
+          "The Loyalty Cycle could not be bound to its first allocation version.",
+        );
+      }
+      cycle = adopted;
     }
 
     let allocatedNow = 0;
