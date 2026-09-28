@@ -339,6 +339,15 @@ export async function confirmRedemption(
     // pending rows, and same-stream redemptions already serialize on the
     // stream) because the FIRST position in deterministic forward-allocation
     // order is the first unit the new Cycle will hold, hence its governor.
+    //
+    // "Deterministic" here is the CORR-003 governed rule, not insertion
+    // order: `listPendingAllocationPositions` orders by the underlying
+    // Purchase's accepted commercial occurrence
+    // (`purchase_record.purchase_date`, then `verified_unit_id`, then
+    // `allocation_order`). Allocation-position `created_at` is database
+    // scheduling and MUST NOT decide which unit is first, or two executions
+    // of the same accepted earning history would bind different governing
+    // versions (and different Reward terms) purely by transaction order.
     // With no pending units the Cycle opens EMPTY under the completed
     // Cycle's version as a provisional continuity value (the non-null
     // schema requires a version; no earning exists yet to bind) — and the

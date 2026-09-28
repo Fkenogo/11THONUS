@@ -104,6 +104,19 @@ quick-switch question and `DEC-LOY-013(a)`'s paused-programme edge remain exactl
 > current-at-redemption is explicitly NOT approved. The CORR-001 "current version" determination is
 > superseded (see `IMPLEMENTATION_CHANGES.md` CORR-002 entry).
 
+> **CORR-003 (2026-09-28) — a second bounded clarification became necessary and was recorded, not
+> invented: which allocation position is FIRST.** CORR-002 established that a Loyalty Cycle's
+> governing version is the version of the FIRST Verified Unit allocated into it, and that the
+> redemption continuation opens under the first pending position's version. CORR-003 records the
+> determinant of "first": the earliest COMMERCIAL `purchase_date` of the originating Purchase Record
+> (ascending, tie-broken by `verified_unit_id` then `allocation_order`), resolved via the FK-enforced
+> relational provenance `verified_unit_allocations.verified_unit_id → verified_units.purchase_record_id
+> → purchase_records.purchase_date` — NOT database insertion time, verification time, or lock/commit
+> time. A dated Notes addendum was appended to `DEC-LOY-008` (Status CONFIRMED unchanged; no new
+> decision identifier; Register Summary unchanged). No schema change was needed or made — the
+> provenance chain exposes `purchase_date` without any new column (NOT NULL; insert-only per TRD10
+> §10.10.1) — and no new migration exists; 0001→0020 are unchanged.
+
 ---
 
 ## 4. Implementation strategy
@@ -146,6 +159,20 @@ constraint. Two authorised members confirming the same Reward simultaneously pro
 transition and exactly one `reward.redeemed` Trust Event. **CORR-002 adds the fifth, structural
 guarantee: canonical lock ordering, proven by deterministic lock-order tests including the old
 order reproducing the reported `40P01` on a live database.**
+
+> **CORRECTED (`CAPABILITY-6-REDEMPTION-ENGINE-001-CORR-003`, finding F-1).** The shared pending-
+> allocation read used by the redemption continuation ordered by database insertion time
+> (`created_at ASC, verified_unit_id ASC, allocation_order ASC`), so the FIRST forward-allocated
+> position — and with it the next Cycle's governing version and governing Reward terms — could reflect
+> when the position was recorded rather than commercial chronology. `listPendingAllocationPositions`
+> now orders by the originating Purchase Record's commercial `purchase_date` (ascending, tie-broken
+> by `verified_unit_id` then `allocation_order`) via the FK-enforced relational provenance
+> (`verified_unit_allocations.verified_unit_id → verified_units.purchase_record_id →
+> purchase_records.purchase_date`). `FOR UPDATE OF a` locks only allocation rows, preserving the
+> CORR-002 canonical lock order (no `40P01`). Verify-path semantics untouched. Correcting proof
+> (non-tautological): the two opposite-scheduling CORR-003 regressions FAIL when the query is
+> reverted to `created_at`, and pass only under `purchase_date` — written so the old order cannot
+> satisfy them.
 
 ---
 
@@ -196,7 +223,7 @@ would invent a mechanism rather than reuse one.
 | Suite | Result |
 |---|---|
 | Unit / pure (`npm test`) | **164 files, 1894 tests — all pass** |
-| PostgreSQL (`npm run test:postgres`) | **11 files, 303 tests — all pass** |
+| PostgreSQL (`npm run test:postgres`) | **11 files, 308 tests — all pass** |
 | Firebase Emulator (`emulators:validate`) | **65 files, 864 passed / 3 skipped — exit 0** |
 | Typecheck (`npm run typecheck`) | clean |
 
@@ -214,6 +241,21 @@ would invent a mechanism rather than reuse one.
 > on the pristine head; untouched) and slow-seed 5s-timeout flakes on this machine (same); both
 > pre-existing P3s. No schema change — no new migration; 0001→0020, 0019→0020 and the rollback-guard
 > paths remain green via the untouched migration suite (49 tests).
+
+> **CORR-003 (2026-09-28) verification delta.** PostgreSQL grew from 303 to **308 tests** — the
+> redemption suite grew 43 → 48 with five new regressions in
+> `confirmRedemptionCommand.postgres.test.ts`: mixed-version OPPOSITE scheduling (later-commercial
+> V1 inserted after V2 still governs first — the scenario that fails under the old `created_at`
+> order); scheduling-matches-chronology (same governing version/terms); a later COMMERCIAL purchase
+> cannot be promoted to first by executing first; provisional version of an EMPTY redemption-created
+> Cycle decides nothing; and the full repeating A → B → C loop through the real spine (deleting
+> nothing, conserving every unit). Tautology control: reverting the shared query's `ORDER BY` to
+> `created_at` makes both opposite-scheduling regressions FAIL, then passes again under
+> `purchase_date` — the tests bind the correction. Lock-order suite unchanged (4/4, `40P01` mechanism
+> proof intact). The `platformFoundationReadiness` shared-DB flake was proven pre-existing by a
+> controlled A/B from an identical fresh database: pristine entry head fails it (302/303), this
+> correction passes (308/308); passes in isolation (7/7); untouched. No schema change — no new
+> migration; the untouched migration suite (49 tests) remains green.
 
 New integration suite `confirmRedemptionCommand.postgres.test.ts` (**36 tests**) covers: state
 transition and failure atomicity (a late transaction failure rolls back Reward, Cycle, next Cycle,

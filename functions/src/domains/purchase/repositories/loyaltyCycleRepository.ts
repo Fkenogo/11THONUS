@@ -425,29 +425,60 @@ export async function sumAllocatedPositionsForCycle(
 }
 
 /**
- * The Customer's outstanding PENDING Verified Unit positions for one
- * Reward Program, in the deterministic forward-allocation order fixed by the
- * `PLATFORM-BASELINE-006` design §15 ("`(occurred_at, verified_unit_id,
- * allocation_order)` order") and backed by the existing
- * `verified_unit_allocations_pending_idx`, so the same index serves both the
- * filter and the ordering.
+ * The Customer's outstanding PENDING Verified Unit positions for one Reward
+ * Program, in the deterministic forward-allocation order governed by
+ * `CAPABILITY-6-REDEMPTION-ENGINE-001-CORR-003` (DEC-LOY-008 addendum
+ * 2026-09-28): the accepted COMMERCIAL occurrence of the underlying Purchase
+ * that generated the Verified Unit, resolved as
+ * `purchase_record.purchase_date → verified_unit_id → allocation_order`.
  *
- * Locked `FOR UPDATE` because a redemption converts them: two redemptions
+ * `occurred_at` is the Founder-approved commercial occurrence timestamp, i.e.
+ * `purchase_records.purchase_date` (insert-only by TRD10 §10.10.1) reached
+ * through the FK-enforced provenance
+ * `verified_unit_allocations.verified_unit_id → verified_units.purchase_record_id
+ * → purchase_records.id`. Chronology is therefore read from existing
+ * relational provenance, never duplicated onto the allocation row.
+ *
+ * It is NOT the allocation position's `created_at`, the Verified Unit's
+ * `verified_at`, or any database insertion/transaction/lock/commit timestamp.
+ * Database scheduling decides only WHICH transaction runs first, never the
+ * commercial order of earning, so two executions of the same accepted earning
+ * history allocate identically and therefore bind the same Cycle governing
+ * version and the same Reward terms (invariant F-1).
+ *
+ * `purchase_date` is NOT NULL, so the ordering is total; equal commercial
+ * timestamps are resolved deterministically by `verified_unit_id` then
+ * `allocation_order`.
+ *
+ * Locked `FOR UPDATE OF a` because a redemption converts them: two redemptions
  * racing the same Customer+Program must serialise here rather than both
  * converting the same pending row. (Both would already serialise on the
  * shared `loyalty_cycle_streams` parent lock, which every cycle-closing
  * transaction takes first — this lock is defence in depth for the positions
- * themselves.)
+ * themselves.) `OF a` restricts the lock to the allocation positions: locking
+ * the joined provenance rows too would take locks the verify path holds and
+ * reintroduce the `40P01` inversion CORR-002 removed. The canonical lock order
+ * (stream → cycle → reward → positions) is unchanged.
+ *
+ * `verified_unit_allocations_pending_idx` still serves the
+ * `(customer_identity_id, reward_program_id)` filter; ordering is now a sort
+ * rather than an index walk. That is a deliberate correctness-over-index
+ * trade-off, not a migration gap.
  */
 export async function listPendingAllocationPositions(
   tx: PlatformPostgresTransaction,
   params: { readonly customerIdentityId: string; readonly rewardProgramId: string },
 ): Promise<AllocationPositionRow[]> {
   const result = await tx.query<PositionDbRow>(
-    `SELECT * FROM verified_unit_allocations
-      WHERE customer_identity_id = $1 AND reward_program_id = $2 AND state = 'pending'
-      ORDER BY created_at ASC, verified_unit_id ASC, allocation_order ASC
-      FOR UPDATE`,
+    `SELECT a.*
+       FROM verified_unit_allocations a
+       JOIN verified_units u ON u.id = a.verified_unit_id
+       JOIN purchase_records p ON p.id = u.purchase_record_id
+      WHERE a.customer_identity_id = $1
+        AND a.reward_program_id = $2
+        AND a.state = 'pending'
+      ORDER BY p.purchase_date ASC, a.verified_unit_id ASC, a.allocation_order ASC
+      FOR UPDATE OF a`,
     [params.customerIdentityId, params.rewardProgramId],
   );
   return result.rows.map(mapPositionRow);
