@@ -7,6 +7,19 @@
 
 ---
 
+## 2026-09-28 — CAPABILITY-6-REDEMPTION-ENGINE-001-MERGE-CLOSE-001 — Merge & Closure of PR #281
+
+- **Status:** **APPROVED / MERGED / CLOSED** — PR #281 merged by regular merge commit `ea1e00508dc0ef5597efb44015921e081270911d` (pre-merge main `87c679c63dc79afe9b29cff793b93cee562904fb`, exact PR head `1c047f12c5aadf74c79885e5896a135341bf9481`, post-merge main `ea1e00508dc0ef5597efb44015921e081270911d`). Exact-head CI run `36446612646` and merged-main CI run `36447960092` both succeeded.
+- **Disposition:** **F-1 deterministic first-allocation order — RESOLVED; N1 lock-order/deadlock — RESOLVED; N2 governing version — RESOLVED.** The exact-head independent review disposition is **APPROVE — READY FOR FOUNDER MERGE REVIEW**; the recorded disposition found no P0/P1/P2 implementation findings, and remaining P3 observations are non-blocking.
+- **Accepted disposition:** Redemption Engine accepted; Capability 6 remains **NOT YET COMPLETE** pending Experience Reference refinement and production Experience Assembly. F-1 deterministic first-allocation order, N1 lock-order/deadlock, and N2 governing version are resolved. Final independent disposition: APPROVE / READY FOR FOUNDER MERGE REVIEW, no P0/P1/P2 implementation finding. Remaining P3 observations are non-blocking; PB-013B P3-3 remains **OPEN / UNRESOLVED** and separate.
+- **Post-merge evidence:** on exact merged main, redemption PostgreSQL tests passed 44/44 and lock-order tests passed 4/4; exact merged-main CI passed all required checks. No deployment or deployed database migration occurred; migration `0019` was not executed. Migration `0020` was exercised only in test databases. No dependency or configuration change.
+- **Scope/boundary:** no production redemption UI; prototype untouched; no Experience Reference work begun. Next separate programme task: 11thONUS Experience Reference — Redemption Refinement.
+- **Files:** added [`CAPABILITY-6-REDEMPTION-ENGINE-001-MERGE-CLOSE-001-merge-closure-record-2026-09-28.md`](../05-implementation/reports/CAPABILITY-6-REDEMPTION-ENGINE-001-MERGE-CLOSE-001-merge-closure-record-2026-09-28.md); added a dated factual currency note to `docs/05-implementation/11thonus-master-workflow.md`; this append-only tracking entry. No historical report was rewritten by closure.
+- **Closure PR:** documentation-only, on isolated branch `docs/capability-6-redemption-engine-001-merge-close-001`; intentionally not self-merged. Await Founder review/merge.
+- **Rollback:** revert the closure PR's three documentation changes only; this does not revert PR #281's implementation.
+
+---
+
 ## 2026-09-28 — CAPABILITY-6-REDEMPTION-ENGINE-001-CORR-003 — Deterministic First-Allocation Ordering Corrected After Independent Re-Review
 
 - **Task / status:** correction of PR #281 following the independent re-review. Entry verified: PR #281 OPEN/unmerged; base and `origin/main` both `87c679c63dc79afe9b29cff793b93cee562904fb` (zero advancement); this correction continues the same branch, still unmerged. Recovery: **no partial CORR-003 material existed anywhere** — the worktree was clean at entry head, there was no CORR-003 report/migration/decision-register material, and the dangling WIP commits were CORR-002-era stash snapshots byte-identical to the committed head (empty `functions/` diff). Nothing was inherited; the correction was implemented from scratch.
