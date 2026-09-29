@@ -139,3 +139,11 @@ This decision **does not redefine** `DEC-GOV-011` or any other established separ
 ## 13. Required next action
 
 No implementation may begin under this decision until a **separate, explicit Founder/Technical Lead implementation authorization** is recorded. Required before implementation: a Consumption Unit commercial data architecture, the cycle-completion → consumption-event binding, a cycle-start capacity gate, the commercial ledger (including negative balance), the manual-administration command surface with audit, and TRD17 supersession drafting. This decision authorises **none** of that work.
+
+## 14. Scope boundary — what this decision deliberately does not decide
+
+Recorded 2026-09-29 (`FD-COM-001-CORR-002`) for clarity, adding no rule.
+
+- **Commercial credit/capacity ownership and representation are NOT decided by this decision.** Whether commercial credit/capacity is owned and represented per Business, per Owner, or by another arrangement is a **COMMERCIAL DESIGN question** carried to `11THONUS-COMMERCIAL-DESIGN-001`, to be determined from the governed commercial model. It is **not** an unresolved Product Truth decision requiring a further Founder decision, unless the design assessment finds that the available alternatives would materially change Product Truth.
+- **Local-currency derivation/conversion is NOT decided by this decision.** How the governed **USD 2 equivalent** becomes operational **BIF/RWF** values — equivalent determination, administrative versus FX-derived, effective dates, rounding, and price-adjustment governance — is a bounded **COMMERCIAL DESIGN question** carried to `11THONUS-COMMERCIAL-DESIGN-001`. Launch-market scope is **Burundi and Rwanda** and is not expanded here.
+- **Complimentary commercial arrangements are NOT decided by this decision.** The governed 3–5 commercial-unit trial in §3 is the standard launch onboarding allowance and is **not** a complimentary commercial arrangement. Whether 11thONUS may later provide a complimentary arrangement or capacity for pilot businesses, partners, promotions, or other exceptional commercial programmes remains the **open** `DEC-SUB-013` decision, which this decision deliberately does **not** supersede.
