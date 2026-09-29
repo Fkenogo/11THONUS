@@ -1,8 +1,21 @@
 > **Title:** TRD Chapter 17 — Subscription, Billing and Plan Enforcement  
-> **Version:** 1.0 · **Status:** Draft for approval (pre-freeze) · **Classification:** Authoritative Technical  
+> **Version:** 1.0 · **Status:** **SUPERSESSION-BOUND — commercial model superseded by `DEC-SUB-014`; subscription-first body retained as historical text pending a governed rewrite** · **Classification:** Authoritative Technical  
 > **Governing document:** 11thONUS Platform Constitution; PRD  
 > **Source-of-truth path:** `docs/02-technical/trd/17-subscription-and-billing.md`  
-> **Last controlled update:** 2026-07-16 (Phase 2 — relocated and renamed; metadata block added)
+> **Last controlled update:** 2026-09-29 — **supersession banner added** per `DEC-SUB-014` (`FD-COM-001`, Founder decision, 2026-09-29). Previously: 2026-07-16 (Phase 2 — relocated and renamed; metadata block added)
+
+> ## ⚠ SUPERSESSION NOTICE — 2026-09-29 (`DEC-SUB-014` / `FD-COM-001`)
+>
+> **The commercial model governed by this chapter is superseded.** The Phase 1 commercial model is **consumption-first**, not subscription/tier-first. The **governed commercial price is USD 2 equivalent per commercial unit** (the billable commercial unit corresponds to the governed 10 qualifying-unit earning side of the 10+1 loyalty Circle). **Subscription tiers are deferred** and no capability tiering governs Phase 1.
+>
+> **What this means for the text below.** This chapter is retained **as historical text**; it has **not** been rewritten, and no requirement in it should be read as current commercial Product Truth where it conflicts with `DEC-SUB-014`. Specifically **superseded as commercial model**: §17.2 Subscription Objectives, §17.3 Subscription Philosophy, §17.6 Plan Configuration, §17.7 Initial Plan Direction, §17.8 Plan Entitlements, §17.9 Country Pricing Catalogue, §17.10 Currency Handling, §17.11 Trial Architecture, §17.12 Trial Statuses, and the plan-entitlement enforcement model generally.
+>
+> **What remains valid and is preserved here.** §17.4 (essential trust controls cannot be paywalled) and §17.5 (Subscription Domain responsibilities) remain sound as general architecture. Currency handling (§17.10) remains applicable to settlement of the commercial unit. **§17.19–17.20 remain load-bearing**: they distinguish platform access from the Business's obligation to honour earned Rewards, and underpin the CONFIRMED customer protection in `DEC-LOY-011`, which `DEC-SUB-014` **references rather than redefines**.
+>
+> **Governed replacements, for reference:** trial = **3–5 commercial units** (range, no universal 5 default); commercial capacity governs whether **new** Loyalty Cycles may start (blocked when usable capacity is exhausted) and must not be reinterpreted as cancelling existing loyalty state; **grace** lets already-active Circles finish and creates no capacity for new Cycles; **negative credit** is recoverable with **no maximum negative balance and no hard negative floor** established; commercial restriction must never cancel an earned Reward, prevent legitimate redemption of an already-earned Reward, or destroy loyalty history.
+>
+> **Required next action:** a governed rewrite of this chapter for the consumption-first model, under a **separate** implementation/design authorization. No implementation is authorized by `DEC-SUB-014`.
+
 
 # 11thONUS
 
