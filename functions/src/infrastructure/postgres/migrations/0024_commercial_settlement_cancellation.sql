@@ -154,11 +154,10 @@ BEGIN
     END IF;
   ELSIF NEW.status = 'cancelled' THEN
     -- recorded -> cancelled: the settlement never granted credit, so NO ledger entry of any
-    -- type may reference it (the CHECK already forces every confirm/void column to NULL).
+    -- type, in ANY Business, may reference it (the CHECK already forces every confirm/void column to NULL).
     IF EXISTS (
       SELECT 1 FROM commercial_ledger_entries
-       WHERE business_id = NEW.business_id
-         AND source_reference_type = 'settlement'
+       WHERE source_reference_type = 'settlement'
          AND source_reference_id = NEW.id::text
     ) THEN
       RAISE EXCEPTION 'WP-COM-03A: settlement % cannot be cancelled: a ledger entry already references it', NEW.id

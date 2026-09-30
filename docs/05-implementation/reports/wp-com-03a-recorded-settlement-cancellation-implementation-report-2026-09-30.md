@@ -62,7 +62,7 @@ Additive; **no table created or dropped, no existing column or row altered.**
 1. **Provenance columns** on `commercial_settlements` (all NULL unless cancelled): `cancelled_by`, `cancelled_at`, `cancel_reason_text`, `cancel_reference`, `cancel_idempotency_key` (UNIQUE), `cancel_correlation_id`. Names follow the `void_*` convention.
 2. **Status CHECK** widened to `recorded | confirmed | voided | cancelled`.
 3. **Lifecycle CHECK replaced** (`commercial_settlements_confirmation_consistency`). Four branches. A `cancelled` row **requires** complete, non-blank cancellation provenance and **forbids** any confirmation, void or ledger data; every other status **forbids** any cancellation data. Every text column is tested `IS NOT NULL` first (the NULL-safety lesson of the PR #287 review: `length(btrim(NULL)) > 0` is UNKNOWN, which a CHECK accepts).
-4. **Transition guard replaced** (`commercial_settlements_update_guard`): allows only `recorded→confirmed`, `recorded→cancelled`, `confirmed→voided`; freezes every evidence/pricing column on every transition; the confirm and void branches are copied verbatim from `0023`; the cancel branch **refuses if any ledger entry of that Business references the settlement**.
+4. **Transition guard replaced** (`commercial_settlements_update_guard`): allows only `recorded→confirmed`, `recorded→cancelled`, `confirmed→voided`; freezes every evidence/pricing column on every transition; the confirm and void branches are copied verbatim from `0023`; the cancel branch **refuses if any ledger entry (any Business) references the settlement**.
 5. **One BEFORE INSERT trigger on `commercial_ledger_entries`** (`commercial_ledger_reject_cancelled_settlement_reference`): a ledger entry may not reference a cancelled settlement. It takes `FOR SHARE` on the settlement row, which conflicts with the cancelling `UPDATE`, so a cancel and a raw credit cannot both commit (see §7). It only *reads* the settlement; the ledger table and its immutability triggers are not altered.
 
 `.down.sql` restores the `0023` shape and guard and **fails closed** while any cancelled row exists (governed evidence; the restored status CHECK could not hold it).
@@ -117,7 +117,7 @@ The audit vocabulary gained `settlement_cancelled` in code only; the `0021` tabl
 
 | File | Type | New tests |
 |---|---|---|
-| `commercialSettlementCancellation.postgres.test.ts` (new) | real PostgreSQL | 31 |
+| `commercialSettlementCancellation.postgres.test.ts` (new) | real PostgreSQL | 32 |
 | `commercialBoundary.test.ts` | static | +6 |
 
 Coverage of the brief's list: recorded cancellable; reason required; reference required; cancelled cannot confirm (service **and** raw SQL); confirmed cannot cancel; voided cannot cancel; duplicate cancellation safe; cancel/confirm concurrency; no ledger entry; account unchanged; audit correct; authority failures write nothing (inactive admin, no MFA, three Business roles, unknown and empty ids); raw transition without provenance rejected; **each** provenance column NULL rejected explicitly, plus blank values and NULL `cancelled_at`; smuggling cancel data onto a confirm, or confirm data onto a cancel, rejected; cancelled-at-insert rejected; evidence columns frozen; delete/truncate rejected; forged credit or reversal on a cancelled settlement rejected; raw cancel of a settlement that already has a credit rejected; existing confirmed credit untouched; all four statuses coexist; migration fail-closed rollback and clean rollback/re-apply.
@@ -133,7 +133,7 @@ Existing tests that legitimately changed because a migration `0024` now exists (
 ## 11. Deviations and risks
 
 - **R1 — one trigger on the ledger table.** Necessary to make "a cancelled settlement never holds credit" a database fact against a raw insert; the brief asks for DB enforcement. It reads only; if reviewers prefer zero objects on the ledger, the alternative is service-only enforcement plus the cancel-time check (weaker against raw writes). Recommended: keep.
-- **R2 — cancel-time ledger check is Business-scoped** (uses the existing `(business_id, account_version)` index instead of adding an index). A hypothetical *cross-Business* ledger entry referencing a settlement id would not block a cancel; `confirm`/`void` guards already require same-Business entries, and the new trigger blocks any later reference regardless of Business.
+- **R2 — cancel-time ledger check spans all Businesses** (review finding, fixed): a ledger entry of any Business that references the settlement blocks its cancellation. There is no supporting index for `source_reference_id` on non-credit entry types, so the check may scan the ledger; cancellation is a rare administrator action, so this is accepted and an index is left to a later package if volume warrants.
 - **R3 — `denied` audit rows** for refused attempts are inherited behaviour (best-effort, separate transaction) and are not counted as cancellations.
 - **R4 — error wording.** The transition-guard message text changed; anything matching on it (none in production code) would need updating.
 - No design gap found; nothing invented.

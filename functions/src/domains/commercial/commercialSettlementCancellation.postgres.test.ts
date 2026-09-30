@@ -1099,6 +1099,28 @@ describe("DATABASE GUARDS — enforced below the service layer", () => {
     expect(await listLedgerEntries(pool, businessId)).toHaveLength(1);
   });
 
+  it("a ledger entry of ANOTHER Business that references a recorded settlement also blocks its cancellation", async () => {
+    const owner = (await openAccount()).businessId;
+    const other = (await openAccount()).businessId;
+    const settlementId = await recordedSettlement(owner, 3);
+    await withPlatformTransaction(pool, (tx) =>
+      postCommercialLedgerEntry(tx, {
+        businessId: other,
+        entryType: "credit_grant",
+        bucket: "paid",
+        unitsDelta: 3,
+        sourceReference: { type: "settlement", id: settlementId },
+        idempotencyScopeKey: `forged-${randomUUID()}`,
+        createdBy: "raw",
+        correlationId: "c",
+      }),
+    );
+    await expectPgFailure(rawCancel(settlementId), /a ledger entry already references it/);
+    // The service path is stopped by the same database guard (the backstop), and rolls back.
+    await expectPgFailure(cancelIt(owner, settlementId), /a ledger entry already references it/);
+    expect((await getSettlement(pool, settlementId))?.status).toBe("recorded");
+  });
+
   it("no cancellation path can mutate or delete an existing confirmed ledger credit", async () => {
     const { businessId } = await openAccount();
     const { settlementId, confirmation } = await confirmedSettlement(businessId, 3);
