@@ -570,6 +570,27 @@ describe("commercial_ledger_entries: authority, immutability, ordering", () => {
     expect(await listLedgerEntries(pool, b)).toHaveLength(0);
   });
 
+  it("under concurrent contention, a scope key shared by two Businesses posts for exactly one and never replays a foreign entry", async () => {
+    const a = (await openAccount()).businessId;
+    const b = (await openAccount()).businessId;
+    const shared = `scope-${randomUUID()}`;
+    const results = await Promise.allSettled([
+      post(entry(a, { idempotencyScopeKey: shared })),
+      post(entry(b, { idempotencyScopeKey: shared })),
+    ]);
+    const fulfilled = results.filter((r) => r.status === "fulfilled");
+    const rejected = results.filter((r) => r.status === "rejected");
+    expect(fulfilled).toHaveLength(1);
+    expect(rejected).toHaveLength(1);
+    expect((rejected[0] as PromiseRejectedResult).reason).toBeInstanceOf(CommercialDomainError);
+    const winnerBusiness = (
+      fulfilled[0] as PromiseFulfilledResult<Awaited<ReturnType<typeof post>>>
+    ).value.entry.businessId;
+    const loser = winnerBusiness === a ? b : a;
+    expect(await listLedgerEntries(pool, loser)).toEqual([]);
+    expect(await listLedgerEntries(pool, winnerBusiness)).toHaveLength(1);
+  });
+
   it("rejects duplicate (Business, account_version) and malformed entry shapes", async () => {
     const { businessId } = await openAccount();
     await post(entry(businessId));
@@ -1187,6 +1208,29 @@ describe("idempotency integration (existing idempotency_keys infrastructure)", (
     });
     expect(conflict).toEqual({ outcome: "conflict" });
     expect(ran).toBe(false);
+  });
+
+  it("treats the same key and payload hash reused for a different command or administrator as a conflict, never a replay", async () => {
+    const key = newKey();
+    await runCommercialCommand(pool, baseParams(key), async () => ({ result: { first: true } }));
+    let ran = 0;
+    const body = async () => {
+      ran += 1;
+      return { result: {} };
+    };
+    const otherCommand = await runCommercialCommand(
+      pool,
+      { ...baseParams(key), commandType: "grantTrial" },
+      body,
+    );
+    const otherActor = await runCommercialCommand(
+      pool,
+      { ...baseParams(key), actorId: "someone-else" },
+      body,
+    );
+    expect(otherCommand).toEqual({ outcome: "conflict" });
+    expect(otherActor).toEqual({ outcome: "conflict" });
+    expect(ran).toBe(0);
   });
 
   it("rollback removes the in-progress reservation; the failed attempt leaves no key, ledger, audit or account change and the key is reusable", async () => {

@@ -138,6 +138,11 @@ export async function postCommercialLedgerEntry(
         "Ledger scope key contention; retry.",
       );
     }
+    if (winner.businessId !== input.businessId) {
+      throw commercialValidationError(
+        "This ledger idempotency scope already belongs to a different Business.",
+      );
+    }
     return { outcome: "replayed", entry: winner };
   }
 
