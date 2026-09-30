@@ -58,6 +58,8 @@ let pool: PlatformPostgresPool;
 let startedFromEmptyDatabase = false;
 
 const COMMERCIAL_TABLES = [
+  "commercial_trial_grants",
+  "commercial_manual_adjustments",
   "commercial_settlements",
   "commercial_audit_events",
   "commercial_standing_events",
@@ -71,6 +73,8 @@ async function dropCommercialObjects(): Promise<void> {
     await pool.query(`DROP TABLE IF EXISTS ${table} CASCADE`);
   }
   for (const fn of [
+    "commercial_trial_grants_guard",
+    "commercial_manual_adjustments_guard",
     "commercial_settlements_update_guard",
     "commercial_settlements_insert_guard",
     "commercial_assert_account_matches_ledger",
@@ -83,7 +87,7 @@ async function dropCommercialObjects(): Promise<void> {
   }
   const hasMigrations = await pool.query("SELECT to_regclass('public.schema_migrations') AS t");
   if (hasMigrations.rows[0].t !== null) {
-    await pool.query("DELETE FROM schema_migrations WHERE version IN ('0021', '0022')");
+    await pool.query("DELETE FROM schema_migrations WHERE version IN ('0021', '0022', '0023')");
     await pool
       .query("DELETE FROM idempotency_keys WHERE idempotency_key LIKE 'wpcom02-%'")
       .catch(() => {});

@@ -7,6 +7,24 @@
 
 ---
 
+## 2026-09-30 — WP-COM-03 — Manual Commercial Administration Commands (Implementation)
+
+- **Date:** 2026-09-30
+- **Phase:** Commercial implementation programme (11THONUS-COMMERCIAL-DESIGN-001 v1.1 + CORR-002, §30) — third work package
+- **Task:** WP-COM-03 — `openCommercialAccount`, `grantTrial` (explicit 3–5, no default), `adjustTrial`, `adjustCommercialCredit`, `activatePaidService`, `restrictNewStarts` / `restoreCommercialStanding`, `voidSettlement` (compensating reversal), each Platform-Administrator-only, idempotent, audited with before/after, ledger-backed. **Not integrated into the loyalty path; no endpoint, no UI.**
+- **Status:** Implemented — pending review. Not merged. Entry `origin/main` `404617032ba0a59910e49a62c081f5487d945f55`; branch `claude/determined-ride-khunqe`.
+- **Files changed:** see the [Implementation Report](../05-implementation/reports/wp-com-03-manual-commercial-administration-implementation-report-2026-09-30.md). Summary: new migration `0023_commercial_manual_administration{,.down}.sql`; new command services, provenance repository and models under `functions/src/domains/commercial/`; new `commercialAdministration.postgres.test.ts` (47 tests); `0023` added to the expected migration lists, rollback counts and teardown of the existing PostgreSQL suites and to the WP-COM-01/02 Commercial suites; boundary tests extended; migrations `README.md`.
+- **Tests:** typecheck, lint, format, build, unit (functions 1923, web 919), PostgreSQL integration under the Firestore Emulator (14 files, 442 tests) and the emulator suite (867 passed, 3 skipped) all green locally against a disposable PostgreSQL 16.
+- **Configuration / dependencies:** none.
+- **Migrations:** `0023_commercial_manual_administration` (+ `.down.sql`, fail-closed when grants/adjustments/voided settlements exist). Applied **only** to the local disposable test database; nothing deployed and no shared/staging/production database touched.
+- **Deliberately not implemented:** capacity gate, `pending_admission`, admission earmarks, consumption projection, `reevaluatePendingAdmissions`, Operator/Business UI, scheduler, payment provider, launch prices, subscription tiers, RBAC, cancelling a *recorded* settlement.
+- **Product Truth:** trial 3–5 per explicit grant (no default, not a lifetime cap); no aggregate adjustment ceiling encoded and its absence is not an authorisation of unlimited adjustment; no negative floor/maximum; `DEC-SUB-013` and `DEC-GOV-007` untouched.
+- **Risks / deviations:** report §13–§14 (explicit open command with injected Business resolver; state conflicts refused; recorded-settlement void refused — bounded design question D3; 32-bit counter bound).
+- **Rollback:** `git revert` the WP-COM-03 commit(s); on a database with no grants/adjustments/voided settlements `migrateDown` rolls `0023` back (fails closed otherwise — restore a pre-`0023` backup). No deployment/config/dependency rollback needed.
+- **Report link:** [`wp-com-03-manual-commercial-administration-implementation-report-2026-09-30.md`](../05-implementation/reports/wp-com-03-manual-commercial-administration-implementation-report-2026-09-30.md)
+
+---
+
 ## 2026-09-30 — WP-COM-02 — Commercial Settlement & Price Schedule Administration (Implementation)
 
 - **Date:** 2026-09-30
