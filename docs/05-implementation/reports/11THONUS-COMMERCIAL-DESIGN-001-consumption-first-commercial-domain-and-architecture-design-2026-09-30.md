@@ -1,9 +1,9 @@
 > **Title:** 11THONUS-COMMERCIAL-DESIGN-001 — Consumption-First Commercial Domain & Architecture Design  
-> **Version:** 1.1 (`CORR-001`) · **Status:** Corrected design — awaiting Founder review · **Classification:** Working (governance/design record)  
+> **Version:** 1.1 (`CORR-001`, `CORR-001-CLOSE-001`) · **Status:** Ready for Founder merge review (not canonical until merged) · **Classification:** Working (governance/design record)  
 > **Governing documents:** 11thONUS Platform Constitution; [Decision Register](../../00-governance/decisions/decision-register.md) (`DEC-SUB-014`); [`FD-COM-001` decision record](../../00-governance/decisions/evidence/FD-COM-001-core-commercial-model-founder-decision-2026-09-29.md); [`11THONUS-EXP-REF-001` binding assessment](11THONUS-EXP-REF-001-experience-reference-product-truth-binding-assessment-2026-09-29.md)  
 > **Source-of-truth path:** `docs/05-implementation/reports/11THONUS-COMMERCIAL-DESIGN-001-consumption-first-commercial-domain-and-architecture-design-2026-09-30.md`  
 > **Scope:** Architecture/design assessment only. No application code, test, configuration, migration, dependency, payment integration, Operator Console, prototype change or Experience Assembly was made or started. Nothing was deployed.  
-> **Version history:** v1.0 (`fea8ca7`, 2026-09-30) — initial design. **v1.1 (`CORR-001`)** — records Founder decisions FD-A–FD-D and the trial/currency directions, corrects the foreign-key strategy, and adds projection reliability, full path coverage, the reservation model and the pending-admission lifecycle. The v1.0→v1.1 change register is **Appendix A**.
+> **Version history:** v1.0 (`fea8ca7`, 2026-09-30) — initial design. **v1.1 (`CORR-001`)** — records Founder decisions FD-A–FD-D and the trial/currency directions, corrects the foreign-key strategy, and adds projection reliability, full path coverage, the reservation model and the pending-admission lifecycle. The v1.0→v1.1 change register is **Appendix A**. **`CORR-001-CLOSE-001`** (final bounded correction before merge review) corrects the trial-adjustment wording, withdraws specific UI copy for `pending_admission`, and adds the capacity-provenance invariant `INV-CAP-PROV` (§8.5.1); its register is **Appendix B**.
 
 # 11THONUS-COMMERCIAL-DESIGN-001 — Consumption-First Commercial Domain & Architecture Design
 
@@ -14,7 +14,7 @@
 - **Credit is an append-only record with a stored running total.** Every trial grant, payment, adjustment and used-up unit is a permanent line. Negative balances are allowed, with no floor and no maximum.
 - **Usable capacity is net of capacity already promised to Circles in progress** (FD-A). A Business with 3 units of capacity can be admitted to at most 3 new Circles, even if many customers buy at the same instant. This is an internal accounting rule; customers never see it.
 - **If a purchase would start a new Circle but capacity is unavailable, the purchase is kept, not rejected and not credited** (FD-C). It moves to a clearly named holding state, **`pending_admission`**, and is admitted automatically, in order, once capacity returns. No loyalty credit exists until admission.
-- **Who sees what** (FD-D): the Owner sees full commercial detail for their Business; the Manager sees standing and what it means for running the Business, but not money or ledger detail; Staff and customers see no commercial data (a held purchase just shows a neutral "processing" status).
+- **Who sees what** (FD-D): the Owner sees full commercial detail for their Business; the Manager sees standing and what it means for running the Business, but not money or ledger detail; Staff and customers see no commercial data (the wording of a held purchase's status is decided during Experience Assembly, within those limits).
 - **Redemption code is not changed.** Every unit that reaches a Circle has already passed admission, so redemption only ever moves already-admitted units.
 - **You are the only administrator at launch**, and every commercial action is permanently recorded with who, what, which Business, when, why and the reference.
 - **Nothing here is blocked on a Founder decision.** Launch BIF/RWF prices are an input needed at go-live, not a design blocker (§27).
@@ -41,7 +41,7 @@
 5. **Consumption at Reward available (FD-B)**, recorded by an idempotent Commercial-owned projection over the existing `rewards` fact. It is durable, retryable, exactly-once, observable and reconciled, and cannot leave a Reward permanently unbilled (§5.3–5.10).
 6. **Ledger:** append-only ledger as authority plus a materialised account row (Option D) (§6–§7).
 7. **Foreign keys are decided per relation, not banned.** The rule is "no FK where a commercial transaction could wait on a loyalty lock while holding a lock a loyalty transaction waits for"; each relation is analysed (§4.4).
-8. **Trial:** initial grants of 3–5; no lifetime cap; no one-grant limit; later adjustment by the Platform Administrator, audited (§9).
+8. **Trial:** initial grants of 3–5, no default; no lifetime cap; no one-grant limit; later adjustment only by the authorised Platform Administrator, attributable and auditable, with no governed aggregate ceiling and none encoded (§9).
 9. **Currency:** effective-dated, administrator-configured BIF/RWF unit prices with immutable snapshots; no live FX (§13–§14).
 10. **Standing** is a set of separate dimensions with a presentation-only summary label — no mega-enum (§11).
 11. **Authority** for commercial commands follows the existing `FD-BUS-ACT-001` precedent: an active `platformAdministrators` record plus verified MFA, no role scoping, no new RBAC (§15, §25).
@@ -220,18 +220,18 @@ There is no watermark, cursor or "last processed" value that could skip a row. A
 
 1. `INSERT` the consumption event (composite FK R1) `ON CONFLICT (source_loyalty_cycle_id) DO NOTHING` — **before** any commercial lock (rule iii). If the row already exists, stop (already projected).
 2. Lock the Business's account row.
-3. Post the ledger debit (`consumption`, one unit, bucket trial-first then paid) and the reservation release, update the account, write the audit row (`actor = system:commercial-projection`), and snapshot price schedule id, USD equivalent and local unit price.
+3. Post the ledger debit (`consumption`, one unit, **in the bucket earmarked at admission for this Circle**, §8.5.1 — never re-decided from current balances) and release the matching earmarked reservation, update the account, write the audit row (`actor = system:commercial-projection`), and snapshot price schedule id, USD equivalent and local unit price.
 4. Commit. Steps 1–3 are **one** transaction, so an event can never exist without its debit.
 
 Trigger: (a) best-effort immediately after the verify/redemption callable returns; (b) a scheduled sweep. The projection never runs inside a loyalty transaction, so a commercial fault can never roll back a Reward.
 
 ### 5.5 Retry and exactly-once
 
-Retry is the sweep itself (idempotent, unbounded), plus in-process bounded retry with backoff for transient errors. Exactly-once is enforced at three layers: `UNIQUE (source_loyalty_cycle_id)`, `UNIQUE (idempotency_scope_key)` on the ledger, and the anti-join. Concurrent projectors race on the first unique constraint; the loser does nothing. A rollback in step 3 also rolls back the step-1 insert, leaving the Reward eligible for the next pass.
+Retry is the sweep itself (idempotent, repeated indefinitely until every Reward is projected), plus in-process bounded retry with backoff for transient errors. Exactly-once is enforced at three layers: `UNIQUE (source_loyalty_cycle_id)`, `UNIQUE (idempotency_scope_key)` on the ledger, and the anti-join. Concurrent projectors race on the first unique constraint; the loser does nothing. A rollback in step 3 also rolls back the step-1 insert, leaving the Reward eligible for the next pass.
 
 ### 5.6 Reconciliation and backfill
 
-A read-only reconciliation job (scheduled, and on demand from the Operator) reports, without auto-repair: Rewards past the grace interval with no consumption event; events with no `rewards` row (impossible under R1, checked anyway); events with no ledger debit; `account counters ≠ Σ ledger`; `reserved_units ≠ Σ admitted blocks − Σ consumed`. **Backfill is the same projection with no time window** — running it again is always safe. The deliberate exclusion is Rewards made available before `commercial_effective_from`, which is recorded on the account and never billed retroactively.
+A read-only reconciliation job (scheduled, and on demand from the Operator) reports, without auto-repair: Rewards past the grace interval with no consumption event; events with no `rewards` row (impossible under R1, checked anyway); events with no ledger debit; `account counters ≠ Σ ledger`; `trial_reserved`/`paid_reserved` ≠ Σ earmarks − Σ consumed earmarks per bucket; a consumption whose bucket differs from its earmark; an earmarked Circle consumed via the fallback; any earmark consumed twice. **Backfill is the same projection with no time window** — running it again is always safe. The deliberate exclusion is Rewards made available before `commercial_effective_from`, which is recorded on the account and never billed retroactively.
 
 ### 5.7 Lag observability and failure alerts
 
@@ -285,7 +285,7 @@ A cannot reconstruct history. B makes the gate sum the ledger under a lock on ev
   - **Accounting balance** = `trial_remaining_units + paid_balance_units` — may be negative; no floor, no maximum.
   - **Reserved units** — capacity already admitted to Circle positions that have not yet been consumed; never negative.
   - **Available capacity** = accounting balance − reserved units. **This is the FD-A "usable capacity".**
-- **Buckets:** `trial` and `paid`. Consumption draws `trial` while `trial_remaining > 0`, then `paid` (trial-first; the adopted prototype already does this — `AppContext.tsx:383`). `trial_remaining` cannot go below zero; **negative credit lives only on `paid`.**
+- **Buckets:** `trial` and `paid`. The bucket that funds a Circle is **earmarked once, at admission** (uncommitted trial first, then paid — the adopted prototype's trial-first order, `AppContext.tsx:383`) and **honoured at consumption**; it is never re-decided from balances at posting time (§8.5.1). `trial_remaining` cannot go below zero; **negative credit lives only on `paid`.** The *availability* model is unchanged: one shared pool, `available = (trial_remaining + paid_balance) − (trial_reserved + paid_reserved)`.
 - **Invariants:** I-1 counters = Σ ledger deltas; I-2 one consumption event ⇔ one debit entry; I-3 ledger, audit, consumption and admission rows are never updated or deleted (`BEFORE UPDATE OR DELETE` triggers that raise — stronger than the repository's "absence of an updater" precedent, justified because these rows are money-affecting); I-4 `reserved_units ≥ 0`; **no CHECK on the sign of `paid_balance_units`.**
 - **Entry types:** `trial_grant`, `trial_adjustment`, `credit_grant`, `credit_adjustment`, `capacity_reserved`, `capacity_released` (defined for future loyalty corrections; unused now), `consumption`, `consumption_reversal` (defined, unused now), `settlement_void_reversal`.
 - Each entry stores `trial_after`/`paid_after`/`reserved_after` for point-in-time reads without replay.
@@ -346,15 +346,71 @@ The account lock is the **last lock any loyalty transaction takes**.
 | Aspect | Design |
 |---|---|
 | **When it occurs** | At admission, in the same transaction that issues the Verified Unit — from `verifyPurchase` (P1) or the admission processor (P9). Never at Cycle open, never at redemption |
-| **Durable representation** | (1) an append-only ledger entry `capacity_reserved` (`reserved_delta = +newBlocks`, `units_delta = 0`, FK to the Verified Unit); (2) one immutable `commercial_admissions` row per admitted purchase (`purchase_record_id` unique, `verified_unit_id` unique, `blocks_reserved`, decision snapshot); (3) the `reserved_units` counter on the account. Reserved capacity is **fungible**: it is a count, not tied to a particular Cycle |
-| **Converts to consumed** | When the consumption projection records a Reward (§5): one `consumption` entry debits one unit **and** releases one reserved unit (`units_delta = −1`, `reserved_delta = −1`) atomically |
+| **Durable representation** | (1) an append-only ledger entry `capacity_reserved` (`reserved_delta = +newBlocks`, `units_delta = 0`, FK to the Verified Unit); (2) one immutable `commercial_admissions` row per admitted purchase (`purchase_record_id` unique, `verified_unit_id` unique, `blocks_reserved`, decision snapshot); (3) one immutable `commercial_admission_blocks` earmark row **per Circle position** (bucket provenance, §8.5.1); (4) the `trial_reserved_units` and `paid_reserved_units` counters on the account (`reserved_units` is their sum). Availability treats reserved capacity as **one shared pool**; provenance is per block, keyed by index — no Cycle or position state is copied |
+| **Converts to consumed** | When the consumption projection records a Reward (§5): one `consumption` entry debits one unit **from the earmarked bucket** and releases the same bucket's reserved unit atomically (`units_delta = −1` and `reserved_delta = −1` on that bucket), recording the earmark it consumed |
 | **Released without consumption** | Only by a future governed loyalty correction, via `capacity_released` (defined, unused now). No release path exists today because no cancellation/reversal exists |
 | **Rollback** | Reservation, unit issue and allocation are one transaction. Rollback removes all of them together; a held purchase writes **no** reservation |
 | **Concurrency** | Serialised by the account row lock. A second concurrent admission sees the first's reservation and is held if capacity is gone — **concurrent new-Circle starts cannot oversubscribe** |
-| **Trial and paid** | One pool: available = `trial_remaining + paid_balance − reserved`. Reservation is not bucket-specific; the bucket is assigned at consumption (trial first) |
-| **Does not duplicate loyalty state** | Commercial stores counts and provenance ids only. Which Circle a block belongs to is never stored; cycle/position state remains solely in loyalty tables |
+| **Trial and paid** | One shared pool for availability: available = `trial_remaining + paid_balance − reserved` (accepted FD-A model, unchanged). **Funding provenance is earmarked per block at admission and honoured at consumption** (§8.5.1) |
+| **Does not duplicate loyalty state** | Commercial stores counts, provenance ids and a per-block **index-keyed earmark** only. It never copies Cycle state, allocation positions or unit membership; those remain solely in loyalty tables. The earmark's link to a Circle is the derivable equality `block_index = cycle.sequence_number` (§8.5.1) |
 | **Not customer-facing** | Reservation mechanics are internal. Businesses see "available capacity" and plain-language operational consequences (§17), never reservation rows |
-| **Unreserved consumption** | A Reward whose blocks were never reserved (available before `commercial_effective_from`, or gate in `off`/`shadow` mode) still consumes; release is skipped when `reserved_units = 0` and the consumption event is flagged `unreserved` |
+| **Unearmarked consumption** | A Reward with no earmark (available before `commercial_effective_from`, or admitted while the gate was `off`/`shadow`) still consumes, using the defined fallback in §8.5.1, and the consumption event is flagged. Expected count in `enforce` mode is zero; a non-zero count raises an alert |
+
+### 8.5.1 Capacity provenance at admission — implementation invariant `INV-CAP-PROV`
+
+**Scope.** The accepted shared-capacity model (§7, §8.5) is **not redesigned**: availability remains one pool. This subsection only fixes *which funding bucket a Circle is treated as using*, so that the treatment cannot drift.
+
+**The hazard found in review.** If the bucket were decided when the consumption is *posted* (trial-first from current balances), the result would depend on posting time and processing order. Example: Circle A1 is admitted when trial is exhausted (paid treatment); the administrator then adds trial capacity; Circle A2 is admitted (trial treatment); the projection is delayed; when it runs, A1's Reward is posted first and would take the trial unit, and A2's the paid unit. Totals match, but each Circle's commercial treatment has changed retroactively (paid→trial and trial→paid) purely because of delay. The same distortion follows from any trial adjustment, top-up, activation or settlement void between admission and Reward-available.
+
+**Invariant `INV-CAP-PROV`.** *For every Circle admitted while the gate is in `enforce` mode, the funding bucket debited at consumption is exactly the bucket earmarked at that Circle's admission, regardless of projection delay, retry, reordering, concurrent projectors, reconciliation, backfill, trial adjustment, top-up, paid activation or settlement void. The bucket is never re-derived from balances at posting time.*
+
+**Provenance retained at admission.**
+
+| Item | Design |
+|---|---|
+| **Earmark rule** | For each Circle position an admission begins, in index order: bucket `trial` if uncommitted trial (`trial_remaining − trial_reserved`) is > 0 at that moment, else `paid`. A pure function of account state under the account lock. If the paid pool is negative, the availability check has already ensured uncommitted trial covers the admission, so no paid earmark is taken against a negative paid pool |
+| **Durable row** | `commercial_admission_blocks`, immutable, one row per Circle position: `admission_id` (FK, R4-style — same transaction), `business_id`, `stream_ref`, `block_index`, `funding_bucket`, `earmarked_at`. `UNIQUE (business_id, stream_ref, block_index)` |
+| **`stream_ref`** | Opaque deterministic digest of `business_id ‖ customer_identity_id ‖ reward_program_id`, computed on the Purchase side and passed through the port. Commercial tables therefore hold no raw customer identity, yet the projection can recompute the same value from the Reward row |
+| **Mapping to a Circle** | Circle `sequence_number k` of a stream ⇔ `block_index k`. Each Circle holds exactly 10 units, a stream has one current Cycle, and the sequence increments once per opening, so the mapping is by **index**, not by which units sit inside a Circle (forward allocation orders units by purchase date while admission is ordered by decision time; the index mapping is unaffected). A Reward exists only after 10k units are admitted, so block k's earmark always precedes Reward k |
+| **Counters** | `trial_reserved_units`, `paid_reserved_units` on the account; `reserved_units` is their sum. Availability formula unchanged |
+| **At consumption** | Read (non-locking) the Reward's Cycle sequence, look up the earmark by `(business, stream_ref, sequence)`, debit **that** bucket, release **that** bucket's reservation, and store the consumed earmark on the consumption event (`earmark_id`, unique — an earmark can be consumed once) |
+| **Never consulted at posting** | Current trial balance, paid balance, activation timestamp, restriction, settlements |
+| **Fallback (no earmark exists)** | Reward available before `commercial_effective_from`, or admitted while the gate was `off`/`shadow`: consume from uncommitted trial first, then paid, and set `bucket_source = 'consumption_time_fallback'`. Never used when an earmark exists. Expected count is zero in `enforce`; non-zero raises an alert. It is also why go-live requires no in-flight Circles (§31) |
+| **Future correction/reversal** | Reusing a `block_index` after a future loyalty reversal would violate the unique key and **fail closed**; that future design must add compensating release records. Out of scope, and safe by construction |
+
+**Trial adjustment interaction.** The command floor (§9) prevents lowering trial capacity below earmarked trial, so an adjustment can never strand a trial-earmarked Circle. Upward adjustments and top-ups change only uncommitted capacity. Paid activation sets a timestamp and changes no earmark. A settlement void lowers the paid balance, possibly negative; paid-earmarked Circles still consume paid (the governed recoverable-negative outcome) and availability falls so new admissions hold.
+
+**Transition analysis (trial ↔ paid).**
+
+| # | Sequence | Outcome under `INV-CAP-PROV` |
+|---|---|---|
+| 1 | Admit with trial available → adjust trial up → top-up → activate paid → Reward | Consumes **trial** (earmarked); later admissions earmark by their own state |
+| 2 | Admit with trial exhausted (paid earmark) → grant trial → Reward | Consumes **paid**; no paid→trial reassignment |
+| 3 | Trial uncommitted = 1, admission begins 2 Circle positions | Block a `trial`, block b `paid`; each consumes its own bucket |
+| 4 | Downward trial adjustment larger than uncommitted trial | Rejected by the floor; earmarks untouched |
+| 5 | Settlement void after a paid earmark | Still consumes paid; paid balance may go negative; availability falls |
+| 6 | Projection delayed, reordered, retried, run concurrently, or backfilled | Identical per-Circle buckets to prompt, ordered processing; no duplicate charge (unique cycle, unique earmark, unique ledger key) |
+| 7 | Reward with no earmark | Fallback path, flagged and alerted; never overrides an existing earmark |
+
+**Required implementation tests** (acceptance gate for WP-COM-04 and WP-COM-05b; each must assert **per-Circle bucket**, not just totals, and run the invariant checks I-1…I-4 plus counter reconciliation after every step):
+
+1. Admission while trial capacity exists earmarks `trial`.
+2. Admission with trial exhausted earmarks `paid`.
+3. Admission beginning several positions across the trial/paid boundary earmarks each block deterministically.
+4. Trial adjusted **up** between admission and Reward-available: earmark and consumption bucket unchanged.
+5. Trial adjusted **down** within uncommitted trial: allowed, earmarks unchanged; below earmarked trial: rejected, including under a concurrent admission (floor enforced under the account lock).
+6. Paid top-up, settlement confirmation and `activatePaidService` after a trial-earmarked admission: the Circle still consumes `trial`.
+7. Trial grant/adjustment after a paid-earmarked admission: the Circle still consumes `paid` (no paid→trial reassignment).
+8. Settlement void after a paid earmark: still `paid`, balance may go negative, availability holds new admissions.
+9. Delayed, out-of-order, concurrent and repeated projection, verified as a property over permutations of processing order: per-Circle buckets identical to prompt ordered processing.
+10. Retry after mid-transaction failure or rollback, reconciliation re-run and backfill: no change to any bucket, no duplicate.
+11. No double charge: debits = Rewards; each earmark consumed at most once; Σ ledger = counters.
+12. Reservation→consumption conversion is atomic: balance and the matching reserved counter move together.
+13. Fallback: used only when no earmark exists, flagged, alerted; never chosen when an earmark exists.
+14. Counter reconciliation: `trial_reserved = Σ trial earmarks − Σ consumed trial earmarks` (and paid likewise).
+15. Admission vs trial-adjust-down vs top-up concurrency: no lost update, no `40P01`.
+
+**Escalation clause.** If implementation analysis shows `INV-CAP-PROV` cannot be met without changing a governed commercial rule (for example, a rule about how trial capacity must be consumed relative to paid capacity), implementation **stops and escalates to the Founder**. This design found no such need: earmarking at admission uses the same trial-first order already recorded as a design default and introduces no new commercial rule.
 
 ### 8.6 Gate decision
 
@@ -375,7 +431,7 @@ The account lock is the **last lock any loyalty transaction takes**.
 
 **Authoritative state.** The Purchase domain owns it. **A new explicit Purchase status is required:** `pending_admission`. It cannot be represented by `waiting_for_customer` (the customer has already confirmed and would keep seeing "waiting for you") or by `verified` (which means a unit has been issued — `verified` ⇒ a Verified Unit exists).
 
-`pending_admission` means: *the customer has confirmed the purchase is genuine; no Verified Unit, no Circle and no loyalty credit exist yet; admission awaits commercial capacity.* It says nothing about validity and carries no commercial figures.
+**Domain semantics of `pending_admission`** (the only meaning this design gives it): the Purchase has been **received and preserved**; it has **not yet been admitted into loyalty earning**; **no Verified Unit has been issued**; **no new Circle has been started**; **loyalty credit remains pending admission**. It says nothing about the Purchase's validity and carries no commercial figures. (The transition into it happens at the customer's verification step, which is recorded as the event's actor and time; that provenance is an evidence fact, not a statement about how the state is presented.)
 
 ```
 waiting_for_customer ──(customer verifies; admission HOLD)──▶ pending_admission
@@ -394,7 +450,14 @@ No other transition is added: **no reject, dispute, cancel or expiry transition 
 
 ### 8.10 Customer and Business visibility of a held purchase
 
-Per FD-D: **Participants see no commercial data.** The customer-facing representation is a neutral "confirmed — being added to your card" label (a Purchase-status label, no reason, no commercial wording). Owner and Manager see the purchase as **held awaiting admission** with the operational consequence (§17). Staff see a generic "on hold — ask your manager" with no commercial detail. New i18n keys must be added to **both** EN and FR locale files (the enforced parity test), and every exhaustive switch on `PurchaseStatus` in the web adapters (`CustomerActivityPage`, `PurchaseRecordsPage`, `purchaseMutations`) must handle the new value.
+**Experience boundary.** This design fixes the *domain semantics* (§8.8) and the *audience boundary* (FD-D) only. **All customer-facing and Business-facing wording, composition, interaction and final experience treatment for this state are governed during Experience Assembly, with the adopted Experience Reference as the authority.** No sentence, label or copy in this report is Product Truth; earlier illustrative phrasing has been withdrawn. The constraints that *do* bind assembly are:
+
+- **Participants see no commercial data** (FD-D): whatever the customer is shown must carry no commercial reason, figure or standing.
+- **Staff see no commercial financial/ledger detail** (FD-D): whatever Staff are shown carries no figure, standing or reason.
+- **Owner and Manager** may be shown that the purchase awaits admission and its operational consequence, within the FD-D limits (§17).
+- The display must not imply the Purchase is invalid, rejected or lost, and must not imply loyalty credit has been issued.
+
+Implementation impact (mechanical, independent of wording): every exhaustive switch on `PurchaseStatus` in the web adapters (`CustomerActivityPage`, `PurchaseRecordsPage`, `purchaseMutations`) must handle the new value, and any new i18n keys must be added to **both** EN and FR locale files (the enforced parity test).
 
 ### 8.11 Ordering
 
@@ -441,8 +504,9 @@ Gate modes by configuration: `off` (no commercial admission; today's behaviour),
 
 - **Grants.** `commercial_trial_grants` rows record every grant: `kind` (`initial`), `units`, `granted_by`, `granted_at`, `reason_code`, `reason_text`, `reference`, `ledger_entry_id`. **`units` must be 3–5 on every grant** (CHECK). **There is no default anywhere** — the command requires `units`, and the UI must neither pre-fill a value nor offer 1 or 2.
 - **No lifetime cap; no single-grant limit.** The design does **not** hard-code one lifetime grant per Business and does **not** cap lifetime trial capacity at 5 (the v1.0 `UNIQUE(business_id)`, `trial_granted_units ≤ 5` and "cumulative ≤ 5" rules are removed). More than one grant may exist; each is a separate, attributable, audited, idempotent act. To guard against an *accidental* repeat, the command returns the Business's prior grants and the Operator surface displays them before confirming; this informs the administrator and does not block.
-- **Later adjustment.** `adjustTrial(±n, reason)` is an explicit Platform Administrator act, attributable and audited, with **no upper bound**. The only structural floor is that `trial_remaining` cannot go below zero (a downward adjustment larger than the remaining trial is rejected; negative credit is a *paid-bucket* concept).
-- **Remaining, consumption, exhaustion.** `trial_remaining_units` is materialised; consumption draws it first; exhaustion is `trial_remaining = 0`, not a state.
+- **Later adjustment.** `adjustTrial(±n, reason)` may be performed explicitly by the authorised Platform Administrator and must be attributable and auditable (actor, Business, time, reason, reference, before/after). **No aggregate or lifetime ceiling on later adjustments is currently governed.** The design neither imposes a ceiling nor treats that absence as a rule that unlimited adjustment is authorised: it encodes **no** limit in either direction, and each adjustment stands or falls as an individually attributable, reason-bearing, audited act. Should a ceiling ever be wanted, it would be a new Founder decision and one additional predicate in the command, not a schema change. As an *informational visibility aid only* (never a rule or a block), the Operator view shows a Business's cumulative grants and adjustments so the administrator can see the history before acting.
+- **Integrity floor (not a policy ceiling).** A downward adjustment may not reduce trial capacity below the amount already **earmarked to admitted Circles** (§8.5.1), because that would retroactively change those Circles' commercial treatment. The adjustable quantity is therefore the *uncommitted* trial (`trial_remaining − trial_reserved`); `trial_remaining` also cannot go below zero. Negative credit is a *paid-bucket* concept. This is a determinism invariant, not a new commercial rule, and it is consistent with `DEC-SUB-014` §8.2, which authorises adjusting the *remaining* trial allowance: capacity already committed to admitted Circles is not "remaining". (Were the Founder to want administrators to reduce trial below earmarked Circles, that would re-assign those Circles to paid treatment — a commercial-treatment question — so it is deliberately not designed.)
+- **Remaining, consumption, exhaustion.** `trial_remaining_units` is materialised; trial capacity is earmarked to a Circle **at admission** (§8.5.1) and debited at consumption; exhaustion is `trial_remaining = 0`, not a state.
 - **Not a tier, no expiry.** Trial is a ledger bucket plus grant records. No time-based expiry is modelled (none governed).
 - **`DEC-SUB-013` remains open.** A trial grant is the launch onboarding allowance, not a complimentary arrangement; nothing here decides whether complimentary arrangements may exist. Because a repeat grant or a large adjustment could *look* like one, both are audit-visible and reason-mandatory; whether such use is permitted is exactly the open `DEC-SUB-013` question.
 - **Business lifecycle.** `FD-BUS-ACT-001` moves a Business to lifecycle `trial`; that creates **no** trial allowance. The grant is a separate explicit command.
@@ -481,7 +545,7 @@ Positive credit without a confirmed settlement is only possible through `adjustC
 | **Available capacity** | balance − reserved | The admission input (FD-A) |
 | **Administrative restriction** | **stored**: `service_restriction ∈ {none, restricted}` | Set by explicit administrator command with reason |
 | **Paid-service activation** | **stored**: `paid_service_activated_at` | Set once |
-| Funding source | derived: `paid` if activated; `trial` if `trial_remaining > 0` and not activated; else `none` | — |
+| Funding source | derived, **presentation only**: `paid` if activated; `trial` if `trial_remaining > 0` and not activated; else `none`. It plays no part in bucket assignment, which comes solely from the admission earmark (§8.5.1) | — |
 | **Grace** | derived: `reserved_units > 0` while new admission is blocked (available < 1 or restricted) | "Started Circles will finish" |
 | **Admission holds** | derived: count and oldest age of `pending_admission` purchases | New with FD-C |
 | Pending consumption | derived: unprojected Rewards | Keeps displayed balance honest (§5.8) |
@@ -529,7 +593,7 @@ Schedule reference plus snapshots is required: the reference gives provenance, a
 |---|---|---|---|---|---|---|---|
 | 1 | `openCommercialAccount` (implicit in #2/#4) | `businessId` | Market ∈ {BI, RW}; Business exists | `UNIQUE(business_id)` | reason code | `account_opened` | Account, `commercial_effective_from`, `settlement_market` |
 | 2 | `grantTrial` | `businessId`, `units` (**required, 3–5**) | Account exists; **prior grants surfaced, not blocking; no cap** | key | reason, reference | `trial_granted` | +trial entry |
-| 3 | `adjustTrial` | `businessId`, `delta`, reason | `trial_remaining ≥ 0` after; **no upper bound** | key | reason mandatory | `trial_adjusted` | ± trial entry |
+| 3 | `adjustTrial` | `businessId`, `delta`, reason | Integrity floor only: result ≥ trial earmarked to admitted Circles and ≥ 0. **No aggregate/lifetime ceiling is governed and none is encoded; absence of a ceiling is not an authorisation of unlimited adjustment** | key | reason mandatory | `trial_adjusted` | ± trial entry |
 | 4 | `recordSettlement` | business, method, `externalReference`, amount, currency, `unitsPurchased`, `receivedAt` | Currency matches market; `UNIQUE(method, external_reference)` blocks replay | key + natural key | reference mandatory | `settlement_recorded` | Settlement `recorded`; no credit |
 | 5 | `confirmSettlement` | `settlementId` | Status `recorded`; variance ⇒ reason | key; repeat is a no-op | confirmation note | `settlement_confirmed` | `confirmed` + `credit_grant` |
 | 6 | `adjustCommercialCredit` | business, `delta ≠ 0`, `reasonCode` from closed set | Positive unsettled credit only with permitted codes (§10.3); may drive paid balance negative | key | reason + reference | `credit_adjusted` | ± paid entry |
@@ -551,7 +615,7 @@ Class: DB direct bind · AN assembly needed · AD adapter needed · AU authorise
 |---|---|---|---|---|---|---|---|---|
 | **Operations** | Firestore lifecycle; settlements `recorded`; **held purchases** | Cross-tenant queues: onboarding, payment awaiting action, **admissions held (count, oldest age)**, projection lag | `operator.listQueues` | #5, #12 deep-links | Scenario A–F | Support/integrity items | AD + AU | REFINE |
 | **Businesses** (360) | Firestore Business/membership; commercial account | Aggregate incl. **available capacity, held purchases, grace, restriction** | `operator.getBusiness360` | #1–#12 deep-links | Persona switcher | Cross-tenant read beyond sole-admin (`DEC-GOV-007`) | AD | REFINE |
-| **Commercial** | none | Standing dimensions, ledger history, settlements, trial grants (**multiple, with adjustments**), **admission queue** | `operator.getCommercialStanding`, `getCommercialHistory` | #2–#12 | `$1.00`, 5-unit default, **1–5 trial input**, USD-clamped balance, `OperatorSubRole` | none | AU + AD | REFINE |
+| **Commercial** | none | Standing dimensions, ledger history, settlements, trial grants (**multiple, with adjustments; cumulative history shown informationally, never as a limit**), **admission queue** | `operator.getCommercialStanding`, `getCommercialHistory` | #2–#12 | `$1.00`, 5-unit default, **1–5 trial input**, USD-clamped balance, `OperatorSubRole` | none | AU + AD | REFINE |
 | **Support** | none | Case store | — | — | Case demo data | Support-case truth | AU / TG | DEFER |
 | **Integrity** | `trust_events` (substrate) | Case management | — | — | Integrity demo | Workflow truth | TG | DEFER |
 | **Platform** | `commerceKnowledge` (taxonomy) | **BIF/RWF effective-dated unit-price schedules** | `operator.listPriceSchedules` | #11 | Market demo config | Non-commercial platform configuration | AD (slice) / TG | REFINE / DEFER |
@@ -567,8 +631,8 @@ Prototype scenarios A–F, phone frame, `OperatorSubRole`, demo personas remain 
 |---|---|---|
 | **Owner** | **Full Business commercial read visibility:** standing dimensions, trial remaining, accounting balance (units), available capacity, "Circles in progress" (reserved, in plain language), grace and restriction notices, held purchases (count, age, list), Business-visible ledger lines (credits, adjustments, consumption counts), settlements for their Business, unit price for their market | Internal reason text, internal notes, audit trail, other Businesses, any administrator control |
 | **Manager** | **Standing and the operational consequences needed to run the Business:** whether new Circles can currently start, that active Circles will finish, that earned Rewards are unaffected, the number of purchases awaiting admission, the standing label | Money, prices, balances in units beyond "can new Circles start", ledger, settlements, history, audit; **no Platform commercial administration** |
-| **Staff** | A generic "on hold — ask your manager" on an affected purchase | Any commercial figure, standing, ledger, reason |
-| **Participant (customer)** | A neutral purchase status ("confirmed — being added to your card") | Any commercial data whatsoever |
+| **Staff** | At most a generic indication that an affected purchase is not yet admitted, worded during Experience Assembly | Any commercial figure, standing, ledger, reason |
+| **Participant (customer)** | At most a neutral purchase status, worded during Experience Assembly | Any commercial data whatsoever |
 | **Platform Administrator** | Governed manual administration as already authorised (§15) | — |
 
 The Manager row is a **design interpretation of "operational consequences"**: it exposes yes/no eligibility and counts, not financial figures; narrowing it to the standing label alone is a one-line change in the read model.
@@ -592,7 +656,7 @@ A structurally separate catalogue module (the `DEC-LOY-017` precedent) with two 
 | Credit / capacity | Balance in **units**, available capacity (Owner) | AD | REFINE (unit-denominated; see X-8) |
 | Grace | Grace dimension (Owner, Manager) | AD | REFINE |
 | Restriction ("new Circle starts paused") | Restriction / exhausted (Owner, Manager) | AD | REFINE |
-| Held purchases | `pending_admission` (Owner, Manager; generic for Staff) | AD | REFINE (new) |
+| Held purchases | `pending_admission` (Owner, Manager; generic and detail-free for Staff); wording and treatment per the adopted Experience Reference at assembly | AD | REFINE (new) |
 | Active-Circle preservation / earned-Reward preservation | Backed by §8.7 and `DEC-LOY-011`; redemption unchanged | AN (copy) | REUSE |
 | History | Business-visible ledger lines (Owner only) | AD | REFINE |
 | Price shown | USD 2 equivalent + the market's local price (never the prototype `$1`) | AN | REPLACE (value) |
@@ -629,13 +693,14 @@ Naming follows the repository: `snake_case`, `UUID PRIMARY KEY DEFAULT gen_rando
 
 | Table | Purpose / owner | Key fields | Mutable | Constraints & idempotency | Lifecycle / audit |
 |---|---|---|---|---|---|
-| `commercial_accounts` | Materialised per-Business state | `business_id` PK; `settlement_market`; `commercial_effective_from`; `trial_remaining_units`, `paid_balance_units`, `reserved_units`; `service_restriction`; `paid_service_activated_at`; `version`; `updated_at` | Counters/flags only, under own lock with a ledger append | `trial_remaining_units ≥ 0`; `reserved_units ≥ 0`; **no sign CHECK on `paid_balance_units`; no cap on any trial value** | Created once; never deleted |
-| `commercial_ledger_entries` | Authoritative ledger | `id`; `business_id` FK; `entry_type`; `bucket`; `units_delta`; `reserved_delta`; `*_after`; refs; `idempotency_scope_key`; `created_by`; `occurred_at`; FK `source_verified_unit_id` (R6) | **Immutable** | `UNIQUE(idempotency_scope_key)` | Scope keys `consume:<cycle>`, `reserve:<vu>`, `cmd:<key>:<n>` |
+| `commercial_accounts` | Materialised per-Business state | `business_id` PK; `settlement_market`; `commercial_effective_from`; `trial_remaining_units`, `paid_balance_units`, `trial_reserved_units`, `paid_reserved_units` (`reserved_units` = sum); `service_restriction`; `paid_service_activated_at`; `version`; `updated_at` | Counters/flags only, under own lock with a ledger append | `trial_remaining_units ≥ trial_reserved_units ≥ 0`; `paid_reserved_units ≥ 0`; **no sign CHECK on `paid_balance_units`; no cap on any trial value** | Created once; never deleted |
+| `commercial_ledger_entries` | Authoritative ledger | `id`; `business_id` FK; `entry_type`; `bucket`; `units_delta`; `trial_reserved_delta`; `paid_reserved_delta`; `*_after`; refs; `idempotency_scope_key`; `created_by`; `occurred_at`; FK `source_verified_unit_id` (R6) | **Immutable** | `UNIQUE(idempotency_scope_key)` | Scope keys `consume:<cycle>`, `reserve:<vu>`, `cmd:<key>:<n>` |
 | `commercial_admissions` | One row per admitted purchase | `id`; `business_id`; `purchase_record_id` FK UNIQUE (R5); `verified_unit_id` FK UNIQUE (R4); `blocks_reserved`; `decided_by` (`customer_verify`/`admission_processor`); `ledger_entry_id`; decision snapshot (`available_before`, `reserved_before`); `decided_at` | **Immutable** | `UNIQUE(purchase_record_id)`, `UNIQUE(verified_unit_id)` | Written in the admitting loyalty transaction |
-| `commercial_consumption_events` | One row per consumed unit | `id`; `business_id`; `reward_program_id` (soft, R3); `source_loyalty_cycle_id`; `source_reward_id`; composite FK to `rewards (id, loyalty_cycle_id)` (R1); `source_fact_at`; `unit_count = 1`; `bucket`; `unreserved`; `price_schedule_id`; price snapshots; `ledger_entry_id`; `recorded_at` | **Immutable** | **`UNIQUE(source_loyalty_cycle_id)`**; no customer identity | Written by the projection |
+| `commercial_admission_blocks` | **Bucket provenance**, one row per Circle position (`INV-CAP-PROV`, §8.5.1) | `id`; `admission_id` FK; `business_id`; `stream_ref` (opaque digest, no raw identity); `block_index`; `funding_bucket` (`trial`/`paid`); `earmarked_at` | **Immutable** | **`UNIQUE(business_id, stream_ref, block_index)`** | Written in the admitting loyalty transaction; consumed once via `consumption_events.earmark_id` |
+| `commercial_consumption_events` | One row per consumed unit | `id`; `business_id`; `reward_program_id` (soft, R3); `source_loyalty_cycle_id`; `source_reward_id`; composite FK to `rewards (id, loyalty_cycle_id)` (R1); `source_fact_at`; `unit_count = 1`; `bucket` (the earmarked bucket); `earmark_id` (FK, **UNIQUE**, nullable only for the flagged fallback); `bucket_source` (`earmark` / `consumption_time_fallback`); `price_schedule_id`; price snapshots; `ledger_entry_id`; `recorded_at` | **Immutable** | **`UNIQUE(source_loyalty_cycle_id)`**; no customer identity | Written by the projection |
 | `commercial_projection_failures` | Observability | cycle id, error class, attempt, time | Append-only | — | Feeds alerts |
 | `commercial_trial_grants` | Every trial grant | `id`; `business_id`; `kind`; **`units` CHECK 3..5**; `granted_by`; `granted_at`; reason fields; `reference`; `ledger_entry_id` | Immutable | **No `UNIQUE(business_id)`; no lifetime cap**; idempotency key unique | Audit `trial_granted` |
-| `commercial_manual_adjustments` | Trial and credit adjustments | `id`; `business_id`; `bucket`; `units_delta ≠ 0`; `reason_code`; `reason_text NOT NULL`; `reference`; `created_by`; `idempotency_key`; `ledger_entry_id` | Immutable | `UNIQUE(idempotency_key)`; **no upper bound on trial adjustments** | Audit |
+| `commercial_manual_adjustments` | Trial and credit adjustments | `id`; `business_id`; `bucket`; `units_delta ≠ 0`; `reason_code`; `reason_text NOT NULL`; `reference`; `created_by`; `idempotency_key`; `ledger_entry_id` | Immutable | `UNIQUE(idempotency_key)`; **no aggregate/lifetime ceiling on trial adjustments is governed or encoded** (integrity floor only, enforced in the command under the account lock) | Audit |
 | `commercial_settlements` | Offline/manual (later provider) payments | `id`; `business_id`; `status`; `source`; `method`; `external_reference`; `provider_event_id`; `amount_minor BIGINT`; `currency`; `market`; `units_purchased`; `price_schedule_id`; `expected_amount_minor`; `variance_minor`; `tax_basis`; `received_at`; actor/time fields | Status and confirm/void fields only | `UNIQUE(method, external_reference)`; `UNIQUE(provider_event_id)` | recorded → confirmed → voided |
 | `commercial_price_schedules` | Effective-dated pricing | `id`; `market`; `currency`; `usd_equivalent_minor`; `local_unit_price_minor`; `rate_note`; `effective_from`; `created_by`; `reason` | **Immutable** | `UNIQUE(market, effective_from)` | Correction = new row |
 | `commercial_standing_events` | Restriction/activation/opening timeline | `id`; `business_id`; `event_type`; actor; reason; time | Immutable | key unique | Feeds history |
@@ -709,7 +774,7 @@ Projection fault: retried by the sweep; loyalty unaffected; alerts fire. Admissi
 - **Commands:** active Platform Administrator + verified MFA (`FD-BUS-ACT-001`); no role, override or new permission. Stated limitation: until `DEC-GOV-007`, commercial authority follows administrator status, so adding a second administrator would confer commercial power; `DEC-SUB-014` §9 already requires roles be defined first, and a launch runbook check records that the administrator set is exactly the Founder.
 - **§8.1 boundary is structural:** no commercial import path to loyalty writes; the admission port is the sole coupling; the loyalty-write importer allow-list test.
 - **Tenant isolation:** every commercial read/write is `business_id`-scoped.
-- **Privacy:** commercial tables store no customer identity; participants see no commercial data (FD-D); a held purchase's customer-facing label is neutral.
+- **Privacy:** commercial tables store no customer identity; participants see no commercial data (FD-D); whatever a held purchase's status shows a customer or Staff member carries no commercial reason or figure (wording is an Experience Assembly matter).
 - **Mass-assignment:** transports whitelist fields; `units`, market and price are never client-defaulted.
 - **Audit integrity:** immutability triggers; audit written in the mutation transaction.
 - **Enumeration:** one denial reason for all authority failures.
@@ -726,8 +791,8 @@ Projection fault: retried by the sweep; loyalty unaffected; alerts fire. Admissi
 | X-6 | Cross-tenant Operator reads with no governed admin read model | Security | Sole-administrator authority; audited reads; no role invented |
 | X-7 | *(Resolved by FD-D)* Business role visibility | — | §17 |
 | X-8 | Prototype credit is a **USD balance clamped at zero** (`creditBalanceUSD`; `Math.max(0, balance − 1.0)`, `AppContext.tsx:383`) vs governed negative credit and USD 2 unit | **Integrity** | Authority is unit-denominated and signed; UI shows units with a display-only money equivalent; the experience keeps its credit panel and per-Circle coverage line |
-| X-9 | Prototype consumes trial first | none — supports design | Adopted |
-| X-10 | Prototype has no held/pending-admission representation | Documentation-only | New Owner/Manager "held purchases" element and a neutral customer label, added to the adopted composition without altering it |
+| X-9 | Prototype consumes trial first | none — supports design | Trial-first order adopted, applied at admission-time earmarking |
+| X-10 | Prototype has no held/pending-admission representation | Documentation-only | A held-purchase representation is needed; its composition, wording and treatment are decided at Experience Assembly by the adopted Experience Reference, within the FD-D audience limits. The reference is not altered |
 
 No conflict requires degrading the adopted experience for implementation convenience.
 
@@ -741,7 +806,7 @@ No conflict requires degrading the adopted experience for implementation conveni
 | `DEC-GOV-007` administrator roles / SoD beyond `DEC-GOV-011` | Open (pre-existing) | No |
 | **Launch input:** initial BIF and RWF unit prices | Operational data needed at pricing go-live | **No** — needed only when pricing is enabled |
 
-**Design defaults (architecture; Technical Lead to confirm; reversible; not Founder decisions):** trial-first funding order; two-step settlement; closed reason-code vocabulary; gate `off/shadow/enforce`; immutability triggers; strict FIFO no-overtaking with first-fit as a policy alternative; whole-purchase admission for block-straddling purchases; Manager visibility as yes/no eligibility and counts; engineering alert thresholds for the projection.
+**Design defaults (architecture; Technical Lead to confirm; reversible; not Founder decisions):** trial-first funding order, applied when the bucket is earmarked at admission (`INV-CAP-PROV`, §8.5.1); two-step settlement; closed reason-code vocabulary; gate `off/shadow/enforce`; immutability triggers; strict FIFO no-overtaking with first-fit as a policy alternative; whole-purchase admission for block-straddling purchases; Manager visibility as yes/no eligibility and counts; engineering alert thresholds for the projection.
 
 ## 28. Prototype-only inventory (commercial/Operator scope)
 
@@ -764,6 +829,8 @@ No conflict requires degrading the adopted experience for implementation conveni
 | R-11 | Sole administrator can act unilaterally on money | Med | Mandatory reasons, immutable audit, change digest; SoD open |
 | R-12 | Migration numbering depends on the unapplied `0019` deployment state | Low | Follows highest existing file; ordering is a WP-COM-10 item |
 | R-13 | FK-bearing inserts must stay ahead of the account lock | Med | Rule (iii) and the §22.3 tests; code review checklist |
+| R-15 | Bucket treatment drifting between admission and consumption | Med | `INV-CAP-PROV` (§8.5.1) with 15 required tests asserting per-Circle bucket; escalation clause if it cannot be met without a new commercial rule |
+| R-16 | Circle-sequence ⇔ block-index mapping assumes today's single-current-Cycle model | Low | Holds by construction now (§8.5.1); a future loyalty change that breaks it fails closed on the unique key and must revisit provenance |
 | R-14 | Tax basis and refund/void policy unspecified | Low | Nullable `tax_basis`; void is compensating |
 
 ## 30. Implementation work-package sequence (revised)
@@ -776,9 +843,9 @@ Dependency reasoning: the ledger must exist before anything posts to it; pricing
 | **WP-COM-01** | Domain foundation: migration `0021` (accounts, ledger, audit, standing events, immutability triggers), ledger primitives, authority seam, boundary and importer allow-list structural tests | 00 |
 | **WP-COM-02** | Price schedules, settlements table, BI/RW market rules, `setPriceSchedule` | 01 |
 | **WP-COM-03** | Manual administration commands #1–#11 with audit and idempotency | 01, 02 |
-| **WP-COM-04** | Consumption projection (event + debit + release), `rewards` index, failure table, reconciliation job, lag metrics | 01, 02 |
+| **WP-COM-04** | Consumption projection (event + debit + release honouring the earmark), `rewards` index, failure table, reconciliation job (incl. earmark checks), lag metrics; tests 9–14 of §8.5.1 | 01, 02 |
 | **WP-COM-05a** | Purchase domain: `pending_admission` status migration; extract `admitPurchaseToLoyalty`; verify order change; hold outcome; web/i18n status handling — behind gate mode `off` | 01 |
-| **WP-COM-05b** | Commercial admission port, reservation entries, admissions table, admission processor, `reevaluatePendingAdmissions`, triggers; `shadow` then `enforce`; lock-order and concurrency tests | 03, 04, 05a |
+| **WP-COM-05b** | Commercial admission port, reservation entries, admissions and admission-blocks (earmark) tables, admission processor, tests 1–8 and 15 of §8.5.1, `reevaluatePendingAdmissions`, triggers; `shadow` then `enforce`; lock-order and concurrency tests | 03, 04, 05a |
 | **WP-COM-06** | Standing and history read models (views + queries) | 01–04, 05b |
 | **WP-COM-07** | Operator adapters | 03, 06 |
 | **WP-COM-08** | Business read adapters and the two `commercial.view*` permissions | 06 |
@@ -791,7 +858,7 @@ Critical path: 00 → 01 → 02 → 04 → 05b → 10; 05a parallelises after 01
 ## 31. Acceptance criteria for implementation start
 
 1. Separate Founder/Technical Lead implementation authorisation recorded.
-2. Technical Lead confirms the design defaults in §27.
+2. Technical Lead confirms the design defaults in §27 and the `INV-CAP-PROV` test plan (§8.5.1), and agrees the escalation clause.
 3. TRD17 governed-rewrite scope agreed (WP-COM-00).
 4. No live loyalty data exists at commercial go-live (else a go-live baseline is required, §12(ii)).
 5. `PB-013B P3-3` remains separately tracked (not a dependency).
@@ -813,7 +880,7 @@ No code, migration, test, config or dependency change; no payment-provider integ
 | 2 | FD-B | Open; redemption alternative kept | Resolved; consumption at Reward available only; redemption never drives billing | Founder decision |
 | 3 | FD-C | Blocked start = verify refused, purchase left `waiting_for_customer` | Purchase preserved in explicit `pending_admission` state with ordering, processor, evidence | Founder decision; v1.0 breached "represent as commercially pending" |
 | 4 | FD-D | Open; Manager saw more; single `commercial.view` | Owner/Manager/Staff/Participant matrix; two permissions; separate read models | Founder decision |
-| 5 | Trial | One initial grant (`UNIQUE`); cumulative ≤ 5; adjustments capped | No one-grant limit; no lifetime cap; adjustments unbounded, audited; 3–5 per grant | Founder clarification; v1.0 invented a cap |
+| 5 | Trial | One initial grant (`UNIQUE`); cumulative ≤ 5; adjustments capped | 3–5 per grant; no one-grant limit; no lifetime cap; later adjustments explicit, attributable, auditable, with **no governed aggregate ceiling and none encoded** (see CLOSE-001 change 1 for the wording correction of the v1.1 draft) | Founder clarification; v1.0 invented a cap |
 | 6 | Currency | Admin-configured schedule with "Founder acknowledgement" and L-1 as a decision-like item | Decided direction; launch prices are an input, not a blocker | Founder direction |
 | 7 | Foreign keys | Blanket "no FKs across the boundary" | Per-relation analysis with a safe-FK rule (§4.4) | Technical correction |
 | 8 | Consumption reliability | Sweep + reconciliation asserted | Durable detection, retry, exactly-once, backfill, lag metrics, alerts, overstatement protection, "cannot be unbilled" argument | Technical correction |
@@ -824,6 +891,17 @@ No code, migration, test, config or dependency change; no payment-provider integ
 | 13 | Founder items | FD-A–D and L-1 open | None open; only pre-existing open items and a non-blocking launch input | Founder decisions |
 | 14 | Work packages | WP-COM-00…11 | WP-COM-05 split into 05a (Purchase hold state and refactor) and 05b (admission/reservation/processor); first package named | Dependency analysis |
 
+## Appendix B — `CORR-001-CLOSE-001` change register (v1.1 draft → v1.1 for merge review)
+
+| # | Area | Before (`2bcaf85`) | After | Reason |
+|---|---|---|---|---|
+| 1 | Trial adjustments | "no upper bound"; described as unbounded in §9, §15, §20 and Appendix A | Explicit, attributable, auditable Platform Administrator act; **no governed aggregate ceiling, none encoded, and the absence is not an authorisation of unlimited adjustment**; integrity floor only (cannot lower below trial earmarked to admitted Circles or below zero); cumulative history shown informationally, never as a rule | Absence of a governed ceiling must not be converted into a positive rule |
+| 2 | `pending_admission` wording | Illustrative UI sentences ("confirmed — being added to your card", "on hold — ask your manager", "processing") | Domain semantics only: received and preserved; not yet admitted to loyalty earning; no Verified Unit; no new Circle; credit pending admission. **All wording, composition and treatment governed at Experience Assembly by the adopted Experience Reference**; FD-D audience limits and "not invalid / not credited" constraints retained | No UI sentence may be canonised as Product Truth |
+| 3 | Capacity bucket provenance | Fungible reserved count; bucket chosen at consumption (trial-first) — delay or reordering could retroactively re-label an admitted Circle | **`INV-CAP-PROV`**: bucket earmarked per Circle position at admission (`commercial_admission_blocks`, opaque `stream_ref`, `block_index ⇔ cycle.sequence_number`); consumption honours the earmark; split trial/paid reserved counters; flagged fallback; trial-adjust floor; transition analysis; 15 required tests asserting per-Circle bucket; escalation clause. **Shared-capacity availability model unchanged** | Determinism of trial/paid treatment under delayed consumption; no new Founder rule |
+| 4 | Data model | Single `reserved_units` / `reserved_delta`; `unreserved` flag | `trial_reserved_units`, `paid_reserved_units`; ledger `trial_reserved_delta`/`paid_reserved_delta`; `commercial_admission_blocks`; consumption `earmark_id` (unique) and `bucket_source` | Supports change 3 |
+| 5 | Work packages / acceptance | — | Tests 9–14 assigned to WP-COM-04, tests 1–8 and 15 to WP-COM-05b; Technical Lead confirms the test plan before implementation | Change 3 |
+| 6 | Risks | R-1…R-14 | Adds R-15 (bucket drift, controlled by `INV-CAP-PROV`) and R-16 (sequence⇔index mapping assumption) | Change 3 |
+
 ---
 
-**Disposition:** `11THONUS-COMMERCIAL-DESIGN-001-CORR-001 — COMPLETE / PENDING FOUNDER REVIEW`. FD-A / FD-B / FD-C / FD-D — RESOLVED. Commercial implementation — NOT STARTED. Experience Reference — UNCHANGED / FROZEN. Experience Assembly — NOT STARTED.
+**Disposition:** `11THONUS-COMMERCIAL-DESIGN-001 — READY FOR FOUNDER MERGE REVIEW`. Commercial design — not yet canonical until merged. FD-A / FD-B / FD-C / FD-D — RESOLVED. Commercial implementation — NOT STARTED. Experience Reference — UNCHANGED / FROZEN. Experience Assembly — NOT STARTED.

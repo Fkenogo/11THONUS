@@ -7,6 +7,17 @@
 
 ---
 
+## 2026-09-30 — 11THONUS-COMMERCIAL-DESIGN-001-CORR-001-CLOSE-001 — Final Bounded Design Correction for Founder Merge Review (Design Only)
+
+- **Date:** 2026-09-30
+- **Task / status:** final bounded correction against `origin/main` `439f95e99590f0ef44e3955c6b5649d8c2542e83`, entry design head `2bcaf85c8b66ed9dda58cd9a9ad2779584c4ab9c`, branch `claude/epic-archimedes-b7hvnd`. **Design only — nothing implemented; WP-COM-01 not started.** Disposition: READY FOR FOUNDER MERGE REVIEW.
+- **Corrections:** (1) trial adjustments — "unbounded" wording withdrawn: explicit, attributable, auditable; no governed aggregate/lifetime ceiling and none encoded; absence of a ceiling is not an authorisation of unlimited adjustment; integrity floor only (the previous entry below is preserved as written and superseded on this point). (2) `pending_admission` — specific UI copy withdrawn; domain semantics only; wording governed at Experience Assembly by the adopted Experience Reference. (3) capacity provenance — invariant `INV-CAP-PROV`: bucket earmarked per Circle position at admission and honoured at consumption; shared-capacity model unchanged; 15 required per-Circle tests; escalation clause.
+- **Final review:** full v1.1 re-review (FD-A/B/C/D, trial, negative credit, USD 2, BIF/RWF pricing, reservation/consumption, projection reliability, FK/lock order, all admission paths, Operator binding, frozen Experience Reference boundary): no P0/P1/P2 findings; P3 observations disclosed as R-15/R-16.
+- **Files changed:** `docs/05-implementation/reports/11THONUS-COMMERCIAL-DESIGN-001-…-2026-09-30.md` (v1.1 corrected; Appendix B); `docs/00-governance/documentation-changes-log.md` (Entry 271 + header); this append-only entry. **No application, test, configuration, migration, dependency or infrastructure file changed. Decision Register, DEC-SUB-014, TRD17 and the prototype not modified.**
+- **Validation:** searches confirm no live "unbounded/no upper bound" claim, no quoted UI copy, no consumption-time bucket rule, no live FX/negative-credit floor/lifetime cap/default; USD 2 and 3–5 unchanged; 15 tests listed; links resolve; prototype still `18e8d700`, unmodified. No tests run (documentation only).
+- **Rollback:** `git revert` this commit (restores `2bcaf85`). No database, migration, deployment, configuration or dependency rollback required.
+---
+
 ## 2026-09-30 — 11THONUS-COMMERCIAL-DESIGN-001-CORR-001 — Commercial Design Correction: FD-A–FD-D Recorded, Technical Corrections (Design Only)
 
 - **Date:** 2026-09-30
