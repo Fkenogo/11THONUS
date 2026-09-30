@@ -31,7 +31,7 @@ import {
   insertCommercialAccount,
 } from "./repositories/commercialAccountRepository";
 import { listLedgerEntries, sumLedger } from "./repositories/commercialLedgerRepository";
-import { listPriceSchedules } from "./repositories/commercialPriceRepository";
+import { insertPriceSchedule, listPriceSchedules } from "./repositories/commercialPriceRepository";
 import { listCommercialAuditEventsForBusiness } from "./repositories/commercialAuditRepository";
 import {
   getSettlement,
@@ -1179,5 +1179,112 @@ describe("DATABASE GUARDS and provenance immutability", () => {
       /market_currency|does not equal its price schedule/,
     );
     await expectPgFailure(insert({ method: "Bad Method" }), /method|check/i);
+  });
+});
+
+// ===========================================================================
+describe("REVIEW FINDINGS (PR #286) — exactly-once credit, price serialisation, audit baseline", () => {
+  it("the ledger itself refuses a second credit_grant for the same settlement, under any scope key", async () => {
+    const { businessId } = await openAccount("BI");
+    const { result } = await settle(businessId);
+    const credit = (scope: string) =>
+      withPlatformTransaction(pool, (tx) =>
+        postCommercialLedgerEntry(tx, {
+          businessId,
+          entryType: "credit_grant",
+          bucket: "paid",
+          unitsDelta: 3,
+          sourceReference: { type: "settlement", id: result.settlementId },
+          idempotencyScopeKey: scope,
+          createdBy: ADMIN,
+          correlationId: "c",
+        }),
+      );
+    await credit(`rogue-scope-${randomUUID()}`);
+    await expectPgFailure(
+      credit(`another-scope-${randomUUID()}`),
+      /commercial_ledger_one_credit_per_settlement|duplicate key/,
+    );
+    expect(await listLedgerEntries(pool, businessId)).toHaveLength(1);
+    // The rogue credit does not confirm the settlement through the command either: the
+    // command's own scope key is a different one, so the unique index stops the second credit.
+    await expectPgFailure(
+      confirmSettlement(d(), ctx(), {
+        businessId,
+        settlementId: result.settlementId,
+        confirmationNote: "x",
+      }),
+      /commercial_ledger_one_credit_per_settlement|duplicate key/,
+    );
+    expect((await getSettlement(pool, result.settlementId))?.status).toBe("recorded");
+    expect((await getCommercialAccount(pool, businessId))?.paidBalanceUnits).toBe(3);
+  });
+
+  it("settlement pricing waits for a concurrent, uncommitted schedule insert and then uses it", async () => {
+    // RW has one schedule (effective 2026-03-01). A second one effective 2026-06-20 is
+    // inserted in a transaction that stays open while a settlement received 2026-06-25 is recorded.
+    const { businessId } = await openAccount("RW");
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    let inserted!: () => void;
+    const insertedSignal = new Promise<void>((resolve) => (inserted = resolve));
+    const writer = withPlatformTransaction(pool, async (tx) => {
+      await insertPriceSchedule(tx, {
+        market: "RW",
+        localUnitPriceMinor: 1777,
+        effectiveFrom: new Date("2026-06-20T00:00:00Z"),
+        createdBy: ADMIN,
+        reasonText: "concurrent schedule",
+        correlationId: "c",
+      });
+      inserted();
+      await gate;
+    });
+    await insertedSignal;
+
+    let settled = false;
+    const recording = settle(businessId, {
+      currency: "RWF",
+      amountMinor: 1777,
+      unitsPurchased: 1,
+      receivedAt: new Date("2026-06-25T00:00:00Z"),
+    }).finally(() => (settled = true));
+    await new Promise((r) => setTimeout(r, 400));
+    expect(settled, "recording must wait for the schedule writer").toBe(false);
+
+    release();
+    await writer;
+    const res = await recording;
+    expect(res.result).toMatchObject({
+      localUnitPriceMinor: 1777,
+      priceEffectiveFrom: "2026-06-20T00:00:00.000Z",
+      varianceMinor: 0,
+    });
+  });
+
+  it("concurrent confirmations of two settlements keep an accurate audit baseline chain", async () => {
+    const { businessId } = await openAccount("BI");
+    const a = (await settle(businessId)).result.settlementId;
+    const b = (await settle(businessId)).result.settlementId;
+    await Promise.all(
+      [a, b].map((settlementId) =>
+        confirmSettlement(d(), ctx(), { businessId, settlementId, confirmationNote: "race" }),
+      ),
+    );
+    const confirms = (await listCommercialAuditEventsForBusiness(pool, businessId)).filter(
+      (e) => e.actionType === "settlement_confirmed",
+    );
+    expect(confirms).toHaveLength(2);
+    const pairs = confirms
+      .map((e) => [
+        (e.beforeSnapshot as { accountVersion: number; paidBalanceUnits: number }).accountVersion,
+        (e.afterSnapshot as { accountVersion: number }).accountVersion,
+        (e.beforeSnapshot as { paidBalanceUnits: number }).paidBalanceUnits,
+      ])
+      .sort((x, y) => x[0] - y[0]);
+    expect(pairs).toEqual([
+      [0, 1, 0],
+      [1, 2, 3],
+    ]);
   });
 });

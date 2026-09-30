@@ -43,6 +43,7 @@ import {
 } from "../models/commercialErrors";
 import { lockCommercialAccount } from "../repositories/commercialAccountRepository";
 import { appendCommercialAuditEvent } from "../repositories/commercialAuditRepository";
+import { lockPriceScheduleMarket } from "../repositories/commercialPriceRepository";
 import { insertSettlement } from "../repositories/commercialSettlementRepository";
 import {
   runAdministratorCommand,
@@ -135,6 +136,10 @@ export async function recordSettlement(
           `Business "${input.businessId}" settles in market ${market} (${MARKET_CURRENCY[market]}); "${input.currency}" is not accepted.`,
         );
       }
+
+      // Serialise with schedule writers BEFORE selecting the price in force, so a concurrent
+      // uncommitted schedule insert cannot be missed.
+      await lockPriceScheduleMarket(tx, market);
 
       // Explicit failure when no schedule applies; never a guessed/FX fallback.
       const price = await lookupCommercialPrice(tx, {

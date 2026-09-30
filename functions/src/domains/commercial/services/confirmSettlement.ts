@@ -35,7 +35,7 @@ import {
   commercialValidationError,
 } from "../models/commercialErrors";
 import { settlementCreditScopeKey } from "../models/commercialSettlement";
-import { getCommercialAccount } from "../repositories/commercialAccountRepository";
+import { lockCommercialAccount } from "../repositories/commercialAccountRepository";
 import { appendCommercialAuditEvent } from "../repositories/commercialAuditRepository";
 import {
   lockSettlement,
@@ -121,7 +121,9 @@ export async function confirmSettlement(
         throw commercialSettlementStateError(settlement.id, settlement.status);
       }
 
-      const before = await getCommercialAccount(tx, settlement.businessId);
+      // Baseline captured UNDER the account lock so a concurrent confirmation for the same
+      // Business cannot make the audited `before` state stale.
+      const before = await lockCommercialAccount(tx, settlement.businessId);
 
       const posted = await postCommercialLedgerEntry(tx, {
         businessId: settlement.businessId,

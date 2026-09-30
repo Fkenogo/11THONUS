@@ -139,3 +139,19 @@ export async function listPriceSchedules(
   );
   return result.rows.map(mapPrice);
 }
+
+/**
+ * Takes the per-market schedule lock (the same one the `0021` versioning
+ * trigger takes for every schedule insert), held to the end of the
+ * transaction. A caller that must select "the price in force at t" and then
+ * persist something that depends on that answer takes it BEFORE the lookup, so
+ * a concurrent, still-uncommitted schedule insert cannot be missed.
+ */
+export async function lockPriceScheduleMarket(
+  tx: PlatformPostgresTransaction,
+  market: CommercialMarket,
+): Promise<void> {
+  await tx.query("SELECT pg_advisory_xact_lock(hashtext($1))", [
+    `commercial_price_schedules:${market}`,
+  ]);
+}

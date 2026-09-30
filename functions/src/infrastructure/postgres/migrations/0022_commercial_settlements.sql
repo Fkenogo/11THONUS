@@ -128,6 +128,10 @@ BEGIN
     RAISE EXCEPTION 'WP-COM-02: settlement market % does not match the Business account market %', NEW.market, acct_market
       USING ERRCODE = 'check_violation';
   END IF;
+  -- Serialise with schedule writers (same per-market lock as the 0021 versioning
+  -- trigger), so a concurrently inserted, still-uncommitted schedule cannot be
+  -- missed by the "in force at received_at" check below.
+  PERFORM pg_advisory_xact_lock(hashtext('commercial_price_schedules:' || NEW.market));
   SELECT * INTO sched FROM commercial_price_schedules WHERE id = NEW.price_schedule_id;
   IF NOT FOUND
      OR sched.market <> NEW.market
@@ -212,3 +216,14 @@ CREATE TRIGGER commercial_settlements_no_delete
 CREATE TRIGGER commercial_settlements_no_truncate
   BEFORE TRUNCATE ON commercial_settlements
   FOR EACH STATEMENT EXECUTE FUNCTION commercial_reject_mutation();
+
+-- ---------------------------------------------------------------------------
+-- Exactly-once settlement credit at the LEDGER level: at most one
+-- `credit_grant` may reference a given settlement, whatever its idempotency
+-- scope key. (A plain index on the existing ledger table -- the table itself
+-- is not altered.) Together with the settlement's own UNIQUE(ledger_entry_id)
+-- and the update guard, a settlement can never be credited twice.
+-- ---------------------------------------------------------------------------
+CREATE UNIQUE INDEX commercial_ledger_one_credit_per_settlement
+  ON commercial_ledger_entries (source_reference_id)
+  WHERE entry_type = 'credit_grant' AND source_reference_type = 'settlement';

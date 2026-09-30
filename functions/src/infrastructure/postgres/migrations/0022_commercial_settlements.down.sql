@@ -19,6 +19,7 @@ BEGIN
   END IF;
 END $$;
 
+DROP INDEX commercial_ledger_one_credit_per_settlement;
 DROP TABLE commercial_settlements;
 DROP FUNCTION commercial_settlements_update_guard();
 DROP FUNCTION commercial_settlements_insert_guard();

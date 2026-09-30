@@ -30,7 +30,7 @@ It does not touch loyalty (customers earning/redeeming behaves exactly as before
 | Settlement step 2 | `confirmSettlement` |
 | Shared runner | `runAdministratorCommand` (authority → idempotency → body; optional rejection audit) |
 | Repository | `commercialSettlementRepository` (insert, read, lock, one UPDATE: `recorded → confirmed`) |
-| Tests | 34 PostgreSQL integration tests; 6 new structural boundary tests |
+| Tests | 37 PostgreSQL integration tests; 6 new structural boundary tests |
 
 ## 3. Explicitly not implemented
 
@@ -100,7 +100,7 @@ Reuses WP-COM-01's `authorizeCommercialAdministrator` unchanged. Tested for all 
 `price_schedule_set`, `settlement_recorded`, `settlement_confirmed`, each: WHO (actor), WHAT (action, target), BUSINESS, WHEN, WHY (reason text), REFERENCE, RESULT, plus before/after snapshots and related ledger/price ids, written in the mutation's own transaction; replays cannot double-audit (`(idempotency_key, action_type)` unique). Rejected attempts that reach the domain — idempotency conflict, duplicate reference, wrong-state confirmation, cross-Business/unknown-settlement confirmation — write a `denied` audit row in a separate best-effort transaction (a failed audit never masks the real error). Customer Trust Events are not used.
 
 ## 12. Tests
-`commercialSettlement.postgres.test.ts` — 34 tests, real PostgreSQL:
+`commercialSettlement.postgres.test.ts` — 37 tests, real PostgreSQL:
 - **Price (8):** no seed; BI/BIF & RW/RWF only; integer/positive/USD-basis/reason/date validation; past-dating refused; audited, replay-safe set; forward rule + immutability (incl. DB UPDATE/DELETE rejection); concurrent same-date race (one winner); deterministic lookup to the boundary, no FX/no cross-market/no fallback.
 - **Record (6):** evidence only (no ledger, account untouched); price at `receivedAt`, variance recorded; no price → explicit failure; validation; conflicting reference refused + audited; replay.
 - **Confirm (8):** exactly-once credit and derived account; duplicate replay; new-key repeat refused; cross-Business rejected; unknown/malformed/no-note; accumulation; rollback (real fault) and primitive-level rollback.
@@ -111,7 +111,7 @@ Boundary tests (`commercialBoundary.test.ts`, +6): `0022` additive/self-containe
 Existing suites adjusted only for `0022` (expected migration lists, rollback step counts, teardown lists, `commercialFoundation` table list/rollback steps). No existing assertion about an older migration changed.
 
 ## 13. Validation performed (disposable local PostgreSQL 16 + Firestore Emulator)
-`pnpm typecheck` ✔ · `pnpm lint` ✔ (0 errors; the 1 pre-existing `apps/web` warning) · `pnpm format:check` ✔ · `pnpm build` ✔ · `pnpm test` ✔ (functions 1918/1918, web 919/919) · PostgreSQL integration under `firebase emulators:exec --only firestore`, fresh database (the CI command) ✔ **13 files, 392 tests** (baseline 358 + 34 new) · `pnpm emulators:validate` ✔ (66 files, 867 passed, 3 skipped). Only a local disposable database was used; no shared/staging/production database was contacted.
+`pnpm typecheck` ✔ · `pnpm lint` ✔ (0 errors; the 1 pre-existing `apps/web` warning) · `pnpm format:check` ✔ · `pnpm build` ✔ · `pnpm test` ✔ (functions 1918/1918, web 919/919) · PostgreSQL integration under `firebase emulators:exec --only firestore`, fresh database (the CI command) ✔ **13 files, 395 tests** (baseline 358 + 37 new) · `pnpm emulators:validate` ✔ (66 files, 867 passed, 3 skipped). Only a local disposable database was used; no shared/staging/production database was contacted.
 
 ## 14. Verification of unchanged surfaces
 - **Loyalty path:** `git diff origin/main` over `domains/purchase`, `domains/rewardProgram`, `domains/trust`, `functions/src/index.ts` is empty; `verifyPurchase`/`confirmRedemption` unchanged and still asserted free of Commercial coupling.
@@ -145,5 +145,11 @@ Existing suites adjusted only for `0022` (expected migration lists, rollback ste
 ## 18. Deferred to `WP-COM-03`
 `openCommercialAccount`; `grantTrial` / `adjustTrial` (trial-grant table, 3–5 rule); `adjustCommercialCredit`; `activatePaidService`; `restrictNewStarts` / `restoreCommercialStanding`; `voidSettlement` (+ `voided` status); read/inspection commands; optional provider-adapter columns. Still later: consumption projection (WP-COM-04), `pending_admission`/gate (WP-COM-05a/b), read models (WP-COM-06), Operator/Business UI.
 
-## 19. Recommended next work package
+## 19. Review findings addressed (PR #286, automated review of `d1e4f02`)
+Three findings were verified against the code and fixed before merge review; each has a regression test (the two concurrency tests were confirmed to fail without the fix).
+1. **P1 — one credit per settlement at the ledger level.** The update guard checked only the chosen ledger row, so a second `credit_grant` under a different scope key could also credit. Fixed with partial unique index `commercial_ledger_one_credit_per_settlement` (`source_reference_id` where `credit_grant` + `settlement`) in `0022`; dropped by `0022.down.sql`. No table is altered.
+2. **P1 — price selection vs. concurrent schedule insert.** `recordSettlement` now takes the same per-market advisory lock as the `0021` versioning trigger *before* the price lookup (`lockPriceScheduleMarket`), and the settlement insert guard takes it too, so an uncommitted schedule cannot be missed.
+3. **P2 — audit baseline.** `confirmSettlement` now reads the account `before` state under the account lock, so concurrent confirmations for one Business audit an accurate version chain (0→1, 1→2).
+
+## 20. Recommended next work package
 **WP-COM-03** — the remaining manual administration commands, composing the same runner, authority, idempotency, audit and ledger primitives now proven by WP-COM-01/02.
