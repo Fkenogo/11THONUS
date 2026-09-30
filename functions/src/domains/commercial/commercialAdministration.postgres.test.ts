@@ -1561,3 +1561,168 @@ describe("ROLLBACK — no partial state", () => {
     expect((await getCommercialAccount(pool, businessId))?.trialRemainingUnits).toBe(4);
   });
 });
+
+// ===========================================================================
+describe("REVIEW FINDINGS (PR #287) — NULL-safe CHECKs and counter range", () => {
+  it("a paid adjustment with a NULL reason code is rejected by the database (NULL must not satisfy the closed vocabulary)", async () => {
+    const { businessId } = await openAccount();
+    const id = randomUUID();
+    const backing = await withPlatformTransaction(pool, (tx) =>
+      postCommercialLedgerEntry(tx, {
+        businessId,
+        entryType: "credit_adjustment",
+        bucket: "paid",
+        unitsDelta: 1,
+        sourceReference: { type: "manual_adjustment", id },
+        idempotencyScopeKey: `forged-${randomUUID()}`,
+        createdBy: "x",
+        correlationId: "c",
+      }),
+    );
+    await expectPgFailure(
+      pool.query(
+        `INSERT INTO commercial_manual_adjustments
+           (id, business_id, bucket, units_delta, reason_code, reason_text, reference, created_by,
+            ledger_entry_id, idempotency_key, correlation_id)
+         VALUES ($1,$2,'paid',1,NULL,'r','r','x',$3,$4,'c')`,
+        [id, businessId, backing.entry.id, key()],
+      ),
+      /commercial_manual_adjustments_paid_reason_code|violates check/,
+    );
+    expect(await listManualAdjustments(pool, businessId)).toHaveLength(0);
+  });
+
+  it("a voided settlement cannot omit any void provenance column (NULL is rejected, not UNKNOWN-accepted)", async () => {
+    const { businessId } = await openAccount();
+    for (const nullColumn of [
+      "voided_by",
+      "void_reason_text",
+      "void_reference",
+      "void_idempotency_key",
+    ]) {
+      const { settlementId } = await confirmedSettlement(businessId, 2);
+      const reversal = await withPlatformTransaction(pool, (tx) =>
+        postCommercialLedgerEntry(tx, {
+          businessId,
+          entryType: "settlement_void_reversal",
+          bucket: "paid",
+          unitsDelta: -2,
+          sourceReference: { type: "settlement", id: settlementId },
+          idempotencyScopeKey: `forged-${randomUUID()}`,
+          createdBy: "x",
+          correlationId: "c",
+        }),
+      );
+      const values: Record<string, string> = {
+        voided_by: "x",
+        void_reason_text: "r",
+        void_reference: "ref",
+        void_idempotency_key: key(),
+      };
+      values[nullColumn] = "";
+      const params = Object.keys(values)
+        .filter((c) => c !== nullColumn)
+        .map((c) => values[c]);
+      // Placeholders are numbered over the non-NULL columns only.
+      let n = 2;
+      const setSql = Object.keys(values)
+        .map((c) => (c === nullColumn ? `${c} = NULL` : `${c} = $${++n}`))
+        .join(", ");
+      await expectPgFailure(
+        pool.query(
+          `UPDATE commercial_settlements
+              SET status = 'voided', voided_at = now(), void_correlation_id = 'c',
+                  void_ledger_entry_id = $2, ${setSql}
+            WHERE id = $1`,
+          [settlementId, reversal.entry.id, ...params],
+        ),
+        /commercial_settlements_confirmation_consistency|violates check/,
+      );
+      expect((await getSettlement(pool, settlementId))?.status).toBe("confirmed");
+    }
+  });
+
+  it("a confirmed settlement cannot omit confirmation provenance either (same NULL-safety on the confirmed branch)", async () => {
+    const { businessId } = await openAccount();
+    for (const nullColumn of ["confirmed_by", "confirmation_note", "confirm_idempotency_key"]) {
+      const settlementId = await recordedSettlement(businessId, 2);
+      const credit = await withPlatformTransaction(pool, (tx) =>
+        postCommercialLedgerEntry(tx, {
+          businessId,
+          entryType: "credit_grant",
+          bucket: "paid",
+          unitsDelta: 2,
+          sourceReference: { type: "settlement", id: settlementId },
+          idempotencyScopeKey: `forged-${randomUUID()}`,
+          createdBy: "x",
+          correlationId: "c",
+        }),
+      );
+      const values: Record<string, string> = {
+        confirmed_by: "x",
+        confirmation_note: "n",
+        confirm_idempotency_key: key(),
+      };
+      const params = Object.keys(values)
+        .filter((c) => c !== nullColumn)
+        .map((c) => values[c]);
+      let n = 2;
+      const setSql = Object.keys(values)
+        .map((c) => (c === nullColumn ? `${c} = NULL` : `${c} = $${++n}`))
+        .join(", ");
+      await expectPgFailure(
+        pool.query(
+          `UPDATE commercial_settlements
+              SET status = 'confirmed', confirmed_at = now(), confirm_correlation_id = 'c',
+                  ledger_entry_id = $2, ${setSql}
+            WHERE id = $1`,
+          [settlementId, credit.entry.id, ...params],
+        ),
+        /commercial_settlements_confirmation_consistency|violates check/,
+      );
+      expect((await getSettlement(pool, settlementId))?.status).toBe("recorded");
+    }
+  });
+
+  it("a grant that would overflow the trial counter is a Commercial validation error, not a raw database failure", async () => {
+    const { businessId } = await openAccount();
+    await adjustTrial(d(), ctx(), {
+      businessId,
+      unitsDelta: 2_147_483_646,
+      reasonText: "x",
+      reference: "r",
+    });
+    await expectDomainError(
+      grant(businessId, 3),
+      "VALIDATION_FAILED",
+      /supported whole-number range/,
+    );
+    expect(await listTrialGrants(pool, businessId)).toHaveLength(0);
+  });
+
+  it("confirming a settlement that would overflow the paid counter is a validation error, and nothing is written", async () => {
+    const { businessId } = await openAccount();
+    await creditAdjust(businessId, 2_000_000_000);
+    const rec = await recordSettlement(d(), ctx(), {
+      businessId,
+      method: "bank_transfer",
+      externalReference: `ref-${randomUUID()}`,
+      currency: "BIF",
+      amountMinor: 2_000_000_000 * BI_PRICE,
+      unitsPurchased: 2_000_000_000,
+      receivedAt: new Date("2026-04-01T00:00:00Z"),
+      reasonText: "large",
+    });
+    await expectDomainError(
+      confirmSettlement(d(), ctx(), {
+        businessId,
+        settlementId: rec.result.settlementId,
+        confirmationNote: "x",
+      }),
+      "VALIDATION_FAILED",
+      /supported whole-number range/,
+    );
+    expect((await getSettlement(pool, rec.result.settlementId))?.status).toBe("recorded");
+    expect((await getCommercialAccount(pool, businessId))?.paidBalanceUnits).toBe(2_000_000_000);
+  });
+});

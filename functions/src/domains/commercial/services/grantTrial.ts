@@ -37,7 +37,7 @@ import {
   type CommercialCommandDeps,
   type CommercialCommandResponse,
 } from "./commercialAdministratorCommand";
-import { requireBusinessId, requireText } from "./commercialCommandInput";
+import { assertCounterInRange, requireBusinessId, requireText } from "./commercialCommandInput";
 import { postCommercialLedgerEntry } from "./postCommercialLedgerEntry";
 
 export type GrantTrialInput = {
@@ -107,6 +107,7 @@ export async function grantTrial(
       const before = await lockCommercialAccount(tx, businessId);
       if (before === null) throw commercialAccountNotFoundError(businessId);
       const prior = await listTrialGrants(tx, businessId);
+      assertCounterInRange("Trial remaining", before.trialRemainingUnits + units);
 
       const grantId = randomUUID();
       const posted = await postCommercialLedgerEntry(tx, {

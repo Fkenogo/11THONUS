@@ -36,6 +36,7 @@ import {
 } from "../models/commercialErrors";
 import { settlementCreditScopeKey } from "../models/commercialSettlement";
 import { lockCommercialAccount } from "../repositories/commercialAccountRepository";
+import { assertCounterInRange } from "./commercialCommandInput";
 import { appendCommercialAuditEvent } from "../repositories/commercialAuditRepository";
 import {
   lockSettlement,
@@ -124,6 +125,11 @@ export async function confirmSettlement(
       // Baseline captured UNDER the account lock so a concurrent confirmation for the same
       // Business cannot make the audited `before` state stale.
       const before = await lockCommercialAccount(tx, settlement.businessId);
+      // A counter overflow must surface as a Commercial validation error, not a raw database failure.
+      assertCounterInRange(
+        "Paid balance",
+        (before?.paidBalanceUnits ?? 0) + settlement.unitsPurchased,
+      );
 
       const posted = await postCommercialLedgerEntry(tx, {
         businessId: settlement.businessId,

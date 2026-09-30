@@ -111,7 +111,8 @@ CREATE TABLE commercial_manual_adjustments (
   schema_version INTEGER NOT NULL DEFAULT 1,
   CONSTRAINT commercial_manual_adjustments_paid_reason_code CHECK (
     bucket <> 'paid'
-    OR reason_code IN ('correction', 'settlement_reconciliation', 'dispute_resolution', 'error_reversal')
+    OR (reason_code IS NOT NULL
+        AND reason_code IN ('correction', 'settlement_reconciliation', 'dispute_resolution', 'error_reversal'))
   ),
   CONSTRAINT commercial_manual_adjustments_ledger_entry_unique UNIQUE (ledger_entry_id),
   CONSTRAINT commercial_manual_adjustments_idempotency_key_unique UNIQUE (idempotency_key)
@@ -186,11 +187,13 @@ ALTER TABLE commercial_settlements ADD CONSTRAINT commercial_settlements_confirm
      AND void_reference IS NULL AND void_idempotency_key IS NULL
      AND void_correlation_id IS NULL AND void_ledger_entry_id IS NULL)
   OR
-  -- confirmed: finalised, not voided
+  -- confirmed: finalised, not voided. Every text column is tested IS NOT NULL first: a NULL
+  -- inside length(btrim(..)) > 0 is UNKNOWN, which a CHECK would accept.
   (status = 'confirmed'
-     AND length(btrim(confirmed_by)) > 0 AND confirmed_at IS NOT NULL
-     AND length(btrim(confirmation_note)) > 0
-     AND length(btrim(confirm_idempotency_key)) > 0 AND confirm_correlation_id IS NOT NULL
+     AND confirmed_by IS NOT NULL AND length(btrim(confirmed_by)) > 0 AND confirmed_at IS NOT NULL
+     AND confirmation_note IS NOT NULL AND length(btrim(confirmation_note)) > 0
+     AND confirm_idempotency_key IS NOT NULL AND length(btrim(confirm_idempotency_key)) > 0
+     AND confirm_correlation_id IS NOT NULL
      AND ledger_entry_id IS NOT NULL
      AND voided_by IS NULL AND voided_at IS NULL AND void_reason_text IS NULL
      AND void_reference IS NULL AND void_idempotency_key IS NULL
@@ -198,13 +201,16 @@ ALTER TABLE commercial_settlements ADD CONSTRAINT commercial_settlements_confirm
   OR
   -- voided: was confirmed (its confirmation provenance is retained) and is now voided
   (status = 'voided'
-     AND length(btrim(confirmed_by)) > 0 AND confirmed_at IS NOT NULL
-     AND length(btrim(confirmation_note)) > 0
-     AND length(btrim(confirm_idempotency_key)) > 0 AND confirm_correlation_id IS NOT NULL
+     AND confirmed_by IS NOT NULL AND length(btrim(confirmed_by)) > 0 AND confirmed_at IS NOT NULL
+     AND confirmation_note IS NOT NULL AND length(btrim(confirmation_note)) > 0
+     AND confirm_idempotency_key IS NOT NULL AND length(btrim(confirm_idempotency_key)) > 0
+     AND confirm_correlation_id IS NOT NULL
      AND ledger_entry_id IS NOT NULL
-     AND length(btrim(voided_by)) > 0 AND voided_at IS NOT NULL
-     AND length(btrim(void_reason_text)) > 0 AND length(btrim(void_reference)) > 0
-     AND length(btrim(void_idempotency_key)) > 0 AND void_correlation_id IS NOT NULL
+     AND voided_by IS NOT NULL AND length(btrim(voided_by)) > 0 AND voided_at IS NOT NULL
+     AND void_reason_text IS NOT NULL AND length(btrim(void_reason_text)) > 0
+     AND void_reference IS NOT NULL AND length(btrim(void_reference)) > 0
+     AND void_idempotency_key IS NOT NULL AND length(btrim(void_idempotency_key)) > 0
+     AND void_correlation_id IS NOT NULL
      AND void_ledger_entry_id IS NOT NULL)
 );
 
