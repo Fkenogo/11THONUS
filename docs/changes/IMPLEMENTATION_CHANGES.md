@@ -7,6 +7,23 @@
 
 ---
 
+## 2026-09-30 — WP-COM-02 — Commercial Settlement & Price Schedule Administration (Implementation)
+
+- **Date:** 2026-09-30
+- **Phase:** Commercial implementation programme (11THONUS-COMMERCIAL-DESIGN-001 v1.1 + CORR-002, §30) — second work package
+- **Task:** WP-COM-02 — effective-dated local price-schedule administration (`setPriceSchedule`), deterministic price lookup, manual/offline settlement recording (`recordSettlement`) and confirmation (`confirmSettlement`) with an atomic paid `credit_grant`, immutable pricing/settlement provenance, audit and idempotency. **Not integrated into the loyalty path.**
+- **Status:** Implemented — pending review. Not merged. Entry `origin/main` `59e388c39fa4fdb304074c18b3e6e3a6891c55d4`; branch `claude/determined-ride-khunqe`.
+- **Files changed:** see the [Implementation Report](../05-implementation/reports/wp-com-02-commercial-settlement-and-price-schedule-implementation-report-2026-09-30.md). Summary: new migration `0022_commercial_settlements{,.down}.sql`; new Commercial settlement model/repository and `setPriceSchedule` / `recordSettlement` / `confirmSettlement` / price-lookup / shared administrator-command services under `functions/src/domains/commercial/`; new `commercialSettlement.postgres.test.ts` (37 tests); `0022` added to the expected migration lists, rollback counts and teardown of the existing PostgreSQL migration suites and to `commercialFoundation.postgres.test.ts`; boundary tests extended; migrations `README.md`.
+- **Tests:** typecheck, lint, format, build, unit (functions 1918, web 919), PostgreSQL integration under the Firestore Emulator (13 files, 395 tests) and the emulator suite (867 passed, 3 skipped) all green locally against a disposable PostgreSQL 16.
+- **Configuration:** none. **Dependencies:** none.
+- **Migrations:** `0022_commercial_settlements` (+ `.down.sql`, fail-closed when settlement rows exist). Applied **only** to the local disposable test database; nothing deployed and no shared/staging/production database touched.
+- **Deliberately not implemented:** trial grant/adjustment, paid credit adjustment, restriction/restoration, paid activation, void settlement, `pending_admission`, capacity gate, consumption projection, earmarks, Operator Console, Business UI, payment provider, launch prices, RBAC, loyalty changes.
+- **Risks / deviations:** report §14 and §15 (no-backdating rule on price schedules, platform-scope audit marker for market-level price audit, forward-only price timeline, best-effort rejection audit, authority denials unaudited).
+- **Rollback:** `git revert` the WP-COM-02 commit(s); on a database with no settlements `migrateDown` rolls `0022` back (fails closed if settlement rows exist — restore a pre-`0022` backup instead). No deployment/config/dependency rollback needed.
+- **Report link:** [`wp-com-02-commercial-settlement-and-price-schedule-implementation-report-2026-09-30.md`](../05-implementation/reports/wp-com-02-commercial-settlement-and-price-schedule-implementation-report-2026-09-30.md)
+
+---
+
 ## 2026-09-30 — WP-COM-01 — Commercial Domain Foundation (Implementation)
 
 - **Date:** 2026-09-30

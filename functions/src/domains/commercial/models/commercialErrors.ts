@@ -41,3 +41,58 @@ export function commercialIdempotencyConflictError(): CommercialDomainError {
     "This idempotency key was already used with a different Commercial request.",
   );
 }
+
+// ---------------------------------------------------------------------------
+// WP-COM-02 (price schedules, settlements). Same closed `ErrorCategory` set.
+// ---------------------------------------------------------------------------
+
+/** Single, enumeration-resistant denial for every authority failure cause. */
+export function commercialAuthorityDeniedError(): CommercialDomainError {
+  return new CommercialDomainError(
+    "AUTH_FORBIDDEN",
+    "Only an active Platform Administrator with verified MFA may perform Commercial administration.",
+  );
+}
+
+/** No schedule applies: there is deliberately no fallback price and no FX. */
+export function commercialNoApplicablePriceError(
+  market: string,
+  currency: string,
+  at: Date,
+): CommercialDomainError {
+  return new CommercialDomainError(
+    "RESOURCE_NOT_FOUND",
+    `No Commercial price schedule applies to market "${market}" (${currency}) at ${at.toISOString()}; a price must be set by the Platform Administrator first.`,
+  );
+}
+
+export function commercialSettlementNotFoundError(settlementId: string): CommercialDomainError {
+  return new CommercialDomainError(
+    "RESOURCE_NOT_FOUND",
+    `No Commercial settlement "${settlementId}" exists for this Business.`,
+  );
+}
+
+export function commercialSettlementStateError(
+  settlementId: string,
+  status: string,
+): CommercialDomainError {
+  return new CommercialDomainError(
+    "INVALID_STATE_TRANSITION",
+    `Commercial settlement "${settlementId}" is "${status}"; only a "recorded" settlement can be confirmed.`,
+  );
+}
+
+export function commercialSettlementReferenceConflictError(): CommercialDomainError {
+  return new CommercialDomainError(
+    "INVALID_STATE_TRANSITION",
+    "A settlement with this method and external reference is already recorded.",
+  );
+}
+
+export function commercialCommandInProgressError(): CommercialDomainError {
+  return new CommercialDomainError(
+    "TEMPORARY_UNAVAILABLE",
+    "A Commercial command with this idempotency key is still in progress; retry.",
+  );
+}
