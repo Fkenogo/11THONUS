@@ -65,6 +65,8 @@ const migrationsDir = path.join(__dirname, "..", "..", "infrastructure", "postgr
 let pool: PlatformPostgresPool;
 
 const COMMERCIAL_TABLES = [
+  "commercial_trial_grants",
+  "commercial_manual_adjustments",
   "commercial_settlements",
   "commercial_audit_events",
   "commercial_standing_events",
@@ -78,6 +80,8 @@ async function dropCommercialObjects(): Promise<void> {
     await pool.query(`DROP TABLE IF EXISTS ${table} CASCADE`);
   }
   for (const fn of [
+    "commercial_trial_grants_guard",
+    "commercial_manual_adjustments_guard",
     "commercial_settlements_update_guard",
     "commercial_settlements_insert_guard",
     "commercial_assert_account_matches_ledger",
@@ -89,7 +93,7 @@ async function dropCommercialObjects(): Promise<void> {
   }
   const hasMigrations = await pool.query("SELECT to_regclass('public.schema_migrations') AS t");
   if (hasMigrations.rows[0].t !== null) {
-    await pool.query("DELETE FROM schema_migrations WHERE version IN ('0021', '0022')");
+    await pool.query("DELETE FROM schema_migrations WHERE version IN ('0021', '0022', '0023')");
   }
   await pool
     .query("DELETE FROM idempotency_keys WHERE idempotency_key LIKE 'wpcom01-%'")
@@ -180,7 +184,7 @@ async function expectPgFailure(promise: Promise<unknown>, pattern: RegExp, code?
 
 // ---------------------------------------------------------------------------
 describe("0021 schema shape and migration lifecycle", () => {
-  it("creates exactly the five foundation tables plus the WP-COM-02 settlements table, and none of the later-WP tables", async () => {
+  it("creates exactly the five foundation tables plus the WP-COM-02/03 tables, and none of the later-WP tables", async () => {
     const tables = await pool.query<{ table_name: string }>(
       `SELECT table_name FROM information_schema.tables
         WHERE table_schema = 'public' AND table_name LIKE 'commercial\\_%' ORDER BY table_name`,
@@ -189,9 +193,11 @@ describe("0021 schema shape and migration lifecycle", () => {
       "commercial_accounts",
       "commercial_audit_events",
       "commercial_ledger_entries",
+      "commercial_manual_adjustments",
       "commercial_price_schedules",
       "commercial_settlements",
       "commercial_standing_events",
+      "commercial_trial_grants",
     ]);
   });
 
@@ -259,16 +265,16 @@ describe("0021 schema shape and migration lifecycle", () => {
     // Populated: refuse (and change nothing).
     const businessId = newBusiness();
     await openAccount(businessId);
-    // Two steps: 0022 (no settlements yet) rolls back, then 0021 refuses because the account exists.
-    await expectPgFailure(migrateDown(pool, migrationsDir, 2), /refusing to roll back/);
+    // Three steps: 0023 and 0022 (no settlement/grant rows yet) roll back, then 0021 refuses because the account exists.
+    await expectPgFailure(migrateDown(pool, migrationsDir, 3), /refusing to roll back/);
     const still = await pool.query("SELECT to_regclass('public.commercial_accounts') AS t");
     expect(still.rows[0].t).not.toBeNull();
 
     // Empty: rolls back cleanly and re-applies (drop + re-migrate resets the immutable rows first).
     await dropCommercialObjects();
     await migrateUp(pool, migrationsDir);
-    const down = await migrateDown(pool, migrationsDir, 2);
-    expect(down.rolledBack).toEqual(["0022", "0021"]);
+    const down = await migrateDown(pool, migrationsDir, 3);
+    expect(down.rolledBack).toEqual(["0023", "0022", "0021"]);
     const gone = await pool.query("SELECT to_regclass('public.commercial_accounts') AS t");
     expect(gone.rows[0].t).toBeNull();
     const fnGone = await pool.query(
@@ -276,7 +282,7 @@ describe("0021 schema shape and migration lifecycle", () => {
     );
     expect(fnGone.rows[0].n).toBe(0);
     const reapplied = await migrateUp(pool, migrationsDir);
-    expect(reapplied.applied).toEqual(["0021", "0022"]);
+    expect(reapplied.applied).toEqual(["0021", "0022", "0023"]);
   });
 });
 

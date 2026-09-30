@@ -96,3 +96,19 @@ export function commercialCommandInProgressError(): CommercialDomainError {
     "A Commercial command with this idempotency key is still in progress; retry.",
   );
 }
+
+// ---------------------------------------------------------------------------
+// WP-COM-03 (manual administration). Same closed `ErrorCategory` set.
+// ---------------------------------------------------------------------------
+
+export function commercialBusinessNotFoundError(businessId: string): CommercialDomainError {
+  return new CommercialDomainError(
+    "RESOURCE_NOT_FOUND",
+    `Business "${businessId}" does not exist.`,
+  );
+}
+
+/** A well-formed request against an account/settlement whose current state forbids it. */
+export function commercialStateConflictError(message: string): CommercialDomainError {
+  return new CommercialDomainError("INVALID_STATE_TRANSITION", message);
+}

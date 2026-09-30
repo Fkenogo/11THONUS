@@ -1,8 +1,8 @@
 /**
  * Commercial settlement repository (`WP-COM-02`; design §10, §20).
  *
- * INSERT, READ, and exactly one UPDATE: the `recorded -> confirmed`
- * transition. The database independently freezes every evidence/pricing
+ * INSERT, READ, and exactly two UPDATEs: `recorded -> confirmed` and
+ * `confirmed -> voided` (WP-COM-03). The database independently freezes every evidence/pricing
  * column, rejects any other status change, DELETE and TRUNCATE, and requires
  * the confirming ledger entry to be this Business's paid `credit_grant` for
  * the settlement's units. There is no path that touches the account
@@ -47,13 +47,20 @@ type SettlementRow = {
   confirmation_note: string | null;
   confirm_idempotency_key: string | null;
   ledger_entry_id: string | null;
+  voided_by: string | null;
+  voided_at: Date | null;
+  void_reason_text: string | null;
+  void_reference: string | null;
+  void_idempotency_key: string | null;
+  void_ledger_entry_id: string | null;
 };
 
 const SETTLEMENT_COLUMNS = `id, business_id, status, source, method, external_reference, market,
   currency, amount_minor, units_purchased, received_at, price_schedule_id, unit_price_usd_minor,
   local_unit_price_minor, price_effective_from, expected_amount_minor, variance_minor, recorded_by,
   recorded_at, record_reason_text, record_idempotency_key, confirmed_by, confirmed_at,
-  confirmation_note, confirm_idempotency_key, ledger_entry_id`;
+  confirmation_note, confirm_idempotency_key, ledger_entry_id, voided_by, voided_at,
+  void_reason_text, void_reference, void_idempotency_key, void_ledger_entry_id`;
 
 function mapSettlement(row: SettlementRow): CommercialSettlement {
   return {
@@ -83,6 +90,12 @@ function mapSettlement(row: SettlementRow): CommercialSettlement {
     confirmationNote: row.confirmation_note,
     confirmIdempotencyKey: row.confirm_idempotency_key,
     ledgerEntryId: row.ledger_entry_id,
+    voidedBy: row.voided_by,
+    voidedAt: row.voided_at,
+    voidReasonText: row.void_reason_text,
+    voidReference: row.void_reference,
+    voidIdempotencyKey: row.void_idempotency_key,
+    voidLedgerEntryId: row.void_ledger_entry_id,
   };
 }
 
@@ -211,4 +224,51 @@ export async function markSettlementConfirmed(
     ],
   );
   return result.rows.length === 0 ? null : mapSettlement(result.rows[0]);
+}
+
+export type VoidSettlementParams = {
+  readonly settlementId: string;
+  readonly voidedBy: string;
+  readonly voidReasonText: string;
+  readonly voidReference: string;
+  readonly voidIdempotencyKey: string;
+  readonly correlationId: string;
+  readonly voidLedgerEntryId: string;
+};
+
+/** `confirmed -> voided` (WP-COM-03). Returns `null` if the row was not `confirmed`. */
+export async function markSettlementVoided(
+  tx: PlatformPostgresTransaction,
+  p: VoidSettlementParams,
+): Promise<CommercialSettlement | null> {
+  const result = await tx.query<SettlementRow>(
+    `UPDATE commercial_settlements
+        SET status = 'voided', voided_by = $2, voided_at = now(), void_reason_text = $3,
+            void_reference = $4, void_idempotency_key = $5, void_correlation_id = $6,
+            void_ledger_entry_id = $7
+      WHERE id = $1 AND status = 'confirmed'
+      RETURNING ${SETTLEMENT_COLUMNS}`,
+    [
+      p.settlementId,
+      p.voidedBy,
+      p.voidReasonText,
+      p.voidReference,
+      p.voidIdempotencyKey,
+      p.correlationId,
+      p.voidLedgerEntryId,
+    ],
+  );
+  return result.rows.length === 0 ? null : mapSettlement(result.rows[0]);
+}
+
+/** Confirmed (not recorded, not voided) settlements of a Business: the paid-activation precondition. */
+export async function countConfirmedSettlements(
+  db: Queryable,
+  businessId: string,
+): Promise<number> {
+  const result = await db.query<{ n: string }>(
+    `SELECT COUNT(*) AS n FROM commercial_settlements WHERE business_id = $1 AND status = 'confirmed'`,
+    [businessId],
+  );
+  return Number(result.rows[0].n);
 }

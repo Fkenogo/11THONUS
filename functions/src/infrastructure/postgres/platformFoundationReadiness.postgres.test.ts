@@ -56,6 +56,8 @@ afterEach(async () => {
   // WP-COM-01 (0021): Commercial tables are independent of every table below
   // (no cross-domain FK); dropped first so a re-run of migrateUp can re-create them.
   for (const table of [
+    "commercial_trial_grants",
+    "commercial_manual_adjustments",
     "commercial_settlements",
     "commercial_audit_events",
     "commercial_standing_events",
@@ -66,6 +68,8 @@ afterEach(async () => {
     await pool.query(`DROP TABLE IF EXISTS ${table} CASCADE`);
   }
   for (const fn of [
+    "commercial_trial_grants_guard",
+    "commercial_manual_adjustments_guard",
     "commercial_settlements_update_guard",
     "commercial_settlements_insert_guard",
     "commercial_assert_account_matches_ledger",
@@ -230,6 +234,7 @@ describe("checkPlatformFoundationReadiness — actual shipped migrations directo
       "0020",
       "0021",
       "0022",
+      "0023",
     ]);
 
     const result = await checkPlatformFoundationReadiness(shippedReadinessDeps());

@@ -5,13 +5,14 @@
  * A settlement is EVIDENCE of commercial payment received outside any
  * automated provider integration. It is not a loyalty concept and confers no
  * loyalty state. Two steps: `recorded` (no credit) then `confirmed`
- * (exactly one paid `credit_grant`). Voiding is a later package, so it is
- * not in this vocabulary yet.
+ * (exactly one paid `credit_grant`). `confirmed -> voided` (WP-COM-03) is
+ * compensated by one `settlement_void_reversal`; the original credit is
+ * never altered or deleted.
  */
 
 import type { CommercialCurrency, CommercialMarket } from "./commercialFoundation";
 
-export const COMMERCIAL_SETTLEMENT_STATUSES = ["recorded", "confirmed"] as const;
+export const COMMERCIAL_SETTLEMENT_STATUSES = ["recorded", "confirmed", "voided"] as const;
 export type CommercialSettlementStatus = (typeof COMMERCIAL_SETTLEMENT_STATUSES)[number];
 
 /** Launch settlements are manual/offline only. A provider adapter widens this additively later. */
@@ -51,6 +52,12 @@ export type CommercialSettlement = {
   readonly confirmationNote: string | null;
   readonly confirmIdempotencyKey: string | null;
   readonly ledgerEntryId: string | null;
+  readonly voidedBy: string | null;
+  readonly voidedAt: Date | null;
+  readonly voidReasonText: string | null;
+  readonly voidReference: string | null;
+  readonly voidIdempotencyKey: string | null;
+  readonly voidLedgerEntryId: string | null;
 };
 
 /** Ledger scope key: one settlement can produce at most one credit, by construction. */
@@ -65,4 +72,9 @@ export function settlementCreditScopeKey(settlementId: string): string {
  */
 export function platformMarketAuditScope(market: CommercialMarket): string {
   return `platform:market:${market}`;
+}
+
+/** Ledger scope key for the compensating entry: one settlement can be reversed at most once, by construction. */
+export function settlementVoidReversalScopeKey(settlementId: string): string {
+  return `settlement:${settlementId}:void_reversal`;
 }

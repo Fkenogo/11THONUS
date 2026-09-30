@@ -110,6 +110,20 @@ and `../../../domains/commercial/commercialSettlement.postgres.test.ts`.
 `0022` is authored here but applied only in the local test database by this
 package; it has not been applied to any deployed database.
 
+`WP-COM-03` adds `0023`: the manual Commercial administration provenance
+schema -- `commercial_trial_grants` (per-grant `units BETWEEN 3 AND 5`; no
+lifetime cap, no default), `commercial_manual_adjustments` (trial and paid-credit
+adjustments; closed reason vocabulary for paid credit), the `voided` settlement
+status with its void columns and a replaced transition guard, and a partial
+unique index allowing one void reversal per settlement. Every foreign key stays
+inside `commercial_*`; no data is seeded. Its `.down.sql` restores the `0022`
+settlement shape and fails closed while any grant, adjustment or voided
+settlement exists. See
+`docs/05-implementation/reports/wp-com-03-manual-commercial-administration-implementation-report-2026-09-30.md`
+and `../../../domains/commercial/commercialAdministration.postgres.test.ts`.
+`0023` is authored here but applied only in the local test database by this
+package; it has not been applied to any deployed database.
+
 The migration runner's own bookkeeping table (`schema_migrations`) is
 created directly by `migrationRunner.ts`'s `ensureMigrationsTable` — it is
 migration-system metadata intrinsic to the mechanism, not a numbered

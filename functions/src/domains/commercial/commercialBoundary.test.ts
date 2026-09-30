@@ -35,6 +35,10 @@ const commercialSources = walk(commercialDir).filter((f) => isTs(f) && !isTest(f
 const nonCommercialSources = walk(srcDir).filter(
   (f) => isTs(f) && !f.startsWith(commercialDir + "/") && !f.includes("/__fixtures__/"),
 );
+const migration0023 = readFileSync(
+  join(migrationsDir, "0023_commercial_manual_administration.sql"),
+  "utf8",
+);
 const migration0022 = readFileSync(join(migrationsDir, "0022_commercial_settlements.sql"), "utf8");
 const migration0021 = readFileSync(
   join(migrationsDir, "0021_commercial_domain_foundation.sql"),
@@ -144,7 +148,7 @@ describe("Commercial foundation is a separate, non-integrated domain (WP-COM-01)
     for (const text of [...everything, ...migrationFiles]) {
       expect(text).not.toContain(PENDING);
       expect(text).not.toMatch(
-        /commercial_(admissions|admission_blocks|consumption_claims|consumption_events|projection_failures|trial_grants|manual_adjustments)/,
+        /commercial_(admissions|admission_blocks|consumption_claims|consumption_events|projection_failures)/,
       );
       expect(text).not.toMatch(/INV-CAP-PROV.*earmark_id/s);
     }
@@ -269,7 +273,7 @@ describe("WP-COM-02 settlement & pricing boundary", () => {
     expect(sourceOf("services/recordSettlement.ts")).not.toMatch(/postCommercialLedgerEntry/);
   });
 
-  it("introduces no Business-side authority, RBAC, live FX, provider integration, default price or trial/admission/consumption command", () => {
+  it("introduces no Business-side authority, RBAC, live FX, provider integration or default price", () => {
     for (const file of commercialSources) {
       const rel = relative(commercialDir, file);
       // Executable code only: doc comments legitimately NAME what is excluded.
@@ -279,8 +283,101 @@ describe("WP-COM-02 settlement & pricing boundary", () => {
       expect(src, rel).not.toMatch(
         /businessRole|membership|isOwner|isManager|hasPermission|fetch\(|axios|exchangeRate|fxRate|stripe|flutterwave|mtn|lumicash/i,
       );
+    }
+  });
+});
+
+describe("WP-COM-03 manual administration boundary", () => {
+  const sql0023 = migration0023.replace(/--.*$/gm, "");
+  const codeOf = (file: string) =>
+    readFileSync(file, "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/^\s*\/\/.*$/gm, "");
+
+  it("migration 0023 is additive and self-contained: two new tables, ALTER only on commercial_settlements, no seed", () => {
+    for (const m of sql0023.matchAll(/REFERENCES\s+([a-z_]+)/g)) {
+      expect(m[1]).toMatch(/^commercial_/);
+    }
+    for (const table of LOYALTY_TABLES) {
+      expect(new RegExp(`\\b${table}\\b`).test(sql0023), `0023 mentions ${table}`).toBe(false);
+    }
+    expect([...sql0023.matchAll(/CREATE\s+TABLE\s+([a-z_]+)/gi)].map((m) => m[1])).toEqual([
+      "commercial_trial_grants",
+      "commercial_manual_adjustments",
+    ]);
+    for (const m of sql0023.matchAll(/ALTER\s+TABLE\s+([a-z_]+)/gi)) {
+      expect(m[1]).toBe("commercial_settlements");
+    }
+    expect(sql0023).not.toMatch(/\bINSERT\s+INTO\b/i);
+    expect(sql0023).not.toMatch(/\bDROP\s+TABLE\b/i);
+  });
+
+  it("migration 0023 encodes the 3..5 range on a single grant only: no lifetime cap, no default, no ceiling, no tier, no complimentary code", () => {
+    expect(sql0023).toMatch(/units INTEGER NOT NULL CHECK \(units BETWEEN 3 AND 5\)/);
+    expect(sql0023).not.toMatch(/UNIQUE\s*\(\s*business_id\s*\)/i);
+    expect(sql0023).not.toMatch(/units\s+INTEGER\s+NOT NULL\s+DEFAULT/i);
+    expect(sql0023).not.toMatch(
+      /tier|subscription|\bplan\b|complimentary|pilot|partner|promotional/i,
+    );
+    expect(sql0023).not.toMatch(/units_delta\s*(<=|>=|<|>)\s*-?[0-9]/);
+    expect(sql0023).not.toMatch(/pending_admission|earmark|admission|consumption|scheduler/i);
+  });
+
+  it("all WP-COM-03 commands run through the shared administrator runner (authority + idempotency + audit) and the canonical ledger flow", () => {
+    for (const name of [
+      "openCommercialAccount.ts",
+      "grantTrial.ts",
+      "adjustTrial.ts",
+      "adjustCommercialCredit.ts",
+      "activatePaidService.ts",
+      "commercialRestriction.ts",
+      "voidSettlement.ts",
+    ]) {
+      const [file] = commercialSources.filter((f) => f.endsWith(`/${name}`));
+      expect(file, name).toBeDefined();
+      expect(codeOf(file), name).toContain("runAdministratorCommand");
+    }
+    for (const name of [
+      "grantTrial.ts",
+      "adjustTrial.ts",
+      "adjustCommercialCredit.ts",
+      "voidSettlement.ts",
+    ]) {
+      const [file] = commercialSources.filter((f) => f.endsWith(`/${name}`));
+      expect(codeOf(file), name).toContain("postCommercialLedgerEntry");
+    }
+    for (const name of [
+      "openCommercialAccount.ts",
+      "activatePaidService.ts",
+      "commercialRestriction.ts",
+    ]) {
+      const [file] = commercialSources.filter((f) => f.endsWith(`/${name}`));
+      expect(codeOf(file), name).not.toContain("postCommercialLedgerEntry");
+    }
+  });
+
+  it("only the account-opening command inserts accounts, and settlements/ledger are only compensated, never edited or deleted", () => {
+    for (const file of commercialSources) {
+      const rel = relative(commercialDir, file);
+      const src = codeOf(file);
+      if (/INSERT\s+INTO\s+commercial_accounts/.test(src)) {
+        expect(rel).toBe("repositories/commercialAccountRepository.ts");
+      }
+      expect(src, rel).not.toMatch(/(UPDATE|DELETE\s+FROM|TRUNCATE)\s+commercial_ledger_entries/);
       expect(src, rel).not.toMatch(
-        /grantTrial|adjustTrial|adjustCommercialCredit|restrictNewStarts|restoreCommercialStanding|activatePaidService|voidSettlement/,
+        /(DELETE\s+FROM|TRUNCATE)\s+commercial_(settlements|trial_grants|manual_adjustments)/,
+      );
+    }
+    const open = commercialSources.find((f) => f.endsWith("/openCommercialAccount.ts")) ?? "";
+    expect(codeOf(open)).toContain("insertCommercialAccount");
+  });
+
+  it("no unimplemented later-package concept is introduced: no gate, admission, consumption, provider, scheduler or UI", () => {
+    for (const file of commercialSources) {
+      const rel = relative(commercialDir, file);
+      const src = codeOf(file);
+      expect(src, rel).not.toMatch(
+        /evaluateAdmission|admitPurchase|projectConsumption|reevaluatePendingAdmissions|availableCapacity\(.*\)\s*[<>]|stripe|flutterwave/i,
       );
     }
   });
