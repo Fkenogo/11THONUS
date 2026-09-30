@@ -184,7 +184,7 @@ Existing tests updated only for the new migration (see §13 D5).
 | `pnpm emulators:validate` | 66 files, 867 passed, 3 skipped |
 | Full PostgreSQL suite under the Firestore emulator | 16 files, 531 tests pass (includes migrate up/down/re-up, redemption and verify lock-order suites) |
 
-CI (`.github/workflows/ci.yml`) runs build, lint, format, typecheck, unit, e2e and emulator validation; the PostgreSQL suites are not part of CI, which is why they were run locally as above.
+CI (`.github/workflows/ci.yml`) runs build, lint, format, typecheck, unit, the PostgreSQL integration suites (against a `postgres:16-alpine` service, wrapped in the Firestore Emulator), e2e and emulator validation; the same suites were also run locally as above. On the first head, one unrelated identity emulator test (`authenticationReferenceRepository.emulator.test.ts`, 5 s timeout) failed in the emulator step while 866 other emulator tests and the whole PostgreSQL step passed; the re-run on the review-fix head was green.
 
 **Diff verification against `origin/main`:** zero diff in `functions/src/domains/purchase`, `functions/src/domains/rewardProgram`, `functions/src/index.ts`, `apps/` (web and Experience/prototype reference), rules files, `package.json`, `pnpm-lock.yaml`.
 
