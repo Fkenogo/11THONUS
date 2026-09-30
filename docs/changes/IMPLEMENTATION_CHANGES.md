@@ -7,6 +7,23 @@
 
 ---
 
+## 2026-09-30 — WP-COM-01 — Commercial Domain Foundation (Implementation)
+
+- **Date:** 2026-09-30
+- **Phase:** Commercial implementation programme (11THONUS-COMMERCIAL-DESIGN-001 v1.1 + CORR-002, §30) — first work package
+- **Task:** WP-COM-01 — Commercial domain foundation: migration `0021`, append-only ledger, derived account, price-schedule storage, immutable audit and standing timeline, idempotency adapter and Platform-Administrator authority seam. Engine foundation only; **not integrated into the loyalty admission/verification path.**
+- **Status:** Implemented — pending review. Not merged. Entry `origin/main` `1d1eec7befafe33023e38150ea0f6e77f982fab3`; branch `claude/bold-meitner-uzys3a`.
+- **Files changed:** see the [Implementation Report](../05-implementation/reports/wp-com-01-commercial-domain-foundation-implementation-report-2026-09-30.md). Summary: new `functions/src/domains/commercial/**`; new `functions/src/infrastructure/postgres/migrations/0021_commercial_domain_foundation{,.down}.sql`; `0021` added to the expected migration lists / teardown of `rewardProgramMigrations.postgres.test.ts` and `platformFoundationReadiness.postgres.test.ts`; migrations `README.md`; this entry; `documentation-changes-log.md` Entry 273; the report. No loyalty, prototype, dependency or configuration file changed.
+- **Tests:** typecheck, lint, format, build, unit (functions 1912+, web 919), PostgreSQL integration under the Firestore Emulator, and the emulator suite all green locally against a disposable PostgreSQL 16 — results in the report §11.
+- **Configuration:** none.
+- **Migrations:** `0021_commercial_domain_foundation` (+ `.down.sql`, fail-closed when Commercial rows exist). Applied **only** to the local disposable test database; nothing deployed and no shared/staging/production database touched.
+- **Deliberately not implemented:** capacity gating, `pending_admission`, admission/earmark tables, consumption projection, Verify Purchase/redemption changes, Operator Console, Business UI, scheduler, payment provider, launch prices, RBAC.
+- **Risks:** report §14 (ledger CHECK strictness, commit-time trigger cost, immutable-row test cleanup, forward-only price timeline, administrator-status authority until DEC-GOV-007, two-store authority window, migration ordering).
+- **Rollback:** `git revert` the WP-COM-01 commit(s); on an empty database `migrateDown(…, 1)` (fails closed if Commercial rows exist — restore a pre-`0021` backup instead). No deployment/config/dependency rollback needed.
+- **Report link:** [`wp-com-01-commercial-domain-foundation-implementation-report-2026-09-30.md`](../05-implementation/reports/wp-com-01-commercial-domain-foundation-implementation-report-2026-09-30.md)
+
+---
+
 ## 2026-09-30 — 11THONUS-COMMERCIAL-DESIGN-001-CORR-002 — Correction of Three Review Findings on PR #284 (Design Only)
 
 - **Date:** 2026-09-30

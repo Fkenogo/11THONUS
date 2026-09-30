@@ -86,6 +86,20 @@ and `../rewardProgramMigrations.postgres.test.ts` for coverage. `0020` is
 authored here but applied only in the local test database by this package;
 it has not been applied to any deployed database.
 
+`WP-COM-01` adds `0021`: the Commercial domain foundation
+(`commercial_accounts`, `commercial_ledger_entries`,
+`commercial_price_schedules`, `commercial_standing_events`,
+`commercial_audit_events`) and the trigger functions that make the ledger,
+audit, price and standing tables immutable and keep the account derived from
+the ledger. Purely additive and self-contained: no existing object is
+altered and no foreign key crosses into or out of the Loyalty/Purchase
+tables. No data is seeded (in particular no BIF/RWF launch price). Its
+`.down.sql` fails closed while any Commercial row exists. See
+`docs/05-implementation/reports/wp-com-01-commercial-domain-foundation-implementation-report-2026-09-30.md`
+and `../../../domains/commercial/commercialFoundation.postgres.test.ts`.
+`0021` is authored here but applied only in the local test database by this
+package; it has not been applied to any deployed database.
+
 The migration runner's own bookkeeping table (`schema_migrations`) is
 created directly by `migrationRunner.ts`'s `ensureMigrationsTable` — it is
 migration-system metadata intrinsic to the mechanism, not a numbered

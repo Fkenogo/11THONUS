@@ -53,6 +53,25 @@ afterEach(async () => {
   // PLATFORM-BASELINE-013A.1: same for the additive qualifying_items
   // persistence foundation (0016/0017) -- the junction table first since
   // it references qualifying_items.
+  // WP-COM-01 (0021): Commercial tables are independent of every table below
+  // (no cross-domain FK); dropped first so a re-run of migrateUp can re-create them.
+  for (const table of [
+    "commercial_audit_events",
+    "commercial_standing_events",
+    "commercial_ledger_entries",
+    "commercial_price_schedules",
+    "commercial_accounts",
+  ]) {
+    await pool.query(`DROP TABLE IF EXISTS ${table} CASCADE`);
+  }
+  for (const fn of [
+    "commercial_assert_account_matches_ledger",
+    "commercial_price_schedules_versioning",
+    "commercial_accounts_guard",
+    "commercial_reject_mutation",
+  ]) {
+    await pool.query(`DROP FUNCTION IF EXISTS ${fn}() CASCADE`);
+  }
   await pool.query("DROP TABLE IF EXISTS reward_program_version_qualifying_items CASCADE");
   await pool.query("DROP TABLE IF EXISTS qualifying_items CASCADE");
   await pool.query("DROP TABLE IF EXISTS purchase_outbox CASCADE");
@@ -206,6 +225,7 @@ describe("checkPlatformFoundationReadiness — actual shipped migrations directo
       "0018",
       "0019",
       "0020",
+      "0021",
     ]);
 
     const result = await checkPlatformFoundationReadiness(shippedReadinessDeps());
