@@ -76,6 +76,7 @@ async function dropCommercialObjects(): Promise<void> {
     "commercial_trial_grants_guard",
     "commercial_manual_adjustments_guard",
     "commercial_settlements_update_guard",
+    "commercial_ledger_reject_cancelled_settlement_reference",
     "commercial_settlements_insert_guard",
     "commercial_assert_account_matches_ledger",
     "commercial_price_schedules_versioning",
@@ -87,7 +88,9 @@ async function dropCommercialObjects(): Promise<void> {
   }
   const hasMigrations = await pool.query("SELECT to_regclass('public.schema_migrations') AS t");
   if (hasMigrations.rows[0].t !== null) {
-    await pool.query("DELETE FROM schema_migrations WHERE version IN ('0021', '0022', '0023')");
+    await pool.query(
+      "DELETE FROM schema_migrations WHERE version IN ('0021', '0022', '0023', '0024')",
+    );
     await pool
       .query("DELETE FROM idempotency_keys WHERE idempotency_key LIKE 'wpcom02-%'")
       .catch(() => {});

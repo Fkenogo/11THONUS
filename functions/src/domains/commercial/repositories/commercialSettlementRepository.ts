@@ -1,8 +1,8 @@
 /**
  * Commercial settlement repository (`WP-COM-02`; design §10, §20).
  *
- * INSERT, READ, and exactly two UPDATEs: `recorded -> confirmed` and
- * `confirmed -> voided` (WP-COM-03). The database independently freezes every evidence/pricing
+ * INSERT, READ, and exactly three UPDATEs: `recorded -> confirmed`,
+ * `confirmed -> voided` (WP-COM-03) and `recorded -> cancelled` (WP-COM-03A). The database independently freezes every evidence/pricing
  * column, rejects any other status change, DELETE and TRUNCATE, and requires
  * the confirming ledger entry to be this Business's paid `credit_grant` for
  * the settlement's units. There is no path that touches the account
@@ -53,6 +53,11 @@ type SettlementRow = {
   void_reference: string | null;
   void_idempotency_key: string | null;
   void_ledger_entry_id: string | null;
+  cancelled_by: string | null;
+  cancelled_at: Date | null;
+  cancel_reason_text: string | null;
+  cancel_reference: string | null;
+  cancel_idempotency_key: string | null;
 };
 
 const SETTLEMENT_COLUMNS = `id, business_id, status, source, method, external_reference, market,
@@ -60,7 +65,8 @@ const SETTLEMENT_COLUMNS = `id, business_id, status, source, method, external_re
   local_unit_price_minor, price_effective_from, expected_amount_minor, variance_minor, recorded_by,
   recorded_at, record_reason_text, record_idempotency_key, confirmed_by, confirmed_at,
   confirmation_note, confirm_idempotency_key, ledger_entry_id, voided_by, voided_at,
-  void_reason_text, void_reference, void_idempotency_key, void_ledger_entry_id`;
+  void_reason_text, void_reference, void_idempotency_key, void_ledger_entry_id, cancelled_by,
+  cancelled_at, cancel_reason_text, cancel_reference, cancel_idempotency_key`;
 
 function mapSettlement(row: SettlementRow): CommercialSettlement {
   return {
@@ -96,6 +102,11 @@ function mapSettlement(row: SettlementRow): CommercialSettlement {
     voidReference: row.void_reference,
     voidIdempotencyKey: row.void_idempotency_key,
     voidLedgerEntryId: row.void_ledger_entry_id,
+    cancelledBy: row.cancelled_by,
+    cancelledAt: row.cancelled_at,
+    cancelReasonText: row.cancel_reason_text,
+    cancelReference: row.cancel_reference,
+    cancelIdempotencyKey: row.cancel_idempotency_key,
   };
 }
 
@@ -261,7 +272,43 @@ export async function markSettlementVoided(
   return result.rows.length === 0 ? null : mapSettlement(result.rows[0]);
 }
 
-/** Confirmed (not recorded, not voided) settlements of a Business: the paid-activation precondition. */
+export type CancelSettlementParams = {
+  readonly settlementId: string;
+  readonly cancelledBy: string;
+  readonly cancelReasonText: string;
+  readonly cancelReference: string;
+  readonly cancelIdempotencyKey: string;
+  readonly correlationId: string;
+};
+
+/**
+ * `recorded -> cancelled` (WP-COM-03A). Returns `null` if the row was not `recorded`.
+ * Touches no ledger row and no account: a cancelled settlement never granted credit.
+ */
+export async function markSettlementCancelled(
+  tx: PlatformPostgresTransaction,
+  p: CancelSettlementParams,
+): Promise<CommercialSettlement | null> {
+  const result = await tx.query<SettlementRow>(
+    `UPDATE commercial_settlements
+        SET status = 'cancelled', cancelled_by = $2, cancelled_at = now(),
+            cancel_reason_text = $3, cancel_reference = $4, cancel_idempotency_key = $5,
+            cancel_correlation_id = $6
+      WHERE id = $1 AND status = 'recorded'
+      RETURNING ${SETTLEMENT_COLUMNS}`,
+    [
+      p.settlementId,
+      p.cancelledBy,
+      p.cancelReasonText,
+      p.cancelReference,
+      p.cancelIdempotencyKey,
+      p.correlationId,
+    ],
+  );
+  return result.rows.length === 0 ? null : mapSettlement(result.rows[0]);
+}
+
+/** Confirmed (not recorded, not voided, not cancelled) settlements of a Business: the paid-activation precondition. */
 export async function countConfirmedSettlements(
   db: Queryable,
   businessId: string,

@@ -124,6 +124,19 @@ and `../../../domains/commercial/commercialAdministration.postgres.test.ts`.
 `0023` is authored here but applied only in the local test database by this
 package; it has not been applied to any deployed database.
 
+`WP-COM-03A` adds `0024`: recorded-settlement cancellation -- the `cancelled`
+settlement status with immutable cancellation provenance columns, a replaced
+lifecycle CHECK and transition guard (only `recorded -> confirmed`,
+`recorded -> cancelled`, `confirmed -> voided`), and one read-only BEFORE INSERT
+trigger on the ledger so a cancelled settlement can never hold a ledger entry.
+No table is created or dropped; no ledger row, account, price or Loyalty object
+is altered. Its `.down.sql` restores the `0023` settlement shape and fails
+closed while any cancelled settlement exists. See
+`docs/05-implementation/reports/wp-com-03a-recorded-settlement-cancellation-implementation-report-2026-09-30.md`
+and `../../../domains/commercial/commercialSettlementCancellation.postgres.test.ts`.
+`0024` is authored here but applied only in the local test database by this
+package; it has not been applied to any deployed database.
+
 The migration runner's own bookkeeping table (`schema_migrations`) is
 created directly by `migrationRunner.ts`'s `ensureMigrationsTable` — it is
 migration-system metadata intrinsic to the mechanism, not a numbered

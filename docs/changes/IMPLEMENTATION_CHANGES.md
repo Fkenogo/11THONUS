@@ -7,6 +7,24 @@
 
 ---
 
+## 2026-09-30 — WP-COM-03A — Recorded Settlement Cancellation (Implementation)
+
+- **Date:** 2026-09-30
+- **Phase:** Commercial implementation programme (11THONUS-COMMERCIAL-DESIGN-001 v1.1 + CORR-002, §10) — bounded follow-up to WP-COM-03 (closes its deviation D3)
+- **Task:** WP-COM-03A — `cancelSettlement`: `recorded → cancelled` for a mistaken, unconfirmed settlement. Platform-Administrator + verified MFA only; reason and reference required; idempotent; immutable cancellation provenance; **no ledger, account, price or Loyalty effect**; cancelled is terminal (never confirmable, voidable or re-cancellable); `confirmed → voided` remains the compensating path for credited settlements.
+- **Status:** Implemented — pending review. Not merged. Entry `origin/main` `e986d38ee7854404f6c8403bfc6ff329157668f6`; branch `claude/confident-lamport-jrvajp`.
+- **Files changed:** see the [Implementation Report](../05-implementation/reports/wp-com-03a-recorded-settlement-cancellation-implementation-report-2026-09-30.md). Summary: new migration `0024_commercial_settlement_cancellation` (+ `.down.sql`); `services/cancelSettlement.ts`; `cancelled` status, cancel fields and `markSettlementCancelled` in the settlement model/repository; `settlement_cancelled` audit action; new `commercialSettlementCancellation.postgres.test.ts` (32 tests) and 6 boundary tests; migration-version lists / rollback step counts / drop-helper lists in existing Postgres tests updated for `0024`; migrations `README.md`; this record and the documentation log (Entry 276).
+- **Tests:** typecheck, lint (0 errors; 1 pre-existing `apps/web` warning), format, build, unit (functions 1929, web 919), PostgreSQL integration under the Firestore Emulator (15 files, 479 tests) and the emulator suite (66 files, 867 passed, 3 skipped) all green locally against a disposable PostgreSQL 16.
+- **Configuration / dependencies:** none.
+- **Migrations:** `0024_commercial_settlement_cancellation` — additive (no table created/dropped); `.down.sql` fails closed when any cancelled settlement exists. Applied **only** to the local disposable test database; nothing was run against shared, staging or production databases.
+- **Deliberately not implemented:** capacity gate, `pending_admission`, admission earmarks, consumption projection (WP-COM-04), scheduler, Operator/Business UI, payment provider, refund workflows, RBAC.
+- **Product Truth:** unchanged (USD 2, trial 3–5 per explicit grant, pricing schedule, negative-credit allowance, capacity rules). Loyalty path, `apps/`, prototype/Experience Reference: zero diff.
+- **Risks / deviations:** report §11 (one read-only BEFORE INSERT trigger on the ledger table to make "a cancelled settlement never holds credit" a database fact; cancel-time ledger check across all Businesses; refused attempts audited as `denied`, inherited).
+- **Rollback:** `git revert` the commit; on a database with no cancelled settlements `migrateDown` rolls `0024` back to the `0023` shape (fails closed otherwise — restore a pre-`0024` backup).
+- **Report link:** [`wp-com-03a-recorded-settlement-cancellation-implementation-report-2026-09-30.md`](../05-implementation/reports/wp-com-03a-recorded-settlement-cancellation-implementation-report-2026-09-30.md)
+
+---
+
 ## 2026-09-30 — WP-COM-03 — Manual Commercial Administration Commands (Implementation)
 
 - **Date:** 2026-09-30
