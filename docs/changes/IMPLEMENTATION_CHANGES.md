@@ -7,6 +7,19 @@
 
 ---
 
+## 2026-09-30 — 11THONUS-COMMERCIAL-DESIGN-001-CORR-002 — Correction of Three Review Findings on PR #284 (Design Only)
+
+- **Date:** 2026-09-30
+- **Task / status:** bounded design correction on PR #284 against `origin/main` `439f95e99590f0ef44e3955c6b5649d8c2542e83`, entry head `c17e6c2ba2f6ad117f00bcd52ac1be00333f794b`, branch `claude/epic-archimedes-b7hvnd`. **Design only — PR not merged; nothing implemented; WP-COM-01 not started.**
+- **Findings corrected:** (P1) idempotency key `admit:<purchase_id>` reserved before the decision would be poisoned by a no-op hold — now reserved only after the locked ADMIT decision, holds write nothing; (P1) commercial rows referenced the Verified Unit before it existed — write order is now parent-before-child, no deferred FKs; (P2) fallback funding bucket was fixed before the account lock — now claim → account lock → resolve funding under the lock → atomic finalize (one transaction, both paths), fallback restated as migration/reconciliation/back-compat only.
+- **Re-derived:** lock order and no-cycle argument (correcting the "account lock is last" over-claim), five canonical sequences, idempotency table per operation, crash-point tables; new negative tests in report §22.4.
+- **Repository facts used (read-only):** `idempotencyRepository.ts` reserves with `INSERT … ON CONFLICT DO NOTHING` inside the caller's transaction and relies on rollback to remove the row; the contender for an uncommitted key waits; immediate FKs throughout the migrations.
+- **Correction of record:** Entry 271's statement that the final review found no P0/P1/P2 findings was incorrect; three findings existed. Superseded here; earlier entries preserved as written.
+- **Files changed:** the report (Appendix C added); `docs/00-governance/documentation-changes-log.md` (Entry 272 + header); this append-only entry. **No application, test, configuration, migration, dependency or infrastructure file changed. Decision Register, DEC-SUB-014 and the prototype not modified.**
+- **Validation:** searches confirm parent-before-child and claim-then-classify are stated, no stale reserve-before-decision or event-before-lock wording remains, FD-A–D/USD 2/3–5/negative-credit/DEC-SUB-013/`INV-CAP-PROV` intact; links resolve; `git diff --check` clean apart from the header hard break; docs-only scope. No tests run (documentation only).
+- **Rollback:** `git revert` the CORR-002 commit (restores `c17e6c2`). No database, migration, deployment, configuration or dependency rollback required.
+---
+
 ## 2026-09-30 — 11THONUS-COMMERCIAL-DESIGN-001-CORR-001-CLOSE-001 — Final Bounded Design Correction for Founder Merge Review (Design Only)
 
 - **Date:** 2026-09-30

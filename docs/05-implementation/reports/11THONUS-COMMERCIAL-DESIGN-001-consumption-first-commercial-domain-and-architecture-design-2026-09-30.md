@@ -1,9 +1,9 @@
 > **Title:** 11THONUS-COMMERCIAL-DESIGN-001 — Consumption-First Commercial Domain & Architecture Design  
-> **Version:** 1.1 (`CORR-001`, `CORR-001-CLOSE-001`) · **Status:** Ready for Founder merge review (not canonical until merged) · **Classification:** Working (governance/design record)  
+> **Version:** 1.1 (`CORR-001`, `CORR-001-CLOSE-001`, `CORR-002`) · **Status:** Corrected after PR review — pending final Founder merge review (not canonical until merged) · **Classification:** Working (governance/design record)  
 > **Governing documents:** 11thONUS Platform Constitution; [Decision Register](../../00-governance/decisions/decision-register.md) (`DEC-SUB-014`); [`FD-COM-001` decision record](../../00-governance/decisions/evidence/FD-COM-001-core-commercial-model-founder-decision-2026-09-29.md); [`11THONUS-EXP-REF-001` binding assessment](11THONUS-EXP-REF-001-experience-reference-product-truth-binding-assessment-2026-09-29.md)  
 > **Source-of-truth path:** `docs/05-implementation/reports/11THONUS-COMMERCIAL-DESIGN-001-consumption-first-commercial-domain-and-architecture-design-2026-09-30.md`  
 > **Scope:** Architecture/design assessment only. No application code, test, configuration, migration, dependency, payment integration, Operator Console, prototype change or Experience Assembly was made or started. Nothing was deployed.  
-> **Version history:** v1.0 (`fea8ca7`, 2026-09-30) — initial design. **v1.1 (`CORR-001`)** — records Founder decisions FD-A–FD-D and the trial/currency directions, corrects the foreign-key strategy, and adds projection reliability, full path coverage, the reservation model and the pending-admission lifecycle. The v1.0→v1.1 change register is **Appendix A**. **`CORR-001-CLOSE-001`** (final bounded correction before merge review) corrects the trial-adjustment wording, withdraws specific UI copy for `pending_admission`, and adds the capacity-provenance invariant `INV-CAP-PROV` (§8.5.1); its register is **Appendix B**.
+> **Version history:** v1.0 (`fea8ca7`, 2026-09-30) — initial design. **v1.1 (`CORR-001`)** — records Founder decisions FD-A–FD-D and the trial/currency directions, corrects the foreign-key strategy, and adds projection reliability, full path coverage, the reservation model and the pending-admission lifecycle. The v1.0→v1.1 change register is **Appendix A**. **`CORR-001-CLOSE-001`** (final bounded correction before merge review) corrects the trial-adjustment wording, withdraws specific UI copy for `pending_admission`, and adds the capacity-provenance invariant `INV-CAP-PROV` (§8.5.1); its register is **Appendix B**. **`CORR-002`** corrects three review findings on PR #284 — idempotency key reserved on a held re-admission, Verified Unit ordering before its FK children, and fallback funding bucket chosen before the account lock — and re-derives the lock order (§22), idempotency (§23) and crash analysis (§24.1); its register is **Appendix C**.
 
 # 11THONUS-COMMERCIAL-DESIGN-001 — Consumption-First Commercial Domain & Architecture Design
 
@@ -169,25 +169,27 @@ Purchase verify / admission processor ──(port)──▶ CommercialAdmission 
 - **(ii)** the child is inserted by a transaction that already holds the parent lock (same transaction);
 - **(iii)** the FK-bearing insert executes **before** the transaction takes the commercial account lock, so the transaction never holds the account lock while waiting on a loyalty lock.
 
-What must never happen: a transaction that holds the **commercial account lock** waiting for a loyalty row that a loyalty transaction holds while that loyalty transaction waits for the account lock (the CORR-002 pattern). Because loyalty transactions take the account lock **last** (§22), condition (iii) is sufficient to make any remaining FK safe.
+What must never happen: a transaction that holds the **commercial account lock** waiting for a loyalty row that a loyalty transaction holds while that loyalty transaction waits for the account lock (the CORR-002 pattern). The full argument that no such cycle exists is in §22.2; condition (iii) makes it hold **by construction** for every commercial transaction, rather than by the accident that no loyalty path currently locks a Reward and then the account.
+
+**Parent-before-child ordering rule (`CORR-002`).** The repository's foreign keys are **immediate**, and this design introduces no deferred constraints. Therefore, in any single transaction, **a parent row must be inserted (or already exist) before any child row that references it.** In particular, the Verified Unit is inserted **before** the reservation ledger entry, the admission row and the earmark rows that reference it (§8.4). Each child insert also takes `FOR KEY SHARE` on its parent; the table below states, per relation, why that lock cannot wait on another transaction.
 
 Options compared per relation — **FK** (relational proof, key-share lock), **soft reference** (opaque id, no lock, integrity by derivation + reconciliation), **immutable provenance** (snapshot columns copied from the loyalty row inside the same read):
 
 | # | Relation | Parent lock exposure | FK | Soft ref | Provenance | **Selected** | Why it is safe |
 |---|---|---|---|---|---|---|---|
-| R1 | `consumption_events (source_reward_id, source_loyalty_cycle_id)` → `rewards (id, loyalty_cycle_id)` | `rewards` locked `FOR UPDATE` by redemption; cycle by verify/redemption | Composite FK using the existing `0020` unique `(id, loyalty_cycle_id)`; proves the Reward belongs to the Cycle | Loses proof | n/a | **FK (composite)** | Rule (iii): the projection inserts the event **before** locking the account. The worst case is the projection waiting on a redemption that holds the Reward; redemption never waits on anything the projection holds (it holds only a key-share and its own new row), so no cycle forms |
-| R2 | `consumption_events.source_loyalty_cycle_id` alone | as above | Redundant with R1 | Fine | — | **Covered by R1** | — |
+| R1 | **`consumption_claims`** `(source_reward_id, source_loyalty_cycle_id)` → `rewards (id, loyalty_cycle_id)` | `rewards` locked `FOR UPDATE` by redemption; cycle by verify/redemption | Composite FK using the existing `0020` unique `(id, loyalty_cycle_id)`; proves the Reward belongs to the Cycle | Loses proof | n/a | **FK (composite), on the claim row only** | Rule (iii): the claim is inserted **before** the transaction locks the account, and it carries **no funding classification**. The worst case is the projection waiting on a redemption that holds the Reward; redemption never takes the account lock and never waits on anything the projection holds (only a key-share and its own new row), so no cycle forms |
+| R2 | `consumption_events.claim_id` → `consumption_claims (id)` (and `source_loyalty_cycle_id`) | Commercial-only parent | FK | — | — | **FK** | Commercial-internal (like R11). The event, which carries the funding bucket, therefore needs **no FK to any loyalty row** and can be inserted safely **after** the account lock |
 | R3 | `consumption_events.reward_program_id` | `reward_programs` locked by record-purchase/publication | Would add coupling for no proof gain | **Soft** | Copied from the Reward row | **Soft + provenance** | Provable via R1's Reward row; no lock taken |
-| R4 | `admissions.verified_unit_id` → `verified_units (id)` | Not locked `FOR UPDATE` | FK | — | — | **FK** | Rule (i); also (ii): inserted by the transaction that created the unit |
+| R4 | `admissions.verified_unit_id` → `verified_units (id)` | Not locked `FOR UPDATE` | FK | — | — | **FK** | Rule (i); also (ii): inserted by the transaction that created the unit, **and only after that unit row has been inserted** (parent-before-child rule) |
 | R5 | `admissions.purchase_record_id` → `purchase_records (id)` | Locked `FOR UPDATE` by verify/reject/dispute/admission | FK | Soft | — | **FK** | Rule (ii): the admission is written by the transaction that already holds the Purchase lock; no other commercial transaction writes this table |
-| R6 | `ledger_entries.source_verified_unit_id` → `verified_units (id)` (reservation entry) | Not locked | FK | Soft | — | **FK** | Rules (i)+(ii): written in the transaction that issued the unit |
+| R6 | `ledger_entries.source_verified_unit_id` → `verified_units (id)` (reservation entry) | Not locked | FK | Soft | — | **FK** | Rules (i)+(ii): written in the transaction that issued the unit, **after** the unit row exists (parent-before-child) |
 | R7 | `commercial_audit_events.purchase_record_id` (admission events) | Purchase locked by the writing transaction | FK | **Soft** | Snapshot in `after_snapshot` | **Soft** | Audit rows must outlive any future retention change and must never add a lock to a hot path; reference is provable through R5 |
 | R8 | Any Commercial row → `loyalty_cycles`, `loyalty_cycle_streams` directly | Locked `FOR UPDATE` by verify/redemption | **Prohibited** | **Soft** | — | **Soft only** | No commercial transaction may key-share these; when a Cycle id is needed it is read from the Reward row (R1) |
 | R9 | Loyalty/Purchase rows → Commercial rows | n/a | **Prohibited** | — | — | **None** | Loyalty state must not depend on commercial rows (DEC-SUB-014 §2.1) |
 | R10 | `business_id` on every commercial table | Firestore-owned | n/a | **Soft (opaque)** | — | **Soft** | Cross-store; same convention as loyalty tables |
 | R11 | Commercial → Commercial (ledger→accounts, settlements→price schedules, etc.) | Commercial-only | FK | — | — | **FK** | All under the account lock or immutable parents |
 
-Each FK-bearing table gets a lock-order test in the CORR-002 style (§22.3).
+Each FK-bearing table gets a lock-order test in the CORR-002 style (§22.4).
 
 ## 5. Consumption-event design (FD-B)
 
@@ -201,7 +203,12 @@ Each FK-bearing table gets a lock-order test in the CORR-002 style (§22.3).
 
 ### 5.2 Recorded fact and idempotency
 
-`commercial_consumption_events` — one immutable row per consumed unit. **Idempotency key:** `source_loyalty_cycle_id`, `UNIQUE`; plus ledger `idempotency_scope_key = 'consume:<cycle_id>'`.
+Two immutable rows are written per consumed unit, in **one** transaction:
+
+- `commercial_consumption_claims` — the **claim**: the FK anchor to the Reward (R1), with **no funding classification and no amounts**;
+- `commercial_consumption_events` — the **classified fact**: funding bucket, provenance, price snapshots and the ledger link, with an FK to its claim (R2) and none to any loyalty row.
+
+**Idempotency key:** `source_loyalty_cycle_id`, `UNIQUE` on **both** tables; plus ledger `idempotency_scope_key = 'consume:<cycle_id>'`. The split exists so that the funding bucket is decided only **under the account lock** while the Reward foreign key is still established **before** it (§5.4).
 
 ### 5.3 Durable detection
 
@@ -210,7 +217,7 @@ Detection is a **stateless pull query over the durable fact**, not a message tha
 ```
 rewards r JOIN commercial_accounts a ON a.business_id = r.business_id
       AND r.available_at >= a.commercial_effective_from
-LEFT JOIN commercial_consumption_events e ON e.source_loyalty_cycle_id = r.loyalty_cycle_id
+LEFT JOIN commercial_consumption_claims e ON e.source_loyalty_cycle_id = r.loyalty_cycle_id
 WHERE e.id IS NULL AND r.state IN ('available','redeemed')
 ```
 
@@ -218,20 +225,28 @@ There is no watermark, cursor or "last processed" value that could skip a row. A
 
 ### 5.4 Projection transaction (per Reward)
 
-1. `INSERT` the consumption event (composite FK R1) `ON CONFLICT (source_loyalty_cycle_id) DO NOTHING` — **before** any commercial lock (rule iii). If the row already exists, stop (already projected).
-2. Lock the Business's account row.
-3. Post the ledger debit (`consumption`, one unit, **in the bucket earmarked at admission for this Circle**, §8.5.1 — never re-decided from current balances) and release the matching earmarked reservation, update the account, write the audit row (`actor = system:commercial-projection`), and snapshot price schedule id, USD equivalent and local unit price.
-4. Commit. Steps 1–3 are **one** transaction, so an event can never exist without its debit.
+The same sequence serves **both** the normal (earmarked) path and the exceptional fallback path, so the fallback has no machinery of its own. Everything below is **one** PostgreSQL transaction:
+
+1. **Identify** the candidate Reward (non-locking read, §5.3). No classification is made.
+2. **Claim** — `INSERT` a `commercial_consumption_claims` row (composite FK R1 to the Reward) `ON CONFLICT (source_loyalty_cycle_id) DO NOTHING`. This is the **only** step that touches a loyalty row and it happens **before** any commercial lock (§4.4 rule iii). If the claim already exists, another projector owns or has finished this Reward: stop. The claim holds no bucket and no amounts, so nothing immutable can be stale.
+3. **Lock** the Business's account row (`FOR UPDATE`) — the canonical position in the lock order (§22.1).
+4. **Resolve funding under the lock.** Re-read the Cycle sequence and look up the admission earmark by `(business, stream_ref, sequence)`:
+   - **Earmark found** (normal runtime): the bucket **is** the earmark (§8.5.1); account state plays no part.
+   - **No earmark** (exceptional fallback only): choose the bucket now, **from the account counters read under the lock** — uncommitted trial first, then paid — and record `bucket_source = 'consumption_time_fallback'` and the `account_version` read. Because the account row is locked, a concurrent trial adjustment, top-up, settlement or other fallback projection cannot change that state between the read and the write.
+5. **Finalize atomically** (still under the lock): insert the `commercial_consumption_events` row (FK to the claim; no FK to any loyalty row), post the ledger `consumption` debit in that bucket, release the matching bucket reservation (earmark path), update the account, and write the audit row (`actor = system:commercial-projection`) with the price-schedule id and snapshots of the USD equivalent and local unit price.
+6. **Commit.** Claim, event, ledger entry, counters and audit are committed together or not at all.
 
 Trigger: (a) best-effort immediately after the verify/redemption callable returns; (b) a scheduled sweep. The projection never runs inside a loyalty transaction, so a commercial fault can never roll back a Reward.
 
+**Why a cross-transaction persisted claim was rejected.** A claim committed in its own transaction, finalized in a second, would add states (claimed-but-unfinalized), leases or timeouts for a crashed claimant, and a way for a claim to be stuck. It buys no safety: the claim's only job is to establish the Reward FK before the account lock, and a single transaction already does that with all-or-nothing crash behaviour (crash analysis in §24.1).
+
 ### 5.5 Retry and exactly-once
 
-Retry is the sweep itself (idempotent, repeated indefinitely until every Reward is projected), plus in-process bounded retry with backoff for transient errors. Exactly-once is enforced at three layers: `UNIQUE (source_loyalty_cycle_id)`, `UNIQUE (idempotency_scope_key)` on the ledger, and the anti-join. Concurrent projectors race on the first unique constraint; the loser does nothing. A rollback in step 3 also rolls back the step-1 insert, leaving the Reward eligible for the next pass.
+Retry is the sweep itself (idempotent, repeated indefinitely until every Reward is projected), plus in-process bounded retry with backoff for transient errors. Exactly-once is enforced at four layers: `UNIQUE (source_loyalty_cycle_id)` on the claim, the same `UNIQUE` on the event, `UNIQUE (idempotency_scope_key)` on the ledger, and the anti-join. Concurrent projectors race on the claim: the second `INSERT … ON CONFLICT DO NOTHING` **waits** for the first transaction to finish and then does nothing (if the first committed) or proceeds (if it rolled back). Any failure in steps 3–5 rolls back the step-2 claim as well, leaving the Reward eligible for the next pass — there is no committed half-state.
 
 ### 5.6 Reconciliation and backfill
 
-A read-only reconciliation job (scheduled, and on demand from the Operator) reports, without auto-repair: Rewards past the grace interval with no consumption event; events with no `rewards` row (impossible under R1, checked anyway); events with no ledger debit; `account counters ≠ Σ ledger`; `trial_reserved`/`paid_reserved` ≠ Σ earmarks − Σ consumed earmarks per bucket; a consumption whose bucket differs from its earmark; an earmarked Circle consumed via the fallback; any earmark consumed twice. **Backfill is the same projection with no time window** — running it again is always safe. The deliberate exclusion is Rewards made available before `commercial_effective_from`, which is recorded on the account and never billed retroactively.
+A read-only reconciliation job (scheduled, and on demand from the Operator) reports, without auto-repair: Rewards past the grace interval with no consumption event; claims with no event and events with no claim (impossible under the single-transaction design, checked anyway); events with no ledger debit; `account counters ≠ Σ ledger`; `trial_reserved`/`paid_reserved` ≠ Σ earmarks − Σ consumed earmarks per bucket; a consumption whose bucket differs from its earmark; an earmarked Circle consumed via the fallback; any earmark consumed twice. **Backfill is the same projection with no time window** — running it again is always safe. The deliberate exclusion is Rewards made available before `commercial_effective_from`, which is recorded on the account and never billed retroactively.
 
 ### 5.7 Lag observability and failure alerts
 
@@ -331,15 +346,33 @@ Using the stream's net admitted Verified Units `U` (read under the stream lock, 
 The gate must know `U` and must not create a Cycle before the decision, so the stream and current-Cycle locks move **before** the purchase transition and unit issue. This preserves the canonical order (purchase → stream → cycle) and only moves work after the locks:
 
 ```
-idempotency → purchase (lock, ownership, state) → stream (ensure+lock) → current cycle (lock; NO open yet)
-   → [only if newBlocks>0 or stream/business has held purchases] commercial account (lock)
-   → decision:
-        ADMIT  → reserve (ledger + admission row) → transition purchase → verified, issue unit,
-                 open cycle if none, allocate, threshold, trust events, intents, outbox  (existing steps)
-        HOLD   → transition purchase → pending_admission, event, audit; commit (a success outcome, not an error)
+LOCK PHASE (decision inputs; nothing written yet)
+  1. idempotency   customer's verify key: reserve (existing behaviour)
+  2. purchase      lock FOR UPDATE; check ownership and state
+  3. stream        ensure + lock FOR UPDATE
+  4. current cycle lock FOR UPDATE (NO open yet)
+  5. read U and hold-queue facts (plain reads, made consistent by the stream lock)
+  6. account       lock FOR UPDATE — only if newBlocks>0 or the stream/Business has held purchases
+  7. DECISION      pure function of the locked state
+
+HOLD  → purchase → pending_admission (conditional) → purchase_record_events row
+        → commercial audit row (soft purchase reference) → complete the verify key (held outcome) → COMMIT
+
+ADMIT → WRITE PHASE, strictly parent before child (immediate FKs; no deferred constraints)
+  a. purchase → verified (conditional on waiting_for_customer) + purchase_record_events row
+  b. INSERT verified_unit                       ← the PARENT row exists from here on
+  c. INSERT ledger entry `capacity_reserved`    (FK verified_unit, FK account)
+  d. INSERT commercial_admissions               (FK verified_unit, FK purchase, FK ledger entry)
+  e. INSERT commercial_admission_blocks         (FK admission), one per Circle position (earmark)
+  f. UPDATE commercial_accounts counters        (row already locked at step 6)
+  g. remaining loyalty writes, unchanged: open cycle if none, allocation positions and events,
+     adopt governing version, threshold (reward + cycle flip), Trust Events, intents, outbox
+  h. commercial audit row; complete the verify key (admitted outcome) → COMMIT
 ```
 
-The account lock is the **last lock any loyalty transaction takes**.
+Rules this sequence obeys: (1) **no commercial row referencing the Verified Unit exists before that unit row** (b precedes c–e); (2) no `FOR UPDATE` is newly taken on any existing loyalty row after step 6 — every such lock is taken in steps 2–4, and later `UPDATE`s touch only rows already held; (3) the only lock waits possible after step 6 are `FOR KEY SHARE` on rows that no account-lock waiter holds (§22.2). **No account row.** If the Business has no commercial account there is nothing to lock: the decision is HOLD (`not_established`), the commercial audit row carries no FK to the account (R10), and the purchase is re-evaluated by the next trigger or sweep — opening an account and granting trial or credit are themselves re-evaluation triggers (§8.12). A concurrent account creation can only make this hold conservatively stale, never admit wrongly.
+
+Nothing in the write phase reads a value it has not already locked: `U` and the decision were fixed at steps 5–7, and the ledger entry's `*_after` values are computed from the row locked at step 6.
 
 ### 8.5 Reservation model (FD-A)
 
@@ -373,9 +406,9 @@ The account lock is the **last lock any loyalty transaction takes**.
 | **`stream_ref`** | Opaque deterministic digest of `business_id ‖ customer_identity_id ‖ reward_program_id`, computed on the Purchase side and passed through the port. Commercial tables therefore hold no raw customer identity, yet the projection can recompute the same value from the Reward row |
 | **Mapping to a Circle** | Circle `sequence_number k` of a stream ⇔ `block_index k`. Each Circle holds exactly 10 units, a stream has one current Cycle, and the sequence increments once per opening, so the mapping is by **index**, not by which units sit inside a Circle (forward allocation orders units by purchase date while admission is ordered by decision time; the index mapping is unaffected). A Reward exists only after 10k units are admitted, so block k's earmark always precedes Reward k |
 | **Counters** | `trial_reserved_units`, `paid_reserved_units` on the account; `reserved_units` is their sum. Availability formula unchanged |
-| **At consumption** | Read (non-locking) the Reward's Cycle sequence, look up the earmark by `(business, stream_ref, sequence)`, debit **that** bucket, release **that** bucket's reservation, and store the consumed earmark on the consumption event (`earmark_id`, unique — an earmark can be consumed once) |
+| **At consumption** | After the claim (§5.4 step 2) and **under the account lock** (step 3), re-read the Reward's Cycle sequence, look up the earmark by `(business, stream_ref, sequence)`, debit **that** bucket, release **that** bucket's reservation, and store the consumed earmark on the consumption event (`earmark_id`, unique — an earmark can be consumed once) |
 | **Never consulted at posting** | Current trial balance, paid balance, activation timestamp, restriction, settlements |
-| **Fallback (no earmark exists)** | Reward available before `commercial_effective_from`, or admitted while the gate was `off`/`shadow`: consume from uncommitted trial first, then paid, and set `bucket_source = 'consumption_time_fallback'`. Never used when an earmark exists. Expected count is zero in `enforce`; non-zero raises an alert. It is also why go-live requires no in-flight Circles (§31) |
+| **Fallback (no earmark exists)** | **Migration / reconciliation / backward-compatibility handling only — exceptional, observable, and never the normal runtime path.** Applies to a Reward available before `commercial_effective_from`, or admitted while the gate was `off`/`shadow`. Once the admission gate is `enforce`, every newly admitted Circle position carries an earmark, and normal runtime consumption **expects** one. The fallback chooses its bucket **only under the account lock** (§5.4 step 4): uncommitted trial first, then paid, from counters read while the row is locked, and records `bucket_source = 'consumption_time_fallback'` plus the `account_version` it read, so the decision is reproducible. It is never used when an earmark exists. Expected count is zero in `enforce`; a non-zero count raises an alert. It is also why go-live requires no in-flight Circles (§31) |
 | **Future correction/reversal** | Reusing a `block_index` after a future loyalty reversal would violate the unique key and **fail closed**; that future design must add compensating release records. Out of scope, and safe by construction |
 
 **Trial adjustment interaction.** The command floor (§9) prevents lowering trial capacity below earmarked trial, so an adjustment can never strand a trial-earmarked Circle. Upward adjustments and top-ups change only uncommitted capacity. Paid activation sets a timestamp and changes no earmark. A settlement void lowers the paid balance, possibly negative; paid-earmarked Circles still consume paid (the governed recoverable-negative outcome) and availability falls so new admissions hold.
@@ -480,7 +513,37 @@ Purchases with `newBlocks = 0` are never held for capacity reasons (they need no
 
 ### 8.13 Processor mechanics and idempotency
 
-For each candidate (non-locking read, FIFO), one transaction runs the canonical order: `idempotency (key 'admit:<purchase_id>') → purchase (lock) → stream → current cycle → commercial account → decision → admitPurchaseToLoyalty`. Exactly-once: the conditional transition `pending_admission → verified` (`WHERE status = 'pending_admission'`), the unique Verified Unit per Purchase, the idempotency key and `commercial_admissions.purchase_record_id UNIQUE`. Concurrent processors: the loser finds the status no longer `pending_admission` and does nothing. A candidate that still does not fit stays held with **no** new rows (re-evaluations that re-hold record nothing).
+**Design principle (`CORR-002`).** The stable key `admit:<purchase_id>` is reserved **only after the locked decision is ADMIT**. A hold decision neither reserves nor completes any key, so a still-held purchase can be re-evaluated indefinitely and admitted whenever capacity returns. This uses the repository's existing idempotency mechanism unchanged (`checkAndReserveIdempotencyKey` / `completeIdempotencyKeyInTransaction`); no second idempotency system is introduced.
+
+For each candidate (non-locking FIFO read), one transaction runs:
+
+```
+purchase  lock FOR UPDATE; if status ≠ 'pending_admission' → stop, result `not_pending`
+stream    ensure + lock          current cycle  lock (no open yet)
+read U and hold-queue facts      account  lock FOR UPDATE
+DECISION  (pure function of the locked state)
+  HOLD  → COMMIT a transaction that has written nothing (no key, no rows); result `held`;
+          the pass STOPS for this Business (no overtaking, §8.11)
+  ADMIT → reserve idempotency key `admit:<purchase_id>`  (expected outcome: acquired)
+          → the same write phase as §8.4 (a–h), system actor
+          → complete the key with the admission snapshot → COMMIT; continue with the next candidate
+```
+
+**Why reserving after the purchase lock is safe.** The only transactions that can contend for `admit:<purchase_id>` are other admitters of the *same purchase*, and every one of them must first hold that purchase's `FOR UPDATE` lock. Whoever holds the lock is therefore alone at the key, so the reservation can never wait, and it adds no edge to the lock graph (§22.2). Idempotency rows for *other* keys are unrelated rows.
+
+**Exactly-once** rests on four independent layers: the conditional transition `pending_admission → verified` (`WHERE status = 'pending_admission'`), the unique Verified Unit per Purchase, `commercial_admissions.purchase_record_id UNIQUE`, and the `admit:` key.
+
+**Retry behaviour.**
+
+| Situation | Result |
+|---|---|
+| **Scheduled sweep** finds a held purchase that still does not fit | HOLD: nothing written, no key touched; re-evaluated on every pass |
+| **Manual retry** (`reevaluatePendingAdmissions`) | Runs the same processor; identical results; a hold leaves nothing behind |
+| **Repeated capacity-restoration triggers** (several commits in quick succession) | Each may start a pass; passes overlap harmlessly: per-purchase transactions serialise on the purchase lock, and the loser sees `not_pending` |
+| **Concurrent attempts for the same purchase** | The purchase lock serialises them. The first that decides ADMIT commits; the second, once it acquires the lock, sees status `verified` and returns `not_pending`/already admitted — never an error and never a second admission |
+| **Crash or error after the key was reserved but before commit** | The whole transaction rolls back **including the reservation row** (the repository's documented single-transaction behaviour), so the next attempt starts clean |
+| **Crash after commit** | Purchase is `verified` and the key is `completed`; the next pass does not select it |
+| **Same key seen again after completion** (defensive peek) | `duplicate` with the stored admission snapshot |
 
 At admission the loyalty evidence is written exactly as a normal verification (`purchase.verified`, `verified_units.issued`, `loyalty_cycle.allocated`, and the reward pair when applicable), with `actor_type = 'system'` and payload `admittedAfterCommercialHold: true, customerConfirmedAt: <event time>`. The customer's confirmation stays attributable to the customer through the earlier event; admission is attributable to the system.
 
@@ -602,7 +665,7 @@ Schedule reference plus snapshots is required: the reference gives provenance, a
 | 9 | `restoreCommercialStanding` | business, reason | Currently restricted | key | reason mandatory | `service_restored` | Restriction off; **triggers admission re-evaluation** |
 | 10 | `voidSettlement` | `settlementId`, reason | Not already voided | key | reason mandatory | `settlement_voided` | `voided` + reversal entry |
 | 11 | `setPriceSchedule` | market, `localUnitPriceMinor`, `effectiveFrom`, optional note, reason | USD equivalent = 200; `effective_from` not before latest; `UNIQUE(market, effective_from)` | key | reason | `price_schedule_set` | New schedule row |
-| 12 | `reevaluatePendingAdmissions` | `businessId` | None; never force-admits | key | optional | `admissions_reevaluated` | Runs the processor once |
+| 12 | `reevaluatePendingAdmissions` | `businessId` | None; never force-admits | **None reserved for the command itself — it is naturally idempotent** (a pure trigger for the processor). The per-purchase `admit:<purchase_id>` key applies **only** to purchases the processor actually admits (§8.13); a hold reserves nothing | optional | `admissions_reevaluated` (de-duplicated by `correlation_id`, not by an idempotency key) | Runs the processor once |
 | 13 | Reads: inspect standing / history / audit / queues | business or filters | Same authority gate | n/a | n/a | optional coalesced `history_inspected` (Business-360, audit search) | None |
 
 There is **no dual-control** command (impossible with a sole administrator; SoD beyond `DEC-GOV-011` remains the open governance item). Compensating controls needing no new authority: mandatory reasons, immutable audit, a read-only recent-changes digest.
@@ -695,9 +758,10 @@ Naming follows the repository: `snake_case`, `UUID PRIMARY KEY DEFAULT gen_rando
 |---|---|---|---|---|---|
 | `commercial_accounts` | Materialised per-Business state | `business_id` PK; `settlement_market`; `commercial_effective_from`; `trial_remaining_units`, `paid_balance_units`, `trial_reserved_units`, `paid_reserved_units` (`reserved_units` = sum); `service_restriction`; `paid_service_activated_at`; `version`; `updated_at` | Counters/flags only, under own lock with a ledger append | `trial_remaining_units ≥ trial_reserved_units ≥ 0`; `paid_reserved_units ≥ 0`; **no sign CHECK on `paid_balance_units`; no cap on any trial value** | Created once; never deleted |
 | `commercial_ledger_entries` | Authoritative ledger | `id`; `business_id` FK; `entry_type`; `bucket`; `units_delta`; `trial_reserved_delta`; `paid_reserved_delta`; `*_after`; refs; `idempotency_scope_key`; `created_by`; `occurred_at`; FK `source_verified_unit_id` (R6) | **Immutable** | `UNIQUE(idempotency_scope_key)` | Scope keys `consume:<cycle>`, `reserve:<vu>`, `cmd:<key>:<n>` |
-| `commercial_admissions` | One row per admitted purchase | `id`; `business_id`; `purchase_record_id` FK UNIQUE (R5); `verified_unit_id` FK UNIQUE (R4); `blocks_reserved`; `decided_by` (`customer_verify`/`admission_processor`); `ledger_entry_id`; decision snapshot (`available_before`, `reserved_before`); `decided_at` | **Immutable** | `UNIQUE(purchase_record_id)`, `UNIQUE(verified_unit_id)` | Written in the admitting loyalty transaction |
+| `commercial_admissions` | One row per admitted purchase | `id`; `business_id`; `purchase_record_id` FK UNIQUE (R5); `verified_unit_id` FK UNIQUE (R4); `blocks_reserved`; `decided_by` (`customer_verify`/`admission_processor`); `ledger_entry_id`; decision snapshot (`available_before`, `reserved_before`); `decided_at` | **Immutable** | `UNIQUE(purchase_record_id)`, `UNIQUE(verified_unit_id)` | Written in the admitting loyalty transaction, **after** the Verified Unit row (parent-before-child, §8.4) |
 | `commercial_admission_blocks` | **Bucket provenance**, one row per Circle position (`INV-CAP-PROV`, §8.5.1) | `id`; `admission_id` FK; `business_id`; `stream_ref` (opaque digest, no raw identity); `block_index`; `funding_bucket` (`trial`/`paid`); `earmarked_at` | **Immutable** | **`UNIQUE(business_id, stream_ref, block_index)`** | Written in the admitting loyalty transaction; consumed once via `consumption_events.earmark_id` |
-| `commercial_consumption_events` | One row per consumed unit | `id`; `business_id`; `reward_program_id` (soft, R3); `source_loyalty_cycle_id`; `source_reward_id`; composite FK to `rewards (id, loyalty_cycle_id)` (R1); `source_fact_at`; `unit_count = 1`; `bucket` (the earmarked bucket); `earmark_id` (FK, **UNIQUE**, nullable only for the flagged fallback); `bucket_source` (`earmark` / `consumption_time_fallback`); `price_schedule_id`; price snapshots; `ledger_entry_id`; `recorded_at` | **Immutable** | **`UNIQUE(source_loyalty_cycle_id)`**; no customer identity | Written by the projection |
+| `commercial_consumption_claims` | **FK anchor for one Reward** — no classification, no amounts (`CORR-002`) | `id`; `business_id`; `source_reward_id`; `source_loyalty_cycle_id`; composite FK to `rewards (id, loyalty_cycle_id)` (R1); `claimed_at` | **Immutable** | **`UNIQUE(source_loyalty_cycle_id)`**; inserted `ON CONFLICT DO NOTHING` before the account lock | Written by the projection, in the same transaction as its event; never committed alone |
+| `commercial_consumption_events` | One classified row per consumed unit | `id`; `claim_id` FK (R2, **UNIQUE**); `business_id`; `reward_program_id` (soft, R3); `source_loyalty_cycle_id`; `source_fact_at`; `unit_count = 1`; `bucket` (the earmarked bucket, or the fallback bucket chosen under the lock); `earmark_id` (FK, **UNIQUE**, null only for the flagged fallback); `bucket_source` (`earmark` / `consumption_time_fallback`); `account_version` (the locked account version the decision read; meaningful for the fallback); `price_schedule_id`; price snapshots; `ledger_entry_id`; `recorded_at` | **Immutable** | **`UNIQUE(source_loyalty_cycle_id)`**; **no FK to any loyalty row**; no customer identity | Written by the projection **after** the account lock |
 | `commercial_projection_failures` | Observability | cycle id, error class, attempt, time | Append-only | — | Feeds alerts |
 | `commercial_trial_grants` | Every trial grant | `id`; `business_id`; `kind`; **`units` CHECK 3..5**; `granted_by`; `granted_at`; reason fields; `reference`; `ledger_entry_id` | Immutable | **No `UNIQUE(business_id)`; no lifetime cap**; idempotency key unique | Audit `trial_granted` |
 | `commercial_manual_adjustments` | Trial and credit adjustments | `id`; `business_id`; `bucket`; `units_delta ≠ 0`; `reason_code`; `reason_text NOT NULL`; `reference`; `created_by`; `idempotency_key`; `ledger_entry_id` | Immutable | `UNIQUE(idempotency_key)`; **no aggregate/lifetime ceiling on trial adjustments is governed or encoded** (integrity floor only, enforced in the command under the account lock) | Audit |
@@ -716,58 +780,126 @@ Naming follows the repository: `snake_case`, `UUID PRIMARY KEY DEFAULT gen_rando
 
 | Transaction | Contents (one PostgreSQL transaction each) |
 |---|---|
-| Verify (admit) | Idempotency → purchase → stream → cycle → account → reserve + admission row → purchase→verified, unit, Cycle, allocation, threshold, evidence |
-| Verify (hold) | Idempotency → purchase → stream → cycle → account → purchase→`pending_admission` + event + audit; commits as a success outcome |
-| Admission processor (per purchase) | As Verify (admit) with `system:commercial-admission` |
-| Consumption projection (per Reward) | Event insert (FK, before account lock) → account lock → debit + release + audit |
-| Admin command | Idempotency → account → command rows → ledger → account update → audit → idempotency complete |
+| Verify (admit) | Customer's key → purchase → stream → cycle → [account] → decision ADMIT → purchase→verified + event → **Verified Unit** → reservation ledger entry → admission row → earmark rows → counters → remaining loyalty writes → audit → complete key (§8.4) |
+| Verify (hold) | Same lock phase → decision HOLD → purchase→`pending_admission` + event + audit → complete the customer's key with the *held* outcome |
+| Held re-admission (per purchase) | purchase → stream → cycle → account → decision. **HOLD: commits having written nothing (no key, no rows).** ADMIT: reserve `admit:<purchase_id>` → the same write phase as Verify (admit) → complete key (§8.13) |
+| Consumption projection (per Reward) — earmarked **and** fallback | Claim (FK to the Reward, before any account lock) → account lock → resolve funding under the lock → event + ledger debit + reservation release + counters + audit → commit (§5.4) |
+| Admin command | Client key → account → command rows → ledger → account update → audit → complete key |
 | Settlement confirm | Settlement transition + `credit_grant` + audit atomically |
 | Authority check | Firestore read of `platformAdministrators` **before** the PostgreSQL transaction (as `confirmRedemption` does); the residual revocation window is the accepted two-store limitation |
 | Reconciliation | Read-only |
 
 ## 22. Concurrency and lock-order analysis
 
+This section was **re-derived from scratch in `CORR-002`**, not patched: the write order changed (Verified Unit first), the consumption sequence changed (claim, then lock, then classify), and the idempotency reservation for held re-admission moved.
+
 ### 22.1 Canonical order
 
-`idempotency → purchase → stream → cycle → reward → commercial_account → appends`. The commercial account row is the **last lock any loyalty transaction takes**, and only when the decision needs it.
+Lock classes, in acquisition order:
 
-### 22.2 Why no inversion
+`[client idempotency key] → purchase (P) → stream (S) → current cycle (C) → reward (R, redemption only) → commercial account (A) → row inserts and their FK key-shares`
 
-Commercial-only transactions take `idempotency → account → commercial rows`, with any FK-bearing insert against a loyalty row executed **before** the account lock (§4.4 rule iii). A commercial transaction therefore never waits on a loyalty lock while holding the account lock, so no cycle can form with a loyalty transaction that waits for the account lock last. Redemption is unchanged and takes no commercial lock at all.
+Three clarifications that supersede earlier wording:
 
-### 22.3 Required tests (CORR-002 style)
+1. **The account lock is not literally the last thing a loyalty transaction waits on.** After A, the write phase inserts rows whose foreign keys take `FOR KEY SHARE` on parents. Those parents are either rows the transaction already holds (purchase, stream, cycle, account, its own new rows) or `reward_programs`/`reward_program_versions` rows (the existing cycle-open path). The correctness argument in §22.2 does not rely on "last"; it relies on **no account-lock holder ever waiting for anything held by a transaction that waits for the account lock**.
+2. **The consumption claim precedes A.** It is the only commercial statement that touches a loyalty row (`FOR KEY SHARE` on a Reward), and it happens before the transaction takes A (§4.4 rule iii).
+3. **`admit:<purchase_id>` is reserved after A.** This is safe because contention for that key is impossible past the purchase lock (§8.13).
 
-Concurrent verify × verify (same Business, different streams; same stream); verify × projection; verify × admin credit/restrict; verify × admission processor; redemption × projection (Reward `FOR UPDATE` versus the R1 key-share); processor × processor; asserted absence of `40P01` in each.
+### 22.2 Why there is no cycle
+
+A deadlock needs a cycle of waits. Enumerating every transaction type by what it can wait on **while holding A**, and who can wait for A:
+
+| Transaction type | While it holds A, it can wait on | Does it wait for A? |
+|---|---|---|
+| Verify / held re-admission (after step 6) | Only `FOR KEY SHARE` on `reward_programs` / `reward_program_versions` rows (held `FOR UPDATE` by record-purchase and publication), and its own idempotency key (uncontended) | Yes, before step 6 |
+| Admin command | **Nothing** — its key was reserved before A; every row it touches is commercial and either held or new | Yes |
+| Consumption projection | **Nothing** — the claim was inserted before A; after A it writes only commercial rows, with no FK to any loyalty row | Yes |
+| Redemption | *(holds no A ever)* — takes S, C, R and their FK key-shares; **never takes A** | No |
+| Record purchase / publication | *(holds no A ever)* — locks program/version rows and inserts new rows; the record-time hint is a non-locking read | No |
+
+Consequences:
+
+- Admin and projection holders of A are **sinks**: they wait on nothing, so anything waiting for them is released when they commit.
+- A verify/re-admission holder of A can wait only on record-purchase or publication transactions, which **never wait for A** and hold no purchase, stream or cycle lock that a verify needs after A. So every such chain ends.
+- The projection's pre-A wait (key-share on a Reward) can wait only on redemption, which never waits for A. Two projections for the same Reward: the second waits on the first's uncommitted claim; the first waits, at worst, for A, whose holder is a sink or a verify whose chain ends.
+- **Verified Unit:** the unit row is inserted after A by the transaction that already holds its purchase; no transaction takes `FOR UPDATE` on a Verified Unit row, and the only key-share it needs is on the purchase it holds.
+- **Idempotency rows:** each key is unique to one operation. Client keys are reserved first (existing behaviour); `admit:<id>` contenders are serialised by the purchase lock; a duplicate simply waits for the first transaction to end, then sees `duplicate` (or acquires the key if the first rolled back).
+
+Therefore **no cycle exists among purchase, stream, cycle, Verified Unit, reward, commercial account and idempotency rows.** Redemption is unchanged and takes no commercial lock at all.
+
+### 22.3 The five canonical sequences
+
+| # | Sequence | Ordered acquisitions and writes |
+|---|---|---|
+| 1 | **Normal new-Circle admission** (customer verify) | customer key → P → S → C → *(reads)* → A → decision → *write phase:* purchase→verified, **Verified Unit**, reservation ledger entry, admission, earmark rows, counters, remaining loyalty writes → audit → complete key |
+| 2 | **Held-purchase re-admission** | P (must still be `pending_admission`) → S → C → *(reads)* → A → decision. **HOLD:** commit nothing. **ADMIT:** reserve `admit:<id>` → the same write phase as #1 → complete key |
+| 3 | **Earmarked Reward consumption** | *(non-locking candidate read)* → **claim insert** (key-share on Reward) → A → re-read Cycle sequence, look up earmark → event + ledger debit + reservation release + counters + audit → commit |
+| 4 | **Legacy/unearmarked fallback consumption** | identical to #3 up to A; then **no earmark found → choose bucket from the counters read under A** (`bucket_source = fallback`, `account_version` recorded) → event + ledger debit + counters + audit → commit |
+| 5 | **Manual top-up/adjustment vs projection** | Admin: client key → A → command rows + ledger + counters + audit → complete key → commit. Projection: claim → A → … . They serialise on A; whichever acquires it first commits first. A **fallback** projection reads the counters after acquiring A, so it sees exactly the committed effect of any adjustment that took A earlier, and none of one that takes A later; an **earmarked** projection is unaffected by either. Neither holds anything the other needs before A |
+
+### 22.4 Required tests (CORR-002 style)
+
+Concurrent verify × verify (same Business, different streams; same stream); verify × projection; verify × admin credit/restrict; verify × admission processor; redemption × projection (Reward `FOR UPDATE` versus the claim's key-share); processor × processor; **held re-admission × concurrent admitters of the same purchase**; **fallback projection × trial adjustment × top-up × a second fallback projection** (assert the recorded bucket equals the decision computed from the locked state and that `account_version` matches); asserted absence of `40P01` in each. Additional negative tests: a **hold pass leaves no `idempotency_keys` row** and a later ADMIT succeeds; an admission that attempts to insert a commercial child before the Verified Unit fails the foreign key (proving the ordering is enforced, not incidental); no `FOR UPDATE` is newly taken on a loyalty row after the account lock.
 
 | Scenario | Behaviour |
 |---|---|
-| Simultaneous Circle completion | Independent `rewards` rows; projections race on `UNIQUE(source_loyalty_cycle_id)`; loser does nothing |
+| Simultaneous Circle completion | Independent `rewards` rows; projections race on the claim's `UNIQUE(source_loyalty_cycle_id)`; the loser waits, then does nothing |
 | **Simultaneous new-Circle attempts (FD-A)** | Serialise on the account row; the second sees the first's reservation and is held if capacity is gone — **no oversubscription** |
-| Consumption vs manual top-up | Both take the account lock; deltas commute; each entry records `*_after` |
+| Consumption vs manual top-up | Serialise on A; deltas commute; each entry records `*_after`; earmarked bucket unaffected; fallback bucket decided under A |
 | Consumption vs restriction | Restriction is read under the same lock and never affects consumption |
-| Held purchase vs restoration | Restoration commits; processor admits in FIFO order under the same gate; a concurrent new verify sees the non-empty hold queue and is held behind (no overtaking) |
+| Held purchase vs restoration | Restoration commits; the processor admits in FIFO order under the same gate; a concurrent new verify sees the non-empty hold queue and is held behind (no overtaking) |
 | Duplicate Operator commands | Idempotency replay; natural keys catch a re-keyed replay |
 | Payment replay | `UNIQUE(method, external_reference)` / `UNIQUE(provider_event_id)` |
 | Retry after timeout | Same key ⇒ stored result |
-| Transaction rollback | Verify rollback discards reservation, unit and status change together; projection rollback leaves the Reward eligible |
+| Transaction rollback | Verify rollback discards reservation, unit and status change together; projection rollback discards the claim and leaves the Reward eligible |
 | Out-of-order notification | Versioned snapshots; consumers re-read |
 
 ## 23. Idempotency model
 
-| Operation | Key |
-|---|---|
-| Admin command | Client `idempotencyKey` in `idempotency_keys` (`commercial.<command>`) |
-| Admission (verify) | Existing `purchase.verify` key; plus `UNIQUE(purchase_record_id)` on admissions |
-| Admission (processor) | `admit:<purchase_id>`; conditional status transition; unique unit per purchase |
-| Reservation | `reserve:<verified_unit_id>` |
-| Consumption | `source_loyalty_cycle_id` unique + `consume:<cycle_id>` |
-| Settlement | `(method, external_reference)`; future `provider_event_id` |
-| Price schedule | `(market, effective_from)` |
-| Signals | `(business_id, signal_type, account_version, recipient_id)` |
+Repository semantics relied on (`idempotencyRepository.ts`): reservation is `INSERT … ON CONFLICT (idempotency_key) DO NOTHING` inside the caller's transaction; a contender for an uncommitted key **waits** for that transaction to end; a rollback **removes** the reservation row (so a failed attempt is never stuck); completion is staged in the same transaction as the mutation; a `processing` row can therefore never be committed. **No key is ever reserved for a no-op.**
+
+| Command / process | Stable key | Reserved when | Completed when | What rollback does | What a retry sees | What a concurrent duplicate sees |
+|---|---|---|---|---|---|---|
+| **Customer verify** (admit *or* hold) | Client `purchase.verify` key | At transaction start (existing behaviour) | Same transaction, with the outcome snapshot (`admitted` or `pending_admission`) | Removes the reservation | `duplicate` with the stored outcome | Waits, then `duplicate` (or proceeds if the first rolled back). A held outcome is this *request's* legitimate completed result; it is **not** the admission key, so it cannot block later admission |
+| **Admit pending purchase** | `admit:<purchase_id>` | **Only after the locked decision is ADMIT** (after A) | Same transaction, with the admission snapshot | Removes the reservation | Once admitted, the purchase is no longer `pending_admission` → `not_pending`; a defensive peek returns `duplicate` | Serialised by the purchase lock; the loser sees `verified` and returns `not_pending` |
+| **Hold decision** (customer verify path or processor) | None for the processor; the customer's request key for verify | Processor: **never**. Verify: as above | — | Nothing to remove | Re-evaluated afresh every pass | Purchase lock serialises |
+| **Commercial consumption projection (earmarked)** | Natural: `UNIQUE(source_loyalty_cycle_id)` on claim and event; ledger scope key `consume:<cycle_id>` | Claim inserted before A | Claim, event and ledger entry commit together | Removes claim, event and entry | The anti-join no longer selects the Reward | The second claim insert waits, then `DO NOTHING` → stops |
+| **Fallback consumption finalization** | Same natural keys (one Reward can be consumed once, by either path) | Same | Same | Same | Same | Same |
+| **Manual top-up, settlement, adjustments** | Client `commercial.<command>`; settlement also `(method, external_reference)` | Command start (before A) | Same transaction as the ledger entry | Removes the reservation | `duplicate` with the stored result | Waits, then `duplicate` |
+| **`reevaluatePendingAdmissions`** | None — naturally idempotent trigger; per-purchase keys apply only on ADMIT | — | — | — | Same processor pass | Passes overlap harmlessly |
+| **Reservation** | Ledger scope key `reserve:<verified_unit_id>` | Inside the admission transaction | Same transaction | Removed with the transaction | Not reachable independently | — |
+| **Price schedule; signals** | `(market, effective_from)`; `(business_id, signal_type, account_version, recipient_id)` | — | — | — | Unique-key conflict is the no-op | — |
 
 ## 24. Failure and rollback behaviour
 
-Projection fault: retried by the sweep; loyalty unaffected; alerts fire. Admission fault: the purchase stays `pending_admission` (or `waiting_for_customer` if the fault preceded the hold), never partially credited. Gate modes `off`/`shadow` give an instant operational switch back. Ledger errors are corrected only by compensating entries. Migration rollback: a `.down.sql` that **refuses when any ledger, settlement, admission or audit row exists, or any purchase is `pending_admission`**, mirroring `0020.down` (recovery of a populated database needs a backup).
+Projection fault: retried by the sweep; loyalty unaffected; alerts fire. Admission fault: the purchase stays `pending_admission` (or `waiting_for_customer` if the fault preceded the hold), never partially credited. Gate modes `off`/`shadow` give an instant operational switch back. Ledger errors are corrected only by compensating entries. Migration rollback: a `.down.sql` that **refuses when any ledger, settlement, admission, claim or audit row exists, or any purchase is `pending_admission`**, mirroring `0020.down` (recovery of a populated database needs a backup).
+
+### 24.1 Crash-point analysis (every stage is inside one transaction)
+
+PostgreSQL rolls back any transaction that does not commit, including idempotency reservations, so a crash at any pre-commit point leaves **no** partial state. The table names each stage and what a crash there means.
+
+**Held re-admission / verify admission**
+
+| Crash or timeout at | State afterwards | Retry |
+|---|---|---|
+| Lock phase (P, S, C, A) | Nothing written | Re-evaluated normally |
+| After decision, HOLD | Nothing written (no key, no rows) | Re-evaluated on the next pass |
+| After `admit:` key reserved | Rolled back with the key | Key absent; proceeds normally |
+| After purchase→verified, before/after Verified Unit | Rolled back | Purchase still `pending_admission` (or `waiting_for_customer`) |
+| After Verified Unit, before commercial children | Rolled back | Same |
+| After commercial children, before remaining loyalty writes | Rolled back | Same |
+| After commit, before the caller receives the response | Admission complete; key `completed` | Retry returns `duplicate` / `not_pending`; nothing repeats |
+
+**Consumption projection (earmarked and fallback)**
+
+| Crash or timeout at | State afterwards | Retry |
+|---|---|---|
+| Identify (no writes) | Nothing | Reward still selected by the anti-join |
+| After claim insert, before A | Claim rolled back | Reward still eligible; no orphan claim |
+| Waiting for or holding A | Rolled back | Same |
+| After funding resolved, before finalize | Rolled back; **no classification was ever persisted**, so nothing can be stale | Fallback bucket is recomputed from the then-current locked state |
+| During finalize (event/ledger/counters/audit) | Rolled back together | Same |
+| After commit, before acknowledgement | Claim, event, debit committed | Anti-join skips the Reward; a duplicate claim insert does nothing |
 
 ## 25. Security and authority boundaries
 
@@ -828,7 +960,8 @@ No conflict requires degrading the adopted experience for implementation conveni
 | R-10 | Repeat trial grants or large adjustments resembling complimentary arrangements (`DEC-SUB-013`) | Med | Audit-visible, reason-mandatory, prior grants surfaced; policy is the open decision |
 | R-11 | Sole administrator can act unilaterally on money | Med | Mandatory reasons, immutable audit, change digest; SoD open |
 | R-12 | Migration numbering depends on the unapplied `0019` deployment state | Low | Follows highest existing file; ordering is a WP-COM-10 item |
-| R-13 | FK-bearing inserts must stay ahead of the account lock | Med | Rule (iii) and the §22.3 tests; code review checklist |
+| R-13 | FK-bearing inserts must stay ahead of the account lock | Med | Rule (iii), the parent-before-child rule and the §22.4 tests; code review checklist |
+| R-17 | The corrected write order (Verified Unit, then commercial children) and the claim-then-classify projection must be implemented exactly; a reordering reintroduces an FK failure or a stale classification | Med | Negative tests in §22.4 (child-before-parent must fail; hold pass leaves no key; fallback race records the locked decision); code-review checklist |
 | R-15 | Bucket treatment drifting between admission and consumption | Med | `INV-CAP-PROV` (§8.5.1) with 15 required tests asserting per-Circle bucket; escalation clause if it cannot be met without a new commercial rule |
 | R-16 | Circle-sequence ⇔ block-index mapping assumes today's single-current-Cycle model | Low | Holds by construction now (§8.5.1); a future loyalty change that breaks it fails closed on the unique key and must revisit provenance |
 | R-14 | Tax basis and refund/void policy unspecified | Low | Nullable `tax_basis`; void is compensating |
@@ -902,6 +1035,16 @@ No code, migration, test, config or dependency change; no payment-provider integ
 | 5 | Work packages / acceptance | — | Tests 9–14 assigned to WP-COM-04, tests 1–8 and 15 to WP-COM-05b; Technical Lead confirms the test plan before implementation | Change 3 |
 | 6 | Risks | R-1…R-14 | Adds R-15 (bucket drift, controlled by `INV-CAP-PROV`) and R-16 (sequence⇔index mapping assumption) | Change 3 |
 
+## Appendix C — `CORR-002` change register (three PR #284 review findings)
+
+| # | Finding | Defect in `c17e6c2` | Correction | Sections changed |
+|---|---|---|---|---|
+| 1 | **P1** — idempotency claim on a held re-admission | The processor reserved `admit:<purchase_id>` first, then a no-op hold committed, leaving a `processing` row that permanently blocks later admission (or, if completed, made every later attempt a `duplicate`) | The key is reserved **only after the locked decision is ADMIT**. HOLD writes nothing and touches no key. Uses the existing repository mechanism; contention on the key is impossible past the purchase lock. Retry semantics specified for the sweep, manual retry, repeated triggers and concurrent same-purchase attempts. Command #12 is a naturally idempotent trigger with no key of its own | §8.13, §15 (#12), §21, §22.3, §23 |
+| 2 | **P1** — Verified Unit before its FK children | §8.4 wrote the reservation ledger entry and admission row before issuing the Verified Unit they reference; immediate FKs would fail | Write phase is strictly **parent before child**: purchase→verified → **Verified Unit** → reservation ledger entry → admission → earmark rows → counters → remaining loyalty writes. No deferred constraints. Parent-before-child added to the FK rules; per-relation safety re-checked; lock order re-derived | §4.4, §8.4, §20, §22 |
+| 3 | **P2** — fallback bucket chosen before the account lock | The immutable consumption event, including its bucket, was inserted before A; for a fallback the correct bucket depends on account state that could change first | **Claim, then lock, then classify.** An immutable claim (Reward FK, no classification) is inserted before A; A is locked; funding is resolved **under the lock** (earmark, or fallback from locked counters, with `account_version` recorded); the classified event, debit, counters and audit are finalized atomically in the **same transaction**. The event carries no loyalty FK. One sequence serves earmarked and fallback paths; a cross-transaction persisted claim was assessed and rejected. Fallback restated as migration/reconciliation/back-compat only | §4.4 (R1/R2), §5.2, §5.4–5.6, §8.5.1, §20, §21, §22, §23, §24.1 |
+| — | Lock-order re-derivation | §22 claimed the account lock was "the last lock" a loyalty transaction takes, which is not strictly true (later inserts take FK key-shares on program/version rows) | Replaced with a per-holder argument that no account-lock holder waits on anything held by a transaction that waits for the account lock; five canonical sequences; crash-point tables | §22, §24.1 |
+| — | Unchanged | — | FD-A/B/C/D, USD 2, 3–5 trial, trial-adjustment wording, negative credit, DEC-SUB-013, BIF/RWF pricing, `INV-CAP-PROV`, the Experience Reference boundary | — |
+
 ---
 
-**Disposition:** `11THONUS-COMMERCIAL-DESIGN-001 — READY FOR FOUNDER MERGE REVIEW`. Commercial design — not yet canonical until merged. FD-A / FD-B / FD-C / FD-D — RESOLVED. Commercial implementation — NOT STARTED. Experience Reference — UNCHANGED / FROZEN. Experience Assembly — NOT STARTED.
+**Disposition:** `11THONUS-COMMERCIAL-DESIGN-001 — CORR-002 COMPLETE / PENDING FINAL FOUNDER MERGE REVIEW`. Commercial design — not yet canonical until merged. FD-A / FD-B / FD-C / FD-D — RESOLVED. Commercial implementation — NOT STARTED. Experience Reference — UNCHANGED / FROZEN. Experience Assembly — NOT STARTED.
