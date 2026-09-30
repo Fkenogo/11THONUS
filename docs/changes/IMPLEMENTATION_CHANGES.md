@@ -7,6 +7,20 @@
 
 ---
 
+## 2026-09-30 — 11THONUS-COMMERCIAL-DESIGN-001 — Consumption-First Commercial Domain & Architecture Design (Design Only)
+
+- **Date:** 2026-09-30
+- **Task / status:** architecture/design assessment against `origin/main` `439f95e99590f0ef44e3955c6b5649d8c2542e83` (merge of PR #283; `DEC-SUB-014` canonical), on branch `claude/epic-archimedes-b7hvnd`. **Design only — nothing implemented.** Disposition: COMPLETE / PENDING FOUNDER REVIEW.
+- **Report:** `docs/05-implementation/reports/11THONUS-COMMERCIAL-DESIGN-001-consumption-first-commercial-domain-and-architecture-design-2026-09-30.md`.
+- **Existing architecture inspected:** `verifyPurchaseCommand.ts`, `confirmRedemptionCommand.ts`, `recordPurchaseCommand.ts` (header), `loyaltyCycleRepository.ts`, migrations `0004`, `0008`–`0014`, `0020` and the migrations README, `businessStatus.ts`, `business.ts`, `businessActivationCommand.ts`, `businessLifecycleCommand.ts`, `platformAdministration/*` (models, audit record/repository, authorization resolution, boundary test), purchase/redemption permission catalogues, TRD17 banner, TRD18 §18.49, `FD-COM-001` record, `11THONUS-EXP-REF-001`.
+- **Key findings:** consumption anchors to the existing `rewards` row (one per Cycle) because a Cycle reaches 10 in two code paths; "Circle completion" is ambiguous (engine: complete at redemption; `DEC-SUB-014`: earning side) and is put to the Founder as FD-B; commercial restriction cannot be modelled as Business lifecycle status because `purchase.record` requires `trial`/`active`; platform administration is knowledge-only, so commercial commands follow the existing `FD-BUS-ACT-001` precedent (active administrator + verified MFA, no role scoping, no new RBAC).
+- **Founder items raised (bounded):** FD-A, FD-B, FD-C, FD-D, and launch input L-1 (BIF/RWF unit prices). `DEC-SUB-013`, `DEC-GOV-007` and separation-of-duty specifics remain open and untouched.
+- **Files changed:** the report above (new); `docs/00-governance/documentation-changes-log.md` (Entry 269 + header); this append-only entry. **No application, test, configuration, migration, dependency or infrastructure file changed. Decision Register, TRD17, CDR-001 and Master Workflow not modified.**
+- **Verification (disclosed):** the adopted Experience Reference SHA `18e8d700f505beefe46d324f6ea33f20a670abe7` was fetched by exact SHA (read-only, outside the working tree; prototype unmodified) and the cited prototype facts re-read from that commit. Direct inspection found the Operator trial input allows 1–5 (governed 3–5) and that prototype credit is a USD balance clamped at zero (governed credit is unit-denominated and may be negative) — recorded as report §26 X-2/X-8/X-9. Shell access failed intermittently early in the session (transient tool error); interim git-level checks used GitHub API reads and `.git` metadata, and were re-run by shell once it recovered (`origin/main` = `439f95e…` after `git fetch`; `git diff --check` clean). No tests were run (documentation only).
+- **Constraints honoured:** frozen prototype not modified; no migration; USD 2, consumption-first, 3–5 trial with no default, negative credit with no floor/maximum, grace, earned-Reward preservation, sole Founder administrator and Burundi/Rwanda scope unchanged; commercial not made authoritative over loyalty; nothing deployed.
+- **Rollback:** delete the report; `git checkout origin/main -- docs/changes/IMPLEMENTATION_CHANGES.md docs/00-governance/documentation-changes-log.md`. No database, migration, deployment, configuration or dependency rollback is required because none occurred.
+---
+
 ## 2026-09-29 — FD-COM-001-CORR-002 — Pre-Merge Governance Correction: Four Accepted Review Findings (PR #283)
 
 - **Date:** 2026-09-29
