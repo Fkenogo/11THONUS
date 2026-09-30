@@ -7,6 +7,19 @@
 
 ---
 
+## 2026-09-30 — 11THONUS-COMMERCIAL-DESIGN-001-CORR-001 — Commercial Design Correction: FD-A–FD-D Recorded, Technical Corrections (Design Only)
+
+- **Date:** 2026-09-30
+- **Task / status:** design correction against `origin/main` `439f95e99590f0ef44e3955c6b5649d8c2542e83`, entry design head `fea8ca780e79f6873f5cbab90dc8b0ebdff9852f`, branch `claude/epic-archimedes-b7hvnd`. **Design only — nothing implemented.** Disposition: COMPLETE / PENDING FOUNDER REVIEW.
+- **Report:** `docs/05-implementation/reports/11THONUS-COMMERCIAL-DESIGN-001-consumption-first-commercial-domain-and-architecture-design-2026-09-30.md`, corrected in place to v1.1 (Appendix A is the change register). The prior entry below is preserved as written.
+- **Founder decisions recorded:** FD-A (capacity net of admitted reservations), FD-B (consumption at Reward available; redemption never drives billing), FD-C (blocked new-Circle purchase preserved in explicit `pending_admission`, ordered re-admission, no credit before admission), FD-D (Owner full / Manager standing+operational / Staff none / Participant none). Trial clarification (no one-grant limit; no lifetime cap of 5; 3–5 per grant; later audited adjustment). Currency direction (effective-dated administrator-configured BIF/RWF unit prices; snapshots; no live FX; launch values are inputs).
+- **Corrections to v1.0:** per-relation FK strategy (replaces blanket ban); projection reliability; full write-path enumeration with one admission boundary at Verified Unit issuance (`insertVerifiedUnitCredit` has one caller; `confirmRedemption` unchanged); reservation model; pending-admission lifecycle; standing as separate dimensions; trial cap removed; Business read model per FD-D; Operator binding updated; work packages revised (WP-COM-05 split into 05a/05b).
+- **Additional code facts established (read-only):** only `verifyPurchase` and `confirmRedemption` write loyalty tables — no imports, backfills or scripts exist; `purchase_records.status` is CHECK-constrained (new value needs a migration) while `purchase_record_events.to_status` is free text; no scheduled-function mechanism exists in `functions/src`; web adapters and both i18n locales key on `PurchaseStatus`.
+- **Files changed:** the report (corrected); `docs/00-governance/documentation-changes-log.md` (Entry 270 + header); this append-only entry. **No application, test, configuration, migration, dependency or infrastructure file changed. Decision Register, TRD17, CDR-001, Master Workflow and the prototype not modified.**
+- **Validation:** searches confirm no lifetime-cap/one-grant/FX/blanket-FK/open-FD text remains except negations and the change register; USD 2 and 3–5 unchanged; no negative-credit floor or maximum; links resolve; frozen prototype untouched (`18e8d700` not re-fetched or modified). No tests run (documentation only).
+- **Rollback:** `git revert` the CORR-001 commit (restores v1.0, `fea8ca7`). No database, migration, deployment, configuration or dependency rollback required.
+---
+
 ## 2026-09-30 — 11THONUS-COMMERCIAL-DESIGN-001 — Consumption-First Commercial Domain & Architecture Design (Design Only)
 
 - **Date:** 2026-09-30
