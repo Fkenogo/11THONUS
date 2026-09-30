@@ -52,7 +52,10 @@ import {
   insertConsumptionClaim,
   insertConsumptionEvent,
 } from "../repositories/commercialConsumptionRepository";
-import { getEffectivePriceSchedule } from "../repositories/commercialPriceRepository";
+import {
+  getEffectivePriceSchedule,
+  lockPriceScheduleMarket,
+} from "../repositories/commercialPriceRepository";
 import {
   COUNTABLE_REWARD_STATES,
   getRewardSource,
@@ -134,6 +137,11 @@ export async function projectCommercialConsumption(
     }
     const bucketSource = earmark !== null ? "earmark" : "consumption_time_fallback";
 
+    // The per-market schedule lock (the one every schedule insert takes) is taken BEFORE the
+    // lookup, so a concurrent, still-uncommitted schedule cannot be missed and then frozen into
+    // the immutable event. Order account -> price mirrors `recordSettlement`; schedule writers
+    // never take the account lock, so no cycle exists.
+    await lockPriceScheduleMarket(tx, account.settlementMarket);
     // Pricing provenance (design §13): the schedule in force when the Reward
     // became available. Absent schedule => no snapshot; never a default price.
     const schedule = await getEffectivePriceSchedule(

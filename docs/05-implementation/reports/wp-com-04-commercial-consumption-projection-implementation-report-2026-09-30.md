@@ -64,7 +64,7 @@ Additive; `.down.sql` fails closed while any claim, event or failure row exists.
 2. **Claim** — `INSERT … ON CONFLICT DO NOTHING` into the claims table. This is the only statement touching a Loyalty row (`FOR KEY SHARE` via the FK) and it happens **before** any Commercial lock (design §4.4 rule iii). A concurrent contender waits on the uncommitted claim, then does nothing (or proceeds if the first rolled back).
 3. **Lock** the Business's `commercial_accounts` row `FOR UPDATE`.
 4. **Resolve funding under the lock** — earmark port, else fallback (§6).
-5. **Finalize atomically** — ledger `consumption` debit + account counters (through the shared `postCommercialLedgerEntry` primitive, unchanged), the event, the audit row (`actor = system:commercial-projection`, `action = consumption_recorded`, snapshots before/after).
+5. **Finalize atomically** — the per-market price-schedule lock is taken first (so a concurrent, uncommitted price schedule cannot be missed and frozen into the immutable snapshot; same order as `recordSettlement`: account → price), then ledger `consumption` debit + account counters (through the shared `postCommercialLedgerEntry` primitive, unchanged), the event, the audit row (`actor = system:commercial-projection`, `action = consumption_recorded`, snapshots before/after).
 6. **Commit** — everything or nothing.
 
 Each consumption is exactly **one** unit (`units_delta = -1`, `unit_count = 1`). No money is charged; pricing is a provenance snapshot only.
@@ -119,7 +119,7 @@ No alert thresholds or notifications were added (operating parameters and alert 
 
 Canonical order (design §22.1): `… → commercial account (A) → row inserts`. Projection sequence:
 
-`[non-locking Reward read] → claim insert (key-share on Reward) → A (FOR UPDATE) → non-locking Loyalty reads only (earmark port) → ledger + account + event + audit (Commercial rows only, no Loyalty FK)`.
+`[non-locking Reward read] → claim insert (key-share on Reward) → A (FOR UPDATE) → non-locking Loyalty reads only (earmark port) → per-market price advisory lock (schedule writers never take the account lock, so no cycle) → ledger + account + event + audit (Commercial rows only, no Loyalty FK)`.
 
 **No cycle can form**, because:
 1. Before A, the projector waits on at most the Reward row, held only by redemption (`FOR UPDATE`), which never takes A and never waits for anything the projector holds.
@@ -135,6 +135,7 @@ Canonical order (design §22.1): `… → commercial account (A) → row inserts
 | **D** two Rewards, one Business | 10 concurrent projections serialise on A; strict ledger order; no `40P01`; totals exact. |
 | **E** racing mutations | Projection × {trial adjust down, trial adjust up, paid credit adjust, settlement confirm, settlement void, restrict, restore}, 3 rounds each, real commands: no deadlock, every projection succeeds, ledger = counters, and for every fallback event the bucket equals the decision computed from the account state at the recorded `account_version` **and** the debit's ledger version is exactly `account_version + 1` (nothing intervened between the locked read and the write). |
 | Stale decision | Trial is removed (or granted) by a transaction that holds A while the projector waits — the fallback follows the **committed locked** state (paid / trial respectively). |
+| Price schedule race | A price schedule left uncommitted while a Reward is projected: the projector queues on the market lock and then snapshots that schedule (fails without the lock; found in review). |
 | Loyalty never blocked | With the projector parked after its claim, a Loyalty writer can `UPDATE rewards` and `FOR UPDATE` the Cycle and Stream within a 1 s `lock_timeout`. |
 
 **Mutation checks** (temporary, reverted): moving the account lock before the claim made both A/B tests fail (`could not obtain lock`); deciding the fallback from the pre-lock read made both stale-decision tests fail.
@@ -161,7 +162,7 @@ No stale "processing" state exists to block a Reward: there is no committed clai
 
 ## 11. Tests
 
-New: `commercialConsumption.postgres.test.ts` — **53** real-PostgreSQL tests: SOURCE (5), BUCKET (10 incl. an INV-CAP-PROV order-permutation property), BALANCE (4), IDEMPOTENCY / EXACTLY-ONCE (6), CRASH (6), RECONCILIATION (6), LOCK ORDER (12 incl. 7 racing mutations), BOUNDARY (4) — each asserts the per-Circle bucket, not only totals, and reconciles account to ledger.
+New: `commercialConsumption.postgres.test.ts` — **54** real-PostgreSQL tests: SOURCE (5), BUCKET (10 incl. an INV-CAP-PROV order-permutation property), BALANCE (4), IDEMPOTENCY / EXACTLY-ONCE (6), CRASH (6), RECONCILIATION (6), LOCK ORDER (12 incl. 7 racing mutations), BOUNDARY (4), PRICE PROVENANCE (1) — each asserts the per-Circle bucket, not only totals, and reconciles account to ledger.
 New boundary tests (`commercialBoundary.test.ts`, +6): migration 0025 shape and sole Loyalty FK/index; the Reward adapter is `SELECT`-only with no row lock and no Loyalty import; no update/delete path on claims/events/failures; static claim → lock → funding → ledger → event → audit order with exactly one Loyalty read and one lock; projection/reconciliation not wired into any Loyalty path or scheduler.
 
 Zero-Loyalty-writes proof: row-hash **and `xmin`** of 12 Loyalty tables identical before/after projection, duplicate projection, reconciliation and a failed projection.

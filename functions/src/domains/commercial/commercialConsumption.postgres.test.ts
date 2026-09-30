@@ -48,6 +48,7 @@ import {
   getConsumptionProjectionMetrics,
   reconcileCommercialConsumption,
 } from "./services/reconcileCommercialConsumption";
+import { insertPriceSchedule } from "./repositories/commercialPriceRepository";
 import { setPriceSchedule } from "./services/setPriceSchedule";
 import { adjustTrial } from "./services/adjustTrial";
 import { adjustCommercialCredit } from "./services/adjustCommercialCredit";
@@ -1737,5 +1738,32 @@ describe("BOUNDARY — Commercial reads Loyalty and never writes it", () => {
           AND conrelid::regclass::text NOT LIKE 'commercial\\_%'`,
     );
     expect(inbound.rows).toEqual([]);
+  });
+});
+
+// ===========================================================================
+describe("PRICE PROVENANCE — serialised with schedule writers (review finding P2)", () => {
+  it("a schedule still uncommitted when a Reward is projected is not missed: the projector waits for the market lock, then snapshots it", async () => {
+    // RW has no schedule until this test (the earlier RW assertion runs first, in SOURCE).
+    const b = await openAccount(newBusiness(), { market: "RW" });
+    await fund(b, 1);
+    const { rewardId } = await seedReward(b);
+    const writer = await begin();
+    const inserted = await insertPriceSchedule(writer.client, {
+      market: "RW",
+      localUnitPriceMinor: 777, // TEST-ONLY
+      effectiveFrom: new Date("2026-05-01T00:00:00Z"), // at or before the Reward's available_at
+      createdBy: "test-fixture",
+      reasonText: "test fixture",
+      correlationId: "corr-test",
+    });
+    const projecting = project(rewardId);
+    await waitForBlockedBackend("%pg_advisory_xact_lock%"); // queued behind the uncommitted schedule
+    await writer.commit();
+    const { event } = asProjected(await projecting);
+    expect(event.priceScheduleId).toBe(inserted.id);
+    expect(event.localCurrency).toBe("RWF");
+    expect(event.localUnitPriceMinor).toBe(777);
+    await expectAccountEqualsLedger(b);
   });
 });

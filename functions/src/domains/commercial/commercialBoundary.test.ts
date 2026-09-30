@@ -549,6 +549,7 @@ describe("WP-COM-04 consumption projection boundary", () => {
       at("insertConsumptionClaim("),
       at("lockCommercialAccount("),
       at("resolveEarmark(tx"),
+      at("lockPriceScheduleMarket(tx"),
       at("postCommercialLedgerEntry(tx"),
       at("insertConsumptionEvent(tx"),
       at("appendCommercialAuditEvent(tx"),
