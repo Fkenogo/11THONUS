@@ -7,12 +7,19 @@
  * loyalty state. Two steps: `recorded` (no credit) then `confirmed`
  * (exactly one paid `credit_grant`). `confirmed -> voided` (WP-COM-03) is
  * compensated by one `settlement_void_reversal`; the original credit is
- * never altered or deleted.
+ * never altered or deleted. `recorded -> cancelled` (WP-COM-03A) withdraws a
+ * mistaken evidence entry before any credit was granted: it has no ledger
+ * effect and is terminal.
  */
 
 import type { CommercialCurrency, CommercialMarket } from "./commercialFoundation";
 
-export const COMMERCIAL_SETTLEMENT_STATUSES = ["recorded", "confirmed", "voided"] as const;
+export const COMMERCIAL_SETTLEMENT_STATUSES = [
+  "recorded",
+  "confirmed",
+  "voided",
+  "cancelled",
+] as const;
 export type CommercialSettlementStatus = (typeof COMMERCIAL_SETTLEMENT_STATUSES)[number];
 
 /** Launch settlements are manual/offline only. A provider adapter widens this additively later. */
@@ -58,6 +65,11 @@ export type CommercialSettlement = {
   readonly voidReference: string | null;
   readonly voidIdempotencyKey: string | null;
   readonly voidLedgerEntryId: string | null;
+  readonly cancelledBy: string | null;
+  readonly cancelledAt: Date | null;
+  readonly cancelReasonText: string | null;
+  readonly cancelReference: string | null;
+  readonly cancelIdempotencyKey: string | null;
 };
 
 /** Ledger scope key: one settlement can produce at most one credit, by construction. */

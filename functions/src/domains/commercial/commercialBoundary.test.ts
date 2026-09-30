@@ -39,6 +39,10 @@ const migration0023 = readFileSync(
   join(migrationsDir, "0023_commercial_manual_administration.sql"),
   "utf8",
 );
+const migration0024 = readFileSync(
+  join(migrationsDir, "0024_commercial_settlement_cancellation.sql"),
+  "utf8",
+);
 const migration0022 = readFileSync(join(migrationsDir, "0022_commercial_settlements.sql"), "utf8");
 const migration0021 = readFileSync(
   join(migrationsDir, "0021_commercial_domain_foundation.sql"),
@@ -379,6 +383,84 @@ describe("WP-COM-03 manual administration boundary", () => {
       expect(src, rel).not.toMatch(
         /evaluateAdmission|admitPurchase|projectConsumption|reevaluatePendingAdmissions|availableCapacity\(.*\)\s*[<>]|stripe|flutterwave/i,
       );
+    }
+  });
+});
+
+describe("WP-COM-03A settlement cancellation boundary", () => {
+  const sql0024 = migration0024.replace(/--.*$/gm, "");
+  const codeOf = (file: string) =>
+    readFileSync(file, "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/^\s*\/\/.*$/gm, "");
+
+  it("migration 0024 is additive: no new table, ALTER only on commercial_settlements, no seed, no drop, Commercial-only references", () => {
+    expect([...sql0024.matchAll(/CREATE\s+TABLE\s+([a-z_]+)/gi)]).toEqual([]);
+    for (const m of sql0024.matchAll(/ALTER\s+TABLE\s+([a-z_]+)/gi)) {
+      expect(m[1]).toBe("commercial_settlements");
+    }
+    for (const m of sql0024.matchAll(/REFERENCES\s+([a-z_]+)/g)) {
+      expect(m[1]).toMatch(/^commercial_/);
+    }
+    for (const table of LOYALTY_TABLES) {
+      expect(new RegExp(`\\b${table}\\b`).test(sql0024), `0024 mentions ${table}`).toBe(false);
+    }
+    expect(sql0024).not.toMatch(/\bINSERT\s+INTO\b/i);
+    expect(sql0024).not.toMatch(/\bDROP\s+TABLE\b/i);
+    expect(sql0024).not.toMatch(/\b(UPDATE|DELETE\s+FROM|TRUNCATE)\s+commercial_(?!settlements)/i);
+  });
+
+  it("the only object attached to another Commercial table is one read-only BEFORE INSERT trigger on the ledger", () => {
+    const triggers = [...sql0024.matchAll(/CREATE\s+TRIGGER\s+\w+\s+([\s\S]*?);/gi)].map(
+      (m) => m[1],
+    );
+    expect(triggers).toHaveLength(1);
+    expect(triggers[0]).toMatch(/BEFORE INSERT ON commercial_ledger_entries/);
+    // It reads (locks) the settlement row; it never writes to the ledger or the account.
+    expect(sql0024).not.toMatch(/ALTER\s+TABLE\s+commercial_ledger_entries/i);
+  });
+
+  it("migration 0024 introduces no later-package schema and no rule change", () => {
+    expect(sql0024).not.toMatch(
+      new RegExp(`${PENDING}|earmark|admission|consumption|scheduler`, "i"),
+    );
+    expect(sql0024).not.toMatch(/stripe|flutterwave|refund|provider/i);
+    expect(sql0024).not.toMatch(/tier|subscription|complimentary|pilot|partner|promotional/i);
+    // The lifecycle CHECK admits exactly the four statuses; the transition guard the three edges.
+    expect(sql0024).toMatch(/status IN \('recorded', 'confirmed', 'voided', 'cancelled'\)/);
+    expect(sql0024).toMatch(
+      /OLD\.status = 'recorded' AND NEW\.status IN \('confirmed', 'cancelled'\)/,
+    );
+    expect(sql0024).toMatch(/OLD\.status = 'confirmed' AND NEW\.status = 'voided'/);
+  });
+
+  it("cancelSettlement runs through the shared administrator runner and has NO ledger, account or price effect", () => {
+    const file = commercialSources.find((f) => f.endsWith("/services/cancelSettlement.ts")) ?? "";
+    expect(file).not.toBe("");
+    const src = codeOf(file);
+    expect(src).toContain("runAdministratorCommand");
+    expect(src).toContain("appendCommercialAuditEvent");
+    expect(src).toContain("markSettlementCancelled");
+    expect(src).not.toMatch(/postCommercialLedgerEntry|commercialLedgerRepository|insertLedger/);
+    expect(src).not.toMatch(/commercialPriceRepository|setPriceSchedule|adjustCommercialCredit/);
+    expect(src).not.toMatch(
+      /UPDATE\s+commercial_accounts|INSERT\s+INTO\s+commercial_ledger_entries/i,
+    );
+  });
+
+  it("the repository cancels only via the guarded recorded -> cancelled UPDATE and never deletes", () => {
+    const file =
+      commercialSources.find((f) =>
+        f.endsWith("/repositories/commercialSettlementRepository.ts"),
+      ) ?? "";
+    const src = codeOf(file);
+    expect(src).toMatch(/SET status = 'cancelled'[\s\S]*?WHERE id = \$1 AND status = 'recorded'/);
+    expect(src).not.toMatch(/DELETE\s+FROM|TRUNCATE/i);
+  });
+
+  it("cancelSettlement is not reachable from any non-Commercial code (no callable, route or UI is wired)", () => {
+    for (const file of nonCommercialSources) {
+      expect(codeOf(file), relative(srcDir, file)).not.toMatch(/cancelSettlement/);
     }
   });
 });

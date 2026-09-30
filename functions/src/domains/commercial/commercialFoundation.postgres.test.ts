@@ -83,6 +83,7 @@ async function dropCommercialObjects(): Promise<void> {
     "commercial_trial_grants_guard",
     "commercial_manual_adjustments_guard",
     "commercial_settlements_update_guard",
+    "commercial_ledger_reject_cancelled_settlement_reference",
     "commercial_settlements_insert_guard",
     "commercial_assert_account_matches_ledger",
     "commercial_price_schedules_versioning",
@@ -93,7 +94,9 @@ async function dropCommercialObjects(): Promise<void> {
   }
   const hasMigrations = await pool.query("SELECT to_regclass('public.schema_migrations') AS t");
   if (hasMigrations.rows[0].t !== null) {
-    await pool.query("DELETE FROM schema_migrations WHERE version IN ('0021', '0022', '0023')");
+    await pool.query(
+      "DELETE FROM schema_migrations WHERE version IN ('0021', '0022', '0023', '0024')",
+    );
   }
   await pool
     .query("DELETE FROM idempotency_keys WHERE idempotency_key LIKE 'wpcom01-%'")
@@ -265,16 +268,16 @@ describe("0021 schema shape and migration lifecycle", () => {
     // Populated: refuse (and change nothing).
     const businessId = newBusiness();
     await openAccount(businessId);
-    // Three steps: 0023 and 0022 (no settlement/grant rows yet) roll back, then 0021 refuses because the account exists.
-    await expectPgFailure(migrateDown(pool, migrationsDir, 3), /refusing to roll back/);
+    // Four steps: 0024, 0023 and 0022 (no settlement/grant rows yet) roll back, then 0021 refuses because the account exists.
+    await expectPgFailure(migrateDown(pool, migrationsDir, 4), /refusing to roll back/);
     const still = await pool.query("SELECT to_regclass('public.commercial_accounts') AS t");
     expect(still.rows[0].t).not.toBeNull();
 
     // Empty: rolls back cleanly and re-applies (drop + re-migrate resets the immutable rows first).
     await dropCommercialObjects();
     await migrateUp(pool, migrationsDir);
-    const down = await migrateDown(pool, migrationsDir, 3);
-    expect(down.rolledBack).toEqual(["0023", "0022", "0021"]);
+    const down = await migrateDown(pool, migrationsDir, 4);
+    expect(down.rolledBack).toEqual(["0024", "0023", "0022", "0021"]);
     const gone = await pool.query("SELECT to_regclass('public.commercial_accounts') AS t");
     expect(gone.rows[0].t).toBeNull();
     const fnGone = await pool.query(
@@ -282,7 +285,7 @@ describe("0021 schema shape and migration lifecycle", () => {
     );
     expect(fnGone.rows[0].n).toBe(0);
     const reapplied = await migrateUp(pool, migrationsDir);
-    expect(reapplied.applied).toEqual(["0021", "0022", "0023"]);
+    expect(reapplied.applied).toEqual(["0021", "0022", "0023", "0024"]);
   });
 });
 

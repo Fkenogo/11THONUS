@@ -74,6 +74,7 @@ export const COMMERCIAL_AUDIT_ACTION_TYPES = [
   "settlement_recorded",
   "settlement_confirmed",
   "settlement_voided",
+  "settlement_cancelled",
   "credit_adjusted",
   "paid_service_activated",
   "service_restricted",

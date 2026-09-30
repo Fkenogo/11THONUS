@@ -71,6 +71,7 @@ afterEach(async () => {
     "commercial_trial_grants_guard",
     "commercial_manual_adjustments_guard",
     "commercial_settlements_update_guard",
+    "commercial_ledger_reject_cancelled_settlement_reference",
     "commercial_settlements_insert_guard",
     "commercial_assert_account_matches_ledger",
     "commercial_price_schedules_versioning",
@@ -235,6 +236,7 @@ describe("checkPlatformFoundationReadiness — actual shipped migrations directo
       "0021",
       "0022",
       "0023",
+      "0024",
     ]);
 
     const result = await checkPlatformFoundationReadiness(shippedReadinessDeps());
