@@ -100,6 +100,16 @@ and `../../../domains/commercial/commercialFoundation.postgres.test.ts`.
 `0021` is authored here but applied only in the local test database by this
 package; it has not been applied to any deployed database.
 
+`WP-COM-02` adds `0022`: the `commercial_settlements` table (manual/offline
+settlement evidence, two-step `recorded` -> `confirmed`) with insert/update
+guard triggers. Purely additive and self-contained: one new table, foreign
+keys only to other `commercial_*` tables, no existing object altered, no data
+seeded. Its `.down.sql` fails closed while any settlement row exists. See
+`docs/05-implementation/reports/wp-com-02-commercial-settlement-and-price-schedule-implementation-report-2026-09-30.md`
+and `../../../domains/commercial/commercialSettlement.postgres.test.ts`.
+`0022` is authored here but applied only in the local test database by this
+package; it has not been applied to any deployed database.
+
 The migration runner's own bookkeeping table (`schema_migrations`) is
 created directly by `migrationRunner.ts`'s `ensureMigrationsTable` — it is
 migration-system metadata intrinsic to the mechanism, not a numbered

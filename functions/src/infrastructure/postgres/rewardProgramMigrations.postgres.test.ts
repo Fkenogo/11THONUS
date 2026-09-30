@@ -49,6 +49,7 @@ async function dropAll() {
   // WP-COM-01 (0021): Commercial tables are independent of every table below
   // (no cross-domain FK); dropped first so a re-run of migrateUp can re-create them.
   for (const table of [
+    "commercial_settlements",
     "commercial_audit_events",
     "commercial_standing_events",
     "commercial_ledger_entries",
@@ -58,6 +59,8 @@ async function dropAll() {
     await pool.query(`DROP TABLE IF EXISTS ${table} CASCADE`);
   }
   for (const fn of [
+    "commercial_settlements_update_guard",
+    "commercial_settlements_insert_guard",
     "commercial_assert_account_matches_ledger",
     "commercial_price_schedules_versioning",
     "commercial_accounts_guard",
@@ -128,6 +131,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0019",
       "0020",
       "0021",
+      "0022",
     ]);
   });
 
@@ -155,6 +159,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0019",
       "0020",
       "0021",
+      "0022",
     ]);
 
     for (const table of [
@@ -218,12 +223,13 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0019",
       "0020",
       "0021",
+      "0022",
     ]);
   }, 15000);
 
   it("rolls back the full migration set and re-applies cleanly", async () => {
     await migrateUp(pool, migrationsDir);
-    await migrateDown(pool, migrationsDir, 21);
+    await migrateDown(pool, migrationsDir, 22);
 
     for (const table of [
       "reward_programs",
@@ -261,6 +267,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0019",
       "0020",
       "0021",
+      "0022",
     ]);
     const applied = await getAppliedMigrations(pool);
     expect(applied.map((a) => a.version)).toEqual([
@@ -285,6 +292,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0019",
       "0020",
       "0021",
+      "0022",
     ]);
   }, 15000);
 
@@ -327,7 +335,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
 
     // The guard refuses BEFORE dropping anything: governed redemption
     // evidence is never silently discarded by a rollback.
-    await expect(migrateDown(pool, migrationsDir, 2)).rejects.toThrow(/refusing to roll back/i);
+    await expect(migrateDown(pool, migrationsDir, 3)).rejects.toThrow(/refusing to roll back/i);
 
     const reg = await pool.query("SELECT to_regclass('public.redemptions') AS reg");
     expect(reg.rows[0].reg).not.toBeNull();
@@ -560,7 +568,16 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       // empty); none touches
       // reward_programs.reward_program_category_id, so they do not affect
       // this test's own assertions below.
-      expect(result.applied).toEqual(["0015", "0016", "0017", "0018", "0019", "0020", "0021"]);
+      expect(result.applied).toEqual([
+        "0015",
+        "0016",
+        "0017",
+        "0018",
+        "0019",
+        "0020",
+        "0021",
+        "0022",
+      ]);
 
       const preserved = await pool.query<{
         business_id: string;
@@ -1202,7 +1219,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         [versionId, genuineItemId],
       );
 
-      await expect(migrateDown(pool, migrationsDir, 3)).rejects.toThrow(
+      await expect(migrateDown(pool, migrationsDir, 4)).rejects.toThrow(
         /Refusing to roll back migration 0017/,
       );
 
@@ -1423,7 +1440,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       );
 
       const result = await migrateUp(pool, migrationsDir);
-      expect(result.applied).toEqual(["0017", "0018", "0019", "0020", "0021"]);
+      expect(result.applied).toEqual(["0017", "0018", "0019", "0020", "0021", "0022"]);
 
       expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
 
@@ -1518,7 +1535,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       );
 
       const result = await migrateUp(pool, migrationsDir);
-      expect(result.applied).toEqual(["0019", "0020", "0021"]);
+      expect(result.applied).toEqual(["0019", "0020", "0021", "0022"]);
       expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
 
       // The backfill's own evidence survives the drop: the marker item
@@ -1580,7 +1597,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       );
 
       const result = await migrateUp(pool, migrationsDir);
-      expect(result.applied).toEqual(["0019", "0020", "0021"]);
+      expect(result.applied).toEqual(["0019", "0020", "0021", "0022"]);
       expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
 
       const marker = await pool.query(
@@ -1655,7 +1672,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       );
 
       const result = await migrateUp(pool, migrationsDir);
-      expect(result.applied).toEqual(["0019", "0020", "0021"]);
+      expect(result.applied).toEqual(["0019", "0020", "0021", "0022"]);
       expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
     }, 15000);
 
@@ -1715,7 +1732,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       );
 
       const result = await migrateUp(pool, migrationsDir);
-      expect(result.applied).toEqual(["0019", "0020", "0021"]);
+      expect(result.applied).toEqual(["0019", "0020", "0021", "0022"]);
       expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
     }, 15000);
 
@@ -2076,7 +2093,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         [versionId, item.rows[0].id],
       );
 
-      await migrateDown(pool, migrationsDir, 3);
+      await migrateDown(pool, migrationsDir, 4);
 
       // Structural shell only: table exists, is empty, keeps the 0003
       // shape -- history is NOT reconstructed.
@@ -2104,7 +2121,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
 
       // Re-applying 0019 over the empty shell drops it again.
       const reapplied = await migrateUp(pool, migrationsDir);
-      expect(reapplied.applied).toEqual(["0019", "0020", "0021"]);
+      expect(reapplied.applied).toEqual(["0019", "0020", "0021", "0022"]);
       expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
     }, 15000);
   });
