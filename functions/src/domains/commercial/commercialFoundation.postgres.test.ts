@@ -65,6 +65,9 @@ const migrationsDir = path.join(__dirname, "..", "..", "infrastructure", "postgr
 let pool: PlatformPostgresPool;
 
 const COMMERCIAL_TABLES = [
+  "commercial_projection_failures",
+  "commercial_consumption_events",
+  "commercial_consumption_claims",
   "commercial_trial_grants",
   "commercial_manual_adjustments",
   "commercial_settlements",
@@ -79,6 +82,7 @@ async function dropCommercialObjects(): Promise<void> {
   for (const table of COMMERCIAL_TABLES) {
     await pool.query(`DROP TABLE IF EXISTS ${table} CASCADE`);
   }
+  await pool.query("DROP INDEX IF EXISTS rewards_business_available_at_idx");
   for (const fn of [
     "commercial_trial_grants_guard",
     "commercial_manual_adjustments_guard",
@@ -88,6 +92,9 @@ async function dropCommercialObjects(): Promise<void> {
     "commercial_assert_account_matches_ledger",
     "commercial_price_schedules_versioning",
     "commercial_accounts_guard",
+    "commercial_consumption_claims_require_event",
+    "commercial_consumption_events_ledger_guard",
+    "commercial_consumption_claims_reward_business_guard",
     "commercial_reject_mutation",
   ]) {
     await pool.query(`DROP FUNCTION IF EXISTS ${fn}() CASCADE`);
@@ -95,7 +102,7 @@ async function dropCommercialObjects(): Promise<void> {
   const hasMigrations = await pool.query("SELECT to_regclass('public.schema_migrations') AS t");
   if (hasMigrations.rows[0].t !== null) {
     await pool.query(
-      "DELETE FROM schema_migrations WHERE version IN ('0021', '0022', '0023', '0024')",
+      "DELETE FROM schema_migrations WHERE version IN ('0021', '0022', '0023', '0024', '0025')",
     );
   }
   await pool
@@ -187,7 +194,7 @@ async function expectPgFailure(promise: Promise<unknown>, pattern: RegExp, code?
 
 // ---------------------------------------------------------------------------
 describe("0021 schema shape and migration lifecycle", () => {
-  it("creates exactly the five foundation tables plus the WP-COM-02/03 tables, and none of the later-WP tables", async () => {
+  it("creates exactly the five foundation tables plus the WP-COM-02/03/04 tables, and none of the later-WP tables", async () => {
     const tables = await pool.query<{ table_name: string }>(
       `SELECT table_name FROM information_schema.tables
         WHERE table_schema = 'public' AND table_name LIKE 'commercial\\_%' ORDER BY table_name`,
@@ -195,21 +202,32 @@ describe("0021 schema shape and migration lifecycle", () => {
     expect(tables.rows.map((r) => r.table_name)).toEqual([
       "commercial_accounts",
       "commercial_audit_events",
+      "commercial_consumption_claims",
+      "commercial_consumption_events",
       "commercial_ledger_entries",
       "commercial_manual_adjustments",
       "commercial_price_schedules",
+      "commercial_projection_failures",
       "commercial_settlements",
       "commercial_standing_events",
       "commercial_trial_grants",
     ]);
   });
 
-  it("is self-contained: no foreign key to a non-Commercial table and none into Commercial from outside", async () => {
-    const outbound = await pool.query<{ referenced: string }>(
-      `SELECT confrelid::regclass::text AS referenced FROM pg_constraint
+  it("is self-contained: the only foreign key to a non-Commercial table is the WP-COM-04 claim -> Reward key, and none point into Commercial from outside", async () => {
+    const outbound = await pool.query<{ child: string; referenced: string }>(
+      `SELECT conrelid::regclass::text AS child, confrelid::regclass::text AS referenced FROM pg_constraint
         WHERE contype = 'f' AND conrelid::regclass::text LIKE 'commercial\\_%'`,
     );
-    for (const row of outbound.rows) expect(row.referenced).toMatch(/^commercial_/);
+    // WP-COM-04 (design §4.4 R1): the ONE permitted Commercial -> Loyalty foreign key is the
+    // composite claim -> Reward key. Every other Commercial foreign key stays inside Commercial.
+    for (const row of outbound.rows) {
+      if (row.child === "commercial_consumption_claims" && row.referenced === "rewards") continue;
+      expect(row.referenced).toMatch(/^commercial_/);
+    }
+    expect(
+      outbound.rows.filter((r) => !r.referenced.startsWith("commercial_")).map((r) => r.child),
+    ).toEqual(["commercial_consumption_claims"]);
     const inbound = await pool.query(
       `SELECT conrelid::regclass::text AS child FROM pg_constraint
         WHERE contype = 'f' AND confrelid::regclass::text LIKE 'commercial\\_%'
@@ -268,16 +286,16 @@ describe("0021 schema shape and migration lifecycle", () => {
     // Populated: refuse (and change nothing).
     const businessId = newBusiness();
     await openAccount(businessId);
-    // Four steps: 0024, 0023 and 0022 (no settlement/grant rows yet) roll back, then 0021 refuses because the account exists.
-    await expectPgFailure(migrateDown(pool, migrationsDir, 4), /refusing to roll back/);
+    // Five steps: 0025, 0024, 0023 and 0022 (no consumption/settlement/grant rows yet) roll back, then 0021 refuses because the account exists.
+    await expectPgFailure(migrateDown(pool, migrationsDir, 5), /refusing to roll back/);
     const still = await pool.query("SELECT to_regclass('public.commercial_accounts') AS t");
     expect(still.rows[0].t).not.toBeNull();
 
     // Empty: rolls back cleanly and re-applies (drop + re-migrate resets the immutable rows first).
     await dropCommercialObjects();
     await migrateUp(pool, migrationsDir);
-    const down = await migrateDown(pool, migrationsDir, 4);
-    expect(down.rolledBack).toEqual(["0024", "0023", "0022", "0021"]);
+    const down = await migrateDown(pool, migrationsDir, 5);
+    expect(down.rolledBack).toEqual(["0025", "0024", "0023", "0022", "0021"]);
     const gone = await pool.query("SELECT to_regclass('public.commercial_accounts') AS t");
     expect(gone.rows[0].t).toBeNull();
     const fnGone = await pool.query(
@@ -285,7 +303,7 @@ describe("0021 schema shape and migration lifecycle", () => {
     );
     expect(fnGone.rows[0].n).toBe(0);
     const reapplied = await migrateUp(pool, migrationsDir);
-    expect(reapplied.applied).toEqual(["0021", "0022", "0023", "0024"]);
+    expect(reapplied.applied).toEqual(["0021", "0022", "0023", "0024", "0025"]);
   });
 });
 

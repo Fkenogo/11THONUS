@@ -137,6 +137,22 @@ and `../../../domains/commercial/commercialSettlementCancellation.postgres.test.
 `0024` is authored here but applied only in the local test database by this
 package; it has not been applied to any deployed database.
 
+`WP-COM-04` adds `0025`: the Commercial consumption projection --
+`commercial_consumption_claims` (the unclassified FK anchor for one Reward, with
+the single Commercial -> Loyalty foreign key, a composite one to
+`rewards (id, loyalty_cycle_id)`), `commercial_consumption_events` (the
+classified, immutable, one-unit fact; no foreign key into Loyalty) and
+`commercial_projection_failures` (append-only observability), with guard triggers
+(claim Business equals the Reward's Business, event matches its ledger debit, a
+claim cannot commit without its event). The only object attached to a Loyalty
+table is one performance index, `rewards_business_available_at_idx`. Nothing
+else is altered and no data is seeded. Its `.down.sql` fails closed while any
+claim, event or failure row exists. See
+`docs/05-implementation/reports/wp-com-04-commercial-consumption-projection-implementation-report-2026-09-30.md`
+and `../../../domains/commercial/commercialConsumption.postgres.test.ts`.
+`0025` is authored here but applied only in the local test database by this
+package; it has not been applied to any deployed database.
+
 The migration runner's own bookkeeping table (`schema_migrations`) is
 created directly by `migrationRunner.ts`'s `ensureMigrationsTable` — it is
 migration-system metadata intrinsic to the mechanism, not a numbered

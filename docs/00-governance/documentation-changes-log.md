@@ -2,7 +2,8 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-09-30 (Entry 276 added: `WP-COM-03A` — recorded settlement cancellation: migration `0024`; `cancelSettlement` (`recorded → cancelled`, no ledger effect); closes `WP-COM-03` deviation D3; implementation only, pending review, loyalty path unchanged.)  
+> **Last controlled update:** 2026-09-30 (Entry 277 added: `WP-COM-04` — Commercial consumption projection: migration `0025`; claim → account lock → classify → finalize per Reward; exactly-once at database level; fallback classification under the account lock; earmark port; bounded reconciliation service and lag metrics; implementation only, pending review, loyalty path read-only source only, no capacity gate / `pending_admission`.)  
+> **Prior update:** 2026-09-30 (Entry 276 added: `WP-COM-03A` — recorded settlement cancellation: migration `0024`; `cancelSettlement` (`recorded → cancelled`, no ledger effect); closes `WP-COM-03` deviation D3; implementation only, pending review, loyalty path unchanged.)  
 > **Prior update:** 2026-09-30 (Entry 275 added: `WP-COM-03` — manual Commercial administration commands: migration `0023`; `openCommercialAccount`, `grantTrial`, `adjustTrial`, `adjustCommercialCredit`, `activatePaidService`, `restrictNewStarts`/`restoreCommercialStanding`, `voidSettlement`; implementation only, pending review, loyalty path unchanged.)  
 > **Prior update:** 2026-09-30 (Entry 274 added: `WP-COM-02` — Commercial settlement & price-schedule administration: migration `0022`, `setPriceSchedule`, price lookup, `recordSettlement`, `confirmSettlement`; implementation only, pending review, loyalty path unchanged.)  
 > **Prior update:** 2026-09-30 (Entry 273 added: `WP-COM-01` — **first Commercial implementation package**: Commercial domain foundation (migration `0021`; append-only ledger, derived account, price-schedule storage, immutable audit and standing timeline; idempotency adapter; Platform-Administrator authority seam), implemented against the canonical `11THONUS-COMMERCIAL-DESIGN-001` v1.1 + CORR-002 at `origin/main` `1d1eec7`. **Not integrated into the loyalty path**; no capacity gate, `pending_admission`, consumption projection, Verify Purchase/redemption change, Operator Console, Business UI, scheduler, payment provider, launch price or RBAC. Pending review; not merged.)  
@@ -132,6 +133,19 @@ VERIFIED`: no `FD-COM-001` file was modified by PR #241 or this administrative c
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+## Entry 277 — `WP-COM-04`: Commercial Consumption Projection (Implementation)
+
+**Date:** 2026-09-30 · **Type:** implementation · **Entry `origin/main`:** `5ec962c69ad432a1cbd68a4a5305f9de9ed79eae` · **Branch:** `claude/vigilant-ritchie-e449gj` · **Not merged. Nothing deployed; migration `0025` applied only to a local disposable test database.**
+
+- **Implemented.** Migration `0025` (`commercial_consumption_claims`, `commercial_consumption_events`, `commercial_projection_failures`, guard/immutability triggers, one performance index on `rewards`); `projectCommercialConsumption` (claim before the account lock, funding resolved under the lock, atomic ledger debit + account + event + audit; exactly one unit; paid may go negative); earmark resolver port (no earmark source yet, so all consumption is the flagged fallback); `reconcileCommercialConsumption` and `getConsumptionProjectionMetrics` (callable service seam, no scheduler).
+- **Not implemented (by design).** Capacity gate; `pending_admission`; admission earmark creation; `verifyPurchase`/`confirmRedemption` integration; held-purchase re-evaluation; scheduler; Operator/Business UI; payment provider. **Nothing invokes the projection yet.**
+- **Boundary.** Commercial only reads `rewards` through one `SELECT`-only adapter; zero Loyalty writes (row-hash and `xmin` proven); verify/redemption/index.ts/apps zero diff; no new dependency, config or endpoint; no Product Truth changed; prototype/Experience Reference untouched.
+- **Deviations recorded for review** (report §13, D1–D9): `rewards` index build takes a short `SHARE` lock; earmark-dependent reconciliation checks deferred to `WP-COM-05b`; immediate post-verify trigger not wired; existing migration-list tests and the Commercial boundary guards updated for `0025`.
+- **Files changed:** the implementation report; `docs/changes/IMPLEMENTATION_CHANGES.md`; this log (Entry 277 + header); migrations `README.md`; code/tests listed in the report.
+- **Disposition:** `WP-COM-04 — IMPLEMENTATION COMPLETE / PENDING REVIEW`. Recommended next: `WP-COM-05a` (Purchase-domain `pending_admission` migration and `admitPurchaseToLoyalty` extraction, gate mode `off`).
+- **Report link:** [`wp-com-04-commercial-consumption-projection-implementation-report-2026-09-30.md`](../05-implementation/reports/wp-com-04-commercial-consumption-projection-implementation-report-2026-09-30.md)
 
 ---
 ## Entry 276 — `WP-COM-03A`: Recorded Settlement Cancellation (Implementation)

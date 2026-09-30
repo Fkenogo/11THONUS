@@ -82,6 +82,7 @@ export const COMMERCIAL_AUDIT_ACTION_TYPES = [
   "price_schedule_set",
   "admissions_reevaluated",
   "history_inspected",
+  "consumption_recorded",
 ] as const;
 export type CommercialAuditActionType = (typeof COMMERCIAL_AUDIT_ACTION_TYPES)[number];
 

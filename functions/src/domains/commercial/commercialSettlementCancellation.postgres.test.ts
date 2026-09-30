@@ -51,6 +51,9 @@ let pool: PlatformPostgresPool;
 let startedFromEmptyDatabase = false;
 
 const COMMERCIAL_TABLES = [
+  "commercial_projection_failures",
+  "commercial_consumption_events",
+  "commercial_consumption_claims",
   "commercial_trial_grants",
   "commercial_manual_adjustments",
   "commercial_settlements",
@@ -65,6 +68,7 @@ async function dropCommercialObjects(): Promise<void> {
   for (const table of COMMERCIAL_TABLES) {
     await pool.query(`DROP TABLE IF EXISTS ${table} CASCADE`);
   }
+  await pool.query("DROP INDEX IF EXISTS rewards_business_available_at_idx");
   for (const fn of [
     "commercial_trial_grants_guard",
     "commercial_manual_adjustments_guard",
@@ -74,6 +78,9 @@ async function dropCommercialObjects(): Promise<void> {
     "commercial_assert_account_matches_ledger",
     "commercial_price_schedules_versioning",
     "commercial_accounts_guard",
+    "commercial_consumption_claims_require_event",
+    "commercial_consumption_events_ledger_guard",
+    "commercial_consumption_claims_reward_business_guard",
     "commercial_reject_mutation",
     "wpcom03a_fail_cancel_audit",
   ]) {
@@ -82,7 +89,7 @@ async function dropCommercialObjects(): Promise<void> {
   const hasMigrations = await pool.query("SELECT to_regclass('public.schema_migrations') AS t");
   if (hasMigrations.rows[0].t !== null) {
     await pool.query(
-      "DELETE FROM schema_migrations WHERE version IN ('0021', '0022', '0023', '0024')",
+      "DELETE FROM schema_migrations WHERE version IN ('0021', '0022', '0023', '0024', '0025')",
     );
     await pool
       .query("DELETE FROM idempotency_keys WHERE idempotency_key LIKE 'wpcom03a-%'")
@@ -1187,7 +1194,7 @@ describe("MIGRATION 0024 — additive, reversible, fail-closed", () => {
     const settlementId = await recordedSettlement(businessId, 2);
     await cancelIt(businessId, settlementId);
     await expectPgFailure(
-      migrateDown(pool, migrationsDir, 1),
+      migrateDown(pool, migrationsDir, 2),
       /refusing to roll back[\s\S]*cancelled settlement/,
     );
     expect((await getSettlement(pool, settlementId))?.status).toBe("cancelled");
@@ -1207,8 +1214,8 @@ describe("MIGRATION 0024 — additive, reversible, fail-closed", () => {
       effectiveFrom: new Date("2026-03-01T00:00:00Z"),
       reasonText: "test fixture",
     });
-    const down = await migrateDown(pool, migrationsDir, 1);
-    expect(down.rolledBack).toEqual(["0024"]);
+    const down = await migrateDown(pool, migrationsDir, 2);
+    expect(down.rolledBack).toEqual(["0025", "0024"]);
     expect(
       await count(
         "SELECT COUNT(*)::int AS n FROM information_schema.columns WHERE table_name = 'commercial_settlements' AND column_name LIKE 'cancel%'",
@@ -1228,7 +1235,7 @@ describe("MIGRATION 0024 — additive, reversible, fail-closed", () => {
     expect(statusCheck.rows[0].def).toMatch(/voided/);
     // ...and the migration re-applies over it (the 0023 price schedule fixture is still there).
     const reapplied = await migrateUp(pool, migrationsDir);
-    expect(reapplied.applied).toEqual(["0024"]);
+    expect(reapplied.applied).toEqual(["0024", "0025"]);
     const acct = await openAccount();
     const again = await recordedSettlement(acct.businessId, 2);
     await cancelIt(acct.businessId, again);
