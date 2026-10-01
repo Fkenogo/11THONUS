@@ -153,6 +153,24 @@ and `../../../domains/commercial/commercialConsumption.postgres.test.ts`.
 `0025` is authored here but applied only in the local test database by this
 package; it has not been applied to any deployed database.
 
+`WP-COM-05a` adds `0026`: the Purchase `pending_admission` foundation --
+the only governed state added to `purchase_records` ("received and preserved;
+not invalid; not yet admitted into Loyalty"). Purchase table only: the status
+`CHECK` gains the value, `purchase_records_verified_fields` gains a branch
+(no `verified_at`, no verdict reason), a guard trigger scoped to the new state
+allows only `waiting_for_customer -> pending_admission` and
+`pending_admission -> verified` and refuses direct creation, and two partial
+indexes support the later admission processor (design §8.16). No column, no
+table, no data, and nothing Commercial: no earmarks, reservations, gate state
+or scheduler. No code path writes the state while the admission gate is OFF.
+Re-runnable over an existing schema (the Commercial test helpers un-record and
+re-apply Commercial migrations). Its `.down.sql` fails closed while any
+Purchase is `pending_admission`. See
+`docs/05-implementation/reports/wp-com-05a-purchase-admission-seam-and-pending-admission-foundation-implementation-report-2026-10-01.md`
+and `../../../domains/purchase/services/purchaseAdmissionSeam.postgres.test.ts`.
+`0026` is authored here but applied only in the local test database by this
+package; it has not been applied to any deployed database.
+
 The migration runner's own bookkeeping table (`schema_migrations`) is
 created directly by `migrationRunner.ts`'s `ensureMigrationsTable` — it is
 migration-system metadata intrinsic to the mechanism, not a numbered

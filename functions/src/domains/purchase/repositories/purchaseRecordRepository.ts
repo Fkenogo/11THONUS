@@ -11,7 +11,7 @@
  * §10.10.1 Immutability Rule); only `status`/verdict columns transition,
  * and only through the conditional-transition helpers below, which encode
  * the 006A command allow-list (`waiting_for_customer` → `verified` |
- * `rejected` | `under_review`) as `UPDATE … WHERE status = …` — the 005A
+ * `rejected` | `under_review`, plus the WP-COM-05a `pending_admission` edges) as `UPDATE … WHERE status = …` — the 005A
  * `publishVersion` precedent. Zero affected rows means a concurrent command
  * won the race; callers map that to a stale-state error, never a partial
  * write.
@@ -194,17 +194,50 @@ export async function lockPurchaseRecordById(
   return mapPurchaseRow(result.rows[0]);
 }
 
-/** `waiting_for_customer` → `verified`. Returns null when the row is not in the expected source state (race loser). */
+/** Sources from which a Purchase may be admitted (`verified`): the live customer verify, or a later re-admission of a held Purchase (WP-COM-05a). */
+export type PurchaseAdmissionSourceStatus = "waiting_for_customer" | "pending_admission";
+
+/**
+ * `waiting_for_customer` | `pending_admission` → `verified`. Returns null when the row is not in
+ * the expected source state (race loser). `pending_admission` is only ever a re-admission source;
+ * the DB guard trigger (0026) independently refuses any other exit from it.
+ */
 export async function transitionPurchaseToVerified(
   tx: PlatformPostgresTransaction,
-  params: { readonly purchaseId: string; readonly verifiedAt: Date },
+  params: {
+    readonly purchaseId: string;
+    readonly verifiedAt: Date;
+    readonly fromStatus?: PurchaseAdmissionSourceStatus;
+  },
 ): Promise<PurchaseRecordRow | null> {
   const result = await tx.query<PurchaseDbRow>(
     `UPDATE purchase_records
         SET status = 'verified', verified_at = $2, updated_at = now()
+      WHERE id = $1 AND status = $3
+      RETURNING *`,
+    [params.purchaseId, params.verifiedAt, params.fromStatus ?? "waiting_for_customer"],
+  );
+  if (result.rows.length === 0) {
+    return null;
+  }
+  return mapPurchaseRow(result.rows[0]);
+}
+
+/**
+ * `waiting_for_customer` → `pending_admission` (WP-COM-05a state foundation). Preserves a valid
+ * Purchase that cannot yet be admitted into Loyalty: no `verified_at`, no reason, no credit.
+ * NO command calls this in WP-COM-05a (gate OFF); the future hold command (WP-COM-05b) will.
+ */
+export async function transitionPurchaseToPendingAdmission(
+  tx: PlatformPostgresTransaction,
+  params: { readonly purchaseId: string },
+): Promise<PurchaseRecordRow | null> {
+  const result = await tx.query<PurchaseDbRow>(
+    `UPDATE purchase_records
+        SET status = 'pending_admission', updated_at = now()
       WHERE id = $1 AND status = 'waiting_for_customer'
       RETURNING *`,
-    [params.purchaseId, params.verifiedAt],
+    [params.purchaseId],
   );
   if (result.rows.length === 0) {
     return null;

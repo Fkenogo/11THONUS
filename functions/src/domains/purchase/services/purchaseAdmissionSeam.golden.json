@@ -1,0 +1,825 @@
+{
+  "single_unit": {
+    "results": [
+      {
+        "resultKeys": ["cycle", "purchase", "reward", "verifiedUnit"],
+        "purchaseStatus": "verified",
+        "verifiedUnitQuantity": 1,
+        "cycleState": "active",
+        "cycleAllocatedUnits": 1,
+        "rewardPresent": false
+      }
+    ],
+    "traces": [
+      [
+        "SELECT idempotency_keys",
+        "BEGIN",
+        "INSERT idempotency_keys",
+        "SELECT purchase_records FOR UPDATE",
+        "UPDATE purchase_records",
+        "SELECT reward_programs",
+        "INSERT purchase_record_events",
+        "INSERT verified_units",
+        "INSERT loyalty_cycle_streams",
+        "SELECT loyalty_cycle_streams FOR UPDATE",
+        "SELECT loyalty_cycles FOR UPDATE",
+        "UPDATE loyalty_cycle_streams",
+        "INSERT loyalty_cycles",
+        "INSERT verified_unit_allocations",
+        "INSERT verified_unit_allocation_events",
+        "UPDATE loyalty_cycles",
+        "INSERT trust_events",
+        "INSERT trust_events",
+        "INSERT trust_events",
+        "INSERT notification_intents",
+        "INSERT purchase_outbox",
+        "INSERT purchase_outbox",
+        "INSERT purchase_outbox",
+        "UPDATE idempotency_keys",
+        "COMMIT"
+      ]
+    ],
+    "idempotency": [
+      {
+        "operation_type": "purchase.verify",
+        "status": "completed"
+      }
+    ],
+    "fingerprint": {
+      "purchases": [
+        {
+          "status": "verified",
+          "has_verified_at": true,
+          "quantity": 1
+        }
+      ],
+      "events": [
+        {
+          "from_status": null,
+          "to_status": "waiting_for_customer",
+          "actor_type": "owner",
+          "reason": null,
+          "payload_keys": ["programCurrentVersionId", "rewardProgramVersionId"]
+        },
+        {
+          "from_status": "waiting_for_customer",
+          "to_status": "verified",
+          "actor_type": "customer",
+          "reason": null,
+          "payload_keys": ["programCurrentVersionId", "rewardProgramVersionId", "versionRebound"]
+        }
+      ],
+      "verifiedUnits": [
+        {
+          "entry_type": "credit",
+          "quantity": 1,
+          "reason_code": "purchase_verified"
+        }
+      ],
+      "allocations": [
+        {
+          "state": "allocated",
+          "allocated_quantity": 1,
+          "allocation_order": 0,
+          "in_cycle": true
+        }
+      ],
+      "allocationEvents": [
+        {
+          "from_state": "none",
+          "to_state": "allocated",
+          "quantity": 1,
+          "reason": "initial_placement"
+        }
+      ],
+      "cycles": [
+        {
+          "sequence_number": 1,
+          "state": "active",
+          "allocated_units": 1
+        }
+      ],
+      "rewards": [],
+      "trustEvents": [
+        {
+          "event_type": "loyalty_cycle.allocated",
+          "actor_type": "customer"
+        },
+        {
+          "event_type": "purchase.recorded",
+          "actor_type": "owner"
+        },
+        {
+          "event_type": "purchase.verified",
+          "actor_type": "customer"
+        },
+        {
+          "event_type": "verified_units.issued",
+          "actor_type": "customer"
+        }
+      ],
+      "intents": [
+        {
+          "intent_type": "purchase_recorded_customer",
+          "recipient_type": "customer",
+          "status": "pending"
+        },
+        {
+          "intent_type": "purchase_verified_business",
+          "recipient_type": "business",
+          "status": "pending"
+        }
+      ],
+      "outbox": [
+        {
+          "event_type": "loyalty_cycle_allocated"
+        },
+        {
+          "event_type": "purchase_recorded"
+        },
+        {
+          "event_type": "purchase_verified"
+        },
+        {
+          "event_type": "verified_units_issued"
+        }
+      ]
+    }
+  },
+  "exact_completion": {
+    "results": [
+      {
+        "resultKeys": ["cycle", "purchase", "reward", "verifiedUnit"],
+        "purchaseStatus": "verified",
+        "verifiedUnitQuantity": 10,
+        "cycleState": "reward_available",
+        "cycleAllocatedUnits": 10,
+        "rewardPresent": true
+      }
+    ],
+    "traces": [
+      [
+        "SELECT idempotency_keys",
+        "BEGIN",
+        "INSERT idempotency_keys",
+        "SELECT purchase_records FOR UPDATE",
+        "UPDATE purchase_records",
+        "SELECT reward_programs",
+        "INSERT purchase_record_events",
+        "INSERT verified_units",
+        "INSERT loyalty_cycle_streams",
+        "SELECT loyalty_cycle_streams FOR UPDATE",
+        "SELECT loyalty_cycles FOR UPDATE",
+        "UPDATE loyalty_cycle_streams",
+        "INSERT loyalty_cycles",
+        "INSERT verified_unit_allocations",
+        "INSERT verified_unit_allocation_events",
+        "UPDATE loyalty_cycles",
+        "SELECT reward_program_versions",
+        "INSERT rewards",
+        "UPDATE loyalty_cycles",
+        "INSERT trust_events",
+        "INSERT trust_events",
+        "INSERT trust_events",
+        "INSERT trust_events",
+        "INSERT trust_events",
+        "INSERT notification_intents",
+        "INSERT notification_intents",
+        "INSERT purchase_outbox",
+        "INSERT purchase_outbox",
+        "INSERT purchase_outbox",
+        "INSERT purchase_outbox",
+        "INSERT purchase_outbox",
+        "UPDATE idempotency_keys",
+        "COMMIT"
+      ]
+    ],
+    "idempotency": [
+      {
+        "operation_type": "purchase.verify",
+        "status": "completed"
+      }
+    ],
+    "fingerprint": {
+      "purchases": [
+        {
+          "status": "verified",
+          "has_verified_at": true,
+          "quantity": 10
+        }
+      ],
+      "events": [
+        {
+          "from_status": null,
+          "to_status": "waiting_for_customer",
+          "actor_type": "owner",
+          "reason": null,
+          "payload_keys": ["programCurrentVersionId", "rewardProgramVersionId"]
+        },
+        {
+          "from_status": "waiting_for_customer",
+          "to_status": "verified",
+          "actor_type": "customer",
+          "reason": null,
+          "payload_keys": ["programCurrentVersionId", "rewardProgramVersionId", "versionRebound"]
+        }
+      ],
+      "verifiedUnits": [
+        {
+          "entry_type": "credit",
+          "quantity": 10,
+          "reason_code": "purchase_verified"
+        }
+      ],
+      "allocations": [
+        {
+          "state": "allocated",
+          "allocated_quantity": 10,
+          "allocation_order": 0,
+          "in_cycle": true
+        }
+      ],
+      "allocationEvents": [
+        {
+          "from_state": "none",
+          "to_state": "allocated",
+          "quantity": 10,
+          "reason": "initial_placement"
+        }
+      ],
+      "cycles": [
+        {
+          "sequence_number": 1,
+          "state": "reward_available",
+          "allocated_units": 10
+        }
+      ],
+      "rewards": [
+        {
+          "state": "available",
+          "reward_quantity": 1
+        }
+      ],
+      "trustEvents": [
+        {
+          "event_type": "loyalty_cycle.allocated",
+          "actor_type": "customer"
+        },
+        {
+          "event_type": "loyalty_cycle.reward_available",
+          "actor_type": "customer"
+        },
+        {
+          "event_type": "purchase.recorded",
+          "actor_type": "owner"
+        },
+        {
+          "event_type": "purchase.verified",
+          "actor_type": "customer"
+        },
+        {
+          "event_type": "reward.available",
+          "actor_type": "customer"
+        },
+        {
+          "event_type": "verified_units.issued",
+          "actor_type": "customer"
+        }
+      ],
+      "intents": [
+        {
+          "intent_type": "purchase_recorded_customer",
+          "recipient_type": "customer",
+          "status": "pending"
+        },
+        {
+          "intent_type": "purchase_verified_business",
+          "recipient_type": "business",
+          "status": "pending"
+        },
+        {
+          "intent_type": "reward_available_customer",
+          "recipient_type": "customer",
+          "status": "pending"
+        }
+      ],
+      "outbox": [
+        {
+          "event_type": "loyalty_cycle_allocated"
+        },
+        {
+          "event_type": "loyalty_cycle_reward_available"
+        },
+        {
+          "event_type": "purchase_recorded"
+        },
+        {
+          "event_type": "purchase_verified"
+        },
+        {
+          "event_type": "reward_available"
+        },
+        {
+          "event_type": "verified_units_issued"
+        }
+      ]
+    }
+  },
+  "overflow_with_pending": {
+    "results": [
+      {
+        "resultKeys": ["cycle", "purchase", "reward", "verifiedUnit"],
+        "purchaseStatus": "verified",
+        "verifiedUnitQuantity": 12,
+        "cycleState": "reward_available",
+        "cycleAllocatedUnits": 10,
+        "rewardPresent": true
+      }
+    ],
+    "traces": [
+      [
+        "SELECT idempotency_keys",
+        "BEGIN",
+        "INSERT idempotency_keys",
+        "SELECT purchase_records FOR UPDATE",
+        "UPDATE purchase_records",
+        "SELECT reward_programs",
+        "INSERT purchase_record_events",
+        "INSERT verified_units",
+        "INSERT loyalty_cycle_streams",
+        "SELECT loyalty_cycle_streams FOR UPDATE",
+        "SELECT loyalty_cycles FOR UPDATE",
+        "UPDATE loyalty_cycle_streams",
+        "INSERT loyalty_cycles",
+        "INSERT verified_unit_allocations",
+        "INSERT verified_unit_allocation_events",
+        "UPDATE loyalty_cycles",
+        "INSERT verified_unit_allocations",
+        "INSERT verified_unit_allocation_events",
+        "SELECT reward_program_versions",
+        "INSERT rewards",
+        "UPDATE loyalty_cycles",
+        "INSERT trust_events",
+        "INSERT trust_events",
+        "INSERT trust_events",
+        "INSERT trust_events",
+        "INSERT trust_events",
+        "INSERT notification_intents",
+        "INSERT notification_intents",
+        "INSERT purchase_outbox",
+        "INSERT purchase_outbox",
+        "INSERT purchase_outbox",
+        "INSERT purchase_outbox",
+        "INSERT purchase_outbox",
+        "UPDATE idempotency_keys",
+        "COMMIT"
+      ]
+    ],
+    "idempotency": [
+      {
+        "operation_type": "purchase.verify",
+        "status": "completed"
+      }
+    ],
+    "fingerprint": {
+      "purchases": [
+        {
+          "status": "verified",
+          "has_verified_at": true,
+          "quantity": 12
+        }
+      ],
+      "events": [
+        {
+          "from_status": null,
+          "to_status": "waiting_for_customer",
+          "actor_type": "owner",
+          "reason": null,
+          "payload_keys": ["programCurrentVersionId", "rewardProgramVersionId"]
+        },
+        {
+          "from_status": "waiting_for_customer",
+          "to_status": "verified",
+          "actor_type": "customer",
+          "reason": null,
+          "payload_keys": ["programCurrentVersionId", "rewardProgramVersionId", "versionRebound"]
+        }
+      ],
+      "verifiedUnits": [
+        {
+          "entry_type": "credit",
+          "quantity": 12,
+          "reason_code": "purchase_verified"
+        }
+      ],
+      "allocations": [
+        {
+          "state": "allocated",
+          "allocated_quantity": 10,
+          "allocation_order": 0,
+          "in_cycle": true
+        },
+        {
+          "state": "pending",
+          "allocated_quantity": 2,
+          "allocation_order": 1,
+          "in_cycle": false
+        }
+      ],
+      "allocationEvents": [
+        {
+          "from_state": "none",
+          "to_state": "allocated",
+          "quantity": 10,
+          "reason": "initial_placement"
+        },
+        {
+          "from_state": "none",
+          "to_state": "pending",
+          "quantity": 2,
+          "reason": "initial_placement"
+        }
+      ],
+      "cycles": [
+        {
+          "sequence_number": 1,
+          "state": "reward_available",
+          "allocated_units": 10
+        }
+      ],
+      "rewards": [
+        {
+          "state": "available",
+          "reward_quantity": 1
+        }
+      ],
+      "trustEvents": [
+        {
+          "event_type": "loyalty_cycle.allocated",
+          "actor_type": "customer"
+        },
+        {
+          "event_type": "loyalty_cycle.reward_available",
+          "actor_type": "customer"
+        },
+        {
+          "event_type": "purchase.recorded",
+          "actor_type": "owner"
+        },
+        {
+          "event_type": "purchase.verified",
+          "actor_type": "customer"
+        },
+        {
+          "event_type": "reward.available",
+          "actor_type": "customer"
+        },
+        {
+          "event_type": "verified_units.issued",
+          "actor_type": "customer"
+        }
+      ],
+      "intents": [
+        {
+          "intent_type": "purchase_recorded_customer",
+          "recipient_type": "customer",
+          "status": "pending"
+        },
+        {
+          "intent_type": "purchase_verified_business",
+          "recipient_type": "business",
+          "status": "pending"
+        },
+        {
+          "intent_type": "reward_available_customer",
+          "recipient_type": "customer",
+          "status": "pending"
+        }
+      ],
+      "outbox": [
+        {
+          "event_type": "loyalty_cycle_allocated"
+        },
+        {
+          "event_type": "loyalty_cycle_reward_available"
+        },
+        {
+          "event_type": "purchase_recorded"
+        },
+        {
+          "event_type": "purchase_verified"
+        },
+        {
+          "event_type": "reward_available"
+        },
+        {
+          "event_type": "verified_units_issued"
+        }
+      ]
+    }
+  },
+  "two_purchases_into_one_cycle": {
+    "results": [
+      {
+        "resultKeys": ["cycle", "purchase", "reward", "verifiedUnit"],
+        "purchaseStatus": "verified",
+        "verifiedUnitQuantity": 4,
+        "cycleState": "active",
+        "cycleAllocatedUnits": 4,
+        "rewardPresent": false
+      },
+      {
+        "resultKeys": ["cycle", "purchase", "reward", "verifiedUnit"],
+        "purchaseStatus": "verified",
+        "verifiedUnitQuantity": 7,
+        "cycleState": "reward_available",
+        "cycleAllocatedUnits": 10,
+        "rewardPresent": true
+      }
+    ],
+    "traces": [
+      [
+        "SELECT idempotency_keys",
+        "BEGIN",
+        "INSERT idempotency_keys",
+        "SELECT purchase_records FOR UPDATE",
+        "UPDATE purchase_records",
+        "SELECT reward_programs",
+        "INSERT purchase_record_events",
+        "INSERT verified_units",
+        "INSERT loyalty_cycle_streams",
+        "SELECT loyalty_cycle_streams FOR UPDATE",
+        "SELECT loyalty_cycles FOR UPDATE",
+        "UPDATE loyalty_cycle_streams",
+        "INSERT loyalty_cycles",
+        "INSERT verified_unit_allocations",
+        "INSERT verified_unit_allocation_events",
+        "UPDATE loyalty_cycles",
+        "INSERT trust_events",
+        "INSERT trust_events",
+        "INSERT trust_events",
+        "INSERT notification_intents",
+        "INSERT purchase_outbox",
+        "INSERT purchase_outbox",
+        "INSERT purchase_outbox",
+        "UPDATE idempotency_keys",
+        "COMMIT"
+      ],
+      [
+        "SELECT idempotency_keys",
+        "BEGIN",
+        "INSERT idempotency_keys",
+        "SELECT purchase_records FOR UPDATE",
+        "UPDATE purchase_records",
+        "SELECT reward_programs",
+        "INSERT purchase_record_events",
+        "INSERT verified_units",
+        "INSERT loyalty_cycle_streams",
+        "SELECT loyalty_cycle_streams FOR UPDATE",
+        "SELECT loyalty_cycles FOR UPDATE",
+        "INSERT verified_unit_allocations",
+        "INSERT verified_unit_allocation_events",
+        "UPDATE loyalty_cycles",
+        "INSERT verified_unit_allocations",
+        "INSERT verified_unit_allocation_events",
+        "SELECT reward_program_versions",
+        "INSERT rewards",
+        "UPDATE loyalty_cycles",
+        "INSERT trust_events",
+        "INSERT trust_events",
+        "INSERT trust_events",
+        "INSERT trust_events",
+        "INSERT trust_events",
+        "INSERT notification_intents",
+        "INSERT notification_intents",
+        "INSERT purchase_outbox",
+        "INSERT purchase_outbox",
+        "INSERT purchase_outbox",
+        "INSERT purchase_outbox",
+        "INSERT purchase_outbox",
+        "UPDATE idempotency_keys",
+        "COMMIT"
+      ]
+    ],
+    "idempotency": [
+      {
+        "operation_type": "purchase.verify",
+        "status": "completed"
+      },
+      {
+        "operation_type": "purchase.verify",
+        "status": "completed"
+      }
+    ],
+    "fingerprint": {
+      "purchases": [
+        {
+          "status": "verified",
+          "has_verified_at": true,
+          "quantity": 4
+        },
+        {
+          "status": "verified",
+          "has_verified_at": true,
+          "quantity": 7
+        }
+      ],
+      "events": [
+        {
+          "from_status": null,
+          "to_status": "waiting_for_customer",
+          "actor_type": "owner",
+          "reason": null,
+          "payload_keys": ["programCurrentVersionId", "rewardProgramVersionId"]
+        },
+        {
+          "from_status": "waiting_for_customer",
+          "to_status": "verified",
+          "actor_type": "customer",
+          "reason": null,
+          "payload_keys": ["programCurrentVersionId", "rewardProgramVersionId", "versionRebound"]
+        },
+        {
+          "from_status": null,
+          "to_status": "waiting_for_customer",
+          "actor_type": "owner",
+          "reason": null,
+          "payload_keys": ["programCurrentVersionId", "rewardProgramVersionId"]
+        },
+        {
+          "from_status": "waiting_for_customer",
+          "to_status": "verified",
+          "actor_type": "customer",
+          "reason": null,
+          "payload_keys": ["programCurrentVersionId", "rewardProgramVersionId", "versionRebound"]
+        }
+      ],
+      "verifiedUnits": [
+        {
+          "entry_type": "credit",
+          "quantity": 4,
+          "reason_code": "purchase_verified"
+        },
+        {
+          "entry_type": "credit",
+          "quantity": 7,
+          "reason_code": "purchase_verified"
+        }
+      ],
+      "allocations": [
+        {
+          "state": "allocated",
+          "allocated_quantity": 4,
+          "allocation_order": 0,
+          "in_cycle": true
+        },
+        {
+          "state": "allocated",
+          "allocated_quantity": 6,
+          "allocation_order": 0,
+          "in_cycle": true
+        },
+        {
+          "state": "pending",
+          "allocated_quantity": 1,
+          "allocation_order": 1,
+          "in_cycle": false
+        }
+      ],
+      "allocationEvents": [
+        {
+          "from_state": "none",
+          "to_state": "allocated",
+          "quantity": 4,
+          "reason": "initial_placement"
+        },
+        {
+          "from_state": "none",
+          "to_state": "allocated",
+          "quantity": 6,
+          "reason": "initial_placement"
+        },
+        {
+          "from_state": "none",
+          "to_state": "pending",
+          "quantity": 1,
+          "reason": "initial_placement"
+        }
+      ],
+      "cycles": [
+        {
+          "sequence_number": 1,
+          "state": "reward_available",
+          "allocated_units": 10
+        }
+      ],
+      "rewards": [
+        {
+          "state": "available",
+          "reward_quantity": 1
+        }
+      ],
+      "trustEvents": [
+        {
+          "event_type": "loyalty_cycle.allocated",
+          "actor_type": "customer"
+        },
+        {
+          "event_type": "loyalty_cycle.allocated",
+          "actor_type": "customer"
+        },
+        {
+          "event_type": "loyalty_cycle.reward_available",
+          "actor_type": "customer"
+        },
+        {
+          "event_type": "purchase.recorded",
+          "actor_type": "owner"
+        },
+        {
+          "event_type": "purchase.recorded",
+          "actor_type": "owner"
+        },
+        {
+          "event_type": "purchase.verified",
+          "actor_type": "customer"
+        },
+        {
+          "event_type": "purchase.verified",
+          "actor_type": "customer"
+        },
+        {
+          "event_type": "reward.available",
+          "actor_type": "customer"
+        },
+        {
+          "event_type": "verified_units.issued",
+          "actor_type": "customer"
+        },
+        {
+          "event_type": "verified_units.issued",
+          "actor_type": "customer"
+        }
+      ],
+      "intents": [
+        {
+          "intent_type": "purchase_recorded_customer",
+          "recipient_type": "customer",
+          "status": "pending"
+        },
+        {
+          "intent_type": "purchase_recorded_customer",
+          "recipient_type": "customer",
+          "status": "pending"
+        },
+        {
+          "intent_type": "purchase_verified_business",
+          "recipient_type": "business",
+          "status": "pending"
+        },
+        {
+          "intent_type": "purchase_verified_business",
+          "recipient_type": "business",
+          "status": "pending"
+        },
+        {
+          "intent_type": "reward_available_customer",
+          "recipient_type": "customer",
+          "status": "pending"
+        }
+      ],
+      "outbox": [
+        {
+          "event_type": "loyalty_cycle_allocated"
+        },
+        {
+          "event_type": "loyalty_cycle_allocated"
+        },
+        {
+          "event_type": "loyalty_cycle_reward_available"
+        },
+        {
+          "event_type": "purchase_recorded"
+        },
+        {
+          "event_type": "purchase_recorded"
+        },
+        {
+          "event_type": "purchase_verified"
+        },
+        {
+          "event_type": "purchase_verified"
+        },
+        {
+          "event_type": "reward_available"
+        },
+        {
+          "event_type": "verified_units_issued"
+        },
+        {
+          "event_type": "verified_units_issued"
+        }
+      ]
+    }
+  }
+}

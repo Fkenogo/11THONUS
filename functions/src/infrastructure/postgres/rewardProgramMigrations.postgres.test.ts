@@ -76,6 +76,8 @@ async function dropAll() {
     "commercial_consumption_events_ledger_guard",
     "commercial_consumption_claims_reward_business_guard",
     "commercial_reject_mutation",
+    // WP-COM-05a (0026): the guard function outlives its table's CASCADE drop.
+    "purchase_records_pending_admission_guard",
   ]) {
     await pool.query(`DROP FUNCTION IF EXISTS ${fn}() CASCADE`);
   }
@@ -146,6 +148,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0023",
       "0024",
       "0025",
+      "0026",
     ]);
   });
 
@@ -177,6 +180,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0023",
       "0024",
       "0025",
+      "0026",
     ]);
 
     for (const table of [
@@ -244,12 +248,13 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0023",
       "0024",
       "0025",
+      "0026",
     ]);
   }, 15000);
 
   it("rolls back the full migration set and re-applies cleanly", async () => {
     await migrateUp(pool, migrationsDir);
-    await migrateDown(pool, migrationsDir, 25);
+    await migrateDown(pool, migrationsDir, 26);
 
     for (const table of [
       "reward_programs",
@@ -291,6 +296,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0023",
       "0024",
       "0025",
+      "0026",
     ]);
     const applied = await getAppliedMigrations(pool);
     expect(applied.map((a) => a.version)).toEqual([
@@ -319,6 +325,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0023",
       "0024",
       "0025",
+      "0026",
     ]);
   }, 15000);
 
@@ -361,7 +368,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
 
     // The guard refuses BEFORE dropping anything: governed redemption
     // evidence is never silently discarded by a rollback.
-    await expect(migrateDown(pool, migrationsDir, 6)).rejects.toThrow(/refusing to roll back/i);
+    await expect(migrateDown(pool, migrationsDir, 7)).rejects.toThrow(/refusing to roll back/i);
 
     const reg = await pool.query("SELECT to_regclass('public.redemptions') AS reg");
     expect(reg.rows[0].reg).not.toBeNull();
@@ -606,6 +613,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         "0023",
         "0024",
         "0025",
+        "0026",
       ]);
 
       const preserved = await pool.query<{
@@ -1479,6 +1487,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         "0023",
         "0024",
         "0025",
+        "0026",
       ]);
 
       expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
@@ -1574,7 +1583,16 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       );
 
       const result = await migrateUp(pool, migrationsDir);
-      expect(result.applied).toEqual(["0019", "0020", "0021", "0022", "0023", "0024", "0025"]);
+      expect(result.applied).toEqual([
+        "0019",
+        "0020",
+        "0021",
+        "0022",
+        "0023",
+        "0024",
+        "0025",
+        "0026",
+      ]);
       expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
 
       // The backfill's own evidence survives the drop: the marker item
@@ -1636,7 +1654,16 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       );
 
       const result = await migrateUp(pool, migrationsDir);
-      expect(result.applied).toEqual(["0019", "0020", "0021", "0022", "0023", "0024", "0025"]);
+      expect(result.applied).toEqual([
+        "0019",
+        "0020",
+        "0021",
+        "0022",
+        "0023",
+        "0024",
+        "0025",
+        "0026",
+      ]);
       expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
 
       const marker = await pool.query(
@@ -1711,7 +1738,16 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       );
 
       const result = await migrateUp(pool, migrationsDir);
-      expect(result.applied).toEqual(["0019", "0020", "0021", "0022", "0023", "0024", "0025"]);
+      expect(result.applied).toEqual([
+        "0019",
+        "0020",
+        "0021",
+        "0022",
+        "0023",
+        "0024",
+        "0025",
+        "0026",
+      ]);
       expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
     }, 15000);
 
@@ -1771,7 +1807,16 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       );
 
       const result = await migrateUp(pool, migrationsDir);
-      expect(result.applied).toEqual(["0019", "0020", "0021", "0022", "0023", "0024", "0025"]);
+      expect(result.applied).toEqual([
+        "0019",
+        "0020",
+        "0021",
+        "0022",
+        "0023",
+        "0024",
+        "0025",
+        "0026",
+      ]);
       expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
     }, 15000);
 
@@ -2132,7 +2177,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         [versionId, item.rows[0].id],
       );
 
-      await migrateDown(pool, migrationsDir, 7);
+      await migrateDown(pool, migrationsDir, 8);
 
       // Structural shell only: table exists, is empty, keeps the 0003
       // shape -- history is NOT reconstructed.
@@ -2160,7 +2205,16 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
 
       // Re-applying 0019 over the empty shell drops it again.
       const reapplied = await migrateUp(pool, migrationsDir);
-      expect(reapplied.applied).toEqual(["0019", "0020", "0021", "0022", "0023", "0024", "0025"]);
+      expect(reapplied.applied).toEqual([
+        "0019",
+        "0020",
+        "0021",
+        "0022",
+        "0023",
+        "0024",
+        "0025",
+        "0026",
+      ]);
       expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
     }, 15000);
   });
@@ -2300,6 +2354,105 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       await expect(
         pool.query(`DELETE FROM qualifying_items WHERE id = $1`, [itemId]),
       ).rejects.toThrow();
+    });
+
+    describe("WP-COM-05a: 0026 purchase pending_admission", () => {
+      async function seedWaitingPurchase(tag: string): Promise<string> {
+        const businessId = `biz-0026-${tag}`;
+        const programId = await insertProgram(businessId);
+        const versionId = await insertVersion(programId);
+        const itemId = await insertItem(businessId, "Item 0026");
+        await bindItem(versionId, itemId);
+        await insertPurchase({ businessId, programId, versionId, qualifyingItemId: itemId });
+        const row = await pool.query<{ id: string }>(
+          `SELECT id FROM purchase_records WHERE business_id = $1`,
+          [businessId],
+        );
+        return row.rows[0].id;
+      }
+
+      it("up: status vocabulary, state integrity, guard trigger and the two partial indexes exist", async () => {
+        const defs = await pool.query<{ conname: string; def: string }>(
+          `SELECT conname, pg_get_constraintdef(oid) AS def FROM pg_constraint
+            WHERE conrelid = 'purchase_records'::regclass
+              AND conname IN ('purchase_records_status_check','purchase_records_verified_fields')`,
+        );
+        for (const d of defs.rows) expect(d.def, d.conname).toContain("pending_admission");
+        expect(defs.rows).toHaveLength(2);
+        const trig = await pool.query(
+          `SELECT 1 FROM pg_trigger WHERE tgname = 'purchase_records_pending_admission_guard' AND NOT tgisinternal`,
+        );
+        expect(trig.rows).toHaveLength(1);
+        const idx = await pool.query<{ indexname: string; indexdef: string }>(
+          `SELECT indexname, indexdef FROM pg_indexes
+            WHERE tablename = 'purchase_records' AND indexname LIKE 'purchase_records_pending_admission_%'
+            ORDER BY indexname`,
+        );
+        expect(idx.rows.map((r) => r.indexname)).toEqual([
+          "purchase_records_pending_admission_customer_idx",
+          "purchase_records_pending_admission_fifo_idx",
+        ]);
+        for (const r of idx.rows) expect(r.indexdef).toContain("pending_admission");
+      });
+
+      it("is additive: existing waiting rows are untouched and no pending_admission row is created", async () => {
+        const id = await seedWaitingPurchase("additive");
+        const row = await pool.query<{ status: string }>(
+          `SELECT status FROM purchase_records WHERE id = $1`,
+          [id],
+        );
+        expect(row.rows[0].status).toBe("waiting_for_customer");
+        const pending = await pool.query(
+          `SELECT 1 FROM purchase_records WHERE status = 'pending_admission'`,
+        );
+        expect(pending.rows).toHaveLength(0);
+      });
+
+      it("down FAILS CLOSED while any Purchase is pending_admission, and changes nothing", async () => {
+        const id = await seedWaitingPurchase("down-refuse");
+        await pool.query(`UPDATE purchase_records SET status = 'pending_admission' WHERE id = $1`, [
+          id,
+        ]);
+        await expect(migrateDown(pool, migrationsDir, 1)).rejects.toThrow(
+          /0026: refusing to roll back/i,
+        );
+        const row = await pool.query<{ status: string }>(
+          `SELECT status FROM purchase_records WHERE id = $1`,
+          [id],
+        );
+        expect(row.rows[0].status).toBe("pending_admission");
+        const v = await pool.query<{ max: string }>(`SELECT max(version) FROM schema_migrations`);
+        expect(v.rows[0].max).toBe("0026");
+      });
+
+      it("down restores the pre-0026 schema exactly, and up re-applies cleanly (round trip)", async () => {
+        const id = await seedWaitingPurchase("roundtrip");
+        await migrateDown(pool, migrationsDir, 1);
+        const defs = await pool.query<{ def: string }>(
+          `SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint
+            WHERE conrelid = 'purchase_records'::regclass
+              AND conname IN ('purchase_records_status_check','purchase_records_verified_fields')`,
+        );
+        for (const d of defs.rows) expect(d.def).not.toContain("pending_admission");
+        expect(
+          (
+            await pool.query(
+              `SELECT 1 FROM pg_proc WHERE proname = 'purchase_records_pending_admission_guard'`,
+            )
+          ).rows,
+        ).toHaveLength(0);
+        await expect(
+          pool.query(`UPDATE purchase_records SET status = 'pending_admission' WHERE id = $1`, [
+            id,
+          ]),
+        ).rejects.toThrow(/purchase_records_status_check/);
+
+        const again = await migrateUp(pool, migrationsDir);
+        expect(again.applied).toEqual(["0026"]);
+        await pool.query(`UPDATE purchase_records SET status = 'pending_admission' WHERE id = $1`, [
+          id,
+        ]);
+      });
     });
   });
 });
