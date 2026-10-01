@@ -1,25 +1,41 @@
 /**
  * `reevaluatePendingAdmissions` -- repeat-safe processor for held Purchases
- * (`WP-COM-05b`; design §8.11-§8.13, §22.3 sequence 2).
+ * (`WP-COM-05b`, `CORR-001`; design §8.11-§8.13, §22.3 sequence 2).
  *
- * A callable service, not a scheduler: nothing here is scheduled (no scheduler
- * exists in the repository; that belongs to a later package). It re-evaluates
- * `pending_admission` Purchases in deterministic FIFO order
- * `(purchase_date ASC, id ASC)`, ONE TRANSACTION PER PURCHASE:
+ * POLICY: FIFO SCAN ORDER + SKIP-AND-CONTINUE (Founder decision, CORR-001). Strict
+ * first-fit-blocks-the-queue ("stop at the first Purchase that does not fit") is NOT used:
+ * a Purchase's admission cost (`newBlocks`) varies, so one large held Purchase must not
+ * starve smaller later ones that fit.
+ *
+ * A callable service, not a scheduler: nothing here is scheduled (that belongs to a later
+ * package). Per Business it examines `pending_admission` Purchases in deterministic oldest-first
+ * order `(purchase_date ASC, id ASC)`, ONE TRANSACTION PER PURCHASE:
  *
  *   Purchase lock `FOR UPDATE` (a Purchase that is no longer `pending_admission` is
  *   `not_pending` and ignored) -> stream -> Cycle -> [account] -> DECISION.
- *     HOLD  -> the transaction writes NOTHING (no key, no row, no state change) and the pass
- *              STOPS for that Business: a later Purchase never overtakes an earlier one.
+ *     HOLD  -> the transaction writes NOTHING (no key, no row, no state change); the Purchase
+ *              stays `pending_admission` and the scan CONTINUES with the next-oldest.
  *     ADMIT -> the same `admitOrHoldPurchase` ADMIT path as a live verification, with the
  *              `system` actor: reserve `admit:<purchase_id>` after the decision, Verified
  *              Unit first, Commercial children after it, the remaining Loyalty writes.
  *
- * Safe to repeat and to run concurrently: per-Purchase transactions serialise on the
- * Purchase lock, the loser sees `not_pending`, and a hold never leaves an idempotency
- * reservation behind that could poison another worker. Restoration of capacity (a settlement,
- * a credit, a trial grant, restoring standing) only PERMITS admission; it never admits by
- * itself -- this processor does.
+ * What still orders Purchases: (1) the scan order itself, oldest first, every run; (2) the
+ * STREAM rule -- a Purchase is not admitted while an OLDER Purchase of the same customer/program
+ * stream is still held, so units enter a stream in order. The Business-wide "no overtaking"
+ * rule (design §8.11 rule 2) is deliberately NOT applied by the processor: that rule is exactly
+ * what would re-create head-of-line blocking.
+ *
+ * RESIDUAL STARVATION RISK (recorded, not mitigated here): because larger-cost Purchases can
+ * be skipped while smaller ones continue to be admitted, a large Purchase can stay held for a
+ * long time under sustained small admissions. Every run re-evaluates it first (oldest-first);
+ * no priority aging, reservation guarantee or hidden queue exists. A later operational policy
+ * can add one if observed backlog warrants it.
+ *
+ * Safe to repeat and to run concurrently: per-Purchase transactions serialise on the Purchase
+ * lock, capacity decisions serialise on the Commercial account lock, the loser of a race sees
+ * `not_pending`, and a hold never leaves an idempotency reservation behind that could poison
+ * another worker. Restoration of capacity (a settlement, a credit, a trial grant, restoring
+ * standing) only PERMITS admission; it never admits by itself -- this processor does.
  */
 
 import type { PlatformPostgresPool } from "../../../infrastructure/postgres/postgresPool";
@@ -48,7 +64,11 @@ export type ReevaluatePendingAdmissionsParams = {
   readonly businessId?: string;
   readonly port: PurchaseAdmissionCapacityPort;
   readonly correlationId: string;
-  /** Upper bound of Purchases examined per Business in one pass (default 100). */
+  /**
+   * Upper bound of held Purchases examined per Business in one pass, oldest first (default
+   * 1000). Skip-and-continue examines the whole window every pass, so a Purchase beyond it is
+   * not examined until older ones are admitted.
+   */
   readonly maxPerBusiness?: number;
   /** Upper bound of Businesses examined when `businessId` is omitted (default 100). */
   readonly maxBusinesses?: number;
@@ -83,13 +103,13 @@ export async function reevaluatePendingAdmissions(
   for (const businessId of businesses) {
     const candidates = await listPendingAdmissionPurchaseIds(pool, {
       businessId,
-      limit: params.maxPerBusiness ?? 100,
+      limit: params.maxPerBusiness ?? 1000,
     });
     for (const purchaseId of candidates) {
       const outcome = await reevaluateOne(pool, params, purchaseId);
       results.push(outcome);
-      // No overtaking (design §8.11): stop at the first Purchase that still does not fit.
-      if (outcome.outcome === "held") break;
+      // Skip-and-continue: a Purchase that does not fit stays `pending_admission`, unchanged,
+      // and the scan moves on to the next-oldest one.
     }
   }
   return {
@@ -120,6 +140,8 @@ export async function reevaluateOne(
       port: params.port,
       decidedBy: "admission_processor",
       onHold: "none",
+      // Skip-and-continue: the Business-wide no-overtaking rule is not applied here.
+      applyBusinessQueue: false,
     });
     return decided.outcome === "held"
       ? { purchaseId, outcome: "held", reason: decided.reason }

@@ -212,6 +212,7 @@ export async function verifyPurchase(
         port,
         decidedBy: "customer_verify",
         onHold: "record",
+        applyBusinessQueue: true,
       });
       const enforcedResult: VerifyPurchaseResult =
         decided.outcome === "held"

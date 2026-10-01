@@ -1112,6 +1112,27 @@ describe("WP-COM-05b — HOLD", () => {
     }
   });
 
+  it("RETAINED POLICY (Founder-confirmed): pooled usable capacity -- a negative paid balance reduces it even when uncommitted trial exists", async () => {
+    // usable = (trial + paid) - (trial reserved + paid reserved). Trial 1 uncommitted, paid -1: net 0.
+    const world = await seedWorld();
+    await openAccount(world.businessId, { trial: 1 });
+    await post(world.businessId, "credit_adjustment", "paid", -1);
+    const a0 = await account(world.businessId);
+    expect(a0.trialRemainingUnits - a0.trialReservedUnits).toBe(1); // uncommitted trial exists
+    expect(availableCapacity(a0)).toBe(0); // ...but pooled usable capacity is 0
+    const id = await record(world, 1);
+    expect((await verifyEnforced(world.customer, id)).outcome).toBe("pending_admission");
+    expect(await holdReasonOf(id)).toBe("insufficient_capacity");
+    // Credit restores the pooled capacity (paid back to 0 -> usable 1): the start is admitted, trial-earmarked.
+    await post(world.businessId, "credit_grant", "paid", 1);
+    expect(availableCapacity(await account(world.businessId))).toBe(1);
+    expect((await reevaluateOne(pool, { port, correlationId: nextId("corr") }, id)).outcome).toBe(
+      "admitted",
+    );
+    expect((await listBlocksForBusiness(pool, world.businessId))[0].fundingBucket).toBe("trial");
+    await assertAccountingInvariants(world.businessId);
+  });
+
   it("stream queue: a later Purchase of a stream that already holds one is held behind it", async () => {
     const world = await seedWorld();
     await openAccount(world.businessId);
@@ -1378,38 +1399,174 @@ describe("WP-COM-05b — reevaluatePendingAdmissions", () => {
     expect(await count("SELECT 1 FROM verified_units WHERE purchase_record_id = $1", [id])).toBe(1);
   });
 
-  it("FIFO with no overtaking: stops at the first Purchase that does not fit", async () => {
+  // ---- CORR-001: FIFO scan order + skip-and-continue ---------------------------------------
+  // A Purchase's cost is the number of new Circle positions it begins: on an empty stream a
+  // quantity of 1..10 costs 1, 11..20 costs 2, 21..30 costs 3.
+  const COST_QTY: Record<number, number> = { 1: 1, 2: 11, 3: 21 };
+
+  /** Holds one Purchase per customer, in purchase-date order (hour 9, 10, 11, ...), at zero capacity. */
+  async function heldQueue(world: World, costs: number[]) {
+    const ids: string[] = [];
+    for (let i = 0; i < costs.length; i += 1) {
+      const customer = i === 0 ? world.customer : await seedCustomer();
+      const id = await record(world, COST_QTY[costs[i]], { customer, hour: 9 + i });
+      expect((await verifyEnforced(customer, id)).outcome).toBe("pending_admission");
+      ids.push(id);
+    }
+    return ids;
+  }
+  const scan = (world: World) =>
+    reevaluatePendingAdmissions(pool, {
+      businessId: world.businessId,
+      port,
+      correlationId: nextId("corr"),
+    });
+  const statusesOf = async (ids: string[]) => Promise.all(ids.map((id) => purchaseStatus(id)));
+
+  it("CASE A: capacity 1, P1 costs 2, P2 costs 1 -> P1 stays pending, P2 admits (skip-and-continue)", async () => {
+    const world = await seedWorld();
+    await openAccount(world.businessId);
+    const [p1, p2] = await heldQueue(world, [2, 1]);
+    await post(world.businessId, "trial_grant", "trial", 1);
+    const pass = await scan(world);
+    // Oldest-first scan order, skip then continue.
+    expect(pass.results).toEqual([
+      { purchaseId: p1, outcome: "held", reason: "insufficient_capacity" },
+      { purchaseId: p2, outcome: "admitted" },
+    ]);
+    expect(await statusesOf([p1, p2])).toEqual(["pending_admission", "verified"]);
+    // The skipped Purchase is unchanged: no key, no unit, no reservation of its own.
+    expect(await count("SELECT 1 FROM verified_units WHERE purchase_record_id = $1", [p1])).toBe(0);
+    expect(
+      await count("SELECT 1 FROM idempotency_keys WHERE idempotency_key = $1", [
+        admissionIdempotencyKey(p1),
+      ]),
+    ).toBe(0);
+    expect((await account(world.businessId)).trialReservedUnits).toBe(1);
+    await assertAccountingInvariants(world.businessId);
+  });
+
+  it("CASE B: capacity 2, P1 costs 2, P2 costs 1 -> P1 admits, P2 stays pending", async () => {
+    const world = await seedWorld();
+    await openAccount(world.businessId);
+    const [p1, p2] = await heldQueue(world, [2, 1]);
+    await post(world.businessId, "trial_grant", "trial", 2);
+    const pass = await scan(world);
+    expect(pass.results).toEqual([
+      { purchaseId: p1, outcome: "admitted" },
+      { purchaseId: p2, outcome: "held", reason: "insufficient_capacity" },
+    ]);
+    expect(await statusesOf([p1, p2])).toEqual(["verified", "pending_admission"]);
+    expect((await account(world.businessId)).trialReservedUnits).toBe(2);
+    await assertAccountingInvariants(world.businessId);
+  });
+
+  it("CASE C: capacity 2, P1 costs 3, P2 and P3 cost 1 -> P1 pending, P2 and P3 admit", async () => {
+    const world = await seedWorld();
+    await openAccount(world.businessId);
+    const [p1, p2, p3] = await heldQueue(world, [3, 1, 1]);
+    await post(world.businessId, "trial_grant", "trial", 2);
+    const pass = await scan(world);
+    expect(pass.results).toEqual([
+      { purchaseId: p1, outcome: "held", reason: "insufficient_capacity" },
+      { purchaseId: p2, outcome: "admitted" },
+      { purchaseId: p3, outcome: "admitted" },
+    ]);
+    expect(await statusesOf([p1, p2, p3])).toEqual(["pending_admission", "verified", "verified"]);
+    expect((await account(world.businessId)).trialReservedUnits).toBe(2);
+    await assertAccountingInvariants(world.businessId);
+  });
+
+  it("CASE D: capacity 1, P1 and P2 both cost 2 -> both stay pending, nothing is written", async () => {
+    const world = await seedWorld();
+    await openAccount(world.businessId);
+    const ids = await heldQueue(world, [2, 2]);
+    await post(world.businessId, "trial_grant", "trial", 1);
+    const before = await writeSnapshot(world.businessId);
+    const pass = await scan(world);
+    expect(pass.results.map((r) => r.outcome)).toEqual(["held", "held"]);
+    expect(await statusesOf(ids)).toEqual(["pending_admission", "pending_admission"]);
+    expect(await writeSnapshot(world.businessId)).toEqual(before);
+    expect((await commercialFootprint(world.businessId)).admitKeys).toBe(0);
+  });
+
+  it("CASE E: a skipped older Purchase is admitted by a later run once capacity arrives, still oldest-first", async () => {
+    const world = await seedWorld();
+    await openAccount(world.businessId);
+    const [p1, p2, p3] = await heldQueue(world, [2, 1, 1]);
+    await post(world.businessId, "trial_grant", "trial", 1);
+    const first = await scan(world);
+    expect(first.results.map((r) => [r.purchaseId, r.outcome])).toEqual([
+      [p1, "held"],
+      [p2, "admitted"],
+      [p3, "held"],
+    ]);
+    // More capacity arrives: the OLDEST Purchase is evaluated first and now fits.
+    await post(world.businessId, "trial_grant", "trial", 3);
+    const second = await scan(world);
+    expect(second.results.map((r) => [r.purchaseId, r.outcome])).toEqual([
+      [p1, "admitted"],
+      [p3, "admitted"],
+    ]);
+    expect(await statusesOf([p1, p2, p3])).toEqual(["verified", "verified", "verified"]);
+    expect((await account(world.businessId)).trialReservedUnits).toBe(4);
+    await assertAccountingInvariants(world.businessId);
+  });
+
+  it("scan order is deterministic oldest-first by (purchase_date, id), whatever the recording order", async () => {
     const world = await seedWorld();
     await openAccount(world.businessId);
     const c2 = await seedCustomer();
     const c3 = await seedCustomer();
-    // Held in purchase-date order: c1 (09:00), c2 (10:00), c3 (11:00).
-    const a = await held(world, world.customer, 9);
-    const b = await held(world, c2, 10);
-    const c = await held(world, c3, 11);
+    // Recorded newest-first; the scan must still visit them oldest-first.
+    const late = await record(world, 1, { customer: world.customer, hour: 15 });
+    const mid = await record(world, 1, { customer: c2, hour: 12 });
+    const early = await record(world, 1, { customer: c3, hour: 9 });
+    for (const [c, id] of [
+      [world.customer, late],
+      [c2, mid],
+      [c3, early],
+    ] as const) {
+      expect((await verifyEnforced(c, id)).outcome).toBe("pending_admission");
+    }
+    const pass = await scan(world);
+    expect(pass.results.map((r) => r.purchaseId)).toEqual([early, mid, late]);
+  });
+
+  it("the stream rule still orders one customer's units: a later Purchase of the same stream is not admitted past an older held one", async () => {
+    const world = await seedWorld();
+    await openAccount(world.businessId);
+    const c2 = await seedCustomer();
+    // Same customer: an older 2-position Purchase and a later 1-position Purchase; another customer in between.
+    const older = await record(world, COST_QTY[2], { customer: world.customer, hour: 9 });
+    expect((await verifyEnforced(world.customer, older)).outcome).toBe("pending_admission");
+    const other = await record(world, 1, { customer: c2, hour: 10 });
+    expect((await verifyEnforced(c2, other)).outcome).toBe("pending_admission");
+    const later = await record(world, 1, { customer: world.customer, hour: 11 });
+    expect((await verifyEnforced(world.customer, later)).outcome).toBe("pending_admission");
     await post(world.businessId, "trial_grant", "trial", 1);
-    const pass1 = await reevaluatePendingAdmissions(pool, {
-      businessId: world.businessId,
-      port,
-      correlationId: nextId("corr"),
-    });
-    expect(pass1.results).toEqual([
-      { purchaseId: a, outcome: "admitted" },
-      { purchaseId: b, outcome: "held", reason: "insufficient_capacity" },
+    const pass = await scan(world);
+    expect(pass.results).toEqual([
+      { purchaseId: older, outcome: "held", reason: "insufficient_capacity" },
+      { purchaseId: other, outcome: "admitted" },
+      // Fits by capacity, but its stream's older Purchase is still held: units enter a stream in order.
+      { purchaseId: later, outcome: "held", reason: "stream_queue" },
     ]);
-    expect(await purchaseStatus(c)).toBe("pending_admission");
-    await post(world.businessId, "trial_grant", "trial", 2);
-    const pass2 = await reevaluatePendingAdmissions(pool, {
-      businessId: world.businessId,
-      port,
-      correlationId: nextId("corr"),
-    });
-    expect(pass2.results.map((r) => [r.purchaseId, r.outcome])).toEqual([
-      [b, "admitted"],
-      [c, "admitted"],
-    ]);
-    expect((await account(world.businessId)).trialReservedUnits).toBe(3);
-    await assertAccountingInvariants(world.businessId);
+  });
+
+  it("starvation is bounded to evaluation, not skipped: the large Purchase is examined FIRST on every run", async () => {
+    const world = await seedWorld();
+    await openAccount(world.businessId);
+    const [big, ...small] = await heldQueue(world, [3, 1, 1, 1]);
+    await post(world.businessId, "trial_grant", "trial", 1);
+    for (let i = 0; i < 3; i += 1) {
+      const pass = await scan(world);
+      expect(pass.results[0]).toMatchObject({ purchaseId: big, outcome: "held" });
+      await post(world.businessId, "trial_grant", "trial", 1);
+    }
+    // Residual risk, documented: under sustained small admissions the large one is still held.
+    expect(await purchaseStatus(big)).toBe("pending_admission");
+    expect((await statusesOf(small)).every((x) => x === "verified")).toBe(true);
   });
 
   it("processes every Business that holds a Purchase when no Business is named", async () => {
@@ -1754,6 +1911,144 @@ describe("WP-COM-05b — concurrency", () => {
 });
 
 // ===========================================================================
+// 6A. CONCURRENCY OF THE SKIP-AND-CONTINUE PROCESSOR (CORR-001)
+// ===========================================================================
+
+describe("WP-COM-05b CORR-001 — processor concurrency", () => {
+  const COST_QTY: Record<number, number> = { 1: 1, 2: 11, 3: 21 };
+
+  async function heldQueue(world: World, costs: number[]) {
+    const ids: string[] = [];
+    for (let i = 0; i < costs.length; i += 1) {
+      const customer = i === 0 ? world.customer : await seedCustomer();
+      const id = await record(world, COST_QTY[costs[i]], { customer, hour: 9 + i });
+      expect((await verifyEnforced(customer, id)).outcome).toBe("pending_admission");
+      ids.push(id);
+    }
+    return ids;
+  }
+  const pass = (world: World) =>
+    reevaluatePendingAdmissions(pool, {
+      businessId: world.businessId,
+      port,
+      correlationId: nextId("corr"),
+    });
+
+  async function expectNoDoubleState(world: World, ids: string[]) {
+    // No duplicate Verified Unit, admission, earmark, reservation or admission key per Purchase.
+    for (const id of ids) {
+      expect(
+        await count("SELECT 1 FROM verified_units WHERE purchase_record_id = $1", [id]),
+      ).toBeLessThanOrEqual(1);
+      expect(
+        await count("SELECT 1 FROM commercial_admissions WHERE purchase_record_id = $1", [id]),
+      ).toBeLessThanOrEqual(1);
+      expect(
+        await count("SELECT 1 FROM idempotency_keys WHERE idempotency_key = $1", [
+          admissionIdempotencyKey(id),
+        ]),
+      ).toBeLessThanOrEqual(1);
+    }
+    const blocks = await listBlocksForBusiness(pool, world.businessId);
+    expect(new Set(blocks.map((b) => `${b.streamRef}:${b.blockIndex}`)).size).toBe(blocks.length);
+    await assertAccountingInvariants(world.businessId);
+  }
+
+  it("two full passes at once over [3,1,1,1] with capacity 2: exactly two small Purchases admit, the large one is skipped, no oversubscription", async () => {
+    const world = await seedWorld();
+    await openAccount(world.businessId);
+    const [big, ...small] = await heldQueue(world, [3, 1, 1, 1]);
+    await post(world.businessId, "trial_grant", "trial", 2);
+    const results = await Promise.allSettled([pass(world), pass(world)]);
+    noDeadlocks(results);
+    expect(results.every((r) => r.status === "fulfilled")).toBe(true);
+    expect(await purchaseStatus(big)).toBe("pending_admission");
+    const statuses = await Promise.all(small.map((id) => purchaseStatus(id)));
+    expect(statuses.filter((x) => x === "verified")).toHaveLength(2);
+    expect(statuses.filter((x) => x === "pending_admission")).toHaveLength(1);
+    expect((await account(world.businessId)).trialReservedUnits).toBe(2);
+    expect(await count("SELECT 1 FROM verified_units")).toBe(2);
+    await expectNoDoubleState(world, [big, ...small]);
+  }, 60000);
+
+  it("two workers on two different Purchases competing for one remaining unit: one admits, one stays held", async () => {
+    const world = await seedWorld();
+    await openAccount(world.businessId);
+    const [a, b] = await heldQueue(world, [1, 1]);
+    await post(world.businessId, "trial_grant", "trial", 1);
+    const results = await Promise.allSettled([
+      reevaluateOne(pool, { port, correlationId: nextId("corr") }, a),
+      reevaluateOne(pool, { port, correlationId: nextId("corr") }, b),
+    ]);
+    noDeadlocks(results);
+    const outcomes = results.map((r) => (r.status === "fulfilled" ? r.value.outcome : "error"));
+    expect([...outcomes].sort()).toEqual(["admitted", "held"]);
+    expect((await account(world.businessId)).trialReservedUnits).toBe(1);
+    await expectNoDoubleState(world, [a, b]);
+  }, 60000);
+
+  it("a full pass racing a manual credit adjustment: consistent either order, final pass admits what fits", async () => {
+    const world = await seedWorld();
+    await openAccount(world.businessId);
+    const ids = await heldQueue(world, [2, 1, 1]);
+    const race = await Promise.allSettled([
+      post(world.businessId, "trial_adjustment", "trial", 2),
+      pass(world),
+    ]);
+    noDeadlocks(race);
+    expect(race.every((r) => r.status === "fulfilled")).toBe(true);
+    await pass(world);
+    // Capacity 2 in total: either the cost-2 Purchase, or the two cost-1 Purchases, never more.
+    const a = await account(world.businessId);
+    expect(a.trialReservedUnits).toBeLessThanOrEqual(2);
+    expect(a.trialReservedUnits).toBeGreaterThanOrEqual(2);
+    await expectNoDoubleState(world, ids);
+  }, 60000);
+
+  it("a full pass racing a settlement-confirmation credit: consistent, no stale capacity decision", async () => {
+    const world = await seedWorld();
+    await openAccount(world.businessId);
+    const ids = await heldQueue(world, [2, 1, 1]);
+    const race = await Promise.allSettled([
+      post(world.businessId, "credit_grant", "paid", 2),
+      pass(world),
+    ]);
+    noDeadlocks(race);
+    expect(race.every((r) => r.status === "fulfilled")).toBe(true);
+    await pass(world);
+    expect((await account(world.businessId)).paidReservedUnits).toBe(2);
+    expect(
+      (await listBlocksForBusiness(pool, world.businessId)).every(
+        (x) => x.fundingBucket === "paid",
+      ),
+    ).toBe(true);
+    await expectNoDoubleState(world, ids);
+  }, 60000);
+
+  it("a full pass racing restriction and restore: nothing admitted while restricted, consistent after", async () => {
+    const world = await seedWorld();
+    await openAccount(world.businessId, { trial: 0 });
+    const ids = await heldQueue(world, [2, 1]);
+    await post(world.businessId, "trial_grant", "trial", 3);
+    await setRestriction(world.businessId, true);
+    const restrictedPass = await pass(world);
+    expect(restrictedPass.results.every((r) => r.outcome === "held")).toBe(true);
+    expect(await commercialFootprint(world.businessId)).toMatchObject({
+      admissions: 0,
+      admitKeys: 0,
+    });
+    const race = await Promise.allSettled([setRestriction(world.businessId, false), pass(world)]);
+    noDeadlocks(race);
+    await pass(world);
+    expect(await Promise.all(ids.map((id) => purchaseStatus(id)))).toEqual([
+      "verified",
+      "verified",
+    ]);
+    await expectNoDoubleState(world, ids);
+  }, 60000);
+});
+
+// ===========================================================================
 // 7. PARENT-BEFORE-CHILD, ATOMICITY
 // ===========================================================================
 
@@ -1860,6 +2155,7 @@ describe("WP-COM-05b — Verified Unit ordering and atomic rollback", () => {
           port,
           decidedBy: "customer_verify",
           onHold: "record",
+          applyBusinessQueue: true,
         });
         expect(outcome.outcome).toBe("admitted");
         throw new Error("boom-before-commit");

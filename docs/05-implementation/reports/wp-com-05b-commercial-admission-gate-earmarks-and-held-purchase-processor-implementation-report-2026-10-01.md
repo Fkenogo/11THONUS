@@ -82,7 +82,7 @@ Proofs: (a) the statement trace of a real ADMIT is asserted in this order; (b) n
 
 ## 13. Re-evaluation processor
 
-`reevaluatePendingAdmissions(pool, { businessId?, port, correlationId })` — callable service, **not scheduled** (no scheduler exists; that is a later package). Per Business: FIFO `(purchase_date, id)`, one transaction per Purchase, `not_pending` if the Purchase is no longer held, **stops at the first Purchase that still does not fit**. HOLD writes nothing (verified by snapshot of keys, ledger, version, rows, events, audit); ADMIT reuses `admitOrHoldPurchase` with the `system` actor. Tested: stays held while unavailable (×3, zero writes); admits when capacity appears with `decided_by = admission_processor` and `system` attribution; repeat-safe; FIFO with no overtaking (c1 admitted, c2 held, c3 untouched, then both on more capacity); all-Business pass; 5 concurrent workers → exactly one admits; a holding worker leaves no key to poison a later admit; restoring a restricted Business admits nothing by itself.
+`reevaluatePendingAdmissions(pool, { businessId?, port, correlationId })` — callable service, **not scheduled** (no scheduler exists; that belongs to a later package). **Policy (CORR-001, Founder decision): FIFO scan order + skip-and-continue.** Per Business it examines held Purchases oldest-first by `(purchase_date, id)`, one transaction per Purchase; a Purchase that does not fit stays `pending_admission` exactly as it was (no key, no row) and the scan **continues** with the next-oldest; one that fits is admitted through the same `admitOrHoldPurchase` ADMIT path with the `system` actor. The stream rule still applies (a Purchase is not admitted past an older held Purchase of its own stream, so units enter a stream in order); the Business-wide no-overtaking rule is **not** applied by the processor (it is what would re-create head-of-line blocking). Live verification is unchanged (see CORR-001 §24B). Tested: cases A–E (capacity/cost examples below), deterministic scan order, stream rule, repeat-safety, five concurrent workers on one Purchase, two full passes at once, two workers on two Purchases competing for one unit, and passes racing credit, settlement-style credit and restriction/restore; each asserts no `40P01`, no oversubscription, no duplicate Verified Unit/earmark/admission/key.
 
 ## 14. Verify outcome
 
@@ -178,9 +178,39 @@ Additive and local-only. Creates `commercial_admissions` and `commercial_admissi
 3. a production-safe invocation path for held-Purchase re-evaluation exists (the processor is callable only; nothing schedules or triggers it — WP-COM-06a);
 4. operational read/alerting is sufficient to detect a held backlog (WP-COM-06a/06b).
 
-**Finding F-1 — strict FIFO can head-of-line block.** A Purchase's cost is `newBlocks = ceil((U+q)/10) − ceil(U/10)`, which is **not constant**: 0 (inside an admitted position), 1, or more (a quantity above 10, or one that straddles a position boundary). The processor deliberately stops at the first Purchase that does not fit (design §8.11: no overtaking). A held Purchase needing 2 units therefore also holds back a later Purchase needing 1 that would fit. This is the approved fairness policy (design §8.11 notes first-fit would be a one-line processor change), but it is a real behaviour and is recorded here as a Founder decision point: keep strict FIFO, or allow skip-and-continue.
+**Finding F-1 — head-of-line blocking: RESOLVED by CORR-001.** A Purchase's cost is `newBlocks = ceil((U+q)/10) − ceil(U/10)`, which varies (0, 1, or more). The original strict-FIFO processor stopped at the first Purchase that did not fit. The Founder did not accept that; the processor now scans oldest-first and **skips and continues** (§24B).
 
-**Finding F-2 — availability is a shared pool.** Usable capacity is `(trial_remaining + paid_balance) − (trial_reserved + paid_reserved)` (design §7/§8.5/§12). A negative paid balance therefore reduces usable capacity even when uncommitted trial alone would cover the new position (exhaustive check over 4,200 account states: 845 holds are of exactly this kind). This is the approved FD-A model ("negative balance ⇒ held until credit restores capacity"), not a defect; it is recorded because a bucket-independent reading would behave differently. Admitted Purchases are always bucket-safe: in all 1,359 admitted states trial earmarks never exceed uncommitted trial and paid earmarks never exceed uncommitted paid.
+**Finding F-2 — availability is a shared pool.** Usable capacity is `(trial_remaining + paid_balance) − (trial_reserved + paid_reserved)` (design §7/§8.5/§12). A negative paid balance therefore reduces usable capacity even when uncommitted trial alone would cover the new position (exhaustive check over 4,200 account states: 845 holds are of exactly this kind). This is the approved FD-A model ("negative balance ⇒ held until credit restores capacity"). **Founder-confirmed retained policy (CORR-001): not a defect in WP-COM-05b and unchanged;** any change would require a separate Product Truth decision. A test (`RETAINED POLICY…`) pins it: trial 1 uncommitted + paid −1 ⇒ usable 0 ⇒ a new start is held; restoring paid to 0 ⇒ usable 1 ⇒ admitted with a trial earmark. Admitted Purchases are always bucket-safe: in all 1,359 admitted states trial earmarks never exceed uncommitted trial and paid earmarks never exceed uncommitted paid.
+
+## 24B. CORR-001 — processor policy: FIFO scan + skip-and-continue
+
+| | Before | After |
+|---|---|---|
+| Scan order | oldest first `(purchase_date, id)` | unchanged |
+| Non-fitting Purchase | **stop the pass** for the Business | stays `pending_admission`, nothing written, **scan continues** |
+| Business no-overtaking rule in the processor | applied | not applied (`applyBusinessQueue: false`) |
+| Stream rule | applied | applied |
+| Window | 100 oldest held per Business | 1000 oldest held per Business (examined in full every pass) |
+
+Live `verify` is unchanged: a newcomer who arrives while older Purchases are held is still held (`business_queue`) and is picked up by the next processor pass, which admits it if it fits. This is the one place the old rule survives; it delays a fitting newcomer until the next pass but never admits one past an older held Purchase. Reconsidering it is a separate decision.
+
+**Capacity/cost examples (proven by tests).** Cost = positions begun: on an empty stream a quantity of 1–10 costs 1, 11–20 costs 2, 21–30 costs 3.
+
+| Case | Capacity | Held (oldest first) | Result |
+|---|---|---|---|
+| A | 1 | P1 cost 2, P2 cost 1 | P1 pending, **P2 admits** |
+| B | 2 | P1 cost 2, P2 cost 1 | P1 admits, P2 pending |
+| C | 2 | P1 cost 3, P2 1, P3 1 | P1 pending, **P2 and P3 admit** |
+| D | 1 | P1 cost 2, P2 cost 2 | both pending, nothing written |
+| E | 1 then +3 | P1 2, P2 1, P3 1 | run 1: P2 admits; run 2: **P1 (oldest) admits first**, then P3 |
+
+**Residual starvation risk (recorded, not mitigated).** Because a large-cost Purchase can be skipped while smaller ones keep being admitted, it can stay held for a long time under sustained small admissions. Every run still evaluates it **first** (oldest-first), a test shows it is examined first on every pass, and it is admitted the moment capacity covers it and its stream rule allows. No priority aging, reservation guarantee or hidden queue was introduced; a later operational policy can add one only if observed backlog warrants it. The 1000-Purchase window is a second, smaller exposure: a held Purchase beyond the 1000 oldest is not examined until older ones leave the window.
+
+**Concurrency.** Two full passes at once over `[3,1,1,1]` with capacity 2 admit exactly two small Purchases and skip the large one; two workers on two Purchases competing for one unit admit exactly one; passes racing a manual credit adjustment, a settlement-style credit and restriction/restore are consistent in either order. All assert no `40P01`, no oversubscription, no duplicate Verified Unit, earmark, admission or admission key, and run the accounting invariants.
+
+**Mutation checks.** Restoring "stop on first non-fit" fails 8 tests (A, C, D, E, scan order, stream rule, starvation, two-pass); applying the Business no-overtaking rule in the processor fails 6.
+
+**P1 `admit:` namespace.** Unchanged and re-verified by the regression test (a client cannot use `admit:`; refused before any write; the held Purchase later admits under the system key).
 
 ## 25. Rollback
 

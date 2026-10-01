@@ -95,6 +95,13 @@ export type AdmitOrHoldPurchaseParams = {
    * held Purchase). Either way a HOLD never touches an idempotency key.
    */
   readonly onHold: "record" | "none";
+  /**
+   * Whether an earlier held Purchase of the Business holds this one back (design §8.11 rule 2,
+   * "no overtaking"). True for a live verify. The processor passes false: it scans oldest-first
+   * and SKIPS what does not fit, so that rule must not block it (CORR-001). The stream rule
+   * (an older held Purchase of the same stream) always applies.
+   */
+  readonly applyBusinessQueue: boolean;
 };
 
 export type AdmitOrHoldPurchaseResult =
@@ -144,10 +151,12 @@ export async function admitOrHoldPurchase(
     firstBlockIndex,
     streamHasEarlierHold,
     readBusinessQueue: async (queueTx) => ({
-      earlierHeldInBusiness: await existsEarlierHeldPurchaseInBusiness(queueTx, {
-        businessId: locked.businessId,
-        ...ordering,
-      }),
+      earlierHeldInBusiness: params.applyBusinessQueue
+        ? await existsEarlierHeldPurchaseInBusiness(queueTx, {
+            businessId: locked.businessId,
+            ...ordering,
+          })
+        : false,
     }),
   });
 
