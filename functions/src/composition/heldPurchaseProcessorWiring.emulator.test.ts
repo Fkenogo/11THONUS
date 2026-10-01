@@ -18,6 +18,7 @@ import {
   HELD_PURCHASE_STATE_COLLECTION,
   SIGNAL_COALESCING_WINDOW_MS,
   admissionSignalDocumentId,
+  claimAdmissionSignal,
   createAdmissionSignalNotifier,
   createFirestoreRecoveryStateStore,
   createHeldPurchaseObserver,
@@ -95,6 +96,22 @@ describe("signal coalescing: one document per Business per window", () => {
     expect(a).toBe(b); // same minute
     expect(a).toMatch(/^biz-a__\d+$/);
     expect(admissionSignalDocumentId("a/b", T0, SIGNAL_COALESCING_WINDOW_MS)).not.toContain("/");
+  });
+
+  it("claims every signal counted so far exactly once, including signals that arrive after an earlier claim", async () => {
+    const notifier = createAdmissionSignalNotifier(db, { now: () => T0 });
+    const id = admissionSignalDocumentId("biz-a", T0, SIGNAL_COALESCING_WINDOW_MS);
+    expect(await claimAdmissionSignal(db, id)).toBe(false); // no such document
+    await notifier.notify(signal("biz-a", "trial_granted"));
+    expect(await claimAdmissionSignal(db, id)).toBe(true);
+    expect(await claimAdmissionSignal(db, id)).toBe(false); // nothing new (also the re-fire case)
+    await notifier.notify(signal("biz-a", "credit_adjusted_up")); // coalesced, after the first claim
+    expect(await claimAdmissionSignal(db, id)).toBe(true); // not swallowed
+    expect(await claimAdmissionSignal(db, id)).toBe(false);
+    // Concurrent claimants: exactly one wins a given count.
+    await notifier.notify(signal("biz-a", "settlement_confirmed"));
+    const wins = await Promise.all(Array.from({ length: 6 }, () => claimAdmissionSignal(db, id)));
+    expect(wins.filter(Boolean)).toHaveLength(1);
   });
 
   it("a concurrent burst of signals still yields exactly one document", async () => {

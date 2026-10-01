@@ -23,7 +23,7 @@ There are two independent paths. Both end in the **same, unchanged** function (`
 
 1. The Commercial command commits in PostgreSQL (the settlement/trial/credit/standing change is now permanent).
 2. Only then the command runner calls a notifier, which writes one Firestore document `heldPurchaseReevaluationSignals/{businessId}__{windowStart}`.
-3. A Firestore `onCreate` Function (`reevaluateHeldPurchasesOnSignal`) processes that one Business.
+3. A Firestore write-triggered Function (`reevaluateHeldPurchasesOnSignal`) _claims_ the signals counted so far on that document and processes that one Business.
 
 If step 2 or 3 fails, the Commercial change **stays committed** and nothing is half-admitted; path B finds the held Purchase on its next run. A failed signal is logged (`capacity_signal_failed`, see §6).
 
@@ -43,9 +43,9 @@ If step 2 or 3 fails, the Commercial change **stays committed** and nothing is h
 
 ## 2. Coalescing
 
-All signals for one Business inside one **60-second window** share **one** signal document, keyed by **Business + window start** — not by trigger type. A second signal in the window only merges its reason into `reasons` and bumps `signalCount` (an _update_, which does not fire the `onCreate` trigger again). So three capacity changes for a Business in one minute cause one processor run.
+All signals for one Business inside one **60-second window** share **one** signal document, keyed by **Business + window start** — not by trigger type. A second signal in the window merges its reason into `reasons` and bumps `signalCount`. The trigger fires on every write, but a handler only processes when it can atomically _claim_ unclaimed signals (`signalCount > claimedCount`), so redeliveries and the handler's own claim write do nothing. Capacity changes that arrive while a run is in progress are served by at most one follow-up run.
 
-- Trade-off: a change committed _after_ the window's processor run finished, but still inside the same minute, is coalesced away. Path B (≤ 5 minutes) covers it. Worst-case latency from a capacity change to admission is therefore the recovery cadence, not zero.
+- A change committed _after_ the window's first run finished, but still inside the same minute, is **not** swallowed: it bumps `signalCount` and is claimed and processed by a follow-up run. A lost signal is still compensated by path B (≤ 5 minutes).
 - Processor-level idempotency is still the final safety net: concurrent runs for the same Business never admit a Purchase twice (see §7).
 
 ## 3. Scheduled recovery
@@ -132,7 +132,7 @@ Each Purchase is its own transaction. One failing Purchase never stops its Busin
 
 There is no new endpoint and no UI. The supported manual paths use existing IAM-controlled access:
 
-1. **Business-scoped, immediate:** with Firestore write access (IAM; not reachable by app users — Security Rules deny all client access), create a document in `heldPurchaseReevaluationSignals` with field `businessId` = the Business id and any id (for example `manual__{businessId}__{timestamp}`). The `onCreate` Function processes **that Business only**. Include a `reasons: ["manual"]` field for traceability.
+1. **Business-scoped, immediate:** with Firestore write access (IAM; not reachable by app users — Security Rules deny all client access), create a document in `heldPurchaseReevaluationSignals` with field `businessId` = the Business id and any id (for example `manual__{businessId}__{timestamp}`). The write-triggered Function processes **that Business only**. (The document needs a `businessId`; a new document, or an existing one whose `signalCount` exceeds `claimedCount`, is processed.) Include a `reasons: ["manual"]` field for traceability.
 2. **Whole sweep:** run the `recoverHeldPurchases` scheduler job now (Cloud Scheduler → _Force run_).
 3. Both are safe to repeat: a second run finds nothing left to admit.
 

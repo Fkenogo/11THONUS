@@ -59,9 +59,9 @@ describe("WP-COM-06a Function export / discovery", () => {
     expect(endpoint.timeoutSeconds).toBe(300);
   });
 
-  it("reevaluateHeldPurchasesOnSignal is an exported Firestore onCreate Function on the signal collection", () => {
+  it("reevaluateHeldPurchasesOnSignal is an exported Firestore write-triggered Function on the signal collection", () => {
     const endpoint = endpointOf("reevaluateHeldPurchasesOnSignal");
-    expect(endpoint.eventTrigger?.eventType).toBe("google.cloud.firestore.document.v1.created");
+    expect(endpoint.eventTrigger?.eventType).toBe("google.cloud.firestore.document.v1.written");
     expect(endpoint.eventTrigger?.eventFilterPathPatterns?.["document"]).toBe(
       HELD_PURCHASE_SIGNAL_DOCUMENT,
     );
@@ -104,10 +104,10 @@ describe("WP-COM-06a dependency direction and boundaries", () => {
     for (const spec of importsOf(wiring)) expect(spec).not.toMatch(/(^|\/)commercial(\/|$)/);
   });
 
-  it("no domain code schedules anything: onSchedule/onDocumentCreated live only in index.ts", () => {
+  it("no domain code schedules anything: onSchedule/onDocumentWritten live only in index.ts", () => {
     for (const file of [...commercialFiles, ...purchaseFiles]) {
       expect(code(file), path.relative(__dirname, file)).not.toMatch(
-        /onSchedule|onDocumentCreated|setInterval/,
+        /onSchedule|onDocumentWritten|onDocumentCreated|setInterval/,
       );
     }
     expect(code(path.join(__dirname, "index.ts"))).toMatch(/onSchedule\(/);

@@ -15,7 +15,7 @@ import { randomUUID } from "node:crypto";
 import { setGlobalOptions } from "firebase-functions";
 import { HttpsError, onCall, onRequest } from "firebase-functions/https";
 import { onSchedule } from "firebase-functions/scheduler";
-import { onDocumentCreated } from "firebase-functions/firestore";
+import { onDocumentWritten } from "firebase-functions/firestore";
 import { getFirestore } from "firebase-admin/firestore";
 import { PLATFORM_REGION } from "./config/region";
 import { getAdminApp } from "./infrastructure/firebase/admin";
@@ -2622,16 +2622,17 @@ export const recoverHeldPurchases = onSchedule(
 
 /**
  * Business-scoped processing after a capacity-increasing Commercial command. The signal document
- * is coalesced per Business and time window (see `heldPurchaseProcessorWiring.ts`), so one
- * invocation serves every signal in the window. Best-effort: a failure here is compensated by
+ * is coalesced per Business and time window (see `heldPurchaseProcessorWiring.ts`); a handler
+ * claims the signals counted so far, so a later signal in the same window is still processed. Best-effort: a failure here is compensated by
  * `recoverHeldPurchases`.
  */
-export const reevaluateHeldPurchasesOnSignal = onDocumentCreated(
+export const reevaluateHeldPurchasesOnSignal = onDocumentWritten(
   { document: HELD_PURCHASE_SIGNAL_DOCUMENT, timeoutSeconds: 300, maxInstances: 5, retry: false },
   async (event) => {
+    if (!event.data?.after.exists) return; // a deleted signal (TTL cleanup) is not work
     await handleAdmissionSignal(getFirestore(getAdminApp()), getPurchasePostgresPool(), {
       signalId: event.params.signalId,
-      data: event.data?.data(),
+      data: event.data.after.data(),
     });
   },
 );

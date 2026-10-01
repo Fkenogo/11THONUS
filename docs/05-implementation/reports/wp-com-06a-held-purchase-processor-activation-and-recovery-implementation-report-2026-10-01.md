@@ -60,7 +60,7 @@ Commercial command  (runAdministratorCommand)
                                                             failure/timeout: logged, swallowed
 composition/heldPurchaseProcessorWiring.ts  (binds the port structurally; imports no Commercial module)
    └─ Firestore create  heldPurchaseReevaluationSignals/{business}__{window}   ← coalescing
-         └─ onDocumentCreated  reevaluateHeldPurchasesOnSignal  ──┐
+         └─ onDocumentWritten  reevaluateHeldPurchasesOnSignal (claims new count) ──┐
 Cloud Scheduler "every 5 minutes"                                  │
          └─ onSchedule  recoverHeldPurchases ──────────────────────┤
                                                                    ▼
@@ -106,15 +106,15 @@ For every signalling command: the signal happens only **after** commit; a signal
 
 ## 8. Coalescing model
 
-One Firestore document per **Business + 60-second window** (`{businessId}__{windowStartMs}`); trigger reasons are metadata (`reasons[]`, `signalCount`). The first signal `create()`s the document (firing the `onCreate` Function); later signals in the window only `update()` it (no second invocation). Different Businesses never share a document; a new window opens a new one. Proven against the real Firestore Emulator, including a concurrent burst of 8 signals → 1 document.
+One Firestore document per **Business + 60-second window** (`{businessId}__{windowStartMs}`); trigger reasons are metadata (`reasons[]`, `signalCount`). The first signal `create()`s the document (`claimedCount: 0`); later signals in the window `update()` it (`signalCount` + 1). The Function is write-triggered and **claims** unclaimed counts in a Firestore transaction (`claimAdmissionSignal`), so a signal arriving after the first handler finished is still processed (a Codex P2 review finding on the first revision, now fixed), redeliveries and the handler's own claim write do nothing, and signals arriving during a run cause at most one follow-up run. Different Businesses never share a document; a new window opens a new one. Proven against the real Firestore Emulator, including a concurrent burst of 8 signals → 1 document.
 
-Trade-off, recorded: a capacity change committed after the window's processor run finished but inside the same minute is coalesced away until the next scheduled run (≤ 5 minutes). Processor idempotency remains the final safety net.
+Processor idempotency remains the final safety net.
 
 ## 9. Scheduled function export / discovery
 
 `recoverHeldPurchases` and `reevaluateHeldPurchasesOnSignal` are defined and **exported by name** from `functions/src/index.ts` (not a side-effect import). Verified three ways:
 
-1. A test imports the entrypoint and asserts each export carries a deployable `__endpoint` with the right trigger (`scheduleTrigger` "every 5 minutes", maxInstances 1, retryCount 0, region `europe-west1`, timeout 300; Firestore `…document.v1.created` on `heldPurchaseReevaluationSignals/{signalId}`).
+1. A test imports the entrypoint and asserts each export carries a deployable `__endpoint` with the right trigger (`scheduleTrigger` "every 5 minutes", maxInstances 1, retryCount 0, region `europe-west1`, timeout 300; Firestore `…document.v1.written` on `heldPurchaseReevaluationSignals/{signalId}`).
 2. The compiled `lib/index.js` was loaded under Node and the same `__endpoint` metadata printed.
 3. The **real Functions emulator** loaded the built entrypoint: `Loaded functions definitions from source: …, recoverHeldPurchases, reevaluateHeldPurchasesOnSignal`.
 
@@ -197,7 +197,7 @@ The processor is a no-op unless `PURCHASE_ADMISSION_GATE_MODE=enforce` or `HELD_
 
 **New source (5):** `domains/commercial/models/commercialCapacitySignal.ts`; `domains/purchase/repositories/heldPurchaseRecoveryRepository.ts`; `domains/purchase/services/admissionFailureClassification.ts`; `domains/purchase/services/heldPurchaseRecovery.ts`; `composition/heldPurchaseProcessorWiring.ts`.
 
-**New tests (4):** `domains/commercial/heldPurchaseProcessor.postgres.test.ts` (33), `composition/heldPurchaseProcessorWiring.emulator.test.ts` (8), `heldPurchaseProcessorFunctions.test.ts` (10: discovery, boundaries, default-OFF), `domains/purchase/services/admissionFailureClassification.test.ts` (18).
+**New tests (4):** `domains/commercial/heldPurchaseProcessor.postgres.test.ts` (33), `composition/heldPurchaseProcessorWiring.emulator.test.ts` (9), `heldPurchaseProcessorFunctions.test.ts` (10: discovery, boundaries, default-OFF), `domains/purchase/services/admissionFailureClassification.test.ts` (18).
 
 **Docs:** this report; `docs/runbooks/held-purchase-processor-runbook.md` (new); `docs/changes/IMPLEMENTATION_CHANGES.md`; `docs/00-governance/documentation-changes-log.md`.
 
@@ -208,7 +208,7 @@ The processor is a no-op unless `PURCHASE_ADMISSION_GATE_MODE=enforce` or `HELD_
 | Suite | Count | Covers |
 |---|---|---|
 | PostgreSQL integration (live PG + Firestore emulator) | 33 | triggers & eligibility, post-commit gate, fairness (5 Businesses and 105 at default bound), tail window and rotation, exact 1000 boundary, skip-and-continue & same-stream order preserved, real DB error classification, transient/permanent/winner/invariant isolation, observability persistence, default-OFF, Business-scoped signal |
-| Firestore emulator | 8 | coalescing (reasons merged, Business-isolated, window rollover, concurrent burst), id derivation, persisted cursors, logs at correct severity, saturation log, run summary persisted |
+| Firestore emulator | 9 | coalescing (reasons merged, Business-isolated, window rollover, concurrent burst, claim-once semantics including a signal after an earlier claim), id derivation, persisted cursors, logs at correct severity, saturation log, run summary persisted |
 | Unit | 28 (10 + 18) | discovery & cadence, dependency direction both ways, no scheduling in domain code, no duplicated admission logic, signal-after-commit structure, gate default-OFF, classification table |
 
 Four mutation checks, each confirmed to fail exactly the intended test, then reverted: (1) cursor never persisted → fairness test fails; (2) tail window disabled → window test fails; (3) signal failure rethrown → post-commit test fails; (4) deadlock classified permanent → classification test fails.
@@ -223,7 +223,7 @@ Four mutation checks, each confirmed to fail exactly the intended test, then rev
 | `pnpm typecheck` | pass (tests are excluded from `tsc` by the repo; the four new test files were additionally type-checked with a scratch config) |
 | `pnpm test` (unit) | functions **1971** pass (baseline 1943, +28) · web **926** pass (unchanged; `apps/` not touched) |
 | PostgreSQL suite under Firestore emulator, **cold cache, fresh DB** (CI-equivalent) | **19 files, 671 tests pass** (baseline 18 / 638, +1 / +33) |
-| Emulator suite (`test:emulator`) | **67 files, 875 passed, 3 skipped** (baseline 66 / 867, +1 / +8), run with `--only auth,firestore` because `pnpm emulators:validate` additionally starts the Storage emulator, whose JAR the sandbox blocks; the vitest set needs only Auth + Firestore |
+| Emulator suite (`test:emulator`) | **67 files, 876 passed, 3 skipped** (baseline 66 / 867, +1 / +9), run with `--only auth,firestore` because `pnpm emulators:validate` additionally starts the Storage emulator, whose JAR the sandbox blocks; the vitest set needs only Auth + Firestore |
 | `pnpm test:e2e` | **41 passed** (Chromium via the preinstalled build; scratch config, removed) |
 | Functions emulator discovery | both new Functions listed as loaded from source (§9) |
 | Exact-head CI | see §33 |
@@ -262,7 +262,7 @@ Four mutation checks, each confirmed to fail exactly the intended test, then rev
 | R-1 | **No production path runs the Commercial commands**, so capacity cannot be provisioned or signalled through the product today; scheduled recovery is the only live path. | Condition before any pilot; whoever wires those commands passes `createAdmissionSignalNotifier(db)`. |
 | R-2 | Cloud Scheduler job / Firestore trigger never deployed or run in a real project; Firestore database region vs `europe-west1` trigger region unverified; Pub/Sub emulator unavailable here. | Verify at first deploy to the dev project; runbook §11. |
 | R-3 | No Cloud Monitoring metrics/alerts and no Firestore TTL policies exist. | Deployment actions listed in runbook §6, §11. |
-| R-4 | Fixed-window coalescing can defer a same-minute change to the next scheduled run (≤ 5 min). | Documented; recovery cadence is the bound. |
+| R-4 | Fixed-window coalescing could defer a same-minute change. | **Fixed** after the Codex P2 finding (claim counter); closed. |
 | R-5 | The run time budget is checked between Businesses, not within a pass; a Business with ~2000 held rows is examined one Purchase per transaction. | Measure in the pilot; `budgetExhausted` flag surfaces it. |
 | R-6 | Overlapping recovery runs (should not occur with `maxInstances: 1`) could examine the same Business slice twice. | Safe (idempotent); costs work only. |
 | R-7 | Residual large-Purchase starvation (05b policy; no priority aging). | `skippedOvertaken` indicator; Founder policy decision. |

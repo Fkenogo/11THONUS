@@ -14,7 +14,7 @@
  *   -> the command runner (after commit) calls `notify`, which writes ONE Firestore signal
  *      document per Business per time window (`create()`; a second signal in the same window
  *      finds the document and only merges reason metadata -- that is the coalescing)
- *   -> a Firestore `onDocumentCreated` Function runs the Business-scoped processor.
+ *   -> a Firestore `onDocumentWritten` Function claims the new count and runs the Business-scoped processor.
  *   The signal is best-effort: nothing in the PostgreSQL transaction guarantees it. A lost
  *   signal is recovered by the scheduled sweep (`runHeldPurchaseRecoveryJob`).
  *
@@ -102,6 +102,7 @@ export function createAdmissionSignalNotifier(
           windowStart: Timestamp.fromMillis(Math.floor(at.getTime() / windowMs) * windowMs),
           reasons: [signal.reason],
           signalCount: 1,
+          claimedCount: 0,
           firstCorrelationId: signal.correlationId,
           createdAt: Timestamp.fromDate(at),
           expiresAt: Timestamp.fromMillis(at.getTime() + RETENTION_MS),
@@ -109,7 +110,10 @@ export function createAdmissionSignalNotifier(
       } catch (error) {
         if ((error as { code?: unknown }).code !== 6 /* ALREADY_EXISTS */) throw error;
         // Coalesced: another signal for this Business already opened this window. Merge the
-        // reason as metadata only; this is an UPDATE, so it triggers no second processor run.
+        // reason as metadata and bump `signalCount`. The write trigger fires again, but only a
+        // handler that CLAIMS the new count (`claimAdmissionSignal`) processes -- so a signal
+        // arriving after the first handler finished is still processed, and N signals that
+        // arrive while it runs are served by at most one follow-up run.
         await ref.update({
           reasons: FieldValue.arrayUnion(signal.reason),
           signalCount: FieldValue.increment(1),
@@ -329,7 +333,27 @@ export async function runHeldPurchaseRecoveryJob(
   return summary;
 }
 
-/** Signal handler body (Firestore `onDocumentCreated`). `null` when disabled or malformed. */
+/**
+ * Claims every signal counted so far on one signal document. True when there is unclaimed work
+ * (`signalCount > claimedCount`): the caller then processes the Business. False when an earlier
+ * invocation already claimed it (including this handler's own claim write re-firing the trigger).
+ * Transactional, so concurrent invocations cannot both claim the same count.
+ */
+export async function claimAdmissionSignal(db: Firestore, signalId: string): Promise<boolean> {
+  const ref = db.collection(HELD_PURCHASE_SIGNAL_COLLECTION).doc(signalId);
+  return db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const data = snap.data();
+    if (!snap.exists || data === undefined) return false;
+    const count = typeof data["signalCount"] === "number" ? data["signalCount"] : 1;
+    const claimed = typeof data["claimedCount"] === "number" ? data["claimedCount"] : 0;
+    if (claimed >= count) return false;
+    tx.update(ref, { claimedCount: count });
+    return true;
+  });
+}
+
+/** Signal handler body (Firestore `onDocumentWritten`). `null` when disabled or malformed. */
 export async function handleAdmissionSignal(
   db: Firestore,
   pool: PlatformPostgresPool,
@@ -353,6 +377,7 @@ export async function handleAdmissionSignal(
     );
     return null;
   }
+  if (!(await claimAdmissionSignal(db, signal.signalId))) return null; // nothing new to process
   return processBusinessHeldPurchases(
     createHeldPurchaseProcessorDeps(db, pool, options.overrides),
     {

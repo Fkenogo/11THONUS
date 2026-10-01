@@ -54,6 +54,9 @@ import {
   type PendingScanCursor,
 } from "../purchase/repositories/heldPurchaseRecoveryRepository";
 import {
+  SIGNAL_COALESCING_WINDOW_MS,
+  admissionSignalDocumentId,
+  createAdmissionSignalNotifier,
   handleAdmissionSignal,
   isHeldPurchaseProcessorEnabled,
   runHeldPurchaseRecoveryJob,
@@ -1606,15 +1609,40 @@ describe("WP-COM-06a observability, enablement and boundaries", () => {
     const bId = await hold(b, 1, 10);
     await post(a.businessId, "credit_grant", "paid", 1);
     await post(b.businessId, "credit_grant", "paid", 1);
-    const pass = await handleAdmissionSignal(
-      db,
-      pool,
-      { signalId: "iso", data: { businessId: a.businessId } },
-      { env: { PURCHASE_ADMISSION_GATE_MODE: "enforce" }, overrides: { sleep: noSleep } },
-    );
+    const enforce = {
+      env: { PURCHASE_ADMISSION_GATE_MODE: "enforce" },
+      overrides: { sleep: noSleep },
+    };
+    const T = new Date("2026-10-01T12:00:10.000Z");
+    const notifier = createAdmissionSignalNotifier(db, { now: () => T });
+    const signalId = admissionSignalDocumentId(a.businessId, T, SIGNAL_COALESCING_WINDOW_MS);
+    const send = (reason: string) =>
+      notifier.notify({ businessId: a.businessId, reason, correlationId: "c" });
+    const handle = async () =>
+      handleAdmissionSignal(
+        db,
+        pool,
+        {
+          signalId,
+          data: (await db.collection("heldPurchaseReevaluationSignals").doc(signalId).get()).data(),
+        },
+        enforce,
+      );
+    await send("trial_granted");
+    const pass = await handle();
     expect(pass?.head.admitted).toBe(1);
     expect(await purchaseStatus(aId)).toBe("verified");
     expect(await purchaseStatus(bId)).toBe("pending_admission"); // untouched
+    // Re-delivery with nothing new (e.g. the handler's own claim write re-firing the trigger): no work.
+    expect(await handle()).toBeNull();
+    // A LATER signal in the SAME window (coalesced into the existing document) is still processed.
+    const lateId = await hold(a, 1, 11);
+    await post(a.businessId, "credit_grant", "paid", 1);
+    await send("credit_adjusted_up");
+    expect((await handle())?.head.admitted).toBe(1);
+    expect(await purchaseStatus(lateId)).toBe("verified");
+    expect(await handle()).toBeNull();
+    await db.collection("heldPurchaseReevaluationSignals").doc(signalId).delete();
     expect(
       await handleAdmissionSignal(
         db,
