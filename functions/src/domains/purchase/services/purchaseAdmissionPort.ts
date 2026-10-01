@@ -109,6 +109,13 @@ export function admissionIdempotencyKey(purchaseRecordId: string): string {
   return `admit:${purchaseRecordId}`;
 }
 
+/** Idempotency-key prefixes the system reserves; a client-supplied key may not use them. */
+export const RESERVED_IDEMPOTENCY_KEY_PREFIXES = ["admit:"] as const;
+
+export function isReservedIdempotencyKey(key: string): boolean {
+  return RESERVED_IDEMPOTENCY_KEY_PREFIXES.some((p) => key.startsWith(p));
+}
+
 /**
  * Opaque, deterministic digest of one allocation stream (design §8.5.1):
  * Commercial stores no raw customer identity, and the projection side can

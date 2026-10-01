@@ -1877,6 +1877,22 @@ describe("WP-COM-05b — Verified Unit ordering and atomic rollback", () => {
     await assertAccountingInvariants(world.businessId);
   });
 
+  it("a client cannot occupy the system admission key namespace (reserved prefix refused)", async () => {
+    const world = await seedWorld();
+    await openAccount(world.businessId);
+    const id = await record(world, 1);
+    await expect(
+      verifyEnforced(world.customer, id, { key: admissionIdempotencyKey(id) }),
+    ).rejects.toThrow(/reserved prefix/);
+    expect(await purchaseStatus(id)).toBe("waiting_for_customer");
+    // The held Purchase can still be held and later admitted under the system key.
+    expect((await verifyEnforced(world.customer, id)).outcome).toBe("pending_admission");
+    await post(world.businessId, "trial_grant", "trial", 1);
+    expect((await reevaluateOne(pool, { port, correlationId: nextId("corr") }, id)).outcome).toBe(
+      "admitted",
+    );
+  });
+
   it("gate `enforce` without a Commercial port fails closed before any write", async () => {
     const world = await seedWorld();
     const id = await record(world, 1);

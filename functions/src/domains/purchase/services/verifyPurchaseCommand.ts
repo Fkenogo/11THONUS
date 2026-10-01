@@ -53,7 +53,10 @@ import { admitPurchaseToLoyalty } from "./admitPurchaseToLoyalty";
 import { admitOrHoldPurchase } from "./admitOrHoldPurchase";
 import { decidePurchaseAdmission, resolvePurchaseAdmissionGateMode } from "./purchaseAdmissionGate";
 import type { PurchaseAdmissionGateMode } from "./purchaseAdmissionGate";
-import type { PurchaseAdmissionCapacityPort } from "./purchaseAdmissionPort";
+import {
+  isReservedIdempotencyKey,
+  type PurchaseAdmissionCapacityPort,
+} from "./purchaseAdmissionPort";
 import type {
   LoyaltyCycleRow,
   PurchaseRecordRow,
@@ -134,6 +137,10 @@ export async function verifyPurchase(
     throw new Error('Purchase admission gate mode "enforce" requires a Commercial admission port.');
   }
   const purchaseRecordId = params.request.purchaseRecordId;
+  if (isReservedIdempotencyKey(params.idempotencyKey)) {
+    // Defence in depth: the system's admission keys live in the same table (CORR-002).
+    throw purchaseValidationError("This idempotency key uses a reserved prefix.");
+  }
   if (!purchaseRecordId || purchaseRecordId.trim().length === 0) {
     throw purchaseValidationError("A Purchase Record id is required.");
   }
