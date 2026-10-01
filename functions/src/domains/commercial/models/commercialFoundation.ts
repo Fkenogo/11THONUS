@@ -80,6 +80,8 @@ export const COMMERCIAL_AUDIT_ACTION_TYPES = [
   "service_restricted",
   "service_restored",
   "price_schedule_set",
+  "admission_admitted",
+  "admission_held",
   "admissions_reevaluated",
   "history_inspected",
   "consumption_recorded",

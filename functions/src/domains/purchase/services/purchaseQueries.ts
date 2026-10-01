@@ -85,6 +85,7 @@ function parsePagination(params: {
 
 const PURCHASE_STATUSES: readonly string[] = [
   "waiting_for_customer",
+  "pending_admission",
   "verified",
   "rejected",
   "under_review",

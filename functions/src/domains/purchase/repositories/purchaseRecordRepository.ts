@@ -401,3 +401,97 @@ export async function listWaitingPurchasesForCustomer(
   );
   return result.rows.map(mapPurchaseRow);
 }
+
+// ---------------------------------------------------------------------------
+// WP-COM-05b: admission hold queue (plain, non-locking reads).
+// ---------------------------------------------------------------------------
+
+export type HeldQueueOrdering = {
+  /** The candidate itself is excluded. */
+  readonly excludePurchaseId: string;
+  /**
+   * `null` (live verify): ANY held Purchase counts as earlier. Otherwise (processor):
+   * only Purchases ahead of this candidate in `(purchase_date, id)` FIFO order.
+   */
+  readonly ahead: { readonly purchaseDate: Date; readonly id: string } | null;
+};
+
+/** An earlier `pending_admission` Purchase exists in the same allocation stream (design §8.11 rule 1). */
+export async function existsEarlierHeldPurchaseInStream(
+  db: PlatformPostgresTransaction,
+  params: HeldQueueOrdering & {
+    readonly businessId: string;
+    readonly customerIdentityId: string;
+    readonly rewardProgramId: string;
+  },
+): Promise<boolean> {
+  const result = await db.query<{ held: boolean }>(
+    `SELECT EXISTS (
+       SELECT 1 FROM purchase_records
+        WHERE business_id = $1 AND customer_identity_id = $2 AND reward_program_id = $3
+          AND status = 'pending_admission' AND id <> $4
+          AND ($5::timestamptz IS NULL OR (purchase_date, id) < ($5::timestamptz, $6::uuid))
+     ) AS held`,
+    [
+      params.businessId,
+      params.customerIdentityId,
+      params.rewardProgramId,
+      params.excludePurchaseId,
+      params.ahead?.purchaseDate ?? null,
+      params.ahead?.id ?? null,
+    ],
+  );
+  return result.rows[0].held;
+}
+
+/** An earlier `pending_admission` Purchase exists in the Business (no overtaking, design §8.11 rule 2). */
+export async function existsEarlierHeldPurchaseInBusiness(
+  db: PlatformPostgresTransaction,
+  params: HeldQueueOrdering & { readonly businessId: string },
+): Promise<boolean> {
+  const result = await db.query<{ held: boolean }>(
+    `SELECT EXISTS (
+       SELECT 1 FROM purchase_records
+        WHERE business_id = $1 AND status = 'pending_admission' AND id <> $2
+          AND ($3::timestamptz IS NULL OR (purchase_date, id) < ($3::timestamptz, $4::uuid))
+     ) AS held`,
+    [
+      params.businessId,
+      params.excludePurchaseId,
+      params.ahead?.purchaseDate ?? null,
+      params.ahead?.id ?? null,
+    ],
+  );
+  return result.rows[0].held;
+}
+
+/** Held Purchases of a Business, oldest first (`(purchase_date, id)` FIFO). Non-locking candidate read. */
+export async function listPendingAdmissionPurchaseIds(
+  db: Queryable | PlatformPostgresTransaction,
+  params: { readonly businessId: string; readonly limit: number },
+): Promise<string[]> {
+  const result = await db.query<{ id: string }>(
+    `SELECT id FROM purchase_records
+      WHERE business_id = $1 AND status = 'pending_admission'
+      ORDER BY purchase_date ASC, id ASC
+      LIMIT $2`,
+    [params.businessId, params.limit],
+  );
+  return result.rows.map((r) => r.id);
+}
+
+/** Businesses that currently hold at least one `pending_admission` Purchase. */
+export async function listBusinessesWithPendingAdmission(
+  db: Queryable | PlatformPostgresTransaction,
+  limit: number,
+): Promise<string[]> {
+  const result = await db.query<{ business_id: string }>(
+    `SELECT business_id FROM purchase_records
+      WHERE status = 'pending_admission'
+      GROUP BY business_id
+      ORDER BY MIN(purchase_date) ASC, business_id ASC
+      LIMIT $1`,
+    [limit],
+  );
+  return result.rows.map((r) => r.business_id);
+}

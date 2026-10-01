@@ -358,6 +358,7 @@ export const en = {
       customerLoyaltyNumber: "Customer loyalty number {{value}}",
       status: {
         waiting_for_customer: "Waiting for customer",
+        pending_admission: "Received · awaiting admission",
         verified: "Verified",
         rejected: "Rejected",
         under_review: "Under review",
@@ -580,6 +581,8 @@ export const en = {
       disputeHint: "The purchase happened, but a detail is wrong. It will be held for review.",
       disputeConfirm: "Send dispute",
       verifySuccess: "Verified. Your loyalty units were issued.",
+      verifyHeld:
+        "Received. This purchase is saved and will be counted as soon as it can be admitted.",
       rejectSuccess: "Rejected. The business has been notified.",
       disputeSuccess: "Dispute sent. The purchase is now under review.",
       actionError: "We couldn't complete that. Please try again.",
@@ -597,6 +600,7 @@ export const en = {
       },
       status: {
         waiting_for_customer: "Waiting for you",
+        pending_admission: "Received · awaiting admission",
         verified: "Verified",
         rejected: "Rejected",
         under_review: "Under review",

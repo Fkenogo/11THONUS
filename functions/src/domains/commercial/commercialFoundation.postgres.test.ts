@@ -65,6 +65,8 @@ const migrationsDir = path.join(__dirname, "..", "..", "infrastructure", "postgr
 let pool: PlatformPostgresPool;
 
 const COMMERCIAL_TABLES = [
+  "commercial_admission_blocks",
+  "commercial_admissions",
   "commercial_projection_failures",
   "commercial_consumption_events",
   "commercial_consumption_claims",
@@ -95,6 +97,8 @@ async function dropCommercialObjects(): Promise<void> {
     "commercial_consumption_claims_require_event",
     "commercial_consumption_events_ledger_guard",
     "commercial_consumption_claims_reward_business_guard",
+    "commercial_admission_assert_consistent",
+    "commercial_consumption_events_earmark_guard",
     "commercial_reject_mutation",
   ]) {
     await pool.query(`DROP FUNCTION IF EXISTS ${fn}() CASCADE`);
@@ -102,7 +106,7 @@ async function dropCommercialObjects(): Promise<void> {
   const hasMigrations = await pool.query("SELECT to_regclass('public.schema_migrations') AS t");
   if (hasMigrations.rows[0].t !== null) {
     await pool.query(
-      "DELETE FROM schema_migrations WHERE version IN ('0021', '0022', '0023', '0024', '0025', '0026')",
+      "DELETE FROM schema_migrations WHERE version IN ('0021', '0022', '0023', '0024', '0025', '0026', '0027')",
     );
   }
   await pool
@@ -194,40 +198,54 @@ async function expectPgFailure(promise: Promise<unknown>, pattern: RegExp, code?
 
 // ---------------------------------------------------------------------------
 describe("0021 schema shape and migration lifecycle", () => {
-  it("creates exactly the five foundation tables plus the WP-COM-02/03/04 tables, and none of the later-WP tables", async () => {
+  it("creates exactly the five foundation tables plus the WP-COM-02/03/04/05b tables, and none of the later-WP tables", async () => {
     const tables = await pool.query<{ table_name: string }>(
       `SELECT table_name FROM information_schema.tables
         WHERE table_schema = 'public' AND table_name LIKE 'commercial\\_%' ORDER BY table_name`,
     );
-    expect(tables.rows.map((r) => r.table_name)).toEqual([
-      "commercial_accounts",
-      "commercial_audit_events",
-      "commercial_consumption_claims",
-      "commercial_consumption_events",
-      "commercial_ledger_entries",
-      "commercial_manual_adjustments",
-      "commercial_price_schedules",
-      "commercial_projection_failures",
-      "commercial_settlements",
-      "commercial_standing_events",
-      "commercial_trial_grants",
-    ]);
+    // Sorted in JS: the database collation orders `_` and letters differently.
+    expect(tables.rows.map((r) => r.table_name).sort()).toEqual(
+      [
+        "commercial_accounts",
+        "commercial_admission_blocks",
+        "commercial_admissions",
+        "commercial_audit_events",
+        "commercial_consumption_claims",
+        "commercial_consumption_events",
+        "commercial_ledger_entries",
+        "commercial_manual_adjustments",
+        "commercial_price_schedules",
+        "commercial_projection_failures",
+        "commercial_settlements",
+        "commercial_standing_events",
+        "commercial_trial_grants",
+      ].sort(),
+    );
   });
 
-  it("is self-contained: the only foreign key to a non-Commercial table is the WP-COM-04 claim -> Reward key, and none point into Commercial from outside", async () => {
+  it("is self-contained: the only foreign keys to a non-Commercial table are the WP-COM-04 claim -> Reward key and the WP-COM-05b admission -> Purchase / Verified Unit keys, and none point into Commercial from outside", async () => {
     const outbound = await pool.query<{ child: string; referenced: string }>(
       `SELECT conrelid::regclass::text AS child, confrelid::regclass::text AS referenced FROM pg_constraint
         WHERE contype = 'f' AND conrelid::regclass::text LIKE 'commercial\\_%'`,
     );
-    // WP-COM-04 (design §4.4 R1): the ONE permitted Commercial -> Loyalty foreign key is the
-    // composite claim -> Reward key. Every other Commercial foreign key stays inside Commercial.
+    // The only permitted Commercial -> Loyalty/Purchase foreign keys: WP-COM-04 (design §4.4 R1)
+    // the composite claim -> Reward key; WP-COM-05b (R4/R5) the admission -> Verified Unit and
+    // admission -> Purchase keys. Every other Commercial foreign key stays inside Commercial.
+    const permitted = new Set([
+      "commercial_consumption_claims>rewards",
+      "commercial_admissions>purchase_records",
+      "commercial_admissions>verified_units",
+    ]);
     for (const row of outbound.rows) {
-      if (row.child === "commercial_consumption_claims" && row.referenced === "rewards") continue;
+      if (permitted.has(`${row.child}>${row.referenced}`)) continue;
       expect(row.referenced).toMatch(/^commercial_/);
     }
     expect(
-      outbound.rows.filter((r) => !r.referenced.startsWith("commercial_")).map((r) => r.child),
-    ).toEqual(["commercial_consumption_claims"]);
+      outbound.rows
+        .filter((r) => !r.referenced.startsWith("commercial_"))
+        .map((r) => `${r.child}>${r.referenced}`)
+        .sort(),
+    ).toEqual([...permitted].sort());
     const inbound = await pool.query(
       `SELECT conrelid::regclass::text AS child FROM pg_constraint
         WHERE contype = 'f' AND confrelid::regclass::text LIKE 'commercial\\_%'
@@ -286,16 +304,16 @@ describe("0021 schema shape and migration lifecycle", () => {
     // Populated: refuse (and change nothing).
     const businessId = newBusiness();
     await openAccount(businessId);
-    // Six steps: 0026 (no pending_admission Purchase), 0025, 0024, 0023 and 0022 (no consumption/settlement/grant rows yet) roll back, then 0021 refuses because the account exists.
-    await expectPgFailure(migrateDown(pool, migrationsDir, 6), /refusing to roll back/);
+    // Seven steps: 0027 (no admission/earmark rows), 0026 (no pending_admission Purchase), 0025, 0024, 0023 and 0022 (no consumption/settlement/grant rows yet) roll back, then 0021 refuses because the account exists.
+    await expectPgFailure(migrateDown(pool, migrationsDir, 7), /refusing to roll back/);
     const still = await pool.query("SELECT to_regclass('public.commercial_accounts') AS t");
     expect(still.rows[0].t).not.toBeNull();
 
     // Empty: rolls back cleanly and re-applies (drop + re-migrate resets the immutable rows first).
     await dropCommercialObjects();
     await migrateUp(pool, migrationsDir);
-    const down = await migrateDown(pool, migrationsDir, 6);
-    expect(down.rolledBack).toEqual(["0026", "0025", "0024", "0023", "0022", "0021"]);
+    const down = await migrateDown(pool, migrationsDir, 7);
+    expect(down.rolledBack).toEqual(["0027", "0026", "0025", "0024", "0023", "0022", "0021"]);
     const gone = await pool.query("SELECT to_regclass('public.commercial_accounts') AS t");
     expect(gone.rows[0].t).toBeNull();
     const fnGone = await pool.query(
@@ -303,7 +321,7 @@ describe("0021 schema shape and migration lifecycle", () => {
     );
     expect(fnGone.rows[0].n).toBe(0);
     const reapplied = await migrateUp(pool, migrationsDir);
-    expect(reapplied.applied).toEqual(["0021", "0022", "0023", "0024", "0025", "0026"]);
+    expect(reapplied.applied).toEqual(["0021", "0022", "0023", "0024", "0025", "0026", "0027"]);
   });
 });
 

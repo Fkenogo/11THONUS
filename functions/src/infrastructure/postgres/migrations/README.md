@@ -171,6 +171,25 @@ and `../../../domains/purchase/services/purchaseAdmissionSeam.postgres.test.ts`.
 `0026` is authored here but applied only in the local test database by this
 package; it has not been applied to any deployed database.
 
+`WP-COM-05b` adds `0027`: the Commercial admission gate's provenance --
+`commercial_admissions` (one immutable row per Purchase that began new Circle
+position(s) through the gate; foreign keys to the Purchase, the Verified Unit and
+its `capacity_reserved` ledger entry) and `commercial_admission_blocks` (the
+immutable earmark: one row per Circle position, fixing the funding bucket at
+ADMIT time, `UNIQUE (business_id, stream_ref, block_index)`). The foreign keys are
+IMMEDIATE, so a child can never be written before its Verified Unit parent; a
+deferred constraint trigger refuses to commit an admission whose earmarks do not
+equal its reservation ledger entry. It also adds the foreign key from
+`commercial_consumption_events.earmark_id` (the plain UUID `0025` left open) and a
+guard that a consumption debits exactly its earmarked bucket. Additive: no existing
+column changes, no data is seeded, no Loyalty table is altered, and there is no
+payment-provider, scheduler or read-model schema. Its `.down.sql` fails closed
+while any admission or earmark exists. See
+`docs/05-implementation/reports/wp-com-05b-commercial-admission-gate-earmarks-and-held-purchase-processor-implementation-report-2026-10-01.md`
+and `../../../domains/commercial/commercialAdmission.postgres.test.ts`.
+`0027` is authored here but applied only in the local test database by this
+package; it has not been applied to any deployed database.
+
 The migration runner's own bookkeeping table (`schema_migrations`) is
 created directly by `migrationRunner.ts`'s `ensureMigrationsTable` — it is
 migration-system metadata intrinsic to the mechanism, not a numbered

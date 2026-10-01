@@ -2,7 +2,7 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-10-01 (Entry 278 added: `WP-COM-05a` — Purchase admission seam and `pending_admission` foundation: migration `0026`; `admitPurchaseToLoyalty` extracted verbatim from `verifyPurchase`; gate seam `off` only; gate-OFF equivalence proven against a golden captured on `main`; implementation only, pending review, no Commercial coupling, no capacity gate / earmark, `PB-013B P3-3` remains open.)  
+> **Last controlled update:** 2026-10-01 (Entry 279 added: `WP-COM-05b` — Commercial admission gate, earmarks and held-Purchase processor: migration `0027`; ADMIT/HOLD decision on usable capacity; immutable admissions and earmarks; `reevaluatePendingAdmissions`; `verifyPurchase` discriminated outcome; web/i18n status handling; gate defaults to `off`; implementation only, pending review, `PB-013B P3-3` remains open. Previously Entry 278 added: `WP-COM-05a` — Purchase admission seam and `pending_admission` foundation: migration `0026`; `admitPurchaseToLoyalty` extracted verbatim from `verifyPurchase`; gate seam `off` only; gate-OFF equivalence proven against a golden captured on `main`; implementation only, pending review, no Commercial coupling, no capacity gate / earmark, `PB-013B P3-3` remains open.)  
 > **Prior update:** 2026-09-30 (Entry 277 added: `WP-COM-04` — Commercial consumption projection: migration `0025`; claim → account lock → classify → finalize per Reward; exactly-once at database level; fallback classification under the account lock; earmark port; bounded reconciliation service and lag metrics; implementation only, pending review, loyalty path read-only source only, no capacity gate / `pending_admission`.)  
 > **Prior update:** 2026-09-30 (Entry 276 added: `WP-COM-03A` — recorded settlement cancellation: migration `0024`; `cancelSettlement` (`recorded → cancelled`, no ledger effect); closes `WP-COM-03` deviation D3; implementation only, pending review, loyalty path unchanged.)  
 > **Prior update:** 2026-09-30 (Entry 275 added: `WP-COM-03` — manual Commercial administration commands: migration `0023`; `openCommercialAccount`, `grantTrial`, `adjustTrial`, `adjustCommercialCredit`, `activatePaidService`, `restrictNewStarts`/`restoreCommercialStanding`, `voidSettlement`; implementation only, pending review, loyalty path unchanged.)  
@@ -134,6 +134,20 @@ VERIFIED`: no `FD-COM-001` file was modified by PR #241 or this administrative c
 # 11thONUS Documentation Changes Log
 
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
+
+---
+## Entry 279 — `WP-COM-05b`: Commercial Admission Gate, Earmarks & Held-Purchase Processor (Implementation)
+
+**Date:** 2026-10-01 · **Type:** implementation · **Entry `origin/main`:** `94fa71e6516ab5376fa355eaf9f771db6fa01aa9` · **Branch:** `claude/exciting-brahmagupta-kxkep4` · **Not merged. Nothing deployed; migration `0027` applied only to a local disposable test database.**
+
+- **Implemented.** Migration `0027` (`commercial_admissions`, `commercial_admission_blocks`, reservation↔earmark consistency trigger, `earmark_id` foreign key and consumption-bucket guard; `.down.sql` fails closed while any admission/earmark exists); the ADMIT/HOLD decision on usable capacity (balance − reserved, FD-A); HOLD to `pending_admission` with no Loyalty state and no `admit:<purchase_id>` key; ADMIT with the Verified Unit first, then reservation, admission and immutable earmark rows (funding bucket fixed at admission); `admitOrHoldPurchase` shared by live verification and the new callable, repeat-safe FIFO `reevaluatePendingAdmissions`; `verifyPurchase` discriminated outcome; web status handling and EN/FR copy; gate `off` (default) / `enforce`.
+- **Preserved.** Active-Circle grace (continuing Purchases are never gated and take no Commercial lock, even at negative capacity); earned Reward and redemption untouched; WP-COM-04 projector unchanged and now earmark-capable end to end; gate-off behaviour byte-identical to `main` (05a golden still matches).
+- **Not implemented (by design).** Scheduler and automatic triggers, `shadow` mode, Operator Console and read models, payment provider, Experience Assembly. `confirmRedemption`, the projector, Reward Program/Qualifying Item code and the prototype: zero diff.
+- **Open risk carried.** `PB-013B P3-3` remains **OPEN**; untouched and not worsened.
+- **Deviations recorded for review** (report §23, D1–D10): boundary tests narrowed rather than removed; `shadow` not built; admission rows only for Purchases beginning new positions; neutral payload-free hold event (a read-model leak of event payloads was found and closed); soft ledger reference; admit key also on the live path; single composition-root importer; WP-COM-04 fixture earmarks; hold-created stream row discarded; no automatic triggering.
+- **Files changed:** the implementation report; `docs/changes/IMPLEMENTATION_CHANGES.md`; this log (Entry 279 + header); migrations `README.md`; code/tests listed in the report.
+- **Disposition:** `WP-COM-05b — IMPLEMENTATION COMPLETE / PENDING REVIEW`. Recommended next: `WP-COM-06` (operational wiring of the processor — scheduler and commit triggers — and the Business/Operator read models).
+- **Report link:** [`wp-com-05b-commercial-admission-gate-earmarks-and-held-purchase-processor-implementation-report-2026-10-01.md`](../05-implementation/reports/wp-com-05b-commercial-admission-gate-earmarks-and-held-purchase-processor-implementation-report-2026-10-01.md)
 
 ---
 ## Entry 278 — `WP-COM-05a`: Purchase Admission Seam & `pending_admission` Foundation (Implementation)

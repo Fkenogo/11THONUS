@@ -738,3 +738,75 @@ export async function listAvailableRewardsForCustomer(
   );
   return result.rows.map(mapRewardRow);
 }
+
+/**
+ * Like `ensureAndLockCycleStream`, but also reports whether THIS call created
+ * the stream row (`WP-COM-05b`). The Commercial admission gate locks the stream
+ * before it knows whether the Purchase will be admitted; a HOLD must leave no
+ * Loyalty state behind, so the caller discards a stream it created.
+ */
+export async function ensureAndLockCycleStreamTracked(
+  tx: PlatformPostgresTransaction,
+  params: {
+    readonly businessId: string;
+    readonly customerIdentityId: string;
+    readonly rewardProgramId: string;
+  },
+): Promise<{ readonly stream: LoyaltyCycleStreamRow; readonly created: boolean }> {
+  const inserted = await tx.query(
+    `INSERT INTO loyalty_cycle_streams (business_id, customer_identity_id, reward_program_id)
+     VALUES ($1,$2,$3)
+     ON CONFLICT DO NOTHING
+     RETURNING business_id`,
+    [params.businessId, params.customerIdentityId, params.rewardProgramId],
+  );
+  const locked = await tx.query<StreamDbRow>(
+    `SELECT * FROM loyalty_cycle_streams
+      WHERE business_id = $1 AND customer_identity_id = $2 AND reward_program_id = $3
+      FOR UPDATE`,
+    [params.businessId, params.customerIdentityId, params.rewardProgramId],
+  );
+  return { stream: mapStreamRow(locked.rows[0]), created: inserted.rows.length > 0 };
+}
+
+/**
+ * Discards a stream row THIS transaction created and that holds no Cycle
+ * (`next_cycle_sequence = 1`). Used only on an admission HOLD so that no empty
+ * allocation structure is committed for a Purchase that was not admitted.
+ */
+export async function discardUnusedCycleStream(
+  tx: PlatformPostgresTransaction,
+  params: {
+    readonly businessId: string;
+    readonly customerIdentityId: string;
+    readonly rewardProgramId: string;
+  },
+): Promise<void> {
+  await tx.query(
+    `DELETE FROM loyalty_cycle_streams
+      WHERE business_id = $1 AND customer_identity_id = $2 AND reward_program_id = $3
+        AND next_cycle_sequence = 1`,
+    [params.businessId, params.customerIdentityId, params.rewardProgramId],
+  );
+}
+
+/**
+ * Net admitted units of a stream (design §8.3): credits minus reversals. Read
+ * under the stream lock, so no concurrent admission can change it.
+ */
+export async function sumAdmittedStreamUnits(
+  tx: PlatformPostgresTransaction,
+  params: {
+    readonly businessId: string;
+    readonly customerIdentityId: string;
+    readonly rewardProgramId: string;
+  },
+): Promise<number> {
+  const result = await tx.query<{ units: string }>(
+    `SELECT COALESCE(SUM(CASE WHEN entry_type = 'credit' THEN quantity ELSE -quantity END), 0) AS units
+       FROM verified_units
+      WHERE business_id = $1 AND customer_identity_id = $2 AND reward_program_id = $3`,
+    [params.businessId, params.customerIdentityId, params.rewardProgramId],
+  );
+  return Number(result.rows[0].units);
+}

@@ -73,6 +73,8 @@ let pool: PlatformPostgresPool;
 let startedFromEmptyDatabase = false;
 
 const COMMERCIAL_TABLES = [
+  "commercial_admission_blocks",
+  "commercial_admissions",
   "commercial_projection_failures",
   "commercial_consumption_events",
   "commercial_consumption_claims",
@@ -95,6 +97,8 @@ async function dropCommercialObjects(): Promise<void> {
     "commercial_consumption_claims_require_event",
     "commercial_consumption_events_ledger_guard",
     "commercial_consumption_claims_reward_business_guard",
+    "commercial_admission_assert_consistent",
+    "commercial_consumption_events_earmark_guard",
     "commercial_trial_grants_guard",
     "commercial_manual_adjustments_guard",
     "commercial_settlements_update_guard",
@@ -111,7 +115,7 @@ async function dropCommercialObjects(): Promise<void> {
   const hasMigrations = await pool.query("SELECT to_regclass('public.schema_migrations') AS t");
   if (hasMigrations.rows[0].t !== null) {
     await pool.query(
-      "DELETE FROM schema_migrations WHERE version IN ('0021', '0022', '0023', '0024', '0025', '0026')",
+      "DELETE FROM schema_migrations WHERE version IN ('0021', '0022', '0023', '0024', '0025', '0026', '0027')",
     );
     await pool
       .query("DELETE FROM idempotency_keys WHERE idempotency_key LIKE 'wpcom04-%'")
@@ -319,9 +323,60 @@ const asProjected = (r: ProjectConsumptionResult) => {
   return r;
 };
 
-const earmarkFor = (bucket: CommercialBucket): ConsumptionEarmarkResolver => {
+/**
+ * FIXTURE earmark (WP-COM-05b): since migration 0027 `earmark_id` is a real foreign key to
+ * `commercial_admission_blocks`. These WP-COM-04 tests exercise the PROJECTOR's earmark path in
+ * isolation, with Rewards seeded straight into Loyalty tables and no Purchase, so the earmark's
+ * admission is inserted with `session_replication_role = replica` (foreign keys and the
+ * admission/earmark consistency trigger are not evaluated), on its OWN connection so the
+ * projector's transaction keeps every trigger. The genuine admission -> earmark -> projection
+ * chain, with all constraints on, is proven in `commercialAdmission.postgres.test.ts`.
+ */
+async function fixtureEarmark(businessId: string, bucket: CommercialBucket): Promise<string> {
   const earmarkId = randomUUID();
-  return async () => ({ earmarkId, bucket });
+  const admissionId = randomUUID();
+  const streamRef = `fixture-${randomUUID()}`;
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("SET LOCAL session_replication_role = replica");
+    await client.query(
+      `INSERT INTO commercial_admissions
+         (id, business_id, purchase_record_id, verified_unit_id, ledger_entry_id, blocks_reserved,
+          first_block_index, stream_ref, decided_by, account_version, available_before,
+          reserved_before, admission_scope_key, correlation_id)
+       VALUES ($1,$2,$3,$4,$5,1,1,$6,'customer_verify',0,0,0,$7,'fixture')`,
+      [
+        admissionId,
+        businessId,
+        randomUUID(),
+        randomUUID(),
+        randomUUID(),
+        streamRef,
+        `admit:${randomUUID()}`,
+      ],
+    );
+    await client.query(
+      `INSERT INTO commercial_admission_blocks
+         (id, admission_id, business_id, stream_ref, block_index, funding_bucket, correlation_id)
+       VALUES ($1,$2,$3,$4,1,$5,'fixture')`,
+      [earmarkId, admissionId, businessId, streamRef, bucket],
+    );
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+  return earmarkId;
+}
+
+const earmarkFor = (bucket: CommercialBucket): ConsumptionEarmarkResolver => {
+  return async (_tx, source) => ({
+    earmarkId: await fixtureEarmark(source.businessId, bucket),
+    bucket,
+  });
 };
 
 async function accountOf(businessId: string) {
@@ -786,7 +841,10 @@ describe("BUCKET — funding provenance", () => {
       const circles = await Promise.all(plan.map(() => seedReward(b)));
       const resolver: ConsumptionEarmarkResolver = async (_tx, source) => {
         const index = circles.findIndex((c) => c.cycleId === source.loyaltyCycleId);
-        return { earmarkId: randomUUID(), bucket: plan[index] };
+        return {
+          earmarkId: await fixtureEarmark(source.businessId, plan[index]),
+          bucket: plan[index],
+        };
       };
       if (order === "concurrent") {
         const results = await Promise.allSettled(circles.map((c) => project(c.rewardId, resolver)));
@@ -1395,10 +1453,10 @@ describe("RECONCILIATION — bounded, repeat-safe, observable", () => {
 
     // One Reward has an earmark, one has none.
     let first = true;
-    const mixed: ConsumptionEarmarkResolver = async () => {
+    const mixed: ConsumptionEarmarkResolver = async (_tx, source) => {
       if (first) {
         first = false;
-        return { earmarkId: randomUUID(), bucket: "paid" };
+        return { earmarkId: await fixtureEarmark(source.businessId, "paid"), bucket: "paid" };
       }
       return null;
     };

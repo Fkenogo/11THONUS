@@ -144,6 +144,7 @@ import type { QualifyingItemStatusFilter } from "./domains/qualifyingItem/reposi
 import { PurchaseDomainError } from "./domains/purchase/models/purchaseErrors";
 import { recordPurchase as recordPurchaseCommand } from "./domains/purchase/services/recordPurchaseCommand";
 import { verifyPurchase as verifyPurchaseCommand } from "./domains/purchase/services/verifyPurchaseCommand";
+import { createCommercialAdmissionPort } from "./composition/commercialAdmissionBinding";
 import { rejectPurchase as rejectPurchaseCommand } from "./domains/purchase/services/rejectPurchaseCommand";
 import { raisePurchaseDispute as raisePurchaseDisputeCommand } from "./domains/purchase/services/raisePurchaseDisputeCommand";
 import { confirmRedemption as confirmRedemptionCommand } from "./domains/purchase/services/confirmRedemptionCommand";
@@ -2314,11 +2315,17 @@ export const verifyPurchase = onCall(async (request) => {
       parseActorRequest(value),
       { verifier: firebaseAdminTokenVerifier() },
     );
+    // WP-COM-05b: the Commercial admission gate is OFF unless deliberately enabled
+    // (PURCHASE_ADMISSION_GATE_MODE=enforce). The default keeps today's behaviour.
+    const admissionGateMode = process.env.PURCHASE_ADMISSION_GATE_MODE || undefined;
     return await verifyPurchaseCommand(db, getPurchasePostgresPool(), {
       customerIdentityId,
       request: { purchaseRecordId: parseNonEmptyString(value.purchaseRecordId) },
       idempotencyKey: parseNonEmptyString(value.idempotencyKey),
       correlationId: randomUUID(),
+      admissionGateMode,
+      commercialAdmission:
+        admissionGateMode === "enforce" ? createCommercialAdmissionPort() : undefined,
     });
   } catch (error) {
     throw toHttpsError(error);
