@@ -14,6 +14,8 @@
 import { randomUUID } from "node:crypto";
 import { setGlobalOptions } from "firebase-functions";
 import { HttpsError, onCall, onRequest } from "firebase-functions/https";
+import { onSchedule } from "firebase-functions/scheduler";
+import { onDocumentCreated } from "firebase-functions/firestore";
 import { getFirestore } from "firebase-admin/firestore";
 import { PLATFORM_REGION } from "./config/region";
 import { getAdminApp } from "./infrastructure/firebase/admin";
@@ -146,6 +148,12 @@ import { recordPurchase as recordPurchaseCommand } from "./domains/purchase/serv
 import { verifyPurchase as verifyPurchaseCommand } from "./domains/purchase/services/verifyPurchaseCommand";
 import { isReservedIdempotencyKey } from "./domains/purchase/services/purchaseAdmissionPort";
 import { createCommercialAdmissionPort } from "./composition/commercialAdmissionBinding";
+import {
+  HELD_PURCHASE_RECOVERY_SCHEDULE,
+  HELD_PURCHASE_SIGNAL_DOCUMENT,
+  handleAdmissionSignal,
+  runHeldPurchaseRecoveryJob,
+} from "./composition/heldPurchaseProcessorWiring";
 import { rejectPurchase as rejectPurchaseCommand } from "./domains/purchase/services/rejectPurchaseCommand";
 import { raisePurchaseDispute as raisePurchaseDisputeCommand } from "./domains/purchase/services/raisePurchaseDisputeCommand";
 import { confirmRedemption as confirmRedemptionCommand } from "./domains/purchase/services/confirmRedemptionCommand";
@@ -2584,3 +2592,46 @@ export const listLoyaltyCycleProgressForBusiness = onCall(async (request) => {
     throw toHttpsError(error);
   }
 });
+
+// ---------------------------------------------------------------------------
+// `WP-COM-06a` -- held-Purchase processor activation and recovery.
+//
+// Two exported, discoverable Functions. Both are no-ops unless the Commercial admission gate is
+// enforced (or `HELD_PURCHASE_PROCESSOR_MODE=drain`), so with the gate at its default (off) they
+// never touch PostgreSQL. The admission logic is the unchanged `reevaluatePendingAdmissions`.
+// ---------------------------------------------------------------------------
+
+/**
+ * Periodic recovery: a bounded, fair sweep that re-evaluates held Purchases, compensating for any
+ * missed post-commit signal. The cadence (`HELD_PURCHASE_RECOVERY_SCHEDULE`) is a DEPLOYMENT-TIME
+ * setting. `maxInstances: 1` plus `retryCount: 0`: a run never overlaps itself on one schedule tick
+ * and a failed run is simply re-done by the next tick (overlap is safe regardless -- the processor
+ * is idempotent).
+ */
+export const recoverHeldPurchases = onSchedule(
+  {
+    schedule: HELD_PURCHASE_RECOVERY_SCHEDULE,
+    timeoutSeconds: 300,
+    maxInstances: 1,
+    retryCount: 0,
+  },
+  async () => {
+    await runHeldPurchaseRecoveryJob(getFirestore(getAdminApp()), getPurchasePostgresPool());
+  },
+);
+
+/**
+ * Business-scoped processing after a capacity-increasing Commercial command. The signal document
+ * is coalesced per Business and time window (see `heldPurchaseProcessorWiring.ts`), so one
+ * invocation serves every signal in the window. Best-effort: a failure here is compensated by
+ * `recoverHeldPurchases`.
+ */
+export const reevaluateHeldPurchasesOnSignal = onDocumentCreated(
+  { document: HELD_PURCHASE_SIGNAL_DOCUMENT, timeoutSeconds: 300, maxInstances: 5, retry: false },
+  async (event) => {
+    await handleAdmissionSignal(getFirestore(getAdminApp()), getPurchasePostgresPool(), {
+      signalId: event.params.signalId,
+      data: event.data?.data(),
+    });
+  },
+);

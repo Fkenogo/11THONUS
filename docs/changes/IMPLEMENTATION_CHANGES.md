@@ -7,6 +7,24 @@
 
 ---
 
+## 2026-10-01 — WP-COM-06a — Held-Purchase Processor Activation & Recovery (Implementation)
+
+- **Date:** 2026-10-01
+- **Phase:** Commercial implementation programme (11THONUS-COMMERCIAL-DESIGN-001 v1.1 + CORR-002, §8.11–§8.13, §22.3, §24)
+- **Task:** WP-COM-06a — make the WP-COM-05b held-Purchase processor operationally safe. A **best-effort post-commit signal** (not a transactional outbox) after the Commercial mutations that can raise capacity (`confirmSettlement`, `grantTrial`, positive `adjustTrial` / `adjustCommercialCredit`, `restoreCommercialStanding`; `activatePaidService` deliberately **not** a trigger), coalesced per Business + 60 s window; a **scheduled recovery** Function (`recoverHeldPurchases`, every 5 minutes, deployment-time cadence) with a persisted Business cursor (no starvation beyond 100 Businesses) and a rotating tail window (rows beyond the 1000-Purchase window are eventually reached); per-Purchase / per-Business failure isolation with transient / concurrency-winner / permanent classification; backlog observability (structured logs + persisted run state); an operations runbook. No admission logic added — every admission still runs through the unchanged `reevaluatePendingAdmissions`. The gate remains **default OFF**; nothing enables `enforce`.
+- **Status:** Implemented — pending review. Not merged. Entry `origin/main` `bb22f43af8a1696e04799f4ccd9dd234af7542cb`; branch `claude/gallant-ramanujan-vzw1zd`. A previous session's claim of WP-COM-06a was found to have no code anywhere on GitHub; this is a fresh implementation.
+- **Files changed:** see the [Implementation Report](../05-implementation/reports/wp-com-06a-held-purchase-processor-activation-and-recovery-implementation-report-2026-10-01.md) §20. Summary: 5 new source files, 8 modified (the command runner + five one-line eligibility predicates, the processor's failure isolation / continuation window, two exports in `index.ts`), 4 new test files (33 PostgreSQL, 8 emulator, 28 unit), runbook `docs/runbooks/held-purchase-processor-runbook.md`.
+- **Tests / validation:** build, lint (0 errors; 1 pre-existing warning), format, typecheck; unit (functions 1971, web 926); full PostgreSQL suite under the Firestore Emulator, cold cache, fresh DB (19 files, 671 tests); emulator suite with Auth + Firestore (67 files, 875 passed, 3 skipped); Playwright e2e 41 passed; both new Functions loaded by the real Functions emulator. Four mutation checks confirmed the fairness, tail-window, post-commit and classification tests fail when violated. A pre-existing warm-cache PostgreSQL ordering flake (reproduced on untouched `main`) is recorded in report §22.
+- **Configuration / dependencies:** no committed configuration, dependency, `package.json`, lockfile or Firebase config change. One new optional runtime variable, `HELD_PURCHASE_PROCESSOR_MODE=drain` (absent by default), alongside the existing `PURCHASE_ADMISSION_GATE_MODE`.
+- **Migrations:** none (existing partial index `purchase_records_pending_admission_fifo_idx` serves every new query).
+- **Deliberately not implemented:** durable PostgreSQL outbox, Business/Operator read models and UI (WP-COM-06b), an endpoint for the Commercial commands, payment provider, Cloud Monitoring metrics/alerts and Firestore TTL policies (deployment actions). **Redemption, the WP-COM-04 projector, `admitOrHoldPurchase`, the 05b policy, Reward Program / Qualifying Item code, `apps/` and the prototype: zero diff.**
+- **Product Truth:** unchanged. **PB-013B P3-3 remains OPEN** — untouched, not worsened.
+- **Risks / deviations:** report §24–§25 (D1–D7, R-1–R-8). Notably R-1: no production path runs the Commercial commands yet, so scheduled recovery is the only live path until they are wired. Gate-enforcement readiness (technical only): **READY WITH CONDITIONS**; the gate stays OFF.
+- **Rollback:** `git revert`; no schema change; unset the two environment variables, pause the scheduler job, or delete the Functions. See runbook §10.
+- **Report link:** [`wp-com-06a-held-purchase-processor-activation-and-recovery-implementation-report-2026-10-01.md`](../05-implementation/reports/wp-com-06a-held-purchase-processor-activation-and-recovery-implementation-report-2026-10-01.md)
+
+---
+
 ## 2026-10-01 — WP-COM-05b — Commercial Admission Gate, Earmarks & Held-Purchase Processor (Implementation)
 
 - **Date:** 2026-10-01

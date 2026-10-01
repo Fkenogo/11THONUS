@@ -7,8 +7,9 @@
  * a Purchase's admission cost (`newBlocks`) varies, so one large held Purchase must not
  * starve smaller later ones that fit.
  *
- * A callable service, not a scheduler: nothing here is scheduled (that belongs to a later
- * package). Per Business it examines `pending_admission` Purchases in deterministic oldest-first
+ * A callable service, not a scheduler: nothing in THIS file is scheduled or signalled
+ * (`WP-COM-06a` invokes it from `heldPurchaseRecovery.ts`, which the composition root wires to a
+ * post-commit signal and to a periodic recovery function). Per Business it examines `pending_admission` Purchases in deterministic oldest-first
  * order `(purchase_date ASC, id ASC)`, ONE TRANSACTION PER PURCHASE:
  *
  *   Purchase lock `FOR UPDATE` (a Purchase that is no longer `pending_admission` is
@@ -42,9 +43,14 @@ import type { PlatformPostgresPool } from "../../../infrastructure/postgres/post
 import { withPlatformTransaction } from "../../../infrastructure/postgres/postgresTransaction";
 import {
   listBusinessesWithPendingAdmission,
-  listPendingAdmissionPurchaseIds,
   lockPurchaseRecordById,
 } from "../repositories/purchaseRecordRepository";
+import {
+  listPendingAdmissionWindow,
+  readPurchaseStatus,
+  type PendingScanCursor,
+} from "../repositories/heldPurchaseRecoveryRepository";
+import { classifyAdmissionFailure } from "./admissionFailureClassification";
 import type { PurchaseActorType } from "../models/purchase";
 import { admitOrHoldPurchase } from "./admitOrHoldPurchase";
 import {
@@ -72,6 +78,28 @@ export type ReevaluatePendingAdmissionsParams = {
   readonly maxPerBusiness?: number;
   /** Upper bound of Businesses examined when `businessId` is omitted (default 100). */
   readonly maxBusinesses?: number;
+  /**
+   * `WP-COM-06a`: resume the FIFO scan STRICTLY AFTER this position (a continuation window beyond
+   * the head window). Omit for the normal head window. Only meaningful with `businessId`.
+   */
+  readonly after?: PendingScanCursor | null;
+  /** Extra attempts for a TRANSIENT per-Purchase failure (default 1). */
+  readonly transientRetries?: number;
+  /**
+   * Delay before a transient retry (`100 ms x attempt`). Supplied by the caller
+   * (`heldPurchaseRecovery.ts` passes a real timer); the processor itself schedules nothing and
+   * retries immediately when none is given.
+   */
+  readonly sleep?: (ms: number) => Promise<void>;
+  /** Called for every per-Purchase failure that is not a concurrency winner. Must not throw. */
+  readonly onPurchaseFailure?: (failure: PurchaseProcessingFailure) => void;
+};
+
+export type PurchaseProcessingFailure = {
+  readonly businessId: string;
+  readonly purchaseId: string;
+  readonly failureClass: "transient" | "permanent";
+  readonly code: string;
 };
 
 export type PendingAdmissionOutcome =
@@ -81,13 +109,46 @@ export type PendingAdmissionOutcome =
       readonly outcome: "held";
       readonly reason: PurchaseAdmissionHoldReason;
     }
-  | { readonly purchaseId: string; readonly outcome: "not_pending" };
+  | { readonly purchaseId: string; readonly outcome: "not_pending" }
+  | {
+      readonly purchaseId: string;
+      readonly outcome: "failed";
+      readonly failureClass: "transient" | "permanent";
+      readonly code: string;
+    };
+
+/** What one Business pass examined (scan-window observability, `WP-COM-06a`). */
+export type BusinessScanStats = {
+  readonly businessId: string;
+  /** Rows examined in this pass (<= `windowLimit`). */
+  readonly examined: number;
+  readonly windowLimit: number;
+  /** More held Purchases exist beyond this window: it was SATURATED. */
+  readonly saturated: boolean;
+  /** FIFO position of the last row examined; the resume point for a continuation window. */
+  readonly lastCursor: PendingScanCursor | null;
+  readonly admitted: number;
+  readonly held: number;
+  readonly heldByReason: Readonly<Partial<Record<PurchaseAdmissionHoldReason, number>>>;
+  /**
+   * Held for `insufficient_capacity` while a YOUNGER Purchase of this Business was admitted in
+   * the same pass -- the large-cost starvation indicator the policy's "residual risk" names.
+   */
+  readonly skippedOvertaken: number;
+  readonly notPending: number;
+  readonly failedTransient: number;
+  readonly failedPermanent: number;
+  /** Set when the whole Business pass failed (e.g. its window query); other Businesses continue. */
+  readonly passError?: { readonly code: string };
+};
 
 export type ReevaluatePendingAdmissionsResult = {
   readonly results: readonly PendingAdmissionOutcome[];
   readonly admittedCount: number;
   readonly heldCount: number;
   readonly notPendingCount: number;
+  readonly failedCount: number;
+  readonly businesses: readonly BusinessScanStats[];
 };
 
 export async function reevaluatePendingAdmissions(
@@ -100,24 +161,138 @@ export async function reevaluatePendingAdmissions(
       : await listBusinessesWithPendingAdmission(pool, params.maxBusinesses ?? 100);
 
   const results: PendingAdmissionOutcome[] = [];
+  const stats: BusinessScanStats[] = [];
   for (const businessId of businesses) {
-    const candidates = await listPendingAdmissionPurchaseIds(pool, {
-      businessId,
-      limit: params.maxPerBusiness ?? 1000,
-    });
-    for (const purchaseId of candidates) {
-      const outcome = await reevaluateOne(pool, params, purchaseId);
-      results.push(outcome);
-      // Skip-and-continue: a Purchase that does not fit stays `pending_admission`, unchanged,
-      // and the scan moves on to the next-oldest one.
-    }
+    const pass = await reevaluateBusinessWindow(pool, params, businessId);
+    results.push(...pass.results);
+    stats.push(pass.stats);
   }
   return {
     results,
     admittedCount: results.filter((r) => r.outcome === "admitted").length,
     heldCount: results.filter((r) => r.outcome === "held").length,
     notPendingCount: results.filter((r) => r.outcome === "not_pending").length,
+    failedCount: results.filter((r) => r.outcome === "failed").length,
+    businesses: stats,
   };
+}
+
+/**
+ * One bounded FIFO window of one Business. Never throws: a failing Purchase is recorded and the
+ * scan continues with the next-oldest; a failing window query is recorded as `passError`.
+ */
+async function reevaluateBusinessWindow(
+  pool: PlatformPostgresPool,
+  params: ReevaluatePendingAdmissionsParams,
+  businessId: string,
+): Promise<{ results: PendingAdmissionOutcome[]; stats: BusinessScanStats }> {
+  const windowLimit = params.maxPerBusiness ?? 1000;
+  const results: PendingAdmissionOutcome[] = [];
+  const heldByReason: Partial<Record<PurchaseAdmissionHoldReason, number>> = {};
+  let lastCursor: PendingScanCursor | null = null;
+  let saturated = false;
+  let passError: { code: string } | undefined;
+  try {
+    const window = await listPendingAdmissionWindow(pool, {
+      businessId,
+      limit: windowLimit,
+      after: params.after ?? null,
+    });
+    saturated = window.hasMore;
+    for (const row of window.rows) {
+      const outcome = await reevaluateOneIsolated(pool, params, businessId, row.id);
+      results.push(outcome);
+      lastCursor = row.cursor;
+      if (outcome.outcome === "held") {
+        heldByReason[outcome.reason] = (heldByReason[outcome.reason] ?? 0) + 1;
+      }
+      // Skip-and-continue: a Purchase that does not fit stays `pending_admission`, unchanged,
+      // and the scan moves on to the next-oldest one.
+    }
+  } catch (error) {
+    passError = { code: classifyAdmissionFailure(error).code };
+  }
+  const count = (o: PendingAdmissionOutcome["outcome"]) =>
+    results.filter((r) => r.outcome === o).length;
+  const failed = results.filter(
+    (r): r is Extract<PendingAdmissionOutcome, { outcome: "failed" }> => r.outcome === "failed",
+  );
+  const stats: BusinessScanStats = {
+    businessId,
+    examined: results.length,
+    windowLimit,
+    saturated,
+    lastCursor,
+    admitted: count("admitted"),
+    held: count("held"),
+    heldByReason,
+    skippedOvertaken: countOvertaken(results),
+    notPending: count("not_pending"),
+    failedTransient: failed.filter((f) => f.failureClass === "transient").length,
+    failedPermanent: failed.filter((f) => f.failureClass === "permanent").length,
+    ...(passError === undefined ? {} : { passError }),
+  };
+  return { results, stats };
+}
+
+function countOvertaken(results: readonly PendingAdmissionOutcome[]): number {
+  let lastAdmitted = -1;
+  results.forEach((r, i) => {
+    if (r.outcome === "admitted") lastAdmitted = i;
+  });
+  return results.filter(
+    (r, i) => i < lastAdmitted && r.outcome === "held" && r.reason === "insufficient_capacity",
+  ).length;
+}
+
+/**
+ * One Purchase with failure isolation (`WP-COM-06a`). Returns an outcome for EVERY Purchase:
+ * a TRANSIENT failure is retried (bounded); a concurrency winner is `not_pending` (confirmed by
+ * a fresh read); anything else is a recorded `failed` outcome. It never throws.
+ */
+async function reevaluateOneIsolated(
+  pool: PlatformPostgresPool,
+  params: ReevaluatePendingAdmissionsParams,
+  businessId: string,
+  purchaseId: string,
+): Promise<PendingAdmissionOutcome> {
+  const retries = params.transientRetries ?? 1;
+  const sleep = params.sleep ?? (async () => {});
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await reevaluateOne(pool, params, purchaseId);
+    } catch (error) {
+      let classified = classifyAdmissionFailure(error);
+      if (classified.failureClass === "concurrent_winner") {
+        // Trust but verify: a stale-state error is a benign race ONLY if the Purchase really
+        // moved on. A still-pending Purchase with a state error is an invariant breach.
+        let status: string | null | undefined;
+        try {
+          status = await readPurchaseStatus(pool, purchaseId);
+        } catch {
+          status = undefined;
+        }
+        if (status !== undefined && status !== "pending_admission") {
+          return { purchaseId, outcome: "not_pending" };
+        }
+        classified =
+          status === undefined
+            ? { failureClass: "transient", code: "STATUS_READ_FAILED" }
+            : { failureClass: "permanent", code: "INVARIANT_STATE_ERROR_WHILE_PENDING" };
+      }
+      if (classified.failureClass === "transient" && attempt < retries) {
+        await sleep(100 * (attempt + 1));
+        continue;
+      }
+      const failureClass = classified.failureClass === "transient" ? "transient" : "permanent";
+      try {
+        params.onPurchaseFailure?.({ businessId, purchaseId, failureClass, code: classified.code });
+      } catch {
+        // An observer must never break the pass.
+      }
+      return { purchaseId, outcome: "failed", failureClass, code: classified.code };
+    }
+  }
 }
 
 /** One Purchase, one transaction. Exported for focused testing; prefer `reevaluatePendingAdmissions`. */

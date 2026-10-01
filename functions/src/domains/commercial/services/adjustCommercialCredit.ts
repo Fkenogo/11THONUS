@@ -70,6 +70,8 @@ export async function adjustCommercialCredit(
     context,
     {
       commandType: "adjustCommercialCredit",
+      // Only a POSITIVE delta raises capacity; a reduction can never admit anything.
+      capacityIncrease: (result) => (result.unitsDelta > 0 ? "credit_adjusted_up" : null),
       payload: {
         businessId: input.businessId,
         unitsDelta: input.unitsDelta,

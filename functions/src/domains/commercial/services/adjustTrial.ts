@@ -72,6 +72,8 @@ export async function adjustTrial(
     context,
     {
       commandType: "adjustTrial",
+      // Only a POSITIVE delta raises capacity; a reduction can never admit anything.
+      capacityIncrease: (result) => (result.unitsDelta > 0 ? "trial_adjusted_up" : null),
       payload: {
         businessId: input.businessId,
         unitsDelta: input.unitsDelta,

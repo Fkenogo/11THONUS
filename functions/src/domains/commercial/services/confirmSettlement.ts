@@ -82,6 +82,8 @@ export async function confirmSettlement(
     context,
     {
       commandType: "confirmSettlement",
+      // A confirmed settlement credits the paid bucket (> 0 units): capacity rises.
+      capacityIncrease: () => "settlement_confirmed",
       payload: {
         businessId: input.businessId,
         settlementId: input.settlementId,

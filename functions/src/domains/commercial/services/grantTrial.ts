@@ -74,6 +74,8 @@ export async function grantTrial(
     context,
     {
       commandType: "grantTrial",
+      // A trial grant is always 3-5 units: trial capacity rises.
+      capacityIncrease: () => "trial_granted",
       payload: {
         businessId: input.businessId,
         units: input.units,
