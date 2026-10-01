@@ -148,19 +148,39 @@ describe("Commercial foundation is a separate, non-integrated domain (WP-COM-01)
     }
   });
 
-  it("no pending-admission lifecycle, capacity gate, admission or earmark creation exists anywhere in source or migrations", () => {
-    const everything = [...commercialSources, ...nonCommercialSources]
-      .filter((f) => f !== join(commercialDir, "commercialBoundary.test.ts"))
-      .map((f) => readFileSync(f, "utf8"));
-    // Migration comments in 0021 legitimately NAME what is deferred; only executable SQL is scanned.
-    const migrationFiles = readdirSync(migrationsDir).map((n) =>
-      readFileSync(join(migrationsDir, n), "utf8").replace(/--.*$/gm, ""),
+  it("pending-admission is a PURCHASE-domain state only (WP-COM-05a); no capacity gate, admission or earmark creation exists anywhere", () => {
+    // WP-COM-05a legitimately introduces the Purchase `pending_admission` state: it may appear in the
+    // Purchase domain and in migration 0026 only. Everywhere else (Commercial included) it stays absent.
+    const purchaseDomainDir = join(domainsDir, "purchase") + "/";
+    // The migration test suite that proves 0026's schema and rollback.
+    const migration0026Tests = join(
+      srcDir,
+      "infrastructure",
+      "postgres",
+      "rewardProgramMigrations.postgres.test.ts",
     );
-    for (const text of [...everything, ...migrationFiles]) {
-      expect(text).not.toContain(PENDING);
-      // WP-COM-04 legitimately adds consumption claims/events/failures; admissions and earmarks stay WP-COM-05.
-      expect(text).not.toMatch(/commercial_(admissions|admission_blocks)/);
-      expect(text).not.toMatch(/(INSERT\s+INTO|CREATE\s+TABLE)\s+\w*earmark/i);
+    const sources = [...commercialSources, ...nonCommercialSources].filter(
+      (f) => f !== join(commercialDir, "commercialBoundary.test.ts"),
+    );
+    for (const file of sources) {
+      if (file.startsWith(purchaseDomainDir) || file === migration0026Tests) continue;
+      expect(readFileSync(file, "utf8"), relative(srcDir, file)).not.toContain(PENDING);
+    }
+    // Migration comments legitimately NAME what is deferred; only executable SQL is scanned.
+    const migrationFiles = readdirSync(migrationsDir).filter((n) => n.endsWith(".sql"));
+    for (const name of migrationFiles) {
+      const sql = readFileSync(join(migrationsDir, name), "utf8").replace(/--.*$/gm, "");
+      if (!name.startsWith("0026_purchase_pending_admission")) {
+        expect(sql, name).not.toContain(PENDING);
+      }
+      // WP-COM-04 legitimately adds consumption claims/events/failures; admissions and earmarks stay WP-COM-05b.
+      expect(sql, name).not.toMatch(/commercial_(admissions|admission_blocks)/);
+      expect(sql, name).not.toMatch(/(INSERT\s+INTO|CREATE\s+TABLE)\s+\w*earmark/i);
+    }
+    for (const file of sources) {
+      expect(readFileSync(file, "utf8"), relative(srcDir, file)).not.toMatch(
+        /commercial_(admissions|admission_blocks)|(INSERT\s+INTO|CREATE\s+TABLE)\s+\w*earmark/i,
+      );
     }
     for (const file of commercialSources) {
       const source = readFileSync(file, "utf8");

@@ -14,6 +14,7 @@
 
 export type PurchaseStatus =
   | "waiting_for_customer"
+  | "pending_admission"
   | "verified"
   | "rejected"
   | "under_review"

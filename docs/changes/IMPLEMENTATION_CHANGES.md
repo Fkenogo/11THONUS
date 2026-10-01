@@ -7,6 +7,25 @@
 
 ---
 
+## 2026-10-01 — WP-COM-05a — Purchase Admission Seam & `pending_admission` Foundation (Implementation)
+
+- **Date:** 2026-10-01
+- **Phase:** Commercial implementation programme (11THONUS-COMMERCIAL-DESIGN-001 v1.1 + CORR-002, §8.8, §8.9, §8.13, §8.16, §22–§24)
+- **Task:** WP-COM-05a — introduce the explicit Purchase state `pending_admission` ("received and preserved; not invalid; not yet admitted into Loyalty") and extract the Loyalty-admission write sequence out of `verifyPurchase` into one reusable internal operation, `admitPurchaseToLoyalty`, so a later package can re-admit a held Purchase without copying verification logic. **The gate is OFF and can only be OFF**: every eligible Purchase is admitted immediately exactly as before, nothing writes the new state, and no Commercial table is read, written or locked.
+- **Status:** Implemented — pending review. Not merged. Entry `origin/main` `dccd9394412bd2902c6f8580ced7e54b40e1397a`; branch `claude/purchase-admission-seam-bi3yxn`.
+- **Files changed:** see the [Implementation Report](../05-implementation/reports/wp-com-05a-purchase-admission-seam-and-pending-admission-foundation-implementation-report-2026-10-01.md). Summary: new migration `0026_purchase_pending_admission` (+ `.down.sql`); new `admitPurchaseToLoyalty.ts` and `purchaseAdmissionGate.ts`; `verifyPurchaseCommand.ts` now delegates; `PurchaseStatus` gains one value; two repository transition helpers; new PostgreSQL integration suite with a golden captured from unmodified `main`; migration-list/boundary tests updated for `0026`.
+- **Equivalence proof:** the new suite compares `verifyPurchase` against a golden captured on unmodified `main` — resulting rows **and** the ordered SQL statement trace — for four scenarios (1 unit; exactly 10; 12 with pending overflow; 4 then 7 into one Cycle). Identical.
+- **Tests / validation:** see the report §20 (typecheck, lint, format, build, unit, full PostgreSQL suite under the Firestore Emulator, emulator suite).
+- **Configuration / dependencies:** none.
+- **Migrations:** `0026_purchase_pending_admission` — additive, `purchase_records` only: status vocabulary, `pending_admission` state-integrity branch, a guard trigger scoped to the new state, two partial indexes. No column, no table, no data. `.down.sql` fails closed while any Purchase is `pending_admission`. Applied only to a local disposable test database; never to a shared/staging/production database.
+- **Deliberately not implemented (WP-COM-05b):** Commercial admission port and capacity decision; gate modes `shadow`/`enforce`; the hold command and discriminated verify outcome; reservation entries; `commercial_admissions` and earmarks; admission processor / `reevaluatePendingAdmissions`; the `admit:<purchase_id>` key; web/i18n status handling; scheduler. **`confirmRedemption`, the WP-COM-04 projector, all Commercial source, `apps/` and the prototype: zero diff.**
+- **Product Truth:** unchanged.
+- **Risks / deviations:** report §15–§16 (D1–D5, R-1–R-6): WP-COM-01 boundary tests narrowed (the token is now legitimate in the Purchase domain and `0026` only); verify result shape and web/i18n handling deferred to 05b; `ALTER … VALIDATE` scan on `purchase_records` to be rehearsed before deploy. **PB-013B P3-3 remains OPEN** (Reward Program publication resolves Qualifying Item snapshots before its transaction) — untouched, not worsened, recorded as R-6.
+- **Rollback:** `git revert` the commit; `migrateDown` rolls `0026` back on a database with no `pending_admission` Purchase (fails closed otherwise).
+- **Report link:** [`wp-com-05a-purchase-admission-seam-and-pending-admission-foundation-implementation-report-2026-10-01.md`](../05-implementation/reports/wp-com-05a-purchase-admission-seam-and-pending-admission-foundation-implementation-report-2026-10-01.md)
+
+---
+
 ## 2026-09-30 — WP-COM-04 — Commercial Consumption Projection (Implementation)
 
 - **Date:** 2026-09-30

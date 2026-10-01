@@ -89,7 +89,7 @@ async function dropCommercialObjects(): Promise<void> {
   const hasMigrations = await pool.query("SELECT to_regclass('public.schema_migrations') AS t");
   if (hasMigrations.rows[0].t !== null) {
     await pool.query(
-      "DELETE FROM schema_migrations WHERE version IN ('0021', '0022', '0023', '0024', '0025')",
+      "DELETE FROM schema_migrations WHERE version IN ('0021', '0022', '0023', '0024', '0025', '0026')",
     );
     await pool
       .query("DELETE FROM idempotency_keys WHERE idempotency_key LIKE 'wpcom03a-%'")
@@ -1194,7 +1194,7 @@ describe("MIGRATION 0024 — additive, reversible, fail-closed", () => {
     const settlementId = await recordedSettlement(businessId, 2);
     await cancelIt(businessId, settlementId);
     await expectPgFailure(
-      migrateDown(pool, migrationsDir, 2),
+      migrateDown(pool, migrationsDir, 3),
       /refusing to roll back[\s\S]*cancelled settlement/,
     );
     expect((await getSettlement(pool, settlementId))?.status).toBe("cancelled");
@@ -1214,8 +1214,8 @@ describe("MIGRATION 0024 — additive, reversible, fail-closed", () => {
       effectiveFrom: new Date("2026-03-01T00:00:00Z"),
       reasonText: "test fixture",
     });
-    const down = await migrateDown(pool, migrationsDir, 2);
-    expect(down.rolledBack).toEqual(["0025", "0024"]);
+    const down = await migrateDown(pool, migrationsDir, 3);
+    expect(down.rolledBack).toEqual(["0026", "0025", "0024"]);
     expect(
       await count(
         "SELECT COUNT(*)::int AS n FROM information_schema.columns WHERE table_name = 'commercial_settlements' AND column_name LIKE 'cancel%'",
@@ -1235,7 +1235,7 @@ describe("MIGRATION 0024 — additive, reversible, fail-closed", () => {
     expect(statusCheck.rows[0].def).toMatch(/voided/);
     // ...and the migration re-applies over it (the 0023 price schedule fixture is still there).
     const reapplied = await migrateUp(pool, migrationsDir);
-    expect(reapplied.applied).toEqual(["0024", "0025"]);
+    expect(reapplied.applied).toEqual(["0024", "0025", "0026"]);
     const acct = await openAccount();
     const again = await recordedSettlement(acct.businessId, 2);
     await cancelIt(acct.businessId, again);
