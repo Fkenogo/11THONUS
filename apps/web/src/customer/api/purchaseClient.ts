@@ -74,6 +74,20 @@ export type DisputePurchaseRequest = {
   idempotencyKey: string;
 };
 
+/**
+ * `verifyPurchase` reports one of two outcomes (WP-COM-05b): the Purchase was admitted into
+ * Loyalty, or it is valid and preserved but `pending_admission` (not an error). A response
+ * stored before that package carries no `outcome` and means admitted. Carries no commercial
+ * detail by design: the customer is never shown a commercial reason or figure.
+ */
+export function isVerifyPurchaseHeld(result: unknown): boolean {
+  return (
+    typeof result === "object" &&
+    result !== null &&
+    (result as { outcome?: unknown }).outcome === "pending_admission"
+  );
+}
+
 type BoundCallable<TResult> = (payload: Record<string, unknown>) => Promise<{ data: TResult }>;
 
 export function toCallVerifyPurchase(

@@ -61,6 +61,8 @@ let pool: PlatformPostgresPool;
 let startedFromEmptyDatabase = false;
 
 const COMMERCIAL_TABLES = [
+  "commercial_admission_blocks",
+  "commercial_admissions",
   "commercial_projection_failures",
   "commercial_consumption_events",
   "commercial_consumption_claims",
@@ -91,6 +93,8 @@ async function dropCommercialObjects(): Promise<void> {
     "commercial_consumption_claims_require_event",
     "commercial_consumption_events_ledger_guard",
     "commercial_consumption_claims_reward_business_guard",
+    "commercial_admission_assert_consistent",
+    "commercial_consumption_events_earmark_guard",
     "commercial_reject_mutation",
     "wpcom03_fail_grant_audit",
   ]) {
@@ -99,7 +103,7 @@ async function dropCommercialObjects(): Promise<void> {
   const hasMigrations = await pool.query("SELECT to_regclass('public.schema_migrations') AS t");
   if (hasMigrations.rows[0].t !== null) {
     await pool.query(
-      "DELETE FROM schema_migrations WHERE version IN ('0021', '0022', '0023', '0024', '0025', '0026')",
+      "DELETE FROM schema_migrations WHERE version IN ('0021', '0022', '0023', '0024', '0025', '0026', '0027')",
     );
     await pool
       .query("DELETE FROM idempotency_keys WHERE idempotency_key LIKE 'wpcom03-%'")

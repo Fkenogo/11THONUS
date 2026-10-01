@@ -144,6 +144,8 @@ import type { QualifyingItemStatusFilter } from "./domains/qualifyingItem/reposi
 import { PurchaseDomainError } from "./domains/purchase/models/purchaseErrors";
 import { recordPurchase as recordPurchaseCommand } from "./domains/purchase/services/recordPurchaseCommand";
 import { verifyPurchase as verifyPurchaseCommand } from "./domains/purchase/services/verifyPurchaseCommand";
+import { isReservedIdempotencyKey } from "./domains/purchase/services/purchaseAdmissionPort";
+import { createCommercialAdmissionPort } from "./composition/commercialAdmissionBinding";
 import { rejectPurchase as rejectPurchaseCommand } from "./domains/purchase/services/rejectPurchaseCommand";
 import { raisePurchaseDispute as raisePurchaseDisputeCommand } from "./domains/purchase/services/raisePurchaseDisputeCommand";
 import { confirmRedemption as confirmRedemptionCommand } from "./domains/purchase/services/confirmRedemptionCommand";
@@ -386,6 +388,19 @@ function parseNonEmptyString(value: unknown): string {
   return value;
 }
 
+/**
+ * A client-supplied idempotency key. Keys beginning with the internal admission prefix are
+ * reserved (WP-COM-05b: `admit:<purchase_id>` is reserved by the system) and are refused, so a
+ * client can never occupy a system key.
+ */
+function parseClientIdempotencyKey(value: unknown): string {
+  const key = parseNonEmptyString(value);
+  if (isReservedIdempotencyKey(key)) {
+    throw new HttpsError("invalid-argument", "authentication_failed");
+  }
+  return key;
+}
+
 function parseLinkProviderRequest(data: unknown): LinkProviderRequest {
   const value = (data ?? {}) as Record<string, unknown>;
   return {
@@ -393,7 +408,7 @@ function parseLinkProviderRequest(data: unknown): LinkProviderRequest {
     actingReferenceType: parseReferenceType(value.actingReferenceType),
     newRawToken: parseRawToken(value.newRawToken),
     newReferenceType: parseReferenceType(value.newReferenceType),
-    idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+    idempotencyKey: parseClientIdempotencyKey(value.idempotencyKey),
   };
 }
 
@@ -404,7 +419,7 @@ function parseUnlinkProviderRequest(data: unknown): UnlinkProviderRequest {
     actingReferenceType: parseReferenceType(value.actingReferenceType),
     targetReferenceType: parseReferenceType(value.targetReferenceType),
     targetReferenceId: parseNonEmptyString(value.targetReferenceId),
-    idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+    idempotencyKey: parseClientIdempotencyKey(value.idempotencyKey),
   };
 }
 
@@ -444,7 +459,7 @@ function parseRecoverIdentityRequest(data: unknown): RecoverIdentityRequest {
   return {
     rawToken: parseRawToken(value.rawToken),
     referenceType: parseReferenceType(value.referenceType),
-    idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+    idempotencyKey: parseClientIdempotencyKey(value.idempotencyKey),
   };
 }
 
@@ -506,7 +521,7 @@ export function parseSetDisplayNameRequest(data: unknown): {
     rawToken: parseRawToken(value.rawToken),
     referenceType: parseReferenceType(value.referenceType),
     displayName,
-    idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+    idempotencyKey: parseClientIdempotencyKey(value.idempotencyKey),
   };
 }
 
@@ -693,7 +708,7 @@ export function parseCreateBusinessCommand(data: unknown): CreateBusinessCommand
     ...business,
     rawToken: parseRawToken(value.rawToken),
     referenceType: parseReferenceType(value.referenceType),
-    idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+    idempotencyKey: parseClientIdempotencyKey(value.idempotencyKey),
   };
 }
 
@@ -852,7 +867,7 @@ export const updateBusinessProfile = onCall(async (request) => {
       userId,
       businessId,
       patch,
-      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+      idempotencyKey: parseClientIdempotencyKey(value.idempotencyKey),
       requestHash: `business.updateProfile:${businessId}:${JSON.stringify(patch)}`,
       correlationId: randomUUID(),
       now: new Date(),
@@ -883,7 +898,7 @@ export const updateBusinessBranchProfile = onCall(async (request) => {
       businessId,
       branchId,
       patch,
-      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+      idempotencyKey: parseClientIdempotencyKey(value.idempotencyKey),
       requestHash: `businessBranch.updateProfile:${businessId}:${branchId}:${JSON.stringify(patch)}`,
       correlationId: randomUUID(),
       now: new Date(),
@@ -914,7 +929,7 @@ export const submitBusinessForVerification = onCall(async (request) => {
     return await submitBusinessForVerificationCommand(db, {
       userId,
       businessId,
-      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+      idempotencyKey: parseClientIdempotencyKey(value.idempotencyKey),
       requestHash: `business.submitForVerification:${businessId}`,
       correlationId: randomUUID(),
       now: new Date(),
@@ -942,7 +957,7 @@ export const closeBusiness = onCall(async (request) => {
     return await closeBusinessCommand(db, {
       userId,
       businessId,
-      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+      idempotencyKey: parseClientIdempotencyKey(value.idempotencyKey),
       requestHash: `business.close:${businessId}`,
       correlationId: randomUUID(),
       now: new Date(),
@@ -970,7 +985,7 @@ function parseActivateBusinessAfterVerificationRequest(
     rawToken: parseRawToken(value.rawToken),
     referenceType: parseReferenceType(value.referenceType),
     businessId: parseBusinessId(value.businessId),
-    idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+    idempotencyKey: parseClientIdempotencyKey(value.idempotencyKey),
   };
 }
 
@@ -1359,7 +1374,7 @@ export const createStaffInvitation = onCall(async (request) => {
     const parsedRequest = parseCreateStaffInvitationRequest(value);
     return await createStaffInvitationCommand(db, parsedRequest, {
       actorUserId: userId,
-      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+      idempotencyKey: parseClientIdempotencyKey(value.idempotencyKey),
       correlationId: randomUUID(),
       actor: { actorType: "user", actorId: userId },
       now: new Date(),
@@ -1390,7 +1405,7 @@ export const revokeStaffInvitation = onCall(async (request) => {
     const parsedRequest = parseRevokeStaffInvitationRequest(value);
     return await revokeStaffInvitationCommand(db, parsedRequest, {
       actorUserId: userId,
-      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+      idempotencyKey: parseClientIdempotencyKey(value.idempotencyKey),
       correlationId: randomUUID(),
       actor: { actorType: "user", actorId: userId },
       now: new Date(),
@@ -1478,7 +1493,7 @@ export const acceptStaffInvitation = onCall(async (request) => {
     const result = await acceptStaffInvitationCommand(db, {
       request: { invitationReference: parsedRequest.invitationReference },
       authenticatedCustomerIdentityId: userId,
-      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+      idempotencyKey: parseClientIdempotencyKey(value.idempotencyKey),
       correlationId: randomUUID(),
       actor: { actorType: "user", actorId: userId },
       now: new Date(),
@@ -1577,7 +1592,7 @@ export const suspendStaffMembership = onCall(async (request) => {
       userId,
       businessId: parsedRequest.businessId,
       targetMembershipId: parsedRequest.targetMembershipId,
-      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+      idempotencyKey: parseClientIdempotencyKey(value.idempotencyKey),
       requestHash: staffMembershipRequestHash(
         "suspend",
         userId,
@@ -1605,7 +1620,7 @@ export const reactivateStaffMembership = onCall(async (request) => {
       userId,
       businessId: parsedRequest.businessId,
       targetMembershipId: parsedRequest.targetMembershipId,
-      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+      idempotencyKey: parseClientIdempotencyKey(value.idempotencyKey),
       requestHash: staffMembershipRequestHash(
         "reactivate",
         userId,
@@ -1633,7 +1648,7 @@ export const removeStaffMembership = onCall(async (request) => {
       userId,
       businessId: parsedRequest.businessId,
       targetMembershipId: parsedRequest.targetMembershipId,
-      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+      idempotencyKey: parseClientIdempotencyKey(value.idempotencyKey),
       requestHash: staffMembershipRequestHash(
         "remove",
         userId,
@@ -1672,7 +1687,7 @@ export const changeStaffMembershipRole = onCall(async (request) => {
       targetMembershipId: parsedRequest.targetMembershipId,
       fromRole: parsedRequest.fromRole,
       toRole: parsedRequest.toRole,
-      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+      idempotencyKey: parseClientIdempotencyKey(value.idempotencyKey),
       requestHash: staffMembershipRequestHash(
         "roleChange",
         userId,
@@ -1736,7 +1751,7 @@ export const acceptBusinessTerms = onCall(async (request) => {
       businessId: parsedRequest.businessId,
       languageCode: parsedRequest.languageCode,
       collectionMethod: parsedRequest.collectionMethod,
-      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+      idempotencyKey: parseClientIdempotencyKey(value.idempotencyKey),
       correlationId: randomUUID(),
       now: new Date(),
       newId: randomUUID,
@@ -1863,7 +1878,7 @@ export const createRewardProgram = onCall(async (request) => {
     return await createRewardProgramCommand(db, getRewardProgramPostgresPool(), {
       userId,
       request: parsedRequest,
-      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+      idempotencyKey: parseClientIdempotencyKey(value.idempotencyKey),
       correlationId: randomUUID(),
     });
   } catch (error) {
@@ -1898,7 +1913,7 @@ export const updateRewardProgramDraft = onCall(async (request) => {
     return await updateRewardProgramDraftCommand(db, getRewardProgramPostgresPool(), {
       userId,
       request: parsedRequest,
-      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+      idempotencyKey: parseClientIdempotencyKey(value.idempotencyKey),
       correlationId: randomUUID(),
     });
   } catch (error) {
@@ -1931,7 +1946,7 @@ export const publishRewardProgramVersion = onCall(async (request) => {
     return await publishRewardProgramVersionCommand(db, getRewardProgramPostgresPool(), {
       userId,
       request: parsedRequest,
-      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+      idempotencyKey: parseClientIdempotencyKey(value.idempotencyKey),
       correlationId: randomUUID(),
     });
   } catch (error) {
@@ -1964,7 +1979,7 @@ export const createNextRewardProgramVersion = onCall(async (request) => {
     return await createNextRewardProgramVersionCommand(db, getRewardProgramPostgresPool(), {
       userId,
       request: parsedRequest,
-      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+      idempotencyKey: parseClientIdempotencyKey(value.idempotencyKey),
       correlationId: randomUUID(),
     });
   } catch (error) {
@@ -2131,7 +2146,7 @@ export const createQualifyingItem = onCall(async (request) => {
     return await createQualifyingItemCommand(db, getRewardProgramPostgresPool(), {
       userId,
       request: parsedRequest,
-      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+      idempotencyKey: parseClientIdempotencyKey(value.idempotencyKey),
       correlationId: randomUUID(),
     });
   } catch (error) {
@@ -2150,7 +2165,7 @@ export const updateQualifyingItem = onCall(async (request) => {
     return await updateQualifyingItemCommand(db, getRewardProgramPostgresPool(), {
       userId,
       request: parsedRequest,
-      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+      idempotencyKey: parseClientIdempotencyKey(value.idempotencyKey),
       correlationId: randomUUID(),
     });
   } catch (error) {
@@ -2169,7 +2184,7 @@ export const retireQualifyingItem = onCall(async (request) => {
     return await retireQualifyingItemCommand(db, getRewardProgramPostgresPool(), {
       userId,
       request: parsedRequest,
-      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+      idempotencyKey: parseClientIdempotencyKey(value.idempotencyKey),
       correlationId: randomUUID(),
     });
   } catch (error) {
@@ -2297,7 +2312,7 @@ export const recordPurchase = onCall(async (request) => {
     return await recordPurchaseCommand(db, getPurchasePostgresPool(), {
       userId,
       request: parsedRequest,
-      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+      idempotencyKey: parseClientIdempotencyKey(value.idempotencyKey),
       correlationId: randomUUID(),
     });
   } catch (error) {
@@ -2314,11 +2329,17 @@ export const verifyPurchase = onCall(async (request) => {
       parseActorRequest(value),
       { verifier: firebaseAdminTokenVerifier() },
     );
+    // WP-COM-05b: the Commercial admission gate is OFF unless deliberately enabled
+    // (PURCHASE_ADMISSION_GATE_MODE=enforce). The default keeps today's behaviour.
+    const admissionGateMode = process.env.PURCHASE_ADMISSION_GATE_MODE || undefined;
     return await verifyPurchaseCommand(db, getPurchasePostgresPool(), {
       customerIdentityId,
       request: { purchaseRecordId: parseNonEmptyString(value.purchaseRecordId) },
-      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+      idempotencyKey: parseClientIdempotencyKey(value.idempotencyKey),
       correlationId: randomUUID(),
+      admissionGateMode,
+      commercialAdmission:
+        admissionGateMode === "enforce" ? createCommercialAdmissionPort() : undefined,
     });
   } catch (error) {
     throw toHttpsError(error);
@@ -2340,7 +2361,7 @@ export const rejectPurchase = onCall(async (request) => {
         purchaseRecordId: parseNonEmptyString(value.purchaseRecordId),
         reason: value.reason,
       },
-      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+      idempotencyKey: parseClientIdempotencyKey(value.idempotencyKey),
       correlationId: randomUUID(),
     });
   } catch (error) {
@@ -2363,7 +2384,7 @@ export const raisePurchaseDispute = onCall(async (request) => {
         purchaseRecordId: parseNonEmptyString(value.purchaseRecordId),
         reason: value.reason,
       },
-      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+      idempotencyKey: parseClientIdempotencyKey(value.idempotencyKey),
       correlationId: randomUUID(),
     });
   } catch (error) {
@@ -2414,7 +2435,7 @@ export const confirmRedemption = onCall(async (request) => {
       userId,
       ...parseConfirmRedemptionRequest(value),
       request: { rewardId: parseNonEmptyString(value.rewardId) },
-      idempotencyKey: parseNonEmptyString(value.idempotencyKey),
+      idempotencyKey: parseClientIdempotencyKey(value.idempotencyKey),
       correlationId: randomUUID(),
     });
   } catch (error) {

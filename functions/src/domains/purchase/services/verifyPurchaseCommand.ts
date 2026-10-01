@@ -27,9 +27,14 @@
  *  10. Notification Intents (verified → Business; reward → Customer);
  *  11. outbox events; 12. complete idempotency; COMMIT.
  *
- * WP-COM-05a: the admission gate seam defaults to (and only supports) `off`,
- * which always admits -- behaviour is identical to before the extraction. No
- * Commercial data is read and no Commercial lock is taken on this path.
+ * WP-COM-05a/05b: the Commercial admission gate defaults to `off`, which always
+ * admits -- behaviour is identical to before the extraction, no Commercial data
+ * is read and no Commercial lock is taken. With the gate `enforce`d
+ * (`admitOrHoldPurchase`) the result is a DISCRIMINATED outcome: `admitted`
+ * (a Verified Unit exists) or `pending_admission` (valid, received and preserved,
+ * not yet admitted -- NOT an error). A hold writes no Loyalty state, no Commercial
+ * reservation and no admission idempotency key; re-verifying a held Purchase reports
+ * its current state without forcing admission.
  *
  * Any failure rolls back everything.
  */
@@ -45,8 +50,13 @@ import {
 import { purchaseRequestHash } from "./purchaseRequestHash";
 import { lockPurchaseRecordById } from "../repositories/purchaseRecordRepository";
 import { admitPurchaseToLoyalty } from "./admitPurchaseToLoyalty";
+import { admitOrHoldPurchase } from "./admitOrHoldPurchase";
 import { decidePurchaseAdmission, resolvePurchaseAdmissionGateMode } from "./purchaseAdmissionGate";
 import type { PurchaseAdmissionGateMode } from "./purchaseAdmissionGate";
+import {
+  isReservedIdempotencyKey,
+  type PurchaseAdmissionCapacityPort,
+} from "./purchaseAdmissionPort";
 import type {
   LoyaltyCycleRow,
   PurchaseRecordRow,
@@ -66,28 +76,71 @@ export type VerifyPurchaseRequest = {
   readonly purchaseRecordId: string;
 };
 
-export type VerifyPurchaseResult = {
+/** The Purchase was admitted into Loyalty: a Verified Unit exists. */
+export type VerifyPurchaseAdmitted = {
+  /** Absent on responses stored before WP-COM-05b: treat a missing value as `admitted`. */
+  readonly outcome?: "admitted";
   readonly purchase: PurchaseRecordRow;
   readonly verifiedUnit: VerifiedUnitRow;
   readonly cycle: LoyaltyCycleRow;
   readonly reward: RewardRow | null;
 };
 
+/**
+ * WP-COM-05b: the Purchase is valid, received and preserved, but not yet admitted into
+ * Loyalty (`pending_admission`). Not an error. No Verified Unit, Cycle or Reward exists, and
+ * no commercial reason or figure is carried (Participants see no Commercial data).
+ */
+export type VerifyPurchaseHeld = {
+  readonly outcome: "pending_admission";
+  readonly purchase: PurchaseRecordRow;
+};
+
+export type VerifyPurchaseResult = VerifyPurchaseAdmitted | VerifyPurchaseHeld;
+
+type VerifyPurchaseParams = {
+  /** Server-resolved Customer Identity id (current auth chain — never a client claim). */
+  readonly customerIdentityId: string;
+  readonly request: VerifyPurchaseRequest;
+  readonly idempotencyKey: string;
+  readonly correlationId: string;
+};
+
+// Gate `off` (the default) can only admit, so its result type cannot be a hold.
+export async function verifyPurchase(
+  db: Firestore,
+  pool: PlatformPostgresPool,
+  params: VerifyPurchaseParams & { readonly admissionGateMode?: "off" },
+): Promise<VerifyPurchaseAdmitted>;
+export async function verifyPurchase(
+  db: Firestore,
+  pool: PlatformPostgresPool,
+  params: VerifyPurchaseParams & {
+    readonly admissionGateMode?: string;
+    /** Required when the gate is `enforce`; bound at the composition root. */
+    readonly commercialAdmission?: PurchaseAdmissionCapacityPort;
+  },
+): Promise<VerifyPurchaseResult>;
 export async function verifyPurchase(
   _db: Firestore,
   pool: PlatformPostgresPool,
-  params: {
-    /** Server-resolved Customer Identity id (current auth chain — never a client claim). */
-    readonly customerIdentityId: string;
-    readonly request: VerifyPurchaseRequest;
-    readonly idempotencyKey: string;
-    readonly correlationId: string;
-    /** Internal admission-gate seam (WP-COM-05a); defaults to, and only supports, `off`. */
-    readonly admissionGateMode?: PurchaseAdmissionGateMode;
+  params: VerifyPurchaseParams & {
+    readonly admissionGateMode?: string;
+    readonly commercialAdmission?: PurchaseAdmissionCapacityPort;
   },
 ): Promise<VerifyPurchaseResult> {
-  const gateMode = resolvePurchaseAdmissionGateMode(params.admissionGateMode);
+  const gateMode: PurchaseAdmissionGateMode = resolvePurchaseAdmissionGateMode(
+    params.admissionGateMode,
+  );
+  if (gateMode === "enforce" && !params.commercialAdmission) {
+    // Fail closed: never silently admit (or hold) without the Commercial decision.
+    throw new Error('Purchase admission gate mode "enforce" requires a Commercial admission port.');
+  }
   const purchaseRecordId = params.request.purchaseRecordId;
+  if (isReservedIdempotencyKey(params.idempotencyKey)) {
+    // Defence in depth: the system's admission keys live in the same table (CORR-002).
+    throw purchaseValidationError("This idempotency key uses a reserved prefix.");
+  }
   if (!purchaseRecordId || purchaseRecordId.trim().length === 0) {
     throw purchaseValidationError("A Purchase Record id is required.");
   }
@@ -129,11 +182,62 @@ export async function verifyPurchase(
     if (locked.customerIdentityId !== params.customerIdentityId) {
       throw purchaseOwnershipError();
     }
+
+    if (gateMode === "enforce") {
+      const port = params.commercialAdmission as PurchaseAdmissionCapacityPort;
+      if (locked.status === "pending_admission") {
+        // Re-verifying a held Purchase reports its current state; it never forces admission
+        // (that would bypass capacity) and writes nothing beyond completing this request's key.
+        const heldAlready: VerifyPurchaseHeld = {
+          outcome: "pending_admission",
+          purchase: locked,
+        };
+        await completeIdempotencyKeyInTransaction(
+          tx,
+          params.idempotencyKey,
+          locked.id,
+          heldAlready,
+        );
+        return heldAlready;
+      }
+      if (locked.status !== "waiting_for_customer") {
+        throw purchaseStaleStateError("waiting_for_customer", locked.status);
+      }
+      const decided = await admitOrHoldPurchase(tx, {
+        locked,
+        fromStatus: "waiting_for_customer",
+        actor: { type: "customer", id: params.customerIdentityId },
+        correlationId: params.correlationId,
+        idempotencyKey: params.idempotencyKey,
+        port,
+        decidedBy: "customer_verify",
+        onHold: "record",
+        applyBusinessQueue: true,
+      });
+      const enforcedResult: VerifyPurchaseResult =
+        decided.outcome === "held"
+          ? { outcome: "pending_admission", purchase: decided.purchase }
+          : {
+              outcome: "admitted",
+              purchase: decided.purchase,
+              verifiedUnit: decided.verifiedUnit,
+              cycle: decided.cycle,
+              reward: decided.reward,
+            };
+      await completeIdempotencyKeyInTransaction(
+        tx,
+        params.idempotencyKey,
+        locked.id,
+        enforcedResult,
+      );
+      return enforcedResult;
+    }
+
     if (locked.status !== "waiting_for_customer") {
       throw purchaseStaleStateError("waiting_for_customer", locked.status);
     }
 
-    // Gate OFF => always admit (no Commercial read). A hold outcome belongs to WP-COM-05b.
+    // Gate OFF => always admit (no Commercial read), in the original statement order.
     decidePurchaseAdmission(gateMode);
     const admitted = await admitPurchaseToLoyalty(tx, {
       locked,
@@ -143,7 +247,7 @@ export async function verifyPurchase(
       idempotencyKey: params.idempotencyKey,
     });
 
-    const result: VerifyPurchaseResult = admitted;
+    const result: VerifyPurchaseAdmitted = admitted;
     await completeIdempotencyKeyInTransaction(
       tx,
       params.idempotencyKey,

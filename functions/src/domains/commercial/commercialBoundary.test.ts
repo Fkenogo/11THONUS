@@ -32,6 +32,7 @@ const isTs = (f: string) => f.endsWith(".ts");
 const isTest = (f: string) => /\.test\.ts$/.test(f);
 
 const commercialSources = walk(commercialDir).filter((f) => isTs(f) && !isTest(f));
+const COMPOSITION_BINDING = join(srcDir, "composition", "commercialAdmissionBinding.ts");
 const REWARD_SOURCE_ADAPTER = join(
   commercialDir,
   "repositories",
@@ -123,8 +124,10 @@ describe("Commercial foundation is a separate, non-integrated domain (WP-COM-01)
     }
   });
 
-  it("no code outside domains/commercial imports Commercial (loyalty commands, verifyPurchase, confirmRedemption, index.ts are all unwired)", () => {
+  it("no code outside domains/commercial imports Commercial, except the ONE composition-root binding (WP-COM-05b); the loyalty commands, verifyPurchase, confirmRedemption and index.ts never import it directly", () => {
     for (const file of nonCommercialSources) {
+      // WP-COM-05b: the single composition root that binds the Purchase admission port.
+      if (file === COMPOSITION_BINDING) continue;
       for (const spec of importSpecifiers(readFileSync(file, "utf8"))) {
         expect(spec, `${relative(srcDir, file)} imports ${spec}`).not.toMatch(
           /(^|\/)commercial(\/|$)/,
@@ -144,7 +147,9 @@ describe("Commercial foundation is a separate, non-integrated domain (WP-COM-01)
       expect(source, rel).not.toMatch(
         /domains\/commercial|\/commercial\/|Commercial(Account|Ledger|Price|Audit|Admission)|postCommercial|runCommercialCommand/,
       );
-      expect(source, rel).not.toContain(PENDING);
+      // WP-COM-05b: `verifyPurchase` legitimately reports the Purchase-domain held state;
+      // redemption never does.
+      if (rel.endsWith("confirmRedemptionCommand.ts")) expect(source, rel).not.toContain(PENDING);
     }
   });
 
@@ -173,11 +178,22 @@ describe("Commercial foundation is a separate, non-integrated domain (WP-COM-01)
       if (!name.startsWith("0026_purchase_pending_admission")) {
         expect(sql, name).not.toContain(PENDING);
       }
-      // WP-COM-04 legitimately adds consumption claims/events/failures; admissions and earmarks stay WP-COM-05b.
-      expect(sql, name).not.toMatch(/commercial_(admissions|admission_blocks)/);
+      // WP-COM-04 legitimately adds consumption claims/events/failures; WP-COM-05b adds admissions
+      // and earmarks in migration 0027 only.
+      if (!name.startsWith("0027_commercial_admissions_and_earmarks")) {
+        expect(sql, name).not.toMatch(/commercial_(admissions|admission_blocks)/);
+      }
       expect(sql, name).not.toMatch(/(INSERT\s+INTO|CREATE\s+TABLE)\s+\w*earmark/i);
     }
+    // WP-COM-05b: the admission/earmark tables are named by the Commercial admission repository
+    // (and by tests) only.
+    const ADMISSION_REPOSITORY = join(
+      commercialDir,
+      "repositories",
+      "commercialAdmissionRepository.ts",
+    );
     for (const file of sources) {
+      if (file === ADMISSION_REPOSITORY || isTest(file)) continue;
       expect(readFileSync(file, "utf8"), relative(srcDir, file)).not.toMatch(
         /commercial_(admissions|admission_blocks)|(INSERT\s+INTO|CREATE\s+TABLE)\s+\w*earmark/i,
       );
@@ -591,6 +607,152 @@ describe("WP-COM-04 consumption projection boundary", () => {
     }
     for (const file of commercialSources) {
       expect(codeOf(file), relative(srcDir, file)).not.toMatch(/onSchedule|setInterval|cron/i);
+    }
+  });
+});
+
+describe("WP-COM-05b admission gate boundary", () => {
+  const sql0027 = readFileSync(
+    join(migrationsDir, "0027_commercial_admissions_and_earmarks.sql"),
+    "utf8",
+  ).replace(/--.*$/gm, "");
+  const codeOf = (file: string) =>
+    readFileSync(file, "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/^\s*\/\/.*$/gm, "");
+  const purchaseDir = join(domainsDir, "purchase") + "/";
+  const purchaseSources = nonCommercialSources.filter(
+    (f) => f.startsWith(purchaseDir) && !isTest(f),
+  );
+  const adm = (rel: string) => join(commercialDir, rel);
+
+  it("migration 0027 is additive: two new tables, ALTER only on the consumption event, no seed, no drop, no deferred foreign key", () => {
+    expect([...sql0027.matchAll(/CREATE\s+TABLE\s+([a-z_]+)/gi)].map((m) => m[1])).toEqual([
+      "commercial_admissions",
+      "commercial_admission_blocks",
+    ]);
+    for (const m of sql0027.matchAll(/ALTER\s+TABLE\s+([a-z_]+)/gi)) {
+      expect(m[1]).toBe("commercial_consumption_events");
+    }
+    expect(sql0027).not.toMatch(/\bINSERT\s+INTO\b/i);
+    expect(sql0027).not.toMatch(/\bDROP\b/i);
+    expect(sql0027).not.toMatch(/\b(UPDATE|DELETE\s+FROM)\s+(?!.*commercial_)/i);
+    // Foreign keys are IMMEDIATE (parent-before-child is enforced at the statement); the only
+    // deferred objects are the two CONSTRAINT TRIGGERS that check reservation/earmark equality.
+    expect(sql0027).not.toMatch(/REFERENCES[^;,]*DEFERRABLE/i);
+    expect(
+      [...sql0027.matchAll(/CREATE\s+CONSTRAINT\s+TRIGGER\s+(\w+)/gi)].map((m) => m[1]),
+    ).toEqual(["commercial_admissions_consistent", "commercial_admission_blocks_consistent"]);
+  });
+
+  it("the ONLY Loyalty/Purchase parents a Commercial admission row references are the Purchase and the Verified Unit", () => {
+    const refs = [...sql0027.matchAll(/REFERENCES\s+([a-z_]+)/g)].map((m) => m[1]);
+    for (const r of refs) {
+      expect(
+        ["purchase_records", "verified_units"].includes(r) || r.startsWith("commercial_"),
+        r,
+      ).toBe(true);
+    }
+    expect(refs).toContain("purchase_records");
+    expect(refs).toContain("verified_units");
+    // No reference to a Cycle, stream, Reward or any other Loyalty table (design §4.4 R8).
+    for (const t of LOYALTY_TABLES.filter(
+      (x) => !["purchase_records", "verified_units"].includes(x),
+    )) {
+      expect(new RegExp(`\\b${t}\\b`).test(sql0027), `0027 mentions ${t}`).toBe(false);
+    }
+  });
+
+  it("migration 0027 adds no payment provider, scheduler, read model, tier or subscription concept", () => {
+    expect(sql0027).not.toMatch(
+      /tier|subscription|\bplan\b|stripe|flutterwave|provider|scheduler|cron|CREATE\s+(OR\s+REPLACE\s+)?VIEW|MATERIALIZED/i,
+    );
+  });
+
+  it("the Purchase domain never imports Commercial: it depends only on the port it defines", () => {
+    for (const file of purchaseSources) {
+      for (const spec of importSpecifiers(readFileSync(file, "utf8"))) {
+        expect(spec, `${relative(srcDir, file)} imports ${spec}`).not.toMatch(
+          /(^|\/)commercial(\/|$)/,
+        );
+      }
+    }
+  });
+
+  it("the Commercial admission service takes the account lock only through the shared primitive, never a Loyalty lock or write", () => {
+    for (const rel of [
+      "services/commercialAdmission.ts",
+      "repositories/commercialAdmissionRepository.ts",
+      "models/commercialAdmission.ts",
+    ]) {
+      const src = codeOf(adm(rel));
+      expect(src, rel).not.toMatch(/FOR\s+(NO\s+KEY\s+)?UPDATE|FOR\s+(KEY\s+)?SHARE/i);
+      expect(src, rel).not.toMatch(
+        /onSchedule|setInterval|cron|stripe|flutterwave|tier|subscription/i,
+      );
+    }
+    const svc = codeOf(adm("services/commercialAdmission.ts"));
+    expect(svc.split("lockCommercialAccount(").length - 1).toBe(1);
+    // evaluate NEVER writes; only recordAdmission / recordHold do.
+    const evaluateBody = svc.slice(
+      svc.indexOf("export async function evaluateCommercialAdmission"),
+      svc.indexOf("export type RecordCommercialAdmissionInput"),
+    );
+    expect(evaluateBody).not.toMatch(/(insert|append|update)\w*\(|postCommercial/i);
+  });
+
+  it("the enforced admission sequence is fixed in the code: stream -> Cycle -> decision (account) -> [HOLD returns] -> admit key -> admission", () => {
+    const src = codeOf(join(purchaseDir, "services", "admitOrHoldPurchase.ts"));
+    const at = (needle: string) => {
+      const i = src.indexOf(needle);
+      expect(i, needle).toBeGreaterThan(-1);
+      return i;
+    };
+    const order = [
+      at("ensureAndLockCycleStreamTracked(tx"),
+      at("lockCurrentCycle(tx"),
+      at("sumAdmittedStreamUnits(tx"),
+      at("params.port.evaluate(tx"),
+      at('if (evaluation.outcome === "hold")'),
+      at("checkAndReserveIdempotencyKey(tx"),
+      at("admitPurchaseToLoyalty(tx"),
+      at("completeIdempotencyKeyInTransaction(tx"),
+    ];
+    expect(order).toEqual([...order].sort((a, b) => a - b));
+    // The admission key is reserved exactly once, and only after the HOLD branch has returned.
+    expect(src.split("checkAndReserveIdempotencyKey(").length - 1).toBe(1);
+    const holdBranch = src.slice(
+      src.indexOf('if (evaluation.outcome === "hold")'),
+      src.indexOf("checkAndReserveIdempotencyKey(tx"),
+    );
+    expect(holdBranch).toMatch(/return \{ outcome: "held"/);
+    expect(holdBranch).not.toMatch(
+      /checkAndReserveIdempotencyKey|admitPurchaseToLoyalty|insertVerifiedUnit|recordAdmission/,
+    );
+    // No Reward lock and no price lock are taken on this path.
+    expect(src).not.toMatch(/lockRewardById|lockPriceScheduleMarket|FOR\s+UPDATE/i);
+  });
+
+  it("Commercial children are written only through the hook that runs right AFTER the Verified Unit insert", () => {
+    const src = codeOf(join(purchaseDir, "services", "admitPurchaseToLoyalty.ts"));
+    const iUnit = src.indexOf("insertVerifiedUnitCredit(tx");
+    const iHook = src.indexOf("params.afterVerifiedUnit(tx");
+    const iAlloc = src.indexOf("insertAllocationPosition(tx");
+    expect(iUnit).toBeGreaterThan(-1);
+    expect(iHook).toBeGreaterThan(iUnit);
+    expect(iAlloc).toBeGreaterThan(iHook);
+  });
+
+  it("nothing schedules the processor, and PB-013B P3-3 code (Reward Program publication) is not touched or imported", () => {
+    const processor = codeOf(join(purchaseDir, "services", "reevaluatePendingAdmissions.ts"));
+    expect(processor).not.toMatch(/onSchedule|setInterval|setTimeout|cron/i);
+    for (const file of [
+      ...purchaseSources.filter((f) => /admit|Admission|reevaluate/.test(f)),
+      ...commercialSources.filter((f) => /dmission/.test(f)),
+    ]) {
+      expect(codeOf(file), relative(srcDir, file)).not.toMatch(
+        /publishRewardProgramVersion|resolveQualifyingItemSnapshots|domains\/rewardProgram\/services/,
+      );
     }
   });
 });

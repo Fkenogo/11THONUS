@@ -7,6 +7,27 @@
 
 ---
 
+## 2026-10-01 — WP-COM-05b — Commercial Admission Gate, Earmarks & Held-Purchase Processor (Implementation)
+
+- **Date:** 2026-10-01
+- **Phase:** Commercial implementation programme (11THONUS-COMMERCIAL-DESIGN-001 v1.1 + CORR-002, §4.4, §5, §7, §8.1–§8.17, §22–§24)
+- **Task:** WP-COM-05b — the actual Commercial admission decision. A valid Purchase that would start a **new Circle** is **ADMITTED** when usable capacity (balance − reserved) exists and otherwise **HELD** as `pending_admission` (valid, preserved, credit-free). ADMIT reserves capacity and writes an immutable earmark (funding bucket fixed at admission, never reclassified) in the transaction that creates the Verified Unit, parent before child. A callable, repeat-safe, FIFO processor (`reevaluatePendingAdmissions`) admits held Purchases when capacity returns. A Purchase continuing an admitted Circle is never gated and takes no Commercial lock. The gate defaults to `off` (behaviour byte-identical to before); `PURCHASE_ADMISSION_GATE_MODE=enforce` enables it.
+- **Status:** Implemented — pending review. Not merged. Entry `origin/main` `94fa71e6516ab5376fa355eaf9f771db6fa01aa9`; branch `claude/exciting-brahmagupta-kxkep4`.
+- **Files changed:** see the [Implementation Report](../05-implementation/reports/wp-com-05b-commercial-admission-gate-earmarks-and-held-purchase-processor-implementation-report-2026-10-01.md). Summary: new migration `0027_commercial_admissions_and_earmarks` (+ `.down.sql`); Commercial admission model/repository/service; Purchase `purchaseAdmissionPort`, `admitOrHoldPurchase`, `reevaluatePendingAdmissions`; one composition-root binding; `verifyPurchase` discriminated outcome; web status handling and EN/FR copy; new 59-test PostgreSQL suite and 8 boundary tests; migration-bookkeeping updates in existing tests.
+- **Idempotency / locks:** HOLD writes no `admit:<purchase_id>` key (proven by rows and by statement trace); ADMIT reserves it only after the locked decision. Lock order `[client key] → purchase → stream → Cycle → [account] → decision → admit key → Verified Unit → reservation → admission → earmarks → allocation`, asserted from the real statement trace; no Reward or price lock.
+- **Tests / validation:** typecheck, lint (0 errors; 1 pre-existing `apps/web` warning), format, build, unit (functions 1943, web 926), full PostgreSQL suite under the Firestore Emulator (18 files, 624 tests, fresh database) and the emulator suite (66 files, 867 passed, 3 skipped) green locally against a disposable PostgreSQL 16; the 05a gate-off golden still matches `main`. Three mutation checks confirmed the idempotency-timing, grace and parent-before-child tests fail when violated.
+- **Configuration / dependencies:** one optional environment variable, `PURCHASE_ADMISSION_GATE_MODE` (`off` default | `enforce`); no dependency, `package.json`, lockfile or Firebase config change.
+- **Migrations:** `0027_commercial_admissions_and_earmarks` — additive: two Commercial tables, deferred reservation↔earmark consistency trigger, the `earmark_id` foreign key `0025` left open, a consumption-bucket guard. No data, no Loyalty table change, no payment/scheduler/read-model schema. `.down.sql` fails closed while any admission/earmark exists. Applied only to a local disposable test database.
+- **Deliberately not implemented:** scheduler and automatic triggers for the processor, `shadow` mode, Operator Console / read models, payment provider, Experience Assembly. **`confirmRedemption`, the WP-COM-04 projector, Reward Program/Qualifying Item code and the prototype: zero diff.**
+- **Product Truth:** unchanged. Held-Purchase wording is provisional pending Experience Assembly and exposes no commercial detail (a read-model leak of event payloads was found and closed).
+- **Risks / deviations:** report §23–§24 (D1–D10, R-1–R-7). **PB-013B P3-3 remains OPEN** — untouched, not worsened.
+- **CORR-001 (Founder decision):** processor policy changed from strict FIFO to **FIFO scan order + skip-and-continue** — a non-fitting held Purchase stays held and the scan continues; the Business-wide no-overtaking rule is not applied by the processor (the stream rule is); window 100 → 1000. Residual starvation risk (a large Purchase can stay held while smaller ones admit) recorded, with no priority aging added. Negative-paid-balance pooled-capacity rule **retained unchanged** (Founder-confirmed; not a defect; a test pins it). Report §24B.
+- **Deployment prerequisite:** do NOT enable `enforce` until (1) relevant Businesses have Commercial accounts, (2) trial/paid capacity is provisioned, (3) a production-safe invocation path for held-Purchase re-evaluation exists, and (4) held-backlog read/alerting exists. Report §24A also records two policy findings for Founder decision: strict-FIFO head-of-line blocking (Purchase costs differ) and the shared-pool availability rule (a negative paid balance reduces usable capacity even when uncommitted trial exists).
+- **Rollback:** unset/`off` the gate variable (instant); `git revert`; `migrateDown` rolls `0027` back on a database with no admission/earmark rows (fails closed otherwise).
+- **Report link:** [`wp-com-05b-commercial-admission-gate-earmarks-and-held-purchase-processor-implementation-report-2026-10-01.md`](../05-implementation/reports/wp-com-05b-commercial-admission-gate-earmarks-and-held-purchase-processor-implementation-report-2026-10-01.md)
+
+---
+
 ## 2026-10-01 — WP-COM-05a — Purchase Admission Seam & `pending_admission` Foundation (Implementation)
 
 - **Date:** 2026-10-01

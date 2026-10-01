@@ -133,4 +133,57 @@ describe("CustomerActivityPage", () => {
     expect(screen.queryByRole("button", { name: "Verify" })).not.toBeInTheDocument();
     expect(screen.getByText("Verified")).toBeInTheDocument();
   });
+
+  // WP-COM-05b: `pending_admission` is reachable. It is "received and preserved", never a failure.
+  it("shows a held (pending_admission) purchase as received and awaiting admission, without actions", () => {
+    const held = purchaseWire({ status: "pending_admission" });
+    waitingResult = { data: { purchases: [held] } };
+    detailResult = { data: { purchase: held, events: [] } };
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: /Coffee/ }));
+    expect(screen.getAllByText("Received · awaiting admission").length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByRole("button", { name: "Verify" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Reject" })).not.toBeInTheDocument();
+    // Not described as rejected, invalid or failed, and no commercial detail.
+    expect(screen.queryByText(/rejected|invalid|failed|credit|capacity|balance|trial/i)).toBeNull();
+  });
+
+  it("explains a held verify outcome as received and saved, not as an error", async () => {
+    mockVerify.mockResolvedValueOnce({ outcome: "pending_admission", purchase: purchaseWire() });
+    waitingResult = { data: { purchases: [purchaseWire()] } };
+    detailResult = { data: { purchase: purchaseWire(), events: [] } };
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: /Coffee/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Verify" }));
+    expect(
+      await screen.findByText(
+        "Received. This purchase is saved and will be counted as soon as it can be admitted.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("We couldn't complete that. Please try again.")).toBeNull();
+    expect(screen.queryByText("Verified. Your loyalty units were issued.")).toBeNull();
+  });
+
+  it("an admitted verify outcome (or a response stored before the outcome field) still shows the success notice", async () => {
+    mockVerify.mockResolvedValueOnce({ outcome: "admitted", purchase: purchaseWire() });
+    waitingResult = { data: { purchases: [purchaseWire()] } };
+    detailResult = { data: { purchase: purchaseWire(), events: [] } };
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: /Coffee/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Verify" }));
+    expect(
+      await screen.findByText("Verified. Your loyalty units were issued."),
+    ).toBeInTheDocument();
+  });
+
+  it("renders the held status and notice in French", async () => {
+    await i18n.changeLanguage("fr");
+    mockVerify.mockResolvedValueOnce({ outcome: "pending_admission", purchase: purchaseWire() });
+    const held = purchaseWire({ status: "pending_admission" });
+    waitingResult = { data: { purchases: [held] } };
+    detailResult = { data: { purchase: held, events: [] } };
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: /Coffee/ }));
+    expect(screen.getAllByText("Reçu · en attente d'admission").length).toBeGreaterThanOrEqual(1);
+  });
 });

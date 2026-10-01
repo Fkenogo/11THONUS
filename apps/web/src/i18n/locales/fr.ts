@@ -367,6 +367,7 @@ export const fr = {
       customerLoyaltyNumber: "Numéro de fidélité du client {{value}}",
       status: {
         waiting_for_customer: "En attente du client",
+        pending_admission: "Reçu · en attente d'admission",
         verified: "Vérifié",
         rejected: "Rejeté",
         under_review: "En cours d'examen",
@@ -591,6 +592,7 @@ export const fr = {
       disputeHint: "L'achat a eu lieu, mais un détail est incorrect. Il sera mis en attente.",
       disputeConfirm: "Envoyer la contestation",
       verifySuccess: "Vérifié. Vos unités de fidélité ont été émises.",
+      verifyHeld: "Reçu. Cet achat est conservé et sera comptabilisé dès qu'il pourra être admis.",
       rejectSuccess: "Rejeté. L'entreprise a été informée.",
       disputeSuccess: "Contestation envoyée. L'achat est maintenant en cours d'examen.",
       actionError: "Nous n'avons pas pu terminer cette action. Veuillez réessayer.",
@@ -608,6 +610,7 @@ export const fr = {
       },
       status: {
         waiting_for_customer: "En attente de vous",
+        pending_admission: "Reçu · en attente d'admission",
         verified: "Vérifié",
         rejected: "Rejeté",
         under_review: "En cours d'examen",

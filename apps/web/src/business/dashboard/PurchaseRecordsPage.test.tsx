@@ -277,6 +277,35 @@ describe("PurchaseRecordsPage", () => {
     expect(screen.getByText("Purchase detail")).toBeInTheDocument();
     expect(screen.getByText(/Recorded by staff/)).toBeInTheDocument();
   });
+
+  // WP-COM-05b: `pending_admission` is reachable and filterable; it is never shown as rejected/invalid.
+  it("offers a pending-admission status filter and labels held purchases as received and awaiting admission", () => {
+    const held = purchaseWire({ status: "pending_admission" });
+    purchasesResult = { data: { purchases: [held] } };
+    detailResult = { data: { purchase: held, events: [] } };
+    programsResult = { data: [] };
+    renderPage();
+    expect(
+      screen.getByRole("option", { name: "Received · awaiting admission" }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText(/Received · awaiting admission/).length).toBeGreaterThanOrEqual(2);
+    // The held row itself is never described as rejected, invalid or failed, nor with commercial detail.
+    expect(screen.getByRole("button", { name: /Coffee/ }).textContent).not.toMatch(
+      /rejected|invalid|failed|credit|capacity|balance|trial/i,
+    );
+  });
+
+  it("labels held purchases in French", async () => {
+    await i18n.changeLanguage("fr");
+    const held = purchaseWire({ status: "pending_admission" });
+    purchasesResult = { data: { purchases: [held] } };
+    detailResult = { data: undefined };
+    programsResult = { data: [] };
+    renderPage();
+    expect(
+      screen.getByRole("option", { name: "Reçu · en attente d'admission" }),
+    ).toBeInTheDocument();
+  });
 });
 
 /**

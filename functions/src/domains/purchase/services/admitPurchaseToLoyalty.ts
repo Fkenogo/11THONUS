@@ -85,6 +85,22 @@ export type AdmitPurchaseToLoyaltyParams = {
   readonly correlationId: string;
   /** Carried onto the outbox entries only (never reserved/completed here). */
   readonly idempotencyKey: string;
+  /**
+   * WP-COM-05b (gate `enforce` only). The caller has ALREADY ensured+locked the
+   * allocation stream and locked the current Cycle (`null` = none exists yet), to read
+   * the decision inputs before anything was written. When present, this function does
+   * not lock them again. Absent (gate `off`): the original statement order is unchanged.
+   */
+  readonly lockedAllocation?: { readonly cycle: LoyaltyCycleRow | null };
+  /**
+   * WP-COM-05b. Runs immediately AFTER the Verified Unit row is inserted and BEFORE any
+   * other Loyalty allocation write: the only point where Commercial child rows that
+   * reference the unit may be written (parent-before-child, immediate FKs).
+   */
+  readonly afterVerifiedUnit?: (
+    tx: PlatformPostgresTransaction,
+    ctx: { readonly purchase: PurchaseRecordRow; readonly verifiedUnit: VerifiedUnitRow },
+  ) => Promise<void>;
 };
 
 export async function admitPurchaseToLoyalty(
@@ -136,16 +152,26 @@ export async function admitPurchaseToLoyalty(
     createdBy: actor.id,
   });
 
-  // Serialized allocation (mechanism B).
-  await ensureAndLockCycleStream(tx, {
-    businessId: purchase.businessId,
-    customerIdentityId: purchase.customerIdentityId,
-    rewardProgramId: purchase.rewardProgramId,
-  });
-  let cycle = await lockCurrentCycle(tx, {
-    customerIdentityId: purchase.customerIdentityId,
-    rewardProgramId: purchase.rewardProgramId,
-  });
+  if (params.afterVerifiedUnit) {
+    await params.afterVerifiedUnit(tx, { purchase, verifiedUnit });
+  }
+
+  // Serialized allocation (mechanism B). Under the enforced gate the stream and current
+  // Cycle were already locked by the caller, in this same order, before the decision.
+  let cycle: LoyaltyCycleRow | null;
+  if (params.lockedAllocation) {
+    cycle = params.lockedAllocation.cycle;
+  } else {
+    await ensureAndLockCycleStream(tx, {
+      businessId: purchase.businessId,
+      customerIdentityId: purchase.customerIdentityId,
+      rewardProgramId: purchase.rewardProgramId,
+    });
+    cycle = await lockCurrentCycle(tx, {
+      customerIdentityId: purchase.customerIdentityId,
+      rewardProgramId: purchase.rewardProgramId,
+    });
+  }
   if (!cycle) {
     cycle = await openCycleUnderStreamLock(tx, {
       businessId: purchase.businessId,

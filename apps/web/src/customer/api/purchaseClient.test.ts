@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { IdentityApiError } from "../../identity/api/identityCallableClient";
 import {
+  isVerifyPurchaseHeld,
   toCallVerifyPurchase,
   toCallAvailableRewards,
   type CustomerPurchaseWire,
@@ -61,5 +62,19 @@ describe("toCallAvailableRewards", () => {
     });
     const result = await call(actor, {});
     expect(result.rewards).toEqual([]);
+  });
+});
+
+describe("isVerifyPurchaseHeld (WP-COM-05b)", () => {
+  it("recognises the held outcome and treats everything else as admitted", () => {
+    expect(isVerifyPurchaseHeld({ outcome: "pending_admission", purchase: purchaseWire })).toBe(
+      true,
+    );
+    expect(isVerifyPurchaseHeld({ outcome: "admitted", purchase: purchaseWire })).toBe(false);
+    // Responses stored before the outcome field existed carry none: admitted.
+    expect(isVerifyPurchaseHeld({ purchase: purchaseWire })).toBe(false);
+    expect(isVerifyPurchaseHeld(undefined)).toBe(false);
+    expect(isVerifyPurchaseHeld(null)).toBe(false);
+    expect(isVerifyPurchaseHeld("pending_admission")).toBe(false);
   });
 });

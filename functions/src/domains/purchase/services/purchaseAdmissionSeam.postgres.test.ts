@@ -621,11 +621,12 @@ describe("WP-COM-05a — gate OFF equivalence with pre-extraction main", () => {
     expect(trace.filter((t) => /commercial/i.test(t))).toEqual([]);
   });
 
-  it("gate resolution: default and explicit `off` admit; any other mode fails closed", () => {
+  it("gate resolution: default and explicit `off` admit; `enforce` is the WP-COM-05b mode; any other mode fails closed", () => {
     expect(resolvePurchaseAdmissionGateMode()).toBe("off");
     expect(resolvePurchaseAdmissionGateMode("off")).toBe("off");
+    expect(resolvePurchaseAdmissionGateMode("enforce")).toBe("enforce");
     expect(decidePurchaseAdmission("off")).toEqual({ outcome: "admit" });
-    for (const bad of ["shadow", "enforce", "", "OFF", "on"]) {
+    for (const bad of ["shadow", "", "OFF", "on"]) {
       expect(() => resolvePurchaseAdmissionGateMode(bad)).toThrow(/not supported/);
     }
   });
@@ -639,7 +640,7 @@ describe("WP-COM-05a — gate OFF equivalence with pre-extraction main", () => {
         request: { purchaseRecordId: id },
         idempotencyKey: nextId("key"),
         correlationId: nextId("corr"),
-        admissionGateMode: "enforce" as never,
+        admissionGateMode: "shadow" as never,
       }),
     ).rejects.toThrow(/not supported/);
     expect((await rows("SELECT status FROM purchase_records WHERE id = $1", [id]))[0].status).toBe(
@@ -1273,7 +1274,9 @@ describe("WP-COM-05a — boundary", () => {
       expect(src, f).not.toMatch(
         /domains\/commercial|\/commercial\/|from "\.\.\/\.\.\/commercial|commercial_/i,
       );
-      expect(src, f).not.toMatch(/earmark|CommercialAdmission/i);
+      // WP-COM-05b: the verify command names its Purchase-side port, never Commercial types.
+      if (f !== "verifyPurchaseCommand.ts")
+        expect(src, f).not.toMatch(/earmark|CommercialAdmission/i);
     }
   });
 

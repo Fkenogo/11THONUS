@@ -25,7 +25,7 @@ import {
   useRejectPurchaseMutation,
   useVerifyPurchaseMutation,
 } from "./hooks/purchaseMutations";
-import type { CustomerPurchaseWire } from "./api/purchaseClient";
+import { isVerifyPurchaseHeld, type CustomerPurchaseWire } from "./api/purchaseClient";
 
 const REJECT_REASONS = [
   "did_not_happen",
@@ -84,8 +84,11 @@ export function CustomerActivityPage({ auth, functions }: { auth: Auth; function
   async function doVerify(purchaseRecordId: string) {
     setNotice(null);
     try {
-      await verifyMutation.mutateAsync({ purchaseRecordId });
-      setNotice(t("purchase.verifySuccess"));
+      const result = await verifyMutation.mutateAsync({ purchaseRecordId });
+      // A valid Purchase that cannot be admitted yet is preserved, not failed (WP-COM-05b).
+      setNotice(
+        isVerifyPurchaseHeld(result) ? t("purchase.verifyHeld") : t("purchase.verifySuccess"),
+      );
       setDetailMode("none");
     } catch {
       setNotice(t("purchase.actionError"));

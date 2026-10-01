@@ -50,6 +50,7 @@ function emptyRecordForm(): RecordFormState {
 const STATUS_FILTERS = [
   "",
   "waiting_for_customer",
+  "pending_admission",
   "verified",
   "rejected",
   "under_review",

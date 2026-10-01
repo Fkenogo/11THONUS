@@ -49,6 +49,8 @@ async function dropAll() {
   // WP-COM-01 (0021): Commercial tables are independent of every table below
   // (no cross-domain FK); dropped first so a re-run of migrateUp can re-create them.
   for (const table of [
+    "commercial_admission_blocks",
+    "commercial_admissions",
     "commercial_projection_failures",
     "commercial_consumption_events",
     "commercial_consumption_claims",
@@ -75,6 +77,9 @@ async function dropAll() {
     "commercial_consumption_claims_require_event",
     "commercial_consumption_events_ledger_guard",
     "commercial_consumption_claims_reward_business_guard",
+    // WP-COM-05b (0027).
+    "commercial_admission_assert_consistent",
+    "commercial_consumption_events_earmark_guard",
     "commercial_reject_mutation",
     // WP-COM-05a (0026): the guard function outlives its table's CASCADE drop.
     "purchase_records_pending_admission_guard",
@@ -149,6 +154,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0024",
       "0025",
       "0026",
+      "0027",
     ]);
   });
 
@@ -181,6 +187,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0024",
       "0025",
       "0026",
+      "0027",
     ]);
 
     for (const table of [
@@ -249,12 +256,13 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0024",
       "0025",
       "0026",
+      "0027",
     ]);
   }, 15000);
 
   it("rolls back the full migration set and re-applies cleanly", async () => {
     await migrateUp(pool, migrationsDir);
-    await migrateDown(pool, migrationsDir, 26);
+    await migrateDown(pool, migrationsDir, 27);
 
     for (const table of [
       "reward_programs",
@@ -297,6 +305,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0024",
       "0025",
       "0026",
+      "0027",
     ]);
     const applied = await getAppliedMigrations(pool);
     expect(applied.map((a) => a.version)).toEqual([
@@ -326,6 +335,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0024",
       "0025",
       "0026",
+      "0027",
     ]);
   }, 15000);
 
@@ -368,7 +378,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
 
     // The guard refuses BEFORE dropping anything: governed redemption
     // evidence is never silently discarded by a rollback.
-    await expect(migrateDown(pool, migrationsDir, 7)).rejects.toThrow(/refusing to roll back/i);
+    await expect(migrateDown(pool, migrationsDir, 8)).rejects.toThrow(/refusing to roll back/i);
 
     const reg = await pool.query("SELECT to_regclass('public.redemptions') AS reg");
     expect(reg.rows[0].reg).not.toBeNull();
@@ -614,6 +624,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         "0024",
         "0025",
         "0026",
+        "0027",
       ]);
 
       const preserved = await pool.query<{
@@ -1488,6 +1499,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         "0024",
         "0025",
         "0026",
+        "0027",
       ]);
 
       expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
@@ -1592,6 +1604,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         "0024",
         "0025",
         "0026",
+        "0027",
       ]);
       expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
 
@@ -1663,6 +1676,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         "0024",
         "0025",
         "0026",
+        "0027",
       ]);
       expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
 
@@ -1747,6 +1761,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         "0024",
         "0025",
         "0026",
+        "0027",
       ]);
       expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
     }, 15000);
@@ -1816,6 +1831,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         "0024",
         "0025",
         "0026",
+        "0027",
       ]);
       expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
     }, 15000);
@@ -2177,7 +2193,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         [versionId, item.rows[0].id],
       );
 
-      await migrateDown(pool, migrationsDir, 8);
+      await migrateDown(pool, migrationsDir, 9);
 
       // Structural shell only: table exists, is empty, keeps the 0003
       // shape -- history is NOT reconstructed.
@@ -2214,6 +2230,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         "0024",
         "0025",
         "0026",
+        "0027",
       ]);
       expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
     }, 15000);
@@ -2413,6 +2430,8 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         await pool.query(`UPDATE purchase_records SET status = 'pending_admission' WHERE id = $1`, [
           id,
         ]);
+        // 0027 sits above 0026: roll it back first (no admission rows exist), then 0026 refuses.
+        await migrateDown(pool, migrationsDir, 1);
         await expect(migrateDown(pool, migrationsDir, 1)).rejects.toThrow(
           /0026: refusing to roll back/i,
         );
@@ -2423,11 +2442,12 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         expect(row.rows[0].status).toBe("pending_admission");
         const v = await pool.query<{ max: string }>(`SELECT max(version) FROM schema_migrations`);
         expect(v.rows[0].max).toBe("0026");
+        await migrateUp(pool, migrationsDir);
       });
 
       it("down restores the pre-0026 schema exactly, and up re-applies cleanly (round trip)", async () => {
         const id = await seedWaitingPurchase("roundtrip");
-        await migrateDown(pool, migrationsDir, 1);
+        await migrateDown(pool, migrationsDir, 2); // 0027 then 0026
         const defs = await pool.query<{ def: string }>(
           `SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint
             WHERE conrelid = 'purchase_records'::regclass
@@ -2448,7 +2468,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         ).rejects.toThrow(/purchase_records_status_check/);
 
         const again = await migrateUp(pool, migrationsDir);
-        expect(again.applied).toEqual(["0026"]);
+        expect(again.applied).toEqual(["0026", "0027"]);
         await pool.query(`UPDATE purchase_records SET status = 'pending_admission' WHERE id = $1`, [
           id,
         ]);
