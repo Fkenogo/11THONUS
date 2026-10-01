@@ -168,6 +168,20 @@ Additive and local-only. Creates `commercial_admissions` and `commercial_admissi
 | R-6 | **PB-013B P3-3 remains OPEN** | Untouched, separate package |
 | R-7 | Customer wording is provisional | Experience Assembly governs final copy; no commercial detail is exposed |
 
+
+## 24A. Deployment prerequisites and review-gate findings (added at the final exact-head review)
+
+**DO NOT ENABLE `PURCHASE_ADMISSION_GATE_MODE=enforce` until all four hold:**
+
+1. every Business that takes Purchases has a Commercial account (otherwise every new Circle start is held as `not_established`);
+2. trial/paid capacity has been provisioned as appropriate;
+3. a production-safe invocation path for held-Purchase re-evaluation exists (the processor is callable only; nothing schedules or triggers it — WP-COM-06a);
+4. operational read/alerting is sufficient to detect a held backlog (WP-COM-06a/06b).
+
+**Finding F-1 — strict FIFO can head-of-line block.** A Purchase's cost is `newBlocks = ceil((U+q)/10) − ceil(U/10)`, which is **not constant**: 0 (inside an admitted position), 1, or more (a quantity above 10, or one that straddles a position boundary). The processor deliberately stops at the first Purchase that does not fit (design §8.11: no overtaking). A held Purchase needing 2 units therefore also holds back a later Purchase needing 1 that would fit. This is the approved fairness policy (design §8.11 notes first-fit would be a one-line processor change), but it is a real behaviour and is recorded here as a Founder decision point: keep strict FIFO, or allow skip-and-continue.
+
+**Finding F-2 — availability is a shared pool.** Usable capacity is `(trial_remaining + paid_balance) − (trial_reserved + paid_reserved)` (design §7/§8.5/§12). A negative paid balance therefore reduces usable capacity even when uncommitted trial alone would cover the new position (exhaustive check over 4,200 account states: 845 holds are of exactly this kind). This is the approved FD-A model ("negative balance ⇒ held until credit restores capacity"), not a defect; it is recorded because a bucket-independent reading would behave differently. Admitted Purchases are always bucket-safe: in all 1,359 admitted states trial earmarks never exceed uncommitted trial and paid earmarks never exceed uncommitted paid.
+
 ## 25. Rollback
 
 Set `PURCHASE_ADMISSION_GATE_MODE` to `off` (or unset it): instant, no deploy of code. `git revert` the commit. `migrateDown` rolls `0027` back on a database with no admission/earmark rows (fails closed otherwise — recovery of a populated database needs a backup). Held Purchases remain valid `pending_admission` rows; the `0026` down-migration still refuses while any exist.

@@ -21,6 +21,7 @@
 - **Deliberately not implemented:** scheduler and automatic triggers for the processor, `shadow` mode, Operator Console / read models, payment provider, Experience Assembly. **`confirmRedemption`, the WP-COM-04 projector, Reward Program/Qualifying Item code and the prototype: zero diff.**
 - **Product Truth:** unchanged. Held-Purchase wording is provisional pending Experience Assembly and exposes no commercial detail (a read-model leak of event payloads was found and closed).
 - **Risks / deviations:** report §23–§24 (D1–D10, R-1–R-7). **PB-013B P3-3 remains OPEN** — untouched, not worsened.
+- **Deployment prerequisite:** do NOT enable `enforce` until (1) relevant Businesses have Commercial accounts, (2) trial/paid capacity is provisioned, (3) a production-safe invocation path for held-Purchase re-evaluation exists, and (4) held-backlog read/alerting exists. Report §24A also records two policy findings for Founder decision: strict-FIFO head-of-line blocking (Purchase costs differ) and the shared-pool availability rule (a negative paid balance reduces usable capacity even when uncommitted trial exists).
 - **Rollback:** unset/`off` the gate variable (instant); `git revert`; `migrateDown` rolls `0027` back on a database with no admission/earmark rows (fails closed otherwise).
 - **Report link:** [`wp-com-05b-commercial-admission-gate-earmarks-and-held-purchase-processor-implementation-report-2026-10-01.md`](../05-implementation/reports/wp-com-05b-commercial-admission-gate-earmarks-and-held-purchase-processor-implementation-report-2026-10-01.md)
 
