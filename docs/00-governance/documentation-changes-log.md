@@ -164,6 +164,17 @@ Running log of all controlled changes to the documentation suite. Every consolid
 - **Report link:** [`wp-com-05a-purchase-admission-seam-and-pending-admission-foundation-implementation-report-2026-10-01.md`](../05-implementation/reports/wp-com-05a-purchase-admission-seam-and-pending-admission-foundation-implementation-report-2026-10-01.md)
 
 ---
+## Entry 278A — `CI-EMU-STAB-001`: Firestore Emulator Concurrency Test Timeout (CI/test stability)
+
+**Date:** 2026-10-01 · **Type:** CI/test infrastructure · **Base `origin/main`:** `94fa71e6516ab5376fa355eaf9f771db6fa01aa9` · **Not product code. Nothing deployed.**
+
+- **Changed.** `functions/vitest.emulator.config.ts` gains `testTimeout: 15000` (emulator suite only). Cause measured, not assumed: contended Firestore transactions are aborted and retried by the SDK with backoff, so ~38 emulator concurrency tests take 2.5–4.3 s against Vitest's 5 s default; two CI runs of PR #291 failed in two different such tests.
+- **Not changed.** No assertion, retry policy, test concurrency, emulator readiness, dependency or product code; unit and PostgreSQL suites keep their own timeouts.
+- **Files changed:** the report; `docs/changes/IMPLEMENTATION_CHANGES.md`; this log (this entry only — the header "last update" lines are left to the in-flight `WP-COM-05b` entry to avoid a merge conflict).
+- **Report link:** [`ci-emu-stab-001-firestore-emulator-concurrency-timeout-report-2026-10-01.md`](../05-implementation/reports/ci-emu-stab-001-firestore-emulator-concurrency-timeout-report-2026-10-01.md)
+
+---
+
 ## Entry 277 — `WP-COM-04`: Commercial Consumption Projection (Implementation)
 
 **Date:** 2026-09-30 · **Type:** implementation · **Entry `origin/main`:** `5ec962c69ad432a1cbd68a4a5305f9de9ed79eae` · **Branch:** `claude/vigilant-ritchie-e449gj` · **Not merged. Nothing deployed; migration `0025` applied only to a local disposable test database.**

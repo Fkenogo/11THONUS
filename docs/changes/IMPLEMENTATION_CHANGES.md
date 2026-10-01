@@ -45,6 +45,20 @@
 
 ---
 
+## 2026-10-01 — CI-EMU-STAB-001 — Firestore Emulator Concurrency Test Timeout (CI/test stability)
+
+- **Date:** 2026-10-01
+- **Phase:** CI / test infrastructure (separate from the Commercial programme; raised while PR #291 / WP-COM-05b was blocked)
+- **Task:** two consecutive CI runs of PR #291 failed only in Firebase Emulator Suite validation, each with `Test timed out in 5000ms` in a *different* unrelated concurrency test (`knowledgeTagRepository`, then `identityLifecycleRepository`). Root cause measured and fixed at the shared level.
+- **Root cause:** the suite contains ~38 tests that race two Firestore transactions on one document. The Firestore Node SDK aborts the loser and retries it with exponential backoff, so such a race takes 2.5–4.3 s even on an idle machine (a bare two-transaction probe with no repository code: min 2.5 s, p50 3.2 s, max 4.3 s over 60 rounds), against Vitest's 5 s default. On a slower CI runner the tail crosses 5 s.
+- **Change:** one setting — `testTimeout: 15000` in `functions/vitest.emulator.config.ts` (emulator suite only; 15 s is the value the repository already gives its slowest concurrency emulator tests individually). No assertion, retry, concurrency, readiness or dependency change; the unit and PostgreSQL suites keep their own timeouts.
+- **Validation:** see the [report](../05-implementation/reports/ci-emu-stab-001-firestore-emulator-concurrency-timeout-report-2026-10-01.md).
+- **Configuration / dependencies:** the single test-config setting above; none other.
+- **Product-domain code:** none touched. PR #291 untouched.
+- **Rollback:** `git revert` the commit.
+
+---
+
 ## 2026-09-30 — WP-COM-04 — Commercial Consumption Projection (Implementation)
 
 - **Date:** 2026-09-30
