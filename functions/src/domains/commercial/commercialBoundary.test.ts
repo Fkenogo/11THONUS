@@ -32,6 +32,11 @@ const isTs = (f: string) => f.endsWith(".ts");
 const isTest = (f: string) => /\.test\.ts$/.test(f);
 
 const commercialSources = walk(commercialDir).filter((f) => isTs(f) && !isTest(f));
+const REWARD_SOURCE_ADAPTER = join(
+  commercialDir,
+  "repositories",
+  "commercialRewardSourceRepository.ts",
+);
 const nonCommercialSources = walk(srcDir).filter(
   (f) => isTs(f) && !f.startsWith(commercialDir + "/") && !f.includes("/__fixtures__/"),
 );
@@ -105,6 +110,8 @@ describe("Commercial foundation is a separate, non-integrated domain (WP-COM-01)
     for (const file of commercialSources) {
       const source = readFileSync(file, "utf8");
       for (const table of LOYALTY_TABLES) {
+        // WP-COM-04: the read-only Reward adapter is the ONE file allowed to name `rewards`.
+        if (table === "rewards" && file === REWARD_SOURCE_ADAPTER) continue;
         expect(
           new RegExp(`\\b${table}\\b`).test(source),
           `${relative(srcDir, file)} mentions loyalty table ${table}`,
@@ -141,7 +148,7 @@ describe("Commercial foundation is a separate, non-integrated domain (WP-COM-01)
     }
   });
 
-  it("no pending-admission lifecycle, capacity gate, consumption projection or earmark exists anywhere in source or migrations", () => {
+  it("no pending-admission lifecycle, capacity gate, admission or earmark creation exists anywhere in source or migrations", () => {
     const everything = [...commercialSources, ...nonCommercialSources]
       .filter((f) => f !== join(commercialDir, "commercialBoundary.test.ts"))
       .map((f) => readFileSync(f, "utf8"));
@@ -151,10 +158,9 @@ describe("Commercial foundation is a separate, non-integrated domain (WP-COM-01)
     );
     for (const text of [...everything, ...migrationFiles]) {
       expect(text).not.toContain(PENDING);
-      expect(text).not.toMatch(
-        /commercial_(admissions|admission_blocks|consumption_claims|consumption_events|projection_failures)/,
-      );
-      expect(text).not.toMatch(/INV-CAP-PROV.*earmark_id/s);
+      // WP-COM-04 legitimately adds consumption claims/events/failures; admissions and earmarks stay WP-COM-05.
+      expect(text).not.toMatch(/commercial_(admissions|admission_blocks)/);
+      expect(text).not.toMatch(/(INSERT\s+INTO|CREATE\s+TABLE)\s+\w*earmark/i);
     }
     for (const file of commercialSources) {
       const source = readFileSync(file, "utf8");
@@ -381,7 +387,7 @@ describe("WP-COM-03 manual administration boundary", () => {
       const rel = relative(commercialDir, file);
       const src = codeOf(file);
       expect(src, rel).not.toMatch(
-        /evaluateAdmission|admitPurchase|projectConsumption|reevaluatePendingAdmissions|availableCapacity\(.*\)\s*[<>]|stripe|flutterwave/i,
+        /evaluateAdmission|admitPurchase|reevaluatePendingAdmissions|availableCapacity\(.*\)\s*[<>]|stripe|flutterwave/i,
       );
     }
   });
@@ -461,6 +467,110 @@ describe("WP-COM-03A settlement cancellation boundary", () => {
   it("cancelSettlement is not reachable from any non-Commercial code (no callable, route or UI is wired)", () => {
     for (const file of nonCommercialSources) {
       expect(codeOf(file), relative(srcDir, file)).not.toMatch(/cancelSettlement/);
+    }
+  });
+});
+
+describe("WP-COM-04 consumption projection boundary", () => {
+  const migration0025 = readFileSync(
+    join(migrationsDir, "0025_commercial_consumption_projection.sql"),
+    "utf8",
+  );
+  const sql0025 = migration0025.replace(/--.*$/gm, "");
+  const codeOf = (file: string) =>
+    readFileSync(file, "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/^\s*\/\/.*$/gm, "");
+  const commercialFile = (rel: string) => join(commercialDir, rel);
+
+  it("migration 0025 creates exactly claims, events and failures; alters nothing; only attaches one index to rewards", () => {
+    expect([...sql0025.matchAll(/CREATE\s+TABLE\s+([a-z_]+)/gi)].map((m) => m[1])).toEqual([
+      "commercial_consumption_claims",
+      "commercial_consumption_events",
+      "commercial_projection_failures",
+    ]);
+    expect(sql0025).not.toMatch(/\bALTER\s+TABLE\b/i);
+    expect(sql0025).not.toMatch(/\bINSERT\s+INTO\b/i);
+    expect(sql0025).not.toMatch(/\bDROP\b/i);
+    expect(sql0025).not.toMatch(/\b(UPDATE|DELETE\s+FROM)\s+(?!.*commercial_)/i);
+    const loyaltyIndexes = [
+      ...sql0025.matchAll(/CREATE\s+(?:UNIQUE\s+)?INDEX\s+\w+\s+ON\s+([a-z_]+)/gi),
+    ]
+      .map((m) => m[1])
+      .filter((t) => !t.startsWith("commercial_"));
+    expect(loyaltyIndexes).toEqual(["rewards"]);
+    expect(sql0025).not.toMatch(
+      new RegExp(`${PENDING}|admission|scheduler|tier|subscription|stripe|flutterwave`, "i"),
+    );
+  });
+
+  it("the ONLY foreign key into Loyalty is the composite claim -> rewards key; events and failures have none", () => {
+    const tables = sql0025.split(/CREATE\s+TABLE\s+/i).slice(1);
+    const byName = new Map(tables.map((t) => [t.match(/^([a-z_]+)/)![1], t]));
+    const refs = (name: string) =>
+      [...(byName.get(name) ?? "").matchAll(/REFERENCES\s+([a-z_]+)/g)].map((m) => m[1]);
+    expect(refs("commercial_consumption_claims")).toEqual(["rewards"]);
+    for (const m of refs("commercial_consumption_events")) expect(m).toMatch(/^commercial_/);
+    expect(refs("commercial_projection_failures")).toEqual([]);
+    for (const t of LOYALTY_TABLES.filter((x) => x !== "rewards")) {
+      expect(new RegExp(`\\b${t}\\b`).test(sql0025), `0025 mentions ${t}`).toBe(false);
+    }
+    // No earmark FK exists yet: earmark_id is a plain nullable UUID until WP-COM-05.
+    expect(sql0025).toMatch(/earmark_id UUID NULL,/);
+  });
+
+  it("the Reward adapter is read-only: SELECT only, no write and no row lock", () => {
+    const src = codeOf(REWARD_SOURCE_ADAPTER);
+    expect(src).not.toMatch(/\b(INSERT\s+INTO|UPDATE\s+\w|DELETE\s+FROM|TRUNCATE)\b/i);
+    expect(src).not.toMatch(/FOR\s+(NO\s+KEY\s+)?UPDATE|FOR\s+(KEY\s+)?SHARE/i);
+    // It imports no Loyalty/Purchase repository (only Commercial models and infrastructure types).
+    for (const spec of importSpecifiers(readFileSync(REWARD_SOURCE_ADAPTER, "utf8"))) {
+      expect(spec).not.toMatch(/purchase|loyalty|redemption/i);
+    }
+  });
+
+  it("no Commercial source updates or deletes claims, events or failures, or writes any Loyalty table", () => {
+    for (const file of commercialSources) {
+      expect(codeOf(file), relative(srcDir, file)).not.toMatch(
+        /(UPDATE|DELETE\s+FROM|TRUNCATE)\s+commercial_(consumption_claims|consumption_events|projection_failures)/,
+      );
+    }
+  });
+
+  it("the projection follows claim -> account lock -> funding -> ledger -> event -> audit, and never reads Loyalty after the lock", () => {
+    const src = codeOf(commercialFile("services/projectCommercialConsumption.ts"));
+    const at = (needle: string) => {
+      const i = src.indexOf(needle);
+      expect(i, needle).toBeGreaterThan(-1);
+      return i;
+    };
+    const order = [
+      at("getRewardSource("),
+      at("insertConsumptionClaim("),
+      at("lockCommercialAccount("),
+      at("resolveEarmark(tx"),
+      at("lockPriceScheduleMarket(tx"),
+      at("postCommercialLedgerEntry(tx"),
+      at("insertConsumptionEvent(tx"),
+      at("appendCommercialAuditEvent(tx"),
+    ];
+    expect(order).toEqual([...order].sort((a, b) => a - b));
+    // Loyalty is touched exactly once, before the account lock.
+    expect(src.split("getRewardSource(").length - 1).toBe(1);
+    expect(src.split("insertConsumptionClaim(").length - 1).toBe(1);
+    // The account is locked exactly once, only through the shared repository primitive.
+    expect(src.split("lockCommercialAccount(").length - 1).toBe(1);
+    expect(src).not.toMatch(/FOR\s+UPDATE/i);
+  });
+
+  it("the projection and reconciliation are not wired into any Loyalty path or scheduler", () => {
+    for (const file of nonCommercialSources) {
+      expect(codeOf(file), relative(srcDir, file)).not.toMatch(
+        /projectCommercialConsumption|reconcileCommercialConsumption|getConsumptionProjectionMetrics/,
+      );
+    }
+    for (const file of commercialSources) {
+      expect(codeOf(file), relative(srcDir, file)).not.toMatch(/onSchedule|setInterval|cron/i);
     }
   });
 });

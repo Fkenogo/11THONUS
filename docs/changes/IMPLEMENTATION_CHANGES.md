@@ -7,6 +7,24 @@
 
 ---
 
+## 2026-09-30 — WP-COM-04 — Commercial Consumption Projection (Implementation)
+
+- **Date:** 2026-09-30
+- **Phase:** Commercial implementation programme (11THONUS-COMMERCIAL-DESIGN-001 v1.1 + CORR-002, §5, §8.5.1, §22–§24)
+- **Task:** WP-COM-04 — project the authoritative Loyalty fact "a Circle's 10-unit earning side completed and its Reward became available" into **one Commercial unit consumed** (claim → account lock → classify → finalize, one transaction per Reward). Redemption does not create consumption. Exactly-once at database level; paid balance may go negative (no floor, no maximum); fallback classification (trial-first, then paid) decided only under the account lock and recorded as `consumption_time_fallback`; earmark port ready for WP-COM-05b; bounded, repeat-safe reconciliation service and lag/fallback/failure metrics. Commercial only **reads** the Reward and writes nothing in Loyalty.
+- **Status:** Implemented — pending review. Not merged. Entry `origin/main` `5ec962c69ad432a1cbd68a4a5305f9de9ed79eae`; branch `claude/vigilant-ritchie-e449gj`.
+- **Files changed:** see the [Implementation Report](../05-implementation/reports/wp-com-04-commercial-consumption-projection-implementation-report-2026-09-30.md) . Summary: new migration `0025_commercial_consumption_projection` (+ `.down.sql`); `models/commercialConsumption.ts`; `repositories/commercialConsumptionRepository.ts` and the read-only `repositories/commercialRewardSourceRepository.ts`; `services/projectCommercialConsumption.ts`, `services/reconcileCommercialConsumption.ts`; `consumption_recorded` audit action; new `commercialConsumption.postgres.test.ts` (54 tests) and 6 boundary tests; migration-list and drop-helper updates in existing tests.
+- **Tests:** typecheck, lint (0 errors; 1 pre-existing `apps/web` warning), format, build, unit (functions 1935, web 919), full PostgreSQL suite under the Firestore Emulator (16 files, 531 tests) and the emulator suite (66 files, 867 passed, 3 skipped) all green locally against a disposable PostgreSQL 16. Two mutation checks confirmed the lock-order and stale-decision tests fail when the design is violated.
+- **Configuration / dependencies:** none.
+- **Migrations:** `0025_commercial_consumption_projection` — additive: three Commercial tables, guard triggers, and one performance index on `rewards`; `.down.sql` fails closed when any claim/event/failure row exists. Applied **only** to the local disposable test database; nothing was run against shared, staging or production databases.
+- **Deliberately not implemented:** capacity gate, `pending_admission`, admission earmark creation, `verifyPurchase` integration, held-purchase re-evaluation, scheduler, Operator/Business UI, payment provider. **Nothing invokes the projection yet** (no scheduler; Loyalty callables untouched).
+- **Product Truth:** unchanged (USD 2, trial 3–5 per explicit grant, pricing schedule, negative-credit allowance, capacity rules). Loyalty path, `apps/`, prototype/Experience Reference: zero diff.
+- **Risks / deviations:** report §13 (D1–D9): `rewards` performance index takes a short SHARE lock while building; earmark reconciliation checks deferred to WP-COM-05b; immediate post-verify trigger not wired; fallback is the only path until earmarks exist.
+- **Rollback:** `git revert` the commit; on a database with no consumption rows `migrateDown` rolls `0025` back (fails closed otherwise — restore a pre-`0025` backup).
+- **Report link:** [`wp-com-04-commercial-consumption-projection-implementation-report-2026-09-30.md`](../05-implementation/reports/wp-com-04-commercial-consumption-projection-implementation-report-2026-09-30.md)
+
+---
+
 ## 2026-09-30 — WP-COM-03A — Recorded Settlement Cancellation (Implementation)
 
 - **Date:** 2026-09-30
