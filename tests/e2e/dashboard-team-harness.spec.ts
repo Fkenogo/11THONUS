@@ -131,11 +131,12 @@ test.describe("Team Management screen — language switching", () => {
     await expect(page).toHaveURL(/\/dashboard-harness\/team$/);
     await expect(page.getByText("Safi")).toBeVisible();
     await expect(page.getByText("elise.m@example.com")).toBeVisible();
-    await expect(page.getByText("Propriétaire")).toBeVisible();
+    // Scoped to the page content: the shell now also labels the viewer's role (EA-003).
+    await expect(page.locator("main").getByText("Propriétaire")).toBeVisible();
 
     await page.getByRole("button", { name: "English" }).click();
     await expect(page.getByRole("heading", { name: "Team", exact: true })).toBeVisible();
     await expect(page).toHaveURL(/\/dashboard-harness\/team$/);
-    await expect(page.getByText("Owner")).toBeVisible();
+    await expect(page.locator("main").getByText("Owner")).toBeVisible();
   });
 });
