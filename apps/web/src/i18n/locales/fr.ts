@@ -440,10 +440,10 @@ export const fr = {
       customerUnknown: "Numéro de fidélité du client indisponible",
       availableSince: "Prête depuis le {{date}}",
       unitsOfThreshold: "{{allocated}} sur {{threshold}} unités vérifiées",
-      cycleNumber: "Cycle {{number}}",
+      cycleNumber: "Cercle {{number}}",
       unitsToReward: "Unités restantes avant la récompense : {{count}}",
       rewardReady: "Récompense prête : {{description}}",
-      pendingUnits: "Unités en attente du prochain cycle : {{count}}",
+      pendingUnits: "Unités en attente du prochain Cercle : {{count}}",
       rewardState: {
         available: "Prête",
         redeemed: "Utilisée",

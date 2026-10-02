@@ -88,7 +88,7 @@ Playwright asserts the presence/absence at both viewports. Hidden controls are c
 
 ## 7. EN/FR
 
-All 38 new keys exist in `en.ts` and `fr.ts` (`dashboard.commandCentre.*`); the existing locale-parity test passes. **Copy is not approved** — "Circle" is used in new copy while older keys say "Cycle"; Founder copy review requested.
+All 38 new keys exist in `en.ts` and `fr.ts` (`dashboard.commandCentre.*`); the existing locale-parity test passes. **Copy is not approved** — Founder disposition applied: customer/business-facing copy says "Circle" (EN) / "Cercle" (FR); the two remaining older visible strings (`loyaltyVisibility.cycleNumber`, `loyaltyVisibility.pendingUnits`) were corrected. Internal "Cycle" identifiers are unchanged. Copy is approved for Founder Preview only, not final production copy.
 
 ## 8. EA-002 compatibility
 

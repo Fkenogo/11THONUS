@@ -429,10 +429,10 @@ export const en = {
       customerUnknown: "Customer loyalty number unavailable",
       availableSince: "Ready since {{date}}",
       unitsOfThreshold: "{{allocated}} of {{threshold}} verified units",
-      cycleNumber: "Cycle {{number}}",
+      cycleNumber: "Circle {{number}}",
       unitsToReward: "Units to next reward: {{count}}",
       rewardReady: "Reward ready: {{description}}",
-      pendingUnits: "Units waiting for the next cycle: {{count}}",
+      pendingUnits: "Units waiting for the next Circle: {{count}}",
       rewardState: {
         available: "Ready",
         redeemed: "Redeemed",
