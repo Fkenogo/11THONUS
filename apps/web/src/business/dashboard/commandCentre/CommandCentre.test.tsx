@@ -9,12 +9,14 @@ const state = vi.hoisted(() => ({
   rewards: [] as unknown[],
   cycles: [] as unknown[],
   purchases: {} as Record<string, unknown[]>,
+  cyclesFailed: false,
 }));
 
 const ok = (data: unknown) => ({
   data,
   isPending: false,
   isError: false,
+  isSuccess: true,
   refetch: vi.fn(),
 });
 
@@ -23,7 +25,10 @@ vi.mock("../../hooks/rewardProgramQueries", () => ({
 }));
 vi.mock("../../hooks/businessLoyaltyQueries", () => ({
   useBusinessAvailableRewardsQuery: () => ok({ rewards: state.rewards }),
-  useBusinessCycleProgressQuery: () => ok({ cycles: state.cycles }),
+  useBusinessCycleProgressQuery: () =>
+    state.cyclesFailed
+      ? { data: undefined, isPending: false, isError: true, isSuccess: false, refetch: vi.fn() }
+      : ok({ cycles: state.cycles }),
 }));
 vi.mock("../../hooks/purchaseQueries", () => ({
   usePurchasesQuery: (_id: string, status?: string) =>
@@ -94,7 +99,7 @@ describe("CommandCentre", () => {
   it("explains held Purchases as the Commercial consequence, with role-specific next step", () => {
     state.purchases = { pending_admission: [purchase("h", "pending_admission")] };
     const { unmount } = renderCc("owner");
-    expect(screen.getByText("New Circles are paused")).toBeInTheDocument();
+    expect(screen.getByText("Purchases on hold")).toBeInTheDocument();
     expect(screen.getByText(/rewards already earned stay redeemable/)).toBeInTheDocument();
     expect(screen.getByText(/Contact 11thONUS support/)).toBeInTheDocument();
     unmount();
@@ -140,6 +145,23 @@ describe("CommandCentre", () => {
     renderCc("manager");
     expect(screen.getByText("Rewards ready", { selector: "h3" })).toBeInTheDocument();
     expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "7");
+  });
+
+  it("never shows a capped page length as an exact total", () => {
+    state.purchases = {
+      waiting_for_customer: Array.from({ length: 100 }, (_, i) =>
+        purchase(`w${i}`, "waiting_for_customer"),
+      ),
+    };
+    renderCc("owner");
+    expect(screen.getAllByText("100+").length).toBeGreaterThan(0);
+  });
+
+  it("does not claim an empty state for a read that failed", () => {
+    state.cyclesFailed = true;
+    renderCc("owner");
+    expect(screen.queryByText(/No Circle is in progress yet/)).not.toBeInTheDocument();
+    state.cyclesFailed = false;
   });
 
   it("flags a Business with no live program", () => {

@@ -203,9 +203,9 @@ export const fr = {
         underReviewTitle: "Achats en cours d'examen",
         underReviewBody: "Un client a soulevé une question au sujet de ces achats.",
         underReviewAction: "Examiner les achats",
-        onHoldTitle: "Les nouveaux Cercles sont suspendus",
+        onHoldTitle: "Achats en attente",
         onHoldBody:
-          "Certains achats sont en attente car de nouveaux Cercles ne peuvent pas démarrer pour le moment. Les Cercles déjà en cours peuvent se poursuivre et les récompenses déjà gagnées restent utilisables.",
+          "Ces achats ont été reçus alors que de nouveaux Cercles ne pouvaient pas démarrer, et attendent d'être admis. Les Cercles déjà en cours peuvent se poursuivre et les récompenses déjà gagnées restent utilisables.",
         onHoldOwnerNext: "Contactez le support 11thONUS pour résoudre ce point.",
         onHoldManagerNext: "Demandez au propriétaire de l'entreprise d'en parler avec 11thONUS.",
         onHoldAction: "Voir les achats en attente",
@@ -219,6 +219,7 @@ export const fr = {
         glanceRewardsReady: "Récompenses prêtes",
         glanceWaiting: "En attente du client",
         closestTitle: "Les plus proches d'une récompense",
+        closestPartial: "D'après les {{count}} Cercles les plus récemment actifs.",
         closestEmpty:
           "Aucun Cercle n'est en cours. La progression apparaît dès qu'un client vérifie un achat.",
         programsTitle: "Programmes de fidélité",

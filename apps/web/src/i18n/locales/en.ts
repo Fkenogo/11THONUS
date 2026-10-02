@@ -198,9 +198,9 @@ export const en = {
         underReviewTitle: "Purchases under review",
         underReviewBody: "A customer has raised a question about these purchases.",
         underReviewAction: "Review purchases",
-        onHoldTitle: "New Circles are paused",
+        onHoldTitle: "Purchases on hold",
         onHoldBody:
-          "Some purchases are on hold because new Circles can't start right now. Circles already in progress can continue, and rewards already earned stay redeemable.",
+          "These purchases were received while new Circles could not start, and are waiting to be admitted. Circles already in progress can continue, and rewards already earned stay redeemable.",
         onHoldOwnerNext: "Contact 11thONUS support to resolve this.",
         onHoldManagerNext: "Ask the Business Owner to follow this up with 11thONUS.",
         onHoldAction: "See held purchases",
@@ -213,6 +213,7 @@ export const en = {
         glanceRewardsReady: "Rewards ready",
         glanceWaiting: "Waiting for customer",
         closestTitle: "Closest to a reward",
+        closestPartial: "Based on the {{count}} most recently active Circles.",
         closestEmpty:
           "No Circle is in progress yet. Progress appears once a customer verifies a purchase.",
         programsTitle: "Reward Programs",

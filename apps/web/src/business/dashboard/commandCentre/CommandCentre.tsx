@@ -41,6 +41,8 @@ import {
 export type CommandCentreRole = "owner" | "manager";
 
 const RECENT_LIMIT = 5;
+/** Largest page the server returns; a count that reaches it is shown as "N+", never as a total. */
+const PAGE_CAP = 100;
 
 export function CommandCentre({
   context,
@@ -56,10 +58,13 @@ export function CommandCentre({
   const programsQuery = useRewardProgramsQuery(id);
   const rewardsQuery = useBusinessAvailableRewardsQuery(id, true);
   const cyclesQuery = useBusinessCycleProgressQuery(id, true);
-  const waitingQuery = usePurchasesQuery(id, "waiting_for_customer");
-  const underReviewQuery = usePurchasesQuery(id, "under_review");
-  const onHoldQuery = usePurchasesQuery(id, "pending_admission");
-  const recentQuery = usePurchasesQuery(id);
+  const waitingQuery = usePurchasesQuery(id, "waiting_for_customer", PAGE_CAP);
+  const underReviewQuery = usePurchasesQuery(id, "under_review", PAGE_CAP);
+  const onHoldQuery = usePurchasesQuery(id, "pending_admission", PAGE_CAP);
+  const recentQuery = usePurchasesQuery(id, undefined, RECENT_LIMIT);
+
+  const formatCount = (n: number | null | undefined) =>
+    n === null || n === undefined ? "–" : n >= PAGE_CAP ? `${PAGE_CAP}+` : String(n);
 
   const programs = programsQuery.data;
   const cycles = cyclesQuery.data?.cycles;
@@ -210,7 +215,7 @@ export function CommandCentre({
                   <h3 className="font-semibold">{copy.title}</h3>
                   {item.count !== null ? (
                     <span className="rounded-full border border-current px-2.5 py-0.5 text-sm font-semibold tabular-nums">
-                      {item.count}
+                      {formatCount(item.count)}
                     </span>
                   ) : null}
                 </div>
@@ -239,22 +244,27 @@ export function CommandCentre({
               className="rounded-lg border border-[var(--color-border)] p-4"
               data-tile={tile.key}
             >
-              <dd className="text-2xl font-semibold tabular-nums">{tile.value ?? "–"}</dd>
+              <dd className="text-2xl font-semibold tabular-nums">{formatCount(tile.value)}</dd>
               <dt className="text-sm text-[var(--color-muted-foreground)]">{tile.label}</dt>
             </div>
           ))}
         </dl>
 
         <h3 className="mt-2 font-medium">{t("dashboard.commandCentre.closestTitle")}</h3>
-        {settled && closest.length === 0 ? (
+        {cyclesQuery.isSuccess && closest.length === 0 ? (
           <p className="text-sm text-[var(--color-muted-foreground)]">
             {t("dashboard.commandCentre.closestEmpty")}
           </p>
         ) : null}
+        {cyclesQuery.data && cyclesQuery.data.cycles.length >= PAGE_CAP ? (
+          <p className="text-xs text-[var(--color-muted-foreground)]">
+            {t("dashboard.commandCentre.closestPartial", { count: PAGE_CAP })}
+          </p>
+        ) : null}
         <ul className="flex flex-col gap-2">
-          {closest.map((cycle) => (
+          {closest.map((cycle, index) => (
             <li
-              key={`${cycle.rewardProgramId}-${cycle.customerLoyaltyNumber}-${cycle.cycleSequenceNumber}`}
+              key={`${cycle.rewardProgramId}-${cycle.customerLoyaltyNumber}-${cycle.cycleSequenceNumber}-${index}`}
               className="rounded-lg border border-[var(--color-border)] p-3"
             >
               <div className="flex items-baseline justify-between gap-3 text-sm">
@@ -352,7 +362,7 @@ export function CommandCentre({
         <h2 id="cc-recent" className="text-lg font-semibold">
           {t("dashboard.commandCentre.recentTitle")}
         </h2>
-        {settled && recent.length === 0 ? (
+        {recentQuery.isSuccess && recent.length === 0 ? (
           <p className="text-sm text-[var(--color-muted-foreground)]">
             {t("dashboard.commandCentre.recentEmpty")}
           </p>

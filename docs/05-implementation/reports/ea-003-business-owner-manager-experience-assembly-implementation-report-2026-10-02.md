@@ -73,7 +73,7 @@ Modified: `BusinessDashboardShell.tsx` (+test), `BusinessDashboardRoutes.tsx`, `
 * **Programmes:** snapshot on Home; programme page reordered on phones (programmes first, Qualifying Items after), padding and row wrapping corrected so Rename/Retire no longer clip.
 * **Customer/Circle/Reward:** bars and counts are the server's verified numbers; an unverified Purchase appears only as "Waiting for the customer — not counted".
 * **Team / Locations:** reused unchanged; verified by journeys (Owner sees *Change role*; Manager does not).
-* **Commercial consequence:** a Purchase in `pending_admission` raises *New Circles are paused* with the three business-facing truths (in-progress Circles continue; earned rewards stay redeemable; who to contact — Owner: 11thONUS support; Manager: ask the Owner). No balance, ledger, settlement, processor, earmark, scheduler or database term is read or rendered (asserted by a unit test and a journey).
+* **Commercial consequence:** a Purchase in `pending_admission` raises *Purchases on hold* with the three business-facing truths (in-progress Circles continue; earned rewards stay redeemable; who to contact — Owner: 11thONUS support; Manager: ask the Owner). No balance, ledger, settlement, processor, earmark, scheduler or database term is read or rendered (asserted by a unit test and a journey).
 * **Terms:** untouched. Seeded Businesses show the real accepted state; a hand-created Business keeps the genuine "Terms unavailable" state (seam S-2, unchanged).
 
 ## 6. Owner vs Manager (verified)

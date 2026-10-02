@@ -14,11 +14,14 @@ import {
 } from "../api/purchaseMutations";
 import { businessQueryKeys } from "./queryKeys";
 
-export function usePurchasesQuery(businessId: string | undefined, status?: string) {
+export function usePurchasesQuery(businessId: string | undefined, status?: string, limit?: number) {
   const { auth, functions } = useBusinessApiPlatform();
   const actorState = useAuthenticatedActor(auth);
   return useQuery({
-    queryKey: businessQueryKeys.purchases(businessId ?? "", status ?? ""),
+    queryKey: businessQueryKeys.purchases(
+      businessId ?? "",
+      `${status ?? ""}${limit ? `:${limit}` : ""}`,
+    ),
     queryFn: () =>
       makeCallListPurchasesForBusiness(functions)(
         actorState.status === "ready"
@@ -26,7 +29,7 @@ export function usePurchasesQuery(businessId: string | undefined, status?: strin
           : (() => {
               throw new Error("actor not ready");
             })(),
-        { businessId: businessId as string, status },
+        { businessId: businessId as string, status, limit },
       ),
     enabled: actorState.status === "ready" && Boolean(businessId),
   });

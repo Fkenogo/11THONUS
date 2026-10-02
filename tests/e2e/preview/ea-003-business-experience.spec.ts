@@ -169,7 +169,7 @@ test.describe("EA-003 · Business Owner (Bella Salon)", () => {
     // Purchase is held and no "paused" notice is shown. The Command Centre never fabricates a
     // standing, and never exposes balances, ledgers, settlements or processor detail.
     await goTo(page, "Overview");
-    await expect(page.getByText("New Circles are paused")).toHaveCount(0);
+    await expect(page.getByText("Purchases on hold")).toHaveCount(0);
     const body = (await page.locator("main").textContent()) ?? "";
     expect(body).not.toMatch(/earmark|settlement|ledger|processor|scheduler|postgres/i);
     await shot(page, "05-owner-commercial-state");
