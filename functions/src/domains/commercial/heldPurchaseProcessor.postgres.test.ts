@@ -1296,6 +1296,50 @@ describe("WP-COM-06a scan windows", () => {
     // The large Purchase was skipped while a younger one was admitted: the starvation indicator.
     expect(run.skippedOvertaken).toBeGreaterThanOrEqual(1);
   });
+
+  it("same-stream ordering holds across the TAIL window: a later same-stream Purchase never admits past an older held one; a different stream may", async () => {
+    const world = await businessWithAccount();
+    const streamCustomer = await seedCustomer();
+    // Head window (2 rows): P1 (stream S, large, cannot fit) and a large Purchase of another stream.
+    const p1 = await record(world, 30, { customer: streamCustomer, hour: 5 });
+    await verifyEnforced(streamCustomer, p1);
+    const filler = await hold(world, 30, 6);
+    // Tail window (rows beyond the head): a SMALL later Purchase of the SAME stream, then a SMALL
+    // Purchase of a DIFFERENT stream. Both would fit the 1 available position.
+    const laterSameStream = await record(world, 1, { customer: streamCustomer, hour: 7 });
+    await verifyEnforced(streamCustomer, laterSameStream);
+    const laterOtherStream = await hold(world, 1, 8);
+    await post(world.businessId, "credit_grant", "paid", 1);
+
+    const deps = processorDeps({ maxPerBusiness: 2 });
+    const pass = await processBusinessHeldPurchases(deps, {
+      businessId: world.businessId,
+      trigger: "recovery",
+      correlationId: "tail-stream",
+    });
+    expect(pass.head).toMatchObject({ examined: 2, admitted: 0, saturated: true });
+    // The tail window DID select both later rows (no duplicate, none skipped by cursor math)...
+    expect(pass.tail).toMatchObject({ examined: 2, admitted: 1 });
+    // ...but the same-stream one stayed behind P1, while the other stream's Purchase admitted.
+    expect(await purchaseStatus(laterSameStream)).toBe("pending_admission");
+    expect(await purchaseStatus(laterOtherStream)).toBe("verified");
+    expect(await purchaseStatus(p1)).toBe("pending_admission");
+    expect(await purchaseStatus(filler)).toBe("pending_admission");
+
+    // With capacity for everything, P1 admits (head) BEFORE the later same-stream Purchase (tail).
+    await post(world.businessId, "credit_grant", "paid", 7);
+    await processBusinessHeldPurchases(deps, {
+      businessId: world.businessId,
+      trigger: "recovery",
+      correlationId: "tail-stream-2",
+    });
+    expect(await Promise.all([p1, filler, laterSameStream].map(purchaseStatus))).toEqual([
+      "verified",
+      "verified",
+      "verified",
+    ]);
+    await assertAccountingInvariants(world.businessId);
+  });
 });
 
 describe("WP-COM-06a failure classification", () => {
