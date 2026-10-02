@@ -7,6 +7,23 @@
 
 ---
 
+## 2026-10-02 — EA-002 — Local Founder Preview Foundation (Implementation)
+
+- **Date:** 2026-10-02
+- **Phase:** Experience track — local runtime foundation (no screens, no product API)
+- **Task:** EA-002 — one reliable local Founder Preview workflow: PostgreSQL + canonical migrations + Firebase emulators + Functions + web app + deterministic seed/reset + preview identities (Owner, Manager, Staff, Customers, Operator) + Playwright-compatible data + runbook. Built on the accepted `11THONUS-EA-001` assessment.
+- **Status:** Implemented — pending Founder review. Entry `origin/main` `c064f43659d87922d14bb4a245d94a5dfe8d918d`; branch `claude/kind-franklin-hg8iey`.
+- **Files changed:** see the [Implementation Report](../05-implementation/reports/ea-002-local-founder-preview-foundation-implementation-report-2026-10-02.md). Summary: new `tests/preview/**` (CLI, guards, runtime, seed, fingerprint, identities), `tests/e2e/preview/preview-identities.spec.ts`, `docs/runbooks/founder-preview-runbook.md`; modified `package.json` (preview scripts), `playwright.config.ts` (2 preview projects), `eslint.config.js`, `.gitignore`, `.prettierignore`, `.github/workflows/ci.yml` (preview acceptance steps), `README.md`. **No change** under `apps/web/src`, `functions/src`, migrations, Firebase config, dependencies or the Experience Reference.
+- **Tests / validation:** build, typecheck, lint (0 errors), format; unit functions 1971 / web 926; preview guards 24; PostgreSQL suite 678 (19 files); emulator suite 877 (+3 skipped); Playwright default 41, emulator 18, preview 18 (desktop + Pixel 7); clean-state `preview:start → verify → reset → verify` proven.
+- **Configuration / dependencies / migrations:** scripts, CI steps, lint/prettier ignores only; no dependency; no migration (the existing 27 are applied by the existing runner).
+- **Product Truth:** unchanged. Commercial admission gate **OFF** (tooling refuses otherwise); no held Purchases seeded; Terms accepted through the real callable against the existing test-only fixture (screen still unavailable, `DEC-LEGAL-002`); `PB-013B P3-3` remains **OPEN**; `WP-COM-06b` not started; Cloudflare Tunnel not implemented (requirements recorded).
+- **Founder decisions:** D-6 and D-9 proceeded on EA-001 recommendations (local only) and flagged for confirmation — see report §8.
+- **Risks / deviations:** report §9 (seams found) and §12.
+- **Rollback:** `git revert`; delete `.preview/`; optional `docker compose -f docker-compose.postgres.yml down -v`.
+- **Report link:** [`ea-002-local-founder-preview-foundation-implementation-report-2026-10-02.md`](../05-implementation/reports/ea-002-local-founder-preview-foundation-implementation-report-2026-10-02.md)
+
+---
+
 ## 2026-10-02 — 11THONUS-EA-001 — Founder Preview & Experience Assembly Readiness Assessment (Assessment)
 
 - **Date:** 2026-10-02

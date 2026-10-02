@@ -1,0 +1,133 @@
+{
+  "password": "Preview-Only-Passw0rd!",
+  "note": "Founder Preview identities (EA-002). Emulator-only, deterministic, obviously fake. These accounts exist only in the local Firebase Auth emulator; the shared password is meaningless anywhere else. Every account is a REAL Firebase Auth account signed in through the real sign-in surface — authorisation is the production authorisation.",
+  "identities": [
+    {
+      "key": "owner_bella",
+      "role": "owner",
+      "email": "grace.owner@preview.example.test",
+      "displayName": "Grace Niyonzima",
+      "business": "Bella Salon",
+      "landing": "business"
+    },
+    {
+      "key": "manager_bella",
+      "role": "manager",
+      "email": "patrick.manager@preview.example.test",
+      "displayName": "Patrick Mugisha",
+      "business": "Bella Salon",
+      "landing": "business"
+    },
+    {
+      "key": "staff_bella",
+      "role": "staff",
+      "email": "diane.staff@preview.example.test",
+      "displayName": "Diane Kamikazi",
+      "business": "Bella Salon",
+      "landing": "business"
+    },
+    {
+      "key": "owner_sparkle",
+      "role": "owner",
+      "email": "jeanne.owner@preview.example.test",
+      "displayName": "Jeanne Uwase",
+      "business": "Sparkle Car Wash",
+      "landing": "business"
+    },
+    {
+      "key": "owner_mutima",
+      "role": "owner",
+      "email": "olivier.owner@preview.example.test",
+      "displayName": "Olivier Bizimana",
+      "business": "Mutima Mini-Mart",
+      "landing": "business"
+    },
+    {
+      "key": "owner_tembo",
+      "role": "owner",
+      "email": "claudine.owner@preview.example.test",
+      "displayName": "Claudine Hakizimana",
+      "business": "Tembo Fitness",
+      "landing": "business"
+    },
+    {
+      "key": "owner_ubuntu",
+      "role": "owner",
+      "email": "eric.owner@preview.example.test",
+      "displayName": "Eric Sibomana",
+      "business": "Ubuntu Books",
+      "landing": "business"
+    },
+    {
+      "key": "owner_new",
+      "role": "owner-onboarding",
+      "email": "fabrice.new@preview.example.test",
+      "displayName": "Fabrice Ndayishimiye",
+      "business": null,
+      "landing": "customer"
+    },
+    {
+      "key": "customer_amina",
+      "role": "customer",
+      "email": "amina.customer@preview.example.test",
+      "displayName": "Amina Nkurunziza",
+      "landing": "customer"
+    },
+    {
+      "key": "customer_jeanclaude",
+      "role": "customer",
+      "email": "jeanclaude.customer@preview.example.test",
+      "displayName": "Jean-Claude Habimana",
+      "landing": "customer"
+    },
+    {
+      "key": "customer_esther",
+      "role": "customer",
+      "email": "esther.customer@preview.example.test",
+      "displayName": "Esther Irakoze",
+      "landing": "customer"
+    },
+    {
+      "key": "customer_kevin",
+      "role": "customer",
+      "email": "kevin.customer@preview.example.test",
+      "displayName": "Kevin Ndikumana",
+      "landing": "customer"
+    },
+    {
+      "key": "customer_aline",
+      "role": "customer",
+      "email": "aline.customer@preview.example.test",
+      "displayName": "Aline Mukamana",
+      "landing": "customer"
+    },
+    {
+      "key": "customer_moses",
+      "role": "customer",
+      "email": "moses.customer@preview.example.test",
+      "displayName": "Moses Tuyishime",
+      "landing": "customer"
+    },
+    {
+      "key": "customer_chantal",
+      "role": "customer",
+      "email": "chantal.customer@preview.example.test",
+      "displayName": "Chantal Uwimana",
+      "landing": "customer"
+    },
+    {
+      "key": "customer_yves",
+      "role": "customer",
+      "email": "yves.customer@preview.example.test",
+      "displayName": "Yves Nshimiyimana",
+      "landing": "customer"
+    },
+    {
+      "key": "operator",
+      "role": "operator",
+      "email": "founder.operator@preview.example.test",
+      "displayName": "Founder (Platform Administrator)",
+      "landing": "customer"
+    }
+  ]
+}

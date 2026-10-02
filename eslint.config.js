@@ -78,6 +78,14 @@ export default tseslint.config(
     },
   },
   {
+    // EA-002 Founder Preview tooling: plain Node ESM scripts (local runtime, seed, guards).
+    files: ["tests/preview/**/*.mjs"],
+    languageOptions: {
+      ecmaVersion: 2023,
+      globals: globals.node,
+    },
+  },
+  {
     files: ["functions/**/*.ts"],
     languageOptions: {
       ecmaVersion: 2023,

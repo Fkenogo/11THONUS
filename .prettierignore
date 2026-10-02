@@ -11,3 +11,6 @@ pnpm-lock.yaml
 
 # Governed documentation baseline — migrated verbatim, never reformatted.
 docs/
+
+# Founder Preview: machine-generated deterministic fingerprint (byte-compared by `preview:verify`)
+tests/preview/expected-fingerprint.json

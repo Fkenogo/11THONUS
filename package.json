@@ -14,6 +14,7 @@
     "typecheck": "pnpm -r run typecheck",
     "test": "pnpm -r run test",
     "test:e2e": "playwright test --project=chromium --project=chromium-dashboard-harness",
+    "test:e2e:preview": "playwright test --project=chromium-preview --project=chromium-preview-mobile",
     "test:e2e:emulator": "node tests/e2e/emulator/seedCommerceKnowledge.mjs && playwright test --project=chromium-emulator-e2e",
     "emulators": "firebase emulators:start --project demo-11thonus",
     "emulators:clean": "pnpm --filter functions run build && firebase emulators:start --project demo-11thonus",
@@ -22,6 +23,15 @@
     "postgres:down": "docker compose -f docker-compose.postgres.yml down -v",
     "test:postgres": "pnpm postgres:up && PLATFORM_ENV=test pnpm --filter functions test:postgres",
     "seed:test-only-terms-fixture": "node tests/e2e/emulator/seedTestOnlyTermsFixture.mjs",
+    "preview:start": "node tests/preview/cli.mjs start",
+    "preview:stop": "node tests/preview/cli.mjs stop",
+    "preview:status": "node tests/preview/cli.mjs status",
+    "preview:reset": "node tests/preview/cli.mjs reset",
+    "preview:seed": "node tests/preview/cli.mjs seed",
+    "preview:migrate": "node tests/preview/cli.mjs migrate",
+    "preview:verify": "node tests/preview/cli.mjs verify",
+    "preview:accounts": "node tests/preview/cli.mjs accounts",
+    "test:preview-tooling": "node --test tests/preview/guards.test.mjs",
     "prepare": "husky"
   },
   "devDependencies": {

@@ -39,3 +39,6 @@ pnpm-debug.log*
 
 # Lint/format caches
 .eslintcache
+
+# Founder Preview local runtime state (logs, pids, seed state) — never committed
+.preview/
