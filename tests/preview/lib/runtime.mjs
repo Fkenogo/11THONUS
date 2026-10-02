@@ -7,7 +7,7 @@ import { PROJECT_ID, ports, repoRoot, urls } from "./config.mjs";
 import { buildPreviewEnv } from "./guards.mjs";
 import { emulatorsReady } from "./emulatorClient.mjs";
 import {
-  isAlive,
+  isOwnedAndAlive,
   readPid,
   startDetached,
   stopDetached,
@@ -62,19 +62,48 @@ export async function startEmulators(env) {
   try {
     await waitFor("the Firebase emulators", emulatorsReady, { timeoutMs: 180_000 });
   } catch (error) {
-    throw new Error(`${error.message}\n--- emulators log (tail) ---\n${tailLog("emulators")}`);
+    const tail = tailLog("emulators");
+    // Leave a retryable state: never keep a half-started suite (and its ports) behind.
+    await stopDetached("emulators");
+    throw new Error(`${error.message}\n--- emulators log (tail) ---\n${tail}`);
+  }
+}
+
+async function webPortAnswers() {
+  try {
+    await fetch(`http://127.0.0.1:${ports.web}/`);
+    return true;
+  } catch {
+    return false;
   }
 }
 
 export async function startWebServer(env) {
+  // `--strictPort` makes Vite exit if the port is taken; refuse up front so an unrelated service on
+  // :5173 can never be mistaken for the preview.
+  if (await webPortAnswers()) {
+    throw new Error(
+      `Port ${ports.web} is already in use by another service. Free it (or run \`pnpm preview:stop\`) and retry.`,
+    );
+  }
   startDetached(
     "web",
     "pnpm",
-    ["--filter", "web", "run", "dev", "--port", String(ports.web), "--host", "127.0.0.1", "--strictPort"],
+    [
+      "--filter",
+      "web",
+      "run",
+      "dev",
+      "--port",
+      String(ports.web),
+      "--host",
+      "127.0.0.1",
+      "--strictPort",
+    ],
     {
       env: {
         ...env,
-        VITE_USE_FIREBASE_EMULATOR: "true",
+        // Pinned demo Firebase configuration + emulator mode come from `buildPreviewEnv`.
         // Email/Password is the only provider the preview uses; Google/Phone stay off.
         VITE_AUTH_ENABLE_EMAIL_PASSWORD: "true",
       },
@@ -84,8 +113,12 @@ export async function startWebServer(env) {
     await waitFor(
       "the web dev server",
       async () => {
+        // The spawned server must still be alive (not exited because the port was taken) AND serve
+        // Vite's own client endpoint — an unrelated HTTP service would not.
+        if (!isOwnedAndAlive("web")) throw new Error("the web dev server exited during startup");
         try {
-          return (await fetch(`http://127.0.0.1:${ports.web}/`)).ok;
+          const response = await fetch(`http://127.0.0.1:${ports.web}/@vite/client`);
+          return response.ok && (await response.text()).includes("vite");
         } catch {
           return false;
         }
@@ -93,7 +126,9 @@ export async function startWebServer(env) {
       { timeoutMs: 120_000 },
     );
   } catch (error) {
-    throw new Error(`${error.message}\n--- web log (tail) ---\n${tailLog("web")}`);
+    const tail = tailLog("web");
+    await stopDetached("web");
+    throw new Error(`${error.message}\n--- web log (tail) ---\n${tail}`);
   }
 }
 
@@ -108,8 +143,7 @@ export async function stopPreviewProcesses() {
 export function processStatus() {
   const status = {};
   for (const name of ["emulators", "web"]) {
-    const pid = readPid(name);
-    status[name] = isAlive(pid) ? `running (pid ${pid})` : "stopped";
+    status[name] = isOwnedAndAlive(name) ? `running (pid ${readPid(name)})` : "stopped";
   }
   return status;
 }

@@ -42,6 +42,25 @@ test("buildPreviewEnv forces the permitted values and strips dangerous inherited
   assert.match(env.NO_PROXY, /127\.0\.0\.1/);
 });
 
+test("buildPreviewEnv pins the web client to the demo project over inherited real config", () => {
+  const env = buildPreviewEnv(
+    {
+      VITE_FIREBASE_API_KEY: "real-key",
+      VITE_FIREBASE_PROJECT_ID: "eleventh-on-us-dev",
+      VITE_FIREBASE_MEASUREMENT_ID: "G-REAL",
+      VITE_APP_CHECK_SITE_KEY: "site-key",
+      VITE_USE_FIREBASE_EMULATOR: "false",
+    },
+    { postgresUrl: DEFAULT_POSTGRES_URL, ports },
+  );
+  assert.equal(env.VITE_FIREBASE_PROJECT_ID, "demo-11thonus");
+  assert.equal(env.VITE_FIREBASE_API_KEY, "demo-api-key");
+  assert.equal(env.VITE_USE_FIREBASE_EMULATOR, "true");
+  assert.equal(env.VITE_FIREBASE_MEASUREMENT_ID, undefined);
+  assert.equal(env.VITE_APP_CHECK_SITE_KEY, undefined);
+  assert.doesNotThrow(() => assertLocalPreviewTarget(env, { postgresUrl: DEFAULT_POSTGRES_URL }));
+});
+
 for (const [label, mutate] of [
   ["PLATFORM_ENV is not local", (e) => ({ ...e, PLATFORM_ENV: "production" })],
   ["PLATFORM_ENV is missing", (e) => ({ ...e, PLATFORM_ENV: undefined })],
@@ -97,6 +116,24 @@ for (const [label, url] of [
     "postgres://postgres:postgres@localhost:5432/eleventhonus_platform",
   ],
   ["a non-postgres URL", "http://localhost:54329/eleventhonus_platform_local"],
+  [
+    "a query string overriding the host",
+    "postgres://u:p@localhost/eleventhonus_platform_local?host=db.example.com",
+  ],
+  [
+    "a query string overriding the database",
+    "postgres://u:p@localhost/eleventhonus_platform_local?database=postgres",
+  ],
+  [
+    "a query string overriding the port",
+    "postgres://u:p@localhost/eleventhonus_platform_local?port=5432",
+  ],
+  [
+    "a connection options query",
+    "postgres://u:p@localhost/eleventhonus_platform_local?options=-c%20search_path%3Dx",
+  ],
+  ["a fragment", "postgres://u:p@localhost/eleventhonus_platform_local#x"],
+  ["an empty host", "postgres:///eleventhonus_platform_local"],
   ["garbage", "not a url"],
   ["an empty string", ""],
 ]) {

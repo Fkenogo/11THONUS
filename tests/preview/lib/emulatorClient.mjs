@@ -84,16 +84,22 @@ export async function clearFirestore() {
   if (!response.ok) throw new Error(`Firestore emulator clear failed: ${response.status}`);
 }
 
-/** True when the Auth, Functions and Firestore emulators all answer on loopback. */
+/**
+ * True only when all three emulators answer with their own success response: the Auth emulator
+ * reports `ready`, the Functions emulator serves the `ping` function with `{"status":"ok"}`
+ * (proving the built functions loaded), and Firestore answers 200.
+ */
 export async function emulatorsReady() {
-  const targets = [
-    `http://${LOOPBACK}:${ports.auth}/`,
-    `${urls.functions}/ping`,
-    `http://${LOOPBACK}:${ports.firestore}/`,
-  ];
   try {
-    const results = await Promise.all(targets.map((url) => fetch(url)));
-    return results.every((r) => r.status < 500);
+    const [auth, ping, firestore] = await Promise.all([
+      fetch(`http://${LOOPBACK}:${ports.auth}/`),
+      fetch(`${urls.functions}/ping`),
+      fetch(`http://${LOOPBACK}:${ports.firestore}/`),
+    ]);
+    if (!auth.ok || !ping.ok || !firestore.ok) return false;
+    const authBody = await json(auth);
+    const pingBody = await json(ping);
+    return authBody?.authEmulator?.ready === true && pingBody?.status === "ok";
   } catch {
     return false;
   }

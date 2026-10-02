@@ -10,6 +10,18 @@
 // throw) so they are unit-tested without any service running.
 import { FORBIDDEN_DATABASES, PREVIEW_DATABASE, PROJECT_ID } from "./config.mjs";
 
+/** The only Firebase web configuration the preview may use (the emulator's fake demo project). */
+export const PINNED_WEB_ENV = Object.freeze({
+  VITE_FIREBASE_API_KEY: "demo-api-key",
+  VITE_FIREBASE_AUTH_DOMAIN: `${PROJECT_ID}.firebaseapp.com`,
+  VITE_FIREBASE_PROJECT_ID: PROJECT_ID,
+  VITE_FIREBASE_STORAGE_BUCKET: `${PROJECT_ID}.appspot.com`,
+  VITE_FIREBASE_MESSAGING_SENDER_ID: "000000000000",
+  VITE_FIREBASE_APP_ID: "1:000000000000:web:0000000000000000000000",
+  VITE_USE_FIREBASE_EMULATOR: "true",
+});
+const PINNED_WEB_ENV_NAMES = Object.keys(PINNED_WEB_ENV);
+
 export class PreviewGuardError extends Error {
   constructor(message) {
     super(`Founder Preview refused to run — ${message}`);
@@ -42,6 +54,19 @@ export function parsePostgresTarget(connectionString) {
   }
   if (url.protocol !== "postgres:" && url.protocol !== "postgresql:") {
     throw new PreviewGuardError("the PostgreSQL connection string must use postgres://.");
+  }
+  // node-postgres applies URL query parameters (`?host=…`, `?database=…`, `?dbname=…`, `?port=…`,
+  // `?options=…`) on top of the authority/path, so a URL that looks local can still connect
+  // elsewhere. The preview target is fully specified by authority + path: any query string,
+  // fragment, or empty host is refused rather than parsed the way `pg` would.
+  if (url.search !== "" || url.hash !== "") {
+    throw new PreviewGuardError(
+      "the PostgreSQL connection string must not carry query parameters or a fragment " +
+        "(they can override the guarded host/database).",
+    );
+  }
+  if (url.hostname === "") {
+    throw new PreviewGuardError("the PostgreSQL connection string has no host.");
   }
   return {
     host: url.hostname,
@@ -97,6 +122,17 @@ export function assertLocalPreviewTarget(env, { postgresUrl } = {}) {
     }
   }
 
+  // The web client and the existing seed scripts must also be pinned to the demo project: a real
+  // `VITE_FIREBASE_*` configuration inherited from the shell or `.env.local` would point the
+  // browser at a different project namespace than the seeded data.
+  for (const name of PINNED_WEB_ENV_NAMES) {
+    if (env[name] !== PINNED_WEB_ENV[name]) {
+      throw new PreviewGuardError(
+        `${name} must be the demo-project value (found ${JSON.stringify(env[name] ?? null)}).`,
+      );
+    }
+  }
+
   const gate = env.PURCHASE_ADMISSION_GATE_MODE;
   if (gate !== undefined && gate !== "" && gate !== "off") {
     throw new PreviewGuardError(
@@ -132,6 +168,10 @@ export function buildPreviewEnv(baseEnv, { postgresUrl, ports }) {
   delete env.HELD_PURCHASE_PROCESSOR_MODE;
   delete env.GOOGLE_APPLICATION_CREDENTIALS;
   delete env.FIREBASE_TOKEN;
+  Object.assign(env, PINNED_WEB_ENV);
+  for (const name of ["VITE_FIREBASE_MEASUREMENT_ID", "VITE_APP_CHECK_SITE_KEY", "VITE_APP_CHECK_DEBUG_TOKEN"]) {
+    delete env[name];
+  }
   env.NO_PROXY = appendNoProxy(env.NO_PROXY);
   env.no_proxy = env.NO_PROXY;
   return env;
