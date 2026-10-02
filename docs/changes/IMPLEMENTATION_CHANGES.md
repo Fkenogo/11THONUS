@@ -7,6 +7,22 @@
 
 ---
 
+## 2026-10-02 — EA-003 — Business Owner / Manager Experience Assembly (Implementation)
+
+- **Date:** 2026-10-02
+- **Phase:** Experience track — first Founder-previewable Business experience
+- **Task:** EA-003 — Command Centre for Owner/Manager, phone-first role-labelled drawer shell, phone corrections to the programme page; Product Truth assembled through the frozen Experience Reference `Fkenogo/11thonus-prototype@18e8d700f505beefe46d324f6ea33f20a670abe7`.
+- **Status:** Implemented — pending Founder visual review. Entry `origin/main` `ae4f05f346eb0f0864bc35b29371957d80c1b94c`; branch `claude/inspiring-hamilton-fn0o7w`.
+- **Files changed:** `apps/web/src/business/dashboard/{commandCentre/*,BusinessDashboardShell.tsx,BusinessDashboardRoutes.tsx,DashboardHome.tsx,RewardProgramManagementPage.tsx}` (+tests), `apps/web/src/i18n/locales/{en,fr}.ts`, `tests/e2e/preview/ea-003-business-experience.spec.ts`, runbook §13, evidence PNGs, report. No backend, migration, dependency, config or seed change.
+- **Tests / validation:** typecheck, build, lint (0 errors), web unit tests, preview Playwright 29 passed (18 EA-002 + 11 EA-003) at desktop and Pixel 7.
+- **Product Truth:** unchanged. Progress only after customer verification; no Manager Approvals; no Reward-ID workaround; Terms untouched; PB-013B P3-3 untouched; Commercial gate OFF.
+- **Seams:** S-1 Business-facing Commercial standing read does not exist (WP-COM-08) — stopped, not invented; S-2 Terms UI; S-3 Reward ID; S-4 purchase list shows no date.
+- **Founder decisions:** EN/FR copy approval; authorise WP-COM-08; held-Purchase local `enforce` scenario.
+- **Rollback:** `git revert`.
+- **Report link:** [`ea-003-business-owner-manager-experience-assembly-implementation-report-2026-10-02.md`](../05-implementation/reports/ea-003-business-owner-manager-experience-assembly-implementation-report-2026-10-02.md)
+
+---
+
 ## 2026-10-02 — EA-002 — Local Founder Preview Foundation (Implementation)
 
 - **Date:** 2026-10-02
