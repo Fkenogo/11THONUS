@@ -35,6 +35,12 @@ import {
   commercialValidationError,
 } from "../models/commercialErrors";
 import type { CommercialActor, CommercialAuditActionType } from "../models/commercialFoundation";
+import { log } from "../../../shared/logging/logger";
+import {
+  DEFAULT_CAPACITY_SIGNAL_TIMEOUT_MS,
+  type CapacityIncreaseNotifier,
+  type CapacityIncreaseReason,
+} from "../models/commercialCapacitySignal";
 import { appendCommercialAuditEvent } from "../repositories/commercialAuditRepository";
 import {
   authorizeCommercialAdministrator,
@@ -47,6 +53,14 @@ export type CommercialCommandDeps = {
   readonly readAdministratorRecord: PlatformAdministratorRecordReader;
   /** Injectable clock for deterministic tests; defaults to the system clock. */
   readonly now?: () => Date;
+  /**
+   * `WP-COM-06a`: best-effort POST-COMMIT signal that capacity may have increased. Optional and
+   * absent by default (behaviour identical to before). Never called inside the transaction;
+   * a failure or timeout is logged and swallowed -- the committed mutation stands.
+   */
+  readonly capacityIncreaseNotifier?: CapacityIncreaseNotifier;
+  /** Max wait for the notifier (default 3000 ms). */
+  readonly capacitySignalTimeoutMs?: number;
 };
 
 export type CommercialCommandContext = {
@@ -71,11 +85,17 @@ export type CommercialRejectionAuditSpec = {
   readonly auditedCategories: readonly ErrorCategory[];
 };
 
-export type AdministratorCommandSpec = {
+export type AdministratorCommandSpec<T = unknown> = {
   readonly commandType: string;
   /** Everything that defines the request (excluding the key and correlation id). Hashed. */
   readonly payload: unknown;
   readonly rejectionAudit?: CommercialRejectionAuditSpec;
+  /**
+   * `WP-COM-06a`: decides, from the committed (or replayed) result, whether this command raised
+   * usable capacity. Return the reason to signal, or `null` for no signal. Pure; it must not
+   * infer anything from state that is not in the result.
+   */
+  readonly capacityIncrease?: (result: T) => CapacityIncreaseReason | null;
 };
 
 /** Deterministic hash: object keys are sorted so key order never changes the hash. */
@@ -108,7 +128,7 @@ function requireText(name: string, value: unknown): string {
 export async function runAdministratorCommand<T>(
   deps: CommercialCommandDeps,
   context: CommercialCommandContext,
-  spec: AdministratorCommandSpec,
+  spec: AdministratorCommandSpec<T>,
   body: (
     tx: PlatformPostgresTransaction,
     actor: CommercialActor,
@@ -124,6 +144,7 @@ export async function runAdministratorCommand<T>(
   const idempotencyKey = requireText("idempotencyKey", context.idempotencyKey);
   const correlationId = requireText("correlationId", context.correlationId);
 
+  let response: CommercialCommandResponse<T>;
   try {
     const outcome = await runCommercialCommand(
       deps.pool,
@@ -138,9 +159,11 @@ export async function runAdministratorCommand<T>(
     );
     switch (outcome.outcome) {
       case "executed":
-        return { replayed: false, result: outcome.result };
+        response = { replayed: false, result: outcome.result };
+        break;
       case "duplicate":
-        return { replayed: true, result: outcome.responseSnapshot as T };
+        response = { replayed: true, result: outcome.responseSnapshot as T };
+        break;
       case "in_progress":
         throw commercialCommandInProgressError();
       case "conflict":
@@ -156,6 +179,66 @@ export async function runAdministratorCommand<T>(
       await auditRejection(deps.pool, actor, audit, idempotencyKey, correlationId, error);
     }
     throw error;
+  }
+
+  // The transaction has COMMITTED (or its stored result was replayed). Only now is the
+  // best-effort signal sent. A replay re-signals on purpose: a client retrying after a timeout
+  // is exactly the case where the first signal may have been lost, and the signal is idempotent
+  // (coalesced per Business and time window downstream).
+  const reason = spec.capacityIncrease?.(response.result) ?? null;
+  const businessId = (response.result as { businessId?: unknown } | null)?.businessId;
+  if (reason !== null && typeof businessId === "string" && businessId.length > 0) {
+    await sendCapacitySignal(deps, { businessId, reason, correlationId });
+  }
+  return response;
+}
+
+/**
+ * Sends the post-commit signal. NEVER throws, and the COMMAND stops WAITING after
+ * `capacitySignalTimeoutMs`. It does NOT cancel the notifier: the underlying best-effort work may
+ * still complete (or be cut off by the runtime) after the command has returned. A late result is
+ * neither observed nor an error; a lost signal is compensated by scheduled recovery.
+ */
+async function sendCapacitySignal(
+  deps: CommercialCommandDeps,
+  signal: { businessId: string; reason: CapacityIncreaseReason; correlationId: string },
+): Promise<void> {
+  const notifier = deps.capacityIncreaseNotifier;
+  if (notifier === undefined) return;
+  const timeoutMs = deps.capacitySignalTimeoutMs ?? DEFAULT_CAPACITY_SIGNAL_TIMEOUT_MS;
+  const started = Date.now();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      notifier.notify(signal),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error("capacity signal timed out")), timeoutMs);
+      }),
+    ]);
+  } catch (error) {
+    try {
+      // The mutation is committed; recovery will compensate. Make the miss observable.
+      log({
+        timestamp: new Date().toISOString(),
+        environment: process.env["NODE_ENV"] ?? "unknown",
+        severity: "warning",
+        domain: "commercial",
+        service: "capacity_signal",
+        operation: "capacity_signal_failed",
+        correlationId: signal.correlationId,
+        businessId: signal.businessId,
+        result: "signal_lost_recovery_will_compensate",
+        durationMs: Date.now() - started,
+        errorCode:
+          error instanceof Error && error.message.includes("timed out")
+            ? "SIGNAL_TIMEOUT"
+            : "SIGNAL_FAILED",
+      });
+    } catch {
+      // Logging must never break a committed command either.
+    }
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
   }
 }
 

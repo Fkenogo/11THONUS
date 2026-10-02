@@ -114,6 +114,10 @@ function runRestrictionCommand(
     context,
     {
       commandType: spec.commandType,
+      // Restoring (restricted -> none, always a real change: a no-op restore is refused above)
+      // lifts the `restricted` hold; restricting can only ever hold MORE, never admit.
+      capacityIncrease: (result) =>
+        spec.target === "none" && result.serviceRestriction === "none" ? "standing_restored" : null,
       payload: {
         businessId: spec.businessId,
         reasonText: spec.reasonText,
