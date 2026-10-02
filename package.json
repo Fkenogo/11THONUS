@@ -31,7 +31,7 @@
     "preview:migrate": "node tests/preview/cli.mjs migrate",
     "preview:verify": "node tests/preview/cli.mjs verify",
     "preview:accounts": "node tests/preview/cli.mjs accounts",
-    "test:preview-tooling": "node --test tests/preview/guards.test.mjs",
+    "test:preview-tooling": "node --test tests/preview/guards.test.mjs tests/preview/ports.test.mjs",
     "prepare": "husky"
   },
   "devDependencies": {

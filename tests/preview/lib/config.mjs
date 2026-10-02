@@ -17,7 +17,13 @@ export const PROJECT_ID = "demo-11thonus";
 export const FUNCTIONS_REGION = "europe-west1";
 export const LOOPBACK = "127.0.0.1";
 
-/** Emulator ports are the repository's own (`firebase.json`); the web port is Vite's default. */
+/**
+ * Emulator ports are the repository's own (`firebase.json` is what the Firebase CLI reads, and
+ * `guards.test.mjs` fails if the two drift); the web port is Vite's default.
+ *
+ * `emulatorUi` is 4001, not Firebase's default 4000: 4000 is a very common local dev port, and the
+ * preview must coexist with other local projects without ever touching their processes (EA-002-CORR-001).
+ */
 export const ports = Object.freeze({
   web: 5173,
   auth: 9099,
@@ -25,9 +31,12 @@ export const ports = Object.freeze({
   firestore: 8080,
   storage: 9199,
   hosting: 5050,
-  emulatorUi: 4000,
+  emulatorUi: 4001,
   postgres: 54329,
 });
+
+/** The ports `firebase emulators:start --only auth,functions,firestore,ui` must bind, checked before launch. */
+export const emulatorLaunchPorts = Object.freeze(["auth", "functions", "firestore", "emulatorUi"]);
 
 export const urls = Object.freeze({
   web: `http://localhost:${ports.web}`,

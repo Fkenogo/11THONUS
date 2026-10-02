@@ -7,6 +7,21 @@
 
 ---
 
+## 2026-10-02 — EA-002-CORR-001 — Founder Preview Emulator UI Port Collision (Correction)
+
+- **Date:** 2026-10-02
+- **Phase:** Experience track — local runtime correction (no screens, no product API)
+- **Task:** EA-002-CORR-001 — the Founder Preview failed on a Mac where another local project held port 4000 (Emulator UI: "Could not start Emulator UI, port taken").
+- **Status:** Implemented — pending Founder review. Entry `origin/main` `ae4f05f`; branch `claude/sleepy-babbage-6kxfof`. Isolated from PR #295 / EA-003. Not merged.
+- **Change:** Emulator UI port **4000 → 4001** in `firebase.json` and `tests/preview/lib/config.mjs` (Auth 9099, Functions 5001, Firestore 8080 unchanged); new bind-only port preflight before the emulators are launched; Emulator UI readiness now identifies the demo project's UI; drift test between `firebase.json` and the tooling config.
+- **Tests / validation:** preview tooling 39/39 (15 new); lint 0 errors; format check clean; real runtime start → verify → reset → verify → browser journeys 18/18 with an unrelated listener on 4000; start refused cleanly with an unrelated listener on 4001. Details in the report.
+- **Configuration / dependencies / migrations:** `firebase.json` UI port; no dependency; no migration.
+- **Product Truth:** unchanged. No `apps/web/src` or `functions/src` change. Guards untouched.
+- **Rollback:** `git revert` the correction commit.
+- **Report link:** [`ea-002-corr-001-emulator-ui-port-collision-implementation-report-2026-10-02.md`](../05-implementation/reports/ea-002-corr-001-emulator-ui-port-collision-implementation-report-2026-10-02.md)
+
+---
+
 ## 2026-10-02 — EA-002 — Local Founder Preview Foundation (Implementation)
 
 - **Date:** 2026-10-02
