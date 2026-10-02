@@ -7,6 +7,24 @@
 
 ---
 
+## 2026-10-02 — 11THONUS-EA-001 — Founder Preview & Experience Assembly Readiness Assessment (Assessment)
+
+- **Date:** 2026-10-02
+- **Phase:** Experience track — assessment (no implementation)
+- **Task:** 11THONUS-EA-001 — assess how implemented Product Truth can be assembled through the frozen Experience Reference into a local, mobile-first Founder Preview (Business Owner/Manager, Frontline, Customer, Operator Console); design seed/reset, test model, local runtime, auth/role strategy, Cloudflare Tunnel suitability; recommend bounded Experience Assembly packages.
+- **Status:** Assessment complete — pending Founder review. Entry `origin/main` `c064f43659d87922d14bb4a245d94a5dfe8d918d` (`WP-COM-06a` merge present); branch `claude/kind-franklin-hg8iey`.
+- **Experience Reference:** `Fkenogo/11thonus-prototype` @ `18e8d700f505beefe46d324f6ea33f20a670abe7` (verified as the prototype repository `main` HEAD) — **UNCHANGED / FROZEN**; read-only clone outside the working tree.
+- **Files changed:** documentation only — the [assessment report](../05-implementation/reports/11THONUS-EA-001-founder-preview-and-experience-assembly-readiness-assessment-2026-10-02.md); this entry; `docs/00-governance/documentation-changes-log.md` (Entry 281 + header).
+- **Headline findings:** engine largely complete; **no Frontline counter or redemption UI**, **no Operator Console and no Operator endpoint/read models**, customers cannot see their own Loyalty Number/QR or Circle progress (backend reads missing), **no local runtime orchestration or migration CLI**; four prototype-vs-Product-Truth discrepancies flagged for Founder decision (instant progress vs customer verification; Manager Approvals and quick-add customer unauthorised; bottom-nav vs earlier Founder instruction; superseded `$1`/5-unit values). Cloudflare Tunnel: **suitable with bounded changes**. 14 open Founder decisions recorded; recommended next package `EA-002` Local Preview Foundation.
+- **Tests / validation:** documentation only; `prettier --check` on the report; no code, build or test run was required or performed; no services started.
+- **Configuration / dependencies / migrations:** none.
+- **Product Truth:** unchanged. Commercial gate **default OFF** and untouched; `WP-COM-06b` **not started**; `PB-013B P3-3` remains **OPEN**; nothing deployed; no tunnel created.
+- **Risks:** report §23 (R-1…R-15). Items labelled UNVERIFIED in the report (Auth-emulator TOTP, HTTPS callable emulator origin, tunnel behaviours) require spikes.
+- **Rollback:** delete the report; `git checkout origin/main -- docs/changes/IMPLEMENTATION_CHANGES.md docs/00-governance/documentation-changes-log.md`. No data, schema, configuration or deployment rollback is needed.
+- **Report link:** [`11THONUS-EA-001-founder-preview-and-experience-assembly-readiness-assessment-2026-10-02.md`](../05-implementation/reports/11THONUS-EA-001-founder-preview-and-experience-assembly-readiness-assessment-2026-10-02.md)
+
+---
+
 ## 2026-10-01 — WP-COM-06a — Held-Purchase Processor Activation & Recovery (Implementation)
 
 - **Date:** 2026-10-01
