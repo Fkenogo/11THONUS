@@ -74,6 +74,12 @@ This does **not** authorize any production/staging Terms content and does **not*
 [`decision-register.md`](docs/00-governance/decisions/decision-register.md)'s `DEC-LEGAL-002`
 entry for the governing Founder directive.
 
+### Founder Preview (local, seeded)
+
+For a complete, seeded, local 11thONUS (web app + emulators + Functions + local PostgreSQL, with preview
+identities for Owner, Manager, Staff, Customers and Operator), run `pnpm preview:start`; `pnpm preview:reset`
+returns it to the same deterministic state. See [`docs/runbooks/founder-preview-runbook.md`](docs/runbooks/founder-preview-runbook.md).
+
 ## Rules
 
 1. Documents under `docs/99-archive/` are **superseded or backup material and must never be implemented**.

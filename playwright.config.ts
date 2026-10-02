@@ -14,7 +14,7 @@ export default defineConfig({
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
-      testIgnore: [/dashboard-.*-harness\.spec\.ts/, /emulator\//],
+      testIgnore: [/dashboard-.*-harness\.spec\.ts/, /emulator\//, /preview\//],
     },
     {
       // `ENG-P3-002-UI-IMP-B-REVIEW`: the Dashboard harness route
@@ -45,6 +45,24 @@ export default defineConfig({
       // emulator are slower than the fixture-backed harness specs above —
       // give assertions more room before treating a slow first request as a
       // real failure.
+      expect: { timeout: 20_000 },
+      timeout: 60_000,
+    },
+    {
+      // EA-002 Founder Preview: the REAL production routes against the running, seeded local
+      // preview (`pnpm preview:start`, web on :5173) — no webServer is started here on purpose;
+      // the preview workflow owns the whole stack. Not part of the default `pnpm test:e2e` run.
+      name: "chromium-preview",
+      use: { ...devices["Desktop Chrome"], baseURL: "http://localhost:5173" },
+      testMatch: /preview\/.*\.spec\.ts/,
+      expect: { timeout: 20_000 },
+      timeout: 60_000,
+    },
+    {
+      // Same preview specs at phone size (Business Owner/Manager/Frontline are mobile-first).
+      name: "chromium-preview-mobile",
+      use: { ...devices["Pixel 7"], baseURL: "http://localhost:5173" },
+      testMatch: /preview\/.*\.spec\.ts/,
       expect: { timeout: 20_000 },
       timeout: 60_000,
     },

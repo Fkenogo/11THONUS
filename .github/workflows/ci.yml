@@ -113,6 +113,30 @@ jobs:
       - name: Playwright e2e
         run: pnpm test:e2e
 
+      # EA-002 Founder Preview: proves, from a clean runner, that the documented workflow produces a
+      # working seeded local preview and that reset returns it to the same deterministic state. It
+      # reuses the PostgreSQL service container above (a third, preview-only database) and the same
+      # emulators/Functions/web the product already runs — no separate environment, no secrets.
+      - name: Founder Preview tooling tests
+        run: pnpm test:preview-tooling
+
+      - name: Founder Preview acceptance (start, seed, verify, reset, verify, browser journeys)
+        env:
+          PREVIEW_POSTGRES_URL: postgres://postgres:postgres@localhost:5432/eleventhonus_platform_local
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -c "CREATE DATABASE eleventhonus_platform_local"
+          pnpm preview:start
+          pnpm preview:verify
+          pnpm preview:reset
+          pnpm preview:verify
+          pnpm test:e2e:preview
+          pnpm preview:stop
+
+      - name: Stop Founder Preview (cleanup)
+        if: always()
+        run: pnpm preview:stop || true
+
       - name: Firebase Emulator Suite validation
         run: pnpm emulators:validate
 
@@ -128,3 +152,4 @@ jobs:
             test-results/
             firebase-debug.log
             firestore-debug.log
+            .preview/logs/

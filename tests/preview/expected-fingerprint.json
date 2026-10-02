@@ -1,0 +1,328 @@
+{
+  "businesses": {
+    "bella": {
+      "availableRewards": [
+        "kevin"
+      ],
+      "category": "cat_salon",
+      "country": "BI",
+      "currency": "BIF",
+      "cycles": [
+        {
+          "customer": "aline",
+          "pending": 0,
+          "programme": "Premium Cut Circle",
+          "sequence": 2,
+          "state": "active",
+          "units": 2
+        },
+        {
+          "customer": "amina",
+          "pending": 0,
+          "programme": "Premium Cut Circle",
+          "sequence": 1,
+          "state": "active",
+          "units": 3
+        },
+        {
+          "customer": "esther",
+          "pending": 0,
+          "programme": "Premium Cut Circle",
+          "sequence": 1,
+          "state": "active",
+          "units": 9
+        },
+        {
+          "customer": "jeanclaude",
+          "pending": 0,
+          "programme": "Premium Cut Circle",
+          "sequence": 1,
+          "state": "active",
+          "units": 7
+        },
+        {
+          "customer": "kevin",
+          "pending": 0,
+          "programme": "Premium Cut Circle",
+          "sequence": 1,
+          "state": "reward_available",
+          "units": 10
+        }
+      ],
+      "name": "Bella Salon",
+      "programmes": [
+        {
+          "items": [
+            "Manicure"
+          ],
+          "name": "Family Care Circle",
+          "requiredUnits": 10,
+          "shared": true,
+          "status": "draft"
+        },
+        {
+          "items": [
+            "Braiding",
+            "Haircut"
+          ],
+          "name": "Premium Cut Circle",
+          "requiredUnits": 10,
+          "shared": false,
+          "status": "active"
+        }
+      ],
+      "status": "trial",
+      "team": [
+        "manager",
+        "owner",
+        "staff"
+      ],
+      "termsAccepted": true
+    },
+    "mutima": {
+      "availableRewards": [
+        "chantal",
+        "moses"
+      ],
+      "category": "cat_retail",
+      "country": "BI",
+      "currency": "BIF",
+      "cycles": [
+        {
+          "customer": "chantal",
+          "pending": 0,
+          "programme": "Mini-Mart Regulars",
+          "sequence": 1,
+          "state": "reward_available",
+          "units": 10
+        },
+        {
+          "customer": "moses",
+          "pending": 0,
+          "programme": "Mini-Mart Regulars",
+          "sequence": 1,
+          "state": "reward_available",
+          "units": 10
+        }
+      ],
+      "name": "Mutima Mini-Mart",
+      "programmes": [
+        {
+          "items": [
+            "Weekly groceries"
+          ],
+          "name": "Mini-Mart Regulars",
+          "requiredUnits": 10,
+          "shared": false,
+          "status": "active"
+        }
+      ],
+      "status": "trial",
+      "team": [
+        "owner"
+      ],
+      "termsAccepted": true
+    },
+    "sparkle": {
+      "availableRewards": [
+        "yves"
+      ],
+      "category": "cat_car_wash",
+      "country": "RW",
+      "currency": "RWF",
+      "cycles": [
+        {
+          "customer": "amina",
+          "pending": 0,
+          "programme": "Wash 10+1",
+          "sequence": 1,
+          "state": "active",
+          "units": 5
+        },
+        {
+          "customer": "jeanclaude",
+          "pending": 0,
+          "programme": "Wash 10+1",
+          "sequence": 1,
+          "state": "active",
+          "units": 2
+        },
+        {
+          "customer": "yves",
+          "pending": 0,
+          "programme": "Wash 10+1",
+          "sequence": 1,
+          "state": "reward_available",
+          "units": 10
+        }
+      ],
+      "name": "Sparkle Car Wash",
+      "programmes": [
+        {
+          "items": [
+            "Basic wash",
+            "Full detail"
+          ],
+          "name": "Wash 10+1",
+          "requiredUnits": 10,
+          "shared": false,
+          "status": "active"
+        }
+      ],
+      "status": "trial",
+      "team": [
+        "owner",
+        "staff"
+      ],
+      "termsAccepted": true
+    },
+    "tembo": {
+      "availableRewards": [],
+      "category": "cat_gym",
+      "country": "RW",
+      "currency": "RWF",
+      "cycles": [
+        {
+          "customer": "esther",
+          "pending": 0,
+          "programme": "Gym Visits",
+          "sequence": 1,
+          "state": "active",
+          "units": 4
+        }
+      ],
+      "name": "Tembo Fitness",
+      "programmes": [
+        {
+          "items": [
+            "Day pass"
+          ],
+          "name": "Gym Visits",
+          "requiredUnits": 10,
+          "shared": false,
+          "status": "active"
+        }
+      ],
+      "status": "trial",
+      "team": [
+        "owner"
+      ],
+      "termsAccepted": true
+    },
+    "ubuntu": {
+      "category": "cat_retail",
+      "country": "BI",
+      "currency": "BIF",
+      "name": "Ubuntu Books",
+      "status": "pending_verification",
+      "termsAccepted": true
+    }
+  },
+  "commercial": {
+    "bella": {
+      "market": "BI",
+      "paidBalance": 0,
+      "paidReserved": 0,
+      "paidServiceActivated": false,
+      "restriction": "none",
+      "trialRemaining": 2,
+      "trialReserved": 0
+    },
+    "mutima": {
+      "market": "BI",
+      "paidBalance": 0,
+      "paidReserved": 0,
+      "paidServiceActivated": false,
+      "restriction": "none",
+      "trialRemaining": 1,
+      "trialReserved": 0
+    },
+    "sparkle": {
+      "market": "RW",
+      "paidBalance": 19,
+      "paidReserved": 0,
+      "paidServiceActivated": true,
+      "restriction": "none",
+      "trialRemaining": 0,
+      "trialReserved": 0
+    },
+    "tembo": {
+      "market": "RW",
+      "paidBalance": -2,
+      "paidReserved": 0,
+      "paidServiceActivated": true,
+      "restriction": "restricted",
+      "trialRemaining": 0,
+      "trialReserved": 0
+    }
+  },
+  "consumption": {
+    "bella": 2,
+    "mutima": 2,
+    "sparkle": 1
+  },
+  "heldPurchases": 0,
+  "identityKeys": [
+    "customer_aline",
+    "customer_amina",
+    "customer_chantal",
+    "customer_esther",
+    "customer_jeanclaude",
+    "customer_kevin",
+    "customer_moses",
+    "customer_yves",
+    "manager_bella",
+    "operator",
+    "owner_bella",
+    "owner_mutima",
+    "owner_new",
+    "owner_sparkle",
+    "owner_tembo",
+    "owner_ubuntu",
+    "staff_bella"
+  ],
+  "operatorEstablished": true,
+  "purchases": {
+    "bella": {
+      "under_review": 1,
+      "verified": 41,
+      "waiting_for_customer": 1
+    },
+    "mutima": {
+      "verified": 2
+    },
+    "sparkle": {
+      "verified": 17
+    },
+    "tembo": {
+      "verified": 4
+    }
+  },
+  "redemptions": {
+    "bella": 1
+  },
+  "rewards": {
+    "bella": {
+      "available": 1,
+      "redeemed": 1
+    },
+    "mutima": {
+      "available": 2
+    },
+    "sparkle": {
+      "available": 1
+    }
+  },
+  "scenario": "founder-slice-1",
+  "settlements": {
+    "sparkle": {
+      "cancelled": 1,
+      "confirmed": 1,
+      "recorded": 1,
+      "voided": 1
+    },
+    "tembo": {
+      "confirmed": 1
+    }
+  }
+}
