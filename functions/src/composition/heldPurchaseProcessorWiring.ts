@@ -251,6 +251,17 @@ export function createHeldPurchaseObserver(db: Firestore): HeldPurchaseProcessor
     },
     businessPass(summary: BusinessPassSummary) {
       const failed = summary.head.passError ?? summary.tail?.passError;
+      if (summary.stateError) {
+        log(
+          baseLog(summary.correlationId, {
+            severity: "warning",
+            operation: "held_purchase_continuation_state_failed",
+            businessId: summary.businessId,
+            result: "tail_cursor_unavailable",
+            errorCode: "CONTINUATION_STATE_FAILED",
+          }),
+        );
+      }
       log(
         baseLog(summary.correlationId, {
           severity: failed ? "error" : "info",
@@ -275,10 +286,22 @@ export function createHeldPurchaseObserver(db: Firestore): HeldPurchaseProcessor
       }
     },
     async runCompleted(summary) {
+      // Logs come FIRST and use no Firestore: a continuation-state failure (which may be the same
+      // Firestore outage that then fails the persistence below) is still visible in Cloud Logging.
+      if (summary.stateError) {
+        log(
+          baseLog(summary.correlationId, {
+            severity: "error",
+            operation: "held_purchase_continuation_state_failed",
+            result: "fairness_degraded",
+            errorCode: "CONTINUATION_STATE_FAILED",
+          }),
+        );
+      }
       log(
         baseLog(summary.correlationId, {
           severity:
-            summary.status === "failed"
+            summary.status === "failed" || summary.stateError
               ? "error"
               : summary.status === "partial"
                 ? "warning"
@@ -327,8 +350,26 @@ export async function runHeldPurchaseRecoveryJob(
     createHeldPurchaseProcessorDeps(db, pool, options.overrides),
     { correlationId: `held-recovery:${randomUUID()}` },
   );
+  // The work of this run is done (idempotent, bounded). But an invocation that could not keep its
+  // continuation state or report itself must FAIL so the scheduler's own failure signal fires; it
+  // is never an ordinary success. The next tick simply runs again.
+  if (summary.reportingFailed) {
+    log(
+      baseLog(summary.correlationId, {
+        severity: "error",
+        operation: "held_purchase_run_state_persist_failed",
+        result: "run_not_recorded",
+        errorCode: "RUN_STATE_PERSIST_FAILED",
+      }),
+    );
+  }
   if (summary.status === "failed") {
     throw new Error(`held-Purchase recovery run failed (${summary.errorCode ?? "UNKNOWN"})`);
+  }
+  if (summary.stateError || summary.reportingFailed) {
+    throw new Error(
+      `held-Purchase recovery run degraded (${summary.stateError ? "CONTINUATION_STATE_FAILED" : "RUN_STATE_PERSIST_FAILED"})`,
+    );
   }
   return summary;
 }

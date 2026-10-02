@@ -1671,3 +1671,146 @@ describe("WP-COM-06a observability, enablement and boundaries", () => {
     });
   });
 });
+
+describe("TA-F001 continuation-state failure is never an ordinary successful run", () => {
+  const brokenStore = (): HeldPurchaseRecoveryStateStore => {
+    const fail = async () => {
+      throw new Error("firestore unavailable");
+    };
+    return {
+      getBusinessCursor: fail,
+      setBusinessCursor: fail,
+      getTailCursor: fail,
+      setTailCursor: fail,
+    };
+  };
+  const enforce = { PURCHASE_ADMISSION_GATE_MODE: "enforce" };
+  /** A Firestore whose every read and write fails (a total outage). */
+  const deadFirestore = {
+    collection: () => ({
+      doc: () => ({
+        get: async () => {
+          throw new Error("firestore unavailable");
+        },
+        set: async () => {
+          throw new Error("firestore unavailable");
+        },
+        delete: async () => {
+          throw new Error("firestore unavailable");
+        },
+      }),
+    }),
+  } as unknown as Firestore;
+
+  it("a state-store failure yields status `partial` (not `succeeded`), flags stateError, and still recovers fail-toward-recovery", async () => {
+    const world = await businessWithAccount();
+    const heldId = await hold(world, 1, 10);
+    await post(world.businessId, "credit_grant", "paid", 1);
+    const run = await runHeldPurchaseRecovery(processorDeps({ store: brokenStore() }), {
+      correlationId: "ta-f001-a",
+    });
+    expect(run.stateError).toBe(true);
+    expect(run.status).toBe("partial");
+    expect(run.status).not.toBe("succeeded");
+    // Fail toward recovery: the run still started from the beginning and admitted the Purchase.
+    expect(run.admittedFromPending).toBe(1);
+    expect(await purchaseStatus(heldId)).toBe("verified");
+  });
+
+  it("the scheduled job FAILS (throws) on a state error, yet the run is still recorded when Firestore can record it", async () => {
+    const world = await businessWithAccount();
+    await hold(world, 1, 10);
+    await expect(
+      runHeldPurchaseRecoveryJob(db, pool, {
+        env: enforce,
+        overrides: { store: brokenStore(), sleep: noSleep },
+      }),
+    ).rejects.toThrow(/CONTINUATION_STATE_FAILED/);
+    const latest = (await db.collection("heldPurchaseProcessorState").doc("latest").get()).data()!;
+    expect(latest).toMatchObject({ status: "partial", stateError: true });
+    await db.collection("heldPurchaseProcessorState").doc("latest").delete();
+    const runs = await db.collection("heldPurchaseProcessorRuns").get();
+    await Promise.all(runs.docs.map((d) => d.ref.delete()));
+  });
+
+  it("a total Firestore outage (cursor AND run persistence fail) still fails the job -- it cannot look successful", async () => {
+    const world = await businessWithAccount();
+    const heldId = await hold(world, 1, 10);
+    await post(world.businessId, "credit_grant", "paid", 1);
+    await expect(
+      runHeldPurchaseRecoveryJob(deadFirestore, pool, {
+        env: enforce,
+        overrides: { sleep: noSleep },
+      }),
+    ).rejects.toThrow(/degraded/);
+    // The PostgreSQL work was still done: recovery is not blocked by the Firestore outage.
+    expect(await purchaseStatus(heldId)).toBe("verified");
+  });
+
+  it("an observer that cannot persist the run marks the RETURNED summary reportingFailed and non-success", async () => {
+    const world = await businessWithAccount();
+    await hold(world, 1, 10);
+    const run = await runHeldPurchaseRecovery(
+      processorDeps({
+        observer: {
+          runCompleted: async () => {
+            throw new Error("cannot persist");
+          },
+        },
+      }),
+      { correlationId: "ta-f001-d" },
+    );
+    expect(run.reportingFailed).toBe(true);
+    expect(run.status).toBe("partial");
+  });
+});
+
+describe("TA-F002 signal timeout bounds the WAIT, it does not cancel the notifier", () => {
+  it("the command returns at the bound while the notifier's own work may still complete afterwards", async () => {
+    const world = await businessWithAccount();
+    let completedLate = false;
+    const notifier: CapacityIncreaseNotifier = {
+      async notify() {
+        await sleep(700);
+        completedLate = true; // not cancelled: the best-effort work finishes after the command returned
+      },
+    };
+    const res = await grantTrial(cmdDeps(notifier, { capacitySignalTimeoutMs: 100 }), ctx(), {
+      businessId: world.businessId,
+      units: 3,
+      reasonText: "x",
+      reference: "R",
+    });
+    expect(res.result.units).toBe(3);
+    expect(completedLate).toBe(false); // the command did not wait for it
+    await sleep(1000);
+    expect(completedLate).toBe(true); // and nothing cancelled it
+  });
+
+  it("a notifier that rejects AFTER the bound raises no unhandled rejection and does not affect the committed mutation", async () => {
+    const world = await businessWithAccount();
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown) => void unhandled.push(reason);
+    process.on("unhandledRejection", onUnhandled);
+    try {
+      const notifier: CapacityIncreaseNotifier = {
+        async notify() {
+          await sleep(300);
+          throw new Error("late failure");
+        },
+      };
+      const res = await grantTrial(cmdDeps(notifier, { capacitySignalTimeoutMs: 80 }), ctx(), {
+        businessId: world.businessId,
+        units: 4,
+        reasonText: "x",
+        reference: "R",
+      });
+      await sleep(700);
+      expect(res.result.units).toBe(4);
+      expect(unhandled).toEqual([]);
+      expect((await account(world.businessId)).trialRemainingUnits).toBe(4);
+    } finally {
+      process.off("unhandledRejection", onUnhandled);
+    }
+  });
+});

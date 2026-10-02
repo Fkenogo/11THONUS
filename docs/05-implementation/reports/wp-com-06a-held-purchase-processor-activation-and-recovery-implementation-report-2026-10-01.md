@@ -166,7 +166,7 @@ Tests in `heldPurchaseProcessor.postgres.test.ts` (real `confirmSettlement`, rea
 2. **Signal fails** → the command resolves, the settlement is `confirmed`, the paid balance is credited, **no** admission/earmark/reservation/idempotency key exists, the Purchase is untouched.
 3. **Recovery** admits the Purchase; a second sweep admits nothing; exactly one admission; invariants hold.
 4. **Trigger failure cannot roll back** `grantTrial`, `adjustTrial`, `adjustCommercialCredit`, `restoreCommercialStanding` (parameterised) or the settlement.
-5. A notifier that **never answers** cannot hold the command beyond its bound (150 ms in the test; 3 s default); the mutation stands.
+5. A notifier that **never answers** cannot hold the command beyond its bound (150 ms in the test; 3 s default); the mutation stands. **Contract (corrected after review TA-F002):** the bound limits how long the *command waits*; it does **not** cancel the notifier. The underlying best-effort work may still complete, or be cut off by the runtime, after the command returned; a late success or a late rejection is neither observed nor an error (tests prove the late work is not cancelled and a late rejection raises no unhandled rejection). No cancellation is claimed or enforced.
 6. **Duplicate signals racing the scheduler** admit exactly once and never oversubscribe (§14).
 7. A static test asserts the notifier is invoked only in the command runner, after `runCommercialCommand`, and never from a command body (so never in a transaction).
 
@@ -180,6 +180,8 @@ Mutation check: rethrowing a signal failure fails test 2.
 | Persisted operational state | Firestore `heldPurchaseProcessorRuns/{runId}` and `heldPurchaseProcessorState/latest`: status, duration, counts (admitted-from-pending, still-held, skipped-for-capacity, large-Purchase `skippedOvertaken`, not-pending, failed transient/permanent, Businesses examined/failed/saturated), cursors, `budgetExhausted`, `stateError`, and the backlog (total pending, Businesses with pending, **oldest pending age**, Businesses over the 1000 window, top-10 Businesses by pending). |
 | Query service | `readHeldPurchaseBacklog(pool)` / `getHeldPurchaseBacklog` — read-only aggregates over the existing partial index. |
 | Cloud Monitoring metrics / alerts | **Do not exist.** Nothing is exported until log-based metrics and alert policies are created from the log fields (a deployment action, not done here). The `OperationalLog` shape is closed (a change is a TRD20 change), so counts live in the persisted documents, not in log fields. |
+
+**Continuation-state failure (corrected after review TA-F001).** If the persisted cursor cannot be read or written, the run's `status` is `partial` (never `succeeded`), `stateError` is set, the scheduled invocation **throws** (so the platform's own failure signal fires), and `held_purchase_continuation_state_failed` is logged at error severity **before** any Firestore persistence, so it survives a Firestore outage that also stops `latest` from being written. A failure to persist the run itself is not swallowed either: the returned summary carries `reportingFailed`, `held_purchase_run_state_persist_failed` is logged, and the invocation fails. The fail-toward-recovery behaviour is preserved: the run still starts from the beginning and completes its PostgreSQL work.
 
 Run documents carry an `expiresAt` for a Firestore TTL policy, which is **not** configured by this package.
 
@@ -197,7 +199,7 @@ The processor is a no-op unless `PURCHASE_ADMISSION_GATE_MODE=enforce` or `HELD_
 
 **New source (5):** `domains/commercial/models/commercialCapacitySignal.ts`; `domains/purchase/repositories/heldPurchaseRecoveryRepository.ts`; `domains/purchase/services/admissionFailureClassification.ts`; `domains/purchase/services/heldPurchaseRecovery.ts`; `composition/heldPurchaseProcessorWiring.ts`.
 
-**New tests (4):** `domains/commercial/heldPurchaseProcessor.postgres.test.ts` (33), `composition/heldPurchaseProcessorWiring.emulator.test.ts` (9), `heldPurchaseProcessorFunctions.test.ts` (10: discovery, boundaries, default-OFF), `domains/purchase/services/admissionFailureClassification.test.ts` (18).
+**New tests (4):** `domains/commercial/heldPurchaseProcessor.postgres.test.ts` (39), `composition/heldPurchaseProcessorWiring.emulator.test.ts` (10), `heldPurchaseProcessorFunctions.test.ts` (10: discovery, boundaries, default-OFF), `domains/purchase/services/admissionFailureClassification.test.ts` (18).
 
 **Docs:** this report; `docs/runbooks/held-purchase-processor-runbook.md` (new); `docs/changes/IMPLEMENTATION_CHANGES.md`; `docs/00-governance/documentation-changes-log.md`.
 
@@ -207,8 +209,8 @@ The processor is a no-op unless `PURCHASE_ADMISSION_GATE_MODE=enforce` or `HELD_
 
 | Suite | Count | Covers |
 |---|---|---|
-| PostgreSQL integration (live PG + Firestore emulator) | 33 | triggers & eligibility, post-commit gate, fairness (5 Businesses and 105 at default bound), tail window and rotation, exact 1000 boundary, skip-and-continue & same-stream order preserved, real DB error classification, transient/permanent/winner/invariant isolation, observability persistence, default-OFF, Business-scoped signal |
-| Firestore emulator | 9 | coalescing (reasons merged, Business-isolated, window rollover, concurrent burst, claim-once semantics including a signal after an earlier claim), id derivation, persisted cursors, logs at correct severity, saturation log, run summary persisted |
+| PostgreSQL integration (live PG + Firestore emulator) | 39 | triggers & eligibility, post-commit gate, fairness (5 Businesses and 105 at default bound), tail window and rotation, exact 1000 boundary, skip-and-continue & same-stream order preserved, real DB error classification, transient/permanent/winner/invariant isolation, observability persistence, default-OFF, Business-scoped signal |
+| Firestore emulator | 10 | coalescing (reasons merged, Business-isolated, window rollover, concurrent burst, claim-once semantics including a signal after an earlier claim), id derivation, persisted cursors, logs at correct severity, saturation log, run summary persisted |
 | Unit | 28 (10 + 18) | discovery & cadence, dependency direction both ways, no scheduling in domain code, no duplicated admission logic, signal-after-commit structure, gate default-OFF, classification table |
 
 Four mutation checks, each confirmed to fail exactly the intended test, then reverted: (1) cursor never persisted → fairness test fails; (2) tail window disabled → window test fails; (3) signal failure rethrown → post-commit test fails; (4) deadlock classified permanent → classification test fails.
@@ -222,8 +224,8 @@ Four mutation checks, each confirmed to fail exactly the intended test, then rev
 | `pnpm format:check` | pass |
 | `pnpm typecheck` | pass (tests are excluded from `tsc` by the repo; the four new test files were additionally type-checked with a scratch config) |
 | `pnpm test` (unit) | functions **1971** pass (baseline 1943, +28) · web **926** pass (unchanged; `apps/` not touched) |
-| PostgreSQL suite under Firestore emulator, **cold cache, fresh DB** (CI-equivalent) | **19 files, 671 tests pass** (baseline 18 / 638, +1 / +33) |
-| Emulator suite (`test:emulator`) | **67 files, 876 passed, 3 skipped** (baseline 66 / 867, +1 / +9), run with `--only auth,firestore` because `pnpm emulators:validate` additionally starts the Storage emulator, whose JAR the sandbox blocks; the vitest set needs only Auth + Firestore |
+| PostgreSQL suite under Firestore emulator, **cold cache, fresh DB** (CI-equivalent) | **19 files, 677 tests pass** (baseline 18 / 638, +1 / +39) |
+| Emulator suite (`test:emulator`) | **67 files, 877 passed, 3 skipped** (baseline 66 / 867, +1 / +10), run with `--only auth,firestore` because `pnpm emulators:validate` additionally starts the Storage emulator, whose JAR the sandbox blocks; the vitest set needs only Auth + Firestore |
 | `pnpm test:e2e` | **41 passed** (Chromium via the preinstalled build; scratch config, removed) |
 | Functions emulator discovery | both new Functions listed as loaded from source (§9) |
 | Exact-head CI | see §33 |

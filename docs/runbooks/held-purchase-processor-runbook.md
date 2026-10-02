@@ -94,8 +94,10 @@ Be precise about what exists:
 | `held_purchase_business_pass_signal` / `_recovery` | info / error | One per Business pass; `businessId`, `durationMs`. `error` = the whole Business pass failed (`errorCode`). |
 | `held_purchase_failed` | warning (transient) / error (permanent) | One Purchase failed; `aggregateId` = Purchase id, `errorCode`, `result` = `transient` \| `permanent`. **Alert** on any `permanent`. |
 | `held_purchase_scan_window_saturated` | warning | A Business holds more than the 1000-row window. |
+| `held_purchase_continuation_state_failed` | error (run) / warning (single Business pass) | The continuation cursor could not be read/written (`errorCode` `CONTINUATION_STATE_FAILED`). **Alert** on any occurrence; the matching scheduled invocation also fails. |
+| `held_purchase_run_state_persist_failed` | error | The run could not be recorded in Firestore (`RUN_STATE_PERSIST_FAILED`); the invocation fails. The PostgreSQL work of the run was still done. |
 | `held_purchase_signal_malformed` | error | A signal document without a Business id was ignored. |
-| `capacity_signal_failed` (`domain=commercial`, `service=capacity_signal`) | warning | A post-commit signal was lost (`errorCode` `SIGNAL_FAILED` or `SIGNAL_TIMEOUT`). The mutation is committed; path B will compensate. Many in a row means Firestore/Functions trouble. |
+| `capacity_signal_failed` (`domain=commercial`, `service=capacity_signal`) | warning | A post-commit signal failed or the command stopped waiting for it (`errorCode` `SIGNAL_FAILED` or `SIGNAL_TIMEOUT`). On a timeout the notifier is **not cancelled**: its own best-effort work may still finish (or be cut off by the runtime) after the command returned, so a `SIGNAL_TIMEOUT` signal may in fact still have arrived. The mutation is committed; path B will compensate. Many in a row means Firestore/Functions trouble. |
 
 **`heldPurchaseProcessorState/latest` fields** (also in each run document): `status`, `durationMs`, `businessesExamined`, `businessesFailed`, `businessesSaturated`, `purchasesExamined`, `admittedFromPending`, `stillHeld`, `skippedForCapacity`, `skippedOvertaken`, `notPending`, `failedTransient`, `failedPermanent`, `cursorStart`, `cursorEnd`, `wrapped`, `budgetExhausted`, `stateError`, and `backlog` { `totalPending`, `businessesWithPending`, `oldestPendingAgeSeconds`, `businessesOverWindow`, `topBusinesses[10]` }.
 
@@ -115,7 +117,7 @@ Be precise about what exists:
 | `backlog.oldestPendingAgeSeconds` | grows past the Business's expected top-up time (agree a number with the Founder; a Business that has not paid will legitimately stay held). |
 | `backlog.businessesOverWindow` | > 0 (a Business has > 1000 held Purchases). |
 | `budgetExhausted` | `true` repeatedly (a run no longer fits its time budget). |
-| `stateError` | `true` (the continuation state in Firestore could not be read/written; fairness is degraded, not correctness). |
+| `stateError` | `true`. The continuation cursor in Firestore could not be read/written, so fairness across runs is degraded (the run restarts from the first Businesses; processing correctness is unaffected). A state error is **never** reported as a successful run: the run `status` is `partial`, the scheduled invocation **fails** (visible as a failed Function execution), and `held_purchase_continuation_state_failed` is logged at error severity. That log is written **before** any Firestore persistence, so it still appears during a Firestore outage that also prevents `latest` from being written. Treat it as urgent if it repeats: Businesses beyond the first 100 can be starved while it lasts. |
 | `capacity_signal_failed` | more than a handful per hour. |
 
 ## 7. Failure handling
@@ -141,7 +143,7 @@ Never edit `purchase_records` or the Commercial tables by hand to "unstick" a Pu
 ## 9. Diagnosing a stuck held Purchase
 
 1. Is the processor enabled? (§4) If not, nothing runs — by design.
-2. Read `heldPurchaseProcessorState/latest`: is `status` `succeeded`, is it recent, is `stateError` false?
+2. Read `heldPurchaseProcessorState/latest`: is `status` `succeeded`, is it recent, is `stateError` false? (If Firestore itself is down, `latest` may be stale — check the logs for `held_purchase_continuation_state_failed` / `held_purchase_run_state_persist_failed` and for failed `recoverHeldPurchases` executions.)
 3. Find the Purchase's Business; look at that Business's Commercial account (balance, reserved units, `service_restriction`). The hold reason is in the Commercial audit row (`admission_held`, `reason_code`): `not_established`, `restricted`, `insufficient_capacity`, `stream_queue` (an older Purchase of the same customer/program is still held), `business_queue`.
 4. `insufficient_capacity` with positive-looking balance: usable capacity is **balance − reserved**, pooled across trial and paid; a negative paid balance reduces it (Founder-confirmed policy, unchanged).
 5. Look for `held_purchase_failed` for that Purchase id.

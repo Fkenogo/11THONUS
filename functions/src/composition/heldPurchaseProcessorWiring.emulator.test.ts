@@ -173,6 +173,49 @@ describe("observability: structured logs + persisted run state", () => {
     });
   });
 
+  it("a continuation-state failure is logged at error severity BEFORE persistence, so it survives a Firestore outage", async () => {
+    const deadDb = {
+      collection: () => ({
+        doc: () => ({
+          set: async () => {
+            throw new Error("firestore unavailable");
+          },
+        }),
+      }),
+    } as unknown as Parameters<typeof createHeldPurchaseObserver>[0];
+    const observer = createHeldPurchaseObserver(deadDb);
+    await expect(
+      observer.runCompleted!({
+        correlationId: "run-state",
+        status: "partial",
+        startedAt: T0,
+        durationMs: 5,
+        businessesExamined: 1,
+        businessesFailed: 0,
+        businessesSaturated: 0,
+        purchasesExamined: 1,
+        admittedFromPending: 0,
+        stillHeld: 1,
+        skippedForCapacity: 0,
+        skippedOvertaken: 0,
+        notPending: 0,
+        failedTransient: 0,
+        failedPermanent: 0,
+        cursorStart: null,
+        cursorEnd: null,
+        wrapped: false,
+        budgetExhausted: false,
+        stateError: true,
+        backlog: null,
+      }),
+    ).rejects.toThrow("firestore unavailable"); // persistence failure is NOT swallowed
+    const entries = vi.mocked(log).mock.calls.map((c) => c[0]);
+    expect(entries.map((e) => [e.operation, e.severity, e.errorCode])).toEqual([
+      ["held_purchase_continuation_state_failed", "error", "CONTINUATION_STATE_FAILED"],
+      ["held_purchase_recovery_run", "error", undefined],
+    ]);
+  });
+
   it("reports a saturated scan window and persists the run summary + latest state", async () => {
     const observer = createHeldPurchaseObserver(db);
     const stats = {

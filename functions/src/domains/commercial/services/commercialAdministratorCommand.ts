@@ -193,7 +193,12 @@ export async function runAdministratorCommand<T>(
   return response;
 }
 
-/** Sends the post-commit signal; NEVER throws and never outlives `capacitySignalTimeoutMs`. */
+/**
+ * Sends the post-commit signal. NEVER throws, and the COMMAND stops WAITING after
+ * `capacitySignalTimeoutMs`. It does NOT cancel the notifier: the underlying best-effort work may
+ * still complete (or be cut off by the runtime) after the command has returned. A late result is
+ * neither observed nor an error; a lost signal is compensated by scheduled recovery.
+ */
 async function sendCapacitySignal(
   deps: CommercialCommandDeps,
   signal: { businessId: string; reason: CapacityIncreaseReason; correlationId: string },

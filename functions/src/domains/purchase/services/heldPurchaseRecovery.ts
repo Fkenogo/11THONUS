@@ -96,6 +96,11 @@ export type HeldPurchaseRunSummary = {
   readonly stateError: boolean;
   readonly backlog: HeldPurchaseBacklog | null;
   readonly errorCode?: string;
+  /**
+   * The observer could not report/persist this run (set only on the RETURNED summary, after the
+   * observer ran). A run that could not be reported is never an ordinary success.
+   */
+  readonly reportingFailed?: boolean;
 };
 
 export interface HeldPurchaseProcessorObserver {
@@ -313,7 +318,9 @@ export async function runHeldPurchaseRecovery(
   const status: HeldPurchaseRunSummary["status"] =
     errorCode !== undefined
       ? "failed"
-      : businessesFailed > 0 || failedTransient > 0 || failedPermanent > 0
+      : // A continuation-state failure (cursor unreadable/unwritable) degrades the cross-run
+        // fairness guarantee, so it is NEVER reported as an ordinary success.
+        stateError || businessesFailed > 0 || failedTransient > 0 || failedPermanent > 0
         ? "partial"
         : "succeeded";
 
@@ -341,7 +348,16 @@ export async function runHeldPurchaseRecovery(
     backlog,
     ...(errorCode === undefined ? {} : { errorCode }),
   };
-  await safe(() => deps.observer?.runCompleted?.(summary));
+  // Not `safe(...)`: a failure to report the run must be visible to the caller, not swallowed.
+  try {
+    await deps.observer?.runCompleted?.(summary);
+  } catch {
+    return {
+      ...summary,
+      status: summary.status === "succeeded" ? "partial" : summary.status,
+      reportingFailed: true,
+    };
+  }
   return summary;
 }
 
