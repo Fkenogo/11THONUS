@@ -20,13 +20,21 @@
  * package — see `DashboardHome.termsAvailable.test.tsx` for its coverage.
  */
 
+import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "../../i18n";
 import { useBusinessCategoriesQuery } from "../hooks/businessQueries";
 import { TERMS_READABLE_CONTENT_AVAILABLE } from "../termsAvailability";
 import type { BusinessContext } from "../api/businessContext";
 
-export function DashboardHome({ context }: { context: BusinessContext }) {
+export function DashboardHome({
+  context,
+  children,
+}: {
+  context: BusinessContext;
+  /** EA-003: the role-specific Command Centre, rendered between readiness and the entry points. */
+  children?: ReactNode;
+}) {
   const { t, i18n } = useTranslation("business");
   const categoriesQuery = useBusinessCategoriesQuery(i18n.language);
   const categoryLabel =
@@ -67,17 +75,22 @@ export function DashboardHome({ context }: { context: BusinessContext }) {
         </div>
       )}
 
+      {children}
+
       <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {entryPoints.map((entry) => (
-          <li key={entry.to}>
-            <Link
-              to={entry.to}
-              className="block rounded-md border border-[var(--color-border)] p-4 text-sm font-medium"
-            >
-              {t(entry.labelKey)}
-            </Link>
-          </li>
-        ))}
+        {entryPoints
+          // The Command Centre already links Team and Locations; keep only what it does not.
+          .filter((entry) => !children || /\/(profile|terms)$/.test(entry.to))
+          .map((entry) => (
+            <li key={entry.to}>
+              <Link
+                to={entry.to}
+                className="block rounded-md border border-[var(--color-border)] p-4 text-sm font-medium"
+              >
+                {t(entry.labelKey)}
+              </Link>
+            </li>
+          ))}
       </ul>
     </section>
   );

@@ -163,8 +163,8 @@ state with `pnpm preview:reset` (or a future scenario variant) before journeys t
 
 ## 11. What the preview cannot show yet
 
-Frontline counter, redemption screen, Command Centre home, customer identity (Loyalty Number/QR), Circle
-progress visual, Operator Console, Business-facing Commercial standing — none exist yet (Experience Assembly
+Frontline counter, redemption screen, customer identity (Loyalty Number/QR), Circle
+progress visual, Operator Console, Business-facing Commercial standing (read model not built) — none exist yet (Experience Assembly
 packages). The data for all of them is already seeded and reachable through the real read models.
 
 ## 12. Requirements discovered for the later Cloudflare phone-access spike
@@ -182,3 +182,17 @@ packages). The data for all of them is already seeded and reachable through the 
 * Vite dev blocks unknown `Host` headers; staff invitation links use `window.location.origin`, so they will carry the
   tunnel hostname.
 * Email/Password sign-in works with no redirect; Google/Phone do not meaningfully work against the emulator remotely.
+
+## 13. Business Owner / Manager experience (EA-003)
+
+The Business Dashboard now has a real **Command Centre** for Owners and Managers (Staff keep the previous Home).
+Walk it on a phone (browser device mode, or Pixel 7 size) after `pnpm preview:start`:
+
+| Sign in as | Choose | What to look at |
+| --- | --- | --- |
+| `grace.owner` | Bella Salon — Owner | *Needs your attention* (reward ready, waiting for customer, under review) → *Loyalty at a glance* → programmes → open the ☰ drawer → Customer Rewards, Team, Locations |
+| `patrick.manager` | Bella Salon — Manager | Same picture; no *Create Reward Program*, no *Change role* |
+| `jeanne.owner` / `claudine.owner` | Sparkle / Tembo | Other Businesses' Circles. Tembo is Commercially restricted, but **no notice shows**: no Business-facing Commercial read exists yet (seam S-1) and the admission gate is off, so nothing is held |
+
+Automated: `pnpm test:e2e:preview` runs the EA-003 journeys at desktop and Pixel 7. `EA003_EVIDENCE=1 pnpm test:e2e:preview` also rewrites the Founder-review screenshots in
+`docs/05-implementation/evidence/EA-003/`. Report: [`ea-003-…-implementation-report`](../05-implementation/reports/ea-003-business-owner-manager-experience-assembly-implementation-report-2026-10-02.md).

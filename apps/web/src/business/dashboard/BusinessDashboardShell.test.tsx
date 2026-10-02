@@ -21,13 +21,16 @@ const context: BusinessContext = {
   termsAcceptance: { accepted: false },
 };
 
-function renderShell(initialPath = "/business/biz-123/dashboard") {
+function renderShell(
+  initialPath = "/business/biz-123/dashboard",
+  role?: "owner" | "manager" | "staff",
+) {
   return render(
     <MemoryRouter initialEntries={[initialPath]}>
       <Routes>
         <Route
           path="/business/:businessId/dashboard/*"
-          element={<BusinessDashboardShell context={context} />}
+          element={<BusinessDashboardShell context={context} role={role} />}
         >
           <Route index element={<p>home content</p>} />
           <Route path="profile" element={<p>profile content</p>} />
@@ -108,6 +111,18 @@ describe("BusinessDashboardShell", () => {
     const nav = screen.getByRole("navigation", { name: "Business Dashboard navigation" });
     await user.click(within(nav).getByRole("link", { name: "Business Profile" }));
     expect(screen.getByRole("button", { name: "Open navigation" })).toBeInTheDocument();
+  });
+
+  it("labels the viewer's role (EA-003) and localises it, without gating any destination", async () => {
+    renderShell("/business/biz-123/dashboard", "manager");
+    expect(screen.getAllByTestId("viewer-role")[0]).toHaveTextContent("Manager");
+    const nav = screen.getByRole("navigation", { name: "Business Dashboard navigation" });
+    expect(within(nav).getAllByRole("link")).toHaveLength(8);
+  });
+
+  it("shows no role label when the role is not yet known", () => {
+    renderShell();
+    expect(screen.queryByTestId("viewer-role")).not.toBeInTheDocument();
   });
 
   it("keeps the language switcher reachable from the shell", () => {

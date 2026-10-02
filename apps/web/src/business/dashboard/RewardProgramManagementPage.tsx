@@ -156,7 +156,7 @@ export function RewardProgramManagementPage({ context }: { context: BusinessCont
 
   if (rewardProgramsQuery.isLoading) {
     return (
-      <main className="mx-auto max-w-3xl p-6">
+      <main className="mx-auto max-w-3xl p-4 md:p-6">
         <p>{t("rewardProgram.loading")}</p>
       </main>
     );
@@ -164,7 +164,7 @@ export function RewardProgramManagementPage({ context }: { context: BusinessCont
 
   if (rewardProgramsQuery.isError) {
     return (
-      <main className="mx-auto max-w-3xl p-6">
+      <main className="mx-auto max-w-3xl p-4 md:p-6">
         <div role="alert" className="rounded-md border border-[var(--color-border)] p-4">
           {t("rewardProgram.loadError")}
         </div>
@@ -234,7 +234,7 @@ export function RewardProgramManagementPage({ context }: { context: BusinessCont
   }
 
   return (
-    <main className="mx-auto max-w-3xl p-6">
+    <main className="mx-auto max-w-3xl p-4 md:p-6">
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-xl font-semibold">{t("rewardProgram.title")}</h1>
         {canManage && !creating && (
@@ -243,22 +243,6 @@ export function RewardProgramManagementPage({ context }: { context: BusinessCont
           </Button>
         )}
       </div>
-
-      {canManageItems && (
-        <QualifyingItemsSection
-          businessId={context.businessId}
-          businessTypeId={context.businessTypeId}
-          items={activeItems}
-          classificationLabels={classificationLabels}
-          isLoading={qualifyingItemsQuery.isLoading}
-          isError={qualifyingItemsQuery.isError}
-          updateClassification={(item, knowledgeNodeId) =>
-            classificationMutation.mutate({ qualifyingItemId: item.id, knowledgeNodeId })
-          }
-          classificationSaving={classificationMutation.isPending}
-          classificationError={classificationMutation.error}
-        />
-      )}
 
       {creating && (
         <form
@@ -511,6 +495,22 @@ export function RewardProgramManagementPage({ context }: { context: BusinessCont
           </li>
         ))}
       </ul>
+
+      {canManageItems && (
+        <QualifyingItemsSection
+          businessId={context.businessId}
+          businessTypeId={context.businessTypeId}
+          items={activeItems}
+          classificationLabels={classificationLabels}
+          isLoading={qualifyingItemsQuery.isLoading}
+          isError={qualifyingItemsQuery.isError}
+          updateClassification={(item, knowledgeNodeId) =>
+            classificationMutation.mutate({ qualifyingItemId: item.id, knowledgeNodeId })
+          }
+          classificationSaving={classificationMutation.isPending}
+          classificationError={classificationMutation.error}
+        />
+      )}
     </main>
   );
 }
@@ -624,7 +624,7 @@ function QualifyingItemsSection({
   return (
     <section
       aria-label={t("rewardProgram.qualifyingItems.sectionTitle")}
-      className="mb-6 rounded-md border border-[var(--color-border)] p-4"
+      className="mt-6 mb-6 rounded-md border border-[var(--color-border)] p-4"
     >
       <h2 className="font-semibold">{t("rewardProgram.qualifyingItems.sectionTitle")}</h2>
       <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">
@@ -656,7 +656,7 @@ function QualifyingItemsSection({
           {items.map((item) => (
             <li
               key={item.id}
-              className="flex items-center justify-between gap-2 rounded-md border border-[var(--color-border)] p-2"
+              className="flex flex-col gap-2 rounded-md border border-[var(--color-border)] p-2 sm:flex-row sm:items-center sm:justify-between"
             >
               {editingId === item.id ? (
                 <form
@@ -697,7 +697,7 @@ function QualifyingItemsSection({
                       isSaving={classificationSaving}
                     />
                   </div>
-                  <span className="flex gap-2">
+                  <span className="flex flex-wrap gap-2">
                     <Button type="button" variant="secondary" onClick={() => startRename(item)}>
                       {t("rewardProgram.qualifyingItems.renameAction")}
                     </Button>

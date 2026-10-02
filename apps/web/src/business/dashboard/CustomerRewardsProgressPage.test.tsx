@@ -177,9 +177,9 @@ describe("CustomerRewardsProgressPage", () => {
     expect(bars[0]).toHaveAttribute("aria-valuemax", "10");
     expect(bars[1]).toHaveAttribute("aria-valuenow", "3");
     expect(within(progress).getByText("Reward ready: One free coffee")).toBeInTheDocument();
-    expect(within(progress).getByText("Units waiting for the next cycle: 2")).toBeInTheDocument();
+    expect(within(progress).getByText("Units waiting for the next Circle: 2")).toBeInTheDocument();
     expect(within(progress).getByText("Units to next reward: 7")).toBeInTheDocument();
-    expect(within(progress).getByText("3 of 10 verified units · Cycle 2")).toBeInTheDocument();
+    expect(within(progress).getByText("3 of 10 verified units · Circle 2")).toBeInTheDocument();
     expect(within(progress).getByText("In progress")).toBeInTheDocument();
   });
 
