@@ -7,7 +7,13 @@ import net from "node:net";
 import path from "node:path";
 import { test } from "node:test";
 import { emulatorUiReady, previewEmulatorsReady } from "./lib/emulatorClient.mjs";
-import { ports as configuredPorts, repoRoot, urls } from "./lib/config.mjs";
+import {
+  DEFAULT_POSTGRES_URL,
+  emulatorLaunchPorts,
+  ports as configuredPorts,
+  repoRoot,
+  urls,
+} from "./lib/config.mjs";
 import {
   PortConflictError,
   assertEmulatorPortsFree,
@@ -55,21 +61,35 @@ async function freePort() {
 }
 
 async function freePreviewPorts() {
-  return {
-    auth: await freePort(),
-    functions: await freePort(),
-    firestore: await freePort(),
-    emulatorUi: await freePort(),
-  };
+  const listeners = await Promise.all(emulatorLaunchPorts.map(() => occupy()));
+  const ports = Object.fromEntries(
+    emulatorLaunchPorts.map((name, index) => [name, listeners[index].port]),
+  );
+  await Promise.all(listeners.map((listener) => listener.close()));
+  return ports;
 }
 
-test("configuration: the preview's Emulator UI port is 4001 and never the default 4000", () => {
-  assert.equal(configuredPorts.emulatorUi, 4001);
-  assert.notEqual(configuredPorts.emulatorUi, 4000);
-  assert.equal(urls.emulatorUi, "http://localhost:4001");
-  // The launch preflight covers every port the emulators bind, and none of them is 4000.
-  for (const name of ["auth", "functions", "firestore", "emulatorUi"]) {
-    assert.notEqual(configuredPorts[name], 4000, `${name} must not use 4000`);
+test("configuration: every Founder Preview service uses its dedicated 281xx port", () => {
+  assert.deepEqual(configuredPorts, {
+    auth: 28101,
+    functions: 28102,
+    firestore: 28103,
+    storage: 28104,
+    hosting: 28105,
+    emulatorUi: 28106,
+    hub: 28107,
+    logging: 28108,
+    web: 28109,
+    postgres: 28110,
+  });
+  assert.equal(urls.emulatorUi, "http://localhost:28106");
+  assert.equal(urls.web, "http://localhost:28109");
+  assert.equal(urls.auth, "http://127.0.0.1:28101");
+  assert.match(urls.functions, /^http:\/\/127\.0\.0\.1:28102\/demo-11thonus\/europe-west1$/);
+  assert.equal(urls.firestore, "http://127.0.0.1:28103");
+  assert.equal(new URL(DEFAULT_POSTGRES_URL).port, String(configuredPorts.postgres));
+  for (const name of Object.keys(configuredPorts)) {
+    assert.ok(![4000, 4001, 9099, 5001, 8080, 5173, 54329].includes(configuredPorts[name]));
   }
 });
 
@@ -79,40 +99,73 @@ test("configuration: tests/preview/lib/config.mjs and firebase.json (what the Fi
   assert.equal(e.auth.port, configuredPorts.auth);
   assert.equal(e.functions.port, configuredPorts.functions);
   assert.equal(e.firestore.port, configuredPorts.firestore);
+  assert.equal(e.storage.port, configuredPorts.storage);
+  assert.equal(e.hosting.port, configuredPorts.hosting);
   assert.equal(e.ui.port, configuredPorts.emulatorUi);
-  assert.notEqual(e.ui.port, 4000);
+  assert.equal(e.hub.port, configuredPorts.hub);
+  assert.equal(e.logging.port, configuredPorts.logging);
+  assert.equal(firebase.emulators.singleProjectMode, true);
 });
 
-test("an unrelated process on port 4000 is irrelevant: preflight passes and the process is untouched", async () => {
-  // Stand-in for the other project's :4000 listener. Use 4000 itself when it is free on this machine;
-  // otherwise something real already holds it, which is exactly the scenario under test.
-  let other;
-  try {
-    other = await occupy(4000);
-  } catch {
-    other = undefined;
+test("all runtime consumers derive emulator endpoints from the guarded port configuration", () => {
+  const source = (relativePath) => fs.readFileSync(path.join(repoRoot, relativePath), "utf8");
+  const appPorts = source("apps/web/src/infrastructure/firebase/emulatorPorts.ts");
+  for (const [name, key, port] of [
+    ["auth", "AUTH", configuredPorts.auth],
+    ["functions", "FUNCTIONS", configuredPorts.functions],
+    ["firestore", "FIRESTORE", configuredPorts.firestore],
+    ["storage", "STORAGE", configuredPorts.storage],
+  ]) {
+    assert.ok(appPorts.includes(`VITE_FIREBASE_${key}_EMULATOR_PORT`));
+    assert.ok(appPorts.includes(`    ${port},`), `${name} fallback must match the preview port`);
+    assert.ok(
+      source(`apps/web/src/infrastructure/firebase/${name}.ts`).includes("FIREBASE_EMULATOR_PORTS"),
+      `${name} SDK client must consume the shared emulator port config`,
+    );
   }
-  try {
-    assert.equal(await isPortFree(4000), false, "4000 is occupied for the duration of this test");
-    // Use controlled preview ports so another local service on the real 4001 cannot make this test flaky.
-    const ports = await freePreviewPorts();
-    const probed = [];
-    await assertEmulatorPortsFree({
-      ports,
-      probe: async (port) => {
-        probed.push(port);
-        return true;
-      },
-    });
-    assert.deepEqual(probed, Object.values(ports));
-    assert.ok(!probed.includes(4000), "4000 is never probed or reported");
-    if (other) {
-      assert.equal(other.isListening(), true, "the unrelated listener was not stopped");
-      assert.equal(await other.answers(), true, "the unrelated listener still serves its clients");
-    }
-  } finally {
-    await other?.close();
-  }
+  assert.ok(source("tests/e2e/emulator/seedCommerceKnowledge.mjs").includes("ports.firestore"));
+  assert.ok(source("tests/e2e/emulator/terms-and-team.spec.ts").includes("urls.functions"));
+  assert.ok(source("playwright.config.ts").includes("baseURL: urls.web"));
+  assert.ok(
+    source("tests/preview/lib/postgres.mjs").includes(
+      "PREVIEW_POSTGRES_PORT: String(ports.postgres)",
+    ),
+  );
+  assert.ok(
+    source("docker-compose.postgres.yml").includes(
+      "127.0.0.1:${PREVIEW_POSTGRES_PORT:-54329}:5432",
+    ),
+  );
+  const ci = source(".github/workflows/ci.yml");
+  assert.ok(ci.includes(`- ${configuredPorts.postgres}:5432`));
+  assert.ok(ci.includes(`@localhost:${configuredPorts.postgres}/eleventhonus_platform_local`));
+  assert.ok(ci.includes(`@localhost:${configuredPorts.postgres}/eleventhonus_platform_test`));
+});
+
+test("legacy project ports 4000, 4001 and 9099 can be occupied without being probed", async () => {
+  const occupiedLegacyPorts = new Set([4000, 4001, 9099]);
+  const probed = [];
+  await assertEmulatorPortsFree({
+    ports: configuredPorts,
+    probe: async (port) => {
+      probed.push(port);
+      assert.ok(!occupiedLegacyPorts.has(port), `must not probe unrelated legacy port ${port}`);
+      return true;
+    },
+  });
+  assert.deepEqual(
+    probed,
+    emulatorLaunchPorts.map((name) => configuredPorts[name]),
+  );
+});
+
+test("emulator and web readiness probes run only for positively owned preview processes", () => {
+  const runtime = fs.readFileSync(path.join(repoRoot, "tests/preview/lib/runtime.mjs"), "utf8");
+  const cli = fs.readFileSync(path.join(repoRoot, "tests/preview/cli.mjs"), "utf8");
+  assert.match(runtime, /if \(isOwnedAndAlive\("emulators"\)\) \{[\s\S]*?emulatorsReady\(\)/);
+  assert.match(runtime, /if \(!isOwnedAndAlive\("web"\)\) throw new Error[\s\S]*?fetch\(/);
+  assert.ok(!runtime.includes("webPortAnswers"));
+  assert.ok(cli.includes('isOwnedAndAlive("emulators") && (await previewEmulatorsReady())'));
 });
 
 test("preflight passes when every emulator port is free", async () => {

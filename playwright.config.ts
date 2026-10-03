@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import { urls } from "./tests/preview/lib/config.mjs";
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -50,10 +51,10 @@ export default defineConfig({
     },
     {
       // EA-002 Founder Preview: the REAL production routes against the running, seeded local
-      // preview (`pnpm preview:start`, web on :5173) — no webServer is started here on purpose;
+      // preview (`pnpm preview:start`, web on the canonical preview port) — no webServer is started here on purpose;
       // the preview workflow owns the whole stack. Not part of the default `pnpm test:e2e` run.
       name: "chromium-preview",
-      use: { ...devices["Desktop Chrome"], baseURL: "http://localhost:5173" },
+      use: { ...devices["Desktop Chrome"], baseURL: urls.web },
       testMatch: /preview\/.*\.spec\.ts/,
       expect: { timeout: 20_000 },
       timeout: 60_000,
@@ -61,7 +62,7 @@ export default defineConfig({
     {
       // Same preview specs at phone size (Business Owner/Manager/Frontline are mobile-first).
       name: "chromium-preview-mobile",
-      use: { ...devices["Pixel 7"], baseURL: "http://localhost:5173" },
+      use: { ...devices["Pixel 7"], baseURL: urls.web },
       testMatch: /preview\/.*\.spec\.ts/,
       expect: { timeout: 20_000 },
       timeout: 60_000,

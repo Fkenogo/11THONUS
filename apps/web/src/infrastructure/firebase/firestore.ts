@@ -8,9 +8,9 @@
 
 import { connectFirestoreEmulator, type Firestore, getFirestore } from "firebase/firestore";
 import type { FirebaseApp } from "firebase/app";
+import { FIREBASE_EMULATOR_PORTS } from "./emulatorPorts";
 
 const FIRESTORE_EMULATOR_HOST = "127.0.0.1";
-const FIRESTORE_EMULATOR_PORT = 8080;
 
 const connectedApps = new WeakSet<FirebaseApp>();
 
@@ -18,7 +18,7 @@ export function getFirebaseFirestore(app: FirebaseApp, useEmulator: boolean): Fi
   const firestore = getFirestore(app);
 
   if (useEmulator && !connectedApps.has(app)) {
-    connectFirestoreEmulator(firestore, FIRESTORE_EMULATOR_HOST, FIRESTORE_EMULATOR_PORT);
+    connectFirestoreEmulator(firestore, FIRESTORE_EMULATOR_HOST, FIREBASE_EMULATOR_PORTS.firestore);
     connectedApps.add(app);
   }
 

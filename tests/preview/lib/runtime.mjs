@@ -6,7 +6,7 @@ import { spawnSync } from "node:child_process";
 import { PROJECT_ID, ports, repoRoot, urls } from "./config.mjs";
 import { buildPreviewEnv } from "./guards.mjs";
 import { emulatorsReady, emulatorUiReady } from "./emulatorClient.mjs";
-import { assertEmulatorPortsFree } from "./ports.mjs";
+import { assertEmulatorPortsFree, isPortFree } from "./ports.mjs";
 import {
   isOwnedAndAlive,
   readPid,
@@ -46,14 +46,14 @@ export function buildFunctions(env) {
 }
 
 export async function startEmulators(env) {
-  // A previously started preview may still be owned by us but use the old Firebase UI port.
-  // Restart only that positively identified process group before checking the new port config.
-  if (isOwnedAndAlive("emulators") && (await emulatorsReady()) && !(await emulatorUiReady())) {
+  // Reuse only a complete, positively owned preview. A managed but stale/incomplete instance is
+  // safe to restart; an unowned listener is never queried, stopped or modified.
+  if (isOwnedAndAlive("emulators")) {
+    if ((await emulatorsReady()) && (await emulatorUiReady())) return;
     await stopDetached("emulators");
   }
-  // Refuse before spawning if any emulator port belongs to another process. An owned, ready suite
-  // with the current UI is reused by ensureEmulators; an owned suite with the old UI was stopped above.
-  if (!isOwnedAndAlive("emulators")) await assertEmulatorPortsFree();
+  // Bind-only preflight: never connect to, signal or identify whatever holds a configured port.
+  await assertEmulatorPortsFree();
   startDetached(
     "emulators",
     "pnpm",
@@ -87,21 +87,11 @@ export async function startEmulators(env) {
   }
 }
 
-async function webPortAnswers() {
-  try {
-    await fetch(`http://127.0.0.1:${ports.web}/`);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 export async function startWebServer(env) {
-  // `--strictPort` makes Vite exit if the port is taken; refuse up front so an unrelated service on
-  // :5173 can never be mistaken for the preview.
-  if (await webPortAnswers()) {
+  // A bind-only check detects collisions without connecting to or identifying the listener.
+  if (!(await isPortFree(ports.web))) {
     throw new Error(
-      `Port ${ports.web} is already in use by another service. Free it (or run \`pnpm preview:stop\`) and retry.`,
+      `Port ${ports.web} is already in use. The preview does not inspect or modify the process; free the port and retry.`,
     );
   }
   startDetached(
@@ -132,7 +122,7 @@ export async function startWebServer(env) {
       "the web dev server",
       async () => {
         // The spawned server must still be alive (not exited because the port was taken) AND serve
-        // Vite's own client endpoint — an unrelated HTTP service would not.
+        // Vite's own client endpoint. This readiness request is made only after ownership is verified.
         if (!isOwnedAndAlive("web")) throw new Error("the web dev server exited during startup");
         try {
           const response = await fetch(`http://127.0.0.1:${ports.web}/@vite/client`);

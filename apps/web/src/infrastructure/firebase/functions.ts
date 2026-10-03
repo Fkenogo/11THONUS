@@ -13,12 +13,12 @@
 
 import { connectFunctionsEmulator, type Functions, getFunctions } from "firebase/functions";
 import type { FirebaseApp } from "firebase/app";
+import { FIREBASE_EMULATOR_PORTS } from "./emulatorPorts";
 
 /** The Version 1 Cloud Functions region (mirrors `functions/src/config/region.ts`). */
 export const FUNCTIONS_REGION = "europe-west1";
 
 const FUNCTIONS_EMULATOR_HOST = "127.0.0.1";
-const FUNCTIONS_EMULATOR_PORT = 5001;
 
 const connectedApps = new WeakSet<FirebaseApp>();
 
@@ -26,7 +26,7 @@ export function getFirebaseFunctions(app: FirebaseApp, useEmulator: boolean): Fu
   const functions = getFunctions(app, FUNCTIONS_REGION);
 
   if (useEmulator && !connectedApps.has(app)) {
-    connectFunctionsEmulator(functions, FUNCTIONS_EMULATOR_HOST, FUNCTIONS_EMULATOR_PORT);
+    connectFunctionsEmulator(functions, FUNCTIONS_EMULATOR_HOST, FIREBASE_EMULATOR_PORTS.functions);
     connectedApps.add(app);
   }
 

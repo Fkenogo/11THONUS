@@ -32,7 +32,7 @@ Preview dataset** (first run, or whenever the emulators were restarted and the d
 → starts the web app → prints the URLs. First run takes roughly 1–2 minutes plus first-time emulator
 downloads; a warm start takes about 15 seconds.
 
-Open **http://localhost:5173** and sign in with Email/Password (accounts below).
+Open **http://localhost:41109** and sign in with Email/Password (accounts below).
 
 | Command                | What it does                                                                               |
 | ---------------------- | ------------------------------------------------------------------------------------------ |
@@ -45,8 +45,11 @@ Open **http://localhost:5173** and sign in with Email/Password (accounts below).
 | `pnpm preview:migrate` | Apply canonical migrations to the local preview database only                              |
 | `pnpm preview:seed`    | Seed a _clean_ preview (refuses if data exists — use `reset`)                              |
 
-Ports: web **5173** · Auth **9099** · Functions **5001** · Firestore **8080** · Emulator UI **4001** (not Firebase's default 4000, so the preview coexists with other local projects) ·
-PostgreSQL **54329** (database `eleventhonus_platform_local`).
+Founder Preview reserves the dedicated local port block **28101–28110**: Auth 28101 · Functions 28102 ·
+Firestore 28103 · Storage 28104 · Hosting 28105 · Emulator UI 28106 · Emulator Hub 28107 · logging 28108 ·
+web 28109 · PostgreSQL 28110 (database `eleventhonus_platform_local`). The allocation is independent of
+Firebase defaults and common web ports. A collision on one of these ports fails explicitly; other
+projects' ports such as 4000, 4001 and 9099 are not probed or touched.
 
 Logs and process ids live in `.preview/` (git-ignored). Emulator data is held in memory: stopping and
 starting the emulators loses it, which is why `start` re-seeds automatically when it detects that.
@@ -124,7 +127,9 @@ No database row is inserted directly. The seed reads IDs it needs from the platf
   `eleventhonus_platform_local` (the integration-test database `…_test` and any other name are refused);
   no Google credentials/Firebase token present; the Commercial admission gate is off. Otherwise it refuses and explains.
 * The tooling forces those values onto every child process; a gate setting inherited from your shell is stripped.
-* All fixtures live in `tests/preview/` — no production code imports them. No preview code exists in `apps/` or `functions/src/`.
+* Seed fixtures and runtime orchestration live in `tests/preview/`. The web client has only environment-driven
+  emulator endpoint selection (`apps/web/src/infrastructure/firebase/emulatorPorts.ts`); it is used only when
+  emulator mode is enabled. Production Firebase endpoints and product behavior are unchanged.
 * **Seed-only evidence.** Business activation and the Commercial commands require Platform-Administrator
   authority including verified two-factor evidence, and no Operator endpoint exists. The seed runs the same
   command in-process, supplying the second-factor evidence itself; the administrator-record check, Terms
@@ -157,7 +162,7 @@ state with `pnpm preview:reset` (or a future scenario variant) before journeys t
   The URL must be loopback and name that exact database.
 * **Corporate/sandbox proxy breaks the emulators** (symptom: _request blocked_ / emulator trigger registration
   fails): `PREVIEW_STRIP_PROXY=1 pnpm preview:start`.
-* **Ports busy:** `pnpm preview:start` checks 9099/5001/8080/4001 before launching the emulators and refuses, naming the port, if another process holds one (5173 and 54329 are checked by the web server and PostgreSQL steps). It never stops a process it did not start: free the port yourself, or `pnpm preview:stop` a previous preview run. Another project on 4000 is irrelevant.
+* **Ports busy:** `pnpm preview:start` bind-checks its Firebase emulator, Hub/logging and web ports before launching those services; Docker reports PostgreSQL bind conflicts. Checks only attempt loopback binds and never connect to, identify, signal or modify the listener. Readiness requests are only made after the preview confirms it owns the process. It never stops a process it did not start. Free the 11thONUS port yourself, or use `pnpm preview:stop` for a previous preview run. Processes using ports 4000, 4001 or 9099 do not block Founder Preview.
 * **Something looks half-seeded:** `pnpm preview:reset`.
 * **Emulators log:** `.preview/logs/emulators.log`; web log: `.preview/logs/web.log`.
 
@@ -171,9 +176,9 @@ packages). The data for all of them is already seeded and reachable through the 
 
 (Recorded only; no tunnel is built here.)
 
-* The web client **hard-codes** the emulator addresses (`127.0.0.1:9099` Auth, `127.0.0.1:5001` Functions —
-  `apps/web/src/infrastructure/firebase/{auth,functions}.ts`); a phone cannot reach them. The origin must be made configurable
-  or served same-origin through a proxy.
+* The web client uses the preview's environment-provided emulator ports while retaining loopback hosts;
+  a phone cannot reach them. Remote access would still require a safe same-origin proxy or another
+  approved endpoint design.
 * The emulators bind to loopback by default (`firebase.json` sets no host) — good; they must stay private.
 * Callables are plain HTTPS POSTs to `/<project>/<region>/<name>` with `{ "data": … }` — verified by the seed — so a
   path-allow-listing proxy is feasible; `connectFunctionsEmulator` is host+port only (custom-domain mode needed for HTTPS).

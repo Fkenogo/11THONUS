@@ -18,6 +18,7 @@
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { ports } from "../../preview/lib/config.mjs";
 
 // Resolve `require` against the `functions` package directory (not this
 // file's own directory) so `firebase-admin` and the compiled seed modules
@@ -26,7 +27,8 @@ import path from "node:path";
 const functionsDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "../../../functions");
 const require = createRequire(path.join(functionsDir, "package.json"));
 
-process.env.FIRESTORE_EMULATOR_HOST = process.env.FIRESTORE_EMULATOR_HOST ?? "127.0.0.1:8080";
+process.env.FIRESTORE_EMULATOR_HOST =
+  process.env.FIRESTORE_EMULATOR_HOST ?? `127.0.0.1:${ports.firestore}`;
 process.env.GCLOUD_PROJECT = process.env.GCLOUD_PROJECT ?? "demo-11thonus";
 
 const { initializeApp } = require("firebase-admin/app");
