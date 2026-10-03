@@ -7,6 +7,18 @@
 
 ---
 
+## 2026-10-03 — EA-BL-001 — Shared Experience Foundation & Entry Journey
+
+- **Task/status:** Shared identity and responsive entry foundation implemented; pending review. Founder Preview remains withdrawn.
+- **Entry:** isolated canonical-main clone at `af874b7da3be1d484f183cd42f6270a816fd61ae`; branch `codex/ea-bl-001`. Experience Reference: approved frozen SHA `18e8d700f505beefe46d324f6ea33f20a670abe7`.
+- **Implementation:** Experience Reference-derived brand and entry composition; shared sign-in/create-account validation/status; existing server role resolution and destinations; shared sign-out and identity/context framing in existing customer/business shells; EN/FR parity; truthful customer identity availability copy. Preview verification now authenticates every deterministic manifest identity through Auth Emulator. No prototype/demo-only capabilities added.
+- **Validation:** web unit tests 928/928 across 127 files; web TypeScript project check passed; preview tooling 46/46; actual desktop/mobile browser acceptance 28 passed, including Grace Owner, Manager, Staff, Customer, Create Account, invalid credentials, emulator endpoint port 28101, route resolution, and screenshots. Browser runner needed interruption only during post-pass Chrome shutdown.
+- **Evidence/report:** [EA-BL-001 implementation report](../05-implementation/reports/EA-BL-001-shared-experience-foundation-entry-journey-implementation-report-2026-10-03.md); screenshots in `docs/05-implementation/evidence/EA-BL-001/`.
+- **Boundaries:** no Product Truth/backend/schema/migration/dependency/application configuration changes; no deployment; Commercial gate OFF; no WP-COM-08. PR #295 remains held and untouched. No Founder Preview readiness claim.
+- **Disposition:** PR #295 recommendation is supersede; close formally after Founder accepts the baseline. Commit SHA: to be recorded after final review/commit.
+
+---
+
 ## 2026-10-03 — EA-002-CORR-002 — Founder Preview Cross-Project Port Isolation (PR #297)
 
 - **Task:** Give the local Founder Preview a coherent 11thONUS-specific port allocation so it runs beside other projects without changing or stopping their processes.

@@ -15,7 +15,7 @@ import { CustomerRewardsPage } from "./CustomerRewardsPage";
 export function CustomerRoutes({ auth, functions }: { auth: Auth; functions: Functions }) {
   return (
     <Routes>
-      <Route element={<CustomerShell />}>
+      <Route element={<CustomerShell auth={auth} />}>
         <Route index element={<CustomerHomePage />} />
         <Route
           path="scan"

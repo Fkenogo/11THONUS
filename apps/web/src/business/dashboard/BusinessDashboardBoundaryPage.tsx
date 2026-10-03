@@ -10,8 +10,9 @@ import { useParams } from "react-router-dom";
 import { useTranslation } from "../../i18n";
 import { useBusinessContextQuery } from "../hooks/businessQueries";
 import { BusinessDashboardRoutes } from "./BusinessDashboardRoutes";
+import type { Auth } from "firebase/auth";
 
-export function BusinessDashboardBoundaryPage() {
+export function BusinessDashboardBoundaryPage({ auth }: { auth: Auth }) {
   const { businessId } = useParams<{ businessId: string }>();
   const { t } = useTranslation("business");
   const query = useBusinessContextQuery(businessId);
@@ -33,5 +34,5 @@ export function BusinessDashboardBoundaryPage() {
     );
   }
 
-  return <BusinessDashboardRoutes context={query.data} />;
+  return <BusinessDashboardRoutes context={query.data} auth={auth} />;
 }

@@ -1,10 +1,20 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { i18n } from "../../i18n";
 import { BusinessDashboardShell } from "./BusinessDashboardShell";
 import type { BusinessContext } from "../api/businessContext";
+import type { Auth } from "firebase/auth";
+
+vi.mock("../hooks/businessQueries", () => ({
+  useAccessibleBusinessesQuery: () => ({
+    status: "success",
+    data: [{ businessId: "biz-123", role: "owner" }],
+  }),
+}));
+
+const auth = {} as Auth;
 
 const context: BusinessContext = {
   businessId: "biz-123",
@@ -27,7 +37,7 @@ function renderShell(initialPath = "/business/biz-123/dashboard") {
       <Routes>
         <Route
           path="/business/:businessId/dashboard/*"
-          element={<BusinessDashboardShell context={context} />}
+          element={<BusinessDashboardShell context={context} auth={auth} />}
         >
           <Route index element={<p>home content</p>} />
           <Route path="profile" element={<p>profile content</p>} />

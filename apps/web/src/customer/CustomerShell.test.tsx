@@ -42,8 +42,12 @@ describe("CustomerShell / CustomerRoutes", () => {
     expect(within(nav).getByRole("link", { name: "Rewards" })).toBeInTheDocument();
     expect(within(nav).getByRole("link", { name: "Activity" })).toBeInTheDocument();
     expect(within(nav).getByRole("link", { name: "Account" })).toBeInTheDocument();
-    expect(screen.getByText("You don't have a loyalty number yet.")).toBeInTheDocument();
-    expect(screen.getByText("Your loyalty QR code isn't available yet.")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Loyalty Number has been issued, but it isn't available in the app yet/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/QR identity has been issued, but it isn't available in the app yet/i),
+    ).toBeInTheDocument();
   });
 
   it("renders the nav and destinations in French", async () => {

@@ -189,7 +189,7 @@ export function DashboardHarnessPage() {
   return (
     <QueryClientProvider client={harnessQueryClient}>
       <BusinessApiProvider platform={{ auth: inertAuth, functions: inertFunctions }}>
-        <BusinessDashboardRoutes context={HARNESS_CONTEXT} />
+        <BusinessDashboardRoutes context={HARNESS_CONTEXT} auth={{} as never} />
       </BusinessApiProvider>
     </QueryClientProvider>
   );

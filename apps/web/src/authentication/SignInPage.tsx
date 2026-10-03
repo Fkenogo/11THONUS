@@ -23,6 +23,7 @@ import { createSignInActions, type CreateSignInActionsDeps } from "./createSignI
 import { SignInPanel, type SignInPanelActions } from "./SignInPanel";
 import type { AuthenticateOutcome } from "./authenticateClient";
 import { createManagedRecaptcha } from "./recaptchaLifecycle";
+import { ExperienceBrand } from "../experience/ExperienceBrand";
 
 const RECAPTCHA_CONTAINER_ID = "sign-in-recaptcha";
 
@@ -74,14 +75,45 @@ export function SignInPage({
   const resolvedActions = actions ?? composition?.actions ?? null;
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-6 p-8">
-      <h1 className="text-center text-2xl font-semibold">{t("entry.signInTitle")}</h1>
-      {resolvedActions ? (
-        <SignInPanel actions={resolvedActions} onSignedIn={onSignedIn} />
-      ) : (
-        <p role="status">{t("entry.loading")}</p>
-      )}
-      <div id={RECAPTCHA_CONTAINER_ID} />
+    <main className="min-h-screen bg-[#f8f9fa] px-4 py-6 text-slate-900 sm:px-8 sm:py-10">
+      <div className="mx-auto flex min-h-[calc(100svh-3rem)] max-w-6xl flex-col">
+        <header className="mb-8 flex items-center justify-between">
+          <ExperienceBrand />
+        </header>
+        <div className="grid flex-1 items-center gap-8 md:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)] md:gap-14">
+          <section className="hidden md:block">
+            <p className="mb-3 text-sm font-bold uppercase tracking-[0.16em] text-amber-800">
+              {t("entry.eyebrow")}
+            </p>
+            <h1 className="max-w-xl text-4xl font-bold leading-tight tracking-tight text-slate-950 lg:text-5xl">
+              {t("entry.headline")}
+            </h1>
+            <p className="mt-5 max-w-lg text-lg leading-relaxed text-slate-600">
+              {t("entry.description")}
+            </p>
+          </section>
+          <section
+            aria-labelledby="entry-title"
+            className="mx-auto w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_16px_48px_-32px_rgba(15,23,42,0.38)] sm:p-8"
+          >
+            <p className="mb-2 text-sm font-semibold text-amber-800 md:hidden">
+              {t("entry.eyebrow")}
+            </p>
+            <h2 id="entry-title" className="mb-2 text-2xl font-bold tracking-tight text-slate-950">
+              {t("entry.signInTitle")}
+            </h2>
+            <p className="mb-6 text-sm leading-relaxed text-slate-600">{t("entry.description")}</p>
+            {resolvedActions ? (
+              <SignInPanel actions={resolvedActions} onSignedIn={onSignedIn} />
+            ) : (
+              <p role="status" className="rounded-lg bg-slate-50 p-4 text-sm text-slate-600">
+                {t("entry.loading")}
+              </p>
+            )}
+          </section>
+        </div>
+        <div id={RECAPTCHA_CONTAINER_ID} />
+      </div>
     </main>
   );
 }

@@ -133,7 +133,7 @@ describe("SignInPanel — Email mode clarity (AUTH-UX-CORR-001)", () => {
     );
     await userEvent.click(screen.getByRole("button", { name: en.auth.signIn.createAccount }));
 
-    await waitFor(() => expect(screen.getByText(/registered/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/signed in/i));
     expect((screen.getByLabelText(en.auth.signIn.passwordLabel) as HTMLInputElement).value).toBe(
       "",
     );

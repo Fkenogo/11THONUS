@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { BusinessDashboardBoundaryPage } from "./BusinessDashboardBoundaryPage";
+import type { Auth } from "firebase/auth";
 
 const mockUseBusinessContextQuery = vi.fn();
 vi.mock("../hooks/businessQueries", () => ({
@@ -19,7 +20,7 @@ function renderPage(initialPath = "/business/b-1/dashboard") {
       <Routes>
         <Route
           path="/business/:businessId/dashboard/*"
-          element={<BusinessDashboardBoundaryPage />}
+          element={<BusinessDashboardBoundaryPage auth={{} as Auth} />}
         />
       </Routes>
     </MemoryRouter>,

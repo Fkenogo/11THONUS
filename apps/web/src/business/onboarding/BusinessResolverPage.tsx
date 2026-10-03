@@ -7,6 +7,7 @@
 import { Navigate, Link } from "react-router-dom";
 import { useTranslation } from "../../i18n";
 import { useAccessibleBusinessesQuery } from "../hooks/businessQueries";
+import { ExperienceBrand } from "../../experience/ExperienceBrand";
 
 function businessDestination(business: {
   businessId: string;
@@ -49,28 +50,38 @@ export function BusinessResolverPage() {
   }
 
   return (
-    <main className="mx-auto max-w-md p-8">
-      <h1 className="mb-4 text-xl font-semibold">{t("resolve.chooseContext")}</h1>
-      <ul className="flex flex-col gap-2">
-        <li>
-          <Link
-            to="/customer"
-            className="block rounded-md border border-[var(--color-border)] px-4 py-3 hover:bg-[var(--color-muted)]"
-          >
-            {t("resolve.personal")}
-          </Link>
-        </li>
-        {businesses.map((business) => (
-          <li key={business.businessId}>
-            <Link
-              to={businessDestination(business)}
-              className="block rounded-md border border-[var(--color-border)] px-4 py-3 hover:bg-[var(--color-muted)]"
-            >
-              {business.displayName} — {t(`resolve.roles.${business.role}`)}
-            </Link>
-          </li>
-        ))}
-      </ul>
+    <main className="min-h-screen bg-[#f8f9fa] px-4 py-6 sm:px-8 sm:py-10">
+      <div className="mx-auto max-w-2xl">
+        <header className="mb-10">
+          <ExperienceBrand />
+        </header>
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
+          <h1 className="mb-2 text-2xl font-bold tracking-tight text-slate-950">
+            {t("resolve.chooseContext")}
+          </h1>
+          <p className="mb-6 text-sm text-slate-600">{t("resolve.chooseContextDescription")}</p>
+          <ul className="grid gap-3 sm:grid-cols-2">
+            <li>
+              <Link
+                to="/customer"
+                className="block min-h-20 rounded-xl border border-slate-200 bg-white px-4 py-4 font-semibold text-slate-900 hover:border-amber-700 hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-700"
+              >
+                {t("resolve.personal")}
+              </Link>
+            </li>
+            {businesses.map((business) => (
+              <li key={business.businessId}>
+                <Link
+                  to={businessDestination(business)}
+                  className="block min-h-20 rounded-xl border border-slate-200 bg-white px-4 py-4 font-semibold text-slate-900 hover:border-amber-700 hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-700"
+                >
+                  {business.displayName} — {t(`resolve.roles.${business.role}`)}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      </div>
     </main>
   );
 }

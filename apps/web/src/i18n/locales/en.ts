@@ -10,6 +10,12 @@
  */
 export const en = {
   common: {
+    brand: { name: "11thONUS", tagline: "Loyalty, connected to every visit." },
+    session: {
+      signOut: "Sign out",
+      signingOut: "Signing out…",
+      signOutError: "We couldn't sign you out. Please try again.",
+    },
     language: {
       label: "Language",
     },
@@ -18,13 +24,14 @@ export const en = {
     signIn: {
       ariaLabel: "Sign in",
       unavailable: "Sign-in is currently unavailable.",
-      signedIn: "Signed in ({{mode}}).",
+      signedIn: "You're signed in. Taking you to your experience…",
       continueWithGoogle: "Continue with Google",
       emailLabel: "Email",
       passwordLabel: "Password",
       confirmPasswordLabel: "Confirm password",
       passwordMismatch: "Those passwords don't match. Please re-enter them.",
       createAccount: "Create account",
+      working: "Please wait…",
       emailSignIn: "Sign in with email",
       switchToRegister: "New here? Create account",
       switchToSignIn: "Already have an account? Sign in",
@@ -49,6 +56,7 @@ export const en = {
       loading: "Loading your business…",
       chooseBusiness: "Choose a business",
       chooseContext: "Choose how to continue",
+      chooseContextDescription: "Select the personal or Business space you want to open.",
       personal: "Personal",
       roles: {
         owner: "Owner",
@@ -525,11 +533,15 @@ export const en = {
     entry: {
       loading: "Loading…",
       signInTitle: "Sign in",
+      eyebrow: "Welcome to 11thONUS",
+      headline: "A clearer way to keep loyalty moving.",
+      description: "Sign in to continue to your personal or Business experience.",
       errorBody: "Something went wrong. Please try again.",
       retry: "Try again",
     },
     nav: {
       label: "Customer navigation",
+      personalContext: "Personal account",
       home: "Home",
       scan: "Scan",
       rewards: "Rewards",
@@ -541,9 +553,10 @@ export const en = {
     home: {
       title: "Your loyalty identity",
       loyaltyNumberLabel: "Loyalty number",
-      notYetIssued: "You don't have a loyalty number yet.",
+      notYetAvailable:
+        "Your Loyalty Number has been issued, but it isn't available in the app yet.",
       qrLabel: "Loyalty QR code",
-      qrNotYetIssued: "Your loyalty QR code isn't available yet.",
+      qrNotYetAvailable: "Your QR identity has been issued, but it isn't available in the app yet.",
     },
     scan: {
       title: "Scan",

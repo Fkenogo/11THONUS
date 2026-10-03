@@ -35,14 +35,14 @@ describe("App shell", () => {
     expect(await screen.findByRole("heading", { name: "Sign in" })).toBeInTheDocument();
   });
 
-  it("guards /customer/* behind authentication, routing a signed-out visitor to the sign-in-required fallback", async () => {
+  it("returns a signed-out /customer visitor to the shared entry experience", async () => {
     render(
       <MemoryRouter initialEntries={["/customer"]}>
         <App auth={fakeSignedOutAuth} functions={fakeFunctions} />
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText("Please sign in to continue.")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Sign in" })).toBeInTheDocument();
   });
 
   it("wires the EXT-TECH-001 phone-auth harness at a dev-only, lazily-loaded route (build-time exclusion verified separately against a real production build)", async () => {
@@ -90,7 +90,7 @@ describe("App shell", () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText("Please sign in to continue.")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Sign in" })).toBeInTheDocument();
   });
 
   it("guards /profile behind authentication, routing a signed-out visitor to the sign-in-required fallback", async () => {
@@ -100,7 +100,7 @@ describe("App shell", () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText("Please sign in to continue.")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Sign in" })).toBeInTheDocument();
   });
 
   it("guards /auth/mfa/enroll behind authentication, routing a signed-out visitor to the sign-in-required fallback", async () => {
@@ -110,6 +110,6 @@ describe("App shell", () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText("Please sign in to continue.")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Sign in" })).toBeInTheDocument();
   });
 });

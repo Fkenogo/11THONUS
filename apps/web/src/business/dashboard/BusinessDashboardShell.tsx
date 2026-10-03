@@ -12,15 +12,30 @@ import { Menu, X } from "lucide-react";
 import { LanguageSwitcher, useTranslation } from "../../i18n";
 import { cn } from "../../lib/utils";
 import type { BusinessContext } from "../api/businessContext";
+import type { Auth } from "firebase/auth";
+import { useAccessibleBusinessesQuery } from "../hooks/businessQueries";
+import { ExperienceBrand } from "../../experience/ExperienceBrand";
+import { ExperienceSignOutButton } from "../../experience/ExperienceSignOutButton";
 
-export function BusinessDashboardShell({ context }: { context: BusinessContext }) {
+export function BusinessDashboardShell({
+  context,
+  auth,
+}: {
+  context: BusinessContext;
+  auth: Auth;
+}) {
   const { t } = useTranslation("business");
+  const access = useAccessibleBusinessesQuery();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuId = useId();
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const firstLinkRef = useRef<HTMLAnchorElement>(null);
 
   const base = `/business/${context.businessId}/dashboard`;
+  const role =
+    access.status === "success"
+      ? access.data.find((business) => business.businessId === context.businessId)?.role
+      : undefined;
   const navItems = [
     { to: base, end: true, labelKey: "dashboard.nav.home" },
     { to: `${base}/profile`, end: false, labelKey: "dashboard.nav.profile" },
@@ -52,8 +67,14 @@ export function BusinessDashboardShell({ context }: { context: BusinessContext }
 
   return (
     <div className="min-h-screen md:flex">
-      <header className="flex items-center justify-between gap-4 border-b border-[var(--color-border)] p-4 md:hidden">
-        <span className="font-semibold">{context.displayName}</span>
+      <header className="flex items-center justify-between gap-3 border-b border-[var(--color-border)] bg-white px-4 py-3 md:hidden">
+        <div className="min-w-0">
+          <ExperienceBrand compact />
+          <p className="mt-1 truncate text-xs text-slate-600">
+            {context.displayName}
+            {role ? ` · ${t(`resolve.roles.${role}`)}` : ""}
+          </p>
+        </div>
         <button
           ref={menuButtonRef}
           type="button"
@@ -74,7 +95,11 @@ export function BusinessDashboardShell({ context }: { context: BusinessContext }
           menuOpen ? "block" : "hidden",
         )}
       >
-        <p className="mb-4 hidden font-semibold md:block">{context.displayName}</p>
+        <div className="mb-6 hidden md:block">
+          <ExperienceBrand />
+          <p className="mt-4 text-sm font-semibold text-slate-900">{context.displayName}</p>
+          {role && <p className="mt-1 text-xs text-slate-500">{t(`resolve.roles.${role}`)}</p>}
+        </div>
         <ul className="flex flex-col gap-1">
           {navItems.map((item, index) => (
             <li key={item.to}>
@@ -100,6 +125,7 @@ export function BusinessDashboardShell({ context }: { context: BusinessContext }
         <div className="mt-6">
           <LanguageSwitcher />
         </div>
+        <ExperienceSignOutButton auth={auth} />
       </nav>
 
       <main className="flex-1 p-4 md:p-8">

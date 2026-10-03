@@ -324,26 +324,44 @@ export function SignInPanel({
 
   return (
     <section aria-label={t("signIn.ariaLabel")} className="flex flex-col gap-4">
-      {outcome && <p role="status">{t("signIn.signedIn", { mode: outcome.mode })}</p>}
-      {errorCode && <p role="alert">{t(`errors.${errorCode}`)}</p>}
+      {outcome && (
+        <p role="status" className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+          {t("signIn.signedIn")}
+        </p>
+      )}
+      {errorCode && (
+        <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
+          {t(`errors.${errorCode}`)}
+        </p>
+      )}
 
       {googleEnabled && (
-        <button type="button" onClick={handleGoogle} disabled={busy}>
-          {t("signIn.continueWithGoogle")}
+        <button
+          type="button"
+          onClick={handleGoogle}
+          disabled={busy}
+          className="min-h-11 rounded-lg border border-slate-300 px-4 font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-60"
+        >
+          {busy ? t("signIn.working") : t("signIn.continueWithGoogle")}
         </button>
       )}
 
       {emailEnabled && (
-        <div className="flex flex-col gap-2">
-          <label htmlFor={emailInputId}>{t("signIn.emailLabel")}</label>
+        <div className="flex flex-col gap-2.5">
+          <label className="text-sm font-semibold text-slate-800" htmlFor={emailInputId}>
+            {t("signIn.emailLabel")}
+          </label>
           <input
             id={emailInputId}
             type="email"
             autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            className="min-h-11 rounded-lg border border-slate-300 bg-white px-3 text-base text-slate-950 outline-none focus:border-amber-700 focus:ring-2 focus:ring-amber-700/20"
           />
-          <label htmlFor={passwordInputId}>{t("signIn.passwordLabel")}</label>
+          <label className="text-sm font-semibold text-slate-800" htmlFor={passwordInputId}>
+            {t("signIn.passwordLabel")}
+          </label>
           <input
             id={passwordInputId}
             type="password"
@@ -355,11 +373,17 @@ export function SignInPanel({
               // validation state when the primary password changes too.
               if (localError) setLocalError(null);
             }}
+            className="min-h-11 rounded-lg border border-slate-300 bg-white px-3 text-base text-slate-950 outline-none focus:border-amber-700 focus:ring-2 focus:ring-amber-700/20"
           />
 
           {registerMode ? (
             <>
-              <label htmlFor={confirmPasswordInputId}>{t("signIn.confirmPasswordLabel")}</label>
+              <label
+                className="text-sm font-semibold text-slate-800"
+                htmlFor={confirmPasswordInputId}
+              >
+                {t("signIn.confirmPasswordLabel")}
+              </label>
               <input
                 id={confirmPasswordInputId}
                 ref={confirmPasswordRef}
@@ -372,16 +396,27 @@ export function SignInPanel({
                 }}
                 aria-invalid={localError === "passwordMismatch"}
                 aria-describedby={localError === "passwordMismatch" ? mismatchErrorId : undefined}
+                className="min-h-11 rounded-lg border border-slate-300 bg-white px-3 text-base text-slate-950 outline-none focus:border-amber-700 focus:ring-2 focus:ring-amber-700/20"
               />
               {localError === "passwordMismatch" && (
                 <p id={mismatchErrorId} role="alert">
                   {t("signIn.passwordMismatch")}
                 </p>
               )}
-              <button type="button" onClick={handleCreateAccount} disabled={busy || !registerReady}>
-                {t("signIn.createAccount")}
+              <button
+                type="button"
+                onClick={handleCreateAccount}
+                disabled={busy || !registerReady}
+                className="mt-2 min-h-12 rounded-lg bg-amber-700 px-4 font-bold text-white hover:bg-amber-800 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {busy ? t("signIn.working") : t("signIn.createAccount")}
               </button>
-              <button type="button" onClick={() => switchEmailMode("signin")} disabled={busy}>
+              <button
+                type="button"
+                onClick={() => switchEmailMode("signin")}
+                disabled={busy}
+                className="min-h-11 rounded-lg px-3 text-sm font-semibold text-slate-700 underline decoration-slate-300 underline-offset-4 hover:text-slate-950 disabled:opacity-50"
+              >
                 {t("signIn.switchToSignIn")}
               </button>
             </>
@@ -391,10 +426,16 @@ export function SignInPanel({
                 type="button"
                 onClick={() => runEmail(actions.signInWithEmail)}
                 disabled={busy || !signInReady}
+                className="mt-2 min-h-12 rounded-lg bg-amber-700 px-4 font-bold text-white hover:bg-amber-800 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {t("signIn.emailSignIn")}
+                {busy ? t("signIn.working") : t("signIn.emailSignIn")}
               </button>
-              <button type="button" onClick={() => switchEmailMode("register")} disabled={busy}>
+              <button
+                type="button"
+                onClick={() => switchEmailMode("register")}
+                disabled={busy}
+                className="min-h-11 rounded-lg px-3 text-sm font-semibold text-slate-700 underline decoration-slate-300 underline-offset-4 hover:text-slate-950 disabled:opacity-50"
+              >
                 {t("signIn.switchToRegister")}
               </button>
             </>

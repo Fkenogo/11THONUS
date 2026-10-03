@@ -3,6 +3,9 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { BusinessDashboardRoutes } from "./BusinessDashboardRoutes";
 import type { BusinessContext } from "../api/businessContext";
+import type { Auth } from "firebase/auth";
+
+const auth = {} as Auth;
 
 vi.mock("../hooks/businessQueries", () => ({
   useBusinessCategoriesQuery: () => ({ data: [{ id: "cat-1", displayLabel: "Hair salon" }] }),
@@ -67,7 +70,7 @@ function renderAt(initialPath: string) {
       <Routes>
         <Route
           path="/business/:businessId/dashboard/*"
-          element={<BusinessDashboardRoutes context={context} />}
+          element={<BusinessDashboardRoutes context={context} auth={auth} />}
         />
       </Routes>
     </MemoryRouter>,

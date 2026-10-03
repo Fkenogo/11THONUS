@@ -11,18 +11,25 @@ export const fr = {
     language: {
       label: "Langue",
     },
+    brand: { name: "11thONUS", tagline: "La fidélité, à chaque visite." },
+    session: {
+      signOut: "Se déconnecter",
+      signingOut: "Déconnexion…",
+      signOutError: "La déconnexion a échoué. Veuillez réessayer.",
+    },
   },
   auth: {
     signIn: {
       ariaLabel: "Se connecter",
       unavailable: "La connexion est actuellement indisponible.",
-      signedIn: "Connecté ({{mode}}).",
+      signedIn: "Vous êtes connecté. Ouverture de votre espace…",
       continueWithGoogle: "Continuer avec Google",
       emailLabel: "E-mail",
       passwordLabel: "Mot de passe",
       confirmPasswordLabel: "Confirmer le mot de passe",
       passwordMismatch: "Ces mots de passe ne correspondent pas. Veuillez les ressaisir.",
       createAccount: "Créer un compte",
+      working: "Veuillez patienter…",
       emailSignIn: "Se connecter par e-mail",
       switchToRegister: "Nouveau ? Créer un compte",
       switchToSignIn: "Vous avez déjà un compte ? Se connecter",
@@ -49,6 +56,7 @@ export const fr = {
       loading: "Chargement de votre entreprise…",
       chooseBusiness: "Choisissez une entreprise",
       chooseContext: "Choisissez comment continuer",
+      chooseContextDescription: "Choisissez l'espace personnel ou professionnel à ouvrir.",
       personal: "Personnel",
       roles: {
         owner: "Propriétaire",
@@ -535,11 +543,15 @@ export const fr = {
     entry: {
       loading: "Chargement…",
       signInTitle: "Se connecter",
+      eyebrow: "Bienvenue chez 11thONUS",
+      headline: "Une fidélité qui accompagne chaque visite.",
+      description: "Connectez-vous pour accéder à votre espace personnel ou professionnel.",
       errorBody: "Une erreur s'est produite. Veuillez réessayer.",
       retry: "Réessayer",
     },
     nav: {
       label: "Navigation client",
+      personalContext: "Compte personnel",
       home: "Accueil",
       scan: "Scanner",
       rewards: "Récompenses",
@@ -551,9 +563,11 @@ export const fr = {
     home: {
       title: "Votre identité de fidélité",
       loyaltyNumberLabel: "Numéro de fidélité",
-      notYetIssued: "Vous n'avez pas encore de numéro de fidélité.",
+      notYetAvailable:
+        "Votre numéro de fidélité a été créé, mais n'est pas encore disponible dans l'application.",
       qrLabel: "Code QR de fidélité",
-      qrNotYetIssued: "Votre code QR de fidélité n'est pas encore disponible.",
+      qrNotYetAvailable:
+        "Votre identité QR a été créée, mais n'est pas encore disponible dans l'application.",
     },
     scan: {
       title: "Scanner",

@@ -52,6 +52,7 @@ import {
 import { computeFingerprint } from "./seed/fingerprint.mjs";
 import { runFounderSlice1 } from "./seed/scenario.mjs";
 import { loadIdentities } from "./seed/session.mjs";
+import { verifyPreviewAccounts } from "./lib/identityVerification.mjs";
 
 const statePath = path.join(previewStateDir, "state.json");
 const expectedPath = path.join(repoRoot, "tests/preview/expected-fingerprint.json");
@@ -155,12 +156,15 @@ async function databaseIsSeeded(postgresUrl) {
 }
 
 async function seedIsCoherent(postgresUrl) {
-  const { identities } = loadIdentities();
-  const operator = identities.find((i) => i.key === "operator");
+  const { identities, password } = loadIdentities();
   const state = readState();
   if (!state || !(await databaseIsSeeded(postgresUrl))) return false;
   try {
-    await signIn({ email: operator.email, password: loadIdentities().password });
+    const failures = await verifyPreviewAccounts(identities, password, signIn);
+    if (failures.length > 0) {
+      log(`→ Preview Auth accounts missing or invalid: ${failures.join(", ")}`);
+      return false;
+    }
     return true;
   } catch {
     return false;

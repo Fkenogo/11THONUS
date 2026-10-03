@@ -1,8 +1,7 @@
 import { lazy, Suspense } from "react";
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import type { Auth } from "firebase/auth";
 import type { Functions } from "firebase/functions";
-import { useTranslation } from "./i18n";
 import { RequireAuthenticatedUser } from "./authentication/RequireAuthenticatedUser";
 import { BusinessApiProvider } from "./business/BusinessApiContext";
 import { BusinessResolverPage } from "./business/onboarding/BusinessResolverPage";
@@ -90,12 +89,7 @@ const FounderQaPreviewSignInRoute = FOUNDER_QA_PREVIEW_ENABLED
   : null;
 
 function SignInRequired() {
-  const { t } = useTranslation("business");
-  return (
-    <main className="flex min-h-screen items-center justify-center p-8 text-center">
-      <p>{t("access.signInRequired")}</p>
-    </main>
-  );
+  return <Navigate to="/" replace />;
 }
 
 export type AppProps = { auth: Auth; functions: Functions };
@@ -157,7 +151,7 @@ function App({ auth, functions }: AppProps) {
           path="/business/:businessId/dashboard/*"
           element={
             <RequireAuthenticatedUser auth={auth} renderUnauthenticated={() => <SignInRequired />}>
-              <BusinessDashboardBoundaryPage />
+              <BusinessDashboardBoundaryPage auth={auth} />
             </RequireAuthenticatedUser>
           }
         />

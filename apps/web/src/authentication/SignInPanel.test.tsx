@@ -53,7 +53,7 @@ describe("SignInPanel — Google flow", () => {
     await userEvent.click(screen.getByRole("button", { name: /google/i }));
 
     await waitFor(() => expect(onSignedIn).toHaveBeenCalledWith(registered));
-    expect(screen.getByText(/registered/i)).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(/signed in/i);
   });
 
   it("shows a stable, non-leaking message when the backend forbids access", async () => {
@@ -113,7 +113,7 @@ describe("SignInPanel — Email/Password flow (AUTH-CORR-003)", () => {
     await userEvent.type(screen.getByLabelText(/password/i), "top-secret-pw");
     await userEvent.click(screen.getByRole("button", { name: /sign in with email/i }));
 
-    await waitFor(() => expect(screen.getByText(/registered/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/signed in/i));
     expect((screen.getByLabelText(/password/i) as HTMLInputElement).value).toBe("");
     expect(document.body.textContent).not.toContain("top-secret-pw");
   });
@@ -207,7 +207,7 @@ describe("SignInPanel — Phone OTP flow", () => {
     await userEvent.type(codeInput, "654321");
     await userEvent.click(screen.getByRole("button", { name: /verify code/i }));
 
-    await waitFor(() => expect(screen.getByText(/registered/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/signed in/i));
     expect(document.body.textContent).not.toContain("654321");
   });
 });

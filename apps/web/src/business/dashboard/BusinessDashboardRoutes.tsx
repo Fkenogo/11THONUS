@@ -8,6 +8,7 @@
 
 import { Route, Routes } from "react-router-dom";
 import type { BusinessContext } from "../api/businessContext";
+import type { Auth } from "firebase/auth";
 import { BusinessDashboardShell } from "./BusinessDashboardShell";
 import { DashboardHome } from "./DashboardHome";
 import { BusinessProfilePage } from "./BusinessProfilePage";
@@ -18,10 +19,16 @@ import { RewardProgramManagementPage } from "./RewardProgramManagementPage";
 import { PurchaseRecordsPage } from "./PurchaseRecordsPage";
 import { CustomerRewardsProgressPage } from "./CustomerRewardsProgressPage";
 
-export function BusinessDashboardRoutes({ context }: { context: BusinessContext }) {
+export function BusinessDashboardRoutes({
+  context,
+  auth,
+}: {
+  context: BusinessContext;
+  auth: Auth;
+}) {
   return (
     <Routes>
-      <Route element={<BusinessDashboardShell context={context} />}>
+      <Route element={<BusinessDashboardShell context={context} auth={auth} />}>
         <Route index element={<DashboardHome context={context} />} />
         <Route path="profile" element={<BusinessProfilePage context={context} />} />
         <Route path="locations" element={<LocationsPage context={context} />} />

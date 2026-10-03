@@ -20,10 +20,13 @@ import { NavLink, Outlet } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import { LanguageSwitcher, useTranslation } from "../i18n";
 import { cn } from "../lib/utils";
+import type { Auth } from "firebase/auth";
+import { ExperienceBrand } from "../experience/ExperienceBrand";
+import { ExperienceSignOutButton } from "../experience/ExperienceSignOutButton";
 
 const BASE = "/customer";
 
-export function CustomerShell() {
+export function CustomerShell({ auth }: { auth: Auth }) {
   const { t } = useTranslation("customer");
   const [menuOpen, setMenuOpen] = useState(false);
   const menuId = useId();
@@ -58,8 +61,11 @@ export function CustomerShell() {
 
   return (
     <div className="min-h-screen md:flex">
-      <header className="flex items-center justify-between gap-4 border-b border-[var(--color-border)] p-4 md:hidden">
-        <span className="font-semibold">{t("nav.label")}</span>
+      <header className="flex items-center justify-between gap-3 border-b border-[var(--color-border)] bg-white px-4 py-3 md:hidden">
+        <div>
+          <ExperienceBrand compact />
+          <p className="mt-1 text-xs text-slate-600">{t("nav.personalContext")}</p>
+        </div>
         <button
           ref={menuButtonRef}
           type="button"
@@ -80,6 +86,10 @@ export function CustomerShell() {
           menuOpen ? "block" : "hidden",
         )}
       >
+        <div className="mb-6 hidden md:block">
+          <ExperienceBrand />
+          <p className="mt-4 text-sm font-semibold text-slate-900">{t("nav.personalContext")}</p>
+        </div>
         <ul className="flex flex-col gap-1">
           {navItems.map((item, index) => (
             <li key={item.to}>
@@ -105,6 +115,7 @@ export function CustomerShell() {
         <div className="mt-6">
           <LanguageSwitcher />
         </div>
+        <ExperienceSignOutButton auth={auth} />
       </nav>
 
       <main className="flex-1 p-4 md:p-8">
