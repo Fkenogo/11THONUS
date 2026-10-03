@@ -1,9 +1,6 @@
 # EA-002-CORR-002 — Founder Preview Cross-Project Port Isolation
 
-**Date:** 2026-10-03  
-**Status:** Implemented; PR #297 open and unmerged.  
-**Base:** `main` at `014554a81642336d2b2a7a5c28acff9999618f69`.  
-**Implementation commit:** `0496be735e18ca6be746345887f5507c2f962260`.  
+**Date:** 2026-10-03 · **Status:** Implemented; PR #297 open and unmerged · **Base:** `main` at `014554a81642336d2b2a7a5c28acff9999618f69` · **Implementation commit:** `0496be735e18ca6be746345887f5507c2f962260`.
 **PR:** [#297 — EA-002-CORR-002 — Founder Preview Cross-Project Port Isolation](https://github.com/Fkenogo/11THONUS/pull/297).
 
 ## 1. Root cause
