@@ -73,5 +73,5 @@ Source/test changes are limited to shared web entry/shell/i18n and preview ident
 
 Rollback is `git revert <EA-BL-001-commit>` on this branch. The implementation is isolated on `codex/ea-bl-001`; no PR was created. PR #295 was not modified or merged. No deployment occurred. The shared checkout and prototype repository were not modified.
 
-**Final commit:** recorded in the final implementation log entry and task completion summary after commit.
-**Final verification:** pending final run results at report authoring time.
+**Implementation commit:** `1a3552b6756396ae0ad7bd1324b16e3cc7daadd1` on `codex/ea-bl-001`.
+**Final verification:** 928/928 web unit tests, 46/46 preview tooling tests, and 28/28 browser assertions; web typecheck, ESLint, Prettier, and `git diff --check` passed. The browser process was interrupted only after all assertions passed, during Chrome worker shutdown. No Product Truth, backend, schema, migration, or application configuration changed.
