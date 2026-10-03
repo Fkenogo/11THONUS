@@ -12,6 +12,7 @@ import {
   composeFile,
   functionsDir,
   migrationsDir,
+  ports,
   repoRoot,
 } from "./config.mjs";
 import { assertLocalPostgres } from "./guards.mjs";
@@ -34,6 +35,7 @@ export function usesComposeDatabase(env = process.env) {
 export function startComposePostgres() {
   const result = spawnSync("docker", ["compose", "-f", composeFile, "up", "-d", "--wait"], {
     cwd: repoRoot,
+    env: { ...process.env, PREVIEW_POSTGRES_PORT: String(ports.postgres) },
     stdio: "inherit",
   });
   if (result.error || result.status !== 0) {

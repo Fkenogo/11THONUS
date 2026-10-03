@@ -44,6 +44,12 @@ export function readPid(name) {
   return readRecord(name)?.pid;
 }
 
+/** True only when a live owned process was launched for the expected configuration. */
+export function isOwnedWithConfig(name, configFingerprint) {
+  const record = readRecord(name);
+  return isOwnedAndAlive(name) && record?.configFingerprint === configFingerprint;
+}
+
 /** True only for a live process that is still the one we started (same pid AND start time). */
 export function isOwnedAndAlive(name) {
   const record = readRecord(name);
@@ -56,7 +62,7 @@ export function isOwnedAndAlive(name) {
   return processStartStamp(record.pid) === record.stamp;
 }
 
-export function startDetached(name, command, args, { env, cwd = repoRoot } = {}) {
+export function startDetached(name, command, args, { env, cwd = repoRoot, configFingerprint } = {}) {
   ensureStateDirs();
   if (isOwnedAndAlive(name)) {
     throw new Error(
@@ -77,7 +83,7 @@ export function startDetached(name, command, args, { env, cwd = repoRoot } = {})
     child.kill("SIGTERM");
     throw new Error(`Could not establish the identity of the started ${name} process.`);
   }
-  fs.writeFileSync(pidFile(name), JSON.stringify({ pid: child.pid, stamp }));
+  fs.writeFileSync(pidFile(name), JSON.stringify({ pid: child.pid, stamp, configFingerprint }));
   return child.pid;
 }
 

@@ -29,7 +29,7 @@ jobs:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: eleventhonus_platform_test
         ports:
-          - 5432:5432
+          - 28110:5432
         options: >-
           --health-cmd "pg_isready -U postgres"
           --health-interval 5s
@@ -102,10 +102,10 @@ jobs:
       - name: PostgreSQL integration tests
         env:
           PLATFORM_ENV: test
-          PLATFORM_POSTGRES_URL: postgres://postgres:postgres@localhost:5432/eleventhonus_platform_test
+          PLATFORM_POSTGRES_URL: postgres://postgres:postgres@localhost:28110/eleventhonus_platform_test
         run: >-
           pnpm exec firebase emulators:exec --only firestore --project demo-11thonus
-          "PLATFORM_ENV=test PLATFORM_POSTGRES_URL=postgres://postgres:postgres@localhost:5432/eleventhonus_platform_test pnpm --filter functions test:postgres"
+          "PLATFORM_ENV=test PLATFORM_POSTGRES_URL=postgres://postgres:postgres@localhost:28110/eleventhonus_platform_test pnpm --filter functions test:postgres"
 
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium
@@ -120,18 +120,13 @@ jobs:
       - name: Founder Preview tooling tests
         run: pnpm test:preview-tooling
 
-      - name: Founder Preview acceptance (start, seed, verify, reset, verify, browser journeys)
+      - name: Founder Preview cross-project port-isolation acceptance
         env:
-          PREVIEW_POSTGRES_URL: postgres://postgres:postgres@localhost:5432/eleventhonus_platform_local
+          PREVIEW_POSTGRES_URL: postgres://postgres:postgres@localhost:28110/eleventhonus_platform_local
           PGPASSWORD: postgres
         run: |
-          psql -h localhost -U postgres -c "CREATE DATABASE eleventhonus_platform_local"
-          pnpm preview:start
-          pnpm preview:verify
-          pnpm preview:reset
-          pnpm preview:verify
-          pnpm test:e2e:preview
-          pnpm preview:stop
+          psql -h localhost -p 28110 -U postgres -c "CREATE DATABASE eleventhonus_platform_local"
+          node tests/preview/cross-project-acceptance.mjs
 
       - name: Stop Founder Preview (cleanup)
         if: always()

@@ -8,9 +8,9 @@
 
 import { connectStorageEmulator, type FirebaseStorage, getStorage } from "firebase/storage";
 import type { FirebaseApp } from "firebase/app";
+import { FIREBASE_EMULATOR_PORTS } from "./emulatorPorts";
 
 const STORAGE_EMULATOR_HOST = "127.0.0.1";
-const STORAGE_EMULATOR_PORT = 9199;
 
 const connectedApps = new WeakSet<FirebaseApp>();
 
@@ -18,7 +18,7 @@ export function getFirebaseStorage(app: FirebaseApp, useEmulator: boolean): Fire
   const storage = getStorage(app);
 
   if (useEmulator && !connectedApps.has(app)) {
-    connectStorageEmulator(storage, STORAGE_EMULATOR_HOST, STORAGE_EMULATOR_PORT);
+    connectStorageEmulator(storage, STORAGE_EMULATOR_HOST, FIREBASE_EMULATOR_PORTS.storage);
     connectedApps.add(app);
   }
 

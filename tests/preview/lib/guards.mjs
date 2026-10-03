@@ -8,7 +8,12 @@
 //
 // The functions here are pure (they take the env/URL as arguments and return or
 // throw) so they are unit-tested without any service running.
-import { FORBIDDEN_DATABASES, PREVIEW_DATABASE, PROJECT_ID } from "./config.mjs";
+import {
+  FIREBASE_WEB_EMULATOR_ENV,
+  FORBIDDEN_DATABASES,
+  PREVIEW_DATABASE,
+  PROJECT_ID,
+} from "./config.mjs";
 
 /** The only Firebase web configuration the preview may use (the emulator's fake demo project). */
 export const PINNED_WEB_ENV = Object.freeze({
@@ -19,6 +24,7 @@ export const PINNED_WEB_ENV = Object.freeze({
   VITE_FIREBASE_MESSAGING_SENDER_ID: "000000000000",
   VITE_FIREBASE_APP_ID: "1:000000000000:web:0000000000000000000000",
   VITE_USE_FIREBASE_EMULATOR: "true",
+  ...FIREBASE_WEB_EMULATOR_ENV,
 });
 const PINNED_WEB_ENV_NAMES = Object.keys(PINNED_WEB_ENV);
 

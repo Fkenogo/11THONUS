@@ -23,7 +23,7 @@ services:
     ports:
       # A dedicated, non-default host port (not 5432) — this machine may
       # already run other, unrelated local Postgres containers on 5432.
-      - "54329:5432"
+      - "127.0.0.1:${PREVIEW_POSTGRES_PORT:-54329}:5432"
     volumes:
       - platform-baseline-001-postgres-data:/var/lib/postgresql/data
       - ./scripts/postgres/init-multiple-databases.sh:/docker-entrypoint-initdb.d/init-multiple-databases.sh:ro

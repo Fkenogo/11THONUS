@@ -47,6 +47,7 @@ test("buildPreviewEnv pins the web client to the demo project over inherited rea
     {
       VITE_FIREBASE_API_KEY: "real-key",
       VITE_FIREBASE_PROJECT_ID: "eleventh-on-us-dev",
+      VITE_FIREBASE_AUTH_EMULATOR_PORT: "9099",
       VITE_FIREBASE_MEASUREMENT_ID: "G-REAL",
       VITE_APP_CHECK_SITE_KEY: "site-key",
       VITE_USE_FIREBASE_EMULATOR: "false",
@@ -55,6 +56,10 @@ test("buildPreviewEnv pins the web client to the demo project over inherited rea
   );
   assert.equal(env.VITE_FIREBASE_PROJECT_ID, "demo-11thonus");
   assert.equal(env.VITE_FIREBASE_API_KEY, "demo-api-key");
+  assert.equal(env.VITE_FIREBASE_AUTH_EMULATOR_PORT, String(ports.auth));
+  assert.equal(env.VITE_FIREBASE_FUNCTIONS_EMULATOR_PORT, String(ports.functions));
+  assert.equal(env.VITE_FIREBASE_FIRESTORE_EMULATOR_PORT, String(ports.firestore));
+  assert.equal(env.VITE_FIREBASE_STORAGE_EMULATOR_PORT, String(ports.storage));
   assert.equal(env.VITE_USE_FIREBASE_EMULATOR, "true");
   assert.equal(env.VITE_FIREBASE_MEASUREMENT_ID, undefined);
   assert.equal(env.VITE_APP_CHECK_SITE_KEY, undefined);

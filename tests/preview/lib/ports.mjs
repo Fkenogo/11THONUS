@@ -13,6 +13,8 @@ const PORT_PURPOSE = Object.freeze({
   functions: "Firebase Functions emulator",
   firestore: "Firebase Firestore emulator",
   emulatorUi: "Firebase Emulator UI",
+  hub: "Firebase Emulator Hub",
+  logging: "Firebase Emulator logging service",
   web: "web dev server",
 });
 

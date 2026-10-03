@@ -17,26 +17,34 @@ export const PROJECT_ID = "demo-11thonus";
 export const FUNCTIONS_REGION = "europe-west1";
 export const LOOPBACK = "127.0.0.1";
 
-/**
- * Emulator ports are the repository's own (`firebase.json` is what the Firebase CLI reads, and
- * `guards.test.mjs` fails if the two drift); the web port is Vite's default.
- *
- * `emulatorUi` is 4001, not Firebase's default 4000: 4000 is a very common local dev port, and the
- * preview must coexist with other local projects without ever touching their processes (EA-002-CORR-001).
- */
+/** Dedicated Founder Preview block. The map is asserted against firebase.json and client defaults. */
 export const ports = Object.freeze({
-  web: 5173,
-  auth: 9099,
-  functions: 5001,
-  firestore: 8080,
-  storage: 9199,
-  hosting: 5050,
-  emulatorUi: 4001,
-  postgres: 54329,
+  auth: 28101,
+  functions: 28102,
+  firestore: 28103,
+  storage: 28104,
+  hosting: 28105,
+  emulatorUi: 28106,
+  hub: 28107,
+  logging: 28108,
+  web: 28109,
+  postgres: 28110,
 });
 
-/** The ports `firebase emulators:start --only auth,functions,firestore,ui` must bind, checked before launch. */
-export const emulatorLaunchPorts = Object.freeze(["auth", "functions", "firestore", "emulatorUi"]);
+/** Ports the Firebase CLI binds, including its hub and logging service, checked before launch. */
+export const emulatorLaunchPorts = Object.freeze([
+  "auth",
+  "functions",
+  "firestore",
+  "emulatorUi",
+  "hub",
+  "logging",
+]);
+
+/** Persisted with the managed emulator PID so upgrades never probe a stale port allocation. */
+export const emulatorPortFingerprint = JSON.stringify(
+  Object.fromEntries(emulatorLaunchPorts.map((name) => [name, ports[name]])),
+);
 
 export const urls = Object.freeze({
   web: `http://localhost:${ports.web}`,
@@ -44,6 +52,13 @@ export const urls = Object.freeze({
   functions: `http://${LOOPBACK}:${ports.functions}/${PROJECT_ID}/${FUNCTIONS_REGION}`,
   firestore: `http://${LOOPBACK}:${ports.firestore}`,
   emulatorUi: `http://localhost:${ports.emulatorUi}`,
+});
+
+export const FIREBASE_WEB_EMULATOR_ENV = Object.freeze({
+  VITE_FIREBASE_AUTH_EMULATOR_PORT: String(ports.auth),
+  VITE_FIREBASE_FUNCTIONS_EMULATOR_PORT: String(ports.functions),
+  VITE_FIREBASE_FIRESTORE_EMULATOR_PORT: String(ports.firestore),
+  VITE_FIREBASE_STORAGE_EMULATOR_PORT: String(ports.storage),
 });
 
 /**

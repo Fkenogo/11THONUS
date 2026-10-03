@@ -28,7 +28,7 @@ describe("getFirebaseAuth", () => {
 
     expect(auth.emulatorConfig).not.toBeNull();
     expect(auth.emulatorConfig?.host).toBe("127.0.0.1");
-    expect(auth.emulatorConfig?.port).toBe(9099);
+    expect(auth.emulatorConfig?.port).toBe(28101);
   });
 
   it("does not connect to the emulator when useEmulator is false", () => {

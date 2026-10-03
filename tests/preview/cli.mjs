@@ -16,11 +16,17 @@
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { PREVIEW_DATABASE, ports, previewStateDir, repoRoot, urls } from "./lib/config.mjs";
+import {
+  PREVIEW_DATABASE,
+  emulatorPortFingerprint,
+  ports,
+  previewStateDir,
+  repoRoot,
+  urls,
+} from "./lib/config.mjs";
 import {
   clearAuthAccounts,
   clearFirestore,
-  emulatorsReady,
   previewEmulatorsReady,
   signIn,
 } from "./lib/emulatorClient.mjs";
@@ -34,7 +40,7 @@ import {
   waitForPostgres,
   withClient,
 } from "./lib/postgres.mjs";
-import { ensureStateDirs } from "./lib/processes.mjs";
+import { ensureStateDirs, isOwnedWithConfig } from "./lib/processes.mjs";
 import {
   buildFunctions,
   previewEnv,
@@ -162,7 +168,8 @@ async function seedIsCoherent(postgresUrl) {
 }
 
 async function ensureEmulators(env) {
-  if (await previewEmulatorsReady()) return;
+  if (isOwnedWithConfig("emulators", emulatorPortFingerprint) && (await previewEmulatorsReady()))
+    return;
   log("→ Building Functions (pnpm --filter functions build)");
   buildFunctions(env);
   log("→ Starting Firebase emulators (Auth, Functions, Firestore, UI)");
@@ -198,7 +205,12 @@ async function commandReset({ startRuntime = true, skipBuild = false } = {}) {
     buildFunctions(env);
   }
   if (startRuntime) await ensureEmulators(env);
-  if (!(await emulatorsReady())) throw new Error("The Firebase emulators are not running.");
+  if (
+    !isOwnedWithConfig("emulators", emulatorPortFingerprint) ||
+    !(await previewEmulatorsReady())
+  ) {
+    throw new Error("The owned demo-project Firebase emulators are not ready.");
+  }
 
   log("→ RESET: wiping emulator data and the local preview database");
   await clearFirestore();
@@ -268,8 +280,10 @@ async function commandStop() {
 
 async function commandStatus() {
   const status = processStatus();
+  const emulatorReady =
+    isOwnedWithConfig("emulators", emulatorPortFingerprint) && (await previewEmulatorsReady());
   log(`Web app:      ${status.web}   ${urls.web}`);
-  log(`Emulators:    ${status.emulators}   (ready: ${(await emulatorsReady()) ? "yes" : "no"})`);
+  log(`Emulators:    ${status.emulators}   (ready: ${emulatorReady ? "yes" : "no"})`);
   let postgresUrl;
   try {
     postgresUrl = resolvePostgresUrl();
@@ -295,8 +309,12 @@ async function commandStatus() {
 async function commandSeed() {
   checkPrerequisites();
   const { postgresUrl, env } = pinTarget();
-  if (!(await emulatorsReady()))
-    throw new Error("Start the emulators first (`pnpm preview:start`).");
+  if (
+    !isOwnedWithConfig("emulators", emulatorPortFingerprint) ||
+    !(await previewEmulatorsReady())
+  ) {
+    throw new Error("Start the owned Founder Preview emulators first (`pnpm preview:start`).");
+  }
   if (await databaseIsSeeded(postgresUrl)) {
     throw new Error(
       "The preview database already contains data. Run `pnpm preview:reset` for a clean, deterministic reseed.",

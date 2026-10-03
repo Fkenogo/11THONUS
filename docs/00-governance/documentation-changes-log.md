@@ -2,7 +2,7 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-10-03 (Entry 284 added: `EA-002-CORR-001` — five P2 automated review findings corrected on PR #296; emulator reuse now validates UI identity, preflight reflects IPv4 loopback, bind errors fail closed, port test is isolated, and UI readiness has a deadline; 42/42 preview-tooling tests pass; corrected-head CI pending.) **Prior update:** 2026-10-02 (Entry 283 added: `EA-002-CORR-001` — Founder Preview Emulator UI port moved 4000 → 4001 with a safe port preflight; see entry). **Earlier update:** 2026-10-02 (Entry 282 added: `EA-002` — Local Founder Preview Foundation: new `docs/runbooks/founder-preview-runbook.md`; deterministic local preview tooling under `tests/preview/` (start/stop/status/reset/seed/verify), guarded to loopback + `demo-11thonus` + `eleventhonus_platform_local` + gate off; implementation only, no screens, no `apps/`/`functions/src` change, no Product Truth change; Commercial gate OFF; `PB-013B P3-3` open; Cloudflare Tunnel deferred.)
+> **Last controlled update:** 2026-10-03 (Entry 286 added: `EA-002-CORR-002` automated review corrections and exact-head CI passed on PR #297; still open/unmerged awaiting Founder review.) **Prior update:** 2026-10-03 (Entry 285: dedicated Founder Preview ports 28101–28110.) **Earlier updates:** Entries 284, 283 and 282, below.
 > **Prior update:** 2026-10-02 (Entry 281 added: `11THONUS-EA-001` — Founder Preview & Experience Assembly readiness **assessment only**: verified `origin/main` `c064f43…` (`WP-COM-06a` present) and the frozen Experience Reference `11thonus-prototype@18e8d700…` (unchanged); inventoried UI by role; found no Frontline counter/redemption UI, no Operator Console or Operator endpoints/read models, no customer identity/progress reads, no local runtime orchestration or migration CLI; flagged four prototype-vs-Product-Truth discrepancies and 14 Founder decisions; defined Founder Preview Slice 1, seed/reset and test model, local architecture, mobile-first and Cloudflare Tunnel assessments (suitable with bounded changes), and packages EA-002…EA-010. No implementation, Product Truth, Experience Reference, configuration, dependency, deployment or gate change; `WP-COM-06b` not started.)  
 > **Prior update:** 2026-10-01 (Entry 280 added: `WP-COM-06a` — held-Purchase processor activation and recovery: best-effort post-commit signal (not a transactional outbox) coalesced per Business and time window; scheduled recovery every 5 minutes (deployment-time cadence) with a persisted Business cursor and a rotating tail window beyond the 1000-Purchase window; per-Purchase / per-Business failure isolation; backlog observability and runbook; no schema change; gate remains `off`; implementation only, pending review, `PB-013B P3-3` remains open. Previously Entry 279 added: `WP-COM-05b` — Commercial admission gate, earmarks and held-Purchase processor: migration `0027`; ADMIT/HOLD decision on usable capacity; immutable admissions and earmarks; `reevaluatePendingAdmissions`; `verifyPurchase` discriminated outcome; web/i18n status handling; gate defaults to `off`; implementation only, pending review, `PB-013B P3-3` remains open. Previously Entry 278 added: `WP-COM-05a` — Purchase admission seam and `pending_admission` foundation: migration `0026`; `admitPurchaseToLoyalty` extracted verbatim from `verifyPurchase`; gate seam `off` only; gate-OFF equivalence proven against a golden captured on `main`; implementation only, pending review, no Commercial coupling, no capacity gate / earmark, `PB-013B P3-3` remains open.)  
 > **Prior update:** 2026-09-30 (Entry 277 added: `WP-COM-04` — Commercial consumption projection: migration `0025`; claim → account lock → classify → finalize per Reward; exactly-once at database level; fallback classification under the account lock; earmark port; bounded reconciliation service and lag metrics; implementation only, pending review, loyalty path read-only source only, no capacity gate / `pending_admission`.)  
@@ -138,6 +138,31 @@ VERIFIED`: no `FD-COM-001` file was modified by PR #241 or this administrative c
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
 
 ---
+## Entry 285 — `EA-002-CORR-002`: Founder Preview Cross-Project Port Isolation
+
+**Date:** 2026-10-03 · **Type:** implementation (local preview runtime + runbook) · **Base `main`:** `014554a81642336d2b2a7a5c28acff9999618f69` · **Implementation commit:** `0496be735e18ca6be746345887f5507c2f962260` · **PR:** [#297](https://github.com/Fkenogo/11THONUS/pull/297) · **Open/unmerged.**
+
+- **Root cause.** EA-002-CORR-001 isolated only the Emulator UI. Auth/Functions/Firestore and the browser SDK still used common Firebase ports; Hub/logging, web and PostgreSQL also retained fixed ports that could collide with other local projects.
+- **Change.** Dedicated 28101–28110 map across Auth, Functions, Firestore, Storage, Hosting, UI, Hub, logging, Vite and PostgreSQL. Firebase SDK emulator endpoints now use guarded Vite values; Firebase config, preview tooling, seed, Playwright, CI and docs are aligned. CI holds 4000/4001/9099 with test listeners during preview start/status/verify/reset/verify and browser journeys.
+- **Process safety.** Collision checks bind only; readiness HTTP requests require verified process ownership; stop/restart remains limited to the preview's process group. The PostgreSQL Compose port is loopback-bound. No Tiizi process or PR #295 was touched.
+- **Validation.** Preview guard/port tests 44/44; focused Firebase client tests 15/15; web and Functions typechecks, ESLint, Prettier, JavaScript syntax and diff whitespace checks pass. Exact-head CI and end-to-end browser proof are pending on PR #297.
+- **Boundaries.** No dependency, schema, migration, `functions/src`, Product Truth, Commercial logic or admission-gate changes. `PURCHASE_ADMISSION_GATE_MODE` remains OFF/default. No deployment.
+- **Report/change tracking.** [Implementation report](../05-implementation/reports/ea-002-corr-002-founder-preview-cross-project-port-isolation-implementation-report-2026-10-03.md), [implementation reports index](../05-implementation/reports/README.md), [implementation changes](../changes/IMPLEMENTATION_CHANGES.md), [Founder Preview runbook](../runbooks/founder-preview-runbook.md).
+- **Disposition.** Do not merge until exact-head CI and automated review are complete. PR #295 / EA-003 remains open and untouched.
+
+---
+
+## Entry 286 — `EA-002-CORR-002`: Automated Review Corrections
+
+- **Date:** 2026-10-03
+- **Task:** Address all four automated review findings on PR #297 after reviewing their evidence; no finding was dismissed solely because local validation passed.
+- **Corrections:** pass the callable URL into browser evaluation; bind emulator reuse/readiness to a persisted current-port fingerprint; correct the Founder Preview web URL to port 28109; connect the CI database-creation command to mapped PostgreSQL port 28110.
+- **Validation:** preview tooling tests 44/44; the final exact-head CI check on PR #297 covers the occupied legacy-port lifecycle/browser acceptance and Firebase Emulator Suite validation.
+- **Boundaries:** no dependencies, schema/migrations, Product Truth, Commercial behavior, admission gate, `apps/web/src` or `functions/src` product functionality changed. PR #295 remains open and unchanged.
+- **Disposition:** PR #297 open/unmerged, cleanly mergeable; await Founder review.
+
+---
+
 ## Entry 284 — `EA-002-CORR-001`: Automated Review Corrections (PR #296)
 
 **Date:** 2026-10-03 · **Type:** implementation correction (local preview tooling) · **PR:** #296 · **Status:** corrected head pushed for exact-head CI and re-review; not merged.
