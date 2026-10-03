@@ -5,7 +5,8 @@
 import { spawnSync } from "node:child_process";
 import { PROJECT_ID, ports, repoRoot, urls } from "./config.mjs";
 import { buildPreviewEnv } from "./guards.mjs";
-import { emulatorsReady } from "./emulatorClient.mjs";
+import { emulatorsReady, emulatorUiReady } from "./emulatorClient.mjs";
+import { assertEmulatorPortsFree } from "./ports.mjs";
 import {
   isOwnedAndAlive,
   readPid,
@@ -45,6 +46,14 @@ export function buildFunctions(env) {
 }
 
 export async function startEmulators(env) {
+  // A previously started preview may still be owned by us but use the old Firebase UI port.
+  // Restart only that positively identified process group before checking the new port config.
+  if (isOwnedAndAlive("emulators") && (await emulatorsReady()) && !(await emulatorUiReady())) {
+    await stopDetached("emulators");
+  }
+  // Refuse before spawning if any emulator port belongs to another process. An owned, ready suite
+  // with the current UI is reused by ensureEmulators; an owned suite with the old UI was stopped above.
+  if (!isOwnedAndAlive("emulators")) await assertEmulatorPortsFree();
   startDetached(
     "emulators",
     "pnpm",
@@ -60,7 +69,16 @@ export async function startEmulators(env) {
     { env },
   );
   try {
-    await waitFor("the Firebase emulators", emulatorsReady, { timeoutMs: 180_000 });
+    await waitFor(
+      "the Firebase emulators",
+      async () => {
+        // The emulators we spawned must still be alive: if the CLI exited (e.g. it lost a port race),
+        // anything answering on the ports belongs to someone else and must not count as ready.
+        if (!isOwnedAndAlive("emulators")) throw new Error("the Firebase emulators exited during startup");
+        return (await emulatorsReady()) && (await emulatorUiReady());
+      },
+      { timeoutMs: 180_000 },
+    );
   } catch (error) {
     const tail = tailLog("emulators");
     // Leave a retryable state: never keep a half-started suite (and its ports) behind.

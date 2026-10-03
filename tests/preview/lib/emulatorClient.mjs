@@ -106,6 +106,37 @@ export async function emulatorsReady() {
 }
 
 /**
+ * True only when the Emulator UI port answers as the Firebase Emulator UI *for the demo project*:
+ * its `/api/config` must report `projectId === "demo-11thonus"`. A different service (or another
+ * project's Emulator UI) on the configured port is never mistaken for the preview's own.
+ */
+export async function emulatorUiReady({
+  baseUrl = urls.emulatorUi,
+  fetchImpl = fetch,
+  timeoutMs = 5_000,
+} = {}) {
+  try {
+    const response = await fetchImpl(`${baseUrl}/api/config`, {
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (!response.ok) return false;
+    const body = await json(response);
+    return body?.projectId === PROJECT_ID;
+  } catch {
+    return false;
+  }
+}
+
+/** Both the core emulators and this project's UI must be ready before `preview:start` reuses a suite. */
+export async function previewEmulatorsReady({
+  coreReady = emulatorsReady,
+  uiReady = emulatorUiReady,
+} = {}) {
+  if (!(await coreReady())) return false;
+  return uiReady();
+}
+
+/**
  * Completes the real email-verification flow against the Auth emulator: request the
  * verification code (`sendOobCode`), read it from the emulator's local OOB inbox, and
  * redeem it (`accounts:update` with the code) — exactly what clicking the emailed link

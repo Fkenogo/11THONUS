@@ -2,7 +2,7 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-10-02 (Entry 282 added: `EA-002` — Local Founder Preview Foundation: new `docs/runbooks/founder-preview-runbook.md`; deterministic local preview tooling under `tests/preview/` (start/stop/status/reset/seed/verify), guarded to loopback + `demo-11thonus` + `eleventhonus_platform_local` + gate off; implementation only, no screens, no `apps/`/`functions/src` change, no Product Truth change; Commercial gate OFF; `PB-013B P3-3` open; Cloudflare Tunnel deferred.)  
+> **Last controlled update:** 2026-10-03 (Entry 284 added: `EA-002-CORR-001` — five P2 automated review findings corrected on PR #296; emulator reuse now validates UI identity, preflight reflects IPv4 loopback, bind errors fail closed, port test is isolated, and UI readiness has a deadline; 42/42 preview-tooling tests pass; corrected-head CI pending.) **Prior update:** 2026-10-02 (Entry 283 added: `EA-002-CORR-001` — Founder Preview Emulator UI port moved 4000 → 4001 with a safe port preflight; see entry). **Earlier update:** 2026-10-02 (Entry 282 added: `EA-002` — Local Founder Preview Foundation: new `docs/runbooks/founder-preview-runbook.md`; deterministic local preview tooling under `tests/preview/` (start/stop/status/reset/seed/verify), guarded to loopback + `demo-11thonus` + `eleventhonus_platform_local` + gate off; implementation only, no screens, no `apps/`/`functions/src` change, no Product Truth change; Commercial gate OFF; `PB-013B P3-3` open; Cloudflare Tunnel deferred.)
 > **Prior update:** 2026-10-02 (Entry 281 added: `11THONUS-EA-001` — Founder Preview & Experience Assembly readiness **assessment only**: verified `origin/main` `c064f43…` (`WP-COM-06a` present) and the frozen Experience Reference `11thonus-prototype@18e8d700…` (unchanged); inventoried UI by role; found no Frontline counter/redemption UI, no Operator Console or Operator endpoints/read models, no customer identity/progress reads, no local runtime orchestration or migration CLI; flagged four prototype-vs-Product-Truth discrepancies and 14 Founder decisions; defined Founder Preview Slice 1, seed/reset and test model, local architecture, mobile-first and Cloudflare Tunnel assessments (suitable with bounded changes), and packages EA-002…EA-010. No implementation, Product Truth, Experience Reference, configuration, dependency, deployment or gate change; `WP-COM-06b` not started.)  
 > **Prior update:** 2026-10-01 (Entry 280 added: `WP-COM-06a` — held-Purchase processor activation and recovery: best-effort post-commit signal (not a transactional outbox) coalesced per Business and time window; scheduled recovery every 5 minutes (deployment-time cadence) with a persisted Business cursor and a rotating tail window beyond the 1000-Purchase window; per-Purchase / per-Business failure isolation; backlog observability and runbook; no schema change; gate remains `off`; implementation only, pending review, `PB-013B P3-3` remains open. Previously Entry 279 added: `WP-COM-05b` — Commercial admission gate, earmarks and held-Purchase processor: migration `0027`; ADMIT/HOLD decision on usable capacity; immutable admissions and earmarks; `reevaluatePendingAdmissions`; `verifyPurchase` discriminated outcome; web/i18n status handling; gate defaults to `off`; implementation only, pending review, `PB-013B P3-3` remains open. Previously Entry 278 added: `WP-COM-05a` — Purchase admission seam and `pending_admission` foundation: migration `0026`; `admitPurchaseToLoyalty` extracted verbatim from `verifyPurchase`; gate seam `off` only; gate-OFF equivalence proven against a golden captured on `main`; implementation only, pending review, no Commercial coupling, no capacity gate / earmark, `PB-013B P3-3` remains open.)  
 > **Prior update:** 2026-09-30 (Entry 277 added: `WP-COM-04` — Commercial consumption projection: migration `0025`; claim → account lock → classify → finalize per Reward; exactly-once at database level; fallback classification under the account lock; earmark port; bounded reconciliation service and lag metrics; implementation only, pending review, loyalty path read-only source only, no capacity gate / `pending_admission`.)  
@@ -138,6 +138,30 @@ VERIFIED`: no `FD-COM-001` file was modified by PR #241 or this administrative c
 Running log of all controlled changes to the documentation suite. Every consolidation phase appends an entry. This log does not replace version history; it provides a founder-readable trail.
 
 ---
+## Entry 284 — `EA-002-CORR-001`: Automated Review Corrections (PR #296)
+
+**Date:** 2026-10-03 · **Type:** implementation correction (local preview tooling) · **PR:** #296 · **Status:** corrected head pushed for exact-head CI and re-review; not merged.
+
+- **Review findings:** five P2 findings addressed: validate UI identity before suite reuse and restart only a positively identified stale suite; preflight IPv4 loopback only; fail closed on `EADDRINUSE`/`EACCES` and propagate other errors; remove the test's dependency on real port 4001 being free; bound UI readiness requests.
+- **Validation:** preview-tooling tests 42/42 pass locally with loopback networking enabled. Initial head CI passed; corrected head requires exact-head CI and automated re-review.
+- **Files:** `tests/preview/cli.mjs`, `tests/preview/lib/emulatorClient.mjs`, `tests/preview/lib/ports.mjs`, `tests/preview/lib/runtime.mjs`, `tests/preview/ports.test.mjs`, the [implementation report](../05-implementation/reports/ea-002-corr-001-emulator-ui-port-collision-implementation-report-2026-10-02.md), and `docs/changes/IMPLEMENTATION_CHANGES.md`; this entry.
+- **Boundaries:** no app or functions product code, dependencies, schemas, Commercial/Product Truth/admission-gate changes; EA-002 guards remain intact.
+- **Disposition:** do not merge until corrected-head CI and review gates pass; then await Founder approval.
+
+---
+
+## Entry 283 — `EA-002-CORR-001`: Founder Preview Emulator UI Port Collision (Correction)
+
+**Date:** 2026-10-02 · **Type:** implementation (local tooling correction + runbook) · **Entry `origin/main`:** `ae4f05f` · **Branch:** `claude/sleepy-babbage-6kxfof` · **Nothing deployed; not merged.**
+
+- **Root cause.** The Emulator UI was pinned to Firebase's default 4000 in `firebase.json` (mirrored in `tests/preview/lib/config.mjs`); another local project legitimately held 4000, so the emulators refused to start.
+- **Fix.** UI port 4001 in both files; bind-only preflight of the emulator ports before launch (explicit failure, no process touched); Emulator UI readiness verifies the demo project; `firebase.json` ↔ tooling drift test. Auth, Functions, Firestore ports and every EA-002 guard unchanged.
+- **Files changed:** `firebase.json`, `package.json` (test script), `tests/preview/**`, the runbook, the report, `docs/changes/IMPLEMENTATION_CHANGES.md`; this log.
+- **Disposition:** `EA-002-CORR-001 — IMPLEMENTATION COMPLETE / PENDING FOUNDER REVIEW`.
+- **Report link:** [`ea-002-corr-001-emulator-ui-port-collision-implementation-report-2026-10-02.md`](../05-implementation/reports/ea-002-corr-001-emulator-ui-port-collision-implementation-report-2026-10-02.md)
+
+---
+
 ## Entry 282 — `EA-002`: Local Founder Preview Foundation (Implementation)
 
 **Date:** 2026-10-02 · **Type:** implementation (local tooling + runbook) · **Entry `origin/main`:** `c064f43659d87922d14bb4a245d94a5dfe8d918d` · **Branch:** `claude/kind-franklin-hg8iey` · **Nothing deployed.**

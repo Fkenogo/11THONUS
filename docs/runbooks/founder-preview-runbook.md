@@ -45,7 +45,7 @@ Open **http://localhost:5173** and sign in with Email/Password (accounts below).
 | `pnpm preview:migrate` | Apply canonical migrations to the local preview database only                              |
 | `pnpm preview:seed`    | Seed a _clean_ preview (refuses if data exists — use `reset`)                              |
 
-Ports: web **5173** · Auth **9099** · Functions **5001** · Firestore **8080** · Emulator UI **4000** ·
+Ports: web **5173** · Auth **9099** · Functions **5001** · Firestore **8080** · Emulator UI **4001** (not Firebase's default 4000, so the preview coexists with other local projects) ·
 PostgreSQL **54329** (database `eleventhonus_platform_local`).
 
 Logs and process ids live in `.preview/` (git-ignored). Emulator data is held in memory: stopping and
@@ -157,7 +157,7 @@ state with `pnpm preview:reset` (or a future scenario variant) before journeys t
   The URL must be loopback and name that exact database.
 * **Corporate/sandbox proxy breaks the emulators** (symptom: _request blocked_ / emulator trigger registration
   fails): `PREVIEW_STRIP_PROXY=1 pnpm preview:start`.
-* **Ports busy:** stop what uses 5173/9099/5001/8080/4000/54329, or `pnpm preview:stop` a previous run.
+* **Ports busy:** `pnpm preview:start` checks 9099/5001/8080/4001 before launching the emulators and refuses, naming the port, if another process holds one (5173 and 54329 are checked by the web server and PostgreSQL steps). It never stops a process it did not start: free the port yourself, or `pnpm preview:stop` a previous preview run. Another project on 4000 is irrelevant.
 * **Something looks half-seeded:** `pnpm preview:reset`.
 * **Emulators log:** `.preview/logs/emulators.log`; web log: `.preview/logs/web.log`.
 
