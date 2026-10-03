@@ -75,3 +75,69 @@ Rollback is `git revert <EA-BL-001-commit>` on this branch. The implementation i
 
 **Implementation commit:** `1a3552b6756396ae0ad7bd1324b16e3cc7daadd1` on `codex/ea-bl-001`.
 **Final verification:** 928/928 web unit tests, 46/46 preview tooling tests, and 28/28 browser assertions; web typecheck, ESLint, Prettier, and `git diff --check` passed. The browser process was interrupted only after all assertions passed, during Chrome worker shutdown. No Product Truth, backend, schema, migration, or application configuration changed.
+
+## Exact change inventory
+
+No dependencies were added. `package.json` only extends the existing preview tooling test command. No configuration, schema, migration, Functions/backend, Product Truth, or prototype files changed. Product-facing web experience code changed only in the shared entry, business/customer shell framing, sign-out, and the customer identity availability statement described above.
+
+Commands executed (from the isolated clone unless noted):
+
+- `node tests/preview/cli.mjs start` / `verify` during local Auth Emulator + app preview, then `node tests/preview/cli.mjs stop`.
+- `node --test tests/preview/guards.test.mjs tests/preview/ports.test.mjs tests/preview/lib/identityVerification.test.mjs` — 46/46.
+- `apps/web/node_modules/.bin/vitest run` — 928/928.
+- `apps/web/node_modules/.bin/tsc -b --noEmit` — passed.
+- Playwright preview acceptance against system Chrome, desktop and mobile Chromium projects — 28/28 assertions.
+- ESLint on changed TS/TSX and browser spec — 0 errors.
+- Prettier check on changed code/docs, and `git diff --check` — passed.
+- Targeted Docker commands inspected and removed only the EA-BL-001 disposable PostgreSQL container/volumes; other project databases were left running.
+
+Files changed by the implementation commit:
+
+- `apps/web/src/App.test.tsx`
+- `apps/web/src/App.tsx`
+- `apps/web/src/RootEntry.tsx`
+- `apps/web/src/authentication/SignInPage.tsx`
+- `apps/web/src/authentication/SignInPanel.emailMode.test.tsx`
+- `apps/web/src/authentication/SignInPanel.test.tsx`
+- `apps/web/src/authentication/SignInPanel.tsx`
+- `apps/web/src/business/dashboard/BusinessDashboardBoundaryPage.test.tsx`
+- `apps/web/src/business/dashboard/BusinessDashboardBoundaryPage.tsx`
+- `apps/web/src/business/dashboard/BusinessDashboardRoutes.test.tsx`
+- `apps/web/src/business/dashboard/BusinessDashboardRoutes.tsx`
+- `apps/web/src/business/dashboard/BusinessDashboardShell.test.tsx`
+- `apps/web/src/business/dashboard/BusinessDashboardShell.tsx`
+- `apps/web/src/business/onboarding/BusinessResolverPage.tsx`
+- `apps/web/src/customer/CustomerHomePage.tsx`
+- `apps/web/src/customer/CustomerRoutes.tsx`
+- `apps/web/src/customer/CustomerShell.test.tsx`
+- `apps/web/src/customer/CustomerShell.tsx`
+- `apps/web/src/dev/dashboardHarness/DashboardHarnessPage.tsx`
+- `apps/web/src/experience/ExperienceBrand.tsx`
+- `apps/web/src/experience/ExperienceSignOutButton.tsx`
+- `apps/web/src/i18n/locales/en.ts`
+- `apps/web/src/i18n/locales/fr.ts`
+- `docs/05-implementation/evidence/EA-BL-001/create-account-chromium-preview-mobile.png`
+- `docs/05-implementation/evidence/EA-BL-001/create-account-chromium-preview.png`
+- `docs/05-implementation/evidence/EA-BL-001/customer-shell-chromium-preview-mobile.png`
+- `docs/05-implementation/evidence/EA-BL-001/customer-shell-chromium-preview.png`
+- `docs/05-implementation/evidence/EA-BL-001/entry-error-chromium-preview-mobile.png`
+- `docs/05-implementation/evidence/EA-BL-001/entry-error-chromium-preview.png`
+- `docs/05-implementation/evidence/EA-BL-001/entry-validation-error-chromium-preview-mobile.png`
+- `docs/05-implementation/evidence/EA-BL-001/entry-validation-error-chromium-preview.png`
+- `docs/05-implementation/evidence/EA-BL-001/manager-shell-chromium-preview-mobile.png`
+- `docs/05-implementation/evidence/EA-BL-001/manager-shell-chromium-preview.png`
+- `docs/05-implementation/evidence/EA-BL-001/owner-shell-chromium-preview-mobile.png`
+- `docs/05-implementation/evidence/EA-BL-001/owner-shell-chromium-preview.png`
+- `docs/05-implementation/evidence/EA-BL-001/registered-customer-shell-chromium-preview-mobile.png`
+- `docs/05-implementation/evidence/EA-BL-001/registered-customer-shell-chromium-preview.png`
+- `docs/05-implementation/evidence/EA-BL-001/sign-in-chromium-preview-mobile.png`
+- `docs/05-implementation/evidence/EA-BL-001/sign-in-chromium-preview.png`
+- `docs/05-implementation/evidence/EA-BL-001/staff-shell-chromium-preview-mobile.png`
+- `docs/05-implementation/evidence/EA-BL-001/staff-shell-chromium-preview.png`
+- `docs/05-implementation/reports/EA-BL-001-shared-experience-foundation-entry-journey-implementation-report-2026-10-03.md`
+- `docs/changes/IMPLEMENTATION_CHANGES.md`
+- `package.json`
+- `tests/e2e/preview/preview-identities.spec.ts`
+- `tests/preview/cli.mjs`
+- `tests/preview/lib/identityVerification.mjs`
+- `tests/preview/lib/identityVerification.test.mjs`
