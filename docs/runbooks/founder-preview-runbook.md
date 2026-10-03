@@ -32,7 +32,7 @@ Preview dataset** (first run, or whenever the emulators were restarted and the d
 → starts the web app → prints the URLs. First run takes roughly 1–2 minutes plus first-time emulator
 downloads; a warm start takes about 15 seconds.
 
-Open **http://localhost:41109** and sign in with Email/Password (accounts below).
+Open **http://localhost:28109** and sign in with Email/Password (accounts below).
 
 | Command                | What it does                                                                               |
 | ---------------------- | ------------------------------------------------------------------------------------------ |

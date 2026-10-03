@@ -10,6 +10,7 @@ import { emulatorUiReady, previewEmulatorsReady } from "./lib/emulatorClient.mjs
 import {
   DEFAULT_POSTGRES_URL,
   emulatorLaunchPorts,
+  emulatorPortFingerprint,
   ports as configuredPorts,
   repoRoot,
   urls,
@@ -88,6 +89,12 @@ test("configuration: every Founder Preview service uses its dedicated 281xx port
   assert.match(urls.functions, /^http:\/\/127\.0\.0\.1:28102\/demo-11thonus\/europe-west1$/);
   assert.equal(urls.firestore, "http://127.0.0.1:28103");
   assert.equal(new URL(DEFAULT_POSTGRES_URL).port, String(configuredPorts.postgres));
+  assert.equal(
+    emulatorPortFingerprint,
+    JSON.stringify(
+      Object.fromEntries(emulatorLaunchPorts.map((name) => [name, configuredPorts[name]])),
+    ),
+  );
   for (const name of Object.keys(configuredPorts)) {
     assert.ok(![4000, 4001, 9099, 5001, 8080, 5173, 54329].includes(configuredPorts[name]));
   }
@@ -162,10 +169,15 @@ test("legacy project ports 4000, 4001 and 9099 can be occupied without being pro
 test("emulator and web readiness probes run only for positively owned preview processes", () => {
   const runtime = fs.readFileSync(path.join(repoRoot, "tests/preview/lib/runtime.mjs"), "utf8");
   const cli = fs.readFileSync(path.join(repoRoot, "tests/preview/cli.mjs"), "utf8");
-  assert.match(runtime, /if \(isOwnedAndAlive\("emulators"\)\) \{[\s\S]*?emulatorsReady\(\)/);
+  const processes = fs.readFileSync(path.join(repoRoot, "tests/preview/lib/processes.mjs"), "utf8");
+  assert.match(
+    runtime,
+    /isOwnedWithConfig\("emulators", emulatorPortFingerprint\)[\s\S]*?emulatorsReady\(\)/,
+  );
   assert.match(runtime, /if \(!isOwnedAndAlive\("web"\)\) throw new Error[\s\S]*?fetch\(/);
   assert.ok(!runtime.includes("webPortAnswers"));
-  assert.ok(cli.includes('isOwnedAndAlive("emulators") && (await previewEmulatorsReady())'));
+  assert.ok(cli.includes('isOwnedWithConfig("emulators", emulatorPortFingerprint)'));
+  assert.match(processes, /JSON\.stringify\(\{ pid: child\.pid, stamp, configFingerprint \}\)/);
 });
 
 test("preflight passes when every emulator port is free", async () => {

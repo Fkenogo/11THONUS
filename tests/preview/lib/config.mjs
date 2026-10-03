@@ -41,6 +41,11 @@ export const emulatorLaunchPorts = Object.freeze([
   "logging",
 ]);
 
+/** Persisted with the managed emulator PID so upgrades never probe a stale port allocation. */
+export const emulatorPortFingerprint = JSON.stringify(
+  Object.fromEntries(emulatorLaunchPorts.map((name) => [name, ports[name]])),
+);
+
 export const urls = Object.freeze({
   web: `http://localhost:${ports.web}`,
   auth: `http://${LOOPBACK}:${ports.auth}`,

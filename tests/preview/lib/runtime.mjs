@@ -3,12 +3,13 @@
 // Reuses the repository's own commands (`pnpm --filter functions build`, `firebase
 // emulators:start --project demo-11thonus`, `pnpm --filter web dev`).
 import { spawnSync } from "node:child_process";
-import { PROJECT_ID, ports, repoRoot, urls } from "./config.mjs";
+import { PROJECT_ID, emulatorPortFingerprint, ports, repoRoot, urls } from "./config.mjs";
 import { buildPreviewEnv } from "./guards.mjs";
 import { emulatorsReady, emulatorUiReady } from "./emulatorClient.mjs";
 import { assertEmulatorPortsFree, isPortFree } from "./ports.mjs";
 import {
   isOwnedAndAlive,
+  isOwnedWithConfig,
   readPid,
   startDetached,
   stopDetached,
@@ -49,7 +50,11 @@ export async function startEmulators(env) {
   // Reuse only a complete, positively owned preview. A managed but stale/incomplete instance is
   // safe to restart; an unowned listener is never queried, stopped or modified.
   if (isOwnedAndAlive("emulators")) {
-    if ((await emulatorsReady()) && (await emulatorUiReady())) return;
+    if (
+      isOwnedWithConfig("emulators", emulatorPortFingerprint) &&
+      (await emulatorsReady()) &&
+      (await emulatorUiReady())
+    ) return;
     await stopDetached("emulators");
   }
   // Bind-only preflight: never connect to, signal or identify whatever holds a configured port.
@@ -66,7 +71,7 @@ export async function startEmulators(env) {
       "--only",
       "auth,functions,firestore,ui",
     ],
-    { env },
+    { env, configFingerprint: emulatorPortFingerprint },
   );
   try {
     await waitFor(

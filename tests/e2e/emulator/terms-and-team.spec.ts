@@ -42,14 +42,18 @@ test.describe("Business Terms / Activation (Phase G)", () => {
     // callable protocol requires `rawToken`/`referenceType` inside `data`,
     // which this omits) — confirming the backend independently refuses it
     // rather than trusting only the disabled button.
-    const result = await page.evaluate(async (bizId) => {
-      const res = await fetch(`${urls.functions}/submitBusinessForVerification`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data: { businessId: bizId } }),
-      });
-      return { status: res.status, body: await res.json().catch(() => null) };
-    }, businessId);
+    const functionsUrl = `${urls.functions}/submitBusinessForVerification`;
+    const result = await page.evaluate(
+      async ({ bizId, functionsUrl }) => {
+        const res = await fetch(functionsUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ data: { businessId: bizId } }),
+        });
+        return { status: res.status, body: await res.json().catch(() => null) };
+      },
+      { bizId: businessId, functionsUrl },
+    );
 
     // An unauthenticated/incomplete call must never succeed.
     expect(result.status).not.toBe(200);

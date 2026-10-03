@@ -10,13 +10,14 @@
 ## 2026-10-03 — EA-002-CORR-002 — Founder Preview Cross-Project Port Isolation (PR #297)
 
 - **Task:** Give the local Founder Preview a coherent 11thONUS-specific port allocation so it runs beside other projects without changing or stopping their processes.
-- **Implementation commit:** `0496be735e18ca6be746345887f5507c2f962260`; PR #297 is open and unmerged.
+- **Implementation commit:** `0496be735e18ca6be746345887f5507c2f962260`; review-fix commits and final exact head are recorded in the linked report; PR #297 is open and unmerged.
 - **Port block:** Auth 28101, Functions 28102, Firestore 28103, Storage 28104, Hosting 28105, Emulator UI 28106, Hub 28107, logging 28108, web 28109, PostgreSQL 28110.
 - **Safety:** bind-only collision checks; readiness HTTP requests only for positively owned preview processes; PostgreSQL publishes on loopback; existing EA-002 demo-project, destructive-operation, process-ownership and Commercial gate guards retained.
-- **Validation:** preview guards/ports 44/44; focused Firebase client tests 15/15; web and Functions typechecks pass; ESLint, Prettier, JavaScript syntax and `git diff --check` pass. Full cross-project lifecycle/browser proof is configured in CI on PR #297; CI was running at report authoring.
+- **Validation:** preview guards/ports 44/44; focused Firebase client tests 15/15; web and Functions typechecks pass; ESLint, Prettier, JavaScript syntax and `git diff --check` pass. Exact-head CI passed, including cross-project port-isolation acceptance, browser journeys, PostgreSQL integration and Firebase Emulator Suite validation.
 - **Boundaries:** no dependencies, migrations, schema, `functions/src`, Product Truth, Commercial logic or admission-gate changes. Browser Firebase source changes only select local emulator ports when emulator mode is enabled.
-- **Files:** see the [implementation report](../05-implementation/reports/ea-002-corr-002-founder-preview-cross-project-port-isolation-implementation-report-2026-10-03.md) for the complete 23-file implementation inventory and validation details.
-- **Disposition:** do not merge until exact-head CI is green and automated review findings are addressed. PR #295 / EA-003 remains open and untouched.
+- **Files:** see the [implementation report](../05-implementation/reports/ea-002-corr-002-founder-preview-cross-project-port-isolation-implementation-report-2026-10-03.md) for the complete 28-file PR inventory and validation details.
+- **Automated review dispositions:** all four findings were investigated and corrected: pass the Functions URL into browser evaluation; persist/check the emulator port fingerprint before readiness requests; use web port 28109 in the runbook; create the CI preview database through PostgreSQL host port 28110. See the implementation report for details.
+- **Disposition:** ready for Founder review; do not merge without Founder approval. PR #295 / EA-003 remains open and untouched.
 
 ---
 

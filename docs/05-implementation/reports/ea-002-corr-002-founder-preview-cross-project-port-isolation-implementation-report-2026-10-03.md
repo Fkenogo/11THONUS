@@ -66,14 +66,19 @@ All other code that requests ports 4000, 4001, 9099, 5001, 8080, 5173 or 54329 i
 19. `tests/preview/lib/guards.mjs`
 20. `tests/preview/lib/ports.mjs`
 21. `tests/preview/lib/postgres.mjs`
-22. `tests/preview/lib/runtime.mjs`
-23. `tests/preview/ports.test.mjs`
+22. `tests/preview/lib/processes.mjs`
+23. `tests/preview/lib/runtime.mjs`
+24. `tests/preview/ports.test.mjs`
+25. `docs/00-governance/documentation-changes-log.md`
+26. `docs/05-implementation/reports/README.md`
+27. `docs/changes/IMPLEMENTATION_CHANGES.md`
+28. `docs/05-implementation/reports/ea-002-corr-002-founder-preview-cross-project-port-isolation-implementation-report-2026-10-03.md`
 
-This report and the repository change-tracking entries are added in the documentation follow-up commit on the same PR.
+The runbook and the report/change-tracking documents above are part of the same PR.
 
 ## 6. Code diff summary
 
-The correction replaces scattered defaults with a deterministic local block, makes SDK emulator ports configurable only on the emulator path, covers Hub/logging in preflight, removes the web listener HTTP probe, and gates service readiness reads on process ownership. Port drift checks cover Firebase CLI JSON, browser SDK fallbacks and overrides, Playwright, seed tooling, Docker Compose, CI and generated URLs. No unrelated process management was added.
+The correction replaces scattered defaults with a deterministic local block, makes SDK emulator ports configurable only on the emulator path, covers Hub/logging in preflight, removes the web listener HTTP probe, and gates service readiness reads on process ownership plus the persisted current emulator-port fingerprint. Port drift checks cover Firebase CLI JSON, browser SDK fallbacks and overrides, Playwright, seed tooling, Docker Compose, CI and generated URLs. No unrelated process management was added.
 
 ## 7. Commands and validation
 
@@ -115,6 +120,19 @@ The block is deterministic, not exclusive: another process could occupy a newly 
 
 Rollback by reverting the EA-002-CORR-002 implementation and documentation commits (or closing PR #297 before merge). Restore the prior Firebase/client ports and CI PostgreSQL mapping together; do not stop any process to perform rollback.
 
-## 13. PR state
+## 13. Automated review findings and dispositions
 
-PR #297 is open and unmerged against `main`; exact-head CI is running. PR #295 / EA-003 remains open and untouched. Do not merge this PR until exact-head CI and automated review are complete.
+All four automated review findings were investigated and corrected:
+
+| Severity | Finding | Disposition |
+| --- | --- | --- |
+| P1 | Browser-side evaluation referenced the test runner's imported `urls` binding. | Compute the Functions URL in the test runner and pass it as a serializable argument to `page.evaluate`. |
+| P2 | A managed emulator process from the previous port allocation could be probed before preflight. | Persist a fingerprint of the emulator port map with the owned PID record. Readiness checks now require both PID/start-time ownership and the current fingerprint; an owned stale instance is stopped before bind-only preflight and restart. CLI readiness/status paths use the same check. |
+| P2 | Runbook's primary web URL used port 41109. | Corrected to the canonical web port 28109. |
+| P1 | CI's database creation used PostgreSQL's default host port 5432. | Changed `psql` to use the service's mapped host port 28110, matching the preview URL. Exact-head CI now proves database creation and the full cross-project scenario. |
+
+The browser test, stale-process guard, runbook, CI correction and regression assertions are in the final PR diff. No finding was dismissed based on local validation.
+
+## 14. Final PR state
+
+PR #297 is open and unmerged against `main`. CI run `37120933553` passed on the immediately preceding head `9f2a07613004434ac8016775d706f9196c4da1cd`, including build, lint, formatting, typecheck, unit/component tests, PostgreSQL integration, Playwright e2e, preview tooling, cross-project acceptance and Firebase Emulator Suite validation. The four findings in §13 were corrected afterward; final exact-head CI, mergeability, and thread resolution are reported from the current PR state. PR #295 / EA-003 remains open at its unchanged head and was not modified. No merge or deployment occurred; await Founder review.
