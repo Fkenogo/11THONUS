@@ -125,7 +125,7 @@ jobs:
           PREVIEW_POSTGRES_URL: postgres://postgres:postgres@localhost:28110/eleventhonus_platform_local
           PGPASSWORD: postgres
         run: |
-          psql -h localhost -U postgres -c "CREATE DATABASE eleventhonus_platform_local"
+          psql -h localhost -p 28110 -U postgres -c "CREATE DATABASE eleventhonus_platform_local"
           node tests/preview/cross-project-acceptance.mjs
 
       - name: Stop Founder Preview (cleanup)
