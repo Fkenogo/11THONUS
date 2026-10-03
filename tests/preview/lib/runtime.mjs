@@ -46,8 +46,13 @@ export function buildFunctions(env) {
 }
 
 export async function startEmulators(env) {
-  // Refuse before spawning if any emulator port belongs to another process. (If our own emulators
-  // are already running, `startDetached` reports that instead — their ports are not a conflict.)
+  // A previously started preview may still be owned by us but use the old Firebase UI port.
+  // Restart only that positively identified process group before checking the new port config.
+  if (isOwnedAndAlive("emulators") && (await emulatorsReady()) && !(await emulatorUiReady())) {
+    await stopDetached("emulators");
+  }
+  // Refuse before spawning if any emulator port belongs to another process. An owned, ready suite
+  // with the current UI is reused by ensureEmulators; an owned suite with the old UI was stopped above.
   if (!isOwnedAndAlive("emulators")) await assertEmulatorPortsFree();
   startDetached(
     "emulators",

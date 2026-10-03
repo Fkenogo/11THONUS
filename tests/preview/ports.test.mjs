@@ -6,7 +6,7 @@ import http from "node:http";
 import net from "node:net";
 import path from "node:path";
 import { test } from "node:test";
-import { emulatorUiReady } from "./lib/emulatorClient.mjs";
+import { emulatorUiReady, previewEmulatorsReady } from "./lib/emulatorClient.mjs";
 import { ports as configuredPorts, repoRoot, urls } from "./lib/config.mjs";
 import {
   PortConflictError,
@@ -16,7 +16,7 @@ import {
 } from "./lib/ports.mjs";
 
 /** An "unrelated local project": a plain TCP server on a port the OS picks (or a given one). */
-function occupy(port = 0) {
+function occupy(port = 0, host = "127.0.0.1") {
   return new Promise((resolve, reject) => {
     const sockets = new Set();
     const server = net.createServer((socket) => {
@@ -25,7 +25,7 @@ function occupy(port = 0) {
       socket.end("unrelated-service\n");
     });
     server.once("error", reject);
-    server.listen({ port, host: "127.0.0.1" }, () =>
+    server.listen({ port, host }, () =>
       resolve({
         port: server.address().port,
         isListening: () => server.listening,
@@ -94,15 +94,19 @@ test("an unrelated process on port 4000 is irrelevant: preflight passes and the 
   }
   try {
     assert.equal(await isPortFree(4000), false, "4000 is occupied for the duration of this test");
-    // The real configured ports are probed; 4000 is not among them, so this must not fail because of it.
-    const occupiedNames = (await findOccupiedPorts()).map((o) => o.port);
-    assert.ok(!occupiedNames.includes(4000), "4000 is never probed or reported");
+    // Use controlled preview ports so another local service on the real 4001 cannot make this test flaky.
+    const ports = await freePreviewPorts();
+    const probed = [];
+    await assertEmulatorPortsFree({
+      ports,
+      probe: async (port) => {
+        probed.push(port);
+        return true;
+      },
+    });
+    assert.deepEqual(probed, Object.values(ports));
+    assert.ok(!probed.includes(4000), "4000 is never probed or reported");
     if (other) {
-      assert.deepEqual(
-        occupiedNames.filter((p) => p === configuredPorts.emulatorUi),
-        [],
-        "4001 is independent of 4000",
-      );
       assert.equal(other.isListening(), true, "the unrelated listener was not stopped");
       assert.equal(await other.answers(), true, "the unrelated listener still serves its clients");
     }
@@ -135,6 +139,25 @@ test("an unrelated process on the preview's own Emulator UI port fails explicitl
     });
     assert.equal(other.isListening(), true, "the unrelated listener was not stopped");
     assert.equal(await other.answers(), true, "the unrelated listener still serves its clients");
+  } finally {
+    await other.close();
+  }
+});
+
+test("an IPv6-only listener does not block the preview's IPv4 loopback port", async (t) => {
+  let other;
+  try {
+    other = await occupy(0, "::1");
+  } catch (error) {
+    if (["EADDRNOTAVAIL", "EAFNOSUPPORT", "EPERM"].includes(error.code)) {
+      t.skip("IPv6 loopback is unavailable in this environment");
+      return;
+    }
+    throw error;
+  }
+  try {
+    assert.equal(await isPortFree(other.port), true);
+    assert.equal(other.isListening(), true, "the IPv6-only listener remains untouched");
   } finally {
     await other.close();
   }
@@ -203,4 +226,28 @@ test("readiness: only the Emulator UI of the demo project counts as ready", asyn
   }
   // Nothing listening at all.
   assert.equal(await emulatorUiReady({ baseUrl: `http://127.0.0.1:${await freePort()}` }), false);
+});
+
+test("readiness: an Emulator UI that never responds is bounded by the request timeout", async () => {
+  const hanging = await uiServer(() => {});
+  try {
+    assert.equal(await emulatorUiReady({ baseUrl: hanging.baseUrl, timeoutMs: 25 }), false);
+  } finally {
+    await hanging.close();
+  }
+});
+
+test("an existing emulator suite is reusable only when its demo-project UI is ready", async () => {
+  assert.equal(
+    await previewEmulatorsReady({ coreReady: async () => true, uiReady: async () => false }),
+    false,
+  );
+  assert.equal(
+    await previewEmulatorsReady({ coreReady: async () => true, uiReady: async () => true }),
+    true,
+  );
+  assert.equal(
+    await previewEmulatorsReady({ coreReady: async () => false, uiReady: async () => true }),
+    false,
+  );
 });

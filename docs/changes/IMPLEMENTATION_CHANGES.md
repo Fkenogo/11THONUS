@@ -7,6 +7,18 @@
 
 ---
 
+## 2026-10-03 — EA-002-CORR-001 — Automated Review Corrections (PR #296)
+
+- **Date:** 2026-10-03
+- **Task:** Correct five P2 automated findings on the Founder Preview Emulator UI port collision correction; PR #296 remains unmerged.
+- **Corrections:** verify `demo-11thonus` UI readiness before reusing a suite; stop only a positively identified stale owned suite using the old UI config; probe IPv4 loopback only; fail closed on `EADDRINUSE`/`EACCES` and propagate unexpected bind errors; isolate port-4000 testing from real port 4001; bound Emulator UI readiness requests to five seconds.
+- **Validation:** `node --test tests/preview/guards.test.mjs tests/preview/ports.test.mjs` — 42/42 pass with local networking enabled. The first PR head CI passed on `c15c710…`; corrected head CI is pending rerun.
+- **Files:** `tests/preview/cli.mjs`, `tests/preview/lib/emulatorClient.mjs`, `tests/preview/lib/ports.mjs`, `tests/preview/lib/runtime.mjs`, `tests/preview/ports.test.mjs`, the implementation report, this change log, and the governance documentation log.
+- **Product boundary:** no `apps/web/src` or `functions/src` changes; no dependency, schema, Commercial, Product Truth, or admission-gate changes. EA-002 guards preserved.
+- **Disposition:** do not merge until corrected exact-head CI passes and automated review is clear; then await Founder approval.
+
+---
+
 ## 2026-10-02 — EA-002-CORR-001 — Founder Preview Emulator UI Port Collision (Correction)
 
 - **Date:** 2026-10-02

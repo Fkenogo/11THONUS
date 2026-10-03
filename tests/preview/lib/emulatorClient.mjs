@@ -110,15 +110,30 @@ export async function emulatorsReady() {
  * its `/api/config` must report `projectId === "demo-11thonus"`. A different service (or another
  * project's Emulator UI) on the configured port is never mistaken for the preview's own.
  */
-export async function emulatorUiReady({ baseUrl = urls.emulatorUi, fetchImpl = fetch } = {}) {
+export async function emulatorUiReady({
+  baseUrl = urls.emulatorUi,
+  fetchImpl = fetch,
+  timeoutMs = 5_000,
+} = {}) {
   try {
-    const response = await fetchImpl(`${baseUrl}/api/config`);
+    const response = await fetchImpl(`${baseUrl}/api/config`, {
+      signal: AbortSignal.timeout(timeoutMs),
+    });
     if (!response.ok) return false;
     const body = await json(response);
     return body?.projectId === PROJECT_ID;
   } catch {
     return false;
   }
+}
+
+/** Both the core emulators and this project's UI must be ready before `preview:start` reuses a suite. */
+export async function previewEmulatorsReady({
+  coreReady = emulatorsReady,
+  uiReady = emulatorUiReady,
+} = {}) {
+  if (!(await coreReady())) return false;
+  return uiReady();
 }
 
 /**

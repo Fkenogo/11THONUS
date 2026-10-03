@@ -16,28 +16,25 @@ const PORT_PURPOSE = Object.freeze({
   web: "web dev server",
 });
 
-// IPv4 and IPv6 loopback: the Firebase emulators resolve `localhost` to either.
-const PROBE_HOSTS = [LOOPBACK, "::1"];
-
 function bindProbe(port, host) {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const server = net.createServer();
     server.unref();
     server.once("error", (error) => {
-      // Only "in use" counts as occupied. A host family this machine lacks (EADDRNOTAVAIL,
-      // EAFNOSUPPORT) cannot hold the port, so it is not a conflict.
-      resolve(error.code !== "EADDRINUSE");
+      // EACCES can mean the OS reserves the port even when no process owns it. Other errors do
+      // not prove availability and must fail closed.
+      if (error.code === "EADDRINUSE" || error.code === "EACCES") resolve(false);
+      else reject(error);
     });
     server.listen({ port, host, exclusive: true }, () => server.close(() => resolve(true)));
   });
 }
 
-/** True when nothing is bound to `port` on IPv4 or IPv6 loopback. */
+/** True when the preview's IPv4 loopback address can bind `port`. */
 export async function isPortFree(port) {
-  for (const host of PROBE_HOSTS) {
-    if (!(await bindProbe(port, host))) return false;
-  }
-  return true;
+  // All preview clients use 127.0.0.1. Firebase's emulator port selection can use its primary
+  // localhost address when a secondary address is occupied, so an IPv6-only listener is irrelevant.
+  return bindProbe(port, LOOPBACK);
 }
 
 /** Returns `[{ name, port, purpose }]` for each requested port that is already taken. */
@@ -57,7 +54,7 @@ export class PortConflictError extends Error {
   constructor(occupied) {
     const list = occupied.map((o) => `  - ${o.port} (needed by the ${o.purpose})`).join("\n");
     super(
-      `Cannot start the Firebase emulators — a required port is already in use by another process:\n${list}\n` +
+      `Cannot start the Firebase emulators — a required port is unavailable:\n${list}\n` +
         "The preview does not stop or modify processes it did not start. Free the port (or stop the other " +
         "service yourself) and retry. If it is a previous 11thONUS preview, run `pnpm preview:stop`.",
     );

@@ -21,6 +21,7 @@ import {
   clearAuthAccounts,
   clearFirestore,
   emulatorsReady,
+  previewEmulatorsReady,
   signIn,
 } from "./lib/emulatorClient.mjs";
 import { PreviewGuardError, assertLocalPreviewTarget } from "./lib/guards.mjs";
@@ -161,7 +162,7 @@ async function seedIsCoherent(postgresUrl) {
 }
 
 async function ensureEmulators(env) {
-  if (await emulatorsReady()) return;
+  if (await previewEmulatorsReady()) return;
   log("→ Building Functions (pnpm --filter functions build)");
   buildFunctions(env);
   log("→ Starting Firebase emulators (Auth, Functions, Firestore, UI)");
