@@ -15,7 +15,7 @@
 - **Validation:** web unit tests 928/928 across 127 files; web TypeScript project check passed; preview tooling 46/46; actual desktop/mobile browser acceptance 28 passed, including Grace Owner, Manager, Staff, Customer, Create Account, invalid credentials, emulator endpoint port 28101, route resolution, and screenshots. Browser runner needed interruption only during post-pass Chrome shutdown.
 - **Evidence/report:** [EA-BL-001 implementation report](../05-implementation/reports/EA-BL-001-shared-experience-foundation-entry-journey-implementation-report-2026-10-03.md); screenshots in `docs/05-implementation/evidence/EA-BL-001/`.
 - **Boundaries:** no Product Truth/backend/schema/migration/dependency/application configuration changes; no deployment; Commercial gate OFF; no WP-COM-08. PR #295 remains held and untouched. No Founder Preview readiness claim.
-- **Disposition:** PR #295 recommendation is supersede; close formally after Founder accepts the baseline. Commit SHA: to be recorded after final review/commit.
+- **Disposition:** PR #295 recommendation is supersede; close formally after Founder accepts the baseline. Implementation commit: `1a3552b6756396ae0ad7bd1324b16e3cc7daadd1` (`feat: assemble shared experience and entry journey`).
 
 ---
 
