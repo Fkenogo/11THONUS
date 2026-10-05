@@ -31,6 +31,15 @@ vi.mock("./hooks/purchaseMutations", () => ({
   useDisputePurchaseMutation: () => ({ mutateAsync: mockDispute, isPending: false }),
 }));
 
+vi.mock("./hooks/experienceQueries", () => ({
+  useCustomerExperienceOverviewQuery: () => ({
+    data: { circles: [], activity: [], availableRewards: [] },
+    isPending: false,
+    isError: false,
+    refetch: vi.fn(),
+  }),
+}));
+
 function purchaseWire(overrides: Partial<CustomerPurchaseWire> = {}): CustomerPurchaseWire {
   return {
     id: "p-1",

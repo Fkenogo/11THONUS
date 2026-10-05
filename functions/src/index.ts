@@ -22,6 +22,7 @@ import { getAdminApp } from "./infrastructure/firebase/admin";
 import type { ErrorCategory } from "./shared/errors/errorCategories";
 import { AuthenticationDomainError } from "./domains/authentication/models/authenticationErrors";
 import { IdentityDomainError } from "./domains/identity/models/identityErrors";
+import { readCustomerIdentityPresentation } from "./composition/customerIdentityPresentationWiring";
 import { firebaseAdminTokenVerifier } from "./domains/authentication/services/firebaseTokenVerifier";
 import {
   handleAuthenticate,
@@ -166,6 +167,7 @@ import {
   listAvailableRewardsForBusiness as listAvailableRewardsForBusinessQuery,
   listLoyaltyCycleProgressForBusiness as listLoyaltyCycleProgressForBusinessQuery,
 } from "./domains/purchase/services/purchaseQueries";
+import { getCustomerExperienceOverview } from "./domains/purchase/services/customerExperienceQueries";
 
 setGlobalOptions({ region: PLATFORM_REGION, maxInstances: 10 });
 
@@ -749,6 +751,14 @@ function parseActorRequest(
     rawToken: parseRawToken(value.rawToken),
     referenceType: parseReferenceType(value.referenceType),
   };
+}
+
+/** Customer-owned experience reads accept auth proof only, never an identity selector. */
+export function parseMyCustomerExperienceRequest(
+  data: unknown,
+): ResolveAuthenticatedBusinessActorParams {
+  const value = (data ?? {}) as Record<string, unknown>;
+  return parseActorRequest(value);
 }
 
 export function parseAccessibleBusinessesRequest(
@@ -2521,6 +2531,38 @@ export const getCustomerPurchaseRecord = onCall(async (request) => {
       customerIdentityId,
       purchaseRecordId: parseNonEmptyString(value.purchaseRecordId),
     });
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+/** Customer's canonical display name, Loyalty Number and active QR identity; auth-scoped only. */
+export const getMyCustomerIdentityPresentation = onCall(async (request) => {
+  const parsed = parseMyCustomerExperienceRequest(request.data);
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId: customerIdentityId } = await resolveAuthenticatedIdentityActorReadOnly(
+      db,
+      parsed,
+      { verifier: firebaseAdminTokenVerifier() },
+    );
+    return await readCustomerIdentityPresentation(db, customerIdentityId);
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+/** Customer loyalty snapshot: all rows are scoped by the server-resolved identity. */
+export const getMyCustomerExperienceOverview = onCall(async (request) => {
+  const parsed = parseMyCustomerExperienceRequest(request.data);
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId: customerIdentityId } = await resolveAuthenticatedIdentityActorReadOnly(
+      db,
+      parsed,
+      { verifier: firebaseAdminTokenVerifier() },
+    );
+    return await getCustomerExperienceOverview(db, getPurchasePostgresPool(), customerIdentityId);
   } catch (error) {
     throw toHttpsError(error);
   }

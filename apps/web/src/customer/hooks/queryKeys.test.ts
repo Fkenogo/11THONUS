@@ -12,6 +12,12 @@ describe("customerPurchaseQueryKeys", () => {
     expect(customerPurchaseQueryKeys.rewards("uid-a")).not.toEqual(
       customerPurchaseQueryKeys.rewards("uid-b"),
     );
+    expect(customerPurchaseQueryKeys.experience("uid-a")).not.toEqual(
+      customerPurchaseQueryKeys.experience("uid-b"),
+    );
+    expect(customerPurchaseQueryKeys.identity("uid-a")).not.toEqual(
+      customerPurchaseQueryKeys.identity("uid-b"),
+    );
   });
 
   it("produces the same key for the same identity scope, so same-customer caching is unaffected", () => {

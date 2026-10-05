@@ -13,6 +13,7 @@ import {
   parseAcceptBusinessTermsRequest,
   parseSetDisplayNameRequest,
   parseGetMyDisplayNameRequest,
+  parseMyCustomerExperienceRequest,
   parseDiscoverPlatformAdministratorRequest,
   parseAccessibleBusinessesRequest,
   parseCreateRewardProgramRequest,
@@ -26,6 +27,20 @@ import {
 } from "./index";
 import { RewardProgramDomainError } from "./domains/rewardProgram/models/rewardProgramErrors";
 import { PurchaseDomainError } from "./domains/purchase/models/purchaseErrors";
+
+describe("parseMyCustomerExperienceRequest (customer-owned reads)", () => {
+  it("retains authentication proof and drops any client-selected identity", () => {
+    expect(
+      parseMyCustomerExperienceRequest({
+        rawToken: "id-token",
+        referenceType: "email",
+        customerIdentityId: "another-customer",
+        loyaltyNumber: "forged",
+        role: "owner",
+      }),
+    ).toEqual({ rawToken: "id-token", referenceType: "email" });
+  });
+});
 
 /**
  * Regression guard for the callable-boundary provider allow-list

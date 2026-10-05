@@ -63,13 +63,14 @@ describe("useVerifyPurchaseMutation invalidation scope", () => {
       await result.current.mutateAsync({ purchaseRecordId: "p-1" });
     });
 
-    await waitFor(() => expect(invalidateSpy).toHaveBeenCalledTimes(3));
+    await waitFor(() => expect(invalidateSpy).toHaveBeenCalledTimes(4));
     const invalidatedKeys = invalidateSpy.mock.calls.map((call) => call[0]?.queryKey);
     expect(invalidatedKeys).toContainEqual(customerPurchaseQueryKeys.waiting("uid-customer-a"));
     expect(invalidatedKeys).toContainEqual(
       customerPurchaseQueryKeys.purchase("uid-customer-a", "p-1"),
     );
     expect(invalidatedKeys).toContainEqual(customerPurchaseQueryKeys.rewards("uid-customer-a"));
+    expect(invalidatedKeys).toContainEqual(customerPurchaseQueryKeys.experience("uid-customer-a"));
 
     // Never the unscoped pre-fix shape and never another customer's scope.
     for (const key of invalidatedKeys) {

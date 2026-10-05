@@ -84,6 +84,9 @@ function settleSuccess(
   harness.queryClient.invalidateQueries({
     queryKey: customerPurchaseQueryKeys.rewards(identityScope),
   });
+  harness.queryClient.invalidateQueries({
+    queryKey: customerPurchaseQueryKeys.experience(identityScope),
+  });
 }
 
 export function useVerifyPurchaseMutation(platform: CustomerPlatform) {

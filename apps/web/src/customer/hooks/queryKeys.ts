@@ -16,4 +16,6 @@ export const customerPurchaseQueryKeys = {
   purchase: (identityScope: string, purchaseRecordId: string) =>
     ["customerPurchase", identityScope, purchaseRecordId] as const,
   rewards: (identityScope: string) => ["customerRewards", "available", identityScope] as const,
+  experience: (identityScope: string) => ["customerExperience", "overview", identityScope] as const,
+  identity: (identityScope: string) => ["customerExperience", "identity", identityScope] as const,
 };
