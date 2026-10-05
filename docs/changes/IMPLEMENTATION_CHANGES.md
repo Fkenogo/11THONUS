@@ -7,6 +7,18 @@
 
 ---
 
+## 2026-10-05 — EA-BL-001-CORR-002-A — Customer Identity & Circle
+
+- **Task:** Assemble the customer Identity/Circle vertical slice from the frozen prototype using real server-authoritative state.
+- **Base/authority:** PR #299 merge `76214100400b0df43082b29f6ddd46e13c3dd5d2`; Slice A only. Implementation commit `e5bd42dc0fa5d97f4533b311458c861e61dec1b1`; draft PR #300.
+- **Implementation:** Auth-context-derived canonical identity/QR read; customer-scoped Cycle, Pending Unit, reward and activity projection; prototype-faithful home/Circle/activity/profile and mobile navigation; English/French copy.
+- **Data/security:** Pending Units project only from `waiting_for_customer`; Verified Units use persisted Cycle allocations; Reward availability uses the existing server read; no client-supplied customer identity authority, confirmer disclosure, schema change or new dependency.
+- **Validation:** Web 937/937; Functions 1,982/1,982; TypeScript, ESLint, Prettier and production build pass; preview tooling 44/44; migrated PostgreSQL read smoke check passed.
+- **Preview status:** Blocked by emulator ports held by a separate running preview; exact-branch browser comparison, E2E and Founder acceptance remain pending. Full report: [EA-BL-001-CORR-002-A report](../05-implementation/reports/ea-bl-001-corr-002-a-customer-identity-circle-implementation-report-2026-10-05.md).
+- **Disposition:** Do not call Slice A complete until Founder Preview and visual acceptance pass. No merge; no later slice started.
+
+---
+
 ## 2026-10-03 — EA-002-CORR-002 — Founder Preview Cross-Project Port Isolation (PR #297)
 
 - **Task:** Give the local Founder Preview a coherent 11thONUS-specific port allocation so it runs beside other projects without changing or stopping their processes.

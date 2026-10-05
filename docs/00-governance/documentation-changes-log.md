@@ -2,7 +2,7 @@
 > **Version:** running · **Status:** Controlled running log · **Classification:** Working (governance record)  
 > **Governing document:** 11thONUS Platform Constitution  
 > **Source-of-truth path:** `docs/00-governance/documentation-changes-log.md`  
-> **Last controlled update:** 2026-10-05 (Entry 289 added: Slice A Founder Preview acceptance and independent Technical Review handoff; PR #300 remains open/unmerged.) **Prior update:** 2026-10-03 (Entry 286: `EA-002-CORR-002` automated review corrections and exact-head CI passed on PR #297; still open/unmerged awaiting Founder review.) **Earlier updates:** Entries 288–282, below.
+> **Last controlled update:** 2026-10-05 (Entry 290 added: Slice A post-review reconciliation; PR #300 reconciled to current main, independent review approved with non-blocking notes, Founder final confirmation satisfied; awaiting merge.) **Prior update:** Entry 289: Founder Preview acceptance and independent Technical Review handoff. **Earlier updates:** Entries 288–282, below.
 > **Prior update:** 2026-10-02 (Entry 281 added: `11THONUS-EA-001` — Founder Preview & Experience Assembly readiness **assessment only**: verified `origin/main` `c064f43…` (`WP-COM-06a` present) and the frozen Experience Reference `11thonus-prototype@18e8d700…` (unchanged); inventoried UI by role; found no Frontline counter/redemption UI, no Operator Console or Operator endpoints/read models, no customer identity/progress reads, no local runtime orchestration or migration CLI; flagged four prototype-vs-Product-Truth discrepancies and 14 Founder decisions; defined Founder Preview Slice 1, seed/reset and test model, local architecture, mobile-first and Cloudflare Tunnel assessments (suitable with bounded changes), and packages EA-002…EA-010. No implementation, Product Truth, Experience Reference, configuration, dependency, deployment or gate change; `WP-COM-06b` not started.)  
 > **Prior update:** 2026-10-01 (Entry 280 added: `WP-COM-06a` — held-Purchase processor activation and recovery: best-effort post-commit signal (not a transactional outbox) coalesced per Business and time window; scheduled recovery every 5 minutes (deployment-time cadence) with a persisted Business cursor and a rotating tail window beyond the 1000-Purchase window; per-Purchase / per-Business failure isolation; backlog observability and runbook; no schema change; gate remains `off`; implementation only, pending review, `PB-013B P3-3` remains open. Previously Entry 279 added: `WP-COM-05b` — Commercial admission gate, earmarks and held-Purchase processor: migration `0027`; ADMIT/HOLD decision on usable capacity; immutable admissions and earmarks; `reevaluatePendingAdmissions`; `verifyPurchase` discriminated outcome; web/i18n status handling; gate defaults to `off`; implementation only, pending review, `PB-013B P3-3` remains open. Previously Entry 278 added: `WP-COM-05a` — Purchase admission seam and `pending_admission` foundation: migration `0026`; `admitPurchaseToLoyalty` extracted verbatim from `verifyPurchase`; gate seam `off` only; gate-OFF equivalence proven against a golden captured on `main`; implementation only, pending review, no Commercial coupling, no capacity gate / earmark, `PB-013B P3-3` remains open.)  
 > **Prior update:** 2026-09-30 (Entry 277 added: `WP-COM-04` — Commercial consumption projection: migration `0025`; claim → account lock → classify → finalize per Reward; exactly-once at database level; fallback classification under the account lock; earmark port; bounded reconciliation service and lag metrics; implementation only, pending review, loyalty path read-only source only, no capacity gate / `pending_admission`.)  
@@ -149,6 +149,15 @@ Running log of all controlled changes to the documentation suite. Every consolid
 - **Boundaries:** Governance/documentation and PR metadata only. No application code, tests, schema/migration, dependencies, config, deployment, merge or implementation report file in the Slice A branch changed. B–E/BR remain unstarted/unauthorized; EA-BL-002 remains unstarted.
 
 ---
+## Entry 290 — `EA-BL-001-CORR-002-A`: Post-Review Main Reconciliation
+
+- **Date:** 2026-10-05
+- **PR:** #300, `feat/ea-bl-001-corr-002-a-customer-circle`; reviewed implementation `28dd2b0f39039083ed4054cc8f82d4e2227c5e6e` reconciled with `origin/main` `e4de7af61c4bc0bcb6de1b2a328f2ab920fcca27` (PR #301 merge).
+- **Disposition:** Founder Preview **ACCEPTED**; Independent Technical Review **APPROVED WITH NON-BLOCKING NOTES**; Founder Final Confirmation / Manual QA **SATISFIED**. NB-001 (threshold 10 hard-coded) and NB-002 (nested max-w-xl within max-w-md) are informational and require no correction before merge.
+- **Reconciliation:** Preserved current-main programme and Founder-acceptance records and Slice A change records. No Slice A application or test blob changed. PR remains open, unmerged, and awaiting Founder merge authority; this entry does not authorize merge.
+- **Boundaries:** No Slice B/C/D/E, Business Review, EA-BL-002, WP-COM, or FEF-TLC-001 work authorized or started.
+
+---
 ## Entry 285 — `EA-002-CORR-002`: Founder Preview Cross-Project Port Isolation
 
 **Date:** 2026-10-03 · **Type:** implementation (local preview runtime + runbook) · **Base `main`:** `014554a81642336d2b2a7a5c28acff9999618f69` · **Implementation commit:** `0496be735e18ca6be746345887f5507c2f962260` · **PR:** [#297](https://github.com/Fkenogo/11THONUS/pull/297) · **Open/unmerged.**
@@ -183,6 +192,18 @@ Running log of all controlled changes to the documentation suite. Every consolid
 - **Files:** `docs/00-governance/decisions/decision-register.md`; `docs/00-governance/decisions/evidence/FD-EA-BL-001-CORR-002-founder-decisions-2026-10-05.md`; `docs/05-implementation/reports/11THONUS-EA-BL-001-CORR-002-founder-decision-incorporation-and-implementation-plan-2026-10-05.md`; this log.
 - **Classification:** Decision-driven correction and planning documentation. No application code, schema/migration, dependency, config, deployment, merge, or slice implementation.
 - **Disposition:** **PROGRAMME AUTHORITY RECONCILIATION REQUIRED BEFORE IMPLEMENTATION.** Change set is unmerged and awaits Founder review.
+
+## Entry 287 — `EA-BL-001-CORR-002-A`: Customer Identity & Circle Implementation
+
+- **Date:** 2026-10-05
+- **Authority/base:** PR #299 merged at `76214100400b0df43082b29f6ddd46e13c3dd5d2`; Master Workflow, EIP and Prompt Register authorize Slice A only.
+- **Implementation:** Added authenticated customer-scoped identity and Circle/activity reads; derived Pending Units from `waiting_for_customer` purchases while Verified Units and Reward state remain server-authoritative; assembled customer home, Circle, identity QR, activity, profile and mobile navigation from the frozen prototype; added EN/FR copy.
+- **Validation:** Web 937/937; Functions 1,982/1,982; typechecks, web build, ESLint (zero errors; one pre-existing warning), Prettier and preview tooling 44/44 pass. PostgreSQL read-query smoke check passes on the migrated isolated local database. No schema/migration or dependency added.
+- **Preview gate:** Not complete. The preview launcher found required Firebase emulator ports occupied by a separately running preview and correctly refused to reuse or stop it. Side-by-side screenshot comparison, seeded browser E2E and Founder acceptance remain pending. See [implementation report](../05-implementation/reports/ea-bl-001-corr-002-a-customer-identity-circle-implementation-report-2026-10-05.md).
+- **Boundaries:** No Slice B–E, Business Review, EA-BL-002, WP-COM, FEF-TLC-001, deployment, or merge.
+- **Disposition:** Draft PR #300 awaits local preview port availability, browser comparison, Founder Preview, and subsequent required review.
+
+---
 
 ## Entry 286 — `EA-002-CORR-002`: Automated Review Corrections
 

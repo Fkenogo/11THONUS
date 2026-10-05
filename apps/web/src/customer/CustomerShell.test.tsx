@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { i18n } from "../i18n";
 import { CustomerRoutes } from "./CustomerRoutes";
@@ -14,6 +14,26 @@ vi.mock("./hooks/purchaseMutations", () => ({
   useVerifyPurchaseMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useRejectPurchaseMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDisputePurchaseMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
+}));
+
+vi.mock("./hooks/experienceQueries", () => ({
+  useCustomerIdentityPresentationQuery: () => ({
+    data: {
+      displayName: "Amina N.",
+      loyaltyNumber: "LN-123456",
+      qrReference: "qr-ref-1",
+      status: "ready",
+    },
+    isPending: false,
+    isError: false,
+    refetch: vi.fn(),
+  }),
+  useCustomerExperienceOverviewQuery: () => ({
+    data: { circles: [], activity: [], availableRewards: [] },
+    isPending: false,
+    isError: false,
+    refetch: vi.fn(),
+  }),
 }));
 
 function renderCustomer(initialPath = "/customer") {
@@ -34,16 +54,16 @@ afterEach(async () => {
 });
 
 describe("CustomerShell / CustomerRoutes", () => {
-  it("renders every nav destination and the routed Home content in English", () => {
+  it("renders prototype customer destinations, member identity and the production empty state in English", () => {
     renderCustomer();
     const nav = screen.getByRole("navigation", { name: "Customer navigation" });
     expect(within(nav).getByRole("link", { name: "Home" })).toBeInTheDocument();
-    expect(within(nav).getByRole("link", { name: "Scan" })).toBeInTheDocument();
-    expect(within(nav).getByRole("link", { name: "Rewards" })).toBeInTheDocument();
+    expect(within(nav).getByRole("link", { name: "Circles" })).toBeInTheDocument();
     expect(within(nav).getByRole("link", { name: "Activity" })).toBeInTheDocument();
-    expect(within(nav).getByRole("link", { name: "Account" })).toBeInTheDocument();
-    expect(screen.getByText("You don't have a loyalty number yet.")).toBeInTheDocument();
-    expect(screen.getByText("Your loyalty QR code isn't available yet.")).toBeInTheDocument();
+    expect(within(nav).getByRole("link", { name: "Profile" })).toBeInTheDocument();
+    expect(screen.getByText("Amina N.")).toBeInTheDocument();
+    expect(screen.getByText("Start Your First Loyalty Circle")).toBeInTheDocument();
+    expect(screen.queryByText("not available in the app yet")).toBeNull();
   });
 
   it("renders the nav and destinations in French", async () => {
@@ -51,21 +71,27 @@ describe("CustomerShell / CustomerRoutes", () => {
     renderCustomer();
     const nav = screen.getByRole("navigation", { name: "Navigation client" });
     expect(within(nav).getByRole("link", { name: "Accueil" })).toBeInTheDocument();
-    expect(within(nav).getByRole("link", { name: "Scanner" })).toBeInTheDocument();
-    expect(within(nav).getByRole("link", { name: "Récompenses" })).toBeInTheDocument();
+    expect(within(nav).getByRole("link", { name: "Cercles" })).toBeInTheDocument();
     expect(within(nav).getByRole("link", { name: "Activité" })).toBeInTheDocument();
-    expect(within(nav).getByRole("link", { name: "Compte" })).toBeInTheDocument();
+    expect(within(nav).getByRole("link", { name: "Profil" })).toBeInTheDocument();
   });
 
-  it("shows an honest not-yet-available stub for Scan, never fabricated activity", () => {
-    renderCustomer("/customer/scan");
-    expect(screen.getByText("Scanning isn't available yet.")).toBeInTheDocument();
+  it("opens the real canonical identity QR from the persistent member action", () => {
+    renderCustomer();
+    fireEvent.click(screen.getByRole("button", { name: "My 11thONUS code" }));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByText("LN-123456")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Loyalty QR code" })).toBeInTheDocument();
   });
 
-  it("renders the real Rewards surface (empty state, PLATFORM-BASELINE-006A)", () => {
+  it("renders the real Circle surface on the prototype Circles route", () => {
+    renderCustomer("/customer/circles");
+    expect(screen.getByText("My Loyalty Circles")).toBeInTheDocument();
+  });
+
+  it("keeps the legacy Rewards route on the real Circle surface", () => {
     renderCustomer("/customer/rewards");
-    expect(screen.getByText("Available rewards")).toBeInTheDocument();
-    expect(screen.getByText("You don't have any rewards yet.")).toBeInTheDocument();
+    expect(screen.getByText("My Loyalty Circles")).toBeInTheDocument();
   });
 
   it("renders the real Activity surface (waiting list, PLATFORM-BASELINE-006A)", () => {
@@ -74,8 +100,8 @@ describe("CustomerShell / CustomerRoutes", () => {
     expect(screen.getByText("Nothing is waiting for your review right now.")).toBeInTheDocument();
   });
 
-  it("shows an honest not-yet-available stub for Account", () => {
+  it("routes the legacy Account path to the real profile", () => {
     renderCustomer("/customer/account");
-    expect(screen.getByText("Account settings aren't available yet.")).toBeInTheDocument();
+    expect(screen.getByText("Your Profile")).toBeInTheDocument();
   });
 });
