@@ -95,6 +95,19 @@ All 47 phase-roadmap work packages from the [Engineering Implementation Programm
 | ENG-SEC-001 | Backlog | Firestore & Storage Security Rules Foundation | FR-SEC-006 *(domain-specific rules; deny-by-default posture itself already satisfied since Phase 0)* | — | **Planned** | — | — | — | — |
 | ENG-CI-001 | Backlog | Firebase Emulator CI Stabilisation | — *(not yet scoped)* | — | **Engineering Improvement Backlog** | — | — | — | — |
 
+### Additional Experience Assembly packages (outside the 47 Phase 0–16 rows)
+
+These packages are registered in EIP §C.2; the Master Workflow §17 controls sequencing. They use this Prompt Register's existing status vocabulary. `Ready` authorizes preparation/issuance of a detailed prompt; it does not mean implementation has started.
+
+| Prompt ID | Phase | Work Package | Requirement IDs (representative) | Decision Dependencies | Status | Report | Commit | Deployment | Manual QA |
+|---|---|---|---|---|---|---|---|---|---|
+| EA-BL-001-CORR-002-A | Experience Assembly | Customer Identity & Circle | PRD02, PRD04, PRD06; DEC-PROD-015 | DEC-PROD-015; frozen reference `18e8d700` | **Ready — Founder-authorized Slice A only** | [Authority Reconciliation Report](../reports/11THONUS-experience-assembly-programme-authority-reconciliation-2026-10-05.md) | — | Founder Preview required | Founder Preview + Manual QA required |
+| EA-BL-001-CORR-002-B | Experience Assembly | Staff Counter | PRD01, PRD05, PRD07 | DEC-PROD-015; package A; future Business Review Foundation | **Not Yet Scheduled — NOT AUTHORIZED** | — | — | Future Preview required | Future Manual QA |
+| EA-BL-001-CORR-002-C | Experience Assembly | Owner / Manager Operations | PRD01, PRD06, PRD9 | DEC-PROD-015; packages A/B; Business Review Foundation | **Not Yet Scheduled — NOT AUTHORIZED** | — | — | Future Preview required | Future Manual QA |
+| EA-BL-001-CORR-002-D | Experience Assembly | Onboarding & Programme Creation | PRD03, PRD06 | Existing governed onboarding and programme rules | **Not Yet Scheduled — NOT AUTHORIZED** | — | — | Future Preview required | Future Manual QA |
+| EA-BL-001-CORR-002-E | Experience Assembly | Secondary / Dependent Surfaces | PRD9, PRD10 | Individual future capability authority | **Not Yet Scheduled — NOT AUTHORIZED** | — | — | Future Preview required | Future Manual QA |
+| EA-BL-001-CORR-002-BR | Experience Assembly | Business Review Domain Foundation | PRD05, DEC-PROD-015 | DEC-PROD-015; separate future Founder authorization | **Not Yet Scheduled — NOT AUTHORIZED** | — | — | N/A (domain foundation) | Tests/review per future prompt |
+
 **Note on the three `Backlog` rows above:** these are independent successor work packages registered by Founder decision 2026-07-29, following the `ENG-P1-003` closure audit's recommendations (see the [Engineering Closure Report](../reports/ENG-P1-003-IMP-05-engineering-closure-report-2026-07-27.md) §14 and the Programme §C.1). They fall outside the Phase 0–16 TRD22 roadmap, so they do not carry an `ENG-Pn-xxx` Prompt ID and are not counted in the Programme's "Total work packages defined: 47." Their status labels (`Planned`, `Planned / Awaiting Founder Authorization`, `Engineering Improvement Backlog`) are Founder-specified backlog states outside the §3 vocabulary above; each will map into that vocabulary once it receives its own detailed implementation prompt. **None of the three has been implemented, scoped in detail, or assigned a Decision Dependency.**
 
 ## 5. Current Distribution

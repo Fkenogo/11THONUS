@@ -152,6 +152,17 @@ Running log of all controlled changes to the documentation suite. Every consolid
 
 ---
 
+## Entry 288 — Experience Assembly Programme Authority Reconciliation and Slice A Authorization
+
+- **Date:** 2026-10-05
+- **Base:** `origin/main` `1d15d2d87a513cf892416ed6f286d7604d725797`; PR #298 confirmed merged.
+- **Basis:** Founder task `EXPERIENCE ASSEMBLY PROGRAMME AUTHORITY RECONCILIATION AND SLICE A AUTHORISATION`; `DEC-PROD-015`; exact Experience Reference SHA `18e8d700f505beefe46d324f6ea33f20a670abe7`.
+- **Changes:** Added the Experience Assembly stream to Master Workflow §17/EIP §C.2 and registered A–E plus Business Review Domain Foundation in the existing Prompt Register. `EA-BL-001-CORR-002-A` set `Ready` (Founder-authorized A only; effective on reconciliation PR merge; detailed implementation prompt required). B–E and BR set `Not Yet Scheduled — NOT AUTHORIZED`. Added current Capability 6 / WP-COM-06a dependency assessment and complete Slice A read dependency, scope, DoD, test, visual comparison and Founder Preview gates in the report.
+- **WP-COM-06a:** PR #293 is merged at `c064f436`; post-merge CI passed. Formal closure/status synchronization remains outstanding but does not block A. No WP-COM files or state changed.
+- **Boundaries:** Governance/documentation only. No Slice A code, test, schema/migration, dependency, config, deployment or preview; no EA-BL-002; no Business Review implementation; no FEF-TLC-001 adoption; no merge by this task.
+- **Files:** Master Workflow §17; Engineering Implementation Programme §C.2; Coding Agent Prompt Register §4; reconciliation report; this log.
+- **Disposition:** **SLICE A AUTHORISED — READY FOR IMPLEMENTATION**, effective when this reconciliation PR is merged. Slices B–E/BR remain unauthorized.
+
 ## Entry 287 — `11THONUS-EA-BL-001-CORR-002`: Founder Decision Incorporation and Prototype-Fidelity Plan
 
 - **Date:** 2026-10-05
