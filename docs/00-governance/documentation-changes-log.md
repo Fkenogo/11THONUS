@@ -152,6 +152,16 @@ Running log of all controlled changes to the documentation suite. Every consolid
 
 ---
 
+## Entry 287 — `11THONUS-EA-BL-001-CORR-002`: Founder Decision Incorporation and Prototype-Fidelity Plan
+
+- **Date:** 2026-10-05
+- **Basis:** Explicit Founder direction in `11THONUS-EA-BL-001-CORR-002 Founder Decision Incorporation & Prototype-Fidelity Implementation Plan`; decision evidence recorded as `DEC-PROD-015`.
+- **Changes:** Added `FD-EA-BL-001-CORR-002` decision evidence and `DEC-PROD-015` for (1) separate Pending Units and Verified Units with customer verification still required for eligibility; (2) Business Review before, never instead of, customer verification; (3) Customer-controlled registration instead of synthetic staff-created identities; (4) internal-only individual confirmer identity in Customer redemption presentation. Added the dependency-aware prototype-to-production matrix, capability classification, vertical slice order, schema/API implications, and fidelity/Founder Preview acceptance plan.
+- **Authority boundary:** This record does not authorize Slice A–E implementation. Master Workflow / Engineering Implementation Programme package authority reconciliation remains a prerequisite. No historical decision was rewritten. `DEC-LOY-003` is supplemented only to the extent explicitly stated by `DEC-PROD-015`; its quantity and non-auto-rejection rules remain unchanged.
+- **Files:** `docs/00-governance/decisions/decision-register.md`; `docs/00-governance/decisions/evidence/FD-EA-BL-001-CORR-002-founder-decisions-2026-10-05.md`; `docs/05-implementation/reports/11THONUS-EA-BL-001-CORR-002-founder-decision-incorporation-and-implementation-plan-2026-10-05.md`; this log.
+- **Classification:** Decision-driven correction and planning documentation. No application code, schema/migration, dependency, config, deployment, merge, or slice implementation.
+- **Disposition:** **PROGRAMME AUTHORITY RECONCILIATION REQUIRED BEFORE IMPLEMENTATION.** Change set is unmerged and awaits Founder review.
+
 ## Entry 286 — `EA-002-CORR-002`: Automated Review Corrections
 
 - **Date:** 2026-10-03
