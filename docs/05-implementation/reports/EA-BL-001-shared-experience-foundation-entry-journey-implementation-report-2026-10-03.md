@@ -141,3 +141,47 @@ Files changed by the implementation commit:
 - `tests/preview/cli.mjs`
 - `tests/preview/lib/identityVerification.mjs`
 - `tests/preview/lib/identityVerification.test.mjs`
+
+---
+
+## Correction pass — 2026-10-05
+
+**Trigger:** independent technical review of `104e5d5a81da4ef41d59c75793d1f56b6783a70c` returned **CORRECTION REQUIRED** (F1 P1, F2 P2, F3 minor). The review found no issue with Product Truth, backend, commercial logic, authentication or role-resolution architecture, or schema. The sections above are the original implementation record and are unchanged; where they conflict with this section (screenshot file names, test counts), this section governs.
+
+**Corrected implementation commit:** `0b03df0e418c764a2c2cef172e0e54d137e030ad` (on top of reviewed `104e5d5`). A documentation-only commit follows it; the final pushed HEAD is reported in the handoff.
+
+### F1 — mobile menu toggle invisible (corrected)
+- **Defect:** mobile headers in `BusinessDashboardShell.tsx` / `CustomerShell.tsx` hard-coded `bg-white`/`text-slate-*` while the menu button had no colour, so it inherited the near-white application foreground and was effectively invisible on the white header.
+- **Fix:** headers use `--color-background`/`--color-muted-foreground`; the toggle has `text-[var(--color-foreground)]`, a `--color-border` outline and `min-h-11 min-w-11` (44px). Sidebar context text uses tokens. `ExperienceBrand` no longer hard-codes a light-only wordmark colour (inherits; tagline uses opacity); `ExperienceSignOutButton` uses tokens (+ `dark:` error colour). Fixed-light surfaces (`RootEntry` card page, `BusinessResolverPage`) now set `text-slate-900` themselves, which also fixes card text inheriting a near-white foreground on a white card. Navigation behaviour and role logic untouched.
+- **Verification:** new e2e tests compute the toggle-vs-header contrast (must be ≥ 3:1) on mobile for Business and Customer, and capture the open menu, in both schemes.
+
+### F2 — Create Account copy (corrected)
+- `SignInPanel` gained an optional `onModeChange` callback (no behaviour change; fires from the existing `switchEmailMode`). `SignInPage` keeps the mode and shows mode-aware heading/description.
+- New keys (`customer.entry.*`): `createAccountTitle` — EN "Create your account" / FR "Créez votre compte"; `createAccountDescription` — EN "Create an account to get your personal 11thONUS identity." / FR "Créez un compte pour obtenir votre identité 11thONUS personnelle."
+- Tests: new `SignInPage.entryMode.test.tsx` (default, register, revert); e2e asserts the "Create your account" heading and no "Sign in" heading in register mode.
+
+### F3 disposition
+| Item | Disposition |
+|---|---|
+| ExperienceBrand `aria-label` on plain div | **Corrected** — removed; the visible "11thONUS" text (badge is `aria-hidden`) is the accessible name. |
+| Duplicate screenshots | **Corrected** — evidence directory fully re-captured by the e2e run; the seeded-customer capture that duplicated `registered-customer-shell` was removed; role captures now wait for the role label (manager/staff mobile were byte-identical because the role had not loaded). No byte-identical files remain (checked by SHA-1). Desktop-dark theme captures that equal existing desktop evidence are intentionally not taken. |
+| e2e screenshots dirtying tracked docs | **Corrected** — `captureEvidence` is a no-op unless `EA_BL_001_CAPTURE_EVIDENCE=1`. |
+| "Loyalty Number has been issued" copy | **Unchanged** — independently verified against `registrationSignInService` (artefact establishment on register and sign-in). |
+| `qrcode.react` environment gap | **No repository change.** Declared in `apps/web/package.json` and `pnpm-lock.yaml`; a normal `pnpm install --frozen-lockfile` in a clean worktree restored it and all web tests/typecheck passed. The reviewer's scratch environment symlinked a `node_modules` that lacked it. |
+| Remaining P3 (unconditional "issued" copy) | Unchanged (see above). |
+
+### Newly discovered pre-existing issue — not fixed (out of scope)
+`apps/web/src/index.css` nests `@theme` inside `@media (prefers-color-scheme: dark)`. In the built/dev app the dark token values apply regardless of OS colour scheme (verified: `matchMedia` light and dark both resolve `--color-background` to `hsl(240 10% 4%)`), so the light palette is never rendered. This predates EA-BL-001 (Phase 0 foundation) and is global; correcting it changes theming for the whole application and was not authorised here. Consequences for this pass: the shells always render dark; the "light" evidence applies the `index.css` light token values verbatim via an injected style (`*-light-palette-*` files) to prove the F1 fix works under the light palette; "dark" evidence is the application as shipped. Recommend a separate bounded theming package.
+
+### Validation (corrected commit `0b03df0`, clean worktree, `pnpm install --frozen-lockfile`)
+- Web unit tests: **930/930** (128 files) — baseline 928 + 2 new.
+- Preview tooling `node --test`: **46/46**.
+- ESLint on all changed TS/TSX: 0 errors. Prettier check on changed files: clean.
+- `pnpm -r run typecheck` (web + functions): passed. `pnpm --filter web run build`: passed.
+- Browser e2e (`chromium-preview` desktop + `chromium-preview-mobile`, system Chrome via a throwaway local config because Playwright's bundled browsers were not installed; against a freshly started and seeded preview, Auth Emulator port 28101): **36 passed** (28 prior + 8 new light/dark shell tests); clean exit, no interruption.
+
+### Evidence (`docs/05-implementation/evidence/EA-BL-001/`, 22 files, all re-captured)
+`sign-in-*`, `create-account-*` (corrected heading), `entry-error-*`, `entry-validation-error-*`, `registered-customer-shell-*`, `owner-shell-*`, `manager-shell-*`, `staff-shell-*` (each with the role label rendered), plus new `business-shell-{light,dark}-palette-*` and `customer-shell-{light,dark}-palette-*` (mobile with menu open; light also desktop). Supersedes the 18-file set listed above (`customer-shell-chromium-preview*.png` removed).
+
+### Boundaries
+No change to Product Truth, `functions/`, authentication architecture, role logic, database/schema/migrations, commercial logic, dependencies or configuration. No deployment. EA-BL-002 not started. FEF-TLC-001 not adopted. PR #295 untouched.

@@ -7,6 +7,17 @@
 
 ---
 
+## 2026-10-05 — EA-BL-001 — Correction pass after independent review
+
+- **Trigger:** independent review of `104e5d5a81da4ef41d59c75793d1f56b6783a70c` → CORRECTION REQUIRED (F1 P1 mobile menu toggle invisible; F2 P2 Create Account heading; F3 minor).
+- **Changes (commit `0b03df0e418c764a2c2cef172e0e54d137e030ad`):** theme-token mobile headers and a visible 44px menu toggle in business/customer shells (F1); mode-aware EN/FR entry heading/description via optional `SignInPanel.onModeChange` (F2); ExperienceBrand aria-label removed, evidence screenshots only written when `EA_BL_001_CAPTURE_EVIDENCE=1`, evidence re-captured with no duplicates, new light/dark shell e2e tests and a SignInPage unit test (F3).
+- **Validation:** web 930/930; preview tooling 46/46; ESLint/Prettier/typecheck/build pass; browser e2e 36 passed (desktop + mobile).
+- **Unchanged by decision:** "Loyalty Number has been issued" copy; no dependency change (`qrcode.react` is declared and restored by normal install).
+- **Discovered, not fixed:** pre-existing global theme defect — `index.css` `@theme` inside `prefers-color-scheme` is hoisted, so dark tokens always apply (light palette never rendered). Needs a separate package.
+- **Boundaries:** no Product Truth/backend/auth/schema/commercial/dependency/config change; no merge; EA-BL-002 not started; FEF-TLC-001 not adopted. See the report's "Correction pass" section.
+
+---
+
 ## 2026-10-03 — EA-BL-001 — Shared Experience Foundation & Entry Journey
 
 - **Task/status:** Shared identity and responsive entry foundation implemented; pending review. Founder Preview remains withdrawn.
