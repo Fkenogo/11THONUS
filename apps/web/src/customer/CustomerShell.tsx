@@ -55,10 +55,10 @@ export function CustomerShell({ auth, functions }: { auth: Auth; functions: Func
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
-      <div className="mx-auto flex max-w-xl justify-end px-4 pt-2">
+      <div className="mx-auto flex max-w-md justify-end px-4 pt-2 sm:px-0">
         <LanguageSwitcher />
       </div>
-      <header className="mx-auto flex max-w-xl items-center justify-between gap-2 px-4 py-2">
+      <header className="mx-auto flex max-w-md items-center justify-between gap-2 px-4 py-2 sm:px-0">
         <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-500 text-sm font-bold text-white shadow-sm">
             {initialsOf(displayName)}
@@ -83,7 +83,7 @@ export function CustomerShell({ auth, functions }: { auth: Auth; functions: Func
       </header>
 
       {identityQuery.isError ? (
-        <div className="mx-auto max-w-xl px-4 pb-2">
+        <div className="mx-auto max-w-md px-4 pb-2 sm:px-0">
           <div
             className="rounded-xl border border-rose-200 bg-white px-3 py-2 text-xs text-rose-800"
             role="alert"
@@ -99,7 +99,7 @@ export function CustomerShell({ auth, functions }: { auth: Auth; functions: Func
           </div>
         </div>
       ) : identity?.status === "pending" ? (
-        <div className="mx-auto max-w-xl px-4 pb-2">
+        <div className="mx-auto max-w-md px-4 pb-2 sm:px-0">
           <p
             className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950"
             role="status"
@@ -109,7 +109,7 @@ export function CustomerShell({ auth, functions }: { auth: Auth; functions: Func
         </div>
       ) : null}
 
-      <main className="mx-auto max-w-xl px-4 pb-24 pt-2" key={pathname}>
+      <main className="mx-auto max-w-md px-4 pb-24 pt-2 sm:px-0" key={pathname}>
         <Outlet
           context={{ identity, openIdentity: () => setShowQr(true) } satisfies CustomerShellContext}
         />
