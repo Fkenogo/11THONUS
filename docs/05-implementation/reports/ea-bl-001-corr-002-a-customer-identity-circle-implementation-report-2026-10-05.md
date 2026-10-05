@@ -4,6 +4,8 @@
 > **Status:** Implementation complete to the code/test stage; Founder Preview and visual acceptance remain blocked by an existing local preview service holding required emulator ports.
 > **Authorized base:** `origin/main` `76214100400b0df43082b29f6ddd46e13c3dd5d2` (PR #299 merge).
 > **Branch:** `feat/ea-bl-001-corr-002-a-customer-circle`.
+> **Implementation commit:** `e5bd42dc0fa5d97f4533b311458c861e61dec1b1`.
+> **Pull request:** [#300](https://github.com/Fkenogo/11THONUS/pull/300) (draft; preview acceptance pending).
 > **Experience Reference:** `Fkenogo/11thonus-prototype@18e8d700f505beefe46d324f6ea33f20a670abe7`.
 
 ## 1. Entry state and authority

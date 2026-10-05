@@ -10,7 +10,7 @@
 ## 2026-10-05 — EA-BL-001-CORR-002-A — Customer Identity & Circle
 
 - **Task:** Assemble the customer Identity/Circle vertical slice from the frozen prototype using real server-authoritative state.
-- **Base/authority:** PR #299 merge `76214100400b0df43082b29f6ddd46e13c3dd5d2`; Slice A only.
+- **Base/authority:** PR #299 merge `76214100400b0df43082b29f6ddd46e13c3dd5d2`; Slice A only. Implementation commit `e5bd42dc0fa5d97f4533b311458c861e61dec1b1`; draft PR #300.
 - **Implementation:** Auth-context-derived canonical identity/QR read; customer-scoped Cycle, Pending Unit, reward and activity projection; prototype-faithful home/Circle/activity/profile and mobile navigation; English/French copy.
 - **Data/security:** Pending Units project only from `waiting_for_customer`; Verified Units use persisted Cycle allocations; Reward availability uses the existing server read; no client-supplied customer identity authority, confirmer disclosure, schema change or new dependency.
 - **Validation:** Web 937/937; Functions 1,982/1,982; TypeScript, ESLint, Prettier and production build pass; preview tooling 44/44; migrated PostgreSQL read smoke check passed.
