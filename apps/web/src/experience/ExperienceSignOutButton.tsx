@@ -25,12 +25,12 @@ export function ExperienceSignOutButton({ auth }: { auth: Auth }) {
         type="button"
         disabled={busy}
         onClick={signOut}
-        className="min-h-11 w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-60"
+        className="min-h-11 w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-[var(--color-foreground)] hover:bg-[var(--color-muted)] disabled:opacity-60"
       >
         {busy ? t("session.signingOut") : t("session.signOut")}
       </button>
       {failed && (
-        <p role="alert" className="mt-2 text-sm text-red-700">
+        <p role="alert" className="mt-2 text-sm text-red-700 dark:text-red-400">
           {t("session.signOutError")}
         </p>
       )}

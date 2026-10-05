@@ -54,9 +54,12 @@ function codeFor(error: unknown): AuthenticateErrorCode {
 export function SignInPanel({
   actions,
   onSignedIn,
+  onModeChange,
 }: {
   actions: SignInPanelActions;
   onSignedIn?: (outcome: AuthenticateOutcome) => void;
+  /** Lets the host page keep its heading/description in step with the Email mode. */
+  onModeChange?: (mode: "signin" | "register") => void;
 }) {
   const { t } = useTranslation("auth");
   const { t: tmfa } = useTranslation("mfa");
@@ -202,6 +205,7 @@ export function SignInPanel({
   // (non-sensitive) email so a customer who mistyped a mode keeps their address.
   function switchEmailMode(next: "signin" | "register") {
     setEmailMode(next);
+    onModeChange?.(next);
     setPassword("");
     setConfirmPassword("");
     setLocalError(null);

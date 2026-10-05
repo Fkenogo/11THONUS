@@ -44,7 +44,12 @@ async function signInAs(page: Page, key: string) {
   await expect(page).toHaveURL(/\/(customer|business)/);
 }
 
+/**
+ * Evidence screenshots are written into tracked documentation, so routine runs must not touch
+ * them. Set `EA_BL_001_CAPTURE_EVIDENCE=1` to (re)capture the EA-BL-001 evidence set deliberately.
+ */
 async function captureEvidence(page: Page, testInfo: { project: { name: string } }, name: string) {
+  if (process.env.EA_BL_001_CAPTURE_EVIDENCE !== "1") return;
   const directory = fileURLToPath(
     new URL("../../../docs/05-implementation/evidence/EA-BL-001/", import.meta.url),
   );
@@ -55,12 +60,51 @@ async function captureEvidence(page: Page, testInfo: { project: { name: string }
   });
 }
 
+/** WCAG non-text contrast (>= 3:1) of the mobile menu toggle against the header behind it. */
+async function menuToggleContrast(page: Page, label: RegExp): Promise<number> {
+  const toggle = page.getByRole("button", { name: label });
+  await expect(toggle).toBeVisible();
+  return toggle.evaluate((el) => {
+    const rgb = (css: string): [number, number, number] => {
+      const ctx = document.createElement("canvas").getContext("2d")!;
+      ctx.clearRect(0, 0, 1, 1);
+      ctx.fillStyle = css;
+      ctx.fillRect(0, 0, 1, 1);
+      const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+      return [r, g, b];
+    };
+    const luminance = ([r, g, b]: [number, number, number]) => {
+      const lin = (v: number) => {
+        const c = v / 255;
+        return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+      };
+      return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+    };
+    let node: HTMLElement | null = el as HTMLElement;
+    let background = "rgba(0, 0, 0, 0)";
+    while (node) {
+      const value = getComputedStyle(node).backgroundColor;
+      if (!/rgba?\(.*,\s*0\)$/.test(value) && value !== "transparent") {
+        background = value;
+        break;
+      }
+      node = node.parentElement;
+    }
+    const a = luminance(rgb(getComputedStyle(el).color));
+    const b = luminance(rgb(background));
+    return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+  });
+}
+
 test.describe("Founder Preview identities", () => {
   test("Owner (Bella Salon) reaches the Business Dashboard", async ({ page }) => {
     await signInAs(page, "owner_bella");
     await page.getByRole("link", { name: /Bella Salon — Owner/ }).click();
     await expect(page).toHaveURL(/\/business\/[^/]+\/dashboard$/);
     await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
+    await expect(
+      page.getByText(/^(Bella Salon · )?Owner$/).filter({ visible: true }),
+    ).toBeVisible();
     await captureEvidence(page, test.info(), "owner-shell");
     await page.goto(page.url().replace(/dashboard$/, "dashboard/reward-programs"));
     await expect(page.getByText("Premium Cut Circle").first()).toBeVisible();
@@ -72,6 +116,9 @@ test.describe("Founder Preview identities", () => {
     await expect(business).toBeVisible();
     await business.click();
     await expect(page).toHaveURL(/\/business\/[^/]+\/dashboard$/);
+    await expect(
+      page.getByText(/^(Bella Salon · )?Manager$/).filter({ visible: true }),
+    ).toBeVisible();
     await captureEvidence(page, test.info(), "manager-shell");
   });
 
@@ -82,6 +129,9 @@ test.describe("Founder Preview identities", () => {
     await expect(page.getByRole("link", { name: /— Owner/ })).toHaveCount(0);
     await page.getByRole("link", { name: /Bella Salon — Staff/ }).click();
     await expect(page).toHaveURL(/\/business\/[^/]+\/dashboard$/);
+    await expect(
+      page.getByText(/^(Bella Salon · )?Staff$/).filter({ visible: true }),
+    ).toBeVisible();
     await captureEvidence(page, test.info(), "staff-shell");
   });
 
@@ -115,7 +165,6 @@ test.describe("Founder Preview identities", () => {
     await page.goto("/customer/rewards");
     await expect(page.getByText("A free haircut")).toHaveCount(0);
     await page.goto("/customer");
-    await captureEvidence(page, test.info(), "customer-shell");
   });
 
   test("Operator signs in; no Operator screens exist yet (EA-002 builds none)", async ({
@@ -163,6 +212,8 @@ test.describe("EA-BL-001 entry journeys", () => {
     await page.goto("/");
     await captureEvidence(page, test.info(), "sign-in");
     await page.getByRole("button", { name: /Create account/ }).click();
+    await expect(page.getByRole("heading", { name: "Create your account" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Sign in", exact: true })).toHaveCount(0);
     await captureEvidence(page, test.info(), "create-account");
 
     await page
@@ -205,3 +256,54 @@ test.describe("EA-BL-001 entry journeys", () => {
     await expect(page.getByLabel("Email", { exact: true })).toBeVisible();
   });
 });
+
+/**
+ * Pre-existing, out of scope for EA-BL-001: `apps/web/src/index.css` nests `@theme` inside
+ * `@media (prefers-color-scheme: dark)`, and Tailwind v4 hoists it, so the dark token values apply
+ * to every visitor regardless of OS scheme (the light palette is never rendered). To still verify
+ * the shells against the light palette, the light run applies the `:root` light token values from
+ * `index.css` verbatim. Dark runs use the application exactly as shipped.
+ */
+async function applyLightPalette(page: Page) {
+  await page.addStyleTag({
+    content: `:root{--color-background:hsl(0 0% 100%);--color-foreground:hsl(240 10% 4%);--color-border:hsl(240 6% 90%);--color-muted:hsl(240 5% 96%);--color-muted-foreground:hsl(240 4% 46%);--color-primary:hsl(240 6% 10%);--color-primary-foreground:hsl(0 0% 98%)}`,
+  });
+}
+
+for (const scheme of ["light", "dark"] as const) {
+  test.describe(`EA-BL-001 shells in ${scheme} mode`, () => {
+    test.use({ colorScheme: scheme });
+
+    test(`Business shell navigation is legible in ${scheme} mode`, async ({ page }) => {
+      await signInAs(page, "owner_bella");
+      await page.getByRole("link", { name: /Bella Salon — Owner/ }).click();
+      await expect(page).toHaveURL(/\/business\/[^/]+\/dashboard$/);
+      if (scheme === "light") await applyLightPalette(page);
+      const mobile = test.info().project.name.includes("mobile");
+      if (mobile) {
+        expect(await menuToggleContrast(page, /Open navigation/)).toBeGreaterThanOrEqual(3);
+        await page.getByRole("button", { name: "Open navigation" }).click();
+      }
+      await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();
+      // Desktop dark is the same screen as owner-shell evidence; avoid a duplicate.
+      if (mobile || scheme === "light") {
+        await captureEvidence(page, test.info(), `business-shell-${scheme}-palette`);
+      }
+    });
+
+    test(`Customer shell navigation is legible in ${scheme} mode`, async ({ page }) => {
+      await signInAs(page, "customer_amina");
+      if (scheme === "light") await applyLightPalette(page);
+      const mobile = test.info().project.name.includes("mobile");
+      if (mobile) {
+        expect(await menuToggleContrast(page, /Open navigation/)).toBeGreaterThanOrEqual(3);
+        await page.getByRole("button", { name: "Open navigation" }).click();
+      }
+      await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();
+      // Desktop dark is the same screen as the registered-customer evidence; avoid a duplicate.
+      if (mobile || scheme === "light") {
+        await captureEvidence(page, test.info(), `customer-shell-${scheme}-palette`);
+      }
+    });
+  });
+}

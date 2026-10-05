@@ -15,7 +15,7 @@
  * `SignInPreviewPage`).
  */
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { RecaptchaVerifier, type ApplicationVerifier, type Auth } from "firebase/auth";
 import type { Functions } from "firebase/functions";
 import { useTranslation } from "../i18n";
@@ -40,6 +40,12 @@ export function SignInPage({
   onSignedIn?: (outcome: AuthenticateOutcome) => void;
 }) {
   const { t } = useTranslation("customer");
+  const [entryMode, setEntryMode] = useState<"signin" | "register">("signin");
+  const registering = entryMode === "register";
+  const entryTitle = registering ? t("entry.createAccountTitle") : t("entry.signInTitle");
+  const entryDescription = registering
+    ? t("entry.createAccountDescription")
+    : t("entry.description");
 
   // Build the real composition lazily: only when no test actions were
   // injected, so a test that supplies `actions` never initializes Firebase's
@@ -89,7 +95,7 @@ export function SignInPage({
               {t("entry.headline")}
             </h1>
             <p className="mt-5 max-w-lg text-lg leading-relaxed text-slate-600">
-              {t("entry.description")}
+              {entryDescription}
             </p>
           </section>
           <section
@@ -100,11 +106,15 @@ export function SignInPage({
               {t("entry.eyebrow")}
             </p>
             <h2 id="entry-title" className="mb-2 text-2xl font-bold tracking-tight text-slate-950">
-              {t("entry.signInTitle")}
+              {entryTitle}
             </h2>
-            <p className="mb-6 text-sm leading-relaxed text-slate-600">{t("entry.description")}</p>
+            <p className="mb-6 text-sm leading-relaxed text-slate-600">{entryDescription}</p>
             {resolvedActions ? (
-              <SignInPanel actions={resolvedActions} onSignedIn={onSignedIn} />
+              <SignInPanel
+                actions={resolvedActions}
+                onSignedIn={onSignedIn}
+                onModeChange={setEntryMode}
+              />
             ) : (
               <p role="status" className="rounded-lg bg-slate-50 p-4 text-sm text-slate-600">
                 {t("entry.loading")}

@@ -61,10 +61,12 @@ export function CustomerShell({ auth }: { auth: Auth }) {
 
   return (
     <div className="min-h-screen md:flex">
-      <header className="flex items-center justify-between gap-3 border-b border-[var(--color-border)] bg-white px-4 py-3 md:hidden">
+      <header className="flex items-center justify-between gap-3 border-b border-[var(--color-border)] bg-[var(--color-background)] px-4 py-3 md:hidden">
         <div>
           <ExperienceBrand compact />
-          <p className="mt-1 text-xs text-slate-600">{t("nav.personalContext")}</p>
+          <p className="mt-1 text-xs text-[var(--color-muted-foreground)]">
+            {t("nav.personalContext")}
+          </p>
         </div>
         <button
           ref={menuButtonRef}
@@ -73,6 +75,7 @@ export function CustomerShell({ auth }: { auth: Auth }) {
           aria-controls={menuId}
           aria-label={menuOpen ? t("nav.closeMenu") : t("nav.openMenu")}
           onClick={() => setMenuOpen((open) => !open)}
+          className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-md border border-[var(--color-border)] text-[var(--color-foreground)]"
         >
           {menuOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
         </button>
@@ -88,7 +91,9 @@ export function CustomerShell({ auth }: { auth: Auth }) {
       >
         <div className="mb-6 hidden md:block">
           <ExperienceBrand />
-          <p className="mt-4 text-sm font-semibold text-slate-900">{t("nav.personalContext")}</p>
+          <p className="mt-4 text-sm font-semibold text-[var(--color-foreground)]">
+            {t("nav.personalContext")}
+          </p>
         </div>
         <ul className="flex flex-col gap-1">
           {navItems.map((item, index) => (

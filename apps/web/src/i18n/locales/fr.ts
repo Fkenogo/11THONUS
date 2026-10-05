@@ -543,6 +543,8 @@ export const fr = {
     entry: {
       loading: "Chargement…",
       signInTitle: "Se connecter",
+      createAccountTitle: "Créez votre compte",
+      createAccountDescription: "Créez un compte pour obtenir votre identité 11thONUS personnelle.",
       eyebrow: "Bienvenue chez 11thONUS",
       headline: "Une fidélité qui accompagne chaque visite.",
       description: "Connectez-vous pour accéder à votre espace personnel ou professionnel.",

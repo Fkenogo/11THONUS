@@ -533,6 +533,8 @@ export const en = {
     entry: {
       loading: "Loading…",
       signInTitle: "Sign in",
+      createAccountTitle: "Create your account",
+      createAccountDescription: "Create an account to get your personal 11thONUS identity.",
       eyebrow: "Welcome to 11thONUS",
       headline: "A clearer way to keep loyalty moving.",
       description: "Sign in to continue to your personal or Business experience.",

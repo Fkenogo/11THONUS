@@ -36,7 +36,7 @@ import { ExperienceBrand } from "./experience/ExperienceBrand";
 
 function CenteredMessage({ children }: { children: ReactNode }) {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-[#f8f9fa] p-6 text-center sm:p-8">
+    <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-[#f8f9fa] p-6 text-center text-slate-900 sm:p-8">
       <ExperienceBrand />
       <section className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         {children}

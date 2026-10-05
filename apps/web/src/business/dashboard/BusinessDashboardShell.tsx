@@ -67,10 +67,10 @@ export function BusinessDashboardShell({
 
   return (
     <div className="min-h-screen md:flex">
-      <header className="flex items-center justify-between gap-3 border-b border-[var(--color-border)] bg-white px-4 py-3 md:hidden">
+      <header className="flex items-center justify-between gap-3 border-b border-[var(--color-border)] bg-[var(--color-background)] px-4 py-3 md:hidden">
         <div className="min-w-0">
           <ExperienceBrand compact />
-          <p className="mt-1 truncate text-xs text-slate-600">
+          <p className="mt-1 truncate text-xs text-[var(--color-muted-foreground)]">
             {context.displayName}
             {role ? ` · ${t(`resolve.roles.${role}`)}` : ""}
           </p>
@@ -82,6 +82,7 @@ export function BusinessDashboardShell({
           aria-controls={menuId}
           aria-label={menuOpen ? t("dashboard.nav.closeMenu") : t("dashboard.nav.openMenu")}
           onClick={() => setMenuOpen((open) => !open)}
+          className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-md border border-[var(--color-border)] text-[var(--color-foreground)]"
         >
           {menuOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
         </button>
@@ -97,8 +98,14 @@ export function BusinessDashboardShell({
       >
         <div className="mb-6 hidden md:block">
           <ExperienceBrand />
-          <p className="mt-4 text-sm font-semibold text-slate-900">{context.displayName}</p>
-          {role && <p className="mt-1 text-xs text-slate-500">{t(`resolve.roles.${role}`)}</p>}
+          <p className="mt-4 text-sm font-semibold text-[var(--color-foreground)]">
+            {context.displayName}
+          </p>
+          {role && (
+            <p className="mt-1 text-xs text-[var(--color-muted-foreground)]">
+              {t(`resolve.roles.${role}`)}
+            </p>
+          )}
         </div>
         <ul className="flex flex-col gap-1">
           {navItems.map((item, index) => (

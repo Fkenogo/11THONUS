@@ -50,7 +50,7 @@ export function BusinessResolverPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f8f9fa] px-4 py-6 sm:px-8 sm:py-10">
+    <main className="min-h-screen bg-[#f8f9fa] px-4 py-6 text-slate-900 sm:px-8 sm:py-10">
       <div className="mx-auto max-w-2xl">
         <header className="mb-10">
           <ExperienceBrand />
