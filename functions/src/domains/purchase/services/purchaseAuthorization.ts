@@ -203,3 +203,106 @@ export async function authorizeRedemptionConfirm(
   }
   return { role, membershipId: membership.membership.id };
 }
+
+/**
+ * The closed set of Business roles that may ever hold Business Review authority
+ * (`EA-BL-001-CORR-002-BR`). Staff is structurally ineligible at MVP.
+ */
+export type BusinessReviewerRole = Extract<RecorderRole, "owner" | "manager">;
+
+/**
+ * Business Review authority (`EA-BL-001-CORR-002-BR`, `DEC-PROD-015`) — approve/reject a Purchase in
+ * `business_review_required`.
+ *
+ * Resolved LIVE through the single existing permission architecture (`evaluatePermissionWithContext`)
+ * on every attempt; never from a client-supplied role/reviewer/business claim. `purchase.businessReview`
+ * is an ordinary sensitive-catalogue entry (Owner floor, Manager default with explicit revoke/re-grant,
+ * mandatory audit), so this mirrors `authorizeRedemptionConfirm` exactly — there is no review-specific
+ * authorization architecture.
+ *
+ * Staff is ineligible by construction (the catalogue names no Staff grant path, the override
+ * constructor refuses Staff grants, and the evaluator revalidates eligibility rather than trusting a
+ * stored grant). The explicit role narrowing below is a second, independent backstop: even if a
+ * future evaluator regression allowed a Staff decision, no Staff member could pass this function.
+ * There is no Platform Administrator path (the evaluator has none) and a Customer holds no Business
+ * membership, so both fail closed with the same AUTH error.
+ *
+ * `requireAudit: true` records the accountable sensitive decision (allow AND deny) once per attempt
+ * under the caller's idempotency key (004C); `false` is the mid-transaction revalidation, which must
+ * not emit a second record for the same attempt.
+ */
+export async function authorizePurchaseBusinessReview(
+  db: Firestore,
+  userId: string,
+  businessId: string,
+  params: { readonly idempotencyKey: string; readonly requireAudit: boolean },
+): Promise<{ readonly role: BusinessReviewerRole; readonly membershipId: string }> {
+  const { decision, membership } = await evaluatePermissionWithContext(db, {
+    userId,
+    businessId,
+    permission: "purchase.businessReview",
+  });
+
+  if (params.requireAudit) {
+    await recordSensitiveDecisionStandalone(
+      db,
+      {
+        decision,
+        request: { userId, businessId, permission: "purchase.businessReview" },
+        membershipId: membership.kind === "found" ? membership.membership.id : undefined,
+        idempotencyKey: params.idempotencyKey,
+      },
+      new Date(),
+    );
+  }
+
+  const deny = (): never => {
+    throw new PurchaseDomainError(
+      (decision.errorCategory as ErrorCategory | undefined) ?? "AUTH_FORBIDDEN",
+      "Not authorized to review Purchases for this Business.",
+    );
+  };
+  if (!decision.allowed) {
+    return deny();
+  }
+  if (membership.kind !== "found") {
+    return deny();
+  }
+  const role = decision.role;
+  if (role !== "owner" && role !== "manager") {
+    // Staff (or anything unexpected) can never review, whatever the evaluator said.
+    throw new PurchaseDomainError(
+      "AUTH_FORBIDDEN",
+      "Not authorized to review Purchases for this Business.",
+    );
+  }
+  return { role, membershipId: membership.membership.id };
+}
+
+/**
+ * Business Review queue/detail READ gate: the SAME live `purchase.businessReview` evaluation as the
+ * decision commands (so a Staff member, a revoked Manager, a Platform Administrator and a Customer
+ * all see nothing), but unaudited — a read of the queue is not itself an accountable decision on the
+ * protected action. Every failure is the same AUTH_FORBIDDEN.
+ */
+export async function authorizeBusinessReviewQueueRead(
+  db: Firestore,
+  userId: string,
+  businessId: string,
+): Promise<void> {
+  const { decision, membership } = await evaluatePermissionWithContext(db, {
+    userId,
+    businessId,
+    permission: "purchase.businessReview",
+  });
+  if (
+    !decision.allowed ||
+    membership.kind !== "found" ||
+    (decision.role !== "owner" && decision.role !== "manager")
+  ) {
+    throw new PurchaseDomainError(
+      "AUTH_FORBIDDEN",
+      "Not authorized to view the Business Review queue for this Business.",
+    );
+  }
+}

@@ -175,7 +175,13 @@ describe("Commercial foundation is a separate, non-integrated domain (WP-COM-01)
     const migrationFiles = readdirSync(migrationsDir).filter((n) => n.endsWith(".sql"));
     for (const name of migrationFiles) {
       const sql = readFileSync(join(migrationsDir, name), "utf8").replace(/--.*$/gm, "");
-      if (!name.startsWith("0026_purchase_pending_admission")) {
+      // EA-BL-001-CORR-002-BR (0028) re-states the Purchase status vocabulary / integrity CHECKs, which
+      // necessarily keep naming the Purchase-domain state it adds Business Review beside (bookkeeping only;
+      // 0028 is Purchase-domain schema and touches no Commercial table).
+      if (
+        !name.startsWith("0026_purchase_pending_admission") &&
+        !name.startsWith("0028_business_review_foundation")
+      ) {
         expect(sql, name).not.toContain(PENDING);
       }
       // WP-COM-04 legitimately adds consumption claims/events/failures; WP-COM-05b adds admissions

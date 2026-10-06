@@ -24,6 +24,7 @@ import type { Role } from "./role";
 import type { BusinessLifecycleStatus } from "../evaluator/types";
 import { unrecognisedSensitivePermissionError } from "./permissionErrors";
 import { REDEMPTION_CONFIRM_CATALOGUE_ENTRY } from "./redemptionPermissionCatalogue";
+import { PURCHASE_BUSINESS_REVIEW_CATALOGUE_ENTRY } from "./purchaseBusinessReviewPermissionCatalogue";
 
 /**
  * Whether a permission's default state is Owner-only, or Owner+Manager by
@@ -244,6 +245,9 @@ export const SENSITIVE_PERMISSION_CATALOGUE: readonly SensitivePermissionCatalog
   // `DEC-LOY-018` (`CAPABILITY-6-REDEMPTION-ENGINE-001`): defined in its own
   // module, registered here — see `redemptionPermissionCatalogue.ts`.
   REDEMPTION_CONFIRM_CATALOGUE_ENTRY,
+  // `EA-BL-001-CORR-002-BR` (`DEC-PROD-015`): defined in its own module, registered here — see
+  // `purchaseBusinessReviewPermissionCatalogue.ts`. Staff is ineligible by construction.
+  PURCHASE_BUSINESS_REVIEW_CATALOGUE_ENTRY,
 ] as const;
 
 export const SENSITIVE_PERMISSION_IDS: readonly PermissionId[] = SENSITIVE_PERMISSION_CATALOGUE.map(

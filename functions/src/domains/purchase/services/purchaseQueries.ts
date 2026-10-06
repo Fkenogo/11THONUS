@@ -27,6 +27,7 @@ import type { PlatformPostgresPool } from "../../../infrastructure/postgres/post
 import {
   authorizeBusinessLoyaltyVisibilityRead,
   authorizeBusinessPurchaseRead,
+  authorizeBusinessReviewQueueRead,
 } from "./purchaseAuthorization";
 import {
   listAvailableRewardsForBusinessRows,
@@ -38,6 +39,7 @@ import type {
 } from "../models/businessLoyaltyVisibility";
 import {
   getPurchaseRecordById,
+  listBusinessReviewQueue as listBusinessReviewQueueRows,
   listPurchaseRecordEvents,
   listPurchaseRecordsForBusiness,
   listWaitingPurchasesForCustomer,
@@ -85,6 +87,7 @@ function parsePagination(params: {
 
 const PURCHASE_STATUSES: readonly string[] = [
   "waiting_for_customer",
+  "business_review_required",
   "pending_admission",
   "verified",
   "rejected",
@@ -149,6 +152,77 @@ export async function getPurchaseRecordForBusiness(
   return { purchase, events };
 }
 
+/**
+ * Business Review queue (`EA-BL-001-CORR-002-BR`): the Business's Purchases awaiting an Owner/Manager
+ * decision, oldest first, bounded and paginated. Gated by the SAME live `purchase.businessReview`
+ * evaluation as the decision commands, so Staff, a Manager whose authority was revoked, a Platform
+ * Administrator and a Customer all fail closed. Each row carries the review context (item, quantity,
+ * recorder + role, timestamps, program/version); per-purchase history is the existing
+ * `getPurchaseRecordForBusiness` timeline (lifecycle events). Read-only: never creates, repairs or
+ * decides anything. The Business scope comes from the authorized `businessId`, enforced in SQL.
+ */
+export async function listBusinessReviewQueue(
+  db: Firestore,
+  pool: PlatformPostgresPool,
+  params: {
+    readonly userId: string;
+    readonly businessId: string;
+    readonly limit?: number | null;
+    readonly offset?: number | null;
+  },
+): Promise<{ readonly purchases: PurchaseRecordRow[] }> {
+  await authorizeBusinessReviewQueueRead(db, params.userId, params.businessId);
+  const { limit, offset } = parsePagination(params);
+  const purchases = await listBusinessReviewQueueRows(pool, params.businessId, { limit, offset });
+  return { purchases };
+}
+
+/**
+ * Customer-facing status token for a Purchase awaiting Business Review. The internal
+ * `business_review_required` name is never exposed to a Customer; the client maps this neutral token
+ * to "Waiting for business confirmation" / "En attente de confirmation du commerce".
+ */
+export const CUSTOMER_AWAITING_BUSINESS_CONFIRMATION = "awaiting_business_confirmation" as const;
+
+function customerFacingStatus(status: PurchaseStatus): string {
+  return status === "business_review_required" ? CUSTOMER_AWAITING_BUSINESS_CONFIRMATION : status;
+}
+
+/**
+ * Customer view of a Purchase: strips Business Review internals (reviewer identity, decision time,
+ * rejection reason, threshold evidence) and renames the internal review status. A Customer never
+ * learns who reviewed, why, or any threshold.
+ */
+function redactPurchaseForCustomer(purchase: PurchaseRecordRow): PurchaseRecordRow {
+  return {
+    ...purchase,
+    status: customerFacingStatus(purchase.status) as PurchaseStatus,
+    businessReviewDecision: null,
+    businessReviewReviewerUserId: null,
+    businessReviewDecidedAt: null,
+    businessReviewReason: null,
+  };
+}
+
+function redactEventForCustomer(event: PurchaseRecordEventRow): PurchaseRecordEventRow {
+  const involvesReview =
+    event.fromStatus === "business_review_required" ||
+    event.toStatus === "business_review_required" ||
+    (event.eventPayload !== null && "decision" in event.eventPayload);
+  if (!involvesReview) {
+    return event;
+  }
+  return {
+    ...event,
+    fromStatus:
+      event.fromStatus === null ? null : (customerFacingStatus(event.fromStatus) as PurchaseStatus),
+    toStatus: customerFacingStatus(event.toStatus) as PurchaseStatus,
+    actorId: "business",
+    reason: null,
+    eventPayload: null,
+  };
+}
+
 export async function listPurchasesWaitingForCustomer(
   pool: PlatformPostgresPool,
   params: {
@@ -177,7 +251,10 @@ export async function getPurchaseRecordForCustomer(
     throw purchaseOwnershipError();
   }
   const events = await listPurchaseRecordEvents(pool, purchase.id);
-  return { purchase, events };
+  return {
+    purchase: redactPurchaseForCustomer(purchase),
+    events: events.map(redactEventForCustomer),
+  };
 }
 
 export async function listAvailableRewardsForCustomer(

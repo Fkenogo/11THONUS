@@ -36,6 +36,17 @@ export function purchaseStaleStateError(expected: string, actual: string): Purch
   );
 }
 
+/**
+ * Business Review self-review prohibition (`EA-BL-001-CORR-002-BR`): the reviewer is the member who
+ * recorded the Purchase. No exception, no role exemption, no sole-reviewer bypass -- fail closed.
+ */
+export function purchaseSelfReviewError(): PurchaseDomainError {
+  return new PurchaseDomainError(
+    "AUTH_FORBIDDEN",
+    "A Purchase cannot be reviewed by the member who recorded it.",
+  );
+}
+
 export function purchaseOwnershipError(): PurchaseDomainError {
   return new PurchaseDomainError(
     "AUTH_FORBIDDEN",

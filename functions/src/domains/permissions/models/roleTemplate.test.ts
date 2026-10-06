@@ -89,16 +89,18 @@ describe("isPermissionInRoleTemplateDefault", () => {
 });
 
 describe("SENSITIVE_PERMISSION_ROLE_TEMPLATES", () => {
-  it("gives owner and manager exactly the catalogue's inheritable entries by default (DEC-LOY-018 adds redemption.confirm to the Manager default)", () => {
+  it("gives owner and manager exactly the catalogue's inheritable entries by default (DEC-LOY-018 adds redemption.confirm; EA-BL-001-CORR-002-BR adds purchase.businessReview — Owner/Manager only)", () => {
     expect(SENSITIVE_PERMISSION_ROLE_TEMPLATES.owner.defaultPermissions).toEqual([
       "customer.viewProtectedProfile",
       "report.exportFinancial",
       "redemption.confirm",
+      "purchase.businessReview",
     ]);
     expect(SENSITIVE_PERMISSION_ROLE_TEMPLATES.manager.defaultPermissions).toEqual([
       "customer.viewProtectedProfile",
       "report.exportFinancial",
       "redemption.confirm",
+      "purchase.businessReview",
     ]);
   });
 

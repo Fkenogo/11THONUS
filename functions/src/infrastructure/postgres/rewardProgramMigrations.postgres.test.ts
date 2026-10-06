@@ -155,6 +155,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0025",
       "0026",
       "0027",
+      "0028",
     ]);
   });
 
@@ -188,6 +189,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0025",
       "0026",
       "0027",
+      "0028",
     ]);
 
     for (const table of [
@@ -257,12 +259,13 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0025",
       "0026",
       "0027",
+      "0028",
     ]);
   }, 15000);
 
   it("rolls back the full migration set and re-applies cleanly", async () => {
     await migrateUp(pool, migrationsDir);
-    await migrateDown(pool, migrationsDir, 27);
+    await migrateDown(pool, migrationsDir, 28);
 
     for (const table of [
       "reward_programs",
@@ -306,6 +309,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0025",
       "0026",
       "0027",
+      "0028",
     ]);
     const applied = await getAppliedMigrations(pool);
     expect(applied.map((a) => a.version)).toEqual([
@@ -336,6 +340,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0025",
       "0026",
       "0027",
+      "0028",
     ]);
   }, 15000);
 
@@ -378,7 +383,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
 
     // The guard refuses BEFORE dropping anything: governed redemption
     // evidence is never silently discarded by a rollback.
-    await expect(migrateDown(pool, migrationsDir, 8)).rejects.toThrow(/refusing to roll back/i);
+    await expect(migrateDown(pool, migrationsDir, 9)).rejects.toThrow(/refusing to roll back/i);
 
     const reg = await pool.query("SELECT to_regclass('public.redemptions') AS reg");
     expect(reg.rows[0].reg).not.toBeNull();
@@ -625,6 +630,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         "0025",
         "0026",
         "0027",
+        "0028",
       ]);
 
       const preserved = await pool.query<{
@@ -1500,6 +1506,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         "0025",
         "0026",
         "0027",
+        "0028",
       ]);
 
       expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
@@ -1605,6 +1612,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         "0025",
         "0026",
         "0027",
+        "0028",
       ]);
       expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
 
@@ -1677,6 +1685,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         "0025",
         "0026",
         "0027",
+        "0028",
       ]);
       expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
 
@@ -1762,6 +1771,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         "0025",
         "0026",
         "0027",
+        "0028",
       ]);
       expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
     }, 15000);
@@ -1832,6 +1842,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         "0025",
         "0026",
         "0027",
+        "0028",
       ]);
       expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
     }, 15000);
@@ -2193,7 +2204,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         [versionId, item.rows[0].id],
       );
 
-      await migrateDown(pool, migrationsDir, 9);
+      await migrateDown(pool, migrationsDir, 10);
 
       // Structural shell only: table exists, is empty, keeps the 0003
       // shape -- history is NOT reconstructed.
@@ -2231,6 +2242,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         "0025",
         "0026",
         "0027",
+        "0028",
       ]);
       expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
     }, 15000);
@@ -2430,8 +2442,8 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         await pool.query(`UPDATE purchase_records SET status = 'pending_admission' WHERE id = $1`, [
           id,
         ]);
-        // 0027 sits above 0026: roll it back first (no admission rows exist), then 0026 refuses.
-        await migrateDown(pool, migrationsDir, 1);
+        // 0028 and 0027 sit above 0026: roll them back first (no BR/admission rows exist), then 0026 refuses.
+        await migrateDown(pool, migrationsDir, 2);
         await expect(migrateDown(pool, migrationsDir, 1)).rejects.toThrow(
           /0026: refusing to roll back/i,
         );
@@ -2447,7 +2459,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
 
       it("down restores the pre-0026 schema exactly, and up re-applies cleanly (round trip)", async () => {
         const id = await seedWaitingPurchase("roundtrip");
-        await migrateDown(pool, migrationsDir, 2); // 0027 then 0026
+        await migrateDown(pool, migrationsDir, 3); // 0028, 0027 then 0026
         const defs = await pool.query<{ def: string }>(
           `SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint
             WHERE conrelid = 'purchase_records'::regclass
@@ -2468,10 +2480,253 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         ).rejects.toThrow(/purchase_records_status_check/);
 
         const again = await migrateUp(pool, migrationsDir);
-        expect(again.applied).toEqual(["0026", "0027"]);
+        expect(again.applied).toEqual(["0026", "0027", "0028"]);
         await pool.query(`UPDATE purchase_records SET status = 'pending_admission' WHERE id = $1`, [
           id,
         ]);
+      });
+    });
+
+    describe("EA-BL-001-CORR-002-BR: 0028 Business Review foundation", () => {
+      async function seedPurchase(
+        tag: string,
+        status: "waiting_for_customer" | "business_review_required",
+      ) {
+        const businessId = `biz-0028-${tag}`;
+        const programId = await insertProgram(businessId);
+        const versionId = await insertVersion(programId);
+        const itemId = await insertItem(businessId, "Item 0028");
+        await bindItem(versionId, itemId);
+        const row = await pool.query<{ id: string }>(
+          `INSERT INTO purchase_records
+             (business_id, customer_identity_id, presented_artifact_type, presented_artifact_reference,
+              canonical_loyalty_number_value, reward_program_id, reward_program_version_id,
+              shared_loyalty_number_allowed, multiple_units_allowed, branch_id,
+              recorded_by_user_id, recorded_by_role, quantity, qualifying_item_id, item_label,
+              purchase_date, correlation_id, status)
+           VALUES ($1, 'cust-1', 'loyalty_number', 'ABC234', 'ABC234', $2, $3,
+                   false, true, 'branch-1', 'recorder-1', 'staff', 9, $4, 'Snapshot',
+                   now(), 'corr-1', $5) RETURNING id`,
+          [businessId, programId, versionId, itemId, status],
+        );
+        return { id: row.rows[0].id, versionId };
+      }
+
+      const approveSql = (id: string, reviewer = "reviewer-1") =>
+        pool.query(
+          `UPDATE purchase_records SET status='waiting_for_customer', business_review_decision='approved',
+             business_review_reviewer_user_id=$2, business_review_decided_at=now() WHERE id=$1`,
+          [id, reviewer],
+        );
+
+      it("up: columns, checks, guard trigger, queue index and evidence vocabularies exist", async () => {
+        const cols = await pool.query<{ column_name: string }>(
+          `SELECT column_name FROM information_schema.columns
+            WHERE (table_name='purchase_records' AND column_name LIKE 'business_review_%')
+               OR (table_name='reward_program_versions' AND column_name='business_review_quantity_threshold')`,
+        );
+        expect(cols.rows.map((c) => c.column_name).sort()).toEqual([
+          "business_review_decided_at",
+          "business_review_decision",
+          "business_review_quantity_threshold",
+          "business_review_reason",
+          "business_review_reviewer_user_id",
+        ]);
+        const status = await pool.query<{ def: string }>(
+          `SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint WHERE conname='purchase_records_status_check'`,
+        );
+        expect(status.rows[0].def).toContain("business_review_required");
+        const trig = await pool.query(
+          `SELECT 1 FROM pg_trigger WHERE tgname='purchase_records_business_review_guard' AND NOT tgisinternal`,
+        );
+        expect(trig.rows).toHaveLength(1);
+        const idx = await pool.query(
+          `SELECT 1 FROM pg_indexes WHERE indexname='purchase_records_business_review_queue_idx'`,
+        );
+        expect(idx.rows).toHaveLength(1);
+        for (const [table, conname] of [
+          ["trust_events", "trust_events_event_type_check"],
+          ["notification_intents", "notification_intents_intent_type_check"],
+          ["purchase_outbox", "purchase_outbox_event_type_check"],
+        ] as const) {
+          const d = await pool.query<{ def: string }>(
+            `SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint
+              WHERE conrelid=$1::regclass AND conname=$2`,
+            [table, conname],
+          );
+          expect(d.rows[0].def, conname).toContain("business_review_required");
+        }
+      });
+
+      it("is additive: existing rows keep their status, the threshold defaults to NULL (disabled)", async () => {
+        const { id, versionId } = await seedPurchase("additive", "waiting_for_customer");
+        expect(
+          (await pool.query(`SELECT status FROM purchase_records WHERE id=$1`, [id])).rows[0]
+            .status,
+        ).toBe("waiting_for_customer");
+        expect(
+          (
+            await pool.query(
+              `SELECT business_review_quantity_threshold AS t FROM reward_program_versions WHERE id=$1`,
+              [versionId],
+            )
+          ).rows[0].t,
+        ).toBeNull();
+      });
+
+      it("the threshold is bounded (>= 1)", async () => {
+        const { versionId } = await seedPurchase("bound", "waiting_for_customer");
+        for (const bad of [0, -1]) {
+          await expect(
+            pool.query(
+              `UPDATE reward_program_versions SET business_review_quantity_threshold=$2 WHERE id=$1`,
+              [versionId, bad],
+            ),
+          ).rejects.toThrow(/business_review_threshold_check/);
+        }
+        await pool.query(
+          `UPDATE reward_program_versions SET business_review_quantity_threshold=1 WHERE id=$1`,
+          [versionId],
+        );
+        await pool.query(
+          `UPDATE reward_program_versions SET business_review_quantity_threshold=NULL WHERE id=$1`,
+          [versionId],
+        );
+      });
+
+      it("legal transitions: INSERT as business_review_required, then approve → waiting_for_customer", async () => {
+        const { id } = await seedPurchase("approve", "business_review_required");
+        await approveSql(id);
+        const row = await pool.query(
+          `SELECT status, business_review_decision d, business_review_reason r, rejection_reason cr FROM purchase_records WHERE id=$1`,
+          [id],
+        );
+        expect(row.rows[0]).toEqual({
+          status: "waiting_for_customer",
+          d: "approved",
+          r: null,
+          cr: null,
+        });
+      });
+
+      it("legal transition: reject → rejected with the Business Review reason and NO customer reason", async () => {
+        const { id } = await seedPurchase("reject", "business_review_required");
+        await pool.query(
+          `UPDATE purchase_records SET status='rejected', business_review_decision='rejected',
+             business_review_reviewer_user_id='reviewer-1', business_review_decided_at=now(),
+             business_review_reason='other' WHERE id=$1`,
+          [id],
+        );
+        // A customer reason alongside a business reason is ambiguous provenance: refused.
+        const other = await seedPurchase("reject-both", "business_review_required");
+        await expect(
+          pool.query(
+            `UPDATE purchase_records SET status='rejected', business_review_decision='rejected',
+               business_review_reviewer_user_id='reviewer-1', business_review_decided_at=now(),
+               business_review_reason='other', rejection_reason='duplicate' WHERE id=$1`,
+            [other.id],
+          ),
+        ).rejects.toThrow(/purchase_records_verified_fields/);
+      });
+
+      it("illegal transitions are rejected: entering review after creation, and every exit other than approve/reject", async () => {
+        const waiting = await seedPurchase("enter", "waiting_for_customer");
+        await expect(
+          pool.query(`UPDATE purchase_records SET status='business_review_required' WHERE id=$1`, [
+            waiting.id,
+          ]),
+        ).rejects.toThrow(/may only be set when the Purchase is created/);
+
+        for (const [to, extra] of [
+          ["verified", ", verified_at = now()"],
+          ["under_review", ", dispute_reason = 'wrong_item'"],
+          ["pending_admission", ""],
+          ["cancelled", ""],
+          ["rejected", ", rejection_reason = 'duplicate'"],
+        ] as const) {
+          const { id } = await seedPurchase(`exit-${to}`, "business_review_required");
+          await expect(
+            pool.query(`UPDATE purchase_records SET status='${to}'${extra} WHERE id=$1`, [id]),
+            to,
+          ).rejects.toThrow(/business_review/);
+        }
+
+        const noDecision = await seedPurchase("nodecision", "business_review_required");
+        await expect(
+          pool.query(`UPDATE purchase_records SET status='waiting_for_customer' WHERE id=$1`, [
+            noDecision.id,
+          ]),
+        ).rejects.toThrow(/requires an approved decision/);
+      });
+
+      it("a recorded decision is immutable and a self-review is refused by the database", async () => {
+        const { id } = await seedPurchase("immutable", "business_review_required");
+        await approveSql(id);
+        await expect(
+          pool.query(
+            `UPDATE purchase_records SET business_review_reviewer_user_id='someone-else' WHERE id=$1`,
+            [id],
+          ),
+        ).rejects.toThrow(/immutable/);
+        const self = await seedPurchase("self", "business_review_required");
+        await expect(approveSql(self.id, "recorder-1")).rejects.toThrow(/business_review_not_self/);
+      });
+
+      it("down succeeds when no Business Review data exists, restores the 0027 shape, and up re-applies", async () => {
+        await seedPurchase("down-clean", "waiting_for_customer");
+        await migrateDown(pool, migrationsDir, 1);
+        const cols = await pool.query(
+          `SELECT 1 FROM information_schema.columns WHERE table_name='purchase_records' AND column_name LIKE 'business_review_%'`,
+        );
+        expect(cols.rows).toHaveLength(0);
+        const status = await pool.query<{ def: string }>(
+          `SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint WHERE conname='purchase_records_status_check'`,
+        );
+        expect(status.rows[0].def).not.toContain("business_review_required");
+        expect(
+          (
+            await pool.query(
+              `SELECT 1 FROM pg_proc WHERE proname='purchase_records_business_review_guard'`,
+            )
+          ).rows,
+        ).toHaveLength(0);
+        const again = await migrateUp(pool, migrationsDir);
+        expect(again.applied).toEqual(["0028"]);
+      });
+
+      it("down FAILS CLOSED while a Purchase is in review, and changes nothing", async () => {
+        await seedPurchase("down-br", "business_review_required");
+        await expect(migrateDown(pool, migrationsDir, 1)).rejects.toThrow(
+          /0028: refusing to roll back/i,
+        );
+        const v = await pool.query<{ max: string }>(`SELECT max(version) FROM schema_migrations`);
+        expect(v.rows[0].max).toBe("0028");
+        expect(
+          (
+            await pool.query(
+              `SELECT 1 FROM purchase_records WHERE status='business_review_required'`,
+            )
+          ).rows,
+        ).toHaveLength(1);
+      });
+
+      it("down FAILS CLOSED while a version still carries a threshold", async () => {
+        const { versionId } = await seedPurchase("down-threshold", "waiting_for_customer");
+        await pool.query(
+          `UPDATE reward_program_versions SET business_review_quantity_threshold=5 WHERE id=$1`,
+          [versionId],
+        );
+        await expect(migrateDown(pool, migrationsDir, 1)).rejects.toThrow(
+          /0028: refusing to roll back/i,
+        );
+      });
+
+      it("down FAILS CLOSED while a decided Purchase keeps Business Review attribution", async () => {
+        const { id } = await seedPurchase("down-decided", "business_review_required");
+        await approveSql(id);
+        await expect(migrateDown(pool, migrationsDir, 1)).rejects.toThrow(
+          /0028: refusing to roll back/i,
+        );
       });
     });
   });

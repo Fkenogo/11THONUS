@@ -159,8 +159,13 @@ import { rejectPurchase as rejectPurchaseCommand } from "./domains/purchase/serv
 import { raisePurchaseDispute as raisePurchaseDisputeCommand } from "./domains/purchase/services/raisePurchaseDisputeCommand";
 import { confirmRedemption as confirmRedemptionCommand } from "./domains/purchase/services/confirmRedemptionCommand";
 import {
+  approveBusinessReview as approveBusinessReviewCommand,
+  rejectBusinessReview as rejectBusinessReviewCommand,
+} from "./domains/purchase/services/businessReviewCommands";
+import {
   listPurchasesForBusiness as listPurchasesForBusinessQuery,
   getPurchaseRecordForBusiness as getPurchaseRecordForBusinessQuery,
+  listBusinessReviewQueue as listBusinessReviewQueueQuery,
   listPurchasesWaitingForCustomer as listPurchasesWaitingForCustomerQuery,
   getPurchaseRecordForCustomer as getPurchaseRecordForCustomerQuery,
   listAvailableRewardsForCustomer as listAvailableRewardsForCustomerQuery,
@@ -1829,12 +1834,34 @@ function parseQualifyingItemIds(value: unknown): string[] {
   return value.map((entry) => parseNonEmptyString(entry));
 }
 
+/**
+ * Business Review routing threshold (`EA-BL-001-CORR-002-BR`): absent = carry the existing value
+ * forward (an edit that does not mention it never silently disables Business Review); `null` =
+ * disable; otherwise a positive integer. Never coerced -- a non-integer/zero/negative/non-number is
+ * a validation failure, not "review everything" and not "disabled".
+ */
+function parseBusinessReviewQuantityThreshold(value: unknown): number | null | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (value === null) {
+    return null;
+  }
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 1) {
+    throw new HttpsError("invalid-argument", "reward_program_command_failed", {
+      field: "businessReviewQuantityThreshold",
+    });
+  }
+  return value;
+}
+
 function parseRewardProgramDraftFields(value: Record<string, unknown>): {
   rewardDescription: string;
   standardRewardNodeId?: string | null;
   multipleUnitsAllowed: boolean;
   sharedLoyaltyNumberAllowed: boolean;
   bulkReviewThreshold?: number | null;
+  businessReviewQuantityThreshold?: number | null;
   effectiveFrom: Date;
   effectiveUntil?: Date | null;
   qualifyingItemIds: string[];
@@ -1851,6 +1878,9 @@ function parseRewardProgramDraftFields(value: Record<string, unknown>): {
       value.bulkReviewThreshold === undefined || value.bulkReviewThreshold === null
         ? null
         : Number(value.bulkReviewThreshold),
+    businessReviewQuantityThreshold: parseBusinessReviewQuantityThreshold(
+      value.businessReviewQuantityThreshold,
+    ),
     effectiveFrom: parseIsoDate(value.effectiveFrom, "effectiveFrom"),
     effectiveUntil: parseOptionalIsoDate(value.effectiveUntil, "effectiveUntil") ?? null,
     qualifyingItemIds: parseQualifyingItemIds(value.qualifyingItemIds ?? []),
@@ -2411,6 +2441,71 @@ export const raisePurchaseDispute = onCall(async (request) => {
 });
 
 /**
+ * Whitelist parsers for the Business Review decision commands (`EA-BL-001-CORR-002-BR`): exactly
+ * `businessId`, `purchaseRecordId`, an optional bounded `note`, and (reject only) the bounded
+ * Business Review `reason`. The reviewer identity, the reviewer's role, the Purchase's status and
+ * recorder, and every permission/authority claim are excluded by the whitelist and resolved
+ * server-side instead -- the client can name the Purchase and the decision's content, nothing about
+ * who is deciding or in what capacity. Exported for the mass-assignment regression test.
+ */
+export function parseApproveBusinessReviewRequest(value: Record<string, unknown>) {
+  return {
+    businessId: parseBusinessId(value.businessId),
+    purchaseRecordId: parseNonEmptyString(value.purchaseRecordId),
+    note: value.note,
+  };
+}
+
+export function parseRejectBusinessReviewRequest(value: Record<string, unknown>) {
+  return {
+    ...parseApproveBusinessReviewRequest(value),
+    reason: value.reason,
+  };
+}
+
+/**
+ * Business Review decisions are Business-authenticated only: a Customer or Platform Administrator
+ * call resolves to a user with no Business membership and fails the LIVE `purchase.businessReview`
+ * evaluation inside the command (which also enforces Owner/Manager-only, Staff ineligibility,
+ * self-review prohibition and Business scope), writing nothing. No Slice B/C UI is built on these yet.
+ */
+export const approveBusinessReview = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId } = await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    return await approveBusinessReviewCommand(db, getPurchasePostgresPool(), {
+      userId,
+      request: parseApproveBusinessReviewRequest(value),
+      idempotencyKey: parseClientIdempotencyKey(value.idempotencyKey),
+      correlationId: randomUUID(),
+    });
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+export const rejectBusinessReview = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId } = await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    return await rejectBusinessReviewCommand(db, getPurchasePostgresPool(), {
+      userId,
+      request: parseRejectBusinessReviewRequest(value),
+      idempotencyKey: parseClientIdempotencyKey(value.idempotencyKey),
+      correlationId: randomUUID(),
+    });
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+/**
  * Whitelist parser: exactly `businessId` and `rewardId`.
  *
  * Deliberately minimal — `CAPABILITY-6-REDEMPTION-ENGINE-001` /
@@ -2476,6 +2571,24 @@ export const listPurchasesForBusiness = onCall(async (request) => {
       userId,
       businessId: parseBusinessId(value.businessId),
       status: value.status,
+      ...parsePurchasePagination(value),
+    });
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+/** Business Review queue read (`EA-BL-001-CORR-002-BR`): Owner/authorised-Manager only, oldest first. */
+export const listBusinessReviewQueue = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId } = await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    return await listBusinessReviewQueueQuery(db, getPurchasePostgresPool(), {
+      userId,
+      businessId: parseBusinessId(value.businessId),
       ...parsePurchasePagination(value),
     });
   } catch (error) {

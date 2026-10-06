@@ -20,10 +20,11 @@ const EXPECTED_IDS = [
   "customer.viewProtectedProfile",
   "report.exportFinancial",
   "redemption.confirm",
+  "purchase.businessReview",
 ] as const;
 
 describe("SENSITIVE_PERMISSION_CATALOGUE", () => {
-  it("has exactly the ten entries (eight design-specified plus ENG-P2-004-CORR-002's staff.assignRole plus DEC-LOY-018's redemption.confirm), in order", () => {
+  it("has exactly the eleven entries (eight design-specified plus ENG-P2-004-CORR-002's staff.assignRole plus DEC-LOY-018's redemption.confirm plus EA-BL-001-CORR-002-BR's purchase.businessReview), in order", () => {
     expect(SENSITIVE_PERMISSION_CATALOGUE.map((entry) => entry.id)).toEqual(EXPECTED_IDS);
   });
 
@@ -42,7 +43,7 @@ describe("SENSITIVE_PERMISSION_CATALOGUE", () => {
     }
   });
 
-  it("marks exactly customer.viewProtectedProfile, report.exportFinancial and redemption.confirm as inheritable", () => {
+  it("marks exactly customer.viewProtectedProfile, report.exportFinancial, redemption.confirm and purchase.businessReview as inheritable", () => {
     const inheritable = SENSITIVE_PERMISSION_CATALOGUE.filter((e) => e.inheritAllowed).map(
       (e) => e.id,
     );
@@ -50,6 +51,7 @@ describe("SENSITIVE_PERMISSION_CATALOGUE", () => {
       "customer.viewProtectedProfile",
       "report.exportFinancial",
       "redemption.confirm",
+      "purchase.businessReview",
     ]);
   });
 
@@ -75,6 +77,7 @@ describe("SENSITIVE_PERMISSION_CATALOGUE", () => {
       "customer.viewProtectedProfile",
       "report.exportFinancial",
       "redemption.confirm",
+      "purchase.businessReview",
     ]) {
       expect(getSensitivePermissionEntry(id).defaultState).toBe("owner_and_manager_default");
     }
@@ -206,12 +209,13 @@ describe("getSensitivePermissionEntry", () => {
 });
 
 describe("getInheritableSensitivePermissionEntries", () => {
-  it("returns exactly the three inheritable entries", () => {
+  it("returns exactly the four inheritable entries", () => {
     const ids = getInheritableSensitivePermissionEntries().map((e) => e.id);
     expect(ids).toEqual([
       "customer.viewProtectedProfile",
       "report.exportFinancial",
       "redemption.confirm",
+      "purchase.businessReview",
     ]);
   });
 });
