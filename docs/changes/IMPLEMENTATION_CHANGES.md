@@ -7,6 +7,19 @@
 
 ---
 
+## 2026-10-05 — EA-BL-001-CORR-002-A — Post-Merge Closure
+
+- **Task:** Close Slice A after verifying its successful merge and exact-head evidence chain.
+- **Status:** **COMPLETE / ACCEPTED / MERGED.** PR #300 final reconciled head `cd2ffbbac6e0edffd7ab19cf480a50731783dfb8`; merge commit `facf59c73ddea3404d70469a490dd6cbc8e6d126`. Current `origin/main` was that exact merge commit when closure work began.
+- **Evidence:** authority `DEC-PROD-015` plus Experience Assembly authority reconciliation; frozen prototype SHA `18e8d700f505beefe46d324f6ea33f20a670abe7`; Founder Preview ACCEPTED; Independent Technical Review APPROVED WITH NON-BLOCKING NOTES; Founder Final Confirmation / Manual QA SATISFIED; exact-head CI run [37337547775](https://github.com/Fkenogo/11THONUS/actions/runs/37337547775) SUCCESS; PR #300 merged.
+- **NB dispositions:** NB-001 (hard-coded display threshold 10) remains informational under fixed ten-Verified-Unit Product Truth. NB-002 (inner `max-w-xl` constrained by parent `max-w-md`) remains informational. Neither requires correction.
+- **Programme boundary:** BR remains next candidate for separate Founder authorization, not authorized or started. Slice B remains blocked on BR. B–E unauthorized/unstarted; EA-BL-002 unstarted; WP-COM untouched; FEF-TLC-001 not adopted.
+- **Files:** governance documentation only. See [post-merge closure report](../05-implementation/reports/11THONUS-EA-BL-001-CORR-002-A-post-merge-closure-2026-10-05.md).
+- **Deployment/schema/dependencies/config:** none. No application code changed.
+- **Rollback:** revert the documentation-only closure PR; the previously merged implementation remains unaffected.
+
+---
+
 ## 2026-10-05 — EA-BL-001-CORR-002-A — Customer Identity & Circle
 
 - **Task:** Assemble the customer Identity/Circle vertical slice from the frozen prototype using real server-authoritative state.
