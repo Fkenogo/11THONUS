@@ -7,6 +7,18 @@
 
 ---
 
+## 2026-10-06 — EA-BL-001-CORR-002-BR — Business Review Domain Foundation Authorisation & Design
+
+- **Task:** Analyse the current purchase lifecycle and, if Product Truth supports it, authorise the Business Review Domain Foundation (analysis + governance/design confirmation only).
+- **Status:** **BR AUTHORISED — READY FOR IMPLEMENTATION** under `DEC-PROD-015`. Entry `origin/main` `961fc272abf6f50656973cdbb361dbec90ddd289`.
+- **Design:** distinct `business_review_required` state; per-version quantity-threshold routing (`NULL` = disabled; routing only); `purchase.business_review` permission (Owner default, Manager default revocable, Staff default deny; no Platform Administrator/Customer authority); strict reviewer-`!=`-recorder rule (no sole-reviewer exception authorised); Trust/event evidence reuse; neutral customer visibility excluded from verifiable/pending reads; proposed migration `0028` delta (not executed); T1–T10 matrix; atomic concurrency. `under_review` (customer dispute) and `pending_admission` (commercial hold) untouched; `bulk_review_threshold` stays visibility-only; no Product Truth conflict.
+- **Authorises BR ONLY.** Does not authorise Slice B/C/D/E, EA-BL-002, WP-COM, FEF-TLC-001, deployment, or implementation. Slice B remains blocked until BR is implemented and merged.
+- **Files:** governance documentation only. See [BR authorisation & design report](../05-implementation/reports/11THONUS-EA-BL-001-CORR-002-BR-authorisation-and-design-2026-10-06.md).
+- **Deployment/schema/dependencies/config:** none. No application code changed. No migration executed.
+- **Rollback:** revert this documentation-only change set; programme records return to “BR NOT AUTHORISED”.
+
+---
+
 ## 2026-10-05 — EA-BL-001-CORR-002-A — Post-Merge Closure
 
 - **Task:** Close Slice A after verifying its successful merge and exact-head evidence chain.
