@@ -358,6 +358,7 @@ export const en = {
       customerLoyaltyNumber: "Customer loyalty number {{value}}",
       status: {
         waiting_for_customer: "Waiting for customer",
+        business_review_required: "Awaiting business review",
         pending_admission: "Received · awaiting admission",
         verified: "Verified",
         rejected: "Rejected",
@@ -602,6 +603,7 @@ export const en = {
       activityRecorded: "Purchase recorded",
       activityVerified: "Purchase verified",
       activityWaiting: "Waiting for your confirmation",
+      activityBusinessReview: "Waiting for business confirmation",
       activityAdmission: "Received · awaiting admission",
       activityRejected: "Purchase rejected",
       activityUnderReview: "Purchase under review",
@@ -681,6 +683,7 @@ export const en = {
       },
       status: {
         waiting_for_customer: "Waiting for you",
+        awaiting_business_confirmation: "Waiting for business confirmation",
         pending_admission: "Received · awaiting admission",
         verified: "Verified",
         rejected: "Rejected",

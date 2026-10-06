@@ -35,6 +35,7 @@ export type PurchaseRecordWire = {
   notes: string | null;
   status:
     | "waiting_for_customer"
+    | "business_review_required"
     | "pending_admission"
     | "verified"
     | "rejected"
