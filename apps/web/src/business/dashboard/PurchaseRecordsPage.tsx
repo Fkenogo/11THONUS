@@ -21,6 +21,7 @@ import { MutationError } from "../onboarding/MutationError";
 import type { BusinessContext } from "../api/businessContext";
 import { usePurchasesQuery, useBusinessPurchaseQuery } from "../hooks/purchaseQueries";
 import { useRecordPurchaseMutation } from "../hooks/purchaseMutations";
+import { isBusinessReviewRequired } from "../api/purchaseMutations";
 import { useRewardProgramsQuery } from "../hooks/rewardProgramQueries";
 import { parsePurchaseRecordQuantity } from "./purchaseQuantityInput";
 import { resolvePurchaseDateInstant, todayDateInputValue } from "./purchaseDateInput";
@@ -67,7 +68,7 @@ export function PurchaseRecordsPage({ context }: { context: BusinessContext }) {
   const programsQuery = useRewardProgramsQuery(context.businessId);
 
   const [form, setForm] = useState<RecordFormState>(emptyRecordForm());
-  const [recorded, setRecorded] = useState(false);
+  const [recorded, setRecorded] = useState<"waiting" | "review" | null>(null);
   const [quantityError, setQuantityError] = useState(false);
   const recordMutation = useRecordPurchaseMutation(context.businessId);
 
@@ -99,14 +100,14 @@ export function PurchaseRecordsPage({ context }: { context: BusinessContext }) {
 
   async function submitRecord(event: React.FormEvent) {
     event.preventDefault();
-    setRecorded(false);
+    setRecorded(null);
     const quantity = parsePurchaseRecordQuantity(form.quantity);
     if (quantity === null) {
       setQuantityError(true);
       return;
     }
     setQuantityError(false);
-    await recordMutation.mutateAsync({
+    const result = await recordMutation.mutateAsync({
       rewardProgramId: form.rewardProgramId,
       ...(form.artifactKind === "loyalty_number"
         ? { loyaltyNumberValue: form.artifactValue.trim() }
@@ -116,7 +117,7 @@ export function PurchaseRecordsPage({ context }: { context: BusinessContext }) {
       purchaseDate: resolvePurchaseDateInstant(form.purchaseDate),
       ...(form.notes.trim().length > 0 ? { notes: form.notes.trim() } : {}),
     });
-    setRecorded(true);
+    setRecorded(isBusinessReviewRequired(result) ? "review" : "waiting");
     setForm(emptyRecordForm());
   }
 
@@ -219,7 +220,13 @@ export function PurchaseRecordsPage({ context }: { context: BusinessContext }) {
             onChange={(value) => setForm({ ...form, notes: value })}
           />
           {recordMutation.isError ? <MutationError error={recordMutation.error} /> : null}
-          {recorded ? <p role="status">{t("purchase.recordSuccess")}</p> : null}
+          {recorded ? (
+            <p role="status">
+              {recorded === "review"
+                ? t("purchase.recordSuccessReview")
+                : t("purchase.recordSuccess")}
+            </p>
+          ) : null}
           <Button type="submit" disabled={recordMutation.isPending}>
             {recordMutation.isPending ? t("purchase.recording") : t("purchase.recordSubmit")}
           </Button>

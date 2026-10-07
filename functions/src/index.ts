@@ -168,6 +168,7 @@ import {
   listBusinessReviewQueue as listBusinessReviewQueueQuery,
   listPurchasesWaitingForCustomer as listPurchasesWaitingForCustomerQuery,
   getPurchaseRecordForCustomer as getPurchaseRecordForCustomerQuery,
+  redactPurchaseForCustomer,
   listAvailableRewardsForCustomer as listAvailableRewardsForCustomerQuery,
   listAvailableRewardsForBusiness as listAvailableRewardsForBusinessQuery,
   listLoyaltyCycleProgressForBusiness as listLoyaltyCycleProgressForBusinessQuery,
@@ -2380,7 +2381,7 @@ export const verifyPurchase = onCall(async (request) => {
     // WP-COM-05b: the Commercial admission gate is OFF unless deliberately enabled
     // (PURCHASE_ADMISSION_GATE_MODE=enforce). The default keeps today's behaviour.
     const admissionGateMode = process.env.PURCHASE_ADMISSION_GATE_MODE || undefined;
-    return await verifyPurchaseCommand(db, getPurchasePostgresPool(), {
+    const result = await verifyPurchaseCommand(db, getPurchasePostgresPool(), {
       customerIdentityId,
       request: { purchaseRecordId: parseNonEmptyString(value.purchaseRecordId) },
       idempotencyKey: parseClientIdempotencyKey(value.idempotencyKey),
@@ -2389,6 +2390,8 @@ export const verifyPurchase = onCall(async (request) => {
       commercialAdmission:
         admissionGateMode === "enforce" ? createCommercialAdmissionPort() : undefined,
     });
+    // Customer-facing: strip Business Review attribution (reviewer identity etc.) from the returned row.
+    return { ...result, purchase: redactPurchaseForCustomer(result.purchase) };
   } catch (error) {
     throw toHttpsError(error);
   }
@@ -2403,7 +2406,7 @@ export const rejectPurchase = onCall(async (request) => {
       parseActorRequest(value),
       { verifier: firebaseAdminTokenVerifier() },
     );
-    return await rejectPurchaseCommand(db, getPurchasePostgresPool(), {
+    const result = await rejectPurchaseCommand(db, getPurchasePostgresPool(), {
       customerIdentityId,
       request: {
         purchaseRecordId: parseNonEmptyString(value.purchaseRecordId),
@@ -2412,6 +2415,8 @@ export const rejectPurchase = onCall(async (request) => {
       idempotencyKey: parseClientIdempotencyKey(value.idempotencyKey),
       correlationId: randomUUID(),
     });
+    // Customer-facing: strip Business Review attribution (reviewer identity etc.) from the returned row.
+    return { ...result, purchase: redactPurchaseForCustomer(result.purchase) };
   } catch (error) {
     throw toHttpsError(error);
   }
@@ -2426,7 +2431,7 @@ export const raisePurchaseDispute = onCall(async (request) => {
       parseActorRequest(value),
       { verifier: firebaseAdminTokenVerifier() },
     );
-    return await raisePurchaseDisputeCommand(db, getPurchasePostgresPool(), {
+    const result = await raisePurchaseDisputeCommand(db, getPurchasePostgresPool(), {
       customerIdentityId,
       request: {
         purchaseRecordId: parseNonEmptyString(value.purchaseRecordId),
@@ -2435,6 +2440,8 @@ export const raisePurchaseDispute = onCall(async (request) => {
       idempotencyKey: parseClientIdempotencyKey(value.idempotencyKey),
       correlationId: randomUUID(),
     });
+    // Customer-facing: strip Business Review attribution (reviewer identity etc.) from the returned row.
+    return { ...result, purchase: redactPurchaseForCustomer(result.purchase) };
   } catch (error) {
     throw toHttpsError(error);
   }

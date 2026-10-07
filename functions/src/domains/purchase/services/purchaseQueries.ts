@@ -28,6 +28,7 @@ import {
   authorizeBusinessLoyaltyVisibilityRead,
   authorizeBusinessPurchaseRead,
   authorizeBusinessReviewQueueRead,
+  hasBusinessReviewAuthority,
 } from "./purchaseAuthorization";
 import {
   listAvailableRewardsForBusinessRows,
@@ -121,12 +122,48 @@ export async function listPurchasesForBusiness(
 ): Promise<{ readonly purchases: PurchaseRecordRow[] }> {
   await authorizeBusinessPurchaseRead(db, params.userId, params.businessId);
   const { limit, offset } = parsePagination(params);
+  const status = parseStatusFilter(params.status);
+  // The Business Review queue is protected by `purchase.businessReview`: the generic list must never
+  // be a side door to it (`EA-BL-001-CORR-002-BR`). Reviewers may filter to it; everyone else is
+  // refused that filter and never sees review-required rows in an unfiltered list.
+  const reviewer = await hasBusinessReviewAuthority(db, params.userId, params.businessId);
+  if (status === "business_review_required" && !reviewer) {
+    await authorizeBusinessReviewQueueRead(db, params.userId, params.businessId); // throws AUTH_FORBIDDEN
+  }
   const purchases = await listPurchaseRecordsForBusiness(pool, params.businessId, {
-    status: parseStatusFilter(params.status),
+    status,
+    excludeBusinessReview: !reviewer,
     limit,
     offset,
   });
-  return { purchases };
+  return {
+    purchases: reviewer ? purchases : purchases.map(redactReviewAttributionForNonReviewer),
+  };
+}
+
+/**
+ * A caller without Business Review authority never receives reviewer identity, decision time or the
+ * review reason (the outcome stays visible through `status`).
+ */
+function redactReviewAttributionForNonReviewer(purchase: PurchaseRecordRow): PurchaseRecordRow {
+  return {
+    ...purchase,
+    businessReviewDecision: null,
+    businessReviewReviewerUserId: null,
+    businessReviewDecidedAt: null,
+    businessReviewReason: null,
+  };
+}
+
+function redactReviewEventForNonReviewer(event: PurchaseRecordEventRow): PurchaseRecordEventRow {
+  const involvesReview =
+    event.fromStatus === "business_review_required" ||
+    event.toStatus === "business_review_required" ||
+    (event.eventPayload !== null && "decision" in event.eventPayload);
+  if (!involvesReview) {
+    return event;
+  }
+  return { ...event, actorId: "business", reason: null, eventPayload: null };
 }
 
 export type PurchaseRecordDetail = {
@@ -148,8 +185,18 @@ export async function getPurchaseRecordForBusiness(
   if (!purchase || purchase.businessId !== params.businessId) {
     throw purchaseNotFoundError(params.purchaseRecordId);
   }
+  const reviewer = await hasBusinessReviewAuthority(db, params.userId, params.businessId);
+  if (!reviewer && purchase.status === "business_review_required") {
+    // Same boundary as the list: a non-reviewer cannot read a protected review-queue Purchase by id.
+    throw purchaseNotFoundError(params.purchaseRecordId);
+  }
   const events = await listPurchaseRecordEvents(pool, purchase.id);
-  return { purchase, events };
+  return reviewer
+    ? { purchase, events }
+    : {
+        purchase: redactReviewAttributionForNonReviewer(purchase),
+        events: events.map(redactReviewEventForNonReviewer),
+      };
 }
 
 /**
@@ -193,7 +240,7 @@ function customerFacingStatus(status: PurchaseStatus): string {
  * rejection reason, threshold evidence) and renames the internal review status. A Customer never
  * learns who reviewed, why, or any threshold.
  */
-function redactPurchaseForCustomer(purchase: PurchaseRecordRow): PurchaseRecordRow {
+export function redactPurchaseForCustomer(purchase: PurchaseRecordRow): PurchaseRecordRow {
   return {
     ...purchase,
     status: customerFacingStatus(purchase.status) as PurchaseStatus,
@@ -236,7 +283,9 @@ export async function listPurchasesWaitingForCustomer(
     limit,
     offset,
   });
-  return { purchases };
+  // After a Business approval the row is `waiting_for_customer` again but still carries reviewer
+  // attribution: every customer-facing row is redacted exactly like the detail read.
+  return { purchases: purchases.map(redactPurchaseForCustomer) };
 }
 
 export async function getPurchaseRecordForCustomer(

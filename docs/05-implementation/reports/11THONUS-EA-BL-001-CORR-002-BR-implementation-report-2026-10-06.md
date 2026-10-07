@@ -4,7 +4,7 @@
 
 > **Package:** `EA-BL-001-CORR-002-BR` · **Date:** 2026-10-06 · **Type:** backend / domain foundation (no UI)
 > **Authority:** `DEC-PROD-015`; related `DEC-LOY-003`, `DEC-PROD-002`. Authorisation: PR #303 (merge `8d7491d6fa85879c6b2e75eed4198e18d073dd62`; corrected design head `5ed82867b1e06a5646040426f17f1b83f89a9257`). Design: [BR authorisation & design report](11THONUS-EA-BL-001-CORR-002-BR-authorisation-and-design-2026-10-06.md).
-> **Status:** **IMPLEMENTED — TECHNICAL REVIEW PENDING.** Not Complete. Slice B/C are **not** authorised by this package.
+> **Status:** **IMPLEMENTED — TECHNICAL REVIEW PENDING** (pre-review correction applied, §15). Not Complete. Slice B/C are **not** authorised by this package.
 > **Boundaries held:** no Staff UI, no Owner/Manager UI, no Slice B/C/D/E, no EA-BL-002, no WP-COM source change, no FEF-TLC adoption, no deployment, no self-review exception, no Staff review path, PR left open and unmerged.
 
 ---
@@ -79,7 +79,7 @@ Sequence preserved: `business_review_required → (approve) → waiting_for_cust
 | `pnpm typecheck` | PASS (functions, web) |
 | `eslint` on every changed file | PASS |
 | `prettier --check` on every changed file | PASS |
-| functions unit (`pnpm test`) | **2015 passed**, 176 files |
+| functions unit (`pnpm test`) | **2015 passed**, 176 files (see §15 for the corrected-head counts) |
 | web unit (`pnpm test`) | **938 passed**, 130 files |
 | PostgreSQL + Firestore emulator (`test:postgres`) | **724 passed**, 20 files (includes 37 BR integration tests + 10 new 0028 migration tests) |
 | Firestore + Auth emulator (`test:emulator`) | **877 passed**, 3 skipped (pre-existing skips), 67 files |
@@ -91,9 +91,9 @@ Failures encountered and disposition: (a) migration-head bookkeeping in six pre-
 
 ## 12. Architecture deviations & items for Founder / reviewer attention
 
-1. **Permission id spelling:** the design wrote `purchase.business_review`; the repository's permission-id convention is camelCase (`customer.viewProtectedProfile`, `redemption.confirm`, `staff.assignRole`), so the id is **`purchase.businessReview`**. Semantics unchanged.
-2. **Business-review reason vocabulary** (§7) is a three-value minimal set chosen under the design's "bounded implementation-level choice" delegation. If the Founder wants different wording/values, it is a one-line CHECK + type change before merge.
-3. **Sole-reviewer deadlock** remains by design (Option A). A single-owner Business whose Owner records a threshold-crossing Purchase cannot advance it until a second eligible reviewer exists.
+1. **Permission identifier — CONFIRMED by the Founder (PR #304 disposition):** the canonical code identifier is **`purchase.businessReview`** (repository camelCase action convention, e.g. `staff.assignPermissions`; satisfies `PermissionId` syntax). The earlier design shorthand `purchase.business_review` is a conceptual name only and must not be used in code.
+2. **Business-review reason vocabulary — APPROVED:** `quantity_not_confirmed | transaction_not_confirmed | other`; not to be expanded. Refinement: `other` **requires** a non-empty bounded internal note (§15).
+3. **Sole-reviewer deadlock — CONFIRMED fail-closed:** a single-owner Business whose Owner records a threshold-crossing Purchase cannot advance it until a second eligible reviewer exists. No bypass or exception.
 4. Purchases recorded before this package replay a stored `recordPurchase` result without the new additive `review` field; callers must treat it as optional on replays.
 
 ## 13. Risks & rollback
@@ -103,3 +103,30 @@ Risks: reason vocabulary (item 2); deadlock (item 3); the `0028` guard trigger g
 ## 14. Programme status
 
 `EA-BL-001-CORR-002-BR`: **IMPLEMENTED — TECHNICAL REVIEW PENDING** (not Complete). Slice B remains **blocked** until BR is independently reviewed, accepted and merged; Slice B/C/D/E and EA-BL-002 are not authorised. WP-COM untouched; FEF-TLC-001 not adopted. Final verdict: **IMPLEMENTED — READY FOR INDEPENDENT TECHNICAL REVIEW.**
+
+---
+
+## 15. PR #304 pre-review correction (Founder-directed; BR not redesigned)
+
+Founder dispositions applied: permission id `purchase.businessReview` confirmed (§12.1); vocabulary approved and `other` requires a note; sole-reviewer fail-closed confirmed. Four open review findings plus two omitted proofs were corrected. Entry head `e2697cf491eec366500db4ad8f1a938ccc02ca5a`.
+
+| # | Finding | Root cause | Resolution |
+|---|---|---|---|
+| A (P1) | Customer waiting list leaked reviewer evidence | `listPurchasesWaitingForCustomer` returned raw rows; after approval the row is `waiting_for_customer` again but keeps `businessReviewReviewerUserId/DecidedAt/Decision/Reason` | Every customer-facing row now goes through `redactPurchaseForCustomer` (exported). The same redaction is applied at the callable boundary to the `purchase` returned by `verifyPurchase`, `rejectPurchase` and `raisePurchaseDispute` (same leak class: those commands return the raw row after approval). |
+| B (P1) | Staff could enumerate the protected queue via the generic list | `listPurchasesForBusiness` was membership-gated only and accepted `status=business_review_required` | New live, non-throwing `hasBusinessReviewAuthority` (same evaluation as the decisions). Non-reviewers: the review-required filter → `AUTH_FORBIDDEN`; the unfiltered list excludes review-required rows in SQL (`excludeBusinessReview`, pagination stays correct); ordinary statuses unchanged. Detail read: a review-required id is `RESOURCE_NOT_FOUND` for non-reviewers; after a decision, reviewer identity/decision time/reason and review event payload/notes are redacted for non-reviewers. Owner/authorised Manager keep the full view. |
+| C (P1) | Staff received the review threshold | `businessReviewQuantityThreshold` was mapped into the membership-gated `getRewardProgram` / `listRewardPrograms` | Server-side redaction: only live `purchase.businessReview` holders (Owner, authorised Manager) receive it; for everyone else the **key is absent** (not `null`, which would read as "disabled"). Staff recording is unaffected (routing reads the locked version server-side) and Staff receive only the routing outcome. No web type/UI referenced the field. |
+| D (P2) | Recording confirmation said "waiting for the customer" for review-routed Purchases | Web `RecordPurchaseResult` dropped the server `review` outcome | `review` preserved through the adapter (optional; falls back to `purchase.status` for pre-existing replays). `PurchaseRecordsPage` shows `purchase.recordSuccessReview` — EN "Purchase recorded. Business review is required before customer confirmation." / FR "Achat enregistré. Une validation du commerce est requise avant la confirmation du client." No threshold/reviewer/config disclosed. |
+| E | `other` reason without audit context | — | `rejectBusinessReview`: `reason = other` requires a non-empty (≤500) note → `VALIDATION_FAILED` otherwise; the other two reasons keep an optional note. The note stays in the internal lifecycle event payload and is redacted from every Customer/non-reviewer read. |
+| F | Missing commercial-gate proof | omitted in the first pass | `commercial/businessReviewOrthogonality.postgres.test.ts` (new file; no Commercial source touched). Under `gate = enforce` with the real `createCommercialAdmissionPort()`: review-required cannot be verified and invokes no admission; approval creates no admission/blocks/units/cycle/reward; Customer verify then yields the existing `admitted` (capacity) or `pending_admission` (no capacity); the lifecycle edges are exactly `∅→business_review_required → waiting_for_customer → pending_admission`; the DB refuses `business_review_required → pending_admission`. The test lives under `domains/commercial/` because the WP-COM boundary test forbids code outside it from importing Commercial. |
+
+**Commercial test-file diffs (verified):** the eight modified WP-COM test files change only migration bookkeeping — the `schema_migrations` cleanup version lists gain `'0028'`, and rollback step counts / expected applied/rolled-back lists gain `0028`. No behavioural assertion was removed, loosened or altered. One non-mechanical edit: `commercialBoundary.test.ts` exempts migration `0028` from the "no `pending_admission` in migrations outside 0026" scan; this was **tightened** in the correction so `0028` may only restate the quoted status literal inside CHECK lists (after removing `'pending_admission'` literals the file must not contain the word at all) and the existing "no `commercial_admissions` outside 0027" rule still applies to it. **No WP-COM source (non-test) file is modified.**
+
+**Invariants re-confirmed by tests:** distinct `business_review_required`; `under_review`, `pending_admission` semantics and `bulk_review_threshold` untouched; customer `rejection_reason` untouched and distinct from the business-review reason; Owner / authorised Manager only; Staff structurally ineligible (constructor + evaluator + role narrowing; fabricated Staff grant ineffective on decisions, queue, generic list, detail and threshold reads); self-review prohibited (no sole-reviewer exception); approval → `waiting_for_customer` only; approval and rejection create zero Verified Units / Cycle progress / Rewards; Customer verification mandatory; threshold routing-only and server-authoritative from the locked version; threshold not exposed to Staff; queue not enumerable by Staff; reviewer identity not Customer-visible.
+
+**Observation (not changed, out of scope):** existing Customer purchase reads already expose the recorder's `recordedByUserId`; this predates BR and is not reviewer evidence. **Manager threshold read** is governed by the live `purchase.businessReview` evaluation (revoked Manager does not see it); the write-command results (Owner-only `rewardProgram.manage`) are unchanged.
+
+**Validation on the corrected code (local, disposable PostgreSQL 17 + Firestore/Auth emulators):** functions unit **2015** (176 files); web unit **941** (130 files); PostgreSQL + emulator **746** (21 files; 54 BR integration + 3 commercial-gate + 10 migration-0028 + the existing suites); Firestore/Auth emulator **877** (+3 pre-existing skips, 67 files); typecheck, format check and eslint on all changed files green. Repo-wide `eslint .` on this machine ran out of memory (`FatalProcessOutOfMemory`, exit 134, also with `NODE_OPTIONS=--max-old-space-size=8192`) because git-ignored stale worktree checkouts (`.claude/worktrees`, `.kilo/worktrees`) are linted too; with `NODE_OPTIONS=--max-old-space-size=6144 npx eslint . --ignore-pattern ".claude/**" --ignore-pattern ".kilo/**"` it completes with **0 errors and 1 pre-existing warning** (`react-refresh/only-export-components` in the untouched `apps/web/src/business/BusinessApiContext.tsx`). **The lint gate is considered closed only by the green exact-head GitHub CI run**, recorded on PR #304 together with the corrected head SHA (a document cannot contain its own commit SHA).
+
+**Test-order note (pre-existing, not caused by BR):** several PostgreSQL suites tear down by dropping tables and do not know about migration `0027`'s tables, so a *local* re-run that orders `platformFoundationReadiness`/`qualifyingItem*` before a commercial suite can fail with `relation "commercial_admissions" already exists` on a database that previous runs polluted. A clean database and a cleared vitest result cache (neutral ordering) pass 746/746; the Postgres suite is not part of the GitHub CI job.
+
+Unresolved findings: none known at the time of writing.

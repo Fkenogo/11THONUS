@@ -280,9 +280,32 @@ export async function authorizePurchaseBusinessReview(
 }
 
 /**
- * Business Review queue/detail READ gate: the SAME live `purchase.businessReview` evaluation as the
- * decision commands (so a Staff member, a revoked Manager, a Platform Administrator and a Customer
- * all see nothing), but unaudited — a read of the queue is not itself an accountable decision on the
+ * Whether the caller currently holds Business Review authority (`purchase.businessReview`, Owner or
+ * authorised Manager) -- the SAME live evaluation as the decision commands, unaudited and
+ * non-throwing. Used to decide what a generic Business read may reveal about Business Review
+ * (the protected queue, reviewer attribution, the configured threshold). Staff, a revoked Manager, a
+ * Platform Administrator, a Customer and a non-member are all `false`.
+ */
+export async function hasBusinessReviewAuthority(
+  db: Firestore,
+  userId: string,
+  businessId: string,
+): Promise<boolean> {
+  const { decision, membership } = await evaluatePermissionWithContext(db, {
+    userId,
+    businessId,
+    permission: "purchase.businessReview",
+  });
+  return (
+    decision.allowed &&
+    membership.kind === "found" &&
+    (decision.role === "owner" || decision.role === "manager")
+  );
+}
+
+/**
+ * Business Review queue READ gate: the SAME live `purchase.businessReview` evaluation as the decision
+ * commands, but unaudited -- a read of the queue is not itself an accountable decision on the
  * protected action. Every failure is the same AUTH_FORBIDDEN.
  */
 export async function authorizeBusinessReviewQueueRead(
@@ -290,16 +313,7 @@ export async function authorizeBusinessReviewQueueRead(
   userId: string,
   businessId: string,
 ): Promise<void> {
-  const { decision, membership } = await evaluatePermissionWithContext(db, {
-    userId,
-    businessId,
-    permission: "purchase.businessReview",
-  });
-  if (
-    !decision.allowed ||
-    membership.kind !== "found" ||
-    (decision.role !== "owner" && decision.role !== "manager")
-  ) {
+  if (!(await hasBusinessReviewAuthority(db, userId, businessId))) {
     throw new PurchaseDomainError(
       "AUTH_FORBIDDEN",
       "Not authorized to view the Business Review queue for this Business.",

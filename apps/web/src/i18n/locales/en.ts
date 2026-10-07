@@ -348,6 +348,8 @@ export const en = {
       recordSubmit: "Record purchase",
       recording: "Recording…",
       recordSuccess: "Purchase recorded. It is now waiting for the customer.",
+      recordSuccessReview:
+        "Purchase recorded. Business review is required before customer confirmation.",
       listTitle: "Purchase Records",
       listEmpty: "No purchases recorded yet.",
       filterLabel: "Status",

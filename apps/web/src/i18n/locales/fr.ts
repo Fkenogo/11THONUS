@@ -357,6 +357,8 @@ export const fr = {
       recordSubmit: "Enregistrer l'achat",
       recording: "Enregistrement…",
       recordSuccess: "Achat enregistré. Il est maintenant en attente du client.",
+      recordSuccessReview:
+        "Achat enregistré. Une validation du commerce est requise avant la confirmation du client.",
       listTitle: "Registre des achats",
       listEmpty: "Aucun achat enregistré pour le moment.",
       filterLabel: "Statut",

@@ -143,6 +143,23 @@ export type RewardProgramWithVersions = {
   readonly draftVersion: RewardProgramVersionRow | null;
 };
 
+/**
+ * Read view of a version for a caller without Business Review authority: identical except the routing
+ * threshold KEY IS ABSENT (`EA-BL-001-CORR-002-BR`) -- not `null`, which would read as "disabled".
+ */
+export type RewardProgramVersionView = Omit<
+  RewardProgramVersionRow,
+  "businessReviewQuantityThreshold"
+> & {
+  readonly businessReviewQuantityThreshold?: number | null;
+};
+
+export type RewardProgramView = {
+  readonly program: RewardProgramRow;
+  readonly currentVersion: RewardProgramVersionView | null;
+  readonly draftVersion: RewardProgramVersionView | null;
+};
+
 /** Draft-editable fields on a version -- excludes fixed values, ids, timestamps, status. */
 export type RewardProgramVersionDraftInput = {
   readonly rewardDescription: string;

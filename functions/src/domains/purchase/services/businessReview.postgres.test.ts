@@ -51,12 +51,19 @@ import { rejectPurchase } from "./rejectPurchaseCommand";
 import { raisePurchaseDispute } from "./raisePurchaseDisputeCommand";
 import {
   getPurchaseRecordForBusiness,
+  getPurchaseRecordForCustomer,
   listBusinessReviewQueue,
+  listPurchasesForBusiness,
   listPurchasesWaitingForCustomer,
 } from "./purchaseQueries";
 import { listTrustEventsForPurchase } from "../repositories/trustEventRepository";
 import { listNotificationIntentsForPurchase } from "../repositories/purchaseOutboxRepository";
 import { PurchaseDomainError } from "../models/purchaseErrors";
+import { redactPurchaseForCustomer } from "./purchaseQueries";
+import {
+  getRewardProgram,
+  listRewardPrograms,
+} from "../../rewardProgram/services/rewardProgramQueries";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const migrationsDir = path.join(
@@ -466,10 +473,16 @@ function reject(
   purchaseRecordId: string,
   reason: unknown = "quantity_not_confirmed",
   key = nextId("key_r"),
+  note?: unknown,
 ) {
   return rejectBusinessReview(db, pool, {
     userId,
-    request: { businessId: s.businessId, purchaseRecordId, reason },
+    request: {
+      businessId: s.businessId,
+      purchaseRecordId,
+      reason,
+      ...(note === undefined ? {} : { note }),
+    },
     idempotencyKey: key,
     correlationId: nextId("corr"),
   });
@@ -777,7 +790,14 @@ describe("Business Review — rejection", () => {
     const s = await setupReviewBusiness();
     for (const reason of ["quantity_not_confirmed", "transaction_not_confirmed", "other"]) {
       const id = await recordForReview(s);
-      const result = await reject(s, s.managerId, id, reason);
+      const result = await reject(
+        s,
+        s.managerId,
+        id,
+        reason,
+        nextId("key_r"),
+        reason === "other" ? "Till record unclear" : undefined,
+      );
       expect(result.purchase.businessReviewReason).toBe(reason);
     }
   });
@@ -931,9 +951,9 @@ describe("Business Review — idempotency", () => {
     const s = await setupReviewBusiness();
     const id = await recordForReview(s);
     const key = nextId("key_r");
-    await reject(s, s.ownerId, id, "other", key);
+    await reject(s, s.ownerId, id, "other", key, "Till record unclear");
     const before = (await listPurchaseRecordEvents(pool, id)).length;
-    const replay = await reject(s, s.ownerId, id, "other", key);
+    const replay = await reject(s, s.ownerId, id, "other", key, "Till record unclear");
     expect(replay.purchase.status).toBe("rejected");
     expect((await listPurchaseRecordEvents(pool, id)).length).toBe(before);
   });
@@ -1101,5 +1121,323 @@ describe("Business Review — durable evidence", () => {
     await expect(
       pool.query(`UPDATE purchase_records SET status='business_review_required' WHERE id=$1`, [id]),
     ).rejects.toThrow(/may only be set when the Purchase is created|business_review/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PR #304 pre-review corrections.
+// ---------------------------------------------------------------------------
+
+const NOTE = "internal-note-do-not-leak";
+
+async function grantStaffReviewOverride(s: Setup, direction: "grant" | "revoke", userId: string) {
+  const snap = await db.collection("businessMemberships").where("userId", "==", userId).get();
+  await snap.docs[0].ref.update({
+    permissions: [
+      {
+        permissionId: "purchase.businessReview",
+        direction,
+        grantedBy: s.ownerId,
+        grantedAt: new Date(),
+      },
+    ],
+  });
+}
+
+describe("Correction E — rejection reason `other` requires a note", () => {
+  it("other + no note / blank note / non-text note → validation failure, nothing written", async () => {
+    const s = await setupReviewBusiness();
+    const id = await recordForReview(s);
+    for (const note of [undefined, "", "   ", null, 5]) {
+      await expectDomainError(
+        reject(s, s.ownerId, id, "other", nextId("k"), note),
+        "VALIDATION_FAILED",
+      );
+    }
+    expect(await count("purchase_record_events")).toBe(1);
+    expect(
+      (await pool.query(`SELECT status FROM purchase_records WHERE id=$1`, [id])).rows[0].status,
+    ).toBe("business_review_required");
+  });
+
+  it("other + a valid bounded note is allowed; an over-long note is refused", async () => {
+    const s = await setupReviewBusiness();
+    const id = await recordForReview(s);
+    await expectDomainError(
+      reject(s, s.ownerId, id, "other", nextId("k"), "x".repeat(501)),
+      "VALIDATION_FAILED",
+    );
+    const r = await reject(s, s.ownerId, id, "other", nextId("k"), NOTE);
+    expect(r.purchase.businessReviewReason).toBe("other");
+    const events = await listPurchaseRecordEvents(pool, id);
+    expect(events.find((e) => e.toStatus === "rejected")?.eventPayload).toMatchObject({
+      note: NOTE,
+    });
+  });
+
+  it("quantity_not_confirmed and transaction_not_confirmed stay valid without a note", async () => {
+    const s = await setupReviewBusiness();
+    for (const reason of ["quantity_not_confirmed", "transaction_not_confirmed"]) {
+      const id = await recordForReview(s);
+      expect((await reject(s, s.ownerId, id, reason)).purchase.status).toBe("rejected");
+    }
+  });
+
+  it("the note never reaches a Customer read (list, detail, timeline)", async () => {
+    const s = await setupReviewBusiness();
+    const id = await recordForReview(s);
+    await reject(s, s.managerId, id, "other", nextId("k"), NOTE);
+    const detail = await getPurchaseRecordForCustomer(pool, {
+      customerIdentityId: s.customer.customerId,
+      purchaseRecordId: id,
+    });
+    expect(JSON.stringify(detail)).not.toContain(NOTE);
+    expect(JSON.stringify(detail)).not.toContain(s.managerId);
+  });
+});
+
+describe("Correction A — a Customer never receives reviewer evidence", () => {
+  async function approvedPurchase(s: Setup) {
+    const id = await recordForReview(s);
+    await approve(s, s.ownerId, id, nextId("key_a"), { note: NOTE });
+    return id;
+  }
+
+  it("the waiting list returns the approved Purchase with every Business Review field redacted", async () => {
+    const s = await setupReviewBusiness();
+    const id = await approvedPurchase(s);
+    const { purchases } = await listPurchasesWaitingForCustomer(pool, {
+      customerIdentityId: s.customer.customerId,
+    });
+    const row = purchases.find((p) => p.id === id);
+    expect(row).toBeDefined();
+    expect(row).toMatchObject({
+      status: "waiting_for_customer",
+      businessReviewDecision: null,
+      businessReviewReviewerUserId: null,
+      businessReviewDecidedAt: null,
+      businessReviewReason: null,
+    });
+    const blob = JSON.stringify(purchases);
+    expect(blob).not.toContain(s.ownerId);
+    expect(blob).not.toContain(NOTE);
+  });
+
+  it("the detail read redacts the same fields and the review timeline", async () => {
+    const s = await setupReviewBusiness();
+    const id = await approvedPurchase(s);
+    const detail = await getPurchaseRecordForCustomer(pool, {
+      customerIdentityId: s.customer.customerId,
+      purchaseRecordId: id,
+    });
+    expect(detail.purchase).toMatchObject({
+      businessReviewDecision: null,
+      businessReviewReviewerUserId: null,
+      businessReviewDecidedAt: null,
+      businessReviewReason: null,
+    });
+    const blob = JSON.stringify(detail);
+    for (const secret of [s.ownerId, NOTE, "business_review_required", "reviewerMembershipId"]) {
+      expect(blob, secret).not.toContain(secret);
+    }
+  });
+
+  it("a customer-verified Purchase leaks nothing either: the verify result row is redacted at the boundary", async () => {
+    const s = await setupReviewBusiness();
+    const id = await approvedPurchase(s);
+    const verified = await verify(s, id);
+    const redacted = redactPurchaseForCustomer(verified.purchase);
+    expect(redacted).toMatchObject({
+      status: "verified",
+      businessReviewDecision: null,
+      businessReviewReviewerUserId: null,
+      businessReviewDecidedAt: null,
+      businessReviewReason: null,
+    });
+    // The underlying row DOES carry attribution (it is durable evidence); only the boundary redacts.
+    expect(verified.purchase.businessReviewReviewerUserId).toBe(s.ownerId);
+  });
+});
+
+describe("Correction B — the generic Business purchase list/detail is not a side door to the BR queue", () => {
+  it("Staff: the review-required filter is refused; the unfiltered list hides the protected rows but keeps ordinary ones", async () => {
+    const s = await setupReviewBusiness();
+    const reviewId = await recordForReview(s);
+    const ordinary = (await record(s, 1)).purchase.id;
+    await expectDomainError(
+      listPurchasesForBusiness(db, pool, {
+        userId: s.staffId,
+        businessId: s.businessId,
+        status: "business_review_required",
+      }),
+      "AUTH_FORBIDDEN",
+    );
+    const all = await listPurchasesForBusiness(db, pool, {
+      userId: s.staffId,
+      businessId: s.businessId,
+    });
+    expect(all.purchases.map((p) => p.id)).toEqual([ordinary]);
+    expect(all.purchases.map((p) => p.id)).not.toContain(reviewId);
+    const waiting = await listPurchasesForBusiness(db, pool, {
+      userId: s.staffId,
+      businessId: s.businessId,
+      status: "waiting_for_customer",
+    });
+    expect(waiting.purchases.map((p) => p.id)).toEqual([ordinary]);
+  });
+
+  it("Staff: a known review-required id is indistinguishable from a missing one", async () => {
+    const s = await setupReviewBusiness();
+    const id = await recordForReview(s);
+    await expectDomainError(
+      getPurchaseRecordForBusiness(db, pool, {
+        userId: s.staffId,
+        businessId: s.businessId,
+        purchaseRecordId: id,
+      }),
+      "RESOURCE_NOT_FOUND",
+    );
+  });
+
+  it("Staff: after a decision the Purchase is readable but reviewer identity, reason and notes are redacted", async () => {
+    const s = await setupReviewBusiness();
+    const id = await recordForReview(s);
+    await approve(s, s.ownerId, id, nextId("key_a"), { note: NOTE });
+    const detail = await getPurchaseRecordForBusiness(db, pool, {
+      userId: s.staffId,
+      businessId: s.businessId,
+      purchaseRecordId: id,
+    });
+    expect(detail.purchase.status).toBe("waiting_for_customer");
+    expect(detail.purchase.businessReviewReviewerUserId).toBeNull();
+    expect(detail.purchase.businessReviewDecidedAt).toBeNull();
+    const blob = JSON.stringify(detail);
+    expect(blob).not.toContain(s.ownerId);
+    expect(blob).not.toContain(NOTE);
+    const listed = await listPurchasesForBusiness(db, pool, {
+      userId: s.staffId,
+      businessId: s.businessId,
+    });
+    expect(JSON.stringify(listed)).not.toContain(s.ownerId);
+  });
+
+  it("Owner and authorised Manager keep the full view: queue filter, detail and attribution", async () => {
+    const s = await setupReviewBusiness();
+    const id = await recordForReview(s);
+    for (const userId of [s.ownerId, s.managerId]) {
+      const filtered = await listPurchasesForBusiness(db, pool, {
+        userId,
+        businessId: s.businessId,
+        status: "business_review_required",
+      });
+      expect(filtered.purchases.map((p) => p.id)).toEqual([id]);
+      expect(
+        (
+          await getPurchaseRecordForBusiness(db, pool, {
+            userId,
+            businessId: s.businessId,
+            purchaseRecordId: id,
+          })
+        ).purchase.status,
+      ).toBe("business_review_required");
+    }
+    await approve(s, s.ownerId, id);
+    const detail = await getPurchaseRecordForBusiness(db, pool, {
+      userId: s.managerId,
+      businessId: s.businessId,
+      purchaseRecordId: id,
+    });
+    expect(detail.purchase.businessReviewReviewerUserId).toBe(s.ownerId);
+  });
+
+  it("a fabricated Staff grant stays ineffective on the generic list and detail", async () => {
+    const s = await setupReviewBusiness();
+    const id = await recordForReview(s);
+    await grantStaffReviewOverride(s, "grant", s.staffId);
+    await expectDomainError(
+      listPurchasesForBusiness(db, pool, {
+        userId: s.staffId,
+        businessId: s.businessId,
+        status: "business_review_required",
+      }),
+      "AUTH_FORBIDDEN",
+    );
+    await expectDomainError(
+      getPurchaseRecordForBusiness(db, pool, {
+        userId: s.staffId,
+        businessId: s.businessId,
+        purchaseRecordId: id,
+      }),
+      "RESOURCE_NOT_FOUND",
+    );
+  });
+
+  it("a Manager whose authority was revoked loses the queue filter", async () => {
+    const s = await setupReviewBusiness();
+    await recordForReview(s);
+    await grantStaffReviewOverride(s, "revoke", s.managerId);
+    await expectDomainError(
+      listPurchasesForBusiness(db, pool, {
+        userId: s.managerId,
+        businessId: s.businessId,
+        status: "business_review_required",
+      }),
+      "AUTH_FORBIDDEN",
+    );
+  });
+});
+
+describe("Correction C — the Business Review threshold is never disclosed to Staff", () => {
+  it("Owner and authorised Manager receive the threshold from getRewardProgram and listRewardPrograms", async () => {
+    const s = await setupReviewBusiness();
+    for (const userId of [s.ownerId, s.managerId]) {
+      const one = await getRewardProgram(db, pool, {
+        userId,
+        businessId: s.businessId,
+        rewardProgramId: s.programId,
+      });
+      expect(one.currentVersion?.businessReviewQuantityThreshold).toBe(THRESHOLD);
+      const many = await listRewardPrograms(db, pool, { userId, businessId: s.businessId });
+      expect(many[0].currentVersion?.businessReviewQuantityThreshold).toBe(THRESHOLD);
+    }
+  });
+
+  it("Staff receive the program with the threshold KEY ABSENT (server-side), on both reads", async () => {
+    const s = await setupReviewBusiness();
+    const one = await getRewardProgram(db, pool, {
+      userId: s.staffId,
+      businessId: s.businessId,
+      rewardProgramId: s.programId,
+    });
+    expect(one.currentVersion).not.toBeNull();
+    expect(one.currentVersion).not.toHaveProperty("businessReviewQuantityThreshold");
+    expect(one.currentVersion?.id).toBe(s.versionId);
+    const many = await listRewardPrograms(db, pool, {
+      userId: s.staffId,
+      businessId: s.businessId,
+    });
+    expect(JSON.stringify(many)).not.toContain("businessReviewQuantityThreshold");
+    expect(JSON.stringify(one)).not.toContain("businessReviewQuantityThreshold");
+  });
+
+  it("a fabricated Staff grant and a revoked Manager still do not see it", async () => {
+    const s = await setupReviewBusiness();
+    await grantStaffReviewOverride(s, "grant", s.staffId);
+    await grantStaffReviewOverride(s, "revoke", s.managerId);
+    for (const userId of [s.staffId, s.managerId]) {
+      const many = await listRewardPrograms(db, pool, { userId, businessId: s.businessId });
+      expect(JSON.stringify(many), userId).not.toContain("businessReviewQuantityThreshold");
+    }
+  });
+
+  it("Staff can still record and are told the routing OUTCOME without the threshold", async () => {
+    const s = await setupReviewBusiness();
+    const below = await record(s, THRESHOLD - 1);
+    const at = await record(s, THRESHOLD);
+    expect(below.review).toEqual({ required: false, status: "waiting_for_customer" });
+    expect(at.review).toEqual({ required: true, status: "business_review_required" });
+    for (const r of [below, at]) {
+      expect(JSON.stringify(r)).not.toContain("hreshold");
+    }
   });
 });

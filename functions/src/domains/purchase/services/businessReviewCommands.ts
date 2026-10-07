@@ -354,6 +354,13 @@ export async function rejectBusinessReview(
   const purchaseRecordId = parseId(params.request.purchaseRecordId, "A Purchase Record id");
   const reason = parseBusinessReviewRejectReason(params.request.reason);
   const note = parseNote(params.request.note);
+  // Audit quality: the catch-all `other` reason is meaningless without a bounded internal note.
+  // (The note is evidence only -- never customer-visible.)
+  if (reason === "other" && note === null) {
+    throw purchaseValidationError(
+      'A review note is required when the rejection reason is "other".',
+    );
+  }
   return decideBusinessReview(db, pool, {
     userId: params.userId,
     businessId,

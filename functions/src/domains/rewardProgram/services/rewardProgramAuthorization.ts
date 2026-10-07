@@ -54,3 +54,23 @@ export async function authorizeRewardProgramRead(
     );
   }
 }
+
+/**
+ * Whether the caller may READ the Business Review routing threshold of a Reward Program Version
+ * (`EA-BL-001-CORR-002-BR`): exactly the Owner / authorised Manager who hold the live
+ * `purchase.businessReview` authority. Staff record Purchases (they see the routing OUTCOME) but must
+ * never learn the configured threshold -- it would let a recorder size Purchases to dodge review.
+ * Unaudited, non-throwing, never from a client claim.
+ */
+export async function canReadBusinessReviewThreshold(
+  db: Firestore,
+  userId: string,
+  businessId: string,
+): Promise<boolean> {
+  const decision = await evaluatePermission(db, {
+    userId,
+    businessId,
+    permission: "purchase.businessReview",
+  });
+  return decision.allowed && (decision.role === "owner" || decision.role === "manager");
+}

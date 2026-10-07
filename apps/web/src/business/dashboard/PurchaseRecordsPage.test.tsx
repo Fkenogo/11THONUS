@@ -180,6 +180,46 @@ describe("PurchaseRecordsPage", () => {
     expect(payload).not.toHaveProperty("rewardProgramVersionId");
   });
 
+  async function recordWith(result: unknown) {
+    purchasesResult = { data: { purchases: [] } };
+    detailResult = { data: undefined };
+    programsResult = { data: [programEntry()] };
+    mockRecord.mockResolvedValueOnce(result);
+    renderPage();
+    fireEvent.change(screen.getByLabelText("Loyalty Number or QR reference"), {
+      target: { value: "ABC234" },
+    });
+    fireEvent.change(selects()[0], { target: { value: "rp-1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Record purchase" }));
+  }
+
+  it("confirms customer confirmation only when the server routed the Purchase to waiting_for_customer", async () => {
+    await recordWith({
+      purchase: { status: "waiting_for_customer" },
+      review: { required: false, status: "waiting_for_customer" },
+    });
+    expect(await screen.findByText(/now waiting for the customer/)).toBeInTheDocument();
+    expect(screen.queryByText(/Business review is required/)).not.toBeInTheDocument();
+  });
+
+  it("tells the recorder truthfully when Business review is required (no threshold, no waiting-for-customer claim)", async () => {
+    await recordWith({
+      purchase: { status: "business_review_required" },
+      review: { required: true, status: "business_review_required" },
+    });
+    expect(
+      await screen.findByText(
+        "Purchase recorded. Business review is required before customer confirmation.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/now waiting for the customer/)).not.toBeInTheDocument();
+  });
+
+  it("falls back to purchase.status when a replayed result predates the routing field", async () => {
+    await recordWith({ purchase: { status: "business_review_required" } });
+    expect(await screen.findByText(/Business review is required/)).toBeInTheDocument();
+  });
+
   it("requires an explicit choice when a programme has several items", async () => {
     purchasesResult = { data: { purchases: [] } };
     detailResult = { data: undefined };

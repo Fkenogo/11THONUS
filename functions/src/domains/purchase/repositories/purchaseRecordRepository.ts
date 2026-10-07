@@ -438,6 +438,11 @@ export async function listPurchaseRecordEvents(
 
 export type ListPurchasesParams = {
   readonly status?: PurchaseStatus | null;
+  /**
+   * Exclude Purchases awaiting Business Review (`EA-BL-001-CORR-002-BR`). Set for callers without
+   * `purchase.businessReview` authority so the generic list can never enumerate the protected queue.
+   */
+  readonly excludeBusinessReview?: boolean;
   readonly limit: number;
   readonly offset: number;
 };
@@ -455,9 +460,16 @@ export async function listPurchaseRecordsForBusiness(
   const result = await db.query<PurchaseDbRow>(
     `SELECT * FROM purchase_records
       WHERE business_id = $1 AND ($2::text IS NULL OR status = $2::text)
+        AND (NOT $5::boolean OR status <> 'business_review_required')
       ORDER BY created_at DESC, id DESC
       LIMIT $3 OFFSET $4`,
-    [businessId, params.status ?? null, params.limit, params.offset],
+    [
+      businessId,
+      params.status ?? null,
+      params.limit,
+      params.offset,
+      params.excludeBusinessReview === true,
+    ],
   );
   return result.rows.map(mapPurchaseRow);
 }

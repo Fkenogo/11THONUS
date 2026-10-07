@@ -7,6 +7,18 @@
 
 ---
 
+## 2026-10-07 — EA-BL-001-CORR-002-BR — PR #304 Pre-Technical-Review Correction
+
+- **Task:** Correct the bounded security/truthfulness findings on PR #304 before Independent Technical Review. No redesign; no Slice B/C.
+- **Status:** **IMPLEMENTED — TECHNICAL REVIEW PENDING** (unchanged; not Complete). Entry head `e2697cf491eec366500db4ad8f1a938ccc02ca5a`; corrected head and exact-head CI run are recorded on PR #304.
+- **Founder dispositions applied:** canonical permission id `purchase.businessReview`; rejection vocabulary `quantity_not_confirmed | transaction_not_confirmed | other` (approved, not expanded) with **`other` requiring a note**; sole-reviewer fail-closed confirmed.
+- **Fixes:** (A) Customer waiting list and customer command results redact all Business Review attribution; (B) generic Business list/detail no longer enumerate or reveal the protected review queue to non-reviewers; (C) `businessReviewQuantityThreshold` removed server-side from Reward Program reads for non-reviewers (Staff); (D) recording confirmation now truthful for review-routed Purchases (EN/FR); (E) `other` requires a bounded internal note; (F) commercial-gate orthogonality proven under `enforce` (admitted / pending_admission only via Customer verification; no direct review→hold edge).
+- **Validation (local):** functions unit 2015; web 941; PostgreSQL+emulator 746; emulator 877 (3 pre-existing skips); typecheck/format/eslint (changed files) green. Repo-wide lint closes only on green exact-head CI.
+- **Boundary:** no WP-COM source change (commercial test files: migration bookkeeping only, boundary exemption tightened); no migration change; no deployment; no dependencies/config added.
+- **Rollback:** revert the correction commit(s) on PR #304 (read-path redaction and web copy only; no schema change).
+
+---
+
 ## 2026-10-06 — EA-BL-001-CORR-002-BR — Business Review Domain Foundation Implementation
 
 - **Task:** Implement the authorised Business Review domain/backend foundation (no UI).
