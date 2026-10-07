@@ -7,6 +7,17 @@
 
 ---
 
+## 2026-10-07 — EA-BL-001-CORR-002-B — Authorisation Correction Pass (PR #306 review)
+
+- **Task:** Make the authorised Slice B contract technically precise (documentation only; no code, test, schema, config or dependency change).
+- **Status:** unchanged — **AUTHORISED / READY FOR IMPLEMENTATION**, not started.
+- **Corrections:** purchaseDate frozen with the idempotency key across retries (P1, locked acceptance test); bounded error-discriminator backend enabler authorised; alphanumeric Loyalty Number keyboard; D1–D8 all Founder-disposed; replay wording qualified (authorisation still gates retries); Counter role scope follows `purchase.record`; camera scan primary, Loyalty Number manual fallback (no customer QR-copy); dual-role customers select Personal context.
+- **Boundary:** Slices C/D/E NOT AUTHORISED / NOT STARTED; EA-BL-002, WP-COM, FEF-TLC-001 unchanged.
+- **Files:** [assessment §23](../05-implementation/reports/11THONUS-EA-BL-001-CORR-002-B-staff-counter-authorisation-and-design-2026-10-07.md); Documentation Changes Log Entry 297.
+- **Rollback:** revert the correction commit.
+
+---
+
 ## 2026-10-07 — EA-BL-001-CORR-002-B — Staff Counter Founder Authorisation Recorded
 
 - **Task:** Record Founder dispositions D1–D8 on PR #306. Documentation only; no code, test, schema, config, dependency or deployment change.

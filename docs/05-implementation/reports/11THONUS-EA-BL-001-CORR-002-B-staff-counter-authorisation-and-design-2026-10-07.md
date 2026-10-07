@@ -40,11 +40,11 @@ Staff **cannot**: Business-review (structurally ineligible, no grant path); see 
 
 ## 5. Customer identification and registration design
 
-**Existing Customer.** Counter takes a Loyalty Number (typed) or QR reference (typed/pasted; scanning needs a capability decision, D2). The server resolves the canonical identity during the record call. Because no preview exists, the counter can **echo only what the Staff member entered**, not a name.
+**Existing Customer.** Counter takes a Loyalty Number (typed) or QR reference (typed/pasted; scanning needs a capability decision, D2) *[CORRECTED — §23.7: a customer cannot copy the opaque QR reference, so camera scan is the QR path and Loyalty Number is the manual fallback]*. The server resolves the canonical identity during the record call. Because no preview exists, the counter can **echo only what the Staff member entered**, not a name.
 
 **New Customer — no safe Staff-created identity.** The existing architecture supports a **tokenless** assisted self-registration with no new security primitive:
 1. Counter shows a "New customer?" panel with the app's public sign-up address as text and as a static QR (identical for everyone; contains no identity, token or Business context).
-2. The Customer opens it **on their own phone**, signs in/registers with their own credentials (Google/email/phone OTP), and lands on their shell, which already displays their Loyalty Number and QR.
+2. The Customer opens it **on their own phone**, signs in/registers with their own credentials (Google/email/phone OTP), and lands on their shell, which already displays their Loyalty Number and QR *[CORRECTED — §23.8: a customer who also holds an active Business membership lands in Business context and must select Personal]*.
 3. The Customer presents that QR or reads out the Loyalty Number; Staff enters/scans it and records. The Business never sees authentication data (names, phone, email, provider links are not returned by `merchant_transaction`).
 - **One phone vs two:** same-device handoff is **not** supported and is not recommended: the device carries the Staff Firebase session; letting a customer authenticate there would require Staff sign-out or mixing sessions. The supported path is **two devices** (customer's phone).
 - **Not designed, not allowed:** synthetic customers, Staff-set passwords, Staff-owned accounts, placeholder identities that can accrue loyalty, shared credentials, per-customer handoff tokens. A true "resume recording automatically after registration" (a Business-context token) would be a **new governed token/protocol** and is explicitly **not** proposed; if the Founder wants it, it is a separate security decision.
@@ -53,7 +53,7 @@ Staff **cannot**: Business-review (structurally ineligible, no grant path); see 
 ## 6. Production journey (mobile-first)
 Phone-first single column, one-handed, bottom-anchored primary action; desktop adapts the same structure (two columns only at ≥ md).
 1. **Counter ready:** Business name; Staff identity from the authenticated session; programme (auto-selected when exactly one active); no scenario strip, no mock data.
-2. **Identify:** large Loyalty Number field (numeric/inputMode as per the artifact format) + QR affordance (per D2) + "New customer?" panel. Invalid artifact → inline, field-associated error.
+2. **Identify:** large Loyalty Number field (text/alphanumeric keyboard with capitalisation — **not** numeric; *[CORRECTED — §23.3]*) + QR affordance (per D2) + "New customer?" panel. Invalid artifact → inline, field-associated error.
 3. **Item and quantity:** item select (auto when one); stepper (large targets) shown **only** when the locked version allows multiple units (otherwise quantity fixed at 1, as the server enforces); the "approval above N" prototype note is **removed** (Staff must not learn a threshold).
 4. **Record:** one primary button, disabled while in flight; one idempotency key per intentional submission.
 5. **Outcome (server-truthful):**
@@ -107,7 +107,7 @@ Phone-first single column, one-handed, bottom-anchored primary action; desktop a
 | D4 | Give Staff "limited customer progress needed to complete the transaction" (PRD01 §8.2)? | Progress reads are Owner/Manager only; none for Staff. | Defer; Slice B shows no Circle. A Staff-minimal progress read is a separate backend package. | **YES** |
 | D5 | Include Staff redemption confirm in the Counter? | `confirmRedemption` exists; no UI; Staff need explicit grant. | Defer to a later slice (Slice B = record only). | **YES** |
 | D6 | Staff recent-activity: scope to own submissions? | Staff currently can read all Business purchases (pre-existing). | Add a server-side own-submissions filter as a bounded backend enabler, or omit activity from Slice B. Do **not** filter client-side. | **YES** |
-| D7 | Branch: show a station label? | Default branch only, informational; no Staff assignment. | Show Business name only; no station label. | NO (recommendation stands unless objected) |
+| D7 | Branch: show a station label? | Default branch only, informational; no Staff assignment. | Show Business name only; no station label. | ~~NO~~ → **FOUNDER DISPOSED: APPROVED (§22.1)** *[CORRECTED — §23.4]* |
 | D8 | Staff shell: bounded role-aware landing (Staff lands on Counter, minimal nav; Owner/Manager unchanged)? | One shared dashboard nav for all roles; role available from the accessible-business resolver. | Yes, bounded to Staff entry/nav only (UX gating; server remains authority). | **YES (scope confirm)** |
 
 No decision reopens a locked decision (customer verification, BR, no synthetic identities, reviewer privacy).
@@ -143,10 +143,10 @@ No decision reopens a locked decision (customer verification, BR, no synthetic i
 | EN/FR | Parity | Partial | New keys (below) | — |
 
 ## 12. Error / edge-state contract (EN/FR required)
-Map server categories to user copy, never raw codes (`purchase_command_failed` is intentionally generic): artifact invalid/not found → "We couldn't find that customer code. Check it or ask the customer to open their code."; programme inactive/changed → "This programme isn't available. Refresh and try again."; item invalid → "That item isn't part of this programme."; quantity not allowed → "This programme allows one unit per purchase."; shared-number policy → neutral "This code can't be used here."; not authorised/suspended membership → "You can't record purchases right now. Ask a manager."; session expiry → sign-in prompt, form preserved; network/uncertain → "We couldn't confirm the result. Retry — it won't record twice." (same key); replay → show the original outcome. Review-required is a **success**, not an error.
+*[CORRECTED — §23.2: the current callable collapses these causes; a bounded backend discriminator is authorised for Slice B]* Map server categories to user copy, never raw codes (`purchase_command_failed` is intentionally generic): artifact invalid/not found → "We couldn't find that customer code. Check it or ask the customer to open their code."; programme inactive/changed → "This programme isn't available. Refresh and try again."; item invalid → "That item isn't part of this programme."; quantity not allowed → "This programme allows one unit per purchase."; shared-number policy → neutral "This code can't be used here."; not authorised/suspended membership → "You can't record purchases right now. Ask a manager."; session expiry → sign-in prompt, form preserved; network/uncertain → "We couldn't confirm the result. Retry — it won't record twice." (same key); replay → show the original outcome. Review-required is a **success**, not an error.
 
 ## 13. Idempotency and double-submit UX
-One key per intentional submission (existing holder); button disabled in flight; retry after uncertainty reuses the key and shows the original outcome (the future implementation must verify that network/uncertain failures map to a retryable error code, since non-retryable errors discard the key by design); **Serve next customer** or any payload change rotates the key; no backend change.
+One key per intentional submission (existing holder); button disabled in flight; retry after uncertainty reuses the key *[CORRECTED — §23.1/§23.5: the same `purchaseDate` must also be retained, and the original outcome is recovered only while the actor remains authorised]* (the future implementation must verify that network/uncertain failures map to a retryable error code, since non-retryable errors discard the key by design); **Serve next customer** or any payload change rotates the key; no backend change.
 
 ## 14. States
 initial/loading · ready · customer entered/validated · recording · recorded→customer confirmation · recorded→business review required · customer not found · new-customer panel · validation error · server error · network/uncertain · idempotent recovery · ready for next customer. Each has defined copy and live-region announcement.
@@ -158,11 +158,11 @@ Labelled inputs with `aria-describedby` errors; outcome in `role="status"` (erro
 New keys needed (EN primary, FR parity, parity test): counter title/intro, identify label/hint/errors, new-customer panel, outcome (normal, review-required, "nothing earned yet"), serve-next, error map (§12), in-flight/retry text. Existing and reusable: `purchase.recordSuccessReview` (EN/FR), `purchase.status.*`, record-form labels. No English-only placeholders.
 
 ## 17. Proposed bounded implementation scope (for Founder authorisation, if D1–D8 are disposed)
-Staff-only counter route + bounded Staff entry/nav (D8); production binding to real membership/Business/programme/item; Loyalty Number/QR entry (+ scanner per D2); self-registration panel; `recordPurchase` integration with the existing key holder; truthful outcome states; EN/FR; accessibility; tests; Founder Preview tooling/seed scenarios. **Backend:** none required by the baseline; only D1/D4/D6 would add (minimal, separately named) read capabilities if authorised.
+Counter route (Staff-function; access per existing `purchase.record`, §23.6) + bounded Staff entry/nav (D8); production binding to real membership/Business/programme/item; Loyalty Number/QR entry (+ scanner per D2); self-registration panel; `recordPurchase` integration with the existing key holder; truthful outcome states; EN/FR; accessibility; tests; Founder Preview tooling/seed scenarios. **Backend:** none required by the baseline; only D1/D4/D6 would add (minimal, separately named) read capabilities if authorised.
 **Out of scope:** Owner/Manager review UI/queue/dashboard, onboarding, programme creation, customer Circle/redemption redesign, reporting, commercial UI, WP-COM, Trust/audit UI, Slices C/D/E, EA-BL-002, FEF-TLC, deployment.
 
 ## 18. Future test matrix
-Auth/role (Staff, Manager, Owner allowed; non-member and suspended denied); identity (valid LN, valid QR, invalid, cross-customer, self-registration then record, no synthetic identity); purchase (normal, multiple, disallowed multiple, invalid item, inactive/changed programme, duplicate, network replay); BR (routed outcome, neutral copy, threshold absent in every Staff payload and error, Staff cannot list/approve/reject, later approval permits customer confirmation); verification (Staff cannot verify; customer cannot verify while review-required); privacy (no threshold, reviewer, protected customer data, Trust payload); i18n parity; UX (loading/success/error/reset/double-tap/320px/keyboard/a11y); Founder Preview scenarios (§19).
+Auth/role (Staff, authorised Manager and Owner allowed per `purchase.record`; non-member, suspended and revoked denied — see §23.6); identity (valid LN, valid QR via camera scan (not typed QR reference — §23.7), invalid, cross-customer, self-registration then record, no synthetic identity); purchase (normal, multiple, disallowed multiple, invalid item, inactive/changed programme, duplicate, network replay); BR (routed outcome, neutral copy, threshold absent in every Staff payload and error, Staff cannot list/approve/reject, later approval permits customer confirmation); verification (Staff cannot verify; customer cannot verify while review-required); privacy (no threshold, reviewer, protected customer data, Trust payload); i18n parity; UX (loading/success/error/reset/double-tap/320px/keyboard/a11y); Founder Preview scenarios (§19).
 
 ## 19. Founder Preview plan
 Seeded Staff, existing customer, review-trigger programme and a two-device registration walkthrough; compare against the frozen prototype at phone width first, then desktop adaptation: (1) existing customer + normal; (2) review-routed quantity; (3) threshold invisible; (4) Staff cannot review; (5) assisted new-customer registration; (6) return to Counter and record; (7) double-tap; (8) customer confirmation handoff; (9) EN; (10) FR; (11) phone; (12) desktop. Not accepted before that preview.
@@ -171,7 +171,7 @@ Seeded Staff, existing customer, review-trigger programme and a two-device regis
 Customer-name omission reduces prototype fidelity (D1); typed entry is slower than scanning (D2); two-device registration adds a step; Staff currently over-read Business purchases (pre-existing, N1-adjacent); a shared dashboard shell may confuse Staff until D8; programme with threshold NULL gives Staff no BR signal (correct).
 
 ## 21. Final recommendation and verdict
-No locked decision is violated, no new security protocol is needed, no BR/Customer/Trust change is required, and a coherent record-only Staff Counter is implementable on existing backend capabilities. Eight items (D1–D8) need Founder disposition when authorising; each has a safe default above.
+No locked decision is violated, no new security protocol is needed, no BR/Customer/Trust change is required, and a coherent record-only Staff Counter is implementable on existing backend capabilities. Eight items (D1–D8) needed Founder disposition when authorising *[CORRECTED — all eight are now FOUNDER DISPOSED, §22.1/§23.4]*.
 
 **DESIGN ASSESSED — READY FOR FOUNDER AUTHORISATION** (Slice B remains NOT AUTHORISED / NOT STARTED; Slices C/D/E, EA-BL-002, WP-COM and FEF-TLC-001 unchanged).
 
@@ -185,7 +185,7 @@ No locked decision is violated, no new security protocol is needed, no BR/Custom
 | ID | Disposition | Record |
 |---|---|---|
 | D1 | **APPROVED BASELINE** | No customer name/profile read in Slice B. **No customer-profile lookup callable is to be added.** Staff works from the presented Loyalty Number / QR and the server outcome. |
-| D2 | **APPROVED** | Slice B **must** support camera QR capture as a primary point-of-service interaction: capability detection; typed/pasted Loyalty Number / QR stays available as fallback; use a browser-native scanner if sufficiently supported; a bounded, well-maintained web scanning dependency is authorised if needed; no image/video data is sent to the backend; scanning resolves only the QR reference already accepted by `recordPurchase`; camera-permission failure falls back cleanly to manual entry. |
+| D2 | **APPROVED** | Slice B **must** support camera QR capture as a primary point-of-service interaction: capability detection; manual entry stays available as fallback (**Loyalty Number is the real manual fallback**, §23.7); use a browser-native scanner if sufficiently supported; a bounded, well-maintained web scanning dependency is authorised if needed; no image/video data is sent to the backend; scanning resolves only the QR reference already accepted by `recordPurchase`; camera-permission failure falls back cleanly to manual entry. |
 | D3 | **APPROVED** | Tokenless two-device self-registration: Counter shows a static public sign-up URL / QR → Customer registers/authenticates on their own device → existing identity establishment creates Loyalty Number / QR → Customer presents identity → Staff records. **Not authorised:** synthetic identity; Staff-created customer account; Staff-set credential; same-device Staff/customer session switching; handoff token; auto-resume token/protocol. |
 | D4 | **DEFERRED** | No Staff Circle/progress read or display in Slice B. |
 | D5 | **DEFERRED** | No redemption-confirmation UI in Slice B; existing redemption authority/backend unchanged. |
@@ -209,3 +209,42 @@ Slice B **must** receive Founder Preview before acceptance. Preview must include
 
 ### 22.6 Programme boundary
 Slices C/D/E remain **NOT AUTHORISED / NOT STARTED**; EA-BL-002, WP-COM and FEF-TLC-001 unchanged. This authorisation covers Slice B only and authorises no other package. Carried constraints: N4 binding (no Business Review threshold on any Staff surface); N1 must not be widened (D6).
+
+---
+
+## 23. Authorisation correction pass (appended 2026-10-07, PR #306 review findings)
+
+Eight review findings were verified against the code and are valid; the authorised status is unchanged (**`EA-BL-001-CORR-002-B` AUTHORISED / READY FOR IMPLEMENTATION**, not started). This section makes the implementation contract technically precise and is **binding on implementation**; where it conflicts with §§1–21 it governs. No code is changed here.
+
+### 23.1 Locked acceptance requirement — purchase date and idempotency (P1)
+Evidence: `resolvePurchaseDateInstant` returns a fresh `now.toISOString()` for "today"; `useRecordPurchaseMutation` hashes `JSON.stringify(payload)` (including `purchaseDate`) into the key signature; `keyForRequest` clears the held key when the signature changes. A retry that recomputes the date would therefore mint a new key and could record a second Purchase after a lost response.
+Contract, for one intentional submission:
+- capture the exact `purchaseDate` **once** and retain it across uncertain/network retries; **do not call `resolvePurchaseDateInstant` again for a retry**;
+- retain the same idempotency key across those retries;
+- reset `purchaseDate` **and** the idempotency intent only when the transaction payload intentionally changes, or Staff selects **Serve next customer** / starts a new transaction.
+Future tests must prove: committed response lost → same payload + same `purchaseDate` + same key retried → **no duplicate Purchase**. (Together with §22.2: uncertain/network failures must be classified retryable so the key is retained; never solve uncertainty with a new key.)
+
+### 23.2 Bounded backend enabler — public error discriminator (P2)
+Evidence: `purchaseArtifactError`, `purchaseProgramError`, `purchaseQualifyingItemError`, `purchaseQuantityError`, `purchaseSharedPolicyError` all use `VALIDATION_FAILED`; `toHttpsError` returns one generic `purchase_command_failed`, and the web client surfaces only `validation_failed`. Per-cause copy in §12 is therefore not selectable today.
+Authorised for Slice B (minimum change, **not implemented here**): expose a small stable public discriminator on the existing error path sufficient for safe Counter UX — at minimum, where the domain can reliably tell: `customer_artifact_invalid_or_not_found`, `programme_unavailable`, `qualifying_item_invalid`, `quantity_invalid`, `generic_validation_failed`. Shared-number/policy-sensitive failures may stay under a neutral customer-code or generic validation message if distinguishing them would leak policy. Requirements: no raw internal messages, stack or error detail; no protected policy data; preserve the existing error/auth architecture. The implementation scope in §17 is extended accordingly (this is the only added backend work besides the D6 own-submissions read).
+
+### 23.3 Loyalty Number input (P2)
+Canonical Loyalty Numbers are alphanumeric (three letters then three digits, e.g. `ABC-234`; `loyaltyNumber.ts` accepts an optional hyphen, case-insensitive). The Counter must use a **text/alphanumeric-capable keyboard** with suitable capitalisation/formatting; **no numeric-only `inputMode`**.
+
+### 23.4 D1–D8 status (P2)
+**D1–D8 = FOUNDER DISPOSED** (§22.1). D7 is not a "no decision needed" item: its disposition is Business name only, no fabricated station label. The §9 "Decisions required" table and the Entry 295 wording ("eight open decisions", D7 "NO") are historical and superseded.
+
+### 23.5 Idempotent replay and authorisation (P2)
+`recordPurchase` evaluates `purchase.record` **before** the idempotency peek, so current authorisation still gates every retry; a suspended/removed/revoked Staff actor's retry fails authorisation. Do **not** move replay ahead of authorisation to return a prior result after revocation. Accurate statement: **"Same-intent retries recover the original outcome when the actor remains authorised; current authorization still gates the retry."** Any earlier wording that retries always return the old result is corrected by this.
+
+### 23.6 Counter role scope (P2)
+The Counter is the **frontline purchase-recording function**. Access follows existing `purchase.record` authority: Staff, authorised Manager, Owner. Staff receive the new Counter-first landing and minimal Staff navigation (D8); the Owner/Manager shell and navigation are **unchanged**, and they may use the Counter where exposed/linked under the existing experience structure — Slice B does not redesign their shell. The future test matrix: Staff, authorised Manager and Owner may use the Counter; non-members, suspended/revoked members denied; Staff landing/nav is Staff-specific; Owner/Manager landing/nav unchanged. (The earlier "Staff-only route" phrase means "Staff-function", not role-restricted.)
+
+### 23.7 QR fallback (P2)
+The customer shell renders the opaque `qrReference` only as a QR image (`QRCodeSVG`) and offers no copy surface. Therefore **camera scan is the primary QR path and Loyalty Number entry is the real manual fallback**; "type/paste QR reference" is **not** a normal fallback. **No customer QR-reference copy feature is authorised in Slice B.** Programmatic QR-reference entry may exist only as an internal/test affordance of the scanner path. The D2 requirement "manual fallback on camera failure" is satisfied by Loyalty Number entry; "valid QR" tests exercise the scan path (or a test double of its result), and camera-permission failure falls back cleanly to Loyalty Number entry.
+
+### 23.8 Dual-role customer registration (P2)
+`RootEntry` sends any identity with an active Business membership to `/business`, where Personal context must be selected. The new-customer panel/instructions must tell such a user to **switch to / select Personal context** to see their customer Loyalty Number and QR. No same-device session mixing; no handoff token; no new redirect/token protocol (consistent with D3).
+
+### 23.9 Programme status after correction
+Slice B: **AUTHORISED / READY FOR IMPLEMENTATION** (not started/implemented/accepted/complete/merged). Slices C/D/E: NOT AUTHORISED / NOT STARTED. EA-BL-002, WP-COM, FEF-TLC-001: unchanged.
