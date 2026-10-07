@@ -163,6 +163,7 @@ import {
   rejectBusinessReview as rejectBusinessReviewCommand,
 } from "./domains/purchase/services/businessReviewCommands";
 import {
+  listMyRecentCounterPurchases as listMyRecentCounterPurchasesQuery,
   listPurchasesForBusiness as listPurchasesForBusinessQuery,
   getPurchaseRecordForBusiness as getPurchaseRecordForBusinessQuery,
   listBusinessReviewQueue as listBusinessReviewQueueQuery,
@@ -309,10 +310,13 @@ export function toHttpsError(error: unknown): HttpsError {
   if (error instanceof PurchaseDomainError) {
     // `PLATFORM-BASELINE-006A`: same stable-message posture — the domain
     // message (which may name purchase/customer/program ids or the exact
-    // idempotency key) is never echoed.
+    // idempotency key) is never echoed. `EA-BL-001-CORR-002-B`: a validation failure may carry a
+    // closed, safe `reason` token (see `PurchaseFailureReason`) so the Staff Counter can choose
+    // truthful copy; nothing else about the failure crosses the boundary.
     return new HttpsError(
       CATEGORY_TO_HTTPS[error.category] ?? "internal",
       "purchase_command_failed",
+      error.reason === undefined ? undefined : { reason: error.reason },
     );
   }
   return new HttpsError("internal", "authentication_failed");
@@ -2274,30 +2278,45 @@ function getPurchasePostgresPool(): PlatformPostgresPool {
   return getRewardProgramPostgresPool();
 }
 
+/**
+ * Boundary-parse failure for the purchase callables. Carries the same closed `reason` tokens the
+ * domain errors do (`EA-BL-001-CORR-002-B`) so a malformed artifact or quantity is as truthful to
+ * the Counter as a domain-level one; every other field is the generic token.
+ */
+function purchaseParseError(field: string): HttpsError {
+  const reason =
+    field === "loyaltyNumberValue" || field === "qrReference"
+      ? "customer_artifact_invalid_or_not_found"
+      : field === "quantity"
+        ? "quantity_invalid"
+        : "generic_validation_failed";
+  return new HttpsError("invalid-argument", "purchase_command_failed", { field, reason });
+}
+
 function parseOptionalPurchaseString(value: unknown, field: string): string | undefined {
   if (value === undefined || value === null) {
     return undefined;
   }
   if (typeof value !== "string" || value.trim().length === 0) {
-    throw new HttpsError("invalid-argument", "purchase_command_failed", { field });
+    throw purchaseParseError(field);
   }
   return value;
 }
 
 function parsePurchaseQuantity(value: unknown): number {
   if (typeof value !== "number" || !Number.isInteger(value) || value < 1) {
-    throw new HttpsError("invalid-argument", "purchase_command_failed", { field: "quantity" });
+    throw purchaseParseError("quantity");
   }
   return value;
 }
 
 function parsePurchaseIsoDate(value: unknown, field: string): Date {
   if (typeof value !== "string" || value.trim().length === 0) {
-    throw new HttpsError("invalid-argument", "purchase_command_failed", { field });
+    throw purchaseParseError(field);
   }
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) {
-    throw new HttpsError("invalid-argument", "purchase_command_failed", { field });
+    throw purchaseParseError(field);
   }
   return parsed;
 }
@@ -2579,6 +2598,37 @@ export const listPurchasesForBusiness = onCall(async (request) => {
       businessId: parseBusinessId(value.businessId),
       status: value.status,
       ...parsePurchasePagination(value),
+    });
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+/**
+ * Staff Counter "my recent submissions" (`EA-BL-001-CORR-002-B`, D6). Whitelist transport: exactly
+ * `businessId` and an optional bounded `limit` -- no recorder id, status filter or offset crosses the
+ * wire; the recorder is the server-authenticated actor. Gated by the live `purchase.record`
+ * evaluation (the Counter's one authority) and scoped to the caller's own submissions in SQL.
+ */
+export function parseListMyRecentCounterPurchasesRequest(value: Record<string, unknown>) {
+  return {
+    businessId: parseBusinessId(value.businessId),
+    ...(value.limit === undefined
+      ? {}
+      : { limit: parsePurchasePagination({ limit: value.limit }).limit }),
+  };
+}
+
+export const listMyRecentCounterPurchases = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId } = await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    return await listMyRecentCounterPurchasesQuery(db, getPurchasePostgresPool(), {
+      userId,
+      ...parseListMyRecentCounterPurchasesRequest(value),
     });
   } catch (error) {
     throw toHttpsError(error);

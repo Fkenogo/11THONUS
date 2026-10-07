@@ -25,6 +25,7 @@
 import type { Firestore } from "firebase-admin/firestore";
 import type { PlatformPostgresPool } from "../../../infrastructure/postgres/postgresPool";
 import {
+  authorizePurchaseRecord,
   authorizeBusinessLoyaltyVisibilityRead,
   authorizeBusinessPurchaseRead,
   authorizeBusinessReviewQueueRead,
@@ -43,10 +44,12 @@ import {
   listBusinessReviewQueue as listBusinessReviewQueueRows,
   listPurchaseRecordEvents,
   listPurchaseRecordsForBusiness,
+  listRecentPurchaseRecordsByRecorder,
   listWaitingPurchasesForCustomer,
 } from "../repositories/purchaseRecordRepository";
 import { listAvailableRewardsForCustomer as listAvailableRewardRows } from "../repositories/loyaltyCycleRepository";
 import type {
+  PresentedArtifactType,
   PurchaseRecordEventRow,
   PurchaseRecordRow,
   PurchaseStatus,
@@ -138,6 +141,78 @@ export async function listPurchasesForBusiness(
   });
   return {
     purchases: reviewer ? purchases : purchases.map(redactReviewAttributionForNonReviewer),
+  };
+}
+
+const COUNTER_RECENT_DEFAULT_LIMIT = 10;
+const COUNTER_RECENT_MAX_LIMIT = 20;
+const CUSTOMER_CODE_HINT_LENGTH = 3;
+
+/**
+ * One row of the Staff Counter's "my recent submissions" feed (`EA-BL-001-CORR-002-B`, D6). A
+ * purpose-built projection -- not a `PurchaseRecordRow` -- so it cannot carry reviewer identity, the
+ * Business Review reason, the review threshold, the customer identity id, the recorder, or any
+ * commercial field. Never a generic customer-history surface.
+ */
+export type CounterRecentPurchase = {
+  readonly id: string;
+  readonly recordedAt: Date;
+  readonly itemLabel: string;
+  readonly quantity: number;
+  /** The Purchase's own lifecycle status; the Business Review outcome is just this status (no reviewer, no reason). */
+  readonly status: PurchaseStatus;
+  readonly presentedVia: PresentedArtifactType;
+  /** Last characters of the Customer's Loyalty Number only when Staff typed it; `null` for a QR scan. */
+  readonly customerCodeHint: string | null;
+};
+
+/**
+ * The calling member's OWN most recent Counter submissions for one Business.
+ *
+ * Authority is the same live `purchase.record` evaluation as `recordPurchase` itself (Staff,
+ * authorised Manager, Owner -- one authority for the whole Counter); a suspended, removed or
+ * non-member actor fails closed. The recorder scope is the server-resolved `userId` applied in SQL:
+ * no client-supplied recorder, no Business-wide fetch, no colleague rows. Bounded, newest first.
+ * Owner/Manager keep the unchanged Business-wide `listPurchasesForBusiness`; this read never
+ * replaces or narrows it.
+ */
+export async function listMyRecentCounterPurchases(
+  db: Firestore,
+  pool: PlatformPostgresPool,
+  params: {
+    readonly userId: string;
+    readonly businessId: string;
+    readonly limit?: number | null;
+  },
+): Promise<{ readonly purchases: CounterRecentPurchase[] }> {
+  await authorizePurchaseRecord(db, params.userId, params.businessId);
+  const limit = params.limit ?? COUNTER_RECENT_DEFAULT_LIMIT;
+  if (!Number.isInteger(limit) || limit < 1 || limit > COUNTER_RECENT_MAX_LIMIT) {
+    throw new PurchaseDomainError(
+      "VALIDATION_FAILED",
+      `Recent limit must be an integer between 1 and ${COUNTER_RECENT_MAX_LIMIT}.`,
+      undefined,
+      "generic_validation_failed",
+    );
+  }
+  const rows = await listRecentPurchaseRecordsByRecorder(pool, {
+    businessId: params.businessId,
+    recordedByUserId: params.userId,
+    limit,
+  });
+  return {
+    purchases: rows.map((row) => ({
+      id: row.id,
+      recordedAt: row.createdAt,
+      itemLabel: row.itemLabel,
+      quantity: row.quantity,
+      status: row.status,
+      presentedVia: row.presentedArtifactType,
+      customerCodeHint:
+        row.presentedArtifactType === "loyalty_number"
+          ? row.canonicalLoyaltyNumberValue.slice(-CUSTOMER_CODE_HINT_LENGTH)
+          : null,
+    })),
   };
 }
 

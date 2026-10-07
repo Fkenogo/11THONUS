@@ -475,6 +475,64 @@ export async function listPurchaseRecordsForBusiness(
 }
 
 /**
+ * The narrow projection the Staff Counter's "my recent submissions" feed needs
+ * (`EA-BL-001-CORR-002-B`, D6). Deliberately a column list, not `SELECT *`: it never reads the
+ * customer identity id, the recorder, any Business Review column or any commercial column, so the
+ * feed cannot widen what Staff see even by accident.
+ */
+export type RecorderRecentPurchaseRow = {
+  readonly id: string;
+  readonly createdAt: Date;
+  readonly itemLabel: string;
+  readonly quantity: number;
+  readonly status: PurchaseStatus;
+  readonly presentedArtifactType: PresentedArtifactType;
+  readonly canonicalLoyaltyNumberValue: string;
+};
+
+/**
+ * The calling member's own most recent submissions in one Business. The recorder scope is part of
+ * the SQL itself (`recorded_by_user_id = $2`) -- the server-resolved actor, never a client filter.
+ * Includes the member's own `business_review_required` rows (the routing outcome they were already
+ * told), unlike the Business-wide list, which hides that protected queue from non-reviewers.
+ */
+export async function listRecentPurchaseRecordsByRecorder(
+  db: Queryable,
+  params: {
+    readonly businessId: string;
+    readonly recordedByUserId: string;
+    readonly limit: number;
+  },
+): Promise<RecorderRecentPurchaseRow[]> {
+  const result = await db.query<{
+    id: string;
+    created_at: Date;
+    item_label: string;
+    quantity: number;
+    status: PurchaseStatus;
+    presented_artifact_type: PresentedArtifactType;
+    canonical_loyalty_number_value: string;
+  }>(
+    `SELECT id, created_at, item_label, quantity, status, presented_artifact_type,
+            canonical_loyalty_number_value
+       FROM purchase_records
+      WHERE business_id = $1 AND recorded_by_user_id = $2
+      ORDER BY created_at DESC, id DESC
+      LIMIT $3`,
+    [params.businessId, params.recordedByUserId, params.limit],
+  );
+  return result.rows.map((row) => ({
+    id: row.id,
+    createdAt: row.created_at,
+    itemLabel: row.item_label,
+    quantity: row.quantity,
+    status: row.status,
+    presentedArtifactType: row.presented_artifact_type,
+    canonicalLoyaltyNumberValue: row.canonical_loyalty_number_value,
+  }));
+}
+
+/**
  * Business Review queue: the Business's Purchases awaiting review, oldest first
  * (`(created_at, id)`, matching `purchase_records_business_review_queue_idx`). Reads never create
  * or repair records; the caller enforces Business-scoped authority before calling.
