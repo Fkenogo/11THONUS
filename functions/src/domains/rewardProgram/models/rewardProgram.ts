@@ -96,6 +96,14 @@ export type RewardProgramVersionRow = {
   readonly standardRewardNodeId: string | null;
   readonly multipleUnitsAllowed: boolean;
   readonly bulkReviewThreshold: number | null;
+  /**
+   * Business Review routing threshold (`EA-BL-001-CORR-002-BR`): `null` = Business Review disabled for
+   * this version; otherwise a Purchase whose whole-record quantity is at or above it is routed to
+   * `business_review_required` at record time. Routing only -- never a cap, never a rejection rule,
+   * never loyalty math. Separate from (and never derived from) `bulkReviewThreshold`, which stays
+   * review-visibility-only metadata.
+   */
+  readonly businessReviewQuantityThreshold: number | null;
   readonly effectiveFrom: Date;
   readonly effectiveUntil: Date | null;
   status: RewardProgramVersionStatus;
@@ -135,6 +143,23 @@ export type RewardProgramWithVersions = {
   readonly draftVersion: RewardProgramVersionRow | null;
 };
 
+/**
+ * Read view of a version for a caller without Business Review authority: identical except the routing
+ * threshold KEY IS ABSENT (`EA-BL-001-CORR-002-BR`) -- not `null`, which would read as "disabled".
+ */
+export type RewardProgramVersionView = Omit<
+  RewardProgramVersionRow,
+  "businessReviewQuantityThreshold"
+> & {
+  readonly businessReviewQuantityThreshold?: number | null;
+};
+
+export type RewardProgramView = {
+  readonly program: RewardProgramRow;
+  readonly currentVersion: RewardProgramVersionView | null;
+  readonly draftVersion: RewardProgramVersionView | null;
+};
+
 /** Draft-editable fields on a version -- excludes fixed values, ids, timestamps, status. */
 export type RewardProgramVersionDraftInput = {
   readonly rewardDescription: string;
@@ -142,6 +167,13 @@ export type RewardProgramVersionDraftInput = {
   readonly multipleUnitsAllowed: boolean;
   readonly sharedLoyaltyNumberAllowed: boolean;
   readonly bulkReviewThreshold?: number | null;
+  /**
+   * Business Review routing threshold. `undefined` = carry the existing value forward (draft update
+   * keeps the draft's, next-version keeps the base version's, create stores none); `null` = disable;
+   * a positive integer = enable at that quantity. Resolved by the command before it reaches the
+   * repository, so an edit that does not mention the field can never silently disable Business Review.
+   */
+  readonly businessReviewQuantityThreshold?: number | null;
   readonly effectiveFrom: Date;
   readonly effectiveUntil?: Date | null;
   /**

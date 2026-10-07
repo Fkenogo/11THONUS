@@ -14,6 +14,7 @@
 
 export type PurchaseStatus =
   | "waiting_for_customer"
+  | "business_review_required"
   | "pending_admission"
   | "verified"
   | "rejected"
@@ -48,6 +49,30 @@ export const PURCHASE_DISPUTE_REASONS: readonly PurchaseDisputeReason[] = [
   "wrong_quantity",
   "wrong_item",
   "partially_inaccurate",
+] as const;
+
+/**
+ * Business Review decision outcome (`EA-BL-001-CORR-002-BR`, `DEC-PROD-015`).
+ * Distinct from the customer `PurchaseRejectReason` / `PurchaseDisputeReason`
+ * vocabularies: a Business Review decision is made by an authorised
+ * Owner/Manager BEFORE Customer verification, and carries its own reason.
+ */
+export type BusinessReviewDecision = "approved" | "rejected";
+
+/**
+ * Bounded Business Review rejection vocabulary. Deliberately minimal and
+ * recording only what the reviewer could not confirm about the RECORD itself
+ * -- it is not a fraud taxonomy (`DEC-PROD-015`: "do not invent fraud rules"),
+ * never customer-facing, and keys no behaviour. Never shares values, writer, or
+ * column with the customer `rejection_reason`.
+ */
+export type BusinessReviewRejectReason =
+  "quantity_not_confirmed" | "transaction_not_confirmed" | "other";
+
+export const BUSINESS_REVIEW_REJECT_REASONS: readonly BusinessReviewRejectReason[] = [
+  "quantity_not_confirmed",
+  "transaction_not_confirmed",
+  "other",
 ] as const;
 
 export type PurchaseRecordRow = {
@@ -94,6 +119,13 @@ export type PurchaseRecordRow = {
   readonly verifiedAt: Date | null;
   readonly rejectionReason: PurchaseRejectReason | null;
   readonly disputeReason: PurchaseDisputeReason | null;
+  /** Business Review outcome (`null` until a reviewer decides; never set by customer commands). */
+  readonly businessReviewDecision: BusinessReviewDecision | null;
+  /** Server-resolved reviewer (`Owner`/`Manager` user id); always differs from `recordedByUserId`. */
+  readonly businessReviewReviewerUserId: string | null;
+  readonly businessReviewDecidedAt: Date | null;
+  /** Business Review REJECTION reason only -- never the customer `rejectionReason`. */
+  readonly businessReviewReason: BusinessReviewRejectReason | null;
   readonly replacesPurchaseRecordId: string | null;
   readonly correlationId: string;
   readonly createdAt: Date;
@@ -243,6 +275,9 @@ export type TrustEventType =
   | "purchase.verified"
   | "purchase.rejected"
   | "purchase.disputed"
+  | "purchase.business_review_required"
+  | "purchase.business_review_approved"
+  | "purchase.business_review_rejected"
   | "verified_units.issued"
   | "loyalty_cycle.allocated"
   | "loyalty_cycle.reward_available"
@@ -290,6 +325,11 @@ export type NotificationIntentType =
   | "purchase_verified_business"
   | "purchase_rejected_business"
   | "purchase_disputed_business"
+  | "purchase_business_review_required_business"
+  | "purchase_business_review_approved_customer"
+  | "purchase_business_review_approved_business"
+  | "purchase_business_review_rejected_customer"
+  | "purchase_business_review_rejected_business"
   | "reward_available_customer"
   | "reward_redeemed_customer"
   | "reward_redeemed_business";
@@ -317,6 +357,9 @@ export type PurchaseOutboxEventType =
   | "purchase_verified"
   | "purchase_rejected"
   | "purchase_disputed"
+  | "purchase_business_review_required"
+  | "purchase_business_review_approved"
+  | "purchase_business_review_rejected"
   | "verified_units_issued"
   | "loyalty_cycle_allocated"
   | "loyalty_cycle_reward_available"
@@ -328,4 +371,6 @@ export type PurchaseIdempotencyOperation =
   | "purchase.verify"
   | "purchase.reject"
   | "purchase.dispute"
+  | "purchase.business_review_approve"
+  | "purchase.business_review_reject"
   | "redemption.confirm";

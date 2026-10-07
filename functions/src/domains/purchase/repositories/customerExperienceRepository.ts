@@ -150,7 +150,9 @@ export async function listCustomerExperienceActivity(
     `SELECT activity.* FROM (
        SELECT e.id, p.business_id, p.reward_program_id, rp.display_name AS programme_name,
               p.item_label, p.quantity, 'purchase'::text AS event_kind,
-              e.to_status AS event_status, NULL::text AS reward_description,
+              CASE WHEN e.to_status = 'business_review_required'
+                   THEN 'awaiting_business_confirmation' ELSE e.to_status END AS event_status,
+              NULL::text AS reward_description,
               e.occurred_at
          FROM purchase_record_events e
          JOIN purchase_records p ON p.id = e.purchase_record_id

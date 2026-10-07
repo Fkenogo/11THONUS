@@ -43,6 +43,8 @@ export type UpdateRewardProgramDraftRequest = {
   readonly multipleUnitsAllowed: boolean;
   readonly sharedLoyaltyNumberAllowed: boolean;
   readonly bulkReviewThreshold?: number | null;
+  /** Business Review routing threshold (`EA-BL-001-CORR-002-BR`); `undefined` carries the existing value forward. */
+  readonly businessReviewQuantityThreshold?: number | null;
   readonly effectiveFrom: Date;
   readonly effectiveUntil?: Date | null;
   /** Structural qualification identity (`PLATFORM-BASELINE-013B`): validated + snapshotted server-side. */
@@ -90,6 +92,11 @@ export async function updateRewardProgramDraft(
     multipleUnitsAllowed: params.request.multipleUnitsAllowed,
     sharedLoyaltyNumberAllowed: params.request.sharedLoyaltyNumberAllowed,
     bulkReviewThreshold: params.request.bulkReviewThreshold ?? null,
+    // Only a CALLER-SUPPLIED threshold joins the identity: an absent field hashes exactly as before this
+    // package, so pre-existing idempotency reservations keep matching their retried requests.
+    ...(params.request.businessReviewQuantityThreshold === undefined
+      ? {}
+      : { businessReviewQuantityThreshold: params.request.businessReviewQuantityThreshold }),
     effectiveFrom: params.request.effectiveFrom.toISOString(),
     effectiveUntil: params.request.effectiveUntil?.toISOString() ?? null,
     qualifyingItemIds: params.request.qualifyingItemIds,
@@ -137,6 +144,10 @@ export async function updateRewardProgramDraft(
         multipleUnitsAllowed: params.request.multipleUnitsAllowed,
         sharedLoyaltyNumberAllowed: params.request.sharedLoyaltyNumberAllowed,
         bulkReviewThreshold: params.request.bulkReviewThreshold ?? null,
+        businessReviewQuantityThreshold:
+          params.request.businessReviewQuantityThreshold === undefined
+            ? currentDraft.businessReviewQuantityThreshold
+            : params.request.businessReviewQuantityThreshold,
         effectiveFrom: params.request.effectiveFrom,
         effectiveUntil: params.request.effectiveUntil ?? null,
         qualifyingItemIds: params.request.qualifyingItemIds,

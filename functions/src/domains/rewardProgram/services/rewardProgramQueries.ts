@@ -9,16 +9,54 @@
 
 import type { Firestore } from "firebase-admin/firestore";
 import type { PlatformPostgresPool } from "../../../infrastructure/postgres/postgresPool";
-import { authorizeRewardProgramRead } from "./rewardProgramAuthorization";
+import {
+  authorizeRewardProgramRead,
+  canReadBusinessReviewThreshold,
+} from "./rewardProgramAuthorization";
 import {
   getRewardProgramById,
   listRewardProgramsForBusiness,
 } from "../repositories/rewardProgramRepository";
-import type { RewardProgramWithVersions } from "../models/rewardProgram";
+import type {
+  RewardProgramVersionRow,
+  RewardProgramVersionView,
+  RewardProgramView,
+  RewardProgramWithVersions,
+} from "../models/rewardProgram";
 import {
   rewardProgramCrossBusinessMismatchError,
   rewardProgramNotFoundError,
 } from "../models/rewardProgramErrors";
+
+function withoutThreshold(
+  version: RewardProgramVersionRow | null,
+): RewardProgramVersionView | null {
+  if (version === null) {
+    return null;
+  }
+  const view: { -readonly [K in keyof RewardProgramVersionRow]?: RewardProgramVersionRow[K] } = {
+    ...version,
+  };
+  delete view.businessReviewQuantityThreshold;
+  return view as RewardProgramVersionView;
+}
+
+/** Server-side redaction: only Business Review authority holders receive the routing threshold. */
+async function shapeForCaller(
+  db: Firestore,
+  userId: string,
+  businessId: string,
+  entry: RewardProgramWithVersions,
+): Promise<RewardProgramView> {
+  if (await canReadBusinessReviewThreshold(db, userId, businessId)) {
+    return entry;
+  }
+  return {
+    program: entry.program,
+    currentVersion: withoutThreshold(entry.currentVersion),
+    draftVersion: withoutThreshold(entry.draftVersion),
+  };
+}
 
 export async function getRewardProgram(
   db: Firestore,
@@ -28,7 +66,7 @@ export async function getRewardProgram(
     readonly businessId: string;
     readonly rewardProgramId: string;
   },
-): Promise<RewardProgramWithVersions> {
+): Promise<RewardProgramView> {
   await authorizeRewardProgramRead(db, params.userId, params.businessId);
   const result = await getRewardProgramById(pool, params.rewardProgramId);
   if (!result) {
@@ -37,14 +75,22 @@ export async function getRewardProgram(
   if (result.program.businessId !== params.businessId) {
     throw rewardProgramCrossBusinessMismatchError();
   }
-  return result;
+  return shapeForCaller(db, params.userId, params.businessId, result);
 }
 
 export async function listRewardPrograms(
   db: Firestore,
   pool: PlatformPostgresPool,
   params: { readonly userId: string; readonly businessId: string },
-): Promise<readonly RewardProgramWithVersions[]> {
+): Promise<readonly RewardProgramView[]> {
   await authorizeRewardProgramRead(db, params.userId, params.businessId);
-  return listRewardProgramsForBusiness(pool, params.businessId);
+  const entries = await listRewardProgramsForBusiness(pool, params.businessId);
+  const reviewer = await canReadBusinessReviewThreshold(db, params.userId, params.businessId);
+  return reviewer
+    ? entries
+    : entries.map((e) => ({
+        program: e.program,
+        currentVersion: withoutThreshold(e.currentVersion),
+        draftVersion: withoutThreshold(e.draftVersion),
+      }));
 }

@@ -19,6 +19,8 @@ function activityTitle(
       return t("experience.activityRecorded");
     case "pending_admission":
       return t("experience.activityAdmission");
+    case "awaiting_business_confirmation":
+      return t("experience.activityBusinessReview");
     case "verified":
       return t("experience.activityVerified");
     case "rejected":
@@ -307,7 +309,9 @@ export function CustomerHomePage({ auth, functions }: { auth: Auth; functions: F
                           ? t("experience.activityVerified")
                           : item.status === "pending_admission"
                             ? t("experience.activityAdmission")
-                            : t("experience.activityWaiting")}
+                            : item.status === "awaiting_business_confirmation"
+                              ? t("experience.activityBusinessReview")
+                              : t("experience.activityWaiting")}
                     </span>
                   </li>
                 ))}

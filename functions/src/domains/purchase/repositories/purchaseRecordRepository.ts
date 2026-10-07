@@ -21,6 +21,8 @@ import type { PoolClient } from "pg";
 import type { PlatformPostgresPool } from "../../../infrastructure/postgres/postgresPool";
 import type { PlatformPostgresTransaction } from "../../../infrastructure/postgres/postgresTransaction";
 import type {
+  BusinessReviewDecision,
+  BusinessReviewRejectReason,
   PresentedArtifactType,
   PurchaseActorType,
   PurchaseDisputeReason,
@@ -59,6 +61,10 @@ type PurchaseDbRow = {
   verified_at: Date | null;
   rejection_reason: PurchaseRejectReason | null;
   dispute_reason: PurchaseDisputeReason | null;
+  business_review_decision: BusinessReviewDecision | null;
+  business_review_reviewer_user_id: string | null;
+  business_review_decided_at: Date | null;
+  business_review_reason: BusinessReviewRejectReason | null;
   replaces_purchase_record_id: string | null;
   correlation_id: string;
   created_at: Date;
@@ -93,6 +99,10 @@ function mapPurchaseRow(row: PurchaseDbRow): PurchaseRecordRow {
     verifiedAt: row.verified_at,
     rejectionReason: row.rejection_reason,
     disputeReason: row.dispute_reason,
+    businessReviewDecision: row.business_review_decision,
+    businessReviewReviewerUserId: row.business_review_reviewer_user_id,
+    businessReviewDecidedAt: row.business_review_decided_at,
+    businessReviewReason: row.business_review_reason,
     replacesPurchaseRecordId: row.replaces_purchase_record_id,
     correlationId: row.correlation_id,
     createdAt: row.created_at,
@@ -124,9 +134,18 @@ export type InsertPurchaseRecordParams = {
   readonly purchaseDate: Date;
   readonly notes: string | null;
   readonly correlationId: string;
+  /**
+   * Routing outcome decided by the command from the LOCKED version
+   * (`EA-BL-001-CORR-002-BR`): `waiting_for_customer` (default, unchanged) or
+   * `business_review_required`. Never client-supplied.
+   */
+  readonly initialStatus?: "waiting_for_customer" | "business_review_required";
 };
 
-/** Inserts the Purchase snapshot directly in `waiting_for_customer` (design §12: no stored draft). */
+/**
+ * Inserts the Purchase snapshot directly in its routed initial status -- `waiting_for_customer`
+ * (design §12: no stored draft) or, for a Business-Review-gated Purchase, `business_review_required`.
+ */
 export async function insertPurchaseRecord(
   tx: PlatformPostgresTransaction,
   params: InsertPurchaseRecordParams,
@@ -138,7 +157,7 @@ export async function insertPurchaseRecord(
         shared_loyalty_number_allowed, multiple_units_allowed, branch_id,
         recorded_by_user_id, recorded_by_role, quantity, qualifying_item_id, item_label,
         unit_value_minor, currency, purchase_date, notes, status, correlation_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,'waiting_for_customer',$20)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$21,$20)
      RETURNING *`,
     [
       params.businessId,
@@ -161,6 +180,7 @@ export async function insertPurchaseRecord(
       params.purchaseDate,
       params.notes,
       params.correlationId,
+      params.initialStatus ?? "waiting_for_customer",
     ],
   );
   return mapPurchaseRow(result.rows[0]);
@@ -281,6 +301,62 @@ export async function transitionPurchaseToUnderReview(
   return mapPurchaseRow(result.rows[0]);
 }
 
+/**
+ * `business_review_required` → `waiting_for_customer` (Business APPROVAL). Records the reviewer and
+ * decision time atomically; creates no loyalty state -- the Purchase merely becomes customer-
+ * verifiable. Returns null when the row is not awaiting review (race loser).
+ */
+export async function transitionPurchaseBusinessReviewApproved(
+  tx: PlatformPostgresTransaction,
+  params: {
+    readonly purchaseId: string;
+    readonly reviewerUserId: string;
+    readonly decidedAt: Date;
+  },
+): Promise<PurchaseRecordRow | null> {
+  const result = await tx.query<PurchaseDbRow>(
+    `UPDATE purchase_records
+        SET status = 'waiting_for_customer', business_review_decision = 'approved',
+            business_review_reviewer_user_id = $2, business_review_decided_at = $3,
+            updated_at = now()
+      WHERE id = $1 AND status = 'business_review_required'
+      RETURNING *`,
+    [params.purchaseId, params.reviewerUserId, params.decidedAt],
+  );
+  if (result.rows.length === 0) {
+    return null;
+  }
+  return mapPurchaseRow(result.rows[0]);
+}
+
+/**
+ * `business_review_required` → `rejected` (Business REJECTION). Writes the DISTINCT Business Review
+ * reason column; `rejection_reason` (customer semantics) stays NULL. Returns null for a race loser.
+ */
+export async function transitionPurchaseBusinessReviewRejected(
+  tx: PlatformPostgresTransaction,
+  params: {
+    readonly purchaseId: string;
+    readonly reviewerUserId: string;
+    readonly decidedAt: Date;
+    readonly reason: BusinessReviewRejectReason;
+  },
+): Promise<PurchaseRecordRow | null> {
+  const result = await tx.query<PurchaseDbRow>(
+    `UPDATE purchase_records
+        SET status = 'rejected', business_review_decision = 'rejected',
+            business_review_reviewer_user_id = $2, business_review_decided_at = $3,
+            business_review_reason = $4, updated_at = now()
+      WHERE id = $1 AND status = 'business_review_required'
+      RETURNING *`,
+    [params.purchaseId, params.reviewerUserId, params.decidedAt, params.reason],
+  );
+  if (result.rows.length === 0) {
+    return null;
+  }
+  return mapPurchaseRow(result.rows[0]);
+}
+
 export type AppendPurchaseRecordEventParams = {
   readonly purchaseRecordId: string;
   readonly fromStatus: PurchaseStatus | null;
@@ -362,6 +438,11 @@ export async function listPurchaseRecordEvents(
 
 export type ListPurchasesParams = {
   readonly status?: PurchaseStatus | null;
+  /**
+   * Exclude Purchases awaiting Business Review (`EA-BL-001-CORR-002-BR`). Set for callers without
+   * `purchase.businessReview` authority so the generic list can never enumerate the protected queue.
+   */
+  readonly excludeBusinessReview?: boolean;
   readonly limit: number;
   readonly offset: number;
 };
@@ -379,9 +460,36 @@ export async function listPurchaseRecordsForBusiness(
   const result = await db.query<PurchaseDbRow>(
     `SELECT * FROM purchase_records
       WHERE business_id = $1 AND ($2::text IS NULL OR status = $2::text)
+        AND (NOT $5::boolean OR status <> 'business_review_required')
       ORDER BY created_at DESC, id DESC
       LIMIT $3 OFFSET $4`,
-    [businessId, params.status ?? null, params.limit, params.offset],
+    [
+      businessId,
+      params.status ?? null,
+      params.limit,
+      params.offset,
+      params.excludeBusinessReview === true,
+    ],
+  );
+  return result.rows.map(mapPurchaseRow);
+}
+
+/**
+ * Business Review queue: the Business's Purchases awaiting review, oldest first
+ * (`(created_at, id)`, matching `purchase_records_business_review_queue_idx`). Reads never create
+ * or repair records; the caller enforces Business-scoped authority before calling.
+ */
+export async function listBusinessReviewQueue(
+  db: Queryable,
+  businessId: string,
+  params: { readonly limit: number; readonly offset: number },
+): Promise<PurchaseRecordRow[]> {
+  const result = await db.query<PurchaseDbRow>(
+    `SELECT * FROM purchase_records
+      WHERE business_id = $1 AND status = 'business_review_required'
+      ORDER BY created_at ASC, id ASC
+      LIMIT $2 OFFSET $3`,
+    [businessId, params.limit, params.offset],
   );
   return result.rows.map(mapPurchaseRow);
 }

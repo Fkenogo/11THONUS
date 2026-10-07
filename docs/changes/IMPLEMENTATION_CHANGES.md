@@ -7,6 +7,35 @@
 
 ---
 
+## 2026-10-07 — EA-BL-001-CORR-002-BR — PR #304 Pre-Technical-Review Correction
+
+- **Task:** Correct the bounded security/truthfulness findings on PR #304 before Independent Technical Review. No redesign; no Slice B/C.
+- **Status:** **IMPLEMENTED — TECHNICAL REVIEW PENDING** (unchanged; not Complete). Entry head `e2697cf491eec366500db4ad8f1a938ccc02ca5a`; corrected head and exact-head CI run are recorded on PR #304.
+- **Founder dispositions applied:** canonical permission id `purchase.businessReview`; rejection vocabulary `quantity_not_confirmed | transaction_not_confirmed | other` (approved, not expanded) with **`other` requiring a note**; sole-reviewer fail-closed confirmed.
+- **Fixes:** (A) Customer waiting list and customer command results redact all Business Review attribution; (B) generic Business list/detail no longer enumerate or reveal the protected review queue to non-reviewers; (C) `businessReviewQuantityThreshold` removed server-side from Reward Program reads for non-reviewers (Staff); (D) recording confirmation now truthful for review-routed Purchases (EN/FR); (E) `other` requires a bounded internal note; (F) commercial-gate orthogonality proven under `enforce` (admitted / pending_admission only via Customer verification; no direct review→hold edge).
+- **Validation (local):** functions unit 2015; web 941; PostgreSQL+emulator 746; emulator 877 (3 pre-existing skips); typecheck/format/eslint (changed files) green. Repo-wide lint closes only on green exact-head CI.
+- **Boundary:** no WP-COM source change (commercial test files: migration bookkeeping only, boundary exemption tightened); no migration change; no deployment; no dependencies/config added.
+- **Rollback:** revert the correction commit(s) on PR #304 (read-path redaction and web copy only; no schema change).
+
+---
+
+## 2026-10-06 — EA-BL-001-CORR-002-BR — Business Review Domain Foundation Implementation
+
+- **Task:** Implement the authorised Business Review domain/backend foundation (no UI).
+- **Status:** **IMPLEMENTED — TECHNICAL REVIEW PENDING.** Not Complete. Entry `origin/main` `8d7491d6fa85879c6b2e75eed4198e18d073dd62`; branch `feat/ea-bl-001-corr-002-br-implementation`; PR open and unmerged (see the PR for the exact head and CI run).
+- **Migration:** `0028_business_review_foundation` (+ fail-closed `.down`): `business_review_required` status; per-version `business_review_quantity_threshold` (`NULL` = disabled; routing only); reviewer attribution + distinct `business_review_reason`; guard trigger (`business_review_required` entered only at INSERT, exits only to `waiting_for_customer`/`rejected`); evidence vocabularies. No new table.
+- **State machine:** `∅ → business_review_required`; `business_review_required → waiting_for_customer` (approve) / `→ rejected` (reject). `under_review`, `pending_admission`, customer `rejection_reason` and `bulk_review_threshold` untouched.
+- **Permission:** `purchase.businessReview` (repository camelCase spelling of the design's `purchase.business_review`) — Owner floor, Manager default/revocable/re-grantable, **Staff structurally ineligible** (no grant path; constructor refuses and evaluator independently ignores a fabricated Staff grant), no Platform Administrator/Customer authority.
+- **Invariants:** approval and rejection create **no** Verified Unit, Cycle allocation or Reward (customer verification stays mandatory); strict **reviewer ≠ recorder** with no exception (DB CHECK backstop; sole-reviewer fails closed); threshold crossing never auto-rejects.
+- **Surface:** `approveBusinessReview`, `rejectBusinessReview`, `listBusinessReviewQueue` callables; additive `review` field on the record-purchase result; neutral customer copy (EN "Waiting for business confirmation" / FR "En attente de confirmation du commerce").
+- **Validation (local):** functions unit 2015, web unit 938, PostgreSQL+emulator 724 (37 BR integration + 10 migration), emulator 877 (3 pre-existing skips), preview tooling 44; build/typecheck/lint/format green.
+- **Programme boundary:** Slice B/C/D/E not authorised; Slice B remains blocked until BR is reviewed, accepted and merged. EA-BL-002 unstarted. No WP-COM source change (commercial *tests* updated only for the new migration head). FEF-TLC-001 not adopted. No deployment.
+- **Founder attention:** the Business-review reason vocabulary (`quantity_not_confirmed | transaction_not_confirmed | other`) is a minimal implementation-level choice awaiting confirmation; sole-reviewer deadlock is intentional.
+- **Files:** see [BR implementation report](../05-implementation/reports/11THONUS-EA-BL-001-CORR-002-BR-implementation-report-2026-10-06.md).
+- **Rollback:** revert the PR; a database with no Business Review data rolls back via `0028.down`; a populated database refuses rollback by design.
+
+---
+
 ## 2026-10-06 — EA-BL-001-CORR-002-BR — Business Review Domain Foundation Authorisation & Design
 
 - **Task:** Analyse the current purchase lifecycle and, if Product Truth supports it, authorise the Business Review Domain Foundation (analysis + governance/design confirmation only).

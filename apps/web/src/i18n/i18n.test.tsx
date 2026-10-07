@@ -146,6 +146,29 @@ describe("Reward Program Qualifying Item copy (PLATFORM-BASELINE-013B, EN/FR)", 
   });
 });
 
+describe("Business Review customer copy (EA-BL-001-CORR-002-BR, EN/FR)", () => {
+  it("shows the neutral awaiting-confirmation copy and no internal state name or reviewer detail", () => {
+    expect(en.customer.experience.activityBusinessReview).toBe("Waiting for business confirmation");
+    expect(fr.customer.experience.activityBusinessReview).toBe(
+      "En attente de confirmation du commerce",
+    );
+    expect(en.customer.purchase.status.awaiting_business_confirmation).toBe(
+      "Waiting for business confirmation",
+    );
+    expect(fr.customer.purchase.status.awaiting_business_confirmation).toBe(
+      "En attente de confirmation du commerce",
+    );
+    expect(en.business.purchase.recordSuccessReview).toBe(
+      "Purchase recorded. Business review is required before customer confirmation.",
+    );
+    expect(fr.business.purchase.recordSuccessReview).toBe(
+      "Achat enregistré. Une validation du commerce est requise avant la confirmation du client.",
+    );
+    const customerCopy = JSON.stringify([en.customer.experience, fr.customer.experience]);
+    expect(customerCopy).not.toContain("business_review_required");
+  });
+});
+
 describe("applyPreferredLanguage (authenticated-profile integration point)", () => {
   it("applies a supported preferredLanguage", async () => {
     expect(applyPreferredLanguage("fr")).toBe("fr");

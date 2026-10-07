@@ -54,6 +54,12 @@ export type LockedRewardProgramVersion = {
   readonly rewardDescription: string;
   readonly requiredVerifiedUnits: number;
   readonly rewardQuantity: number;
+  /**
+   * Business Review routing threshold (`EA-BL-001-CORR-002-BR`): `null` = Business Review disabled for
+   * this version; otherwise a whole-record quantity at or above it routes to review. Read from the
+   * SAME locked row that supplies the other routing terms -- never re-read outside the transaction.
+   */
+  readonly businessReviewQuantityThreshold: number | null;
 };
 
 export async function lockRewardProgramVersionById(
@@ -69,9 +75,11 @@ export async function lockRewardProgramVersionById(
     reward_description: string;
     required_verified_units: number;
     reward_quantity: number;
+    business_review_quantity_threshold: number | null;
   }>(
     `SELECT id, reward_program_id, status, shared_loyalty_number_allowed,
-            multiple_units_allowed, reward_description, required_verified_units, reward_quantity
+            multiple_units_allowed, reward_description, required_verified_units, reward_quantity,
+            business_review_quantity_threshold
        FROM reward_program_versions WHERE id = $1 FOR UPDATE`,
     [versionId],
   );
@@ -88,6 +96,7 @@ export async function lockRewardProgramVersionById(
     rewardDescription: row.reward_description,
     requiredVerifiedUnits: row.required_verified_units,
     rewardQuantity: row.reward_quantity,
+    businessReviewQuantityThreshold: row.business_review_quantity_threshold,
   };
 }
 

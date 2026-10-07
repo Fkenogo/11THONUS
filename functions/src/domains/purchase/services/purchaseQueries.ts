@@ -27,6 +27,8 @@ import type { PlatformPostgresPool } from "../../../infrastructure/postgres/post
 import {
   authorizeBusinessLoyaltyVisibilityRead,
   authorizeBusinessPurchaseRead,
+  authorizeBusinessReviewQueueRead,
+  hasBusinessReviewAuthority,
 } from "./purchaseAuthorization";
 import {
   listAvailableRewardsForBusinessRows,
@@ -38,6 +40,7 @@ import type {
 } from "../models/businessLoyaltyVisibility";
 import {
   getPurchaseRecordById,
+  listBusinessReviewQueue as listBusinessReviewQueueRows,
   listPurchaseRecordEvents,
   listPurchaseRecordsForBusiness,
   listWaitingPurchasesForCustomer,
@@ -85,6 +88,7 @@ function parsePagination(params: {
 
 const PURCHASE_STATUSES: readonly string[] = [
   "waiting_for_customer",
+  "business_review_required",
   "pending_admission",
   "verified",
   "rejected",
@@ -118,12 +122,48 @@ export async function listPurchasesForBusiness(
 ): Promise<{ readonly purchases: PurchaseRecordRow[] }> {
   await authorizeBusinessPurchaseRead(db, params.userId, params.businessId);
   const { limit, offset } = parsePagination(params);
+  const status = parseStatusFilter(params.status);
+  // The Business Review queue is protected by `purchase.businessReview`: the generic list must never
+  // be a side door to it (`EA-BL-001-CORR-002-BR`). Reviewers may filter to it; everyone else is
+  // refused that filter and never sees review-required rows in an unfiltered list.
+  const reviewer = await hasBusinessReviewAuthority(db, params.userId, params.businessId);
+  if (status === "business_review_required" && !reviewer) {
+    await authorizeBusinessReviewQueueRead(db, params.userId, params.businessId); // throws AUTH_FORBIDDEN
+  }
   const purchases = await listPurchaseRecordsForBusiness(pool, params.businessId, {
-    status: parseStatusFilter(params.status),
+    status,
+    excludeBusinessReview: !reviewer,
     limit,
     offset,
   });
-  return { purchases };
+  return {
+    purchases: reviewer ? purchases : purchases.map(redactReviewAttributionForNonReviewer),
+  };
+}
+
+/**
+ * A caller without Business Review authority never receives reviewer identity, decision time or the
+ * review reason (the outcome stays visible through `status`).
+ */
+function redactReviewAttributionForNonReviewer(purchase: PurchaseRecordRow): PurchaseRecordRow {
+  return {
+    ...purchase,
+    businessReviewDecision: null,
+    businessReviewReviewerUserId: null,
+    businessReviewDecidedAt: null,
+    businessReviewReason: null,
+  };
+}
+
+function redactReviewEventForNonReviewer(event: PurchaseRecordEventRow): PurchaseRecordEventRow {
+  const involvesReview =
+    event.fromStatus === "business_review_required" ||
+    event.toStatus === "business_review_required" ||
+    (event.eventPayload !== null && "decision" in event.eventPayload);
+  if (!involvesReview) {
+    return event;
+  }
+  return { ...event, actorId: "business", reason: null, eventPayload: null };
 }
 
 export type PurchaseRecordDetail = {
@@ -145,8 +185,89 @@ export async function getPurchaseRecordForBusiness(
   if (!purchase || purchase.businessId !== params.businessId) {
     throw purchaseNotFoundError(params.purchaseRecordId);
   }
+  const reviewer = await hasBusinessReviewAuthority(db, params.userId, params.businessId);
+  if (!reviewer && purchase.status === "business_review_required") {
+    // Same boundary as the list: a non-reviewer cannot read a protected review-queue Purchase by id.
+    throw purchaseNotFoundError(params.purchaseRecordId);
+  }
   const events = await listPurchaseRecordEvents(pool, purchase.id);
-  return { purchase, events };
+  return reviewer
+    ? { purchase, events }
+    : {
+        purchase: redactReviewAttributionForNonReviewer(purchase),
+        events: events.map(redactReviewEventForNonReviewer),
+      };
+}
+
+/**
+ * Business Review queue (`EA-BL-001-CORR-002-BR`): the Business's Purchases awaiting an Owner/Manager
+ * decision, oldest first, bounded and paginated. Gated by the SAME live `purchase.businessReview`
+ * evaluation as the decision commands, so Staff, a Manager whose authority was revoked, a Platform
+ * Administrator and a Customer all fail closed. Each row carries the review context (item, quantity,
+ * recorder + role, timestamps, program/version); per-purchase history is the existing
+ * `getPurchaseRecordForBusiness` timeline (lifecycle events). Read-only: never creates, repairs or
+ * decides anything. The Business scope comes from the authorized `businessId`, enforced in SQL.
+ */
+export async function listBusinessReviewQueue(
+  db: Firestore,
+  pool: PlatformPostgresPool,
+  params: {
+    readonly userId: string;
+    readonly businessId: string;
+    readonly limit?: number | null;
+    readonly offset?: number | null;
+  },
+): Promise<{ readonly purchases: PurchaseRecordRow[] }> {
+  await authorizeBusinessReviewQueueRead(db, params.userId, params.businessId);
+  const { limit, offset } = parsePagination(params);
+  const purchases = await listBusinessReviewQueueRows(pool, params.businessId, { limit, offset });
+  return { purchases };
+}
+
+/**
+ * Customer-facing status token for a Purchase awaiting Business Review. The internal
+ * `business_review_required` name is never exposed to a Customer; the client maps this neutral token
+ * to "Waiting for business confirmation" / "En attente de confirmation du commerce".
+ */
+export const CUSTOMER_AWAITING_BUSINESS_CONFIRMATION = "awaiting_business_confirmation" as const;
+
+function customerFacingStatus(status: PurchaseStatus): string {
+  return status === "business_review_required" ? CUSTOMER_AWAITING_BUSINESS_CONFIRMATION : status;
+}
+
+/**
+ * Customer view of a Purchase: strips Business Review internals (reviewer identity, decision time,
+ * rejection reason, threshold evidence) and renames the internal review status. A Customer never
+ * learns who reviewed, why, or any threshold.
+ */
+export function redactPurchaseForCustomer(purchase: PurchaseRecordRow): PurchaseRecordRow {
+  return {
+    ...purchase,
+    status: customerFacingStatus(purchase.status) as PurchaseStatus,
+    businessReviewDecision: null,
+    businessReviewReviewerUserId: null,
+    businessReviewDecidedAt: null,
+    businessReviewReason: null,
+  };
+}
+
+function redactEventForCustomer(event: PurchaseRecordEventRow): PurchaseRecordEventRow {
+  const involvesReview =
+    event.fromStatus === "business_review_required" ||
+    event.toStatus === "business_review_required" ||
+    (event.eventPayload !== null && "decision" in event.eventPayload);
+  if (!involvesReview) {
+    return event;
+  }
+  return {
+    ...event,
+    fromStatus:
+      event.fromStatus === null ? null : (customerFacingStatus(event.fromStatus) as PurchaseStatus),
+    toStatus: customerFacingStatus(event.toStatus) as PurchaseStatus,
+    actorId: "business",
+    reason: null,
+    eventPayload: null,
+  };
 }
 
 export async function listPurchasesWaitingForCustomer(
@@ -162,7 +283,9 @@ export async function listPurchasesWaitingForCustomer(
     limit,
     offset,
   });
-  return { purchases };
+  // After a Business approval the row is `waiting_for_customer` again but still carries reviewer
+  // attribution: every customer-facing row is redacted exactly like the detail read.
+  return { purchases: purchases.map(redactPurchaseForCustomer) };
 }
 
 export async function getPurchaseRecordForCustomer(
@@ -177,7 +300,10 @@ export async function getPurchaseRecordForCustomer(
     throw purchaseOwnershipError();
   }
   const events = await listPurchaseRecordEvents(pool, purchase.id);
-  return { purchase, events };
+  return {
+    purchase: redactPurchaseForCustomer(purchase),
+    events: events.map(redactEventForCustomer),
+  };
 }
 
 export async function listAvailableRewardsForCustomer(

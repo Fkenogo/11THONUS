@@ -8,6 +8,8 @@
 > **Boundaries:** No BR code. No schema/migration execution. No Staff UI. No Owner/Manager UI. No Slice B/C/D/E. No EA-BL-002. No WP-COM implementation. No FEF-TLC adoption. No deployment.
 > **Correction (2026-10-06, PR #303 review):** Staff grant path removed — Staff is INELIGIBLE for `purchase.business_review` at MVP with no explicit-grant path (Owner / authorised Manager review only, per approved Founder direction); EIP current-state contradiction corrected (§22 record). No redesign; no new Founder decision; all locked principles unchanged.
 
+> **Identifier note (2026-10-07, Founder disposition on PR #304):** this report uses `purchase.business_review` as conceptual design shorthand. The canonical repository/code identifier is **`purchase.businessReview`** (camelCase action convention); the design semantics are unchanged.
+
 ---
 
 ## 1. Entry repository state

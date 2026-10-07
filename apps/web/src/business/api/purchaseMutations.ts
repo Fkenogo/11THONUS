@@ -35,6 +35,7 @@ export type PurchaseRecordWire = {
   notes: string | null;
   status:
     | "waiting_for_customer"
+    | "business_review_required"
     | "pending_admission"
     | "verified"
     | "rejected"
@@ -88,7 +89,20 @@ export type RecordPurchaseRequest = {
 
 export type RecordPurchaseResult = {
   purchase: PurchaseRecordWire;
+  /**
+   * Server routing outcome (`EA-BL-001-CORR-002-BR`). Optional: a replayed result stored before this
+   * field existed omits it, in which case `purchase.status` is authoritative. Never carries the
+   * configured review threshold.
+   */
+  review?: { required: boolean; status: "waiting_for_customer" | "business_review_required" };
 };
+
+/** True when the server routed the recorded Purchase to Business Review (not yet customer-verifiable). */
+export function isBusinessReviewRequired(result: RecordPurchaseResult | undefined): boolean {
+  return (
+    result?.review?.required === true || result?.purchase?.status === "business_review_required"
+  );
+}
 
 export type ListPurchasesRequest = {
   businessId: string;

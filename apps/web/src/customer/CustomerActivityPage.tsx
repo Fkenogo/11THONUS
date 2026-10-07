@@ -159,13 +159,15 @@ export function CustomerActivityPage({ auth, functions }: { auth: Auth; function
                     ? t("experience.activityRecorded")
                     : item.status === "pending_admission"
                       ? t("experience.activityAdmission")
-                      : item.status === "verified"
-                        ? t("experience.activityVerified")
-                        : item.status === "rejected"
-                          ? t("experience.activityRejected")
-                          : item.status === "under_review"
-                            ? t("experience.activityUnderReview")
-                            : t("experience.activityOtherStatus");
+                      : item.status === "awaiting_business_confirmation"
+                        ? t("experience.activityBusinessReview")
+                        : item.status === "verified"
+                          ? t("experience.activityVerified")
+                          : item.status === "rejected"
+                            ? t("experience.activityRejected")
+                            : item.status === "under_review"
+                              ? t("experience.activityUnderReview")
+                              : t("experience.activityOtherStatus");
             const detail =
               item.quantity && item.itemLabel
                 ? t("experience.activityQuantity", { count: item.quantity, item: item.itemLabel })

@@ -9,7 +9,13 @@
  */
 
 export function purchaseRequestHash(
-  operation: "create" | "verify" | "reject" | "dispute",
+  operation:
+    | "create"
+    | "verify"
+    | "reject"
+    | "dispute"
+    | "business_review_approve"
+    | "business_review_reject",
   actorId: string,
   businessId: string,
   targetId: string,

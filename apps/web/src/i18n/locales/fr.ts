@@ -357,6 +357,8 @@ export const fr = {
       recordSubmit: "Enregistrer l'achat",
       recording: "Enregistrement…",
       recordSuccess: "Achat enregistré. Il est maintenant en attente du client.",
+      recordSuccessReview:
+        "Achat enregistré. Une validation du commerce est requise avant la confirmation du client.",
       listTitle: "Registre des achats",
       listEmpty: "Aucun achat enregistré pour le moment.",
       filterLabel: "Statut",
@@ -367,6 +369,7 @@ export const fr = {
       customerLoyaltyNumber: "Numéro de fidélité du client {{value}}",
       status: {
         waiting_for_customer: "En attente du client",
+        business_review_required: "En attente de revue par le commerce",
         pending_admission: "Reçu · en attente d'admission",
         verified: "Vérifié",
         rejected: "Rejeté",
@@ -613,6 +616,7 @@ export const fr = {
       activityRecorded: "Achat enregistré",
       activityVerified: "Achat vérifié",
       activityWaiting: "En attente de votre confirmation",
+      activityBusinessReview: "En attente de confirmation du commerce",
       activityAdmission: "Reçu · en attente d'admission",
       activityRejected: "Achat rejeté",
       activityUnderReview: "Achat en cours d'examen",
@@ -693,6 +697,7 @@ export const fr = {
       },
       status: {
         waiting_for_customer: "En attente de vous",
+        awaiting_business_confirmation: "En attente de confirmation du commerce",
         pending_admission: "Reçu · en attente d'admission",
         verified: "Vérifié",
         rejected: "Rejeté",

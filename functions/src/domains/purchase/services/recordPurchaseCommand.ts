@@ -23,10 +23,14 @@
  *  11. quantity against LOCKED version rules (`>= 1`;
  *      `multipleUnitsAllowed=false` ⇒ exactly 1);
  *  12. reserve idempotency key (`purchase.create`);
- *  13. insert Purchase snapshot (`waiting_for_customer`);
- *  14. lifecycle event; 15. Trust Event (`purchase.recorded`);
- *  16. Notification Intent (recorded → Customer);
- *  17. outbox (`purchase_recorded`); 18. complete idempotency; 19. COMMIT.
+ *  13. insert Purchase snapshot (`waiting_for_customer`, or `business_review_required` when the
+ *      LOCKED version's Business Review threshold routes it there — `EA-BL-001-CORR-002-BR`);
+ *  14. lifecycle event; 15. Trust Event (`purchase.recorded`, plus
+ *      `purchase.business_review_required` on the review path);
+ *  16. Notification Intent (recorded → Customer; review path → Business reviewers instead, the
+ *      Customer is not asked to verify until approval);
+ *  17. outbox (`purchase_recorded`, plus `purchase_business_review_required`);
+ *  18. complete idempotency; 19. COMMIT.
  *
  * Quantity-note (design §12 vs 005A schema): the design's "optional
  * Maximum Units per Purchase Record" has no governed schema home — the
@@ -66,6 +70,7 @@ import {
   lockRewardProgramVersionById,
   readLockedVersionQualifyingItem,
 } from "../repositories/purchaseProgramScopeRepository";
+import { resolveBusinessReviewRouting } from "./businessReviewRouting";
 import { insertTrustEvent } from "../repositories/trustEventRepository";
 import { insertNotificationIntent } from "../repositories/purchaseOutboxRepository";
 import { writePurchaseOutboxEntry } from "../repositories/purchaseOutboxRepository";
@@ -102,6 +107,15 @@ export type RecordPurchaseRequest = {
 
 export type RecordPurchaseResult = {
   readonly purchase: PurchaseRecordRow;
+  /**
+   * Truthful server routing outcome (`EA-BL-001-CORR-002-BR`): additive, so every existing caller of
+   * `purchase` is unaffected. `required` is true only when the Purchase was routed to Business
+   * Review and is NOT yet customer-verifiable; the counter never computes this from a threshold.
+   */
+  readonly review: {
+    readonly required: boolean;
+    readonly status: "waiting_for_customer" | "business_review_required";
+  };
 };
 
 function parsePresentedArtifact(request: RecordPurchaseRequest): {
@@ -298,6 +312,15 @@ export async function recordPurchase(
       );
     }
 
+    // Business Review routing (`EA-BL-001-CORR-002-BR`): decided from the LOCKED version row read
+    // above -- the same row that supplied `multipleUnitsAllowed`/`sharedLoyaltyNumberAllowed` --
+    // so a concurrent publish cannot race the routing decision. Routing only: never a cap, never
+    // a rejection (DEC-LOY-003).
+    const initialStatus = resolveBusinessReviewRouting({
+      threshold: version.businessReviewQuantityThreshold,
+      quantity: request.quantity,
+    });
+
     // Step 12: reserve idempotency.
     const reservation = await checkAndReserveIdempotencyKey(tx, {
       idempotencyKey: params.idempotencyKey,
@@ -338,13 +361,14 @@ export async function recordPurchase(
       purchaseDate: request.purchaseDate,
       notes: request.notes ?? null,
       correlationId: params.correlationId,
+      initialStatus,
     });
 
-    // Step 14: lifecycle event (∅ → waiting_for_customer).
+    // Step 14: lifecycle event (∅ → waiting_for_customer | business_review_required).
     const creationEvent = await appendPurchaseRecordEvent(tx, {
       purchaseRecordId: purchase.id,
       fromStatus: null,
-      toStatus: "waiting_for_customer",
+      toStatus: initialStatus,
       actorType: role,
       actorId: params.userId,
       reason: null,
@@ -377,16 +401,55 @@ export async function recordPurchase(
       },
     });
 
-    // Step 16: Notification Intent (recorded → Customer).
-    await insertNotificationIntent(tx, {
-      intentType: "purchase_recorded_customer",
-      purchaseRecordId: purchase.id,
-      sourcePurchaseRecordEventId: creationEvent.id,
-      recipientType: "customer",
-      recipientId: purchase.customerIdentityId,
-      payload: { purchaseRecordId: purchase.id, businessId: purchase.businessId },
-      correlationId: params.correlationId,
-    });
+    if (initialStatus === "business_review_required") {
+      await insertTrustEvent(tx, {
+        eventType: "purchase.business_review_required",
+        causalPurchaseRecordId: purchase.id,
+        sourcePurchaseRecordEventId: creationEvent.id,
+        subjectType: "purchase_record",
+        subjectId: purchase.id,
+        businessId: purchase.businessId,
+        customerIdentityId: purchase.customerIdentityId,
+        actorType: role,
+        actorId: params.userId,
+        actorRole: role,
+        correlationId: params.correlationId,
+        // Frozen routing evidence (the locked version's threshold at routing time -- never a live
+        // re-read). Kept on the internal Trust ledger only: the lifecycle event stays free of the
+        // threshold value because Business purchase reads are open to every active member, and Staff
+        // learn the routing OUTCOME, not the configured value.
+        payload: {
+          rewardProgramVersionId: purchase.rewardProgramVersionId,
+          quantity: purchase.quantity,
+          businessReviewQuantityThreshold: version.businessReviewQuantityThreshold,
+        },
+      });
+    }
+
+    // Step 16: Notification Intent. Normal path: recorded → Customer. Review path: the Customer is
+    // NOT asked to verify (the Purchase is not customer-verifiable until approved); the Business
+    // reviewers are told a review is required instead.
+    if (initialStatus === "business_review_required") {
+      await insertNotificationIntent(tx, {
+        intentType: "purchase_business_review_required_business",
+        purchaseRecordId: purchase.id,
+        sourcePurchaseRecordEventId: creationEvent.id,
+        recipientType: "business",
+        recipientId: purchase.businessId,
+        payload: { purchaseRecordId: purchase.id, businessId: purchase.businessId },
+        correlationId: params.correlationId,
+      });
+    } else {
+      await insertNotificationIntent(tx, {
+        intentType: "purchase_recorded_customer",
+        purchaseRecordId: purchase.id,
+        sourcePurchaseRecordEventId: creationEvent.id,
+        recipientType: "customer",
+        recipientId: purchase.customerIdentityId,
+        payload: { purchaseRecordId: purchase.id, businessId: purchase.businessId },
+        correlationId: params.correlationId,
+      });
+    }
 
     // Step 17: outbox.
     await writePurchaseOutboxEntry(tx, {
@@ -397,9 +460,22 @@ export async function recordPurchase(
       correlationId: params.correlationId,
       idempotencyKey: params.idempotencyKey,
     });
+    if (initialStatus === "business_review_required") {
+      await writePurchaseOutboxEntry(tx, {
+        eventType: "purchase_business_review_required",
+        aggregateId: purchase.id,
+        payload: { businessId: purchase.businessId, purchaseRecordId: purchase.id },
+        actorId: params.userId,
+        correlationId: params.correlationId,
+        idempotencyKey: params.idempotencyKey,
+      });
+    }
 
     // Step 18: complete idempotency. Step 19: COMMIT (via withPlatformTransaction).
-    const result: RecordPurchaseResult = { purchase };
+    const result: RecordPurchaseResult = {
+      purchase,
+      review: { required: initialStatus === "business_review_required", status: initialStatus },
+    };
     await completeIdempotencyKeyInTransaction(tx, params.idempotencyKey, purchase.id, result);
     return result;
   });

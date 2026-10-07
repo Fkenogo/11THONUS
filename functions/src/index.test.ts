@@ -21,6 +21,8 @@ import {
   parsePublishRewardProgramVersionRequest,
   parseCreateNextRewardProgramVersionRequest,
   parseRecordPurchaseRequest,
+  parseApproveBusinessReviewRequest,
+  parseRejectBusinessReviewRequest,
   parseBusinessLoyaltyVisibilityRequest,
   parseKnowledgeNodeIds,
   toHttpsError,
@@ -1061,5 +1063,49 @@ describe("parseBusinessLoyaltyVisibilityRequest (whitelist boundary, BUSINESS-RE
     expect(() =>
       parseBusinessLoyaltyVisibilityRequest({ businessId: "biz-1", limit: 1.5 }),
     ).toThrow();
+  });
+});
+
+describe("parseApproveBusinessReviewRequest / parseRejectBusinessReviewRequest (mass-assignment boundary, EA-BL-001-CORR-002-BR)", () => {
+  const malicious = {
+    businessId: "biz-1",
+    purchaseRecordId: "pur-1",
+    note: "checked",
+    reason: "other",
+    // Forged authority / identity / state — must never survive the whitelist.
+    userId: "attacker",
+    reviewerUserId: "attacker",
+    role: "owner",
+    reviewerRole: "owner",
+    permission: "purchase.businessReview",
+    status: "waiting_for_customer",
+    recordedByUserId: "someone-else",
+    businessReviewDecision: "approved",
+    businessReviewReason: "other",
+    rejectionReason: "duplicate",
+  };
+
+  it("approve keeps exactly businessId, purchaseRecordId and note", () => {
+    expect(Object.keys(parseApproveBusinessReviewRequest(malicious)).sort()).toEqual([
+      "businessId",
+      "note",
+      "purchaseRecordId",
+    ]);
+  });
+
+  it("reject additionally keeps only the Business Review reason", () => {
+    const parsed = parseRejectBusinessReviewRequest(malicious);
+    expect(Object.keys(parsed).sort()).toEqual([
+      "businessId",
+      "note",
+      "purchaseRecordId",
+      "reason",
+    ]);
+    expect(parsed.reason).toBe("other");
+  });
+
+  it("requires a Business and a Purchase id", () => {
+    expect(() => parseApproveBusinessReviewRequest({})).toThrow();
+    expect(() => parseApproveBusinessReviewRequest({ businessId: "biz-1" })).toThrow();
   });
 });

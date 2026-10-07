@@ -76,6 +76,7 @@ type VersionDbRow = {
   standard_reward_node_id: string | null;
   multiple_units_allowed: boolean;
   bulk_review_threshold: number | null;
+  business_review_quantity_threshold: number | null;
   effective_from: Date;
   effective_until: Date | null;
   status: RewardProgramVersionStatus;
@@ -102,6 +103,7 @@ function mapVersionRow(
     standardRewardNodeId: row.standard_reward_node_id,
     multipleUnitsAllowed: row.multiple_units_allowed,
     bulkReviewThreshold: row.bulk_review_threshold,
+    businessReviewQuantityThreshold: row.business_review_quantity_threshold,
     effectiveFrom: row.effective_from,
     effectiveUntil: row.effective_until,
     status: row.status,
@@ -208,8 +210,8 @@ export async function insertRewardProgramWithFirstDraft(
     `INSERT INTO reward_program_versions
        (reward_program_id, version, required_verified_units, reward_quantity, shared_loyalty_number_allowed,
         reward_description, standard_reward_node_id, multiple_units_allowed, bulk_review_threshold,
-        effective_from, effective_until, status, created_by)
-     VALUES ($1, 1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'draft', $11)
+        effective_from, effective_until, status, created_by, business_review_quantity_threshold)
+     VALUES ($1, 1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'draft', $11, $12)
      RETURNING *`,
     [
       program.id,
@@ -223,6 +225,7 @@ export async function insertRewardProgramWithFirstDraft(
       params.draft.effectiveFrom,
       params.draft.effectiveUntil ?? null,
       params.actorId,
+      params.draft.businessReviewQuantityThreshold ?? null,
     ],
   );
   await insertQualifyingItems(tx, versionResult.rows[0].id, params.qualifyingItems);
@@ -327,6 +330,7 @@ export async function updateDraftVersion(
             bulk_review_threshold = $5,
             effective_from = $6,
             effective_until = $7,
+            business_review_quantity_threshold = $10,
             updated_at = now(),
             row_version = row_version + 1
       WHERE id = $8
@@ -343,6 +347,7 @@ export async function updateDraftVersion(
       params.draft.effectiveUntil ?? null,
       params.versionId,
       params.expectedRowVersion,
+      params.draft.businessReviewQuantityThreshold ?? null,
     ],
   );
   if (result.rows.length === 0) {
@@ -447,8 +452,8 @@ export async function insertNextDraftVersion(
     `INSERT INTO reward_program_versions
        (reward_program_id, version, required_verified_units, reward_quantity, shared_loyalty_number_allowed,
         reward_description, standard_reward_node_id, multiple_units_allowed, bulk_review_threshold,
-        effective_from, effective_until, status, created_by)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'draft', $12)
+        effective_from, effective_until, status, created_by, business_review_quantity_threshold)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'draft', $12, $13)
      RETURNING *`,
     [
       params.programId,
@@ -463,6 +468,7 @@ export async function insertNextDraftVersion(
       params.draft.effectiveFrom,
       params.draft.effectiveUntil ?? null,
       params.actorId,
+      params.draft.businessReviewQuantityThreshold ?? null,
     ],
   );
   await insertQualifyingItems(tx, versionResult.rows[0].id, params.qualifyingItems);
