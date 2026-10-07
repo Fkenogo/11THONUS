@@ -7,6 +7,19 @@
 
 ---
 
+## 2026-10-07 — EA-BL-001-CORR-002-B — Staff Counter Founder Authorisation Recorded
+
+- **Task:** Record Founder dispositions D1–D8 on PR #306. Documentation only; no code, test, schema, config, dependency or deployment change.
+- **Status:** **AUTHORISED / READY FOR IMPLEMENTATION** (not started/implemented/accepted/merged). Supersedes the "DESIGN ASSESSED — AWAITING FOUNDER AUTHORISATION" entry below.
+- **Dispositions:** D1 no customer profile lookup; D2 camera QR scanning + manual fallback (browser-native preferred; bounded dependency authorised); D3 tokenless two-device self-registration (no synthetic identity/handoff token/same-device switching); D4 and D5 deferred; D6 Staff-own recent activity enforced server-side (minimum API adjustment only); D7 Business name only; D8 bounded Staff shell.
+- **Locked requirement:** uncertain/network failures preserve the same idempotency key (minimum architecture-consistent correction if not retryable; never a new key).
+- **Gate:** Founder Preview (17 scenarios) required before acceptance.
+- **Boundary:** Slices C/D/E NOT AUTHORISED / NOT STARTED; EA-BL-002, WP-COM, FEF-TLC-001 unchanged.
+- **Files:** [assessment §22](../05-implementation/reports/11THONUS-EA-BL-001-CORR-002-B-staff-counter-authorisation-and-design-2026-10-07.md); Master Workflow §17; EIP §C.2; Prompt Register §4; Documentation Changes Log Entry 296.
+- **Rollback:** revert the PR commit (documentation only).
+
+---
+
 ## 2026-10-07 — EA-BL-001-CORR-002-B — Staff Counter Authorisation & Design Assessment
 
 - **Task:** Analysis/design/governance only. No Slice B implementation; no code, test, schema, permission, config, dependency or deployment change.

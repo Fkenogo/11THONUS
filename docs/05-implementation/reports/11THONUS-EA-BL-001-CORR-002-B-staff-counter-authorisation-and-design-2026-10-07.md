@@ -2,7 +2,7 @@
 
 **Package:** `EA-BL-001-CORR-002-B` — Staff Counter
 **Date:** 2026-10-07 · **Type:** analysis / design / governance only (no implementation)
-**Status after this task:** **DESIGN ASSESSED — AWAITING FOUNDER AUTHORISATION.** Slice B is **NOT AUTHORISED / NOT STARTED**. Nothing here marks it Ready, Authorised, Started or Implemented.
+**Status after the assessment (historical, 2026-10-07):** DESIGN ASSESSED — AWAITING FOUNDER AUTHORISATION. **Superseded by §22: the Founder has since recorded dispositions D1–D8 and Slice B is AUTHORISED / READY FOR IMPLEMENTATION (not started).** Sections 1–21 are the unaltered assessment.
 
 ## 1. Entry state and authority verification
 - `origin/main` at entry: `92ffd217668e64d3e38f6c45fb253d200766ffbb` (PR #305 closure merge). Tree clean; branch cut from it. Verified live: PR #305 merged at that commit; PR #304 merged at `75ae6acf30d66f6a39270ce400ca927258bbadeb` (reviewed head `a848cfe95f058a2cb9d650162f26cd51429f9cd8`); `EA-BL-001-CORR-002-BR` COMPLETE / ACCEPTED / MERGED; BR prerequisite SATISFIED.
@@ -174,3 +174,38 @@ Customer-name omission reduces prototype fidelity (D1); typed entry is slower th
 No locked decision is violated, no new security protocol is needed, no BR/Customer/Trust change is required, and a coherent record-only Staff Counter is implementable on existing backend capabilities. Eight items (D1–D8) need Founder disposition when authorising; each has a safe default above.
 
 **DESIGN ASSESSED — READY FOR FOUNDER AUTHORISATION** (Slice B remains NOT AUTHORISED / NOT STARTED; Slices C/D/E, EA-BL-002, WP-COM and FEF-TLC-001 unchanged).
+
+---
+
+## 22. Founder authorisation record (appended 2026-10-07)
+
+**Status: `EA-BL-001-CORR-002-B` — AUTHORISED / READY FOR IMPLEMENTATION.** Not started, not implemented, not complete, not accepted, not merged. Recorded on PR #306 (assessment head `39624eab8c773d938c2f9511e55c972afb7d3c3f`). This section records the Founder dispositions exactly; where they differ from the recommendations in §9 the disposition governs.
+
+### 22.1 Dispositions
+| ID | Disposition | Record |
+|---|---|---|
+| D1 | **APPROVED BASELINE** | No customer name/profile read in Slice B. **No customer-profile lookup callable is to be added.** Staff works from the presented Loyalty Number / QR and the server outcome. |
+| D2 | **APPROVED** | Slice B **must** support camera QR capture as a primary point-of-service interaction: capability detection; typed/pasted Loyalty Number / QR stays available as fallback; use a browser-native scanner if sufficiently supported; a bounded, well-maintained web scanning dependency is authorised if needed; no image/video data is sent to the backend; scanning resolves only the QR reference already accepted by `recordPurchase`; camera-permission failure falls back cleanly to manual entry. |
+| D3 | **APPROVED** | Tokenless two-device self-registration: Counter shows a static public sign-up URL / QR → Customer registers/authenticates on their own device → existing identity establishment creates Loyalty Number / QR → Customer presents identity → Staff records. **Not authorised:** synthetic identity; Staff-created customer account; Staff-set credential; same-device Staff/customer session switching; handoff token; auto-resume token/protocol. |
+| D4 | **DEFERRED** | No Staff Circle/progress read or display in Slice B. |
+| D5 | **DEFERRED** | No redemption-confirmation UI in Slice B; existing redemption authority/backend unchanged. |
+| D6 | **APPROVED** | Staff may see a bounded list of **their own** recently submitted Purchases only, enforced **server-side**. Do not reuse the Business-wide Staff purchase list as the Counter feed; do not client-filter a Business-wide response; do not expose colleagues' submissions or customer identifiers. Authorised: only the **minimum** read/query/API adjustment required for Staff-own recent submissions. |
+| D7 | **APPROVED** | Show the Business name. No fabricated station/front-desk label. Server default-branch metadata unchanged. |
+| D8 | **APPROVED** | Bounded role-aware Staff experience: Staff land on the Counter; mobile-first minimal Staff navigation; Owner/Manager experience unchanged; UX routing only; backend remains authoritative. |
+
+### 22.2 Locked idempotency requirement
+Before implementation acceptance, prove that uncertain/network failures **preserve the same idempotency key**. Inspect the actual error mapping during implementation (the assessment found the web key holder discards the key for any error not mapped retryable). If a network/uncertain outcome is not currently classified retryable, make only the **minimum architecture-consistent correction** so retry uses the original key. Uncertain outcomes must **never** be solved by generating a new key.
+
+### 22.3 Authorised Slice B scope
+**IN:** mobile-first Staff Counter route/page; bounded Staff shell/landing/navigation; real authenticated Business/Staff context; real active Reward Program + qualifying-item reads; Loyalty Number entry; QR reference entry; camera QR scanning with manual fallback; static tokenless new-customer sign-up panel; real `recordPurchase` integration; truthful `waiting_for_customer` outcome; truthful `business_review_required` outcome; own-submissions recent activity via server-side scoping; threshold confidentiality (N4); reviewer-data confidentiality; double-submit / idempotency-safe retry; loading/error/success/reset states; EN/FR parity; accessibility; mobile-first responsive assembly; production tests; Founder Preview seed/tooling for the approved scenarios.
+
+**OUT:** customer name/profile lookup; Staff customer Circle/progress; Staff redemption; synthetic customer identities; same-device customer authentication; customer handoff/return token; Owner/Manager Business Review UI; Slices C/D/E; onboarding/programme redesign; WP-COM changes; commercial UI; Trust/audit UI; EA-BL-002; FEF-TLC adoption; deployment.
+
+### 22.4 Experience bindings (binding on implementation)
+Frozen prototype `Fkenogo/11thonus-prototype@18e8d700f505beefe46d324f6ea33f20a670abe7`; directive: preserve the prototype experience as closely as possible, replacing only the specific data, action, field or authority that conflicts with Product Truth. Explicit bindings: Scan Customer QR → real camera scan + manual fallback; participant-name/phone search → **remove**; walk-in quick-create → tokenless self-registration panel; Loyalty Circle → **defer/remove**; threshold note → **remove**; Staff redemption → **defer/remove**; today's activity → own submissions only; generic Owner/Manager mobile nav → bounded Staff Counter shell; mock submit/scenario data → real authoritative backend only.
+
+### 22.5 Founder Preview gate
+Slice B **must** receive Founder Preview before acceptance. Preview must include: (1) existing customer, normal purchase; (2) existing customer, BR-routed purchase; (3) camera QR scanning; (4) manual fallback; (5) threshold invisible; (6) Staff cannot review; (7) new-customer two-device registration; (8) return to Counter using the resulting customer identity; (9) own recent submissions only; (10) double-tap protection; (11) uncertain network retry/idempotency; (12) customer-confirmation boundary; (13) EN; (14) FR; (15) phone-first viewport; (16) desktop adaptation; (17) comparison with the frozen prototype. Slice B is **not** to be marked accepted before that preview.
+
+### 22.6 Programme boundary
+Slices C/D/E remain **NOT AUTHORISED / NOT STARTED**; EA-BL-002, WP-COM and FEF-TLC-001 unchanged. This authorisation covers Slice B only and authorises no other package. Carried constraints: N4 binding (no Business Review threshold on any Staff surface); N1 must not be widened (D6).
