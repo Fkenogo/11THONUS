@@ -7,6 +7,18 @@
 
 ---
 
+## 2026-10-07 — EA-BL-001-CORR-002-B — Staff Counter Authorisation & Design Assessment
+
+- **Task:** Analysis/design/governance only. No Slice B implementation; no code, test, schema, permission, config, dependency or deployment change.
+- **Status:** **DESIGN ASSESSED — AWAITING FOUNDER AUTHORISATION.** Slice B **NOT AUTHORISED / NOT STARTED**. Entry `origin/main` `92ffd217668e64d3e38f6c45fb253d200766ffbb`; BR prerequisite satisfied.
+- **Key findings:** existing backend suffices for a record-only Counter (`recordPurchase` + `review` outcome, threshold key absent for Staff); no pre-record customer lookup, no web QR scanner, no Staff progress read, Staff over-read Business purchases (pre-existing); assisted registration is tokenless two-device self-registration (no synthetic identity, no new token).
+- **Founder decisions open:** D1 identity display, D2 QR capture, D3 registration handoff, D4 Staff progress, D5 redemption in Counter, D6 own-activity scoping, D7 branch label, D8 bounded Staff shell.
+- **Carry-forward:** N4 binding (never expose the Business Review threshold to Staff); N1 not widened if Staff see only own submissions.
+- **Files:** [assessment](../05-implementation/reports/11THONUS-EA-BL-001-CORR-002-B-staff-counter-authorisation-and-design-2026-10-07.md); Master Workflow §17; EIP §C.2; Prompt Register §4; Documentation Changes Log Entry 295.
+- **Rollback:** revert the PR (documentation only).
+
+---
+
 ## 2026-10-07 — EA-BL-001-CORR-002-BR — Post-Merge Closure & Status Synchronisation
 
 - **Task:** Documentation-only closure of the Business Review Domain Foundation. No code, test, migration, schema, permission, config, dependency or deployment change.
