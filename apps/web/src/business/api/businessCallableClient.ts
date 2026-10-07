@@ -11,11 +11,36 @@
  * so each is still independently unit-testable without the Functions runtime.
  */
 
-import { AuthenticateError, mapCallableErrorCode } from "../../authentication/authenticateClient";
+import {
+  AuthenticateError,
+  mapCallableErrorCode,
+  type AuthenticateErrorCode,
+} from "../../authentication/authenticateClient";
 import type { AuthProviderId } from "../../authentication/providerConfig";
 
-/** Re-exported under a domain-neutral name — the taxonomy is shared, not auth-specific. */
-export class BusinessApiError extends AuthenticateError {}
+/**
+ * Re-exported under a domain-neutral name — the taxonomy is shared, not auth-specific. `reason` is
+ * the optional, closed, server-supplied public discriminator (`EA-BL-001-CORR-002-B`) a caller's
+ * classifier may attach; it is never raw server text.
+ */
+export class BusinessApiError extends AuthenticateError {
+  readonly reason?: string;
+
+  constructor(code: AuthenticateErrorCode, reason?: string) {
+    super(code);
+    this.reason = reason;
+  }
+}
+
+/**
+ * Per-callable error classifier (optional): maps a thrown `FirebaseError` to a client code and an
+ * optional closed `reason`. The default (`mapCallableErrorCode`, no reason) is unchanged for every
+ * existing caller.
+ */
+export type CallableErrorClassifier = (error: unknown) => {
+  code: AuthenticateErrorCode;
+  reason?: string;
+};
 
 /**
  * Same retryable set `authenticateClient.ts` uses — transient/ambiguous
@@ -42,6 +67,7 @@ type BoundCallable<TResult> = (payload: Record<string, unknown>) => Promise<{ da
  */
 export function toCallWithActor<TPayload extends Record<string, unknown>, TResult>(
   callable: BoundCallable<TResult>,
+  classify?: CallableErrorClassifier,
 ): (actor: AuthenticatedActor, payload: TPayload) => Promise<TResult> {
   return async (actor, payload) => {
     const rawToken = await actor.getIdToken();
@@ -53,6 +79,10 @@ export function toCallWithActor<TPayload extends Record<string, unknown>, TResul
       });
       return result.data;
     } catch (error) {
+      if (classify) {
+        const classified = classify(error);
+        throw new BusinessApiError(classified.code, classified.reason);
+      }
       const code = (error as { code?: unknown } | undefined)?.code;
       throw new BusinessApiError(mapCallableErrorCode(typeof code === "string" ? code : undefined));
     }

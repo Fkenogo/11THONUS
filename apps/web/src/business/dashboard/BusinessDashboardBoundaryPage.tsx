@@ -8,15 +8,17 @@
 
 import { useParams } from "react-router-dom";
 import { useTranslation } from "../../i18n";
-import { useBusinessContextQuery } from "../hooks/businessQueries";
+import { useAccessibleBusinessesQuery, useBusinessContextQuery } from "../hooks/businessQueries";
+import { StaffRoutes } from "../counter/StaffShell";
 import { BusinessDashboardRoutes } from "./BusinessDashboardRoutes";
 
 export function BusinessDashboardBoundaryPage() {
   const { businessId } = useParams<{ businessId: string }>();
   const { t } = useTranslation("business");
   const query = useBusinessContextQuery(businessId);
+  const accessible = useAccessibleBusinessesQuery();
 
-  if (query.status === "pending") {
+  if (query.status === "pending" || accessible.status === "pending") {
     return (
       <main className="flex min-h-screen items-center justify-center p-8">
         <p>{t("resolve.loading")}</p>
@@ -31,6 +33,16 @@ export function BusinessDashboardBoundaryPage() {
         <p>{t("integrityError.body")}</p>
       </main>
     );
+  }
+
+  // `EA-BL-001-CORR-002-B` (D8): Staff land on the Counter inside a bounded Staff shell; every other
+  // role — and any case where the role could not be read — keeps the existing Business Dashboard,
+  // unchanged. This is UX routing only: the server remains the authority for every operation.
+  const role = accessible.data?.find(
+    (business) => business.businessId === query.data.businessId,
+  )?.role;
+  if (role === "staff") {
+    return <StaffRoutes context={query.data} />;
   }
 
   return <BusinessDashboardRoutes context={query.data} />;

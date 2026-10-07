@@ -65,4 +65,11 @@ export const businessQueryKeys = {
   businessAvailableRewards: (businessId: string) =>
     ["businessAvailableRewards", businessId] as const,
   businessCycleProgress: (businessId: string) => ["businessCycleProgress", businessId] as const,
+  /**
+   * `EA-BL-001-CORR-002-B` Staff Counter: the whitelisted programme/item projection (its own key,
+   * never the raw reward-program cache entry, so the Counter's cached data carries no threshold) and
+   * the caller's own recent submissions (server-scoped to the actor; Business-scoped here).
+   */
+  counterProgrammes: (businessId: string) => ["counterProgrammes", businessId] as const,
+  counterRecent: (businessId: string) => ["counterRecent", businessId] as const,
 };

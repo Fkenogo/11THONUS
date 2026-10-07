@@ -380,6 +380,128 @@ export const fr = {
         archived: "Archivé",
       },
     },
+    counter: {
+      title: "Caisse",
+      subtitle: "Enregistrer l'achat d'un client",
+      loading: "Chargement de la caisse…",
+      loadError: "Nous n'avons pas pu charger la caisse. Veuillez réessayer.",
+      retryLoad: "Réessayer",
+      noProgramme:
+        "Aucun programme de récompenses actif n'est disponible pour l'instant. Demandez au propriétaire ou à un responsable.",
+      identify: {
+        heading: "1. Identifier le client",
+        hint: "Scannez le code QR du client ou saisissez son numéro de fidélité.",
+        scanButton: "Scanner le QR du client",
+        scanAgain: "Scanner à nouveau",
+        scannedTitle: "QR du client scanné",
+        scannedBody: "Prêt à enregistrer. Choisissez le programme et l'article ci-dessous.",
+        clearScan: "Effacer",
+        orLabel: "ou",
+        loyaltyNumberLabel: "Numéro de fidélité",
+        loyaltyNumberHint: "Trois lettres et trois chiffres, par exemple ABC-234.",
+        loyaltyNumberPlaceholder: "ABC-234",
+        required: "Scannez le QR du client ou saisissez son numéro de fidélité.",
+      },
+      scanner: {
+        title: "Scanner le QR du client",
+        opening: "Ouverture de la caméra…",
+        active: "Dirigez la caméra vers le code QR du client.",
+        cameraLabel: "Vue de la caméra pour scanner le code QR du client",
+        cancel: "Annuler le scan",
+        foreignCode:
+          "Ce n'est pas un code client 11thONUS. Demandez au client d'ouvrir son propre code.",
+        unsupported:
+          "Le scan par caméra n'est pas disponible sur cet appareil ou ce navigateur. Saisissez plutôt le numéro de fidélité.",
+        denied:
+          "L'accès à la caméra est bloqué. Autorisez la caméra pour ce site dans les réglages du navigateur, ou saisissez plutôt le numéro de fidélité.",
+        noCamera: "Aucune caméra n'a été trouvée. Saisissez plutôt le numéro de fidélité.",
+        failed: "La caméra n'a pas pu démarrer. Saisissez plutôt le numéro de fidélité.",
+        useLoyaltyNumber: "Saisir le numéro de fidélité",
+        tryAgain: "Réessayer la caméra",
+      },
+      programme: {
+        heading: "2. Programme",
+        selectedLabel: "Programme",
+      },
+      item: {
+        heading: "3. Article",
+        label: "Article",
+        placeholder: "Choisir un article",
+        required: "Choisissez l'article acheté.",
+      },
+      quantity: {
+        label: "Quantité",
+        decrease: "Diminuer la quantité",
+        increase: "Augmenter la quantité",
+        error: "Saisissez un nombre entier supérieur ou égal à 1.",
+        onePerPurchase: "Une seule unité par achat pour ce programme.",
+      },
+      record: {
+        submit: "Enregistrer l'achat",
+        recording: "Enregistrement…",
+        retry: "Réessayer — l'achat ne sera pas enregistré deux fois",
+        helper:
+          "Le client confirme sur son propre appareil. Rien n'est gagné avant cette confirmation.",
+      },
+      outcome: {
+        normalTitle: "Achat enregistré.",
+        normalBody: "Le client doit le confirmer. Rien n'a encore été gagné.",
+        reviewTitle: "Achat enregistré.",
+        reviewBody:
+          "Une vérification par le commerce est nécessaire avant la confirmation du client.",
+        recovered:
+          "Nous avons confirmé votre tentative précédente. Cet achat n'a été enregistré qu'une seule fois.",
+        summary: "{{quantity}} × {{item}}",
+        serveNext: "Client suivant",
+      },
+      errors: {
+        customerArtifact:
+          "Nous n'avons pas trouvé ce code client. Vérifiez-le ou demandez au client d'ouvrir son code.",
+        programme: "Ce programme n'est pas disponible. Actualisez et réessayez.",
+        item: "Cet article ne fait pas partie de ce programme.",
+        quantity: "Ce programme n'autorise pas cette quantité.",
+        generic:
+          "Nous n'avons pas pu enregistrer cet achat. Vérifiez les informations et réessayez.",
+        uncertain:
+          "Nous n'avons pas pu confirmer le résultat. Réessayez — l'achat ne sera pas enregistré deux fois.",
+        session: "Votre session est terminée. Reconnectez-vous pour continuer.",
+        signInAgain: "Se reconnecter",
+        forbidden:
+          "Vous ne pouvez pas enregistrer d'achats pour le moment. Demandez à un responsable.",
+        refresh: "Actualiser les programmes",
+      },
+      newCustomer: {
+        toggle: "Nouveau client ?",
+        heading: "Nouveau client",
+        intro: "Les clients créent eux-mêmes leur compte 11thONUS sur leur propre téléphone.",
+        step1:
+          "Demandez au client de scanner ce code avec son téléphone, ou d'ouvrir l'adresse ci-dessous.",
+        step2: "Il se connecte ou s'inscrit sur son propre téléphone.",
+        step3:
+          "Il vous montre son code QR ou son numéro de fidélité. Enregistrez ensuite l'achat ici.",
+        dualRole:
+          "S'il utilise aussi 11thONUS pour un commerce, il doit choisir « Personnel » après la connexion pour voir son QR client et son numéro de fidélité.",
+        urlLabel: "Adresse d'inscription",
+        qrLabel: "Code QR qui ouvre la page d'inscription 11thONUS",
+        close: "Masquer",
+      },
+      recent: {
+        heading: "Vos enregistrements récents",
+        subtitle: "Seuls les achats que vous avez enregistrés apparaissent ici.",
+        empty: "Vous n'avez encore enregistré aucun achat.",
+        loadError: "Nous n'avons pas pu charger vos enregistrements récents.",
+        retry: "Réessayer",
+        loyaltyNumberHint: "Numéro de fidélité se terminant par {{hint}}",
+        scannedQr: "Code QR scanné",
+        quantityItem: "{{quantity}} × {{item}}",
+      },
+      shell: {
+        navLabel: "Navigation de la caisse",
+        businessLabel: "Commerce",
+        counter: "Caisse",
+        switchContext: "Changer de commerce ou passer en Personnel",
+      },
+    },
     loyaltyVisibility: {
       title: "Récompenses clients",
       subtitle: "Voyez quels clients ont une récompense prête et où en sont les autres.",
