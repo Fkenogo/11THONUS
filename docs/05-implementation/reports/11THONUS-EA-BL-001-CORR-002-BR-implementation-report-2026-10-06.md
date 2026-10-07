@@ -4,7 +4,7 @@
 
 > **Package:** `EA-BL-001-CORR-002-BR` · **Date:** 2026-10-06 · **Type:** backend / domain foundation (no UI)
 > **Authority:** `DEC-PROD-015`; related `DEC-LOY-003`, `DEC-PROD-002`. Authorisation: PR #303 (merge `8d7491d6fa85879c6b2e75eed4198e18d073dd62`; corrected design head `5ed82867b1e06a5646040426f17f1b83f89a9257`). Design: [BR authorisation & design report](11THONUS-EA-BL-001-CORR-002-BR-authorisation-and-design-2026-10-06.md).
-> **Status:** **IMPLEMENTED — TECHNICAL REVIEW PENDING** (pre-review correction applied, §15). Not Complete. Slice B/C are **not** authorised by this package.
+> **Status (historical, as of 2026-10-06/07 pre-review; superseded by §16 below — now COMPLETE / ACCEPTED / MERGED):** **IMPLEMENTED — TECHNICAL REVIEW PENDING** (pre-review correction applied, §15). Not Complete. Slice B/C are **not** authorised by this package.
 > **Boundaries held:** no Staff UI, no Owner/Manager UI, no Slice B/C/D/E, no EA-BL-002, no WP-COM source change, no FEF-TLC adoption, no deployment, no self-review exception, no Staff review path, PR left open and unmerged.
 
 ---
@@ -130,3 +130,15 @@ Founder dispositions applied: permission id `purchase.businessReview` confirmed 
 **Test-order note (pre-existing, not caused by BR):** several PostgreSQL suites tear down by dropping tables and do not know about migration `0027`'s tables, so a *local* re-run that orders `platformFoundationReadiness`/`qualifyingItem*` before a commercial suite can fail with `relation "commercial_admissions" already exists` on a database that previous runs polluted. A clean database and a cleared vitest result cache (neutral ordering) pass 746/746; the Postgres suite is not part of the GitHub CI job.
 
 Unresolved findings: none known at the time of writing.
+
+---
+
+## 16. Post-review / post-merge closure (appended 2026-10-07)
+
+Sections above are unchanged and describe the implementation as it stood at review entry. Closure record (see the [closure report](11THONUS-EA-BL-001-CORR-002-BR-closure-2026-10-07.md)):
+
+- **Independent Technical Review:** APPROVE WITH NON-BLOCKING NOTES — P0 0 · P1 0 · P2 0 · P3 7. Reviewed head `a848cfe95f058a2cb9d650162f26cd51429f9cd8`; exact-head CI run 37591490739 SUCCESS.
+- **Founder disposition:** approved for merge. PR #304 merged as `75ae6acf30d66f6a39270ce400ca927258bbadeb`.
+- **Final state:** **COMPLETE / ACCEPTED / MERGED.** Supersedes the "IMPLEMENTED — TECHNICAL REVIEW PENDING" status above.
+- **Carried forward (non-blocking):** N1 — pre-existing customer exposure of `recordedByUserId`/recorder attribution (separate, unauthorised privacy-hygiene candidate; the Observation in §15 is this item); N4 — Staff/customer-facing Trust/activity/read surfaces must never expose the configured Business Review threshold. The PostgreSQL ordering issue noted in §15 was independently classified PRE-EXISTING / NON-BLOCKING.
+- **Programme:** Slice B/C remain NOT AUTHORISED / NOT STARTED; the BR prerequisite for considering Slice B is satisfied.

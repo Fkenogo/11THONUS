@@ -7,6 +7,18 @@
 
 ---
 
+## 2026-10-07 — EA-BL-001-CORR-002-BR — Post-Merge Closure & Status Synchronisation
+
+- **Task:** Documentation-only closure of the Business Review Domain Foundation. No code, test, migration, schema, permission, config, dependency or deployment change.
+- **Status:** **COMPLETE / ACCEPTED / MERGED — BR FOUNDATION CLOSED.** (Supersedes the "IMPLEMENTED — TECHNICAL REVIEW PENDING" entries below, which remain as historical record.)
+- **Evidence:** authorisation PR #303 (merge `8d7491d6fa85879c6b2e75eed4198e18d073dd62`); implementation PR #304, reviewed head `a848cfe95f058a2cb9d650162f26cd51429f9cd8`, merge `75ae6acf30d66f6a39270ce400ca927258bbadeb`; exact-head CI run 37591490739 SUCCESS; Independent Technical Review APPROVE WITH NON-BLOCKING NOTES (no P0/P1/P2); Founder approved merge. Post-merge main CI run 37607673497 was in progress at writing (not recorded).
+- **Carried forward (non-blocking):** N1 — pre-existing customer exposure of `recordedByUserId`/recorder attribution, a separate unauthorised privacy-hygiene candidate (not fixed); N4 — Staff/customer-facing Trust/activity/read surfaces must never expose the configured Business Review threshold (Trust Event data unchanged); PostgreSQL ordering issue PRE-EXISTING / NON-BLOCKING (not fixed).
+- **Programme boundary:** BR prerequisite for considering Slice B satisfied; Slice B and Slice C remain NOT AUTHORISED / NOT STARTED; D/E, EA-BL-002, WP-COM, FEF-TLC-001 unchanged.
+- **Files:** [closure report](../05-implementation/reports/11THONUS-EA-BL-001-CORR-002-BR-closure-2026-10-07.md); Master Workflow §17; EIP §C.2; Prompt Register §4; BR implementation report §16; Documentation Changes Log Entry 294.
+- **Rollback:** revert the closure PR (documentation only).
+
+---
+
 ## 2026-10-07 — EA-BL-001-CORR-002-BR — PR #304 Pre-Technical-Review Correction
 
 - **Task:** Correct the bounded security/truthfulness findings on PR #304 before Independent Technical Review. No redesign; no Slice B/C.
