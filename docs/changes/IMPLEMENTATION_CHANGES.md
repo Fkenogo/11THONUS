@@ -7,6 +7,42 @@
 
 ---
 
+## 2026-10-07 — EA-BL-001-CORR-002-B — Authorisation Correction Pass (PR #306 review)
+
+- **Task:** Make the authorised Slice B contract technically precise (documentation only; no code, test, schema, config or dependency change).
+- **Status:** unchanged — **AUTHORISED / READY FOR IMPLEMENTATION**, not started.
+- **Corrections:** purchaseDate frozen with the idempotency key across retries (P1, locked acceptance test); bounded error-discriminator backend enabler authorised; alphanumeric Loyalty Number keyboard; D1–D8 all Founder-disposed; replay wording qualified (authorisation still gates retries); Counter role scope follows `purchase.record`; camera scan primary, Loyalty Number manual fallback (no customer QR-copy); dual-role customers select Personal context.
+- **Boundary:** Slices C/D/E NOT AUTHORISED / NOT STARTED; EA-BL-002, WP-COM, FEF-TLC-001 unchanged.
+- **Files:** [assessment §23](../05-implementation/reports/11THONUS-EA-BL-001-CORR-002-B-staff-counter-authorisation-and-design-2026-10-07.md); Documentation Changes Log Entry 297.
+- **Rollback:** revert the correction commit.
+
+---
+
+## 2026-10-07 — EA-BL-001-CORR-002-B — Staff Counter Founder Authorisation Recorded
+
+- **Task:** Record Founder dispositions D1–D8 on PR #306. Documentation only; no code, test, schema, config, dependency or deployment change.
+- **Status:** **AUTHORISED / READY FOR IMPLEMENTATION** (not started/implemented/accepted/merged). Supersedes the "DESIGN ASSESSED — AWAITING FOUNDER AUTHORISATION" entry below.
+- **Dispositions:** D1 no customer profile lookup; D2 camera QR scanning + manual fallback (browser-native preferred; bounded dependency authorised); D3 tokenless two-device self-registration (no synthetic identity/handoff token/same-device switching); D4 and D5 deferred; D6 Staff-own recent activity enforced server-side (minimum API adjustment only); D7 Business name only; D8 bounded Staff shell.
+- **Locked requirement:** uncertain/network failures preserve the same idempotency key (minimum architecture-consistent correction if not retryable; never a new key).
+- **Gate:** Founder Preview (17 scenarios) required before acceptance.
+- **Boundary:** Slices C/D/E NOT AUTHORISED / NOT STARTED; EA-BL-002, WP-COM, FEF-TLC-001 unchanged.
+- **Files:** [assessment §22](../05-implementation/reports/11THONUS-EA-BL-001-CORR-002-B-staff-counter-authorisation-and-design-2026-10-07.md); Master Workflow §17; EIP §C.2; Prompt Register §4; Documentation Changes Log Entry 296.
+- **Rollback:** revert the PR commit (documentation only).
+
+---
+
+## 2026-10-07 — EA-BL-001-CORR-002-B — Staff Counter Authorisation & Design Assessment
+
+- **Task:** Analysis/design/governance only. No Slice B implementation; no code, test, schema, permission, config, dependency or deployment change.
+- **Status:** **DESIGN ASSESSED — AWAITING FOUNDER AUTHORISATION.** Slice B **NOT AUTHORISED / NOT STARTED**. Entry `origin/main` `92ffd217668e64d3e38f6c45fb253d200766ffbb`; BR prerequisite satisfied.
+- **Key findings:** existing backend suffices for a record-only Counter (`recordPurchase` + `review` outcome, threshold key absent for Staff); no pre-record customer lookup, no web QR scanner, no Staff progress read, Staff over-read Business purchases (pre-existing); assisted registration is tokenless two-device self-registration (no synthetic identity, no new token).
+- **Founder decisions open:** D1 identity display, D2 QR capture, D3 registration handoff, D4 Staff progress, D5 redemption in Counter, D6 own-activity scoping, D7 branch label, D8 bounded Staff shell.
+- **Carry-forward:** N4 binding (never expose the Business Review threshold to Staff); N1 not widened if Staff see only own submissions.
+- **Files:** [assessment](../05-implementation/reports/11THONUS-EA-BL-001-CORR-002-B-staff-counter-authorisation-and-design-2026-10-07.md); Master Workflow §17; EIP §C.2; Prompt Register §4; Documentation Changes Log Entry 295.
+- **Rollback:** revert the PR (documentation only).
+
+---
+
 ## 2026-10-07 — EA-BL-001-CORR-002-BR — Post-Merge Closure & Status Synchronisation
 
 - **Task:** Documentation-only closure of the Business Review Domain Foundation. No code, test, migration, schema, permission, config, dependency or deployment change.
