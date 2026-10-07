@@ -91,7 +91,7 @@ export function CounterRecentActivity({ businessId }: { businessId: string }) {
                 <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-700">
                   {t(`purchase.status.${purchase.status}`)}
                 </span>
-                <p className="mt-1 flex items-center justify-end gap-1 text-[11px] text-slate-400">
+                <p className="mt-1 flex items-center justify-end gap-1 text-[11px] text-slate-600">
                   <Clock className="h-3 w-3" aria-hidden="true" />
                   <time dateTime={purchase.recordedAt}>
                     {formatter.format(new Date(purchase.recordedAt))}

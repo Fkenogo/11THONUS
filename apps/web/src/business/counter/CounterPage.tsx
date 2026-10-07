@@ -440,8 +440,8 @@ export function CounterPage({
           className={cn(
             "space-y-4 rounded-2xl p-5 text-center text-white shadow-lg",
             outcome.routing === "business_review_required"
-              ? "bg-gradient-to-br from-amber-500 to-amber-600 shadow-amber-500/20"
-              : "bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-emerald-500/20",
+              ? "bg-gradient-to-br from-amber-700 to-amber-800 shadow-amber-700/20"
+              : "bg-gradient-to-br from-emerald-700 to-emerald-800 shadow-emerald-700/20",
           )}
         >
           <CheckCircle2 className="mx-auto h-10 w-10" aria-hidden="true" />
@@ -568,7 +568,7 @@ export function CounterPage({
                   className={cn(
                     "flex min-h-14 w-full items-center justify-center gap-2 rounded-xl px-4 text-base font-bold shadow-sm",
                     cameraSupported
-                      ? "bg-amber-600 text-white hover:bg-amber-700 active:scale-[0.98]"
+                      ? "bg-amber-700 text-white hover:bg-amber-800 active:scale-[0.98]"
                       : "bg-slate-200 text-slate-500",
                     FOCUS_RING,
                   )}
@@ -616,7 +616,7 @@ export function CounterPage({
                 {qrReference === null ? (
                   <div>
                     <div
-                      className="my-1 flex items-center gap-3 text-xs text-slate-400"
+                      className="my-1 flex items-center gap-3 text-xs text-slate-600"
                       aria-hidden="true"
                     >
                       <span className="h-px flex-1 bg-slate-200" />
@@ -652,7 +652,7 @@ export function CounterPage({
                         errorKind === "customer_artifact" && errorId,
                       )}
                       className={cn(
-                        "min-h-14 w-full rounded-xl border bg-white px-4 font-mono text-lg tracking-widest text-slate-900 uppercase placeholder:normal-case placeholder:tracking-normal placeholder:text-slate-400",
+                        "min-h-14 w-full rounded-xl border bg-white px-4 font-mono text-lg tracking-widest text-slate-900 uppercase placeholder:normal-case placeholder:tracking-normal placeholder:text-slate-500",
                         invalid.artifact || errorKind === "customer_artifact"
                           ? "border-red-600"
                           : "border-slate-300",
@@ -850,7 +850,7 @@ export function CounterPage({
                 disabled={recordMutation.isPending}
                 aria-busy={recordMutation.isPending}
                 className={cn(
-                  "flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 text-base font-bold text-white shadow-sm hover:bg-amber-700 active:scale-[0.98] disabled:opacity-60",
+                  "flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-amber-700 px-4 text-base font-bold text-white shadow-sm hover:bg-amber-800 active:scale-[0.98] disabled:opacity-60",
                   FOCUS_RING,
                 )}
               >
