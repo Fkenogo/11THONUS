@@ -125,6 +125,41 @@ describe("BusinessDashboardBoundaryPage", () => {
       expect(screen.queryByText(/staff counter/)).not.toBeInTheDocument();
     });
 
+    it("FAILS CLOSED when the Business is absent from a successful accessible-businesses result", () => {
+      mockUseBusinessContextQuery.mockReturnValue(success);
+      mockUseAccessibleBusinessesQuery.mockReturnValue({
+        status: "success",
+        data: [{ businessId: "someone-else", displayName: "X", status: "active", role: "owner" }],
+      });
+      renderPage();
+      expect(screen.getByText("Something went wrong")).toBeInTheDocument();
+      expect(screen.queryByText(/dashboard shell/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/staff counter/)).not.toBeInTheDocument();
+    });
+
+    it("FAILS CLOSED when the accessible-businesses result is empty", () => {
+      mockUseBusinessContextQuery.mockReturnValue(success);
+      mockUseAccessibleBusinessesQuery.mockReturnValue({ status: "success", data: [] });
+      renderPage();
+      expect(screen.getByText("Something went wrong")).toBeInTheDocument();
+      expect(screen.queryByText(/dashboard shell/)).not.toBeInTheDocument();
+    });
+
+    it.each([undefined, null, "", "customer", "admin", "Owner", "STAFF"])(
+      "FAILS CLOSED for a missing/unrecognised role (%j) — never Owner/Manager",
+      (role) => {
+        mockUseBusinessContextQuery.mockReturnValue(success);
+        mockUseAccessibleBusinessesQuery.mockReturnValue({
+          status: "success",
+          data: [{ businessId: "b-1", displayName: "Acme Salon", status: "active", role }],
+        });
+        renderPage();
+        expect(screen.getByText("Something went wrong")).toBeInTheDocument();
+        expect(screen.queryByText(/dashboard shell/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/staff counter/)).not.toBeInTheDocument();
+      },
+    );
+
     it("FAILS CLOSED when the role cannot be read: no shell of either kind (never treated as Owner/Manager)", () => {
       mockUseBusinessContextQuery.mockReturnValue(success);
       mockUseAccessibleBusinessesQuery.mockReturnValue({ status: "error" });

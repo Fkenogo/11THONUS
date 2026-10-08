@@ -106,7 +106,7 @@ async function dropCommercialObjects(): Promise<void> {
   const hasMigrations = await pool.query("SELECT to_regclass('public.schema_migrations') AS t");
   if (hasMigrations.rows[0].t !== null) {
     await pool.query(
-      "DELETE FROM schema_migrations WHERE version IN ('0021', '0022', '0023', '0024', '0025', '0026', '0027', '0028')",
+      "DELETE FROM schema_migrations WHERE version IN ('0021', '0022', '0023', '0024', '0025', '0026', '0027', '0028', '0029')",
     );
   }
   await pool
@@ -304,16 +304,17 @@ describe("0021 schema shape and migration lifecycle", () => {
     // Populated: refuse (and change nothing).
     const businessId = newBusiness();
     await openAccount(businessId);
-    // Eight steps: 0028 (no Business Review data), 0027 (no admission/earmark rows), 0026 (no pending_admission Purchase), 0025, 0024, 0023 and 0022 (no consumption/settlement/grant rows yet) roll back, then 0021 refuses because the account exists.
-    await expectPgFailure(migrateDown(pool, migrationsDir, 8), /refusing to roll back/);
+    // Nine steps: 0029 (index only), 0028 (no Business Review data), 0027 (no admission/earmark rows), 0026 (no pending_admission Purchase), 0025, 0024, 0023 and 0022 (no consumption/settlement/grant rows yet) roll back, then 0021 refuses because the account exists.
+    await expectPgFailure(migrateDown(pool, migrationsDir, 9), /refusing to roll back/);
     const still = await pool.query("SELECT to_regclass('public.commercial_accounts') AS t");
     expect(still.rows[0].t).not.toBeNull();
 
     // Empty: rolls back cleanly and re-applies (drop + re-migrate resets the immutable rows first).
     await dropCommercialObjects();
     await migrateUp(pool, migrationsDir);
-    const down = await migrateDown(pool, migrationsDir, 8);
+    const down = await migrateDown(pool, migrationsDir, 9);
     expect(down.rolledBack).toEqual([
+      "0029",
       "0028",
       "0027",
       "0026",
@@ -339,6 +340,7 @@ describe("0021 schema shape and migration lifecycle", () => {
       "0026",
       "0027",
       "0028",
+      "0029",
     ]);
   });
 });

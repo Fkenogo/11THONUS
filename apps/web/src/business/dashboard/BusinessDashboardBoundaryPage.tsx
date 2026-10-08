@@ -35,16 +35,25 @@ export function BusinessDashboardBoundaryPage() {
     );
   }
 
-  // `EA-BL-001-CORR-002-B` (D8): Staff land on the Counter inside a bounded Staff shell; every other
-  // role — keeps the existing Business Dashboard,
-  // unchanged. This is UX routing only: the server remains the authority for every operation.
-  // An unreadable role FAILS CLOSED (error state above): it is never treated as Owner/Manager.
+  // `EA-BL-001-CORR-002-B` (D8): the role for THIS Business selects the experience — UX routing only;
+  // the server remains the authority for every operation. Staff get the bounded Counter shell;
+  // Owner/Manager keep the existing Business Dashboard, unchanged. Anything else — the Business is
+  // absent from the accessible result, or the role is missing/unrecognised — FAILS CLOSED to the
+  // integrity error below and is never treated as Owner/Manager.
   const role = accessible.data?.find(
     (business) => business.businessId === query.data.businessId,
   )?.role;
   if (role === "staff") {
     return <StaffRoutes context={query.data} />;
   }
+  if (role === "owner" || role === "manager") {
+    return <BusinessDashboardRoutes context={query.data} />;
+  }
 
-  return <BusinessDashboardRoutes context={query.data} />;
+  return (
+    <main className="flex min-h-screen items-center justify-center p-8 text-center">
+      <h1 className="mb-2 text-lg font-semibold">{t("integrityError.title")}</h1>
+      <p>{t("integrityError.body")}</p>
+    </main>
+  );
 }

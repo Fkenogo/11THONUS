@@ -843,3 +843,45 @@ describe("Staff Counter — Business Review confidentiality and Staff incapabili
     expect(await count("rewards")).toBe(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// 5. Recent-feed index (migration 0029).
+// ---------------------------------------------------------------------------
+
+describe("Staff Counter — recorder-scoped recent index (0029)", () => {
+  it("exists with the exact column order and sort direction", async () => {
+    const r = await pool.query(
+      `SELECT indexdef FROM pg_indexes WHERE indexname = 'purchase_records_recorder_recent_idx'`,
+    );
+    expect(r.rows).toHaveLength(1);
+    expect(r.rows[0].indexdef).toContain(
+      "(business_id, recorded_by_user_id, created_at DESC, id DESC)",
+    );
+  });
+
+  it("is applicable to the exact recent-feed query: an ordered index scan, no sort, bounded by LIMIT", async () => {
+    const s = await setup();
+    for (let i = 0; i < 3; i += 1) await record(s, {}, s.staffId);
+    await pool.query("ANALYZE purchase_records");
+    const client = await pool.connect();
+    try {
+      // Tiny tables legitimately prefer a seq scan; disable it to prove the index CAN serve the query.
+      await client.query("SET enable_seqscan = off");
+      const plan = await client.query(
+        `EXPLAIN SELECT id, created_at, item_label, quantity, status, presented_artifact_type,
+                canonical_loyalty_number_value
+           FROM purchase_records
+          WHERE business_id = $1 AND recorded_by_user_id = $2
+          ORDER BY created_at DESC, id DESC
+          LIMIT 10`,
+        [s.businessId, s.staffId],
+      );
+      const text = plan.rows.map((row) => row["QUERY PLAN"]).join("\n");
+      expect(text).toContain("purchase_records_recorder_recent_idx");
+      expect(text).not.toMatch(/\bSort\b/);
+    } finally {
+      await client.query("RESET enable_seqscan");
+      client.release();
+    }
+  });
+});
