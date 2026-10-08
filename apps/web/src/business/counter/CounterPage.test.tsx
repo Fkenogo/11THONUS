@@ -834,6 +834,20 @@ describe("Counter — own recent activity", () => {
     expect(section.textContent).not.toMatch(/reviewer|threshold|reason|recorded by|colleague/i);
   });
 
+  it("a malformed timestamp (e.g. a Date that crossed the wire as {}) never crashes the Counter", async () => {
+    setup({
+      recent: [
+        { ...rows[0], recordedAt: {} },
+        { ...rows[1], recordedAt: "not-a-date" },
+      ],
+    });
+    await ready();
+    const section = await screen.findByRole("region", { name: "Your recent submissions" });
+    expect(within(section).getByText("2 × Haircut")).toBeInTheDocument();
+    expect(within(section).getByText("5 × Braiding")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Record purchase" })).toBeInTheDocument();
+  });
+
   it("says so when nothing has been recorded yet", async () => {
     setup({ recent: [] });
     await ready();

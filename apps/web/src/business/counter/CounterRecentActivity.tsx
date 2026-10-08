@@ -12,6 +12,13 @@ import { Clock, History, QrCode } from "lucide-react";
 import { useTranslation } from "../../i18n";
 import { useCounterRecentQuery } from "./counterHooks";
 
+/** A malformed timestamp must never take the whole Counter down: it renders nothing instead. */
+function RecordedAt({ value, formatter }: { value: unknown; formatter: Intl.DateTimeFormat }) {
+  const date = typeof value === "string" ? new Date(value) : null;
+  if (!date || Number.isNaN(date.getTime())) return null;
+  return <time dateTime={date.toISOString()}>{formatter.format(date)}</time>;
+}
+
 export function CounterRecentActivity({ businessId }: { businessId: string }) {
   const { t, i18n } = useTranslation("business");
   const query = useCounterRecentQuery(businessId);
@@ -93,9 +100,7 @@ export function CounterRecentActivity({ businessId }: { businessId: string }) {
                 </span>
                 <p className="mt-1 flex items-center justify-end gap-1 text-[11px] text-slate-600">
                   <Clock className="h-3 w-3" aria-hidden="true" />
-                  <time dateTime={purchase.recordedAt}>
-                    {formatter.format(new Date(purchase.recordedAt))}
-                  </time>
+                  <RecordedAt value={purchase.recordedAt} formatter={formatter} />
                 </p>
               </div>
             </li>

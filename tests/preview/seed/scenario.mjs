@@ -165,13 +165,26 @@ async function build(s, admin, log) {
   // ---------------------------------------------------------------- programmes
   step("qualifying items + Reward Programs (published and one draft)");
   const bella = business.bella;
-  await qualifyingItems(s, bella, ["Haircut", "Braiding", "Manicure"]);
+  await qualifyingItems(s, bella, ["Haircut", "Braiding", "Manicure", "Blow-dry", "Hair wash"]);
   bella.programmes.cut = await programme(s, bella, {
     name: "Premium Cut Circle",
     reward: "A free haircut",
     items: ["Haircut", "Braiding"],
     shared: false,
     publish: true,
+  });
+  // EA-BL-001-CORR-002-B (Staff Counter preview): a published programme that accepts a Loyalty
+  // Number (so the Counter's Loyalty Number path works) and routes a Purchase of 5+ units to
+  // Business Review -- a real programme setting, created through the real callable. Together with
+  // "Premium Cut Circle" (QR only) Staff see two programmes, which also exercises the neutral
+  // customer-code refusal when a Loyalty Number is presented against a QR-only programme.
+  bella.programmes.express = await programme(s, bella, {
+    name: "Express Styling Circle",
+    reward: "A free blow-dry",
+    items: ["Blow-dry", "Hair wash"],
+    shared: true,
+    publish: true,
+    businessReviewQuantityThreshold: 5,
   });
   bella.programmes.family = await programme(s, bella, {
     name: "Family Care Circle",
@@ -440,7 +453,11 @@ async function qualifyingItems(s, biz, names) {
   s.state.qualifyingItems[biz.name] = { ...biz.items };
 }
 
-async function programme(s, biz, { name, reward, items, shared, publish }) {
+async function programme(
+  s,
+  biz,
+  { name, reward, items, shared, publish, businessReviewQuantityThreshold },
+) {
   const created = await s.as(biz.owner, "createRewardProgram", {
     businessId: biz.businessId,
     displayName: name,
@@ -449,6 +466,7 @@ async function programme(s, biz, { name, reward, items, shared, publish }) {
     sharedLoyaltyNumberAllowed: shared,
     effectiveFrom: PROGRAMME_EFFECTIVE_FROM(),
     qualifyingItemIds: items.map((n) => biz.items[n]),
+    ...(businessReviewQuantityThreshold === undefined ? {} : { businessReviewQuantityThreshold }),
   });
   const result = {
     name,

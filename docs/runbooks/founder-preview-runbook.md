@@ -42,6 +42,7 @@ Open **http://localhost:28109** and sign in with Email/Password (accounts below)
 | `pnpm preview:status`  | What is running, migration level, whether the seed is consistent                           |
 | `pnpm preview:accounts`| Print every preview identity, plus each customer's Loyalty Number / QR reference           |
 | `pnpm preview:verify`  | Compare live data to the committed expected fingerprint (proves determinism)              |
+| `pnpm preview:counter-checks` | Staff Counter server-side proofs (threshold absent for Staff, Staff cannot review/verify, own-only feed). `--write` adds the idempotent-retry + Business Review routing demo (see §13) |
 | `pnpm preview:migrate` | Apply canonical migrations to the local preview database only                              |
 | `pnpm preview:seed`    | Seed a _clean_ preview (refuses if data exists — use `reset`)                              |
 
@@ -168,9 +169,10 @@ state with `pnpm preview:reset` (or a future scenario variant) before journeys t
 
 ## 11. What the preview cannot show yet
 
-Frontline counter, redemption screen, Command Centre home, customer identity (Loyalty Number/QR), Circle
-progress visual, Operator Console, Business-facing Commercial standing — none exist yet (Experience Assembly
-packages). The data for all of them is already seeded and reachable through the real read models.
+Redemption screen, Command Centre home, Circle progress visual (for Staff), Operator Console, Business-facing
+Commercial standing, and the Owner/Manager Business Review queue — none exist yet (Experience Assembly packages).
+The Staff **Counter** and the customer identity (Loyalty Number/QR) now exist — see §13. The data for the rest is
+already seeded and reachable through the real read models.
 
 ## 12. Requirements discovered for the later Cloudflare phone-access spike
 
@@ -187,3 +189,89 @@ packages). The data for all of them is already seeded and reachable through the 
 * Vite dev blocks unknown `Host` headers; staff invitation links use `window.location.origin`, so they will carry the
   tunnel hostname.
 * Email/Password sign-in works with no redirect; Google/Phone do not meaningfully work against the emulator remotely.
+
+## 13. Staff Counter walkthrough (`EA-BL-001-CORR-002-B`)
+
+**Status:** implemented, **awaiting Founder Preview** — not accepted. Every step below runs on the real production
+code paths (the same callables, permissions and idempotency the product uses); the preview adds only seed data.
+
+### What is seeded for it
+
+Bella Salon now has **two published programmes** (Diane — Staff at Bella _and_ Sparkle — sees both):
+
+| Programme                | Loyalty Number accepted? | Business Review routing | Items                                |
+| ------------------------ | ------------------------ | ----------------------- | ------------------------------------ |
+| **Premium Cut Circle**   | **No** — QR only         | none                    | Haircut, Braiding                    |
+| **Express Styling Circle** (new) | **Yes**         | **5 or more units** (hidden from Staff) | Blow-dry, Hair wash |
+
+Existing customers (`pnpm preview:accounts` prints each Loyalty Number and QR reference): Amina, Jean-Claude,
+Esther, Kevin, Aline, Moses, Chantal, Yves. Diane's earlier Premium Cut records give her a populated
+"Your recent submissions" feed; Patrick's (Manager) records — e.g. Esther's nine visits — must **not** appear in it.
+
+### Setup (phone-width view, two "devices")
+
+1. `pnpm preview:start`, then **http://localhost:28109**.
+2. **Counter device:** sign in as `diane.staff@preview.example.test` (password: `pnpm preview:accounts`). Because she
+   staffs two Businesses she sees the chooser; pick **Bella Salon — Staff** → she lands **directly on the Counter**.
+   Use the browser's device mode (e.g. iPhone SE 320px, Pixel 7, then a desktop width) to compare phone vs desktop.
+3. **Customer device:** open a second browser profile / private window, sign in as a customer (e.g.
+   `amina.customer@…`) → the customer shell → **show my QR**. This is the "customer's phone".
+4. Camera: use **http://localhost** (a secure context). A webcam scanning the second window's QR is the real scan.
+   A real phone on the LAN is not a secure context and cannot reach the loopback emulators (see §12); open the
+   Counter on it only after the later phone-access spike — until then the Loyalty Number path is the fallback.
+
+### Scenarios (tick each; the 17 acceptance points are marked ①–⑰)
+
+1. **Existing customer, normal purchase** ① — Express Styling → Hair wash → quantity 1 → type Amina's Loyalty Number (any
+   case/with or without the hyphen) → **Record purchase**. Expect: _Purchase recorded. The customer needs to confirm it.
+   Nothing has been earned yet._ No progress, no "verified units", no reward.
+2. **Existing customer, Business-Review-routed purchase** ② — quantity **5** (the hidden threshold) → expect: _Purchase
+   recorded. Business review is required before customer confirmation._ It is a **success**, not an error.
+3. **Camera QR scanning** ③ — **Scan customer QR**, aim the webcam at the customer window's QR. The camera opens inside
+   the Counter, closes itself after the scan, and the form shows _Customer QR scanned_. Cancel mid-scan: the camera
+   light goes off.
+4. **Manual fallback** ④ — block the camera (site settings) or use a browser without camera: the Counter explains and
+   offers the **Loyalty Number** field (alphanumeric keypad, capitalised). Premium Cut (QR-only) rejects a typed number
+   with the neutral _We couldn't find that customer code. Check it or ask the customer to open their code._ — the same
+   message as a genuinely unknown number (the programme's number policy is not revealed).
+5. **Threshold invisible** ⑤ — nowhere on the Counter, in the outcome, errors, or the browser's Network → Response of
+   `listRewardPrograms` (as Staff) does a `businessReviewQuantityThreshold` key appear. Run `pnpm preview:counter-checks`:
+   _Staff key absent_ / _Owner key present_.
+6. **Staff cannot review** ⑥ — there is no review control on the Counter. `pnpm preview:counter-checks` proves the
+   server denies Staff the queue, approve and reject (permission-denied) while the Owner may read the queue.
+7. **New customer, two-device registration** ⑦ — tap **New customer?** on the Counter → static sign-up QR + address.
+   On the customer device, sign out, open that address, **register a brand-new email/password**. The customer shell
+   shows their new Loyalty Number and QR. The Counter creates nothing; the address carries no token.
+8. **Return to the Counter** ⑧ — type/scan the new customer's number/QR and record. (The customer must also be
+   able to see/confirm it on their own device — scenario 12.)
+9. **Dual-role customer** — `diane.staff` is both a customer and a Business member: signing in on the customer device
+   lands on the **chooser**; choose **Personal** to see her own Loyalty Number/QR (this is exactly what the New-customer
+   panel tells such people).
+10. **Own recent submissions only** ⑨ — Diane's feed lists Diane's purchases (item × quantity, time, "ending 234" or
+    _Scanned QR_, neutral status). Sign in as Patrick (`/business/<id>/dashboard/counter`): his feed is different and
+    disjoint (`preview:counter-checks` asserts it). The Owner's **Purchases** page still shows everything — unchanged.
+11. **Double-tap protection** ⑩ — double-tap/Enter-mash **Record purchase** with Slow 3G throttling: one request, one
+    purchase, button shows _Recording…_.
+12. **Uncertain network / retry** ⑪ — DevTools → Network → **Offline**, tap Record → _We couldn't confirm the result.
+    Retry — it won't record twice._ The form is untouched. Go back **Online** → **Retry**: it records once
+    (a note says the earlier attempt was recovered if it had committed). `pnpm preview:counter-checks --write` shows the
+    same fact server-side: same payload + `purchaseDate` + key → one Purchase; a recomputed date under the same key is
+    refused. (`--write` adds data; `pnpm preview:reset` restores the pristine state.)
+13. **Customer-confirmation boundary** ⑫ — after scenario 1, on the customer device the purchase appears under
+    _Waiting for you_ and only the customer can **Verify** it. The Counter never verifies. After scenario 2 the customer
+    sees **nothing to confirm** (it awaits the Business's review; the review UI itself is a later slice).
+14. **English / French** ⑬⑭ — the language switcher is in the Staff bar; every Counter string, error and the
+    new-customer panel switch language.
+15. **Phone viewport / desktop adaptation** ⑮⑯ — 320 px one-column, Record stays reachable (sticky); ≥ 768 px two columns.
+16. **Comparison with the frozen prototype** ⑰ — `Fkenogo/11thonus-prototype@18e8d700…` `StaffCounterExperience.tsx`.
+    Kept: frontline feel, numbered Identify → Programme → Record steps, prominent **Scan customer QR**, stepper, Record
+    action, "next customer" reset, recent activity, slate/amber cards. Replaced: scenario strip, mock people, name/phone
+    search, walk-in creation, Loyalty Circle, "approval above N" note, in-counter reward confirmation, "Front Desk".
+    Documented deviations: filled buttons are `amber-700` (not `amber-600`) for AA contrast; the Staff bar is a top bar
+    (a bottom bar is a recorded Founder rejection for the Business shell).
+
+### Owner / Manager
+
+Grace and Patrick still land on the **unchanged** Business Dashboard. They may open the Counter at
+`/business/<businessId>/dashboard/counter` (same `purchase.record` authority); no link was added to their navigation.
+

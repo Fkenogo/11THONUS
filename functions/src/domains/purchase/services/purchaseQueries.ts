@@ -156,7 +156,11 @@ const CUSTOMER_CODE_HINT_LENGTH = 3;
  */
 export type CounterRecentPurchase = {
   readonly id: string;
-  readonly recordedAt: Date;
+  /**
+   * ISO-8601 instant. A string on purpose: the callable transport serialises a `Date` as an empty
+   * object, so any Date reaching the wire must already be text.
+   */
+  readonly recordedAt: string;
   readonly itemLabel: string;
   readonly quantity: number;
   /** The Purchase's own lifecycle status; the Business Review outcome is just this status (no reviewer, no reason). */
@@ -203,7 +207,7 @@ export async function listMyRecentCounterPurchases(
   return {
     purchases: rows.map((row) => ({
       id: row.id,
-      recordedAt: row.createdAt,
+      recordedAt: row.createdAt.toISOString(),
       itemLabel: row.itemLabel,
       quantity: row.quantity,
       status: row.status,

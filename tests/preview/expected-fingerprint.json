@@ -53,6 +53,16 @@
       "programmes": [
         {
           "items": [
+            "Blow-dry",
+            "Hair wash"
+          ],
+          "name": "Express Styling Circle",
+          "requiredUnits": 10,
+          "shared": true,
+          "status": "active"
+        },
+        {
+          "items": [
             "Manicure"
           ],
           "name": "Family Care Circle",

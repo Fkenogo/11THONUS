@@ -571,6 +571,11 @@ describe("Staff Counter — own recent submissions (server-side scoped)", () => 
         ].sort(),
       );
     }
+    // The callable transport turns a `Date` into `{}`: the feed must carry text instants.
+    for (const row of purchases) {
+      expect(typeof row.recordedAt).toBe("string");
+      expect(new Date(row.recordedAt).toISOString()).toBe(row.recordedAt);
+    }
     const wire = JSON.stringify(purchases);
     for (const forbidden of [
       "businessReview",
