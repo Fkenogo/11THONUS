@@ -11,3 +11,9 @@
 - **Decision:** No website messaging, prototype, implementation, merge or publication authorized.
 - **Risk:** Audit is bounded; comprehensive source/asset/release verification is outstanding before Phase A closure.
 - **Rollback:** Close the unmerged review PR; remove this branch.
+
+## 2026-10-08 · WEB-00 supplemental audit
+
+- Founder directed continuation of Phase A.
+- Extended WEB-00 with post-October-2 experience PR evidence (PRs #300, #304, #306, #307), clarified brand promise evidence, and noted stale commercial-design status metadata.
+- Application/config/dependencies: unchanged. Phase A remains open; no Phase B authorization inferred.
