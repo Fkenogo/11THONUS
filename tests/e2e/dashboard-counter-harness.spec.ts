@@ -27,6 +27,41 @@ async function expectTapTargets(page: Page, names: (string | RegExp)[]) {
   }
 }
 
+const bottomNav = (page: Page) => page.getByRole("navigation", { name: "Counter navigation" });
+
+/** The bar's top edge: nothing the Staff needs may extend below it. */
+async function bottomNavTop(page: Page) {
+  const box = await bottomNav(page).boundingBox();
+  expect(box, "bottom navigation").not.toBeNull();
+  return box!.y;
+}
+
+/** Smooth scrolling is animated: wait until the scroll position stops changing before measuring. */
+async function waitForScrollIdle(page: Page) {
+  await page.waitForFunction(
+    () =>
+      new Promise<boolean>((resolve) => {
+        const before = window.scrollY;
+        setTimeout(() => resolve(window.scrollY === before), 150);
+      }),
+    undefined,
+    { timeout: 5000, polling: 50 },
+  );
+}
+
+async function expectAboveBottomNav(
+  page: Page,
+  locator: ReturnType<Page["locator"]>,
+  label: string,
+) {
+  await waitForScrollIdle(page);
+  const box = await locator.boundingBox();
+  expect(box, label).not.toBeNull();
+  expect(box!.y + box!.height, `${label} must not sit under the bottom bar`).toBeLessThanOrEqual(
+    (await bottomNavTop(page)) + 0.5,
+  );
+}
+
 for (const width of [320, 375, 390]) {
   test.describe(`Counter — phone ${width}px`, () => {
     test.use({ viewport: { width, height: 740 } });
@@ -64,27 +99,140 @@ for (const width of [320, 375, 390]) {
       await expectNoHorizontalOverflow(page);
     });
 
-    test("the Staff shell is a top bar with only the Counter and a context switch (no admin links, no bottom bar)", async ({
+    test("Staff mobile shell: Business name, a fixed bottom bar with exactly four icon+label actions, no duplicated top controls", async ({
       page,
     }) => {
       await page.goto(PATH);
-      const nav = page.getByRole("navigation", { name: "Counter navigation" });
-      await expect(nav.getByRole("link")).toHaveCount(2);
+      await expect(page.getByText("Bella Salon", { exact: true }).first()).toBeVisible();
+      const nav = bottomNav(page);
+      await expect(nav).toBeVisible();
+      await expect(nav.getByRole("button")).toHaveText([
+        "Counter",
+        "New customer",
+        "Activity",
+        "More",
+      ]);
       await expect(page.getByRole("link", { name: "Team" })).toHaveCount(0);
-      const box = await nav.boundingBox();
-      expect(box!.y).toBeLessThan(200);
-      await expectTapTargets(page, []);
+      // Secondary controls moved into More: not duplicated in the header.
+      await expect(page.getByRole("button", { name: "Français" })).toHaveCount(0);
+      await expect(page.getByRole("link", { name: "Switch business or Personal" })).toHaveCount(0);
+      // Fixed to the bottom edge, full width, practical touch targets, never clipped.
+      const box = (await nav.boundingBox())!;
+      const viewport = page.viewportSize()!;
+      expect(Math.round(box.y + box.height)).toBe(viewport.height);
+      expect(box.width).toBeGreaterThanOrEqual(viewport.width - 1);
+      for (const name of ["Counter", "New customer", "Activity", "More"]) {
+        const target = (await nav.getByRole("button", { name }).boundingBox())!;
+        expect(target.height, name).toBeGreaterThanOrEqual(44);
+        expect(target.width, name).toBeGreaterThanOrEqual(44);
+        expect(target.x, name).toBeGreaterThanOrEqual(0);
+        expect(target.x + target.width, name).toBeLessThanOrEqual(viewport.width);
+      }
+      await expectNoHorizontalOverflow(page);
     });
 
-    test("the Record action stays in view while the page scrolls (sticky, safe-area aware)", async ({
+    test("the bottom bar stays fixed while scrolling and never covers the Record action", async ({
       page,
     }) => {
       await page.goto(`${PATH}?fixture=many`);
       await page.mouse.wheel(0, 400);
-      const box = await page.getByRole("button", { name: "Record purchase" }).boundingBox();
       const viewport = page.viewportSize()!;
-      expect(box!.y + box!.height).toBeLessThanOrEqual(viewport.height);
-      expect(box!.y).toBeGreaterThanOrEqual(0);
+      const nav = (await bottomNav(page).boundingBox())!;
+      expect(Math.round(nav.y + nav.height)).toBe(viewport.height);
+      await expectAboveBottomNav(
+        page,
+        page.getByRole("button", { name: "Record purchase" }),
+        "Record purchase",
+      );
+      const record = (await page.getByRole("button", { name: "Record purchase" }).boundingBox())!;
+      expect(record.y).toBeGreaterThanOrEqual(0);
+    });
+
+    test("scrolled to the very end, the last Activity row is fully visible above the bottom bar", async ({
+      page,
+    }) => {
+      await page.goto(PATH);
+      const rows = page
+        .getByRole("region", { name: "Your recent submissions" })
+        .getByRole("listitem");
+      await expect(rows.last()).toBeVisible();
+      await page.evaluate(() =>
+        window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "instant" }),
+      );
+      await expectAboveBottomNav(page, rows.last(), "last Activity row");
+    });
+
+    test("Counter / New customer / Activity move within the one Counter page: no navigation, state kept", async ({
+      page,
+    }) => {
+      await page.goto(PATH);
+      const url = page.url();
+      await page.getByLabel("Loyalty Number").fill("abc234");
+      const nav = bottomNav(page);
+
+      await nav.getByRole("button", { name: "New customer" }).click();
+      await expect(page.getByRole("button", { name: /New customer\?/ })).toHaveAttribute(
+        "aria-expanded",
+        "true",
+      );
+      await expect(page.getByRole("heading", { name: "New customer" })).toBeFocused();
+      await expect(page.getByRole("img", { name: /sign-up page/ })).toBeVisible();
+      await expect(nav.getByRole("button", { name: "New customer" })).toHaveAttribute(
+        "aria-current",
+        "true",
+      );
+      // The jump lands on the panel heading, in view and clear of the bar…
+      await expectAboveBottomNav(
+        page,
+        page.getByRole("heading", { name: "New customer" }),
+        "New customer heading",
+      );
+      // …and the end of the revealed panel can be scrolled fully clear of the bar.
+      await page.evaluate(() =>
+        window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "instant" }),
+      );
+      await expectAboveBottomNav(page, page.getByText(/choose “Personal”/), "dual-role note");
+
+      await nav.getByRole("button", { name: "Activity" }).click();
+      await expect(page.getByRole("heading", { name: "Your recent submissions" })).toBeFocused();
+      await expect(nav.getByRole("button", { name: "Activity" })).toHaveAttribute(
+        "aria-current",
+        "true",
+      );
+
+      await nav.getByRole("button", { name: "Counter" }).click();
+      await expect(page.getByRole("heading", { name: "Counter", level: 1 })).toBeFocused();
+      await expect(page.getByLabel("Loyalty Number")).toHaveValue("ABC234");
+      await expect(nav.getByRole("button", { name: "Counter" })).toHaveAttribute(
+        "aria-current",
+        "true",
+      );
+      // No route change and no extra history entries: Back keeps its normal meaning.
+      expect(page.url()).toBe(url);
+      expect(await page.evaluate(() => window.history.length)).toBeLessThanOrEqual(2);
+    });
+
+    test("More: language + Switch Business / Personal only; Escape closes and returns focus to More", async ({
+      page,
+    }) => {
+      await page.goto(PATH);
+      const more = bottomNav(page).getByRole("button", { name: "More" });
+      await more.click();
+      const dialog = page.getByRole("dialog", { name: "More options" });
+      await expect(dialog).toBeVisible();
+      await expect(dialog.getByRole("button", { name: "Français" })).toBeVisible();
+      await expect(dialog.getByRole("link")).toHaveText(["Switch business or Personal"]);
+      for (const target of [
+        dialog.getByRole("button", { name: "Français" }),
+        dialog.getByRole("link"),
+        dialog.getByRole("button", { name: "Close" }),
+      ]) {
+        expect((await target.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+      }
+      await expectNoHorizontalOverflow(page);
+      await page.keyboard.press("Escape");
+      await expect(dialog).toHaveCount(0);
+      await expect(more).toBeFocused();
     });
 
     test("new-customer panel: static sign-up QR and address fit; dual-role copy is present", async ({
@@ -111,8 +259,22 @@ for (const width of [320, 375, 390]) {
 
     test("French renders without overflow", async ({ page }) => {
       await page.goto(PATH);
-      await page.getByRole("button", { name: "Français" }).click();
+      await bottomNav(page).getByRole("button", { name: "More" }).click();
+      await page.getByRole("dialog").getByRole("button", { name: "Français" }).click();
+      await page.keyboard.press("Escape");
       await expect(page.getByRole("button", { name: "Enregistrer l'achat" })).toBeVisible();
+      const frNav = page.getByRole("navigation", { name: "Navigation de la caisse" });
+      await expect(frNav.getByRole("button")).toHaveText([
+        "Caisse",
+        "Nouveau client",
+        "Activité",
+        "Plus",
+      ]);
+      // Every French label fits inside its own bar cell at this width (no clipping).
+      for (const button of await frNav.getByRole("button").all()) {
+        const clipped = await button.evaluate((el) => el.scrollWidth > el.clientWidth + 1);
+        expect(clipped).toBe(false);
+      }
       await expectNoHorizontalOverflow(page);
     });
 
@@ -123,6 +285,19 @@ for (const width of [320, 375, 390]) {
       await expect(page.getByRole("heading", { name: "Counter", level: 1 })).toBeVisible();
       await page.getByRole("button", { name: /New customer\?/ }).click();
       const results = await new AxeBuilder({ page }).analyze();
+      expect(
+        results.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target).join(" | ")}`),
+      ).toEqual([]);
+    });
+
+    test("axe: the bottom bar and the open More sheet have no violations", async ({ page }) => {
+      await page.goto(PATH);
+      await expect(bottomNav(page)).toBeVisible();
+      let results = await new AxeBuilder({ page }).analyze();
+      expect(results.violations.map((v) => v.id)).toEqual([]);
+      await bottomNav(page).getByRole("button", { name: "More" }).click();
+      await expect(page.getByRole("dialog")).toBeVisible();
+      results = await new AxeBuilder({ page }).analyze();
       expect(
         results.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target).join(" | ")}`),
       ).toEqual([]);
@@ -146,6 +321,8 @@ test.describe("Counter — camera scanner (fake capture device)", () => {
     await expect(cancel).toBeFocused();
     await expect(page.getByText("Point the camera at the customer's QR code.")).toBeVisible();
     await expectNoHorizontalOverflow(page);
+    // Cancel stays reachable above the Staff bottom bar.
+    await expectAboveBottomNav(page, cancel, "Cancel scanning");
 
     const live = await page.evaluate(() => {
       const video = document.querySelector("video");

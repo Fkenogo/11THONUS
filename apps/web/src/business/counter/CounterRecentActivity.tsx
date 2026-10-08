@@ -8,9 +8,11 @@
  * ever rendered (none is in the data).
  */
 
+import { useRef } from "react";
 import { Clock, History, QrCode } from "lucide-react";
 import { useTranslation } from "../../i18n";
 import { useCounterRecentQuery } from "./counterHooks";
+import { STAFF_SECTION_IDS, revealSection, useStaffSectionRequest } from "./staffSections";
 
 /** A malformed timestamp must never take the whole Counter down: it renders nothing instead. */
 function RecordedAt({ value, formatter }: { value: unknown; formatter: Intl.DateTimeFormat }) {
@@ -29,16 +31,25 @@ export function CounterRecentActivity({ businessId }: { businessId: string }) {
     minute: "2-digit",
   });
 
+  const sectionRef = useRef<HTMLElement>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  // Bottom-bar "Activity": bring the caller's own recent submissions into view.
+  useStaffSectionRequest("activity", () => revealSection(sectionRef.current, headingRef.current));
+
   return (
     <section
+      ref={sectionRef}
+      id={STAFF_SECTION_IDS.activity}
       aria-labelledby="counter-recent-heading"
-      className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5"
+      className="scroll-mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5"
     >
       <div className="mb-1 flex items-center gap-2">
         <History className="h-4 w-4 text-slate-500" aria-hidden="true" />
         <h2
+          ref={headingRef}
+          tabIndex={-1}
           id="counter-recent-heading"
-          className="text-xs font-bold tracking-wider text-slate-700 uppercase"
+          className="text-xs font-bold tracking-wider text-slate-700 uppercase focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none"
         >
           {t("counter.recent.heading")}
         </h2>

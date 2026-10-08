@@ -7,20 +7,37 @@
  * customer data is created or carried here.
  */
 
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { UserPlus } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useTranslation } from "../../i18n";
 import { publicSignUpUrl } from "./signUpUrl";
+import { STAFF_SECTION_IDS, revealSection, useStaffSectionRequest } from "./staffSections";
 
 export function NewCustomerPanel() {
   const { t } = useTranslation("business");
   const [open, setOpen] = useState(false);
   const panelId = useId();
   const url = publicSignUpUrl();
+  const sectionRef = useRef<HTMLElement>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const [revealTick, setRevealTick] = useState(0);
+
+  // Bottom-bar "New customer": open this existing panel (if collapsed), then bring it into view.
+  useStaffSectionRequest("newCustomer", () => {
+    setOpen(true);
+    setRevealTick((tick) => tick + 1);
+  });
+  useEffect(() => {
+    if (revealTick > 0) revealSection(sectionRef.current, headingRef.current);
+  }, [revealTick]);
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <section
+      ref={sectionRef}
+      id={STAFF_SECTION_IDS.newCustomer}
+      className="scroll-mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+    >
       <button
         type="button"
         aria-expanded={open}
@@ -38,7 +55,13 @@ export function NewCustomerPanel() {
       </button>
 
       <div id={panelId} hidden={!open} className="mt-3 space-y-4">
-        <h2 className="text-sm font-bold text-slate-900">{t("counter.newCustomer.heading")}</h2>
+        <h2
+          ref={headingRef}
+          tabIndex={-1}
+          className="text-sm font-bold text-slate-900 focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none"
+        >
+          {t("counter.newCustomer.heading")}
+        </h2>
         <p className="text-sm text-slate-600">{t("counter.newCustomer.intro")}</p>
 
         <div className="flex flex-col items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4">

@@ -484,6 +484,12 @@ export const en = {
         businessLabel: "Business",
         counter: "Counter",
         switchContext: "Switch business or Personal",
+        staffLabel: "Staff counter",
+        newCustomer: "New customer",
+        activity: "Activity",
+        more: "More",
+        moreTitle: "More options",
+        moreClose: "Close",
       },
     },
     loyaltyVisibility: {

@@ -6711,3 +6711,11 @@ READY FOR CONTROLLED DRAFTING — PR AWAITS FOUNDER REVIEW`**.
 - **Dependencies:** none. **Configuration:** none. **Rollback:** revert the correction commit(s); `0029.down.sql` drops the index.
 - **Report link:** [implementation report §12](../05-implementation/reports/11THONUS-EA-BL-001-CORR-002-B-staff-counter-implementation-report-2026-10-07.md)
 
+## 2026-10-08 — EA-BL-001-CORR-002-B — Founder Preview Pass 1: Staff Mobile Experience Correction
+- **Founder Preview Pass 1:** APPROVE WITH BOUNDED MOBILE EXPERIENCE CORRECTION (Founder Preview NOT yet accepted). Accepted: Counter, scan, purchase, new-customer flows, business switching, prototype alignment. Correction: Staff phone-first shell with a Staff-only bottom navigation (the Business/Owner-Manager shell's bottom-bar rejection is unchanged and that shell is untouched).
+- **Status:** unchanged — **IMPLEMENTED — FOUNDER PREVIEW / TECHNICAL REVIEW PENDING**; PR #307 not merged; Slices C/D/E NOT AUTHORISED / NOT STARTED.
+- **Change:** phone-width Staff shell — simplified header, fixed bottom bar (Counter / New customer / Activity / More), in-page section navigation (no routes), More sheet (language + Switch Business / Personal), sticky Record bar stacked above the bar via `--staff-nav-offset`, safe-area handling, EN/FR, a11y. Desktop/tablet unchanged.
+- **Tests:** web unit (`StaffMobileShell`, Owner/Manager-unchanged proof), harness Playwright 320/375/390 px, real-stack preview specs (desktop + Pixel 7), `preview:verify`, `preview:counter-checks`.
+- **Dependencies:** none. **Schema/config:** none. **Backend:** none. **Rollback:** revert the correction commit(s).
+- **Follow-on (not built):** physical-phone secure Cloudflare preview capability (separate bounded task). `FU-OWNER-MANAGER-PURCHASE-IDEMPOTENCY` remains separate and unfixed.
+- **Report link:** [implementation report §13](../05-implementation/reports/11THONUS-EA-BL-001-CORR-002-B-staff-counter-implementation-report-2026-10-07.md)

@@ -501,6 +501,12 @@ export const fr = {
         businessLabel: "Commerce",
         counter: "Caisse",
         switchContext: "Changer de commerce ou passer en Personnel",
+        staffLabel: "Caisse du personnel",
+        newCustomer: "Nouveau client",
+        activity: "Activité",
+        more: "Plus",
+        moreTitle: "Plus d'options",
+        moreClose: "Fermer",
       },
     },
     loyaltyVisibility: {

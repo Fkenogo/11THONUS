@@ -38,6 +38,7 @@ import {
 } from "./counterHooks";
 import { CounterRecentActivity } from "./CounterRecentActivity";
 import { NewCustomerPanel } from "./NewCustomerPanel";
+import { STAFF_SECTION_IDS, revealSection, useStaffSectionRequest } from "./staffSections";
 import { createCameraQrScanner, type QrScanner, type QrScanSession } from "./qrScanner";
 
 type ScannerPhase = "closed" | "opening" | "active" | "denied" | "no_camera" | "failed";
@@ -174,6 +175,8 @@ export function CounterPage({
   const outcomeHeadingRef = useRef<HTMLHeadingElement>(null);
   const itemGroupRef = useRef<HTMLDivElement>(null);
   const programmeGroupRef = useRef<HTMLDivElement>(null);
+  const counterStartRef = useRef<HTMLElement>(null);
+  const counterHeadingRef = useRef<HTMLHeadingElement>(null);
 
   const errorId = useId();
   const hintId = useId();
@@ -265,6 +268,11 @@ export function CounterPage({
     const scan = scanButtonRef.current;
     (scan && !scan.disabled ? scan : loyaltyInputRef.current)?.focus();
   }, [focusTick]);
+
+  // Bottom-bar "Counter": return to the start of the Counter. Never touches transaction state.
+  useStaffSectionRequest("counter", () =>
+    revealSection(counterStartRef.current, counterHeadingRef.current),
+  );
 
   function openScanner() {
     setForeignCode(false);
@@ -402,9 +410,17 @@ export function CounterPage({
 
   return (
     <div className="mx-auto w-full max-w-md space-y-4 pb-4 md:max-w-5xl">
-      <header className="flex items-end justify-between gap-3">
+      <header
+        ref={counterStartRef}
+        id={STAFF_SECTION_IDS.counter}
+        className="flex scroll-mt-4 items-end justify-between gap-3"
+      >
         <div className="min-w-0">
-          <h1 className="font-display text-xl leading-tight font-bold text-slate-900">
+          <h1
+            ref={counterHeadingRef}
+            tabIndex={-1}
+            className="font-display text-xl leading-tight font-bold text-slate-900 focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none"
+          >
             {t("counter.title")}
           </h1>
           <p className="truncate text-sm text-slate-500">
@@ -863,7 +879,7 @@ export function CounterPage({
               </div>
             ) : null}
 
-            <div className="sticky bottom-0 z-10 -mx-4 border-t border-slate-200 bg-white/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur md:static md:mx-0 md:border-0 md:bg-transparent md:px-0 md:pt-0 md:pb-0 md:backdrop-blur-none">
+            <div className="sticky bottom-[var(--staff-nav-offset,0px)] z-10 -mx-4 border-t border-slate-200 bg-white/95 px-4 pt-3 pb-3 backdrop-blur md:static md:mx-0 md:border-0 md:bg-transparent md:px-0 md:pt-0 md:pb-0 md:backdrop-blur-none">
               <button
                 type="submit"
                 disabled={recordMutation.isPending}
@@ -887,7 +903,7 @@ export function CounterPage({
         </form>
       ) : null}
 
-      {!outcome ? <NewCustomerPanel /> : null}
+      <NewCustomerPanel />
 
       <CounterRecentActivity businessId={businessId} />
     </div>

@@ -260,15 +260,18 @@ Esther, Kevin, Aline, Moses, Chantal, Yves. Diane's earlier Premium Cut records 
 13. **Customer-confirmation boundary** ⑫ — after scenario 1, on the customer device the purchase appears under
     _Waiting for you_ and only the customer can **Verify** it. The Counter never verifies. After scenario 2 the customer
     sees **nothing to confirm** (it awaits the Business's review; the review UI itself is a later slice).
-14. **English / French** ⑬⑭ — the language switcher is in the Staff bar; every Counter string, error and the
-    new-customer panel switch language.
-15. **Phone viewport / desktop adaptation** ⑮⑯ — 320 px one-column, Record stays reachable (sticky); ≥ 768 px two columns.
+14. **English / French** ⑬⑭ — the language switcher is in the Staff bar (on a phone: **More → language**); every Counter
+    string, error and the new-customer panel switch language.
+15. **Phone viewport / desktop adaptation** ⑮⑯ — below 768 px the Staff shell is phone-first: a fixed bottom bar
+    (Counter · New customer · Activity · More) with Record sitting just above it; the bar never covers Record, Serve next
+    customer, errors or the scanner's Cancel. ≥ 768 px keeps the top bar and two columns (no bottom bar).
 16. **Comparison with the frozen prototype** ⑰ — `Fkenogo/11thonus-prototype@18e8d700…` `StaffCounterExperience.tsx`.
     Kept: frontline feel, numbered Identify → Programme → Record steps, prominent **Scan customer QR**, stepper, Record
     action, "next customer" reset, recent activity, slate/amber cards. Replaced: scenario strip, mock people, name/phone
     search, walk-in creation, Loyalty Circle, "approval above N" note, in-counter reward confirmation, "Front Desk".
-    Documented deviations: filled buttons are `amber-700` (not `amber-600`) for AA contrast; the Staff bar is a top bar
-    (a bottom bar is a recorded Founder rejection for the Business shell).
+    Documented deviations: filled buttons are `amber-700` (not `amber-600`) for AA contrast; the Staff shell is a top bar on
+    tablet/desktop and a Staff-only bottom bar on phones (Founder-approved after Preview Pass 1; the Owner/Manager shell
+    still has no bottom bar — that rejection stands for it).
 
 ### Owner / Manager
 

@@ -129,4 +129,43 @@ describe("BusinessDashboardShell", () => {
     expect(within(navEn).getByRole("link", { name: "Overview" })).toBeInTheDocument();
     expect(screen.getByText("profile content")).toBeInTheDocument();
   });
+
+  it("is unchanged for Owner/Manager at phone width: no Staff bottom bar and no Counter destination (Staff-only mobile shell)", () => {
+    const original = window.matchMedia;
+    window.matchMedia = ((query: string) => ({
+      matches: query.includes("max-width: 767px"),
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      onchange: null,
+      dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia;
+    try {
+      renderShell();
+      expect(screen.queryByTestId("staff-bottom-nav")).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("navigation", { name: "Counter navigation" }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: "Counter" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "New customer" })).not.toBeInTheDocument();
+      const nav = screen.getByRole("navigation", { name: "Business Dashboard navigation" });
+      expect(
+        within(nav)
+          .getAllByRole("link")
+          .map((link) => link.textContent?.trim()),
+      ).toEqual(
+        expect.arrayContaining([
+          "Overview",
+          "Business Profile",
+          "Locations",
+          "Team",
+          "Business Terms",
+        ]),
+      );
+    } finally {
+      window.matchMedia = original;
+    }
+  });
 });
