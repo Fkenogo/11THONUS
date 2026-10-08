@@ -1,5 +1,6 @@
 /**
- * Staff-only mobile bottom navigation (Founder Preview Pass 1 correction).
+ * Staff-only bottom navigation (Founder Preview Pass 1 correction; permanent at every viewport size since
+ * Pass 2 — the bar is centred at the same bounded width as the Staff app).
  *
  * The earlier "no bottom bar" decision belongs to the broader Business / Owner-Manager shell; the
  * Founder explicitly approved this bar for the Staff mobile shell only. It has four bounded actions —
@@ -83,10 +84,10 @@ export function StaffBottomNav({
       <nav
         aria-label={t("counter.shell.navLabel")}
         data-testid="staff-bottom-nav"
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200/90 bg-white/95 px-2 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_rgba(0,0,0,0.06)] backdrop-blur-md"
+        className="fixed bottom-0 left-1/2 z-40 w-full max-w-lg -translate-x-1/2 border-x border-t border-slate-200/90 bg-white/95 px-2 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_rgba(0,0,0,0.06)] backdrop-blur-md"
         style={{ height: `calc(${STAFF_BOTTOM_NAV_HEIGHT} + env(safe-area-inset-bottom))` }}
       >
-        <ul className="mx-auto grid h-full max-w-md grid-cols-4 items-stretch gap-1 py-0.5">
+        <ul className="mx-auto grid h-full grid-cols-4 items-stretch gap-1 py-0.5">
           {ITEMS.map(({ section, icon: Icon, labelKey }) => {
             const isActive = !moreOpen && active === section;
             return (

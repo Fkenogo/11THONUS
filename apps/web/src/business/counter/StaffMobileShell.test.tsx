@@ -59,19 +59,6 @@ vi.mock("../hooks/useAuthenticatedActor", () => ({
 
 const context = { businessId: "biz-1", displayName: "Bella Salon" } as BusinessContext;
 
-function mockViewport(phone: boolean) {
-  window.matchMedia = ((query: string) => ({
-    matches: phone && query.includes("max-width: 767px"),
-    media: query,
-    addEventListener: () => {},
-    removeEventListener: () => {},
-    addListener: () => {},
-    removeListener: () => {},
-    onchange: null,
-    dispatchEvent: () => false,
-  })) as unknown as typeof window.matchMedia;
-}
-
 function renderShell() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: Infinity } },
@@ -92,7 +79,6 @@ function renderShell() {
 }
 
 const scrollIntoView = vi.fn();
-const originalMatchMedia = window.matchMedia;
 
 beforeEach(async () => {
   scrollIntoView.mockClear();
@@ -101,15 +87,12 @@ beforeEach(async () => {
 });
 afterEach(() => {
   cleanup();
-  window.matchMedia = originalMatchMedia;
 });
 
 const bar = () => screen.getByRole("navigation", { name: "Counter navigation" });
 const recordButton = () => screen.findByRole("button", { name: "Record purchase" });
 
-describe("Staff mobile shell — phone widths", () => {
-  beforeEach(() => mockViewport(true));
-
+describe("Staff mobile shell", () => {
   it("shows the Business name and exactly four labelled bottom-bar actions, with no duplicated top controls", async () => {
     renderShell();
     await recordButton();
@@ -249,28 +232,10 @@ describe("Staff mobile shell — phone widths", () => {
     expect(stickyBar.className).toContain("bottom-[var(--staff-nav-offset,0px)]");
     const main = document.querySelector("main") as HTMLElement;
     expect(main.className).toContain("pb-[calc(var(--staff-nav-offset,0px)+1rem)]");
-    const shell = main.parentElement as HTMLElement;
+    const shell = screen.getByTestId("staff-app").parentElement as HTMLElement;
     expect(shell.style.getPropertyValue("--staff-nav-offset")).toContain(
       "env(safe-area-inset-bottom)",
     );
-  });
-});
-
-describe("Staff desktop/tablet shell", () => {
-  beforeEach(() => mockViewport(false));
-
-  it("keeps the compact top bar and renders no bottom bar", async () => {
-    renderShell();
-    await recordButton();
-    expect(screen.queryByTestId("staff-bottom-nav")).not.toBeInTheDocument();
-    const nav = bar();
-    expect(
-      within(nav)
-        .getAllByRole("link")
-        .map((link) => link.textContent?.trim()),
-    ).toEqual(["Counter", "Switch business or Personal"]);
-    expect(screen.getByRole("button", { name: "Français" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "More" })).not.toBeInTheDocument();
   });
 });
 

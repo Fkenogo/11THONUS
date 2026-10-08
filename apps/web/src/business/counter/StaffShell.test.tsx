@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { i18n } from "../../i18n";
 import type { BusinessContext } from "../api/businessContext";
@@ -70,19 +71,19 @@ describe("Staff shell (EA-BL-001-CORR-002-B, D8 — UX routing only)", () => {
     },
   );
 
-  it("shows the Business name, a minimal navigation, a context switch and the language switcher — nothing administrative", () => {
+  it("shows the Business name and ONE Staff navigation — the bottom bar — with nothing administrative", () => {
     renderAt("/business/biz-1/dashboard/counter");
     expect(screen.getByText("Bella Salon", { selector: "p" })).toBeInTheDocument();
-    const nav = screen.getByRole("navigation", { name: "Counter navigation" });
-    const labels = within(nav)
-      .getAllByRole("link")
-      .map((link) => link.textContent?.trim());
-    expect(labels).toEqual(["Counter", "Switch business or Personal"]);
-    expect(within(nav).getByRole("link", { name: "Counter" })).toHaveAttribute(
+    const navs = screen.getAllByRole("navigation");
+    expect(navs).toHaveLength(1);
+    const labels = within(navs[0])
+      .getAllByRole("button")
+      .map((button) => button.textContent?.trim());
+    expect(labels).toEqual(["Counter", "New customer", "Activity", "More"]);
+    expect(within(navs[0]).getByRole("button", { name: "Counter" })).toHaveAttribute(
       "aria-current",
-      "page",
+      "true",
     );
-    expect(screen.getByRole("button", { name: "Français" })).toBeInTheDocument();
     for (const adminLabel of [
       "Team",
       "Business Terms",
@@ -94,14 +95,24 @@ describe("Staff shell (EA-BL-001-CORR-002-B, D8 — UX routing only)", () => {
     }
   });
 
-  it("is a top bar: no participant-style bottom navigation (rejected pattern)", () => {
+  it("is one phone-oriented shell: a fixed bottom bar, no top-bar variant, centred at a bounded width", () => {
     renderAt("/business/biz-1/dashboard/counter");
-    const nav = screen.getByRole("navigation", { name: "Counter navigation" });
-    expect(nav.className).not.toMatch(/fixed|bottom-0/);
+    const nav = screen.getByTestId("staff-bottom-nav");
+    expect(nav.className).toMatch(/fixed/);
+    expect(nav.className).toMatch(/max-w-lg/);
+    expect(screen.queryByRole("link", { name: "Counter" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Français" })).not.toBeInTheDocument();
+    const app = screen.getByTestId("staff-app");
+    expect(app.className).toMatch(/mx-auto/);
+    expect(app.className).toMatch(/max-w-lg/);
+    // No breakpoint-specific layout branch anywhere in the Staff shell.
+    expect(document.body.innerHTML).not.toMatch(/\bmd:|\blg:|\bxl:/);
   });
 
-  it("the context switch leads to the Business/Personal chooser (where a dual-role person picks Personal)", async () => {
+  it("the context switch (in More) leads to the Business/Personal chooser (where a dual-role person picks Personal)", async () => {
+    const user = userEvent.setup();
     renderAt("/business/biz-1/dashboard/counter");
+    await user.click(screen.getByRole("button", { name: "More" }));
     expect(screen.getByRole("link", { name: "Switch business or Personal" })).toHaveAttribute(
       "href",
       "/business",
@@ -112,9 +123,10 @@ describe("Staff shell (EA-BL-001-CORR-002-B, D8 — UX routing only)", () => {
     await i18n.changeLanguage("fr");
     renderAt("/business/biz-1/dashboard/counter");
     const nav = screen.getByRole("navigation", { name: "Navigation de la caisse" });
-    expect(within(nav).getByRole("link", { name: "Caisse" })).toBeInTheDocument();
     expect(
-      within(nav).getByRole("link", { name: "Changer de commerce ou passer en Personnel" }),
-    ).toBeInTheDocument();
+      within(nav)
+        .getAllByRole("button")
+        .map((button) => button.textContent?.trim()),
+    ).toEqual(["Caisse", "Nouveau client", "Activité", "Plus"]);
   });
 });

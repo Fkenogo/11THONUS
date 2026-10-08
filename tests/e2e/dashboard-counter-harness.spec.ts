@@ -1,7 +1,7 @@
 /**
  * Real-browser regression for the Staff Counter (`EA-BL-001-CORR-002-B`) — proves what jsdom cannot:
- * actual phone-first Tailwind layout, no horizontal overflow down to 320px, real tap-target sizes,
- * the two-column desktop adaptation, the scanner view driven by a real (fake-device) camera stream
+ * the ONE phone-oriented Staff shell at every width (320 → 1440 px: centred, bounded, single column,
+ * permanent bottom bar), no horizontal overflow down to 320px, real tap-target sizes, the scanner view driven by a real (fake-device) camera stream
  * with the camera genuinely closed on cancel, and axe accessibility. Runs against
  * `/dev/counter-harness` (development-only, never shipped), which mounts the REAL `StaffShell` +
  * `CounterPage` on local fixture data — no Firebase, no network.
@@ -62,8 +62,12 @@ async function expectAboveBottomNav(
   );
 }
 
-for (const width of [320, 375, 390]) {
-  test.describe(`Counter — phone ${width}px`, () => {
+/** The ONE Staff shell is exercised at phone, tablet and wide-laptop widths alike (Founder Pass 2). */
+const WIDTHS = [320, 375, 390, 768, 1024, 1440];
+const APP_MAX_WIDTH = 512; // max-w-lg
+
+for (const width of WIDTHS) {
+  test.describe(`Staff Counter — ${width}px`, () => {
     test.use({ viewport: { width, height: 740 } });
 
     test("single programme: no horizontal overflow; scan, number and Record are prominent and reachable", async ({
@@ -120,7 +124,10 @@ for (const width of [320, 375, 390]) {
       const box = (await nav.boundingBox())!;
       const viewport = page.viewportSize()!;
       expect(Math.round(box.y + box.height)).toBe(viewport.height);
-      expect(box.width).toBeGreaterThanOrEqual(viewport.width - 1);
+      // Same bar at every width: as wide as the phone-sized app, centred, never a desktop-wide strip.
+      expect(box.width).toBeLessThanOrEqual(APP_MAX_WIDTH + 1);
+      expect(box.width).toBeGreaterThanOrEqual(Math.min(viewport.width, APP_MAX_WIDTH) - 1);
+      expect(Math.abs(box.x + box.width / 2 - viewport.width / 2)).toBeLessThanOrEqual(1);
       for (const name of ["Counter", "New customer", "Activity", "More"]) {
         const target = (await nav.getByRole("button", { name }).boundingBox())!;
         expect(target.height, name).toBeGreaterThanOrEqual(44);
@@ -128,6 +135,45 @@ for (const width of [320, 375, 390]) {
         expect(target.x, name).toBeGreaterThanOrEqual(0);
         expect(target.x + target.width, name).toBeLessThanOrEqual(viewport.width);
       }
+      await expectNoHorizontalOverflow(page);
+    });
+
+    test("one shell at every width: compact header, no top-nav variant, a single column, a centred bounded app", async ({
+      page,
+    }) => {
+      await page.goto(PATH);
+      await expect(page.getByRole("heading", { name: "Counter", level: 1 })).toBeVisible();
+      const viewport = page.viewportSize()!;
+      // Same compact header: Business name + a small Staff context line; nothing else up there.
+      const app = page.getByTestId("staff-app");
+      const appBox = (await app.boundingBox())!;
+      expect(appBox.width).toBeLessThanOrEqual(APP_MAX_WIDTH + 1);
+      expect(appBox.width).toBeGreaterThanOrEqual(Math.min(viewport.width, APP_MAX_WIDTH) - 1);
+      expect(Math.abs(appBox.x + appBox.width / 2 - viewport.width / 2)).toBeLessThanOrEqual(1);
+      const header = app.locator("header").first();
+      await expect(header).toContainText("Staff counter");
+      await expect(header).toContainText("Bella Salon");
+      await expect(header.getByRole("link")).toHaveCount(0);
+      await expect(header.getByRole("button")).toHaveCount(0);
+      expect((await header.boundingBox())!.height).toBeLessThanOrEqual(72);
+      // No Staff top-nav variant: the only navigation is the bottom bar; no language control up top.
+      await expect(page.getByRole("navigation")).toHaveCount(1);
+      await expect(page.getByRole("link", { name: "Switch business or Personal" })).toHaveCount(0);
+      await expect(page.getByRole("button", { name: "Français" })).toHaveCount(0);
+      // Single vertical flow: Identify, then Programme/Record beneath it, same left edge and width.
+      const identify = (await page
+        .getByRole("region", { name: /Identify customer/ })
+        .boundingBox())!;
+      const programme = (await page
+        .getByRole("region", { name: /Programme/ })
+        .first()
+        .boundingBox())!;
+      const record = (await page.getByRole("button", { name: "Record purchase" }).boundingBox())!;
+      expect(programme.y).toBeGreaterThanOrEqual(identify.y + identify.height - 1);
+      expect(Math.abs(programme.x - identify.x)).toBeLessThanOrEqual(1);
+      expect(Math.abs(programme.width - identify.width)).toBeLessThanOrEqual(1);
+      expect(record.x).toBeGreaterThanOrEqual(appBox.x);
+      expect(record.x + record.width).toBeLessThanOrEqual(appBox.x + appBox.width + 1);
       await expectNoHorizontalOverflow(page);
     });
 
@@ -351,34 +397,6 @@ test.describe("Counter — camera scanner (fake capture device)", () => {
     await page.goto(PATH);
     await page.getByRole("button", { name: "Scan customer QR" }).click();
     await expect(page.getByRole("button", { name: "Cancel scanning" })).toBeVisible();
-    const results = await new AxeBuilder({ page }).analyze();
-    expect(
-      results.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target).join(" | ")}`),
-    ).toEqual([]);
-  });
-});
-
-test.describe("Counter — desktop adaptation", () => {
-  test.use({ viewport: { width: 1280, height: 800 } });
-
-  test("adapts to two columns: Identify beside Programme/Record; the sticky bar becomes inline", async ({
-    page,
-  }) => {
-    await page.goto(PATH);
-    await expectNoHorizontalOverflow(page);
-    const identify = await page.getByRole("region", { name: /Identify customer/ }).boundingBox();
-    const programme = await page
-      .getByRole("region", { name: /Programme/ })
-      .first()
-      .boundingBox();
-    expect(identify && programme && programme.x > identify.x + identify.width - 1).toBe(true);
-    const record = await page.getByRole("button", { name: "Record purchase" }).boundingBox();
-    expect(record!.width).toBeLessThan(800);
-  });
-
-  test("axe: no violations on desktop", async ({ page }) => {
-    await page.goto(PATH);
-    await expect(page.getByRole("heading", { name: "Counter", level: 1 })).toBeVisible();
     const results = await new AxeBuilder({ page }).analyze();
     expect(
       results.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target).join(" | ")}`),

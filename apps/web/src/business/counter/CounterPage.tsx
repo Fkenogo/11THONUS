@@ -45,7 +45,7 @@ type ScannerPhase = "closed" | "opening" | "active" | "denied" | "no_camera" | "
 
 const FOCUS_RING =
   "focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:outline-none";
-const CARD = "rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5";
+const CARD = "rounded-2xl border border-slate-200 bg-white p-4 shadow-sm";
 const STEP_LABEL = "text-xs font-bold tracking-wider text-slate-500 uppercase";
 const SECONDARY_BUTTON = cn(
   "inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-800 hover:bg-slate-50",
@@ -409,7 +409,7 @@ export function CounterPage({
       : null;
 
   return (
-    <div className="mx-auto w-full max-w-md space-y-4 pb-4 md:max-w-5xl">
+    <div className="mx-auto w-full max-w-lg space-y-4 pb-4">
       <header
         ref={counterStartRef}
         id={STAFF_SECTION_IDS.counter}
@@ -506,9 +506,9 @@ export function CounterPage({
       ) : null}
 
       {!outcome && programmesQuery.data && programmes.length > 0 ? (
-        <form onSubmit={submit} noValidate className="grid grid-cols-1 gap-4 md:grid-cols-12">
+        <form onSubmit={submit} noValidate className="grid grid-cols-1 gap-4">
           {/* 1. Identify customer ------------------------------------------------------------- */}
-          <section aria-labelledby="counter-identify-heading" className={cn(CARD, "md:col-span-5")}>
+          <section aria-labelledby="counter-identify-heading" className={CARD}>
             <h2 id="counter-identify-heading" className={cn(STEP_LABEL, "mb-1")}>
               {t("counter.identify.heading")}
             </h2>
@@ -701,7 +701,7 @@ export function CounterPage({
           </section>
 
           {/* 2–3. Programme, item, quantity, record ------------------------------------------ */}
-          <div className="space-y-4 md:col-span-7">
+          <div className="space-y-4">
             <section aria-labelledby="counter-programme-heading" className={cn(CARD, "space-y-4")}>
               <h2 id="counter-programme-heading" className={STEP_LABEL}>
                 {t("counter.programme.heading")}
@@ -879,7 +879,7 @@ export function CounterPage({
               </div>
             ) : null}
 
-            <div className="sticky bottom-[var(--staff-nav-offset,0px)] z-10 -mx-4 border-t border-slate-200 bg-white/95 px-4 pt-3 pb-3 backdrop-blur md:static md:mx-0 md:border-0 md:bg-transparent md:px-0 md:pt-0 md:pb-0 md:backdrop-blur-none">
+            <div className="sticky bottom-[var(--staff-nav-offset,0px)] z-10 -mx-4 border-t border-slate-200 bg-white/95 px-4 pt-3 pb-3 backdrop-blur">
               <button
                 type="submit"
                 disabled={recordMutation.isPending}

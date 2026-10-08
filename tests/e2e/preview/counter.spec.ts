@@ -58,13 +58,11 @@ async function chooseExpress(page: Page, item: "Blow-dry" | "Hair wash") {
   await page.getByRole("radio", { name: item }).check();
 }
 
-/** Phone widths get the Staff-only bottom bar; wider screens keep the compact top bar. */
-const isPhone = (page: Page) => (page.viewportSize()?.width ?? 1280) < 768;
+/** One phone-oriented Staff shell at every viewport size (Founder Pass 2): the bottom bar is permanent. */
 const staffNav = (page: Page) => page.getByRole("navigation", { name: "Counter navigation" });
 
-/** On a phone, nothing the Staff must tap may sit under the fixed bottom bar. */
+/** Nothing the Staff must tap may sit under the fixed bottom bar (at any viewport width). */
 async function expectClearOfBottomBar(page: Page, locator: ReturnType<Page["locator"]>) {
-  if (!isPhone(page)) return;
   await expect(staffNav(page)).toBeVisible();
   await page.waitForFunction(
     () =>
@@ -91,19 +89,17 @@ test.describe("Staff Counter — Founder Preview (real stack)", () => {
   }) => {
     await openCounterAsDiane(page);
     const nav = staffNav(page);
-    if (isPhone(page)) {
-      // Staff-only mobile shell: a fixed bottom bar with four bounded actions, nothing administrative.
-      await expect(nav.getByRole("button")).toHaveText([
-        "Counter",
-        "New customer",
-        "Activity",
-        "More",
-      ]);
-      await expect(page.getByRole("button", { name: "Français" })).toHaveCount(0);
-    } else {
-      await expect(nav.getByRole("link")).toHaveCount(2);
-      await expect(page.getByTestId("staff-bottom-nav")).toHaveCount(0);
-    }
+    // Staff-only shell at every width: a fixed bottom bar with four bounded actions, nothing administrative.
+    await expect(nav.getByRole("button")).toHaveText([
+      "Counter",
+      "New customer",
+      "Activity",
+      "More",
+    ]);
+    await expect(page.getByRole("button", { name: "Français" })).toHaveCount(0);
+    await expect(nav.getByRole("link")).toHaveCount(0);
+    const appBox = (await page.getByTestId("staff-app").boundingBox())!;
+    expect(appBox.width).toBeLessThanOrEqual(513);
     for (const admin of ["Team", "Business Terms", "Reward Programs", "Customer Rewards"]) {
       await expect(page.getByRole("link", { name: admin })).toHaveCount(0);
     }
@@ -252,10 +248,9 @@ test.describe("Staff Counter — Founder Preview (real stack)", () => {
     await expect(page.getByText(`${origin}/`, { exact: true })).toBeVisible();
   });
 
-  test("phone: the bottom bar moves between Counter / New customer / Activity without losing the transaction, and Record stays above it", async ({
+  test("the bottom bar moves between Counter / New customer / Activity without losing the transaction, and Record stays above it", async ({
     page,
   }) => {
-    test.skip(!isPhone(page), "Staff bottom bar is phone-only");
     await openCounterAsDiane(page);
     await chooseExpress(page, "Blow-dry");
     await page.getByLabel("Loyalty Number").fill(loyaltyNumberOf("moses").toLowerCase());
@@ -278,10 +273,9 @@ test.describe("Staff Counter — Founder Preview (real stack)", () => {
     await expect(page).toHaveURL(/\/dashboard\/counter$/);
   });
 
-  test("phone: More offers language and Switch Business / Personal only, and Switch leads to the chooser", async ({
+  test("More offers language and Switch Business / Personal only, and Switch leads to the chooser", async ({
     page,
   }) => {
-    test.skip(!isPhone(page), "Staff bottom bar is phone-only");
     await openCounterAsDiane(page);
     await staffNav(page).getByRole("button", { name: "More" }).click();
     const dialog = page.getByRole("dialog", { name: "More options" });
@@ -300,26 +294,18 @@ test.describe("Staff Counter — Founder Preview (real stack)", () => {
 
   test("French", async ({ page }) => {
     await openCounterAsDiane(page);
-    if (isPhone(page)) {
-      await staffNav(page).getByRole("button", { name: "More" }).click();
-      await page.getByRole("dialog").getByRole("button", { name: "Français" }).click();
-      await page.keyboard.press("Escape");
-    } else {
-      await page.getByRole("button", { name: "Français" }).click();
-    }
+    await staffNav(page).getByRole("button", { name: "More" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Français" }).click();
+    await page.keyboard.press("Escape");
     await expect(page.getByRole("heading", { name: "Caisse", level: 1 })).toBeVisible();
     await expect(page.getByRole("button", { name: "Enregistrer l'achat" })).toBeVisible();
     await expect(page.getByLabel("Numéro de fidélité")).toBeVisible();
-    if (isPhone(page)) {
-      await page
-        .getByRole("navigation", { name: "Navigation de la caisse" })
-        .getByRole("button", { name: "Plus" })
-        .click();
-      await page.getByRole("dialog").getByRole("button", { name: "English" }).click();
-      await page.keyboard.press("Escape");
-    } else {
-      await page.getByRole("button", { name: "English" }).click();
-    }
+    await page
+      .getByRole("navigation", { name: "Navigation de la caisse" })
+      .getByRole("button", { name: "Plus" })
+      .click();
+    await page.getByRole("dialog").getByRole("button", { name: "English" }).click();
+    await page.keyboard.press("Escape");
   });
 
   test("the Owner keeps the unchanged Business Dashboard and may still open the Counter", async ({

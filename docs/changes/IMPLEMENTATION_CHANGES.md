@@ -6719,3 +6719,11 @@ READY FOR CONTROLLED DRAFTING — PR AWAITS FOUNDER REVIEW`**.
 - **Dependencies:** none. **Schema/config:** none. **Backend:** none. **Rollback:** revert the correction commit(s).
 - **Follow-on (not built):** physical-phone secure Cloudflare preview capability (separate bounded task). `FU-OWNER-MANAGER-PURCHASE-IDEMPOTENCY` remains separate and unfixed.
 - **Report link:** [implementation report §13](../05-implementation/reports/11THONUS-EA-BL-001-CORR-002-B-staff-counter-implementation-report-2026-10-07.md)
+
+## 2026-10-08 — EA-BL-001-CORR-002-B — Founder Preview Pass 2: Mobile-Only Staff Shell
+- **Founder Preview Pass 2:** CORRECTION REQUIRED — the Staff Counter remained a desktop composition at wider widths. Founder disposition: Staff needs no desktop experience; one phone-oriented Staff shell at all viewport sizes, centred/constrained on larger screens. Founder Preview NOT yet accepted.
+- **Status:** unchanged — **IMPLEMENTED — FOUNDER PREVIEW / TECHNICAL REVIEW PENDING**; PR #307 not merged; Slices C/D/E NOT AUTHORISED / NOT STARTED.
+- **Change:** removed the responsive Staff branch, Staff top bar and two-column Counter; permanent bottom bar; single column; app/bar centred at `max-w-lg` (512 px); unused `useMediaQuery` hook deleted. Owner/Manager shell untouched.
+- **Tests:** harness Playwright at 320/375/390/768/1024/1440; real-stack preview specs (1280 + Pixel 7); unit tests; Owner/Manager-unchanged proof.
+- **Dependencies/schema/config/backend:** none. **Rollback:** revert the Pass 2 commit.
+- **Report link:** [implementation report §14](../05-implementation/reports/11THONUS-EA-BL-001-CORR-002-B-staff-counter-implementation-report-2026-10-07.md)

@@ -41,7 +41,7 @@ export function CounterRecentActivity({ businessId }: { businessId: string }) {
       ref={sectionRef}
       id={STAFF_SECTION_IDS.activity}
       aria-labelledby="counter-recent-heading"
-      className="scroll-mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5"
+      className="scroll-mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
     >
       <div className="mb-1 flex items-center gap-2">
         <History className="h-4 w-4 text-slate-500" aria-hidden="true" />
