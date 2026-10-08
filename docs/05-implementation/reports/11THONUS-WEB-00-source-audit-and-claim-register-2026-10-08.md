@@ -124,3 +124,14 @@ No Founder question is raised for already confirmed fixed 10+1 or USD 2 rule.
 ## 9. Execution/reporting
 
 Files: this new source audit plus an additive audit change-tracking record. Commands: connected GitHub commit search, repository code search, content reads, branch/file/PR operations. Dependencies: none. Configuration: none. Application code: none. Risks: source coverage and current release evidence gaps above. Rollback: close the unmerged PR and delete the isolated documentation branch; main remains unchanged.
+
+
+## 10. Additional verification pass — 2026-10-08 (Founder-directed continuation)
+
+This pass extends the first audit without claiming Phase A complete or authorizing Phase B. Repository search of recently updated PRs identified **material post-October-2 experience work**, including [PR #300 — Customer Identity & Circle](https://github.com/Fkenogo/11THONUS/pull/300), [PR #304 — Business Review domain foundation](https://github.com/Fkenogo/11THONUS/pull/304), [PR #306 — Staff Counter design](https://github.com/Fkenogo/11THONUS/pull/306), and [PR #307 — Staff Counter implementation, Founder Preview pending](https://github.com/Fkenogo/11THONUS/pull/307). These are evidence that the October 2 gap inventory is no longer sufficient to characterize the current experience. **PR existence/title is not proof of merge, production availability, review acceptance or tested deployment.** Claim CL-16 and CL-23 remain VERIFY until exact merged status, callable/UI contracts and founder preview evidence are checked.
+
+Brand text check: `docs/01-product/prd/00-product-foundation.md` §§2.3–2.5 gives **“Every 11th. On Us.”** as Core Brand Promise and “This one's on us.” as supporting language; it positions the platform as loyalty and appreciation, not coupons/discounts/points. This is PRD text marked draft for review, subordinate to the Constitution and decisions. **“One More Reason to Come Back.”** has not been established as approved public tagline by the inspected governing record. The future marketing strategy should not silently swap one for the other. Graphic artwork/font/color approval still needs asset inspection.
+
+The commercial report `11THONUS-COMMERCIAL-DESIGN-001` at current default-branch path has stale-sounding metadata (“pending final Founder merge review”) although it is fetchable on main; evaluate authority by merge record / later amendments rather than trusting the header alone. The controlling USD 2 and 3–5 trial rules remain S03.
+
+**Continuing gate:** Phase A stays open. This additional check specifically strengthens the evidence map, but full brand asset inventory, full legal/privacy and redemption review, current code-to-feature proof, deployment validation, and website-related PR reconciliation remain required for a final Gate A recommendation.
