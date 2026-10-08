@@ -7,6 +7,19 @@
 
 ---
 
+## 2026-10-08 — 11THONUS-MEDIA-001 — MV-206 Media Storage & Delivery Alignment Assessment
+
+- **Task:** Align 11thONUS with Miledge MV-206 v0.1 and close the project-specific media capability assessment. Documentation/assessment only; no code, schema, Storage Rules, dependency, provider, configuration, infrastructure or deployment change.
+- **Status:** **CLOSED — ASSESSMENT COMPLETE; IMPLEMENTATION NOT AUTHORISED.** MV-206 aligned; 11thONUS Firebase-native classification unchanged.
+- **Product Truth finding:** Business Logo is the only currently governed image requirement found for the bounded MVP media scope. Customer/owner/manager/staff profile photos and loyalty-programme imagery are not authorised by this assessment.
+- **Provider disposition:** Do not select/provision R2 now. Recommend Firebase Storage as the first Business Logo implementation candidate because it is already scaffolded inside the Firebase-native architecture; retain R2 as the preferred reassessment candidate when broader media, higher public-read volume or portability needs are demonstrated. Cloudflare Images deferred pending measured transformation need.
+- **Data/security direction:** future implementation should use application-owned asset identity (`MediaAsset` / `logoAssetId`) rather than provider URL as authority; validated uploads only; public delivery only for active publication logos; personal imagery remains out of scope and would default private if later authorised.
+- **Next package:** proposed `11THONUS-MEDIA-002 — Business Logo Media Capability`, separately reviewed/authorised before any implementation or provisioning.
+- **Files:** [MEDIA-001 assessment](../05-implementation/reports/11THONUS-MEDIA-001-mv206-media-storage-delivery-alignment-assessment-2026-10-08.md).
+- **Rollback:** revert this documentation-only assessment/change-log commit; no runtime state exists to roll back.
+
+---
+
 ## 2026-10-07 — EA-BL-001-CORR-002-B — Authorisation Correction Pass (PR #306 review)
 
 - **Task:** Make the authorised Slice B contract technically precise (documentation only; no code, test, schema, config or dependency change).
