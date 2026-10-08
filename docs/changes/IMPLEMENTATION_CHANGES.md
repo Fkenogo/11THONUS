@@ -6676,3 +6676,20 @@ READY FOR CONTROLLED DRAFTING — PR AWAITS FOUNDER REVIEW`**.
 - **Files changed:** this log entry only.
 - **Constraints honoured:** no application code, DNS, Cloudflare resource, authentication, database, or runtime change; no new Cloudflare work package opened; the implementation programme continues per its approved schedule.
 - **Rollback:** revert this closure entry (documentation only; does not alter the merged assessment).
+
+---
+
+## 2026-10-07 — EA-BL-001-CORR-002-B — Staff Counter Implementation
+
+- **Date:** 2026-10-07
+- **Phase:** Experience Assembly, Slice B (authorised via PR #306; entry `origin/main` `4bc9c49`, post-merge CI 37642428840 green).
+- **Task:** Mobile-first Staff Counter on the production architecture, bound to the frozen prototype `11thonus-prototype@18e8d700…` (experience only).
+- **Status:** **IMPLEMENTED — FOUNDER PREVIEW / TECHNICAL REVIEW PENDING.** Not accepted, not complete, not merged.
+- **Scope:** Staff shell + Counter (camera QR scan with lazy `jsqr` fallback, Loyalty Number fallback, tokenless new-customer panel, truthful normal / business-review outcomes, Serve next, Staff-own recent activity); EN/FR; accessibility.
+- **Backend enablers:** safe public error discriminator (`reason` on `purchase_command_failed`); `listMyRecentCounterPurchases` (server-scoped, purpose-built projection). No schema, WP-COM, BR or Trust change.
+- **Idempotency correction:** `recordPurchase` classifies `functions/internal|unknown|cancelled` as uncertain/retryable so the key survives a lost response; the Counter keeps payload + `purchaseDate` + key as one intent. Authorisation still gates retries.
+- **Validation:** functions 2026 unit / 772 PostgreSQL; web 1076; Playwright harness 69 (axe, 320px, fake camera) and real preview stack 20; typecheck, lint, format clean.
+- **Preview:** seed adds Express Styling Circle; `preview:counter-checks`; runbook §13.
+- **Dependencies:** `jsqr@1.4.0`. **Migrations:** none. **Configuration:** Playwright harness project gains fake-capture-device flags.
+- **Rollback:** revert the PR.
+- **Report link:** [implementation report](../05-implementation/reports/11THONUS-EA-BL-001-CORR-002-B-staff-counter-implementation-report-2026-10-07.md)
