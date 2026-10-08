@@ -2,7 +2,7 @@
   "businesses": {
     "bella": {
       "availableRewards": [
-        "kevin",
+        "chantal",
         "kevin"
       ],
       "category": "cat_salon",
@@ -20,18 +20,26 @@
         {
           "customer": "amina",
           "pending": 0,
-          "programme": "Express Styling Circle",
-          "sequence": 1,
-          "state": "active",
-          "units": 8
-        },
-        {
-          "customer": "amina",
-          "pending": 0,
           "programme": "Premium Cut Circle",
           "sequence": 1,
           "state": "active",
           "units": 3
+        },
+        {
+          "customer": "chantal",
+          "pending": 0,
+          "programme": "Express Styling Circle",
+          "sequence": 1,
+          "state": "reward_available",
+          "units": 10
+        },
+        {
+          "customer": "esther",
+          "pending": 0,
+          "programme": "Express Styling Circle",
+          "sequence": 1,
+          "state": "active",
+          "units": 9
         },
         {
           "customer": "esther",
@@ -44,6 +52,14 @@
         {
           "customer": "jeanclaude",
           "pending": 0,
+          "programme": "Express Styling Circle",
+          "sequence": 1,
+          "state": "active",
+          "units": 8
+        },
+        {
+          "customer": "jeanclaude",
+          "pending": 0,
           "programme": "Premium Cut Circle",
           "sequence": 1,
           "state": "active",
@@ -52,26 +68,10 @@
         {
           "customer": "kevin",
           "pending": 0,
-          "programme": "Express Styling Circle",
-          "sequence": 1,
-          "state": "reward_available",
-          "units": 10
-        },
-        {
-          "customer": "kevin",
-          "pending": 0,
           "programme": "Premium Cut Circle",
           "sequence": 1,
           "state": "reward_available",
           "units": 10
-        },
-        {
-          "customer": "moses",
-          "pending": 0,
-          "programme": "Express Styling Circle",
-          "sequence": 1,
-          "state": "active",
-          "units": 9
         }
       ],
       "name": "Bella Salon",

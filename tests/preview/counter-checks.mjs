@@ -149,43 +149,43 @@ export async function runCounterChecks({ state, write = false, log = console.log
   if (!express || !premium) {
     results.push(outcome("Loyalty checks need the seeded Express and Premium programmes", false));
   } else {
-    const amina = await context("staff_bella", express, "amina");
-    const moses = await context("staff_bella", express, "moses");
-    const kevin = await context("staff_bella", express, "kevin");
+    const normal = await context("staff_bella", express, "jeanclaude");
+    const near = await context("staff_bella", express, "esther");
+    const reward = await context("staff_bella", express, "chantal");
     const keys = (o) => Object.keys(o).sort().join(",");
     const FOUR =
       "awaitingCustomerConfirmationUnits,requiredVerifiedUnits,rewardStatus,verifiedUnits";
     results.push(
       outcome(
         "Staff loyalty read returns exactly four values (no identity, name, history, review or threshold)",
-        keys(amina) === FOUR && keys(moses) === FOUR && keys(kevin) === FOUR,
-        keys(amina),
+        keys(normal) === FOUR && keys(near) === FOUR && keys(reward) === FOUR,
+        keys(normal),
       ),
       outcome(
-        "Verified progress is authoritative: Amina 8 of 10, no reward",
-        amina.verifiedUnits === 8 &&
-          amina.requiredVerifiedUnits === 10 &&
-          amina.rewardStatus === "none" &&
-          amina.awaitingCustomerConfirmationUnits === 0,
-        JSON.stringify(amina),
+        "Verified progress is authoritative: Jean-Claude 8 of 10, no reward",
+        normal.verifiedUnits === 8 &&
+          normal.requiredVerifiedUnits === 10 &&
+          normal.rewardStatus === "none" &&
+          normal.awaitingCustomerConfirmationUnits === 0,
+        JSON.stringify(normal),
       ),
       outcome(
-        "A purchase awaiting the customer is reported separately and NOT added: Moses 9 verified + 1 awaiting",
-        moses.verifiedUnits === 9 && moses.awaitingCustomerConfirmationUnits === 1,
-        JSON.stringify(moses),
+        "A purchase awaiting the customer is reported separately and NOT added: Esther 9 verified + 1 awaiting",
+        near.verifiedUnits === 9 && near.awaitingCustomerConfirmationUnits === 1,
+        JSON.stringify(near),
       ),
       outcome(
-        "A customer with a reward available is flagged (Kevin): 10 of 10, rewardStatus=available",
-        kevin.verifiedUnits === 10 && kevin.rewardStatus === "available",
-        JSON.stringify(kevin),
+        "A customer with a reward available is flagged (Chantal): 10 of 10, rewardStatus=available",
+        reward.verifiedUnits === 10 && reward.rewardStatus === "available",
+        JSON.stringify(reward),
       ),
     );
-    const wire = JSON.stringify([amina, moses, kevin]);
+    const wire = JSON.stringify([normal, near, reward]);
     const identityLeak = [
-      lnOf("amina"),
-      state.identities.customer_amina?.customerIdentityId,
-      "Amina",
-      "Nkurunziza",
+      lnOf("jeanclaude"),
+      state.identities.customer_jeanclaude?.customerIdentityId,
+      "Jean-Claude",
+      "Habimana",
       "hreshold",
       "eview",
     ].filter((v) => v && wire.includes(v));

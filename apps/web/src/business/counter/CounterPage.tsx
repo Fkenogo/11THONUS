@@ -305,16 +305,20 @@ export function CounterPage({
   }
 
   // Quick action "Scan customer QR": start the existing scanner here (or land on the Loyalty Number).
+  // The request is HELD until the Counter is the visible place AND its programmes have settled: a Staff
+  // member can tap it moments after launch, before the form exists, and it must not be silently lost.
+  // If the programmes settle with no form to scan into (none configured, or a load error) there is
+  // nothing to open and the request ends there.
   const formShown = !outcome && Boolean(programmesQuery.data) && programmes.length > 0;
   useStaffActionRequest(
     "scan",
     () => {
       if (outcome) serveNext(); // a finished transaction: this is the next customer
-      if (!formShown && !outcome) return; // programmes not ready: nothing to scan into yet
+      if (!formShown && !outcome) return;
       if (cameraSupported) openScanner();
       else setFocusTick((tick) => tick + 1);
     },
-    active,
+    active && !programmesQuery.isPending,
   );
 
   function openScanner() {

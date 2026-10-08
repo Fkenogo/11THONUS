@@ -231,6 +231,47 @@ describe("Staff quick actions (FAB) — actions, not destinations", () => {
     );
   });
 
+  it("a Scan request made before the programmes have loaded is HELD and then honoured — never silently lost", async () => {
+    const gate: { release: (() => void) | null } = { release: null };
+    handlers.listRewardPrograms = () =>
+      new Promise((resolve) => {
+        gate.release = () => resolve([PROGRAMME]);
+      });
+    const user = userEvent.setup();
+    renderShell("/business/biz-1/dashboard/activity");
+    await screen.findByRole("heading", { name: "Activity", level: 1 });
+    await waitFor(() => expect(gate.release).not.toBeNull());
+    await user.click(fab());
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", { name: /^Scan customer QR/ }),
+    );
+    expect(await screen.findByRole("heading", { name: "Counter", level: 1 })).toBeInTheDocument();
+    expect(scannerState.start).toBe(0); // nothing to scan into yet…
+    await act(async () => {
+      gate.release?.();
+    });
+    await waitFor(() => expect(scannerState.start).toBe(1)); // …so it was held, then honoured
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Cancel scanning" })).toHaveFocus(),
+    );
+  });
+
+  it("a Scan request when the Business has no programme does nothing (no scanner, no stray reopening later)", async () => {
+    handlers.listRewardPrograms = async () => [];
+    const user = userEvent.setup();
+    renderShell("/business/biz-1/dashboard/activity");
+    await screen.findByRole("heading", { name: "Activity", level: 1 });
+    await user.click(fab());
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", { name: /^Scan customer QR/ }),
+    );
+    expect(
+      await screen.findByText(/no active reward programme to record against yet/i),
+    ).toBeInTheDocument();
+    expect(scannerState.start).toBe(0);
+    expect(screen.queryByRole("button", { name: "Cancel scanning" })).not.toBeInTheDocument();
+  });
+
   it("Help a new customer join opens the existing tokenless sign-up flow as a sheet; closing returns focus to the button", async () => {
     const user = userEvent.setup();
     renderShell();

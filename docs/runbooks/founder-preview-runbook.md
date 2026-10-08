@@ -267,9 +267,9 @@ Esther, Kevin, Aline, Moses, Chantal, Yves. Diane's earlier Premium Cut records 
     above it, one column, centred at a bounded 512 px on wide screens (open http://localhost:28109 in a laptop window to see
     it). The bar never covers Record, Serve next customer, errors or the scanner's Cancel. There is no desktop Staff layout.
 16. **Limited loyalty status (Pass 3)** — choose **Express Styling Circle**, type a seeded Loyalty Number, and read the card
-    **before** recording: Amina → _8 of 10 verified_ (2 more); Moses → _9 of 10 verified_ + _1 purchase awaiting
-    customer confirmation_ (never 10 of 10); Kevin → **11th reward available — let the customer know**. Record a purchase
-    for Amina, serve the next customer, type her number again: still _8 of 10_, now one more awaiting — the Staff cannot
+    **before** recording: Jean-Claude → _8 of 10 verified_ (2 more); Esther → _9 of 10 verified_ + _1 purchase awaiting
+    customer confirmation_ (never 10 of 10); Chantal → **11th reward available — let the customer know**. Record a purchase
+    for Jean-Claude, serve the next customer, type his number again: still _8 of 10_, now one more awaiting — the Staff cannot
     advance the verified count; only the customer's own verify does. There is no redemption control. (Seeded
     positions: `pnpm preview:accounts`.)
 17. **Places keep a transaction safe** — type a number, open **Activity** then **Profile**, come back: the form is as you left
