@@ -52,6 +52,7 @@ import {
   listMyRecentCounterPurchases,
   listPurchasesForBusiness,
 } from "./purchaseQueries";
+import { getCounterLoyaltyContext } from "./counterLoyaltyContext";
 import { listRewardPrograms } from "../../rewardProgram/services/rewardProgramQueries";
 import { PurchaseDomainError } from "../models/purchaseErrors";
 import { toHttpsError } from "../../../index";
@@ -879,9 +880,366 @@ describe("Staff Counter — recorder-scoped recent index (0029)", () => {
       const text = plan.rows.map((row) => row["QUERY PLAN"]).join("\n");
       expect(text).toContain("purchase_records_recorder_recent_idx");
       expect(text).not.toMatch(/\bSort\b/);
+      // The "load more" page (keyset on the same two sort columns) is served by the same index.
+      const paged = await client.query(
+        `EXPLAIN SELECT id, created_at, item_label, quantity, status, presented_artifact_type,
+                canonical_loyalty_number_value
+           FROM purchase_records
+          WHERE business_id = $1 AND recorded_by_user_id = $2
+            AND (created_at, id) < ($4::timestamptz, $5::uuid)
+          ORDER BY created_at DESC, id DESC
+          LIMIT $3`,
+        [
+          s.businessId,
+          s.staffId,
+          21,
+          "2026-09-14T10:00:00.000000Z",
+          "00000000-0000-4000-8000-000000000001",
+        ],
+      );
+      const pagedText = paged.rows.map((row) => row["QUERY PLAN"]).join("\n");
+      expect(pagedText).toContain("purchase_records_recorder_recent_idx");
+      expect(pagedText).not.toMatch(/\bSort\b/);
     } finally {
       await client.query("RESET enable_seqscan");
       client.release();
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 6. Activity view: bounded keyset pagination of the Staff-own feed.
+// ---------------------------------------------------------------------------
+describe("Staff Activity — paged own submissions (keyset, server-scoped)", () => {
+  async function page(s: Setup, userId: string, limit?: number, cursor?: string | null) {
+    return listMyRecentCounterPurchases(db, pool, {
+      userId,
+      businessId: s.businessId,
+      limit,
+      cursor,
+    });
+  }
+
+  it("walks the caller's own history in stable pages with no gaps or repeats, then ends", async () => {
+    const s = await setup();
+    const own: string[] = [];
+    for (let i = 0; i < 5; i += 1) {
+      own.push((await record(s, {}, s.staffId)).purchase.id);
+      // Interleave a colleague's submission: it must never appear in the walk.
+      await record(s, {}, s.staff2Id);
+    }
+    const seen: string[] = [];
+    let cursor: string | null = null;
+    let pages = 0;
+    do {
+      const result: Awaited<ReturnType<typeof page>> = await page(s, s.staffId, 2, cursor);
+      seen.push(...result.purchases.map((purchase) => purchase.id));
+      cursor = result.nextCursor;
+      pages += 1;
+    } while (cursor && pages < 10);
+    expect(pages).toBe(3);
+    expect(seen).toEqual([...own].reverse());
+    expect(new Set(seen).size).toBe(5);
+  });
+
+  it("the last page has no cursor; a page smaller than the limit never offers one", async () => {
+    const s = await setup();
+    await record(s, {}, s.staffId);
+    const result = await page(s, s.staffId, 5);
+    expect(result.purchases).toHaveLength(1);
+    expect(result.nextCursor).toBeNull();
+  });
+
+  it("a cursor never widens the scope: another member replaying it sees only their own rows", async () => {
+    const s = await setup();
+    for (let i = 0; i < 3; i += 1) await record(s, {}, s.staffId);
+    const mineB = await record(s, {}, s.staff2Id);
+    const first = await page(s, s.staffId, 1);
+    expect(first.nextCursor).not.toBeNull();
+    // staff2 replays staff's cursor: scope is still staff2's own rows only.
+    const replay = await page(s, s.staff2Id, 5, first.nextCursor);
+    expect(replay.purchases.map((purchase) => purchase.id)).not.toContain(first.purchases[0].id);
+    for (const purchase of replay.purchases) expect(purchase.id).toBe(mineB.purchase.id);
+  });
+
+  it("a tampered, malformed or oversized cursor is a generic validation failure, not interpreted", async () => {
+    const s = await setup();
+    await record(s, {}, s.staffId);
+    for (const cursor of [
+      "not-base64-json",
+      Buffer.from("[]").toString("base64url"),
+      Buffer.from(JSON.stringify(["2026-09-14", "x"])).toString("base64url"),
+      Buffer.from(JSON.stringify(["2026-09-14T10:00:00.000000Z", "' OR 1=1 --"])).toString(
+        "base64url",
+      ),
+    ]) {
+      const err = toHttpsError(await failure(page(s, s.staffId, 5, cursor)));
+      expect(err.details).toEqual({ reason: "generic_validation_failed" });
+    }
+  });
+
+  it("paged rows keep the neutral projection: no reviewer, reason, threshold, customer or recorder fields", async () => {
+    const s = await setup();
+    await record(s, { quantity: THRESHOLD }, s.staffId);
+    await record(s, {}, s.staffId);
+    const result = await page(s, s.staffId, 1);
+    const wire = JSON.stringify(result);
+    expect(wire).not.toMatch(/reviewer|reason|threshold|customerIdentity|recordedBy|staffId/i);
+    expect(Object.keys(result).sort()).toEqual(["nextCursor", "purchases"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 7. Limited, transaction-scoped Staff loyalty context (supersedes D4).
+// ---------------------------------------------------------------------------
+describe("Staff loyalty context — limited and transaction-scoped", () => {
+  function context(
+    s: Setup,
+    overrides: Partial<Parameters<typeof getCounterLoyaltyContext>[2]> = {},
+    userId = s.staffId,
+  ) {
+    return getCounterLoyaltyContext(db, pool, {
+      userId,
+      correlationId: nextId("corr"),
+      businessId: s.businessId,
+      rewardProgramId: s.programId,
+      loyaltyNumberValue: s.customer.ln,
+      ...overrides,
+    });
+  }
+
+  async function verifyAs(s: Setup, purchaseId: string) {
+    await verifyPurchase(db, pool, {
+      customerIdentityId: s.customer.customerId,
+      request: { purchaseRecordId: purchaseId },
+      idempotencyKey: nextId("k"),
+      correlationId: nextId("c"),
+    });
+  }
+
+  it("a valid Customer + Programme returns exactly the four limited values (no cycle yet → zero)", async () => {
+    const s = await setup({ threshold: null });
+    const result = await context(s);
+    expect(result).toEqual({
+      verifiedUnits: 0,
+      requiredVerifiedUnits: 10,
+      rewardStatus: "none",
+      awaitingCustomerConfirmationUnits: 0,
+    });
+    expect(Object.keys(result).sort()).toEqual([
+      "awaitingCustomerConfirmationUnits",
+      "requiredVerifiedUnits",
+      "rewardStatus",
+      "verifiedUnits",
+    ]);
+  });
+
+  it("the QR path resolves to the same Customer and the same answer as the Loyalty Number", async () => {
+    const s = await setup({ threshold: null });
+    const viaLn = await context(s);
+    const viaQr = await context(s, { loyaltyNumberValue: undefined, qrReference: s.customer.qr });
+    expect(viaQr).toEqual(viaLn);
+  });
+
+  it("a recorded-but-unconfirmed Purchase is reported as AWAITING and never raises the verified count", async () => {
+    const s = await setup({ threshold: null });
+    const first = await record(s, { quantity: 2 }, s.staffId);
+    expect(await context(s)).toMatchObject({
+      verifiedUnits: 0,
+      awaitingCustomerConfirmationUnits: 2,
+      rewardStatus: "none",
+    });
+    await verifyAs(s, first.purchase.id);
+    expect(await context(s)).toMatchObject({
+      verifiedUnits: 2,
+      awaitingCustomerConfirmationUnits: 0,
+    });
+  });
+
+  it("9 verified + 1 awaiting stays 9 verified (never 10 until the Customer verifies)", async () => {
+    const s = await setup({ threshold: null });
+    const nine = await record(s, { quantity: 9 }, s.staffId);
+    await verifyAs(s, nine.purchase.id);
+    const tenth = await record(s, {}, s.staffId);
+    expect(await context(s)).toEqual({
+      verifiedUnits: 9,
+      requiredVerifiedUnits: 10,
+      rewardStatus: "none",
+      awaitingCustomerConfirmationUnits: 1,
+    });
+    await verifyAs(s, tenth.purchase.id);
+    expect(await context(s)).toEqual({
+      verifiedUnits: 10,
+      requiredVerifiedUnits: 10,
+      rewardStatus: "available",
+      awaitingCustomerConfirmationUnits: 0,
+    });
+  });
+
+  it("with a reward available, an ordinary Purchase can still be recorded; the read stays truthful", async () => {
+    const s = await setup({ threshold: null });
+    const ten = await record(s, { quantity: 10 }, s.staffId);
+    await verifyAs(s, ten.purchase.id);
+    expect((await context(s)).rewardStatus).toBe("available");
+    const more = await record(s, {}, s.staffId);
+    expect(more.review.status).toBe("waiting_for_customer");
+    expect(await context(s)).toEqual({
+      verifiedUnits: 10,
+      requiredVerifiedUnits: 10,
+      rewardStatus: "available",
+      awaitingCustomerConfirmationUnits: 1,
+    });
+  });
+
+  it("a Business-review-held Purchase is not counted as awaiting (review routing is never revealed)", async () => {
+    const s = await setup();
+    await record(s, { quantity: THRESHOLD }, s.staffId);
+    expect((await context(s)).awaitingCustomerConfirmationUnits).toBe(0);
+  });
+
+  it("is scoped to the Programme: units in another Programme of the Business are not included", async () => {
+    const s = await setup({ threshold: null });
+    const otherProgramme = await createRewardProgram(db, pool, {
+      userId: s.ownerId,
+      request: {
+        businessId: s.businessId,
+        displayName: "Second Program",
+        rewardProgramCategoryId: "sct_rpcat",
+        rewardDescription: "Second reward",
+        multipleUnitsAllowed: true,
+        sharedLoyaltyNumberAllowed: true,
+        businessReviewQuantityThreshold: null,
+        effectiveFrom: new Date("2026-09-14T00:00:00.000Z"),
+        qualifyingItemIds: [s.itemId],
+      } as never,
+      idempotencyKey: nextId("key_prog"),
+      correlationId: nextId("corr_prog"),
+    });
+    await publishRewardProgramVersion(db, pool, {
+      userId: s.ownerId,
+      request: {
+        businessId: s.businessId,
+        rewardProgramId: otherProgramme.program.id,
+        versionId: otherProgramme.version.id,
+      },
+      idempotencyKey: nextId("key_pub"),
+      correlationId: nextId("corr_pub"),
+    });
+    const onFirst = await record(s, { quantity: 3 }, s.staffId);
+    await verifyAs(s, onFirst.purchase.id);
+    expect((await context(s)).verifiedUnits).toBe(3);
+    expect(await context(s, { rewardProgramId: otherProgramme.program.id })).toMatchObject({
+      verifiedUnits: 0,
+      awaitingCustomerConfirmationUnits: 0,
+    });
+  });
+
+  it("a Customer's progress at one Business is never readable through another Business (cross-Business denied)", async () => {
+    const a = await setup({ threshold: null });
+    const b = await setup({ threshold: null });
+    const inA = await record(a, { quantity: 4 }, a.staffId);
+    await verifyAs(a, inA.purchase.id);
+    // Staff of A is not a member of B: denied outright.
+    const denied = await failure(context(b, { loyaltyNumberValue: a.customer.ln }, a.staffId));
+    expect((denied as PurchaseDomainError).category).toBe("AUTH_FORBIDDEN");
+    // A member of BOTH, asking B's programme for A's customer: progress is B-scoped (zero), not A's.
+    await seedMembership({ userId: a.staffId, businessId: b.businessId, role: "staff" });
+    const crossed = await context(b, { loyaltyNumberValue: a.customer.ln }, a.staffId);
+    expect(crossed.verifiedUnits).toBe(0);
+    // And A's programme through B's business id is refused as an unavailable programme.
+    const wrongProgramme = toHttpsError(
+      await failure(context(b, { rewardProgramId: a.programId }, a.staffId)),
+    );
+    expect(wrongProgramme.details).toEqual({ reason: "programme_unavailable" });
+  });
+
+  it("every artifact failure is the SAME neutral token: unknown, malformed, wrong QR, shared-policy refusal", async () => {
+    const policy = await setup({ shared: false });
+    const normal = await setup();
+    const results = await Promise.all([
+      failure(context(normal, { loyaltyNumberValue: "ZZZ222" })),
+      failure(context(normal, { loyaltyNumberValue: "not-a-number" })),
+      failure(context(normal, { loyaltyNumberValue: undefined, qrReference: "qrdoesnotexist1" })),
+      failure(context(policy)), // a real Loyalty Number on a QR-only programme
+    ]);
+    const publics = results.map((err) => toHttpsError(err));
+    for (const err of publics) {
+      expect(err.code).toBe("invalid-argument");
+      expect(err.message).toBe("purchase_command_failed");
+      expect(err.details).toEqual({ reason: "customer_artifact_invalid_or_not_found" });
+    }
+    // The QR-only programme still answers the same customer by QR.
+    expect(
+      await context(policy, { loyaltyNumberValue: undefined, qrReference: policy.customer.qr }),
+    ).toMatchObject({ verifiedUnits: 0 });
+  });
+
+  it("an unusable Programme (paused, unknown, foreign, non-UUID) is one neutral token, decided before any Customer lookup", async () => {
+    const s = await setup();
+    const other = await setup();
+    await pool.query("UPDATE reward_programs SET status = 'paused' WHERE id = $1", [s.programId]);
+    const attempts: Array<() => Promise<unknown>> = [
+      () => context(s),
+      () => context(s, { rewardProgramId: other.programId }),
+      () => context(s, { rewardProgramId: "00000000-0000-4000-8000-000000000001" }),
+      () => context(s, { rewardProgramId: "' OR 1=1 --" }),
+      // Even with an unknown customer code, the programme failure wins (no customer probing).
+      () => context(s, { loyaltyNumberValue: "ZZZ222" }),
+    ];
+    for (const attempt of attempts) {
+      expect(toHttpsError(await failure(attempt())).details).toEqual({
+        reason: "programme_unavailable",
+      });
+    }
+  });
+
+  it("exactly one artifact is required", async () => {
+    const s = await setup();
+    const none = await failure(context(s, { loyaltyNumberValue: undefined }));
+    const both = await failure(context(s, { qrReference: s.customer.qr }));
+    for (const err of [none, both]) {
+      expect(toHttpsError(err).details).toEqual({ reason: "generic_validation_failed" });
+    }
+  });
+
+  it("follows the live purchase.record authority: non-members, Customers and suspended Staff are denied", async () => {
+    const s = await setup();
+    await context(s); // allowed while active
+    await db
+      .collection("businessMemberships")
+      .doc(s.staffMembershipId)
+      .update({ status: "suspended" });
+    for (const userId of [s.staffId, "outsider", s.customer.customerId]) {
+      const err = await failure(context(s, {}, userId));
+      expect(err).toBeInstanceOf(PurchaseDomainError);
+      expect((err as PurchaseDomainError).category).toBe("AUTH_FORBIDDEN");
+    }
+  });
+
+  it("is not a Customer directory: no identifiers in the answer, no write, no cycle created by reading", async () => {
+    const s = await setup({ threshold: null });
+    const before = {
+      cycles: await count("loyalty_cycles"),
+      units: await count("verified_units"),
+      purchases: await count("purchase_records"),
+      rewards: await count("rewards"),
+    };
+    const wire = JSON.stringify(await context(s));
+    expect(wire).not.toContain(s.customer.customerId);
+    expect(wire).not.toContain(s.customer.ln);
+    expect(wire).not.toContain(s.customer.qr);
+    expect(wire).not.toMatch(/name|phone|email|history|reviewer|threshold|business/i);
+    expect({
+      cycles: await count("loyalty_cycles"),
+      units: await count("verified_units"),
+      purchases: await count("purchase_records"),
+      rewards: await count("rewards"),
+    }).toEqual(before);
+  });
+
+  it("the Business Review threshold never appears in the answer (Staff confidentiality holds)", async () => {
+    const s = await setup(); // threshold = 5
+    const wire = JSON.stringify(await context(s));
+    expect(wire).not.toMatch(/threshold|review/i);
   });
 });

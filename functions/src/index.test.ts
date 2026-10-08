@@ -22,6 +22,7 @@ import {
   parseCreateNextRewardProgramVersionRequest,
   parseRecordPurchaseRequest,
   parseListMyRecentCounterPurchasesRequest,
+  parseGetCounterLoyaltyContextRequest,
   parseApproveBusinessReviewRequest,
   parseRejectBusinessReviewRequest,
   parseBusinessLoyaltyVisibilityRequest,
@@ -1114,6 +1115,59 @@ describe("parseListMyRecentCounterPurchasesRequest (D6 mass-assignment boundary)
       parseListMyRecentCounterPurchasesRequest({ businessId: "biz_1", limit: "5" }),
     ).toThrow();
     expect(() => parseListMyRecentCounterPurchasesRequest({})).toThrow();
+  });
+
+  it("carries an optional opaque cursor (Staff Activity paging) and nothing else", () => {
+    expect(
+      parseListMyRecentCounterPurchasesRequest({
+        businessId: "biz_1",
+        limit: 20,
+        cursor: "abc",
+        offset: 5,
+        recordedByUserId: "colleague",
+      }),
+    ).toEqual({ businessId: "biz_1", limit: 20, cursor: "abc" });
+    expect(() =>
+      parseListMyRecentCounterPurchasesRequest({ businessId: "biz_1", cursor: 7 }),
+    ).toThrow();
+  });
+});
+
+/**
+ * Staff limited loyalty context (`EA-BL-001-CORR-002-B`, Founder Preview Pass 3): the transport
+ * carries exactly the transaction the Staff member is about to record — never a Customer id.
+ */
+describe("parseGetCounterLoyaltyContextRequest (mass-assignment boundary)", () => {
+  it("keeps businessId, rewardProgramId and the one presented artifact; drops every customer/identity hint", () => {
+    expect(
+      parseGetCounterLoyaltyContextRequest({
+        businessId: "biz_1",
+        rewardProgramId: "rp_1",
+        loyaltyNumberValue: "ABC234",
+        customerIdentityId: "cust_secret",
+        userId: "colleague",
+        role: "owner",
+        businessReviewQuantityThreshold: 1,
+        quantity: 3,
+      }),
+    ).toEqual({
+      businessId: "biz_1",
+      rewardProgramId: "rp_1",
+      loyaltyNumberValue: "ABC234",
+      qrReference: undefined,
+    });
+  });
+
+  it("requires a Business and a Programme; the artifact fields are validated as strings", () => {
+    expect(() => parseGetCounterLoyaltyContextRequest({ rewardProgramId: "rp_1" })).toThrow();
+    expect(() => parseGetCounterLoyaltyContextRequest({ businessId: "biz_1" })).toThrow();
+    expect(() =>
+      parseGetCounterLoyaltyContextRequest({
+        businessId: "biz_1",
+        rewardProgramId: "rp_1",
+        qrReference: 5,
+      }),
+    ).toThrow();
   });
 });
 

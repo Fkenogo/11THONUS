@@ -239,7 +239,7 @@ Esther, Kevin, Aline, Moses, Chantal, Yves. Diane's earlier Premium Cut records 
    _Staff key absent_ / _Owner key present_.
 6. **Staff cannot review** ⑥ — there is no review control on the Counter. `pnpm preview:counter-checks` proves the
    server denies Staff the queue, approve and reject (permission-denied) while the Owner may read the queue.
-7. **New customer, two-device registration** ⑦ — tap **New customer?** on the Counter → static sign-up QR + address.
+7. **New customer, two-device registration** ⑦ — tap the round **quick-action** button in the bottom bar → **Help a new customer join** → static sign-up QR + address.
    On the customer device, sign out, open that address, **register a brand-new email/password**. The customer shell
    shows their new Loyalty Number and QR. The Counter creates nothing; the address carries no token.
 8. **Return to the Counter** ⑧ — type/scan the new customer's number/QR and record. (The customer must also be
@@ -247,7 +247,7 @@ Esther, Kevin, Aline, Moses, Chantal, Yves. Diane's earlier Premium Cut records 
 9. **Dual-role customer** — `diane.staff` is both a customer and a Business member: signing in on the customer device
    lands on the **chooser**; choose **Personal** to see her own Loyalty Number/QR (this is exactly what the New-customer
    panel tells such people).
-10. **Own recent submissions only** ⑨ — Diane's feed lists Diane's purchases (item × quantity, time, "ending 234" or
+10. **Own recent submissions only** ⑨ — the **Activity** place (bottom bar) lists Diane's purchases, 20 at a time with **Load more**, (item × quantity, time, "ending 234" or
     _Scanned QR_, neutral status). Sign in as Patrick (`/business/<id>/dashboard/counter`): his feed is different and
     disjoint (`preview:counter-checks` asserts it). The Owner's **Purchases** page still shows everything — unchanged.
 11. **Double-tap protection** ⑩ — double-tap/Enter-mash **Record purchase** with Slow 3G throttling: one request, one
@@ -260,13 +260,22 @@ Esther, Kevin, Aline, Moses, Chantal, Yves. Diane's earlier Premium Cut records 
 13. **Customer-confirmation boundary** ⑫ — after scenario 1, on the customer device the purchase appears under
     _Waiting for you_ and only the customer can **Verify** it. The Counter never verifies. After scenario 2 the customer
     sees **nothing to confirm** (it awaits the Business's review; the review UI itself is a later slice).
-14. **English / French** ⑬⑭ — the language switcher is in the Staff bar (**More → language**); every Counter
-    string, error and the new-customer panel switch language.
+14. **English / French** ⑬⑭ — the language switcher is on the **Profile** place; every Counter string, error, sheet and
+    loyalty status switch language.
 15. **One mobile Staff shell at every width** ⑮⑯ — the Staff Counter is a single phone-oriented app at all viewport
-    sizes: a compact header, a permanent bottom bar (Counter · New customer · Activity · More) with Record sitting just
+    sizes: a compact header, a permanent bottom bar (Counter · Activity · Profile + the round quick-action button) with Record sitting just
     above it, one column, centred at a bounded 512 px on wide screens (open http://localhost:28109 in a laptop window to see
     it). The bar never covers Record, Serve next customer, errors or the scanner's Cancel. There is no desktop Staff layout.
-16. **Comparison with the frozen prototype** ⑰ — `Fkenogo/11thonus-prototype@18e8d700…` `StaffCounterExperience.tsx`.
+16. **Limited loyalty status (Pass 3)** — choose **Express Styling Circle**, type a seeded Loyalty Number, and read the card
+    **before** recording: Amina → _8 of 10 verified_ (2 more); Moses → _9 of 10 verified_ + _1 purchase awaiting
+    customer confirmation_ (never 10 of 10); Kevin → **11th reward available — let the customer know**. Record a purchase
+    for Amina, serve the next customer, type her number again: still _8 of 10_, now one more awaiting — the Staff cannot
+    advance the verified count; only the customer's own verify does. There is no redemption control. (Seeded
+    positions: `pnpm preview:accounts`.)
+17. **Places keep a transaction safe** — type a number, open **Activity** then **Profile**, come back: the form is as you left
+    it; Browser Back walks the places. **Profile** shows who is signed in, the Business and the role, language, Switch
+    Business / Personal and Sign out. The quick action **Scan customer QR** from Activity returns to the Counter and opens the scanner.
+18. **Comparison with the frozen prototype** ⑰ — `Fkenogo/11thonus-prototype@18e8d700…` `StaffCounterExperience.tsx`.
     Kept: frontline feel, numbered Identify → Programme → Record steps, prominent **Scan customer QR**, stepper, Record
     action, "next customer" reset, recent activity, slate/amber cards. Replaced: scenario strip, mock people, name/phone
     search, walk-in creation, Loyalty Circle, "approval above N" note, in-counter reward confirmation, "Front Desk".

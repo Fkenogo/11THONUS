@@ -11,16 +11,24 @@
  *   ?fixture=single (default) — one programme, one item
  *   ?fixture=many             — three programmes, one with many items and long names
  *   ?fixture=empty            — no recent submissions
+ *   ?fixture=paged            — a first Activity page that offers "Load more"
+ *
+ * Typed Loyalty Numbers with a fixture answer: ABC234 (8 of 10), NEA999 (9 of 10 + 1 awaiting),
+ * RWD777 (reward available).
  */
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { Auth } from "firebase/auth";
 import type { Functions } from "firebase/functions";
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import { BusinessApiProvider } from "../../business/BusinessApiContext";
 import type { BusinessContext } from "../../business/api/businessContext";
-import type { CounterRecentPurchaseWire } from "../../business/api/purchaseMutations";
-import { CounterPage } from "../../business/counter/CounterPage";
+import type {
+  CounterLoyaltyContextWire,
+  CounterRecentPurchaseWire,
+} from "../../business/api/purchaseMutations";
+import { StaffActivityPage } from "../../business/counter/StaffActivityPage";
+import { StaffProfilePage } from "../../business/counter/StaffProfilePage";
 import { StaffShell } from "../../business/counter/StaffShell";
 import type { CounterProgramme } from "../../business/counter/counterProgrammes";
 import { businessQueryKeys } from "../../business/hooks/queryKeys";
@@ -95,15 +103,53 @@ const RECENT: CounterRecentPurchaseWire[] = [
   },
 ];
 
+const BASE = "/dev/counter-harness";
+
+/** Loyalty fixtures the harness answers for (typed Loyalty Numbers; same answer in every programme). */
+const LOYALTY: Record<string, CounterLoyaltyContextWire> = {
+  ABC234: {
+    verifiedUnits: 8,
+    requiredVerifiedUnits: 10,
+    rewardStatus: "none",
+    awaitingCustomerConfirmationUnits: 0,
+  },
+  NEA999: {
+    verifiedUnits: 9,
+    requiredVerifiedUnits: 10,
+    rewardStatus: "none",
+    awaitingCustomerConfirmationUnits: 1,
+  },
+  RWD777: {
+    verifiedUnits: 10,
+    requiredVerifiedUnits: 10,
+    rewardStatus: "available",
+    awaitingCustomerConfirmationUnits: 0,
+  },
+};
+
 function buildClient(fixture: string | null): QueryClient {
   const client = new QueryClient();
-  client.setQueryData(
-    businessQueryKeys.counterProgrammes(CONTEXT.businessId),
-    fixture === "many" ? MANY : SINGLE,
-  );
+  const programmes = fixture === "many" ? MANY : SINGLE;
+  client.setQueryData(businessQueryKeys.counterProgrammes(CONTEXT.businessId), programmes);
+  const purchases = fixture === "empty" ? [] : RECENT;
   client.setQueryData(businessQueryKeys.counterRecent(CONTEXT.businessId, "anonymous"), {
-    purchases: fixture === "empty" ? [] : RECENT,
+    pages: [{ purchases, nextCursor: fixture === "paged" ? "harness-cursor" : null }],
+    pageParams: [undefined],
   });
+  for (const programme of programmes) {
+    for (const [loyaltyNumber, context] of Object.entries(LOYALTY)) {
+      client.setQueryData(
+        businessQueryKeys.counterLoyalty(
+          CONTEXT.businessId,
+          "anonymous",
+          programme.id,
+          "loyalty_number",
+          loyaltyNumber,
+        ),
+        context,
+      );
+    }
+  }
   return client;
 }
 
@@ -113,8 +159,14 @@ export function CounterHarnessPage() {
     <QueryClientProvider client={buildClient(fixture)}>
       <BusinessApiProvider platform={{ auth: inertAuth, functions: inertFunctions }}>
         <Routes>
-          <Route element={<StaffShell context={CONTEXT} />}>
-            <Route index element={<CounterPage context={CONTEXT} />} />
+          <Route element={<StaffShell context={CONTEXT} basePath={BASE} />}>
+            <Route index element={<Navigate to={`${BASE}/counter`} replace />} />
+            <Route path="counter" element={null} />
+            <Route
+              path="activity"
+              element={<StaffActivityPage businessId={CONTEXT.businessId} />}
+            />
+            <Route path="profile" element={<StaffProfilePage context={CONTEXT} />} />
           </Route>
         </Routes>
       </BusinessApiProvider>

@@ -6727,3 +6727,13 @@ READY FOR CONTROLLED DRAFTING — PR AWAITS FOUNDER REVIEW`**.
 - **Tests:** harness Playwright at 320/375/390/768/1024/1440; real-stack preview specs (1280 + Pixel 7); unit tests; Owner/Manager-unchanged proof.
 - **Dependencies/schema/config/backend:** none. **Rollback:** revert the Pass 2 commit.
 - **Report link:** [implementation report §14](../05-implementation/reports/11THONUS-EA-BL-001-CORR-002-B-staff-counter-implementation-report-2026-10-07.md)
+
+## 2026-10-08 — EA-BL-001-CORR-002-B — Founder Preview Pass 3: Staff Information Architecture + Limited Loyalty Context
+- **Founder Preview Pass 3:** mobile-only shell accepted; the all-in-one Counter is too concentrated — Activity and Profile become their own views, New customer becomes a quick action, and Staff need limited loyalty progress during service. Founder Preview NOT yet accepted.
+- **D4 SUPERSEDED** (historical decision left as made, annotated): Staff get limited, transaction-scoped loyalty progress (PRD01 §8.2/§12.2).
+- **Status:** unchanged — **IMPLEMENTED — FOUNDER PREVIEW / TECHNICAL REVIEW PENDING**; PR #307 not merged; Slices C/D/E NOT AUTHORISED / NOT STARTED.
+- **Change:** new read-only callable `getCounterLoyaltyContext` (four values; Customer resolved server-side; one neutral failure token; no schema); `listMyRecentCounterPurchases` gains a keyset cursor (Activity paging; existing index); web: Counter / Activity / Profile routes + quick-action sheet (Scan / Help a new customer join), Counter kept mounted, Loyalty status card + reward-available alert before recording; Express seed positions + fingerprint refresh; 10 new live preview checks.
+- **Defects fixed on the way:** reserved i18next `ordinal` option; scan request handled while the Counter was hidden; sticky Record bar clamped by a nested wrapper.
+- **Experience Assembly direction recorded (not authorised):** Owner/Manager Operations (Slice C) mobile-first; Platform Operator Console desktop-first.
+- **Dependencies/config/schema:** none. **Rollback:** revert the Pass 3 commit(s).
+- **Report link:** [implementation report §15](../05-implementation/reports/11THONUS-EA-BL-001-CORR-002-B-staff-counter-implementation-report-2026-10-07.md)

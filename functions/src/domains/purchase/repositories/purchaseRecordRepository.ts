@@ -496,40 +496,65 @@ export type RecorderRecentPurchaseRow = {
  * Includes the member's own `business_review_required` rows (the routing outcome they were already
  * told), unlike the Business-wide list, which hides that protected queue from non-reviewers.
  */
+export type RecorderRecentPage = {
+  readonly rows: RecorderRecentPurchaseRow[];
+  /** Keyset position of the LAST returned row (microsecond-exact), or `null` when no more rows remain. */
+  readonly next: { readonly createdAtCursor: string; readonly id: string } | null;
+};
+
 export async function listRecentPurchaseRecordsByRecorder(
   db: Queryable,
   params: {
     readonly businessId: string;
     readonly recordedByUserId: string;
     readonly limit: number;
+    /** Keyset position to continue after (`(created_at, id)` strictly before it); omitted = newest. */
+    readonly after?: { readonly createdAtCursor: string; readonly id: string } | null;
   },
-): Promise<RecorderRecentPurchaseRow[]> {
+): Promise<RecorderRecentPage> {
+  const after = params.after ?? null;
   const result = await db.query<{
     id: string;
     created_at: Date;
+    created_at_cursor: string;
     item_label: string;
     quantity: number;
     status: PurchaseStatus;
     presented_artifact_type: PresentedArtifactType;
     canonical_loyalty_number_value: string;
   }>(
-    `SELECT id, created_at, item_label, quantity, status, presented_artifact_type,
+    `SELECT id, created_at,
+            to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS created_at_cursor,
+            item_label, quantity, status, presented_artifact_type,
             canonical_loyalty_number_value
        FROM purchase_records
       WHERE business_id = $1 AND recorded_by_user_id = $2
+        AND ($4::timestamptz IS NULL OR (created_at, id) < ($4::timestamptz, $5::uuid))
       ORDER BY created_at DESC, id DESC
       LIMIT $3`,
-    [params.businessId, params.recordedByUserId, params.limit],
+    [
+      params.businessId,
+      params.recordedByUserId,
+      params.limit + 1,
+      after?.createdAtCursor ?? null,
+      after?.id ?? null,
+    ],
   );
-  return result.rows.map((row) => ({
-    id: row.id,
-    createdAt: row.created_at,
-    itemLabel: row.item_label,
-    quantity: row.quantity,
-    status: row.status,
-    presentedArtifactType: row.presented_artifact_type,
-    canonicalLoyaltyNumberValue: row.canonical_loyalty_number_value,
-  }));
+  const hasMore = result.rows.length > params.limit;
+  const pageRows = hasMore ? result.rows.slice(0, params.limit) : result.rows;
+  const last = pageRows[pageRows.length - 1];
+  return {
+    rows: pageRows.map((row) => ({
+      id: row.id,
+      createdAt: row.created_at,
+      itemLabel: row.item_label,
+      quantity: row.quantity,
+      status: row.status,
+      presentedArtifactType: row.presented_artifact_type,
+      canonicalLoyaltyNumberValue: row.canonical_loyalty_number_value,
+    })),
+    next: hasMore && last ? { createdAtCursor: last.created_at_cursor, id: last.id } : null,
+  };
 }
 
 /**

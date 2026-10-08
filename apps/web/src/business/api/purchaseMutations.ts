@@ -173,6 +173,32 @@ export type CounterRecentPurchaseWire = {
   customerCodeHint: string | null;
 };
 
+/** One page of the Staff Activity view (`listMyRecentCounterPurchases`); `nextCursor` is opaque. */
+export type CounterRecentPageWire = {
+  purchases: CounterRecentPurchaseWire[];
+  nextCursor: string | null;
+};
+
+/**
+ * The Staff Counter's limited, transaction-scoped loyalty context
+ * (`getCounterLoyaltyContext`, Founder Preview Pass 3). Exactly four values about the one Customer in
+ * the one Programme being served — no identity, name, history, review or threshold field exists.
+ */
+export type CounterLoyaltyContextWire = {
+  verifiedUnits: number;
+  requiredVerifiedUnits: number;
+  rewardStatus: "none" | "available";
+  awaitingCustomerConfirmationUnits: number;
+};
+
+export type CounterLoyaltyContextRequest = {
+  businessId: string;
+  rewardProgramId: string;
+} & (
+  | { loyaltyNumberValue: string; qrReference?: never }
+  | { qrReference: string; loyaltyNumberValue?: never }
+);
+
 export type ListPurchasesRequest = {
   businessId: string;
   status?: string;
@@ -196,14 +222,14 @@ export function toCallRecordPurchase(
 }
 
 export function toCallListMyRecentCounterPurchases(
-  callable: BoundCallable<{ purchases: CounterRecentPurchaseWire[] }>,
+  callable: BoundCallable<CounterRecentPageWire>,
 ): (
   actor: AuthenticatedActor,
-  payload: { businessId: string; limit?: number },
-) => Promise<{ purchases: CounterRecentPurchaseWire[] }> {
+  payload: { businessId: string; limit?: number; cursor?: string },
+) => Promise<CounterRecentPageWire> {
   return toCallWithActor<
-    { businessId: string; limit?: number },
-    { purchases: CounterRecentPurchaseWire[] }
+    { businessId: string; limit?: number; cursor?: string },
+    CounterRecentPageWire
   >(callable);
 }
 
@@ -211,6 +237,19 @@ export function makeCallListMyRecentCounterPurchases(functions: Functions) {
   return toCallListMyRecentCounterPurchases(
     httpsCallable(functions, "listMyRecentCounterPurchases"),
   );
+}
+
+export function toCallGetCounterLoyaltyContext(
+  callable: BoundCallable<CounterLoyaltyContextWire>,
+): (
+  actor: AuthenticatedActor,
+  payload: CounterLoyaltyContextRequest,
+) => Promise<CounterLoyaltyContextWire> {
+  return toCallWithActor<CounterLoyaltyContextRequest, CounterLoyaltyContextWire>(callable);
+}
+
+export function makeCallGetCounterLoyaltyContext(functions: Functions) {
+  return toCallGetCounterLoyaltyContext(httpsCallable(functions, "getCounterLoyaltyContext"));
 }
 
 export function toCallListPurchasesForBusiness(

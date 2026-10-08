@@ -334,6 +334,20 @@ async function build(s, admin, log) {
   await visits(ctx, bella, cut, "kevin", 10, { recorder: "staff_bella", startDaysAgo: 70 }); // Reward available
   await visits(ctx, bella, cut, "aline", 10, { recorder: "staff_bella", startDaysAgo: 100 }); // -> redeemed below
 
+  // Express Styling Circle accepts a typed Loyalty Number, so these positions let the Founder see the
+  // Staff Counter's limited loyalty status without a camera (Founder Preview Pass 3): a normal position,
+  // one visit from a Reward with a purchase still awaiting the customer, and a Reward already available.
+  step("Bella Salon: Express Styling Circle positions (Staff loyalty status by Loyalty Number)");
+  const express = bella.programmes.express;
+  await visits(ctx, bella, express, "amina", 8, { recorder: "staff_bella", startDaysAgo: 25 }); // 8 of 10
+  await visits(ctx, bella, express, "moses", 9, { recorder: "staff_bella", startDaysAgo: 40 }); // 9 of 10
+  await visits(ctx, bella, express, "moses", 1, {
+    recorder: "staff_bella",
+    startDaysAgo: 0,
+    verify: false,
+  }); // ...plus one awaiting the customer (never counted as verified)
+  await visits(ctx, bella, express, "kevin", 10, { recorder: "staff_bella", startDaysAgo: 50 }); // Reward available
+
   step("Bella Salon: Reward redeemed by the Manager (real `confirmRedemption`)");
   // The Business read model (`listAvailableRewardsForBusiness`) deliberately carries no Reward
   // id (EA-002 finding: a missing seam for the redemption experience). The customer's OWN read

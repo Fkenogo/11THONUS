@@ -1,29 +1,38 @@
 /**
  * Bounded Staff experience (`EA-BL-001-CORR-002-B`, D8): Staff land directly on the Counter and get ONE
  * phone-oriented shell at every viewport size (Founder Preview Pass 2 — "Staff does not need a desktop
- * experience"): a compact header, a permanent Staff-only bottom bar (Counter / New customer / Activity /
- * More) and a single column. On wide screens the shell is simply centred at a bounded width
- * (`max-w-lg`, 32rem / 512 px: comfortable on every phone, not cramped on a small tablet; the same width
- * is used by the bottom bar) — it never becomes a dashboard. The Founder-rejected bottom-bar decision recorded
- * for the broader Business Dashboard shell does NOT apply here and that shell is untouched.
+ * experience"), centred at a bounded width (`max-w-lg`, 32rem / 512 px) on wide screens.
+ *
+ * Information architecture (Founder Preview Pass 3): three permanent destinations that are real routes —
+ * Counter (transaction), Activity (the member's own submissions) and Profile — in a permanent bottom bar,
+ * plus a quick-ACTION button (scan a customer, help a new customer join). The Counter stays MOUNTED
+ * (hidden) while Activity or Profile is open, so a transaction in progress is never lost by looking at
+ * another place; its camera is closed whenever it is not the visible place. The Founder-rejected
+ * bottom-bar decision recorded for the broader Business Dashboard shell does NOT apply here and that shell
+ * is untouched.
  *
  * This is UX routing ONLY. It hides the Owner/Manager destinations from Staff so they are not offered
  * controls they cannot use; it grants nothing and denies nothing. Every protected operation is still
  * decided by the server, per call, whatever route is on screen.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Navigate, Outlet, Route, Routes } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Navigate,
+  Outlet,
+  Route,
+  Routes,
+  matchPath,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 import { useTranslation } from "../../i18n";
 import type { BusinessContext } from "../api/businessContext";
 import { CounterPage } from "./CounterPage";
+import { StaffActivityPage } from "./StaffActivityPage";
 import { STAFF_BOTTOM_NAV_HEIGHT, StaffBottomNav } from "./StaffBottomNav";
-import {
-  STAFF_SECTION_IDS,
-  StaffSectionRequestContext,
-  type StaffSection,
-  type StaffSectionRequest,
-} from "./staffSections";
+import { StaffProfilePage } from "./StaffProfilePage";
+import { StaffActionRequestContext, type StaffActionRequest } from "./staffActions";
 
 /** A soft keyboard this much shorter than the layout viewport is "open". */
 const KEYBOARD_MIN_DELTA = 150;
@@ -60,48 +69,42 @@ function useSoftKeyboardOpen() {
   return open;
 }
 
-/** The section whose heading is nearest the top of the view (the bottom one at the very end). */
-function sectionInView(): StaffSection {
-  const order: StaffSection[] = ["counter", "newCustomer", "activity"];
-  const root = document.documentElement;
-  if (window.innerHeight + window.scrollY >= root.scrollHeight - 2 && window.scrollY > 0) {
-    return "activity";
-  }
-  let current: StaffSection = "counter";
-  for (const section of order) {
-    const element = document.getElementById(STAFF_SECTION_IDS[section]);
-    if (element && element.getBoundingClientRect().top <= window.innerHeight * 0.4) {
-      current = section;
-    }
-  }
-  return current;
-}
-
-export function StaffShell({ context }: { context: BusinessContext }) {
+export function StaffShell({
+  context,
+  basePath,
+}: {
+  context: BusinessContext;
+  /** Where the Staff places live. Production always uses the Business dashboard path (the default). */
+  basePath?: string;
+}) {
   const { t } = useTranslation("business");
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const base = basePath ?? `/business/${context.businessId}/dashboard`;
+  const onCounter = matchPath({ path: `${base}/counter`, end: true }, pathname) !== null;
   const keyboardOpen = useSoftKeyboardOpen();
-  const [request, setRequest] = useState<StaffSectionRequest>(null);
-  const [active, setActive] = useState<StaffSection>("counter");
+  const [request, setRequest] = useState<StaffActionRequest>(null);
   const showBottomNav = !keyboardOpen;
 
-  const select = useCallback((section: StaffSection) => {
-    setActive(section);
-    setRequest((previous) => ({ section, tick: (previous?.tick ?? 0) + 1 }));
-  }, []);
+  // "Scan customer QR": make the Counter the visible place, then ask it to open its scanner.
+  const scan = useCallback(() => {
+    if (!onCounter) navigate(`${base}/counter`);
+    setRequest((previous) => ({ action: "scan", tick: (previous?.tick ?? 0) + 1 }));
+  }, [base, navigate, onCounter]);
 
-  // Keep the highlighted destination honest while the person scrolls the Counter by hand.
+  // A new place starts at its top with its heading focused (announced, and the keyboard resumes there).
+  const firstPlace = useRef(true);
   useEffect(() => {
-    let frame = 0;
-    const onScroll = () => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => setActive(sectionInView()));
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      cancelAnimationFrame(frame);
-      window.removeEventListener("scroll", onScroll);
-    };
-  }, []);
+    if (firstPlace.current) {
+      firstPlace.current = false;
+      return;
+    }
+    window.scrollTo?.(0, 0);
+    const heading = Array.from(
+      document.querySelectorAll<HTMLElement>("[data-staff-view-heading]"),
+    ).find((element) => !element.closest("[hidden]"));
+    heading?.focus({ preventScroll: true });
+  }, [pathname]);
 
   const navOffset = useMemo(
     () =>
@@ -139,12 +142,16 @@ export function StaffShell({ context }: { context: BusinessContext }) {
           </div>
         </header>
         <main className="px-4 pt-4 pb-[calc(var(--staff-nav-offset,0px)+1rem)]">
-          <StaffSectionRequestContext.Provider value={request}>
-            <Outlet />
-          </StaffSectionRequestContext.Provider>
+          <StaffActionRequestContext.Provider value={request}>
+            {/* Kept mounted while Activity/Profile are open: the transaction in progress survives. */}
+            <div hidden={!onCounter}>
+              <CounterPage context={context} active={onCounter} />
+            </div>
+          </StaffActionRequestContext.Provider>
+          {onCounter ? null : <Outlet />}
         </main>
       </div>
-      {showBottomNav ? <StaffBottomNav active={active} onSelect={select} /> : null}
+      {showBottomNav ? <StaffBottomNav basePath={base} onScan={scan} /> : null}
     </div>
   );
 }
@@ -154,7 +161,10 @@ export function StaffRoutes({ context }: { context: BusinessContext }) {
   return (
     <Routes>
       <Route element={<StaffShell context={context} />}>
-        <Route path="counter" element={<CounterPage context={context} />} />
+        {/* The Counter itself is rendered by the shell (kept mounted); the route only selects it. */}
+        <Route path="counter" element={null} />
+        <Route path="activity" element={<StaffActivityPage businessId={context.businessId} />} />
+        <Route path="profile" element={<StaffProfilePage context={context} />} />
         {/* Absolute target: a relative one inside this splat route would re-match itself and loop. */}
         <Route
           path="*"

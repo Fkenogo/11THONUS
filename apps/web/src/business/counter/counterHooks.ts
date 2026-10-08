@@ -8,15 +8,17 @@
  * idempotency key) so a retry submits exactly what the first attempt did.
  */
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useBusinessApiPlatform } from "../BusinessApiContext";
 import { useAuthenticatedActor } from "../hooks/useAuthenticatedActor";
 import { businessQueryKeys } from "../hooks/queryKeys";
 import { makeCallListRewardPrograms } from "../api/rewardProgramMutations";
 import {
   isBusinessReviewRequired,
+  makeCallGetCounterLoyaltyContext,
   makeCallListMyRecentCounterPurchases,
   makeCallRecordPurchase,
+  type CounterLoyaltyContextWire,
 } from "../api/purchaseMutations";
 import { toCounterProgrammes, type CounterProgramme } from "./counterProgrammes";
 import type { CounterIntent } from "./counterIntent";
@@ -46,16 +48,89 @@ export function counterActorScope(auth: { currentUser?: { uid: string } | null }
   return auth.currentUser?.uid ?? "anonymous";
 }
 
-export function useCounterRecentQuery(businessId: string) {
+/** Rows per Activity page. The server caps a page at 20 and pages by an opaque keyset cursor. */
+export const COUNTER_ACTIVITY_PAGE_SIZE = 20;
+
+/**
+ * The Staff Activity view: the member's OWN submissions, newest first, "load more" by cursor. The
+ * server scopes every page to the authenticated recorder and Business; the cache entry is also
+ * partitioned by that member.
+ */
+export function useCounterActivityQuery(businessId: string) {
   const { auth, functions } = useBusinessApiPlatform();
   const actorState = useAuthenticatedActor(auth);
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: businessQueryKeys.counterRecent(businessId, counterActorScope(auth)),
-    queryFn: () =>
+    initialPageParam: undefined as string | undefined,
+    queryFn: ({ pageParam }) =>
       makeCallListMyRecentCounterPurchases(functions)(requireReadyActor(actorState), {
         businessId,
+        limit: COUNTER_ACTIVITY_PAGE_SIZE,
+        ...(pageParam ? { cursor: pageParam } : {}),
       }),
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     enabled: actorState.status === "ready" && Boolean(businessId),
+  });
+}
+
+/** The presented customer artifact the loyalty context is read for (never a Customer id). */
+export type CounterLoyaltyArtifact =
+  | { readonly kind: "loyalty_number"; readonly value: string }
+  | { readonly kind: "qr_identity"; readonly value: string };
+
+/**
+ * What the Counter keeps from the limited loyalty read: the four whitelisted values, rebuilt
+ * field-by-field so nothing else the wire might carry is ever retained.
+ */
+function toLoyaltyContext(wire: CounterLoyaltyContextWire): CounterLoyaltyContextWire {
+  return {
+    verifiedUnits: wire.verifiedUnits,
+    requiredVerifiedUnits: wire.requiredVerifiedUnits,
+    rewardStatus: wire.rewardStatus === "available" ? "available" : "none",
+    awaitingCustomerConfirmationUnits: wire.awaitingCustomerConfirmationUnits,
+  };
+}
+
+/**
+ * Limited loyalty status for the transaction being prepared: ONE presented artifact in ONE Programme.
+ * It never retries (a neutral failure is final for that code), is considered stale immediately, and is
+ * dropped from the cache shortly after the Counter stops showing it — progress is read fresh for every
+ * customer served and is never accumulated into a customer directory.
+ */
+export function useCounterLoyaltyQuery(
+  businessId: string,
+  rewardProgramId: string | null,
+  artifact: CounterLoyaltyArtifact | null,
+) {
+  const { auth, functions } = useBusinessApiPlatform();
+  const actorState = useAuthenticatedActor(auth);
+  const enabled =
+    actorState.status === "ready" &&
+    Boolean(businessId) &&
+    rewardProgramId !== null &&
+    artifact !== null;
+  return useQuery<CounterLoyaltyContextWire>({
+    queryKey: businessQueryKeys.counterLoyalty(
+      businessId,
+      counterActorScope(auth),
+      rewardProgramId ?? "",
+      artifact?.kind ?? "loyalty_number",
+      artifact?.value ?? "",
+    ),
+    queryFn: async () => {
+      if (rewardProgramId === null || artifact === null) throw new Error("no transaction context");
+      const result = await makeCallGetCounterLoyaltyContext(functions)(
+        requireReadyActor(actorState),
+        artifact.kind === "qr_identity"
+          ? { businessId, rewardProgramId, qrReference: artifact.value }
+          : { businessId, rewardProgramId, loyaltyNumberValue: artifact.value },
+      );
+      return toLoyaltyContext(result);
+    },
+    enabled,
+    retry: false,
+    staleTime: 0,
+    gcTime: 30_000,
   });
 }
 
@@ -92,6 +167,7 @@ export function useRecordCounterPurchaseMutation(businessId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["counterRecent", businessId] });
+      queryClient.invalidateQueries({ queryKey: ["counterLoyalty", businessId] });
       queryClient.invalidateQueries({ queryKey: ["purchases", businessId] });
     },
   });

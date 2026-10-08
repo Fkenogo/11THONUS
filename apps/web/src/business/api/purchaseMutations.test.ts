@@ -4,6 +4,7 @@ import { isRetryableBusinessErrorCode } from "./businessCallableClient";
 import {
   toCallRecordPurchase,
   toCallListMyRecentCounterPurchases,
+  toCallGetCounterLoyaltyContext,
   toCallListPurchasesForBusiness,
   type PurchaseRecordWire,
 } from "./purchaseMutations";
@@ -191,8 +192,59 @@ describe("toCallListMyRecentCounterPurchases", () => {
         rawToken: "t",
         referenceType: "email",
       });
-      return { data: { purchases: [] } };
+      return { data: { purchases: [], nextCursor: null } };
     });
     expect((await call(actor, { businessId: "b-1", limit: 5 })).purchases).toEqual([]);
+  });
+
+  it("carries the opaque cursor for 'load more' and nothing else", async () => {
+    const call = toCallListMyRecentCounterPurchases(async (payload) => {
+      expect(payload).toEqual({
+        businessId: "b-1",
+        limit: 20,
+        cursor: "opaque",
+        rawToken: "t",
+        referenceType: "email",
+      });
+      return { data: { purchases: [], nextCursor: "next" } };
+    });
+    expect((await call(actor, { businessId: "b-1", limit: 20, cursor: "opaque" })).nextCursor).toBe(
+      "next",
+    );
+  });
+});
+
+describe("toCallGetCounterLoyaltyContext", () => {
+  it("sends exactly the Business, the Programme and ONE presented artifact — never a Customer id", async () => {
+    const seen: Record<string, unknown>[] = [];
+    const call = toCallGetCounterLoyaltyContext(async (payload) => {
+      seen.push(payload);
+      return {
+        data: {
+          verifiedUnits: 3,
+          requiredVerifiedUnits: 10,
+          rewardStatus: "none" as const,
+          awaitingCustomerConfirmationUnits: 0,
+        },
+      };
+    });
+    await call(actor, { businessId: "b-1", rewardProgramId: "rp-1", loyaltyNumberValue: "ABC234" });
+    await call(actor, { businessId: "b-1", rewardProgramId: "rp-1", qrReference: "qr-ref" });
+    expect(seen).toEqual([
+      {
+        businessId: "b-1",
+        rewardProgramId: "rp-1",
+        loyaltyNumberValue: "ABC234",
+        rawToken: "t",
+        referenceType: "email",
+      },
+      {
+        businessId: "b-1",
+        rewardProgramId: "rp-1",
+        qrReference: "qr-ref",
+        rawToken: "t",
+        referenceType: "email",
+      },
+    ]);
   });
 });

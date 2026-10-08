@@ -193,6 +193,8 @@ No locked decision is violated, no new security protocol is needed, no BR/Custom
 | D7 | **APPROVED** | Show the Business name. No fabricated station/front-desk label. Server default-branch metadata unchanged. |
 | D8 | **APPROVED** | Bounded role-aware Staff experience: Staff land on the Counter; mobile-first minimal Staff navigation; Owner/Manager experience unchanged; UX routing only; backend remains authoritative. |
 
+> **D4 — SUPERSEDED by Founder Preview Pass 3 (2026-10-08).** The D4 disposition above is the historical decision and is left as made. The Founder has since decided that Staff MUST have **limited, transaction-scoped** customer loyalty progress (PRD01 §8.2 / §12.2) so they can tell a customer when a reward is available: a purpose-specific read keyed by Business + one presented artifact + one Reward Program (Customer resolved server-side), returning four values only. D1 (no customer-name lookup), D5 (no Staff redemption UI) and N4 (no threshold/reviewer/reason) are unchanged. See the implementation report §15.
+
 ### 22.2 Locked idempotency requirement
 Before implementation acceptance, prove that uncertain/network failures **preserve the same idempotency key**. Inspect the actual error mapping during implementation (the assessment found the web key holder discards the key for any error not mapped retryable). If a network/uncertain outcome is not currently classified retryable, make only the **minimum architecture-consistent correction** so retry uses the original key. Uncertain outcomes must **never** be solved by generating a new key.
 

@@ -174,6 +174,7 @@ import {
   listAvailableRewardsForBusiness as listAvailableRewardsForBusinessQuery,
   listLoyaltyCycleProgressForBusiness as listLoyaltyCycleProgressForBusinessQuery,
 } from "./domains/purchase/services/purchaseQueries";
+import { getCounterLoyaltyContext as getCounterLoyaltyContextQuery } from "./domains/purchase/services/counterLoyaltyContext";
 import { getCustomerExperienceOverview } from "./domains/purchase/services/customerExperienceQueries";
 
 setGlobalOptions({ region: PLATFORM_REGION, maxInstances: 10 });
@@ -2616,6 +2617,10 @@ export function parseListMyRecentCounterPurchasesRequest(value: Record<string, u
     ...(value.limit === undefined
       ? {}
       : { limit: parsePurchasePagination({ limit: value.limit }).limit }),
+    // Opaque keyset cursor from a previous page (Staff Activity view). Validated server-side.
+    ...(value.cursor === undefined || value.cursor === null
+      ? {}
+      : { cursor: parseOptionalPurchaseString(value.cursor, "cursor") }),
   };
 }
 
@@ -2629,6 +2634,38 @@ export const listMyRecentCounterPurchases = onCall(async (request) => {
     return await listMyRecentCounterPurchasesQuery(db, getPurchasePostgresPool(), {
       userId,
       ...parseListMyRecentCounterPurchasesRequest(value),
+    });
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+/**
+ * Staff Counter limited loyalty context (`EA-BL-001-CORR-002-B`, Founder Preview Pass 3). Whitelist
+ * transport: exactly `businessId`, `rewardProgramId` and ONE presented artifact (`loyaltyNumberValue`
+ * XOR `qrReference`) -- the Customer is resolved server-side, so no Customer id crosses the wire in
+ * either direction. Exported only for the mass-assignment regression test.
+ */
+export function parseGetCounterLoyaltyContextRequest(value: Record<string, unknown>) {
+  return {
+    businessId: parseBusinessId(value.businessId),
+    rewardProgramId: parseNonEmptyString(value.rewardProgramId),
+    loyaltyNumberValue: parseOptionalPurchaseString(value.loyaltyNumberValue, "loyaltyNumberValue"),
+    qrReference: parseOptionalPurchaseString(value.qrReference, "qrReference"),
+  };
+}
+
+export const getCounterLoyaltyContext = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId } = await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    return await getCounterLoyaltyContextQuery(db, getPurchasePostgresPool(), {
+      userId,
+      correlationId: randomUUID(),
+      ...parseGetCounterLoyaltyContextRequest(value),
     });
   } catch (error) {
     throw toHttpsError(error);

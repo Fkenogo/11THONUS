@@ -1,83 +1,80 @@
 /**
- * Staff-only bottom navigation (Founder Preview Pass 1 correction; permanent at every viewport size since
- * Pass 2 — the bar is centred at the same bounded width as the Staff app).
+ * Staff-only bottom navigation (Founder Preview Passes 1–3), permanent at every viewport size.
  *
- * The earlier "no bottom bar" decision belongs to the broader Business / Owner-Manager shell; the
- * Founder explicitly approved this bar for the Staff mobile shell only. It has four bounded actions —
- * Counter, New customer, Activity (in-page sections of the one Counter, no routes) and More (language
- * and Switch Business / Personal). It carries no Owner/Manager destination and grants nothing: every
- * protected operation is still decided by the server.
+ * It separates PLACES from ACTIONS. The three permanent destinations — Counter, Activity, Profile —
+ * are real routes (`NavLink`, `aria-current="page"`). The visually distinct round button is the quick
+ * ACTION control: it opens a small sheet offering exactly two bounded frontline actions — scan a
+ * customer's QR (back into the Counter's existing scanner) and help a new customer join (the existing
+ * tokenless sign-up code). It offers no Owner/Manager destination, customer search or admin action, and
+ * grants nothing: every protected operation is still decided by the server.
  */
 
-import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
-import { Link } from "react-router-dom";
-import { History, MoreHorizontal, ReceiptText, Repeat2, UserPlus, X } from "lucide-react";
+import { useId, useState } from "react";
+import { NavLink } from "react-router-dom";
+import { Camera, History, Plus, ReceiptText, UserPlus, UserRound } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { LanguageSwitcher, useTranslation } from "../../i18n";
+import { useTranslation } from "../../i18n";
 import { cn } from "../../lib/utils";
-import type { StaffSection } from "./staffSections";
+import { NewCustomerSheet } from "./NewCustomerSheet";
+import { StaffSheet } from "./StaffSheet";
 
 /** Height of the bar's content row; the safe-area inset is added below it. */
 export const STAFF_BOTTOM_NAV_HEIGHT = "3.5rem";
 
-const FOCUSABLE = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
-
-const ITEMS: { section: StaffSection; icon: LucideIcon; labelKey: string }[] = [
-  { section: "counter", icon: ReceiptText, labelKey: "counter.shell.counter" },
-  { section: "newCustomer", icon: UserPlus, labelKey: "counter.shell.newCustomer" },
-  { section: "activity", icon: History, labelKey: "counter.shell.activity" },
-];
-
 const FOCUS_RING = "focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none";
 
+const DESTINATIONS: { slug: string; icon: LucideIcon; labelKey: string }[] = [
+  { slug: "counter", icon: ReceiptText, labelKey: "counter.shell.counter" },
+  { slug: "activity", icon: History, labelKey: "counter.shell.activity" },
+];
+const PROFILE = { slug: "profile", icon: UserRound, labelKey: "counter.shell.profile" };
+
+type Sheet = "quick" | "newCustomer" | null;
+
 export function StaffBottomNav({
-  active,
-  onSelect,
+  basePath,
+  onScan,
 }: {
-  active: StaffSection;
-  onSelect: (section: StaffSection) => void;
+  /** The Staff places' base path (`/business/:id/dashboard` in production). */
+  basePath: string;
+  /** Start the Counter's existing scanner (the shell routes to the Counter first when needed). */
+  onScan: () => void;
 }) {
   const { t } = useTranslation("business");
-  const [moreOpen, setMoreOpen] = useState(false);
-  const moreButtonRef = useRef<HTMLButtonElement>(null);
-  const sheetRef = useRef<HTMLDivElement>(null);
-  const closeRef = useRef<HTMLButtonElement>(null);
-  const wasOpen = useRef(false);
-
-  useEffect(() => {
-    if (moreOpen) closeRef.current?.focus();
-    else if (wasOpen.current) moreButtonRef.current?.focus();
-    wasOpen.current = moreOpen;
-  }, [moreOpen]);
-
-  function onSheetKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
-    if (event.key === "Escape") {
-      event.stopPropagation();
-      setMoreOpen(false);
-      return;
-    }
-    if (event.key !== "Tab") return;
-    const focusable = Array.from(
-      sheetRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? [],
-    ).filter((element) => !element.hasAttribute("disabled"));
-    if (focusable.length === 0) return;
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
-  }
+  const [sheet, setSheet] = useState<Sheet>(null);
+  const quickTitleId = useId();
+  const base = basePath;
 
   const itemClass = (isActive: boolean) =>
     cn(
-      "relative flex h-full w-full flex-col items-center justify-start gap-1 pt-2 rounded-xl px-0.5 text-center text-[11px] leading-tight transition active:scale-95",
+      "relative flex h-full w-full flex-col items-center justify-start gap-1 rounded-xl px-0.5 pt-2 text-center text-[11px] leading-tight transition active:scale-95",
       FOCUS_RING,
       isActive ? "font-bold text-amber-800" : "font-medium text-slate-600",
     );
+
+  function renderDestination({ slug, icon: Icon, labelKey }: (typeof DESTINATIONS)[number]) {
+    return (
+      <li key={slug} className="min-w-0">
+        <NavLink to={`${base}/${slug}`} end className={({ isActive }) => itemClass(isActive)}>
+          {({ isActive }) => (
+            <>
+              {isActive ? (
+                <span
+                  aria-hidden="true"
+                  className="absolute top-0.5 h-1 w-7 rounded-full bg-amber-700"
+                />
+              ) : null}
+              <Icon
+                aria-hidden="true"
+                className={cn("h-5 w-5", isActive ? "stroke-[2.25]" : "stroke-[1.75]")}
+              />
+              <span className="max-w-full">{t(labelKey)}</span>
+            </>
+          )}
+        </NavLink>
+      </li>
+    );
+  }
 
   return (
     <>
@@ -87,108 +84,80 @@ export function StaffBottomNav({
         className="fixed bottom-0 left-1/2 z-40 w-full max-w-lg -translate-x-1/2 border-x border-t border-slate-200/90 bg-white/95 px-2 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_rgba(0,0,0,0.06)] backdrop-blur-md"
         style={{ height: `calc(${STAFF_BOTTOM_NAV_HEIGHT} + env(safe-area-inset-bottom))` }}
       >
-        <ul className="mx-auto grid h-full grid-cols-4 items-stretch gap-1 py-0.5">
-          {ITEMS.map(({ section, icon: Icon, labelKey }) => {
-            const isActive = !moreOpen && active === section;
-            return (
-              <li key={section} className="min-w-0">
-                <button
-                  type="button"
-                  aria-current={isActive ? "true" : undefined}
-                  onClick={() => onSelect(section)}
-                  className={itemClass(isActive)}
-                >
-                  {isActive ? (
-                    <span
-                      aria-hidden="true"
-                      className="absolute top-0.5 h-1 w-7 rounded-full bg-amber-700"
-                    />
-                  ) : null}
-                  <Icon
-                    aria-hidden="true"
-                    className={cn("h-5 w-5", isActive ? "stroke-[2.25]" : "stroke-[1.75]")}
-                  />
-                  <span className="max-w-full">{t(labelKey)}</span>
-                </button>
-              </li>
-            );
-          })}
-          <li className="min-w-0">
+        <ul className="grid h-full grid-cols-4 items-stretch gap-1 py-0.5">
+          {DESTINATIONS.map(renderDestination)}
+          <li className="flex min-w-0 items-center justify-center">
             <button
-              ref={moreButtonRef}
               type="button"
+              aria-label={t("counter.shell.quickActions")}
               aria-haspopup="dialog"
-              aria-expanded={moreOpen}
-              onClick={() => setMoreOpen(true)}
-              className={itemClass(moreOpen)}
-            >
-              {moreOpen ? (
-                <span
-                  aria-hidden="true"
-                  className="absolute top-0.5 h-1 w-7 rounded-full bg-amber-700"
-                />
-              ) : null}
-              <MoreHorizontal
-                aria-hidden="true"
-                className={cn("h-5 w-5", moreOpen ? "stroke-[2.25]" : "stroke-[1.75]")}
-              />
-              <span className="max-w-full">{t("counter.shell.more")}</span>
-            </button>
-          </li>
-        </ul>
-      </nav>
-
-      {moreOpen ? (
-        <div
-          className="fixed inset-0 z-50 flex flex-col justify-end bg-slate-950/60"
-          onClick={() => setMoreOpen(false)}
-          data-testid="staff-more-backdrop"
-        >
-          <div
-            ref={sheetRef}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="staff-more-title"
-            onKeyDown={onSheetKeyDown}
-            onClick={(event) => event.stopPropagation()}
-            className="max-h-[85vh] space-y-4 overflow-y-auto rounded-t-3xl border-t border-slate-200 bg-white px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl"
-          >
-            <div className="flex items-center justify-between gap-3">
-              <h2 id="staff-more-title" className="text-base font-bold text-slate-900">
-                {t("counter.shell.moreTitle")}
-              </h2>
-              <button
-                ref={closeRef}
-                type="button"
-                onClick={() => setMoreOpen(false)}
-                aria-label={t("counter.shell.moreClose")}
-                className={cn(
-                  "flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 text-slate-700",
-                  FOCUS_RING,
-                )}
-              >
-                <X className="h-5 w-5" aria-hidden="true" />
-              </button>
-            </div>
-
-            <div className="flex [&_button]:min-h-11 [&_button]:flex-1 [&_button]:rounded-lg [&_button]:border [&_button]:border-slate-300 [&_button]:px-3 [&_button]:text-sm [&_button]:font-semibold [&_button]:text-slate-800 [&_button]:focus-visible:ring-2 [&_button]:focus-visible:ring-amber-500 [&_button]:focus-visible:outline-none [&_button[aria-pressed=true]]:border-amber-700 [&_button[aria-pressed=true]]:bg-amber-100 [&_button[aria-pressed=true]]:text-amber-950 [&>div]:flex [&>div]:w-full [&>div]:gap-2">
-              <LanguageSwitcher />
-            </div>
-
-            <Link
-              to="/business"
-              onClick={() => setMoreOpen(false)}
+              aria-expanded={sheet === "quick"}
+              onClick={() => setSheet("quick")}
               className={cn(
-                "flex min-h-12 items-center gap-2 rounded-xl border border-slate-300 px-4 text-sm font-semibold text-slate-800",
+                "flex h-12 w-12 items-center justify-center rounded-full bg-amber-700 text-white shadow-md ring-4 ring-amber-100 transition hover:bg-amber-800 active:scale-95",
                 FOCUS_RING,
               )}
             >
-              <Repeat2 className="h-4 w-4" aria-hidden="true" />
-              {t("counter.shell.switchContext")}
-            </Link>
-          </div>
-        </div>
+              <Plus aria-hidden="true" className="h-6 w-6 stroke-[2.5]" />
+            </button>
+          </li>
+          {renderDestination(PROFILE)}
+        </ul>
+      </nav>
+
+      {sheet === "quick" ? (
+        <StaffSheet
+          title={t("counter.quick.title")}
+          titleId={quickTitleId}
+          closeLabel={t("counter.quick.close")}
+          onClose={() => setSheet(null)}
+          testId="staff-quick-actions"
+        >
+          <ul className="space-y-2">
+            <li>
+              <button
+                type="button"
+                onClick={() => {
+                  setSheet(null);
+                  onScan();
+                }}
+                className={cn(
+                  "flex min-h-14 w-full items-center gap-3 rounded-xl bg-amber-700 px-4 text-left text-white hover:bg-amber-800",
+                  FOCUS_RING,
+                )}
+              >
+                <Camera className="h-5 w-5 shrink-0" aria-hidden="true" />
+                <span className="min-w-0">
+                  <span className="block text-base font-bold">{t("counter.quick.scan")}</span>
+                  <span className="block text-xs text-amber-50">{t("counter.quick.scanHint")}</span>
+                </span>
+              </button>
+            </li>
+            <li>
+              <button
+                type="button"
+                onClick={() => setSheet("newCustomer")}
+                className={cn(
+                  "flex min-h-14 w-full items-center gap-3 rounded-xl border border-slate-300 bg-white px-4 text-left text-slate-900 hover:bg-slate-50",
+                  FOCUS_RING,
+                )}
+              >
+                <UserPlus className="h-5 w-5 shrink-0 text-amber-700" aria-hidden="true" />
+                <span className="min-w-0">
+                  <span className="block text-base font-bold">
+                    {t("counter.quick.newCustomer")}
+                  </span>
+                  <span className="block text-xs text-slate-600">
+                    {t("counter.quick.newCustomerHint")}
+                  </span>
+                </span>
+              </button>
+            </li>
+          </ul>
+        </StaffSheet>
       ) : null}
+
+      {sheet === "newCustomer" ? <NewCustomerSheet onClose={() => setSheet(null)} /> : null}
     </>
   );
 }

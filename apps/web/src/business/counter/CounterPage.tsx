@@ -3,15 +3,17 @@
  *
  * EXPERIENCE comes from the frozen prototype (`StaffCounterExperience.tsx` @ `18e8d700…`): a
  * "Frontline Counter" with numbered Identify → Programme → Record steps, a prominent "Scan customer
- * QR", a stepper, a primary Record action, a fast "next customer" reset and a recent-activity log.
+ * QR", a stepper, a primary Record action and a fast "next customer" reset. (The recent-activity log is
+ * its own Activity view and "new customer" a quick action since Founder Preview Pass 3.)
  * TRUTH comes from production: real authenticated context, real programmes/items, the one existing
  * `recordPurchase` authority, and server routing. Replaced on purpose: the scenario strip and mock
  * participants, name/phone search and the all-customer list, walk-in creation, the Loyalty Circle,
  * the approval-threshold note, Staff reward confirmation and the fake station label.
  *
  * Staff identify a customer ONLY by a scanned QR or a typed Loyalty Number (D1/D2); the server
- * resolves it. Staff never see a customer name, Circle, threshold, reviewer or review reason (D4/N4),
- * and never verify, review or redeem here (D5). Access is the existing `purchase.record` authority,
+ * resolves it. Staff never see a customer name, threshold, reviewer or review reason (N4), and never
+ * verify, review or redeem here (D5). Once the customer and the Programme are known they DO see a
+ * limited loyalty status for that one transaction (Founder Preview Pass 3 supersedes D4; PRD01 §8.2). Access is the existing `purchase.record` authority,
  * enforced server-side on every call; nothing on this page is a security boundary.
  *
  * One intentional submission = one transaction intent (payload + `purchaseDate` + idempotency key,
@@ -32,13 +34,15 @@ import {
   type CounterErrorKind,
 } from "./counterErrors";
 import {
+  useCounterLoyaltyQuery,
   useCounterProgrammesQuery,
   useRecordCounterPurchaseMutation,
+  type CounterLoyaltyArtifact,
   type CounterRecordOutcome,
 } from "./counterHooks";
-import { CounterRecentActivity } from "./CounterRecentActivity";
-import { NewCustomerPanel } from "./NewCustomerPanel";
-import { STAFF_SECTION_IDS, revealSection, useStaffSectionRequest } from "./staffSections";
+import { CounterLoyaltyCard, type CounterLoyaltyCardState } from "./CounterLoyaltyCard";
+import { isLoyaltyNumberComplete } from "./counterLoyalty";
+import { useStaffActionRequest } from "./staffActions";
 import { createCameraQrScanner, type QrScanner, type QrScanSession } from "./qrScanner";
 
 type ScannerPhase = "closed" | "opening" | "active" | "denied" | "no_camera" | "failed";
@@ -127,8 +131,15 @@ function ChoiceGroup({
 export function CounterPage({
   context,
   scanner: injectedScanner,
+  active = true,
 }: {
   context: BusinessContext;
+  /**
+   * Whether the Counter is the visible place. The shell keeps the Counter mounted (so a transaction in
+   * progress survives a visit to Activity/Profile) but hidden; while hidden the camera is closed and
+   * no loyalty read is made.
+   */
+  active?: boolean;
   /** Test seam: the real camera scanner is used unless one is injected. */
   scanner?: QrScanner;
 }) {
@@ -175,8 +186,6 @@ export function CounterPage({
   const outcomeHeadingRef = useRef<HTMLHeadingElement>(null);
   const itemGroupRef = useRef<HTMLDivElement>(null);
   const programmeGroupRef = useRef<HTMLDivElement>(null);
-  const counterStartRef = useRef<HTMLElement>(null);
-  const counterHeadingRef = useRef<HTMLHeadingElement>(null);
 
   const errorId = useId();
   const hintId = useId();
@@ -191,6 +200,25 @@ export function CounterPage({
     items.find((entry) => entry.id === itemChoice)?.id ?? (items.length === 1 ? items[0].id : null);
   const multipleUnits = programme?.multipleUnitsAllowed ?? false;
   const parsedQuantity = multipleUnits ? parsePurchaseRecordQuantity(quantityText) : 1;
+
+  // --- limited loyalty status for THIS transaction (customer + programme known; before recording) ---
+  const loyaltyArtifact: CounterLoyaltyArtifact | null =
+    !active || outcome
+      ? null
+      : qrReference !== null
+        ? { kind: "qr_identity", value: qrReference }
+        : isLoyaltyNumberComplete(loyaltyNumber)
+          ? { kind: "loyalty_number", value: loyaltyNumber.trim() }
+          : null;
+  const loyaltyQuery = useCounterLoyaltyQuery(businessId, programme?.id ?? null, loyaltyArtifact);
+  const loyaltyState: CounterLoyaltyCardState | null =
+    loyaltyArtifact === null || programme === null
+      ? null
+      : loyaltyQuery.isError
+        ? { status: "error" }
+        : loyaltyQuery.data
+          ? { status: "ready", context: loyaltyQuery.data }
+          : { status: "pending" };
 
   // --- a transaction-defining edit is an intentional change: a fresh intent ---------------------
   const resetIntent = useCallback(() => {
@@ -269,9 +297,24 @@ export function CounterPage({
     (scan && !scan.disabled ? scan : loyaltyInputRef.current)?.focus();
   }, [focusTick]);
 
-  // Bottom-bar "Counter": return to the start of the Counter. Never touches transaction state.
-  useStaffSectionRequest("counter", () =>
-    revealSection(counterStartRef.current, counterHeadingRef.current),
+  // Leaving the Counter (for Activity/Profile) closes the camera: it is never left running unseen.
+  const [wasActive, setWasActive] = useState(active);
+  if (wasActive !== active) {
+    setWasActive(active);
+    if (!active) setScannerPhase("closed");
+  }
+
+  // Quick action "Scan customer QR": start the existing scanner here (or land on the Loyalty Number).
+  const formShown = !outcome && Boolean(programmesQuery.data) && programmes.length > 0;
+  useStaffActionRequest(
+    "scan",
+    () => {
+      if (outcome) serveNext(); // a finished transaction: this is the next customer
+      if (!formShown && !outcome) return; // programmes not ready: nothing to scan into yet
+      if (cameraSupported) openScanner();
+      else setFocusTick((tick) => tick + 1);
+    },
+    active,
   );
 
   function openScanner() {
@@ -410,15 +453,11 @@ export function CounterPage({
 
   return (
     <div className="mx-auto w-full max-w-lg space-y-4 pb-4">
-      <header
-        ref={counterStartRef}
-        id={STAFF_SECTION_IDS.counter}
-        className="flex scroll-mt-4 items-end justify-between gap-3"
-      >
+      <header className="flex items-end justify-between gap-3">
         <div className="min-w-0">
           <h1
-            ref={counterHeadingRef}
             tabIndex={-1}
+            data-staff-view-heading
             className="font-display text-xl leading-tight font-bold text-slate-900 focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none"
           >
             {t("counter.title")}
@@ -700,8 +739,14 @@ export function CounterPage({
             )}
           </section>
 
+          {/* Loyalty status: limited, transaction-scoped, shown BEFORE the purchase is recorded ---- */}
+          {loyaltyState ? <CounterLoyaltyCard state={loyaltyState} /> : null}
+
           {/* 2–3. Programme, item, quantity, record ------------------------------------------ */}
-          <div className="space-y-4">
+          {/* `contents`: the sticky Record bar must be a direct flow child of the form, so it pins above the
+              bottom bar however tall the cards above it are (inside a nested block it would be clamped
+              to that block's top edge and cover the Programme card). */}
+          <div className="contents">
             <section aria-labelledby="counter-programme-heading" className={cn(CARD, "space-y-4")}>
               <h2 id="counter-programme-heading" className={STEP_LABEL}>
                 {t("counter.programme.heading")}
@@ -902,10 +947,6 @@ export function CounterPage({
           </div>
         </form>
       ) : null}
-
-      <NewCustomerPanel />
-
-      <CounterRecentActivity businessId={businessId} />
     </div>
   );
 }

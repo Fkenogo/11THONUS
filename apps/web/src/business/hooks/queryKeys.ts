@@ -73,4 +73,23 @@ export const businessQueryKeys = {
   counterProgrammes: (businessId: string) => ["counterProgrammes", businessId] as const,
   counterRecent: (businessId: string, actorScope: string) =>
     ["counterRecent", businessId, actorScope] as const,
+  /**
+   * The limited loyalty context for ONE presented artifact in ONE Programme, partitioned by the
+   * signed-in member. Short-lived by design (see `useCounterLoyaltyQuery`); never a Customer cache.
+   */
+  counterLoyalty: (
+    businessId: string,
+    actorScope: string,
+    rewardProgramId: string,
+    artifactKind: "loyalty_number" | "qr_identity",
+    artifactValue: string,
+  ) =>
+    [
+      "counterLoyalty",
+      businessId,
+      actorScope,
+      rewardProgramId,
+      artifactKind,
+      artifactValue,
+    ] as const,
 };

@@ -12,7 +12,7 @@
  * (which commits the Purchase) and the response is then dropped, so the browser sees a network
  * failure. The retry must then recover the original — one Purchase, same key, same purchaseDate.
  */
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
@@ -60,6 +60,10 @@ async function chooseExpress(page: Page, item: "Blow-dry" | "Hair wash") {
 
 /** One phone-oriented Staff shell at every viewport size (Founder Pass 2): the bottom bar is permanent. */
 const staffNav = (page: Page) => page.getByRole("navigation", { name: "Counter navigation" });
+const quickActionsButton = (page: Page) =>
+  staffNav(page).getByRole("button", { name: "Quick actions" });
+const goToPlace = (page: Page, name: "Counter" | "Activity" | "Profile") =>
+  staffNav(page).getByRole("link", { name }).click();
 
 /** Nothing the Staff must tap may sit under the fixed bottom bar (at any viewport width). */
 async function expectClearOfBottomBar(page: Page, locator: ReturnType<Page["locator"]>) {
@@ -78,8 +82,30 @@ async function expectClearOfBottomBar(page: Page, locator: ReturnType<Page["loca
   expect(box.y + box.height).toBeLessThanOrEqual(bar.y + 0.5);
 }
 
+/** Rows in the member's Activity view whose limited identifier ends with this customer's last 3 characters. */
+async function activityRowsFor(page: Page, loyaltyNumber: string): Promise<number> {
+  await staffNav(page).getByRole("link", { name: "Activity" }).click();
+  await expect(recentRows(page).first()).toBeVisible();
+  const count = await recentRows(page)
+    .filter({ hasText: `Loyalty Number ending ${loyaltyNumber.slice(-3)}` })
+    .count();
+  await staffNav(page).getByRole("link", { name: "Counter" }).click();
+  await expect(page.getByRole("heading", { name: "Counter", level: 1 })).toBeVisible();
+  return count;
+}
+
 const recentRows = (page: Page) =>
   page.getByRole("region", { name: "Your recent submissions" }).getByRole("listitem");
+
+/** Units awaiting the customer's confirmation, read from the visible status (0 when none is shown). */
+async function awaitingUnits(card: Locator): Promise<number> {
+  const match = (await card.innerText()).match(/(\d+) purchases? awaiting customer confirmation/);
+  return match ? Number(match[1]) : 0;
+}
+
+/** The limited loyalty status the Counter shows once the customer and programme are known. */
+const loyaltyProgress = (page: Page) => page.getByTestId("counter-loyalty-progress");
+const loyaltyReward = (page: Page) => page.getByTestId("counter-loyalty-reward");
 
 test.describe.configure({ mode: "serial" });
 
@@ -89,17 +115,16 @@ test.describe("Staff Counter — Founder Preview (real stack)", () => {
   }) => {
     await openCounterAsDiane(page);
     const nav = staffNav(page);
-    // Staff-only shell at every width: a fixed bottom bar with four bounded actions, nothing administrative.
-    await expect(nav.getByRole("button")).toHaveText([
-      "Counter",
-      "New customer",
-      "Activity",
-      "More",
-    ]);
+    // Staff-only shell at every width: three PLACES in a permanent bottom bar plus one quick-ACTION button.
+    await expect(nav.getByRole("link")).toHaveText(["Counter", "Activity", "Profile"]);
+    await expect(nav.getByRole("button")).toHaveCount(1);
+    await expect(quickActionsButton(page)).toBeVisible();
     await expect(page.getByRole("button", { name: "Français" })).toHaveCount(0);
-    await expect(nav.getByRole("link")).toHaveCount(0);
     const appBox = (await page.getByTestId("staff-app").boundingBox())!;
     expect(appBox.width).toBeLessThanOrEqual(513);
+    // The Counter is transaction-only: no Activity list and no New customer workflow on it.
+    await expect(page.getByText("Your recent submissions")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /New customer\?/ })).toHaveCount(0);
     for (const admin of ["Team", "Business Terms", "Reward Programs", "Customer Rewards"]) {
       await expect(page.getByRole("link", { name: admin })).toHaveCount(0);
     }
@@ -187,8 +212,7 @@ test.describe("Staff Counter — Founder Preview (real stack)", () => {
     page,
   }) => {
     await openCounterAsDiane(page);
-    await expect(recentRows(page).first()).toBeVisible();
-    const before = await recentRows(page).count();
+    const before = await activityRowsFor(page, loyaltyNumberOf("yves"));
 
     const attempts: { idempotencyKey: string; purchaseDate: string; quantity: number }[] = [];
     let first = true;
@@ -221,66 +245,212 @@ test.describe("Staff Counter — Founder Preview (real stack)", () => {
     expect(attempts[1].purchaseDate).toBe(attempts[0].purchaseDate);
     expect(attempts[1]).toEqual(attempts[0]);
 
-    // Exactly ONE new Purchase landed (the feed refreshes after success).
+    // Exactly ONE new Purchase landed (Activity refreshes after success).
     await page.getByRole("button", { name: "Serve next customer" }).click();
-    await expect.poll(() => recentRows(page).count()).toBe(Math.min(before + 1, 10));
+    await expect.poll(() => activityRowsFor(page, loyaltyNumberOf("yves"))).toBe(before + 1);
   });
 
-  test("own recent submissions: populated for Diane; shows neutral status and no reviewer/threshold", async ({
+  test("limited loyalty status appears BEFORE recording: normal, awaiting-separately, and reward available", async ({
+    page,
+  }) => {
+    const requests: string[] = [];
+    page.on("request", (request) => {
+      const url = request.url();
+      if (url.endsWith("/recordPurchase")) requests.push("recordPurchase");
+      if (url.endsWith("/getCounterLoyaltyContext")) requests.push("getCounterLoyaltyContext");
+    });
+    await openCounterAsDiane(page);
+    await page.getByRole("radio", { name: "Express Styling Circle" }).check();
+
+    await page.getByLabel("Loyalty Number").fill(loyaltyNumberOf("amina"));
+    await expect(loyaltyProgress(page)).toContainText("8 of 10 verified");
+    await expect(loyaltyProgress(page)).toContainText(
+      "2 more verified purchases until the 11th is on us",
+    );
+    await expectClearOfBottomBar(page, page.getByRole("button", { name: "Record purchase" }));
+
+    // A purchase awaiting the customer is reported SEPARATELY and never added to the verified count.
+    await page.getByLabel("Loyalty Number").fill(loyaltyNumberOf("moses"));
+    await expect(loyaltyProgress(page)).toContainText("9 of 10 verified");
+    await expect(loyaltyProgress(page)).toContainText("1 purchase awaiting customer confirmation");
+    await expect(loyaltyProgress(page)).not.toContainText("10 of 10");
+
+    // Reward available: a prominent alert before any purchase is recorded; nothing is redeemed.
+    await page.getByLabel("Loyalty Number").fill(loyaltyNumberOf("kevin"));
+    await expect(loyaltyReward(page)).toContainText("11th reward available");
+    await expect(loyaltyReward(page)).toContainText("Let the customer know their reward is ready.");
+    await expect(page.getByRole("button", { name: /redeem|confirm reward/i })).toHaveCount(0);
+
+    // Reading status recorded nothing, and it names no one.
+    expect(requests).not.toContain("recordPurchase");
+    expect(requests.filter((r) => r === "getCounterLoyaltyContext").length).toBeGreaterThanOrEqual(
+      3,
+    );
+    await expect(page.locator("body")).not.toContainText(/Nkurunziza|Amina|Kevin/);
+  });
+
+  test("a Staff-recorded purchase does NOT advance the verified count: it shows as one more awaiting the customer", async ({
     page,
   }) => {
     await openCounterAsDiane(page);
-    const section = page.getByRole("region", { name: "Your recent submissions" });
-    await expect(recentRows(page).first()).toBeVisible();
-    await expect(section).toContainText(/Loyalty Number ending|Scanned QR code/);
-    await expect(section).toContainText(/Awaiting business review|Waiting for customer|Verified/);
-    await expect(section).not.toContainText(/threshold|reviewer|Patrick|Grace/i);
-  });
-
-  test("new-customer panel and the dual-role 'Personal' instruction", async ({ page }) => {
-    await openCounterAsDiane(page);
-    await page.getByRole("button", { name: /New customer\?/ }).click();
+    await chooseExpress(page, "Hair wash");
+    await page.getByLabel("Loyalty Number").fill(loyaltyNumberOf("amina"));
+    await expect(loyaltyProgress(page)).toContainText("8 of 10 verified");
+    const awaitingBefore = await awaitingUnits(loyaltyProgress(page));
+    await page.getByRole("button", { name: "Record purchase" }).click();
+    await expect(page.getByRole("heading", { name: "Purchase recorded." })).toBeVisible();
     await expect(
-      page.getByRole("img", { name: "QR code that opens the 11thONUS sign-up page" }),
-    ).toBeVisible();
-    await expect(page.getByText(/choose “Personal” after signing in/)).toBeVisible();
-    const origin = new URL(page.url()).origin;
-    await expect(page.getByText(`${origin}/`, { exact: true })).toBeVisible();
+      page.getByRole("status").filter({ hasText: "Purchase recorded." }),
+    ).not.toContainText(/verified|10 of 10/i);
+
+    // Next customer: the same customer again — still 8 verified, plus ONE more awaiting confirmation.
+    await page.getByRole("button", { name: "Serve next customer" }).click();
+    await chooseExpress(page, "Hair wash");
+    await page.getByLabel("Loyalty Number").fill(loyaltyNumberOf("amina"));
+    await expect(loyaltyProgress(page)).toContainText("8 of 10 verified");
+    await expect(loyaltyProgress(page)).not.toContainText("9 of 10");
+    await expect.poll(() => awaitingUnits(loyaltyProgress(page))).toBe(awaitingBefore + 1);
   });
 
-  test("the bottom bar moves between Counter / New customer / Activity without losing the transaction, and Record stays above it", async ({
+  test("with a reward available an ordinary purchase can still be recorded — and nothing is redeemed", async ({
     page,
   }) => {
     await openCounterAsDiane(page);
     await chooseExpress(page, "Blow-dry");
-    await page.getByLabel("Loyalty Number").fill(loyaltyNumberOf("moses").toLowerCase());
-    const record = page.getByRole("button", { name: "Record purchase" });
-    await expectClearOfBottomBar(page, record);
-
-    const bar = staffNav(page);
-    await bar.getByRole("button", { name: "New customer" }).click();
-    await expect(page.getByRole("heading", { name: "New customer" })).toBeFocused();
-    await bar.getByRole("button", { name: "Activity" }).click();
-    await expect(page.getByRole("heading", { name: "Your recent submissions" })).toBeFocused();
-    await bar.getByRole("button", { name: "Counter" }).click();
-    await expect(page.getByRole("heading", { name: "Counter", level: 1 })).toBeFocused();
-
-    // The in-progress transaction survived every hop.
-    await expect(page.getByLabel("Loyalty Number")).toHaveValue(loyaltyNumberOf("moses"));
-    await expect(page.getByRole("radio", { name: "Blow-dry" })).toBeChecked();
-    await expectClearOfBottomBar(page, record);
-    // Not a route change: still on the Counter.
-    await expect(page).toHaveURL(/\/dashboard\/counter$/);
+    await page.getByLabel("Loyalty Number").fill(loyaltyNumberOf("kevin"));
+    await expect(loyaltyReward(page)).toBeVisible();
+    const awaitingBefore = await awaitingUnits(loyaltyReward(page));
+    await page.getByRole("button", { name: "Record purchase" }).click();
+    await expect(page.getByRole("heading", { name: "Purchase recorded." })).toBeVisible();
+    await page.getByRole("button", { name: "Serve next customer" }).click();
+    await chooseExpress(page, "Blow-dry");
+    await page.getByLabel("Loyalty Number").fill(loyaltyNumberOf("kevin"));
+    // Still the reward (10 verified, reward open); the new purchase waits for the customer.
+    await expect(loyaltyReward(page)).toContainText("11th reward available");
+    await expect.poll(() => awaitingUnits(loyaltyReward(page))).toBe(awaitingBefore + 1);
   });
 
-  test("More offers language and Switch Business / Personal only, and Switch leads to the chooser", async ({
+  test("a code the server cannot resolve gives a quiet neutral note — never a hint why — and recording is not blocked by it", async ({
     page,
   }) => {
     await openCounterAsDiane(page);
-    await staffNav(page).getByRole("button", { name: "More" }).click();
-    const dialog = page.getByRole("dialog", { name: "More options" });
-    await expect(dialog.getByRole("link")).toHaveText(["Switch business or Personal"]);
-    await dialog.getByRole("link", { name: "Switch business or Personal" }).click();
+    await chooseExpress(page, "Blow-dry");
+    await page.getByLabel("Loyalty Number").fill("ZZZ222");
+    await expect(
+      page.getByText(
+        "Loyalty status isn't available right now. You can still record the purchase.",
+      ),
+    ).toBeVisible();
+    await expect(page.getByRole("button", { name: "Record purchase" })).toBeEnabled();
+  });
+
+  test("Activity is its own view: the member's own submissions, paged with 'Load more', neutral status only", async ({
+    page,
+  }) => {
+    await openCounterAsDiane(page);
+    await goToPlace(page, "Activity");
+    await expect(page).toHaveURL(/\/dashboard\/activity$/);
+    await expect(page.getByRole("heading", { name: "Activity", level: 1 })).toBeFocused();
+    const section = page.getByRole("region", { name: "Your recent submissions" });
+    await expect(recentRows(page).first()).toBeVisible();
+    await expect(section).toContainText(/Loyalty Number ending|Scanned QR code/);
+    await expect(section).toContainText(/Awaiting business review|Waiting for customer|Verified/);
+    const firstPage = await recentRows(page).count();
+    expect(firstPage).toBe(20);
+    await page.getByRole("button", { name: "Load more" }).click();
+    await expect.poll(() => recentRows(page).count()).toBeGreaterThan(firstPage);
+    await expect(section).not.toContainText(/threshold|reviewer|Patrick|Grace/i);
+    await page.evaluate(() =>
+      window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "instant" }),
+    );
+    await expectClearOfBottomBar(
+      page,
+      page
+        .getByRole("button", { name: "Load more" })
+        .or(page.getByText("That's everything you've recorded."))
+        .first(),
+    );
+  });
+
+  test("quick action 'Help a new customer join' opens the sign-up sheet and the dual-role 'Personal' instruction", async ({
+    page,
+  }) => {
+    await openCounterAsDiane(page);
+    await quickActionsButton(page).click();
+    await page
+      .getByRole("dialog", { name: "Quick actions" })
+      .getByRole("button", { name: /^Help a new customer join/ })
+      .click();
+    const sheet = page.getByRole("dialog", { name: "Help a new customer join" });
+    await expect(
+      sheet.getByRole("img", { name: "QR code that opens the 11thONUS sign-up page" }),
+    ).toBeVisible();
+    await expect(sheet.getByText(/choose “Personal” after signing in/)).toBeVisible();
+    const origin = new URL(page.url()).origin;
+    await expect(sheet.getByText(`${origin}/`, { exact: true })).toBeVisible();
+    await sheet.getByRole("button", { name: "Close" }).click();
+    await expect(quickActionsButton(page)).toBeFocused();
+  });
+
+  test("quick action 'Scan customer QR' from Activity returns to the Counter and opens the scanner section", async ({
+    page,
+  }) => {
+    await openCounterAsDiane(page);
+    await goToPlace(page, "Activity");
+    await expect(page.getByRole("heading", { name: "Activity", level: 1 })).toBeVisible();
+    await quickActionsButton(page).click();
+    await page
+      .getByRole("dialog", { name: "Quick actions" })
+      .getByRole("button", { name: /^Scan customer QR/ })
+      .click();
+    await expect(page).toHaveURL(/\/dashboard\/counter$/);
+    // A real camera may be live or (headless, no device/permission) explained — either way the scanner
+    // section opened and the Loyalty Number fallback is offered; the transaction form is intact.
+    await expect(
+      page
+        .getByRole("button", { name: "Cancel scanning" })
+        .or(page.getByRole("alert").filter({ hasText: /camera/i })),
+    ).toBeVisible();
+  });
+
+  test("places keep the transaction safe: Counter → Activity → Profile → Counter, Record stays above the bar", async ({
+    page,
+  }) => {
+    await openCounterAsDiane(page);
+    await chooseExpress(page, "Blow-dry");
+    await page.getByLabel("Loyalty Number").fill(loyaltyNumberOf("moses"));
+    await expect(loyaltyProgress(page)).toContainText("9 of 10 verified");
+    const record = page.getByRole("button", { name: "Record purchase" });
+    await expectClearOfBottomBar(page, record);
+
+    await goToPlace(page, "Activity");
+    await expect(page.getByRole("heading", { name: "Activity", level: 1 })).toBeVisible();
+    await goToPlace(page, "Profile");
+    await expect(page.getByRole("heading", { name: "Profile", level: 1 })).toBeVisible();
+    await page.goBack();
+    await expect(page).toHaveURL(/\/dashboard\/activity$/);
+    await goToPlace(page, "Counter");
+
+    // The in-progress transaction survived every hop (and nothing was recorded by moving around).
+    await expect(page.getByLabel("Loyalty Number")).toHaveValue(loyaltyNumberOf("moses"));
+    await expect(page.getByRole("radio", { name: "Blow-dry" })).toBeChecked();
+    await expect(loyaltyProgress(page)).toContainText("9 of 10 verified");
+    await expectClearOfBottomBar(page, record);
+  });
+
+  test("Profile: own sign-in identity, Business and role; language; Switch Business / Personal leads to the chooser", async ({
+    page,
+  }) => {
+    await openCounterAsDiane(page);
+    await goToPlace(page, "Profile");
+    await expect(page.getByRole("heading", { name: "Profile", level: 1 })).toBeFocused();
+    await expect(page.getByText(emailOf("staff_bella"))).toBeVisible();
+    await expect(page.getByText("Bella Salon").first()).toBeVisible();
+    await expect(page.getByText("Staff", { exact: true })).toBeVisible();
+    for (const forbidden of ["Team", "Permissions", "Business Terms", "Reward Programs"]) {
+      await expect(page.getByRole("link", { name: forbidden })).toHaveCount(0);
+    }
+    await page.getByRole("link", { name: "Switch business or Personal" }).click();
     await expect(page).toHaveURL(/\/business\/?$/);
   });
 
@@ -292,20 +462,25 @@ test.describe("Staff Counter — Founder Preview (real stack)", () => {
     await expect(page).toHaveURL(/\/customer/);
   });
 
-  test("French", async ({ page }) => {
+  test("French: the language is chosen on Profile and the whole Staff app follows", async ({
+    page,
+  }) => {
     await openCounterAsDiane(page);
-    await staffNav(page).getByRole("button", { name: "More" }).click();
-    await page.getByRole("dialog").getByRole("button", { name: "Français" }).click();
-    await page.keyboard.press("Escape");
+    await goToPlace(page, "Profile");
+    await page.getByRole("button", { name: "Français" }).click();
+    await expect(page.getByRole("heading", { name: "Profil", level: 1 })).toBeVisible();
+    const frNav = page.getByRole("navigation", { name: "Navigation de la caisse" });
+    await expect(frNav.getByRole("link")).toHaveText(["Caisse", "Activité", "Profil"]);
+    await frNav.getByRole("link", { name: "Caisse" }).click();
     await expect(page.getByRole("heading", { name: "Caisse", level: 1 })).toBeVisible();
     await expect(page.getByRole("button", { name: "Enregistrer l'achat" })).toBeVisible();
     await expect(page.getByLabel("Numéro de fidélité")).toBeVisible();
-    await page
-      .getByRole("navigation", { name: "Navigation de la caisse" })
-      .getByRole("button", { name: "Plus" })
-      .click();
-    await page.getByRole("dialog").getByRole("button", { name: "English" }).click();
-    await page.keyboard.press("Escape");
+    await page.getByRole("radio", { name: "Express Styling Circle" }).check();
+    await page.getByLabel("Numéro de fidélité").fill(loyaltyNumberOf("amina"));
+    await expect(loyaltyProgress(page)).toContainText("8 sur 10 vérifiés");
+    await frNav.getByRole("link", { name: "Profil" }).click();
+    await page.getByRole("button", { name: "English" }).click();
+    await expect(page.getByRole("heading", { name: "Profile", level: 1 })).toBeVisible();
   });
 
   test("the Owner keeps the unchanged Business Dashboard and may still open the Counter", async ({

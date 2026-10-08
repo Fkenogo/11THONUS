@@ -2,6 +2,7 @@
   "businesses": {
     "bella": {
       "availableRewards": [
+        "kevin",
         "kevin"
       ],
       "category": "cat_salon",
@@ -15,6 +16,14 @@
           "sequence": 2,
           "state": "active",
           "units": 2
+        },
+        {
+          "customer": "amina",
+          "pending": 0,
+          "programme": "Express Styling Circle",
+          "sequence": 1,
+          "state": "active",
+          "units": 8
         },
         {
           "customer": "amina",
@@ -43,10 +52,26 @@
         {
           "customer": "kevin",
           "pending": 0,
+          "programme": "Express Styling Circle",
+          "sequence": 1,
+          "state": "reward_available",
+          "units": 10
+        },
+        {
+          "customer": "kevin",
+          "pending": 0,
           "programme": "Premium Cut Circle",
           "sequence": 1,
           "state": "reward_available",
           "units": 10
+        },
+        {
+          "customer": "moses",
+          "pending": 0,
+          "programme": "Express Styling Circle",
+          "sequence": 1,
+          "state": "active",
+          "units": 9
         }
       ],
       "name": "Bella Salon",
@@ -235,7 +260,7 @@
       "paidReserved": 0,
       "paidServiceActivated": false,
       "restriction": "none",
-      "trialRemaining": 2,
+      "trialRemaining": 1,
       "trialReserved": 0
     },
     "mutima": {
@@ -267,7 +292,7 @@
     }
   },
   "consumption": {
-    "bella": 2,
+    "bella": 3,
     "mutima": 2,
     "sparkle": 1
   },
@@ -295,8 +320,8 @@
   "purchases": {
     "bella": {
       "under_review": 1,
-      "verified": 41,
-      "waiting_for_customer": 1
+      "verified": 68,
+      "waiting_for_customer": 2
     },
     "mutima": {
       "verified": 2
@@ -313,7 +338,7 @@
   },
   "rewards": {
     "bella": {
-      "available": 1,
+      "available": 2,
       "redeemed": 1
     },
     "mutima": {
