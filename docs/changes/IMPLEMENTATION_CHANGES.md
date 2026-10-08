@@ -6693,3 +6693,21 @@ READY FOR CONTROLLED DRAFTING — PR AWAITS FOUNDER REVIEW`**.
 - **Dependencies:** `jsqr@1.4.0`. **Migrations:** none. **Configuration:** Playwright harness project gains fake-capture-device flags.
 - **Rollback:** revert the PR.
 - **Report link:** [implementation report](../05-implementation/reports/11THONUS-EA-BL-001-CORR-002-B-staff-counter-implementation-report-2026-10-07.md)
+
+---
+
+## 2026-10-08 — EA-BL-001-CORR-002-B — Pre-Founder-Preview Correction Pass
+
+- **Date:** 2026-10-08
+- **Task:** Bounded correction/preview-readiness pass on PR #307 (entry head `529fc88`).
+- **Status:** **IMPLEMENTED — FOUNDER PREVIEW / TECHNICAL REVIEW PENDING** (unchanged). Not accepted/complete/merged. Slices C/D/E not authorised/not started.
+- **Role routing:** fail-closed completed — only `staff`/`owner`/`manager` select a shell; absent Business, empty result, missing/unknown role and request error all show the integrity error.
+- **Schema:** migration `0029` additive index `purchase_records_recorder_recent_idx (business_id, recorded_by_user_id, created_at DESC, id DESC)` for the Staff-own recent read (Founder-authorised); migration test bookkeeping updated.
+- **Review threads:** 4 → disposition recorded in the implementation report §12.
+- **Owner/Manager navigation:** unchanged by Founder disposition (no Counter link in Slice B).
+- **Preview:** stale Slice A preview stopped via its own command after verified ownership; Slice B reset/verified/checked on canonical ports.
+- **Follow-up candidate (separate):** `FU-OWNER-MANAGER-PURCHASE-IDEMPOTENCY` — existing Owner/Manager Purchases page recomputes `purchaseDate` per submit and can mint a new idempotency intent after an uncertain/lost response. PRE-EXISTING / OUT OF SLICE B / REQUIRES BOUNDED FOLLOW-UP.
+- **Physical-phone camera:** deferred to the secure phone-access / Cloudflare preview capability work.
+- **Dependencies:** none. **Configuration:** none. **Rollback:** revert the correction commit(s); `0029.down.sql` drops the index.
+- **Report link:** [implementation report §12](../05-implementation/reports/11THONUS-EA-BL-001-CORR-002-B-staff-counter-implementation-report-2026-10-07.md)
+

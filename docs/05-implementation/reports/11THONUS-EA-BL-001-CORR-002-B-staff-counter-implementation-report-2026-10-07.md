@@ -57,9 +57,9 @@ Seed adds Bella “Express Styling Circle” (number accepted, BR at 5) + 2 item
 ## 9. Risks, limitations, unresolved
 - Real-phone camera needs a secure origin and reachable emulators (preview §12 spike); until then use device mode + webcam, or the Loyalty Number path.
 - Pre-existing, **not changed**: `recordPurchase` returns the full Purchase row (customer identity id, Loyalty Number snapshot) to the caller; Staff can also read Business-wide purchases via `listPurchasesForBusiness` (N1). The Counter retains none of it. Owner/Manager `PurchaseRecordsPage` recomputes `purchaseDate` per submit (same latent duplicate-on-lost-response issue; now benefits from the retry classification but not the intent holder) — recommend a follow-up.
-- Recent feed query has no `(business_id, recorded_by_user_id, created_at)` index (no migration authorised); fine at MVP volumes.
+- ~~Recent feed has no index~~ — resolved by migration `0029` (Founder-authorised in the pre-Preview correction pass, §12).
 - A malformed (non-UUID) programme id yields a generic internal error — unreachable from the Counter.
-- Owner/Manager have no nav link to the Counter (route only) — Founder to decide.
+- Owner/Manager have no nav link to the Counter (route only) — **Founder disposition (2026-10-08): no link in Slice B**; broader discoverability belongs to later experience work.
 - Review queue UI and the customer’s “awaiting business” view are later slices.
 
 ## 10. Automated review (Codex, head `eee6654`) — disposition
@@ -68,7 +68,18 @@ Seed adds Bella “Express Styling Circle” (number accepted, BR at 5) + 2 item
 | P1 fail closed when the role is unreadable | **Fixed** — error state; test updated. |
 | P1 partition recent-feed cache by actor | **Fixed** — key includes the signed-in uid; test added. |
 | P2 programme not validated before item focus | **Fixed** — programme is its own invalid field (EN/FR copy), focus to first programme control; test added. |
-| P2 index for recorder-scoped lookups | **Not applied — needs Founder decision.** It is a schema migration, outside Slice B's authorised scope (no migration). Recommended follow-up: `(business_id, recorded_by_user_id, created_at DESC, id DESC)`. |
+| P2 index for recorder-scoped lookups | **Fixed in the correction pass** (§12) after Founder authorisation: migration `0029`. |
 
 ## 11. Rollback
 Revert the PR. No schema, config, secrets or data migration; the seed change is reverted by `pnpm preview:reset`.
+
+## 12. Pre-Founder-Preview correction pass (head after: see PR #307)
+Entry head `529fc8882225bd9465c1fd4450c021aae9094cb9`.
+- **Fail-closed role routing, completed.** The boundary now routes `staff` → Counter, `owner`/`manager` → existing dashboard, and **everything else** — the accessible-businesses request erroring, the Business absent from a successful result, an empty result, a missing/unrecognised role — to the translated integrity error. An unknown role is never Owner/Manager. Tests: Staff, Manager, Owner, request error, absent Business, empty result, and `undefined/null/""/customer/admin/Owner/STAFF` roles. Server authorisation untouched.
+- **Recent-feed index (Founder-authorised, additive).** Migration `0029_purchase_records_recorder_recent_idx` (+ `.down.sql`): `CREATE INDEX IF NOT EXISTS purchase_records_recorder_recent_idx ON purchase_records (business_id, recorded_by_user_id, created_at DESC, id DESC)`. Existing purchase indexes inspected: `business_status (business_id, status, created_at DESC)`, `customer_status`, `program`, `qualifying_item`, pending-admission FIFO/customer, partial BR-queue `(business_id, created_at, id) WHERE status='business_review_required'`, and the replacement-uniqueness index — none leads with the recorder, so the LIMIT could not avoid scanning/sorting a Business's history. Actual column names match the query. Validation: index shape test; `EXPLAIN` of the exact query shows the new index with no `Sort` node (seq scan disabled for the tiny test table); forward migration + rollback + re-apply covered by the existing migration suites, whose bookkeeping was updated (version lists, `migrateDown` step counts, `schema_migrations` teardown lists across 8 files). No table, column, constraint, Product Truth or WP-COM change.
+- **Cache partition / programme-first validation** (already fixed in `529fc88`): re-verified against current code and tests — key `["counterRecent", businessId, uid]` (test asserts no un-scoped key exists); programme is its own invalid field with first-radio focus (test asserts the item error is not shown and the programme radio has focus).
+- **Owner/Manager navigation:** unchanged by Founder disposition; the `counter` route remains.
+- **Physical-phone camera: deferred** to the already-identified secure phone-access / Cloudflare preview capability work. Founder Preview uses device-mode viewports, a real webcam where available, and the Loyalty Number fallback. No tunnel was built.
+- **Follow-up candidate (separate, NOT fixed here):** `FU-OWNER-MANAGER-PURCHASE-IDEMPOTENCY` — the existing Owner/Manager Purchases-page recording surface (`PurchaseRecordsPage` + `useRecordPurchaseMutation`) recomputes `purchaseDate` on every submit, so after an uncertain/lost response the payload signature changes and a **new idempotency intent** can be minted. Classification: **PRE-EXISTING / OUT OF SLICE B / REQUIRES BOUNDED FOLLOW-UP.** (The transport-level retry classification now keeps the key for an unchanged payload, but the date recomputation still defeats it.)
+- **Preview:** the stale Slice A preview (`/private/tmp/11thonus-ea-a-implementation`) was stopped with that worktree's own `pnpm preview:stop` after its recorded PIDs were matched to the processes holding ports 28101–28109; ports verified free. Slice B was then reset on the canonical ports (29 migrations applied), `preview:verify` matched, `preview:counter-checks` all PASS, real-stack Counter e2e 10 + 10 pass, harness 69 pass, and the preview was reset to pristine and stopped.
+

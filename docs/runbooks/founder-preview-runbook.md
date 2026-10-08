@@ -275,3 +275,4 @@ Esther, Kevin, Aline, Moses, Chantal, Yves. Diane's earlier Premium Cut records 
 Grace and Patrick still land on the **unchanged** Business Dashboard. They may open the Counter at
 `/business/<businessId>/dashboard/counter` (same `purchase.record` authority); no link was added to their navigation.
 
+**Physical-phone camera validation is deferred** to the already-identified secure phone-access / Cloudflare preview capability work (§12). This Preview uses device-mode viewports, a real webcam where available, and the Loyalty Number fallback.
