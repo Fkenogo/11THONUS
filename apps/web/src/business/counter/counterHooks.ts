@@ -41,11 +41,16 @@ export function useCounterProgrammesQuery(businessId: string) {
   });
 }
 
+/** The feed is the signed-in member's OWN: its cache entry is partitioned by that member. */
+export function counterActorScope(auth: { currentUser?: { uid: string } | null }): string {
+  return auth.currentUser?.uid ?? "anonymous";
+}
+
 export function useCounterRecentQuery(businessId: string) {
   const { auth, functions } = useBusinessApiPlatform();
   const actorState = useAuthenticatedActor(auth);
   return useQuery({
-    queryKey: businessQueryKeys.counterRecent(businessId),
+    queryKey: businessQueryKeys.counterRecent(businessId, counterActorScope(auth)),
     queryFn: () =>
       makeCallListMyRecentCounterPurchases(functions)(requireReadyActor(actorState), {
         businessId,
@@ -86,7 +91,7 @@ export function useRecordCounterPurchaseMutation(businessId: string) {
       };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: businessQueryKeys.counterRecent(businessId) });
+      queryClient.invalidateQueries({ queryKey: ["counterRecent", businessId] });
       queryClient.invalidateQueries({ queryKey: ["purchases", businessId] });
     },
   });

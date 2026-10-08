@@ -155,6 +155,7 @@ export function CounterPage({
   const [errorKind, setErrorKind] = useState<CounterErrorKind | null>(null);
   const [invalid, setInvalid] = useState<{
     artifact?: boolean;
+    programme?: boolean;
     item?: boolean;
     quantity?: boolean;
   }>({});
@@ -172,6 +173,7 @@ export function CounterPage({
   const quantityInputRef = useRef<HTMLInputElement>(null);
   const outcomeHeadingRef = useRef<HTMLHeadingElement>(null);
   const itemGroupRef = useRef<HTMLDivElement>(null);
+  const programmeGroupRef = useRef<HTMLDivElement>(null);
 
   const errorId = useId();
   const hintId = useId();
@@ -337,12 +339,16 @@ export function CounterPage({
 
     const nextInvalid = {
       artifact: !hasArtifact,
-      item: itemId === null,
+      programme: programme === null,
+      // An item can only be missing once there is a programme whose items are on screen.
+      item: programme !== null && itemId === null,
       quantity: parsedQuantity === null,
     };
-    if (nextInvalid.artifact || nextInvalid.item || nextInvalid.quantity) {
+    if (nextInvalid.artifact || nextInvalid.programme || nextInvalid.item || nextInvalid.quantity) {
       setInvalid(nextInvalid);
       if (nextInvalid.artifact) (scanButtonRef.current ?? loyaltyInputRef.current)?.focus();
+      else if (nextInvalid.programme)
+        programmeGroupRef.current?.querySelector<HTMLElement>("input")?.focus();
       else if (nextInvalid.item)
         itemGroupRef.current?.querySelector<HTMLElement>("input,select")?.focus();
       else quantityInputRef.current?.focus();
@@ -692,13 +698,26 @@ export function CounterPage({
                   {programmes[0].name}
                 </p>
               ) : (
-                <ChoiceGroup
-                  name="counter-programme"
-                  legend={t("counter.programme.selectedLabel")}
-                  options={programmes.map((entry) => ({ id: entry.id, label: entry.name }))}
-                  value={programme?.id ?? null}
-                  onChange={selectProgramme}
-                />
+                <div ref={programmeGroupRef}>
+                  <ChoiceGroup
+                    name="counter-programme"
+                    legend={t("counter.programme.selectedLabel")}
+                    options={programmes.map((entry) => ({ id: entry.id, label: entry.name }))}
+                    value={programme?.id ?? null}
+                    onChange={selectProgramme}
+                    errorId={`${errorId}-programme`}
+                    invalid={invalid.programme}
+                  />
+                  {invalid.programme ? (
+                    <p
+                      id={`${errorId}-programme`}
+                      role="alert"
+                      className="mt-2 text-sm font-medium text-red-700"
+                    >
+                      {t("counter.programme.required")}
+                    </p>
+                  ) : null}
+                </div>
               )}
 
               <div ref={itemGroupRef}>

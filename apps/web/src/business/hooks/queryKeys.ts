@@ -71,5 +71,6 @@ export const businessQueryKeys = {
    * the caller's own recent submissions (server-scoped to the actor; Business-scoped here).
    */
   counterProgrammes: (businessId: string) => ["counterProgrammes", businessId] as const,
-  counterRecent: (businessId: string) => ["counterRecent", businessId] as const,
+  counterRecent: (businessId: string, actorScope: string) =>
+    ["counterRecent", businessId, actorScope] as const,
 };

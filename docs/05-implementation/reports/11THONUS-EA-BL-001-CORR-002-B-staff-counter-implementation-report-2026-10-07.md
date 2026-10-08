@@ -30,7 +30,7 @@
 - **purchaseDate/idempotency (§13).** One intent = payload + `purchaseDate` + key; `resolvePurchaseDateInstant` is called only when an intent is prepared. Retry reuses all three; intentional edit, definitive failure or Serve next discards. Proven: page test with moving clock; **real-stack test** forwards the request to the server (commit) then drops the response, retries → identical payload/key/date, one new row; DB test: same key retry returns the original, changed date under the same key → `IDEMPOTENCY_CONFLICT`, revoked actor’s retry → `AUTH_FORBIDDEN` (authorisation still runs first; replay was **not** moved before it).
 - **BR confidentiality (hard condition).** Staff `listRewardPrograms` lacks the key (server); the Counter additionally projects through a whitelist so the key is dropped even for Owner/Manager responses; not in DOM, query cache, request, errors, outcome; absence is never read (no client threshold logic). Staff cannot read the queue, approve, reject or verify (DB tests + `preview:counter-checks`).
 - **Outcomes.** `waiting_for_customer`: “Purchase recorded. The customer needs to confirm it. Nothing has been earned yet.” `business_review_required`: “Purchase recorded. Business review is required before customer confirmation.” (success, `role=status`, no controls). Only routing/item/quantity retained from the server result.
-- **Access.** Staff land on Counter; Owner/Manager shell unchanged (`counter` route reachable, no nav item added — nav-label test locks the list). Server authority unchanged; role only picks the shell; if the role cannot be read the existing dashboard is shown.
+- **Access.** Staff land on Counter; Owner/Manager shell unchanged (`counter` route reachable, no nav item added — nav-label test locks the list). Server authority unchanged; role only picks the shell; if the role cannot be read the page **fails closed** (error state, no shell) — never treated as Owner/Manager.
 
 ## 5. QR dependency
 `jsqr@1.4.0` (Apache-2.0, zero dependencies, ~130 kB / 47 kB gzip) in its **own lazy chunk**, loaded only when native `BarcodeDetector` is missing (Safari/iOS). Chosen over `qr-scanner` (also pulls camera/worker management we implement ourselves) and `@zxing/browser` (5.8 MB). Last published 2025-11-13. Lockfile updated.
@@ -62,5 +62,13 @@ Seed adds Bella “Express Styling Circle” (number accepted, BR at 5) + 2 item
 - Owner/Manager have no nav link to the Counter (route only) — Founder to decide.
 - Review queue UI and the customer’s “awaiting business” view are later slices.
 
-## 10. Rollback
+## 10. Automated review (Codex, head `eee6654`) — disposition
+| Finding | Disposition |
+|---|---|
+| P1 fail closed when the role is unreadable | **Fixed** — error state; test updated. |
+| P1 partition recent-feed cache by actor | **Fixed** — key includes the signed-in uid; test added. |
+| P2 programme not validated before item focus | **Fixed** — programme is its own invalid field (EN/FR copy), focus to first programme control; test added. |
+| P2 index for recorder-scoped lookups | **Not applied — needs Founder decision.** It is a schema migration, outside Slice B's authorised scope (no migration). Recommended follow-up: `(business_id, recorded_by_user_id, created_at DESC, id DESC)`. |
+
+## 11. Rollback
 Revert the PR. No schema, config, secrets or data migration; the seed change is reverted by `pnpm preview:reset`.

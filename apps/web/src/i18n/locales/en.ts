@@ -413,6 +413,7 @@ export const en = {
       programme: {
         heading: "2. Programme",
         selectedLabel: "Programme",
+        required: "Choose the programme this purchase belongs to.",
       },
       item: {
         heading: "3. Item",

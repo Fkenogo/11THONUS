@@ -26,7 +26,7 @@ export function BusinessDashboardBoundaryPage() {
     );
   }
 
-  if (query.status === "error") {
+  if (query.status === "error" || accessible.status === "error") {
     return (
       <main className="flex min-h-screen items-center justify-center p-8 text-center">
         <h1 className="mb-2 text-lg font-semibold">{t("integrityError.title")}</h1>
@@ -36,8 +36,9 @@ export function BusinessDashboardBoundaryPage() {
   }
 
   // `EA-BL-001-CORR-002-B` (D8): Staff land on the Counter inside a bounded Staff shell; every other
-  // role — and any case where the role could not be read — keeps the existing Business Dashboard,
+  // role — keeps the existing Business Dashboard,
   // unchanged. This is UX routing only: the server remains the authority for every operation.
+  // An unreadable role FAILS CLOSED (error state above): it is never treated as Owner/Manager.
   const role = accessible.data?.find(
     (business) => business.businessId === query.data.businessId,
   )?.role;

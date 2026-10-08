@@ -1066,3 +1066,36 @@ describe("Counter — accessibility basics", () => {
     expect(loyaltyInput().className).toMatch(/min-h-14/);
   });
 });
+
+describe("Counter — review fixes", () => {
+  it("with several programmes and none chosen, the programme is its own invalid field and takes focus", async () => {
+    const user = userEvent.setup();
+    setup({
+      programmes: [
+        programme("rp-1", "Premium Cut Circle", [HAIRCUT, BRAIDING]),
+        programme("rp-2", "Family Care Circle", [HAIRCUT]),
+      ],
+    });
+    await ready();
+    await typeLoyaltyNumber(user);
+    await user.click(recordButton());
+    expect(
+      await screen.findByText("Choose the programme this purchase belongs to."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Choose the item that was bought.")).not.toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Premium Cut Circle" })).toHaveFocus();
+    expect(calls.recordPurchase).toBeUndefined();
+  });
+
+  it("the recent-submissions cache is partitioned by the signed-in member", async () => {
+    const { queryClient } = setup({ recent: [] });
+    await ready();
+    await screen.findByText("You haven't recorded any purchases yet.");
+    const keys = queryClient
+      .getQueryCache()
+      .getAll()
+      .map((q) => JSON.stringify(q.queryKey));
+    expect(keys.some((k) => k.startsWith('["counterRecent","biz-1",'))).toBe(true);
+    expect(keys).not.toContain('["counterRecent","biz-1"]');
+  });
+});

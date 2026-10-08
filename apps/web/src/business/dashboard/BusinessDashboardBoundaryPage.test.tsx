@@ -125,11 +125,13 @@ describe("BusinessDashboardBoundaryPage", () => {
       expect(screen.queryByText(/staff counter/)).not.toBeInTheDocument();
     });
 
-    it("falls back to the existing Dashboard when the role cannot be read (the server still decides every operation)", async () => {
+    it("FAILS CLOSED when the role cannot be read: no shell of either kind (never treated as Owner/Manager)", () => {
       mockUseBusinessContextQuery.mockReturnValue(success);
       mockUseAccessibleBusinessesQuery.mockReturnValue({ status: "error" });
       renderPage();
-      expect(await screen.findByText("dashboard shell for Acme Salon")).toBeInTheDocument();
+      expect(screen.getByText("Something went wrong")).toBeInTheDocument();
+      expect(screen.queryByText(/dashboard shell/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/staff counter/)).not.toBeInTheDocument();
     });
   });
 });

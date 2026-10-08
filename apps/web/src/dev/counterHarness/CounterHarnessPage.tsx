@@ -101,7 +101,7 @@ function buildClient(fixture: string | null): QueryClient {
     businessQueryKeys.counterProgrammes(CONTEXT.businessId),
     fixture === "many" ? MANY : SINGLE,
   );
-  client.setQueryData(businessQueryKeys.counterRecent(CONTEXT.businessId), {
+  client.setQueryData(businessQueryKeys.counterRecent(CONTEXT.businessId, "anonymous"), {
     purchases: fixture === "empty" ? [] : RECENT,
   });
   return client;
