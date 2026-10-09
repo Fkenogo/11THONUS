@@ -72,3 +72,9 @@ test("encoded traversal is denied and static serving is read-only", () => {
   assert.equal(classify(req("GET", "/")).kind, "static");
   assert.equal(classify(req("GET", "/staff/counter")).kind, "static");
 });
+
+test("the identity route is GET-only", () => {
+  assert.equal(classify(req("GET", "/__phone-preview/identity")).kind, "identity");
+  assert.equal(classify(req("POST", "/__phone-preview/identity")).kind, "deny");
+  assert.equal(classify(req("DELETE", "/__phone-preview/identity")).kind, "deny");
+});

@@ -2,6 +2,7 @@
 // decided here, so the deny-by-default boundary is directly unit-testable.
 import {
   AUTH_ROUTES,
+  IDENTITY_PATH,
   CALLABLE_ALLOWLIST,
   EMULATOR_FUNCTIONS_BASE,
   FUNCTIONS_PREFIX,
@@ -28,6 +29,10 @@ function classifyStatic(method, pathname) {
 export function classify({ method, pathname, search, headers }) {
   // Encoded dots / slashes / backslashes could smuggle a different route past the exact matches.
   if (/%(2e|2f|5c|00)/i.test(pathname)) return deny("encoded-path");
+
+  if (pathname === IDENTITY_PATH) {
+    return method === "GET" ? { kind: "identity" } : deny("method");
+  }
 
   if (pathname.startsWith(FUNCTIONS_PREFIX)) {
     const name = pathname.slice(FUNCTIONS_PREFIX.length);

@@ -62,3 +62,11 @@ export const AUTH_ROUTES = Object.freeze([
 ]);
 
 export const MAX_BODY_BYTES = 256 * 1024;
+
+/** Identity + decision markers: the verifier accepts a denial only when the PROXY produced it. */
+export const PROXY_ID = "11thonus-phone-preview";
+export const IDENTITY_PATH = "/__phone-preview/identity";
+export const HEADER_PROXY = "x-phone-preview-proxy";
+export const HEADER_DECISION = "x-phone-preview-decision";
+export const BUNDLE_META_FILE = "phone-preview.json";
+export const DENY_BODY = "phone-preview: denied";
