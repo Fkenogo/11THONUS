@@ -6737,3 +6737,11 @@ READY FOR CONTROLLED DRAFTING — PR AWAITS FOUNDER REVIEW`**.
 - **Experience Assembly direction recorded (not authorised):** Owner/Manager Operations (Slice C) mobile-first; Platform Operator Console desktop-first.
 - **Dependencies/config/schema:** none. **Rollback:** revert the Pass 3 commit(s).
 - **Report link:** [implementation report §15](../05-implementation/reports/11THONUS-EA-BL-001-CORR-002-B-staff-counter-implementation-report-2026-10-07.md)
+
+## 2026-10-09 — EA-BL-001-CORR-002-B — Founder Preview Pass 3 ACCEPTED (acceptance recording)
+- **Founder disposition:** Founder Preview Pass 3 ACCEPTED at head `ea8e8e6051335c7160d9e06516372bad953be65b` (CI run 37826012528 success). Earlier Pass 1/2/3 observations preserved.
+- **Status:** **IMPLEMENTED — FOUNDER ACCEPTED / TECHNICAL REVIEW PENDING**; not complete/closed/merged; PR #307 unmerged; Slices C/D/E NOT AUTHORISED / NOT STARTED.
+- **Follow-ups:** new `FU-COUNTER-LOOKUP-ABUSE-PROTECTION` (non-blocking security hardening; no thresholds); `FU-OWNER-MANAGER-PURCHASE-IDEMPOTENCY` preserved unfixed. Owner/Manager Counter recent activity deferred to `EA-BL-001-CORR-002-C` (mobile-first).
+- **Physical-phone validation:** pre-merge verification activity; not a Product Truth gate.
+- **Change:** documentation/status/PR-body only. No code, tests, dependencies, config or schema. (PR #307 carries additive migration `0029`; earlier "no schema" wording corrected.)
+- **Report link:** [implementation report §16](../05-implementation/reports/11THONUS-EA-BL-001-CORR-002-B-staff-counter-implementation-report-2026-10-07.md)

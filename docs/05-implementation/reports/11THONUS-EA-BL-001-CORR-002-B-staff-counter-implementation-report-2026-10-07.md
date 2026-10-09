@@ -1,6 +1,6 @@
 # 11THONUS — EA-BL-001-CORR-002-B Staff Counter: Implementation Report
 
-**Status:** IMPLEMENTED — FOUNDER PREVIEW / TECHNICAL REVIEW PENDING. Not accepted, not complete, not merged.
+**Status:** IMPLEMENTED — FOUNDER ACCEPTED / TECHNICAL REVIEW PENDING (Founder Preview Pass 3 accepted 2026-10-09 at head `ea8e8e6051335c7160d9e06516372bad953be65b`; see §16). Not complete, not closed, not merged. *(Earlier text in §§1–15 describes the status at the time it was written and is preserved unchanged.)*
 **Entry:** `origin/main` `4bc9c49261c1db8bfdacb3d91b68d51ad59e47f9` (PR #306 merged; post-merge CI run 37642428840 verified `success`).
 **Branch:** `feat/ea-bl-001-corr-002-b-staff-counter`. Authority: [assessment §22/§23](11THONUS-EA-BL-001-CORR-002-B-staff-counter-authorisation-and-design-2026-10-07.md).
 
@@ -20,7 +20,7 @@
 ## 2. Backend enablers (the only backend changes)
 - **Discriminator** (`purchaseErrors.ts`, `index.ts`, `recordPurchaseCommand.ts`): closed set `customer_artifact_invalid_or_not_found | programme_unavailable | qualifying_item_invalid | quantity_invalid | generic_validation_failed`. Message still never echoed. Shared-number refusal maps to the **neutral customer-code token** (indistinguishable from an unknown code — tested). Identity-lookup not-found/malformed is now surfaced under the artifact token (was an identity error reaching the client as `authentication_failed`; one existing test updated deliberately). Boundary parse errors carry the same tokens. Auth/state/idempotency errors carry **no** reason.
 - **Staff-own read**: `listMyRecentCounterPurchases` gated by live `purchase.record` (Staff, authorised Manager, Owner); `recorded_by_user_id = <server actor>` in SQL; limit 1–20 (default 10); purpose-built projection (`id, recordedAt (ISO string), itemLabel, quantity, status, presentedVia, customerCodeHint`) — no reviewer, reason, threshold, customer identity id, recorder or commercial fields; hint = last 3 characters only for a typed Loyalty Number. Includes the member’s own review-required rows (the outcome they were told). Existing Owner/Manager `listPurchasesForBusiness` unchanged.
-- No schema/migration, WP-COM, BR or Trust change. No new permission.
+- No WP-COM, BR or Trust change. No new permission. *(Correction, 2026-10-09: this PR DOES carry one additive migration — `0029_purchase_records_recorder_recent_idx` (+ `.down.sql`), Founder-authorised in the pre-Preview correction pass (§12). The original wording "no schema/migration" referred to the first implementation commit and is stale for the PR as a whole.)*
 
 ## 3. Web
 `apps/web/src/business/counter/`: `CounterPage`, `NewCustomerPanel`, `CounterRecentActivity`, `StaffShell`, `qrScanner`, `counterIntent`, `counterErrors`, `counterProgrammes`, `counterHooks`, `signUpUrl`. Transport: `BusinessApiError.reason`, optional per-callable classifier, `classifyRecordPurchaseError`. Dev-only `/dev/counter-harness`. EN/FR under `business.counter.*`.
@@ -181,3 +181,25 @@ Business-Review-held purchases are intentionally not shown as "awaiting"; the lo
 ### 15.12 Follow-up candidates (not built)
 (a) A per-actor rate limit/anomaly signal on Counter lookups (none exists platform-wide). (b) `FU-OWNER-MANAGER-PURCHASE-IDEMPOTENCY` — unchanged, separate. (c) Cloudflare physical-phone preview capability — next preview step after the Founder confirms this structure.
 **Rollback:** revert the Pass 3 commit(s); no data or schema is involved (the read is additive; the seed is Founder-Preview-only).
+
+## 16. Founder Preview Pass 3 — ACCEPTED (acceptance recording, 2026-10-09)
+Docs/status/PR-metadata only: no application code, test, schema or config change. Implementation head at acceptance: `ea8e8e6051335c7160d9e06516372bad953be65b` (exact-head CI run 37826012528 — success).
+
+**Founder disposition: Founder Preview Pass 3 is ACCEPTED** for the Staff application experience at that head: mobile-only Staff shell; Counter as the focused transaction view; Activity as its own Staff-own history view; Profile as its own bounded account/context view; central quick-action button (Scan customer QR; Help a new customer join); limited transaction-scoped loyalty context; reward-available alert before recording; verified vs awaiting-customer-confirmation truthfulness; EN/FR; Owner/Manager unchanged within Slice B scope. Passes 1–3 observations above are preserved as historical record.
+
+**New package status: `EA-BL-001-CORR-002-B` — IMPLEMENTED — FOUNDER ACCEPTED / TECHNICAL REVIEW PENDING.** NOT complete, NOT closed, NOT merged. Slices C/D/E remain NOT AUTHORISED / NOT STARTED.
+
+### 16.1 Open-item dispositions
+1. **Counter lookup abuse / enumeration** — no rate limiter in Slice B. Recorded as a separate bounded follow-up candidate **`FU-COUNTER-LOOKUP-ABUSE-PROTECTION`**: assess per-actor throttling and/or anomaly signalling for repeated transaction-scoped loyalty-context lookups. Classification: NON-BLOCKING / SECURITY HARDENING / OUTSIDE SLICE B ACCEPTANCE. No thresholds or implementation are specified here.
+2. **Owner/Manager Counter recent activity** — DEFERRED to `EA-BL-001-CORR-002-C` Owner/Manager Operations (not added in Slice B). Slice C is governed prospectively as MOBILE-FIRST (§15.10); this does not authorise Slice C.
+3. **Bella preview trial headroom** — no Product Truth change. The reduced headroom is a seed/scenario concern only; commercial rules are not altered for preview convenience. Future commercial preview work should use a suitable deterministic scenario/reset.
+4. **`FU-OWNER-MANAGER-PURCHASE-IDEMPOTENCY`** — preserved unchanged: PRE-EXISTING / OUT OF SLICE B / REQUIRES BOUNDED FOLLOW-UP. Not fixed here.
+
+### 16.2 Physical-phone validation
+The Founder experience is accepted on the assembled local preview. Physical-device validation remains a subsequent PRE-MERGE verification activity for real touch ergonomics, safe-area behaviour, software keyboard, physical camera permission and QR scan between devices. It is NOT a new Product Truth gate. If it finds an actual product defect, PR #307 may require correction and re-validation before technical review.
+
+### 16.3 Experience Assembly direction (restated)
+Owner/Manager Operations (Slice C) mobile-first; Platform Operator Console desktop-first (§15.10). Neither is authorised or started.
+
+### 16.4 Current validation figures at the accepted head
+functions unit 2029 (176 files); PostgreSQL suite 793 (22 files); web unit 1140 (138 files); Playwright harness 108; real-stack preview specs 56 per cycle (desktop + Pixel 7). The §6 figures are the earlier snapshot.
