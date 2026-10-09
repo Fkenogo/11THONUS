@@ -42,15 +42,27 @@ hostname, policy name and allowed identities below. Never commit identities or t
 ```bash
 pnpm preview:start                           # canonical Docker/PostgreSQL + emulators (+ dev web on :28109)
 pnpm preview:reset && pnpm preview:verify && pnpm preview:counter-checks && pnpm preview:status
-pnpm preview:phone build --host <host>       # production bundle with the origin baked in
-pnpm preview:phone start --host <host>       # loopback proxy
+pnpm preview:phone build --host <host>       # hermetic production bundle (isolated env dir) bound to <host>
+pnpm preview:phone start --host <host>       # loopback proxy; refuses unless the canonical owned preview is up and the bundle matches <host>
 pnpm preview:phone verify                    # allow-list + negative exposure checks (local)
-pnpm preview:phone tunnel --name <tunnel>    # named tunnel → proxy only
-pnpm preview:phone verify --base https://<host> --host <host>   # same checks over the public hostname*
+pnpm preview:phone tunnel --name <tunnel>    # named tunnel → proxy only; success is reported only once the edge connection is registered
+CF_ACCESS_CLIENT_ID=… CF_ACCESS_CLIENT_SECRET=… \
+  pnpm preview:phone verify --base https://<host> --host <host>   # same checks over the public hostname
 ```
 
-\* Behind Access the public check needs a service token (or run it from a browser session); the local run is the
-authoritative proof of the allow-list because the tunnel forwards to the same proxy.
+The public check needs a Cloudflare Access **service token** (Zero Trust → Access → Service Auth), added to the
+Access policy as a *Service Auth* rule. Pass it only through the two environment variables above; never commit it.
+Without them the verifier refuses to run against a non-loopback origin (`--no-access` overrides for an origin that
+is intentionally not behind Access).
+
+**Verifier safety.** The verifier first sends one GET to `/__phone-preview/identity` and aborts unless the target
+proves it is the phone proxy (marker headers + bundle bound to `--host`). Only then does it send the negative probes
+(which include DELETE/PUT), and it accepts a denial only when the *proxy* produced it
+(`x-phone-preview-decision: deny`), never an arbitrary 4xx from an emulator.
+
+**Hermetic build.** The phone bundle is built with Vite pointed at a generated env dir containing only the pinned
+preview variables; `apps/web/.env*` files and inherited `VITE_*` variables (App Check keys, observability, real
+Firebase config, Google/Phone flags) are never read.
 
 ## Diagnostics (local only)
 
