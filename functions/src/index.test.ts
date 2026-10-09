@@ -21,6 +21,8 @@ import {
   parsePublishRewardProgramVersionRequest,
   parseCreateNextRewardProgramVersionRequest,
   parseRecordPurchaseRequest,
+  parseListMyRecentCounterPurchasesRequest,
+  parseGetCounterLoyaltyContextRequest,
   parseApproveBusinessReviewRequest,
   parseRejectBusinessReviewRequest,
   parseBusinessLoyaltyVisibilityRequest,
@@ -28,7 +30,16 @@ import {
   toHttpsError,
 } from "./index";
 import { RewardProgramDomainError } from "./domains/rewardProgram/models/rewardProgramErrors";
-import { PurchaseDomainError } from "./domains/purchase/models/purchaseErrors";
+import {
+  PURCHASE_FAILURE_REASONS,
+  PurchaseDomainError,
+  purchaseArtifactError,
+  purchaseProgramError,
+  purchaseQualifyingItemError,
+  purchaseQuantityError,
+  purchaseSharedPolicyError,
+  purchaseValidationError,
+} from "./domains/purchase/models/purchaseErrors";
 
 describe("parseMyCustomerExperienceRequest (customer-owned reads)", () => {
   it("retains authentication proof and drops any client-selected identity", () => {
@@ -983,6 +994,180 @@ describe("toHttpsError (purchase idempotency transport mapping, PLATFORM-BASELIN
     );
     expect(error.code).toBe("aborted");
     expect(error.message).toBe("purchase_command_failed");
+  });
+});
+
+/**
+ * Safe public error discriminator (`EA-BL-001-CORR-002-B`, assessment §23.2): a closed `reason` token
+ * on the existing `purchase_command_failed` error, never a raw message or any internal detail.
+ */
+describe("toHttpsError (purchase safe public discriminator, EA-BL-001-CORR-002-B)", () => {
+  const cases: [string, () => PurchaseDomainError, string][] = [
+    [
+      "artifact",
+      () => purchaseArtifactError("Loyalty Number ABC234 unknown"),
+      "customer_artifact_invalid_or_not_found",
+    ],
+    [
+      "shared policy (neutral)",
+      () => purchaseSharedPolicyError(),
+      "customer_artifact_invalid_or_not_found",
+    ],
+    [
+      "programme",
+      () => purchaseProgramError("Program rp_secret is not active"),
+      "programme_unavailable",
+    ],
+    ["item", () => purchaseQualifyingItemError(), "qualifying_item_invalid"],
+    ["quantity", () => purchaseQuantityError("Only 1 unit; threshold 5"), "quantity_invalid"],
+    ["generic", () => purchaseValidationError("anything else"), "generic_validation_failed"],
+  ];
+
+  it.each(cases)(
+    "%s → the closed token, with the domain message never echoed",
+    (_name, make, reason) => {
+      const error = toHttpsError(make());
+      expect(error.code).toBe("invalid-argument");
+      expect(error.message).toBe("purchase_command_failed");
+      expect(error.details).toEqual({ reason });
+      expect(JSON.stringify(error.details)).not.toMatch(/ABC234|rp_secret|threshold|unit/);
+    },
+  );
+
+  it("every emitted token is a member of the closed public set", () => {
+    for (const [, make] of cases) {
+      expect(PURCHASE_FAILURE_REASONS).toContain(make().reason);
+    }
+    expect([...PURCHASE_FAILURE_REASONS].sort()).toEqual(
+      [
+        "customer_artifact_invalid_or_not_found",
+        "generic_validation_failed",
+        "programme_unavailable",
+        "qualifying_item_invalid",
+        "quantity_invalid",
+      ].sort(),
+    );
+  });
+
+  it("a non-validation purchase error carries NO discriminator (auth/state boundaries preserved)", () => {
+    for (const category of [
+      "AUTH_FORBIDDEN",
+      "INVALID_STATE_TRANSITION",
+      "IDEMPOTENCY_CONFLICT",
+    ] as const) {
+      const error = toHttpsError(new PurchaseDomainError(category, "internal detail"));
+      expect(error.details).toBeUndefined();
+      expect(error.message).toBe("purchase_command_failed");
+    }
+  });
+
+  it("boundary parse failures carry the same tokens (malformed artifact / quantity / other)", () => {
+    const base = {
+      businessId: "biz_1",
+      rewardProgramId: "rp_1",
+      qualifyingItemId: "item_1",
+      purchaseDate: "2026-09-14T10:00:00.000Z",
+      quantity: 1,
+    };
+    const detailsOf = (patch: Record<string, unknown>) => {
+      try {
+        parseRecordPurchaseRequest({ ...base, loyaltyNumberValue: "ABC234", ...patch });
+      } catch (error) {
+        return (error as { details?: unknown }).details;
+      }
+      throw new Error("expected a parse failure");
+    };
+    expect(detailsOf({ quantity: 0 })).toEqual({ field: "quantity", reason: "quantity_invalid" });
+    expect(detailsOf({ loyaltyNumberValue: "   " })).toEqual({
+      field: "loyaltyNumberValue",
+      reason: "customer_artifact_invalid_or_not_found",
+    });
+    expect(detailsOf({ purchaseDate: "not-a-date" })).toEqual({
+      field: "purchaseDate",
+      reason: "generic_validation_failed",
+    });
+  });
+});
+
+/**
+ * Staff-own recent read whitelist (`EA-BL-001-CORR-002-B`, D6): only `businessId` and a bounded
+ * `limit`; a client cannot name a recorder, filter or offset.
+ */
+describe("parseListMyRecentCounterPurchasesRequest (D6 mass-assignment boundary)", () => {
+  it("keeps businessId and limit and drops every client-supplied recorder/filter/offset", () => {
+    expect(
+      parseListMyRecentCounterPurchasesRequest({
+        businessId: "biz_1",
+        limit: 5,
+        recordedByUserId: "colleague",
+        userId: "colleague",
+        status: "verified",
+        offset: 40,
+      }),
+    ).toEqual({ businessId: "biz_1", limit: 5 });
+  });
+
+  it("limit is optional and must be an integer", () => {
+    expect(parseListMyRecentCounterPurchasesRequest({ businessId: "biz_1" })).toEqual({
+      businessId: "biz_1",
+    });
+    expect(() =>
+      parseListMyRecentCounterPurchasesRequest({ businessId: "biz_1", limit: "5" }),
+    ).toThrow();
+    expect(() => parseListMyRecentCounterPurchasesRequest({})).toThrow();
+  });
+
+  it("carries an optional opaque cursor (Staff Activity paging) and nothing else", () => {
+    expect(
+      parseListMyRecentCounterPurchasesRequest({
+        businessId: "biz_1",
+        limit: 20,
+        cursor: "abc",
+        offset: 5,
+        recordedByUserId: "colleague",
+      }),
+    ).toEqual({ businessId: "biz_1", limit: 20, cursor: "abc" });
+    expect(() =>
+      parseListMyRecentCounterPurchasesRequest({ businessId: "biz_1", cursor: 7 }),
+    ).toThrow();
+  });
+});
+
+/**
+ * Staff limited loyalty context (`EA-BL-001-CORR-002-B`, Founder Preview Pass 3): the transport
+ * carries exactly the transaction the Staff member is about to record — never a Customer id.
+ */
+describe("parseGetCounterLoyaltyContextRequest (mass-assignment boundary)", () => {
+  it("keeps businessId, rewardProgramId and the one presented artifact; drops every customer/identity hint", () => {
+    expect(
+      parseGetCounterLoyaltyContextRequest({
+        businessId: "biz_1",
+        rewardProgramId: "rp_1",
+        loyaltyNumberValue: "ABC234",
+        customerIdentityId: "cust_secret",
+        userId: "colleague",
+        role: "owner",
+        businessReviewQuantityThreshold: 1,
+        quantity: 3,
+      }),
+    ).toEqual({
+      businessId: "biz_1",
+      rewardProgramId: "rp_1",
+      loyaltyNumberValue: "ABC234",
+      qrReference: undefined,
+    });
+  });
+
+  it("requires a Business and a Programme; the artifact fields are validated as strings", () => {
+    expect(() => parseGetCounterLoyaltyContextRequest({ rewardProgramId: "rp_1" })).toThrow();
+    expect(() => parseGetCounterLoyaltyContextRequest({ businessId: "biz_1" })).toThrow();
+    expect(() =>
+      parseGetCounterLoyaltyContextRequest({
+        businessId: "biz_1",
+        rewardProgramId: "rp_1",
+        qrReference: 5,
+      }),
+    ).toThrow();
   });
 });
 

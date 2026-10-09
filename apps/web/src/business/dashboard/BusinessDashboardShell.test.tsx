@@ -129,4 +129,29 @@ describe("BusinessDashboardShell", () => {
     expect(within(navEn).getByRole("link", { name: "Overview" })).toBeInTheDocument();
     expect(screen.getByText("profile content")).toBeInTheDocument();
   });
+
+  it("is unchanged for Owner/Manager: no Staff bottom bar, no Staff app column and no Counter destination (Staff-only shell)", () => {
+    renderShell();
+    expect(screen.queryByTestId("staff-bottom-nav")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("staff-app")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("navigation", { name: "Counter navigation" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Counter" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "New customer" })).not.toBeInTheDocument();
+    const nav = screen.getByRole("navigation", { name: "Business Dashboard navigation" });
+    expect(
+      within(nav)
+        .getAllByRole("link")
+        .map((link) => link.textContent?.trim()),
+    ).toEqual(
+      expect.arrayContaining([
+        "Overview",
+        "Business Profile",
+        "Locations",
+        "Team",
+        "Business Terms",
+      ]),
+    );
+  });
 });

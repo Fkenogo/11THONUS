@@ -9,7 +9,12 @@
  */
 
 import { httpsCallable, type Functions } from "firebase/functions";
-import { toCallWithActor, type AuthenticatedActor } from "./businessCallableClient";
+import {
+  toCallWithActor,
+  type AuthenticatedActor,
+  type CallableErrorClassifier,
+} from "./businessCallableClient";
+import { mapCallableErrorCode } from "../../authentication/authenticateClient";
 
 export type PurchaseRecordWire = {
   id: string;
@@ -104,6 +109,96 @@ export function isBusinessReviewRequired(result: RecordPurchaseResult | undefine
   );
 }
 
+/**
+ * The closed public failure discriminator the server attaches to a `recordPurchase` validation
+ * failure (`EA-BL-001-CORR-002-B`, mirrors `PURCHASE_FAILURE_REASONS` in `purchaseErrors.ts`). Any
+ * other value is ignored: the client only ever acts on tokens it knows.
+ */
+export const PURCHASE_FAILURE_REASONS = [
+  "customer_artifact_invalid_or_not_found",
+  "programme_unavailable",
+  "qualifying_item_invalid",
+  "quantity_invalid",
+  "generic_validation_failed",
+] as const;
+
+export type PurchaseFailureReason = (typeof PURCHASE_FAILURE_REASONS)[number];
+
+/**
+ * Transport codes that mean "the call may or may not have committed": a dropped connection or a
+ * lost response surfaces from the Firebase SDK as `functions/internal` (status 0 — "could be a
+ * network error or an unhandled backend error, no way to know"), an aborted request as
+ * `functions/cancelled`, anything unmapped as `functions/unknown`. For `recordPurchase` every one of
+ * these is UNCERTAIN, so it must classify as retryable (`unavailable`) — that is what makes the web
+ * key holder KEEP the idempotency key (`settleKeyOnError`) and a retry replay the original Purchase
+ * instead of minting a duplicate. Other callables keep the shared mapping unchanged.
+ */
+const UNCERTAIN_TRANSPORT_CODES: ReadonlySet<string> = new Set([
+  "functions/internal",
+  "functions/unknown",
+  "functions/cancelled",
+]);
+
+export const classifyRecordPurchaseError: CallableErrorClassifier = (error) => {
+  const raw = error as { code?: unknown; details?: unknown } | undefined;
+  const code = typeof raw?.code === "string" ? raw.code : undefined;
+  if (code !== undefined && UNCERTAIN_TRANSPORT_CODES.has(code)) {
+    return { code: "unavailable" };
+  }
+  if (code === undefined) {
+    // Not a recognised Firebase error at all (a bare network TypeError, say): same uncertainty.
+    return { code: "unavailable" };
+  }
+  const mapped = mapCallableErrorCode(code);
+  const reason = (raw?.details as { reason?: unknown } | null | undefined)?.reason;
+  const known = (PURCHASE_FAILURE_REASONS as readonly unknown[]).includes(reason)
+    ? (reason as PurchaseFailureReason)
+    : undefined;
+  return mapped === "validation_failed" && known
+    ? { code: mapped, reason: known }
+    : { code: mapped };
+};
+
+/**
+ * One row of the Staff Counter's own-recent feed (`listMyRecentCounterPurchases`). Purpose-built
+ * projection: no reviewer, reason, threshold, customer identity or recorder fields exist on it.
+ */
+export type CounterRecentPurchaseWire = {
+  id: string;
+  recordedAt: string;
+  itemLabel: string;
+  quantity: number;
+  status: PurchaseRecordWire["status"];
+  presentedVia: "loyalty_number" | "qr_identity";
+  customerCodeHint: string | null;
+};
+
+/** One page of the Staff Activity view (`listMyRecentCounterPurchases`); `nextCursor` is opaque. */
+export type CounterRecentPageWire = {
+  purchases: CounterRecentPurchaseWire[];
+  nextCursor: string | null;
+};
+
+/**
+ * The Staff Counter's limited, transaction-scoped loyalty context
+ * (`getCounterLoyaltyContext`, Founder Preview Pass 3). Exactly four values about the one Customer in
+ * the one Programme being served — no identity, name, history, review or threshold field exists.
+ */
+export type CounterLoyaltyContextWire = {
+  verifiedUnits: number;
+  requiredVerifiedUnits: number;
+  rewardStatus: "none" | "available";
+  awaitingCustomerConfirmationUnits: number;
+};
+
+export type CounterLoyaltyContextRequest = {
+  businessId: string;
+  rewardProgramId: string;
+} & (
+  | { loyaltyNumberValue: string; qrReference?: never }
+  | { qrReference: string; loyaltyNumberValue?: never }
+);
+
 export type ListPurchasesRequest = {
   businessId: string;
   status?: string;
@@ -120,7 +215,41 @@ type BoundCallable<TResult> = (payload: Record<string, unknown>) => Promise<{ da
 export function toCallRecordPurchase(
   callable: BoundCallable<RecordPurchaseResult>,
 ): (actor: AuthenticatedActor, payload: RecordPurchaseRequest) => Promise<RecordPurchaseResult> {
-  return toCallWithActor<RecordPurchaseRequest, RecordPurchaseResult>(callable);
+  return toCallWithActor<RecordPurchaseRequest, RecordPurchaseResult>(
+    callable,
+    classifyRecordPurchaseError,
+  );
+}
+
+export function toCallListMyRecentCounterPurchases(
+  callable: BoundCallable<CounterRecentPageWire>,
+): (
+  actor: AuthenticatedActor,
+  payload: { businessId: string; limit?: number; cursor?: string },
+) => Promise<CounterRecentPageWire> {
+  return toCallWithActor<
+    { businessId: string; limit?: number; cursor?: string },
+    CounterRecentPageWire
+  >(callable);
+}
+
+export function makeCallListMyRecentCounterPurchases(functions: Functions) {
+  return toCallListMyRecentCounterPurchases(
+    httpsCallable(functions, "listMyRecentCounterPurchases"),
+  );
+}
+
+export function toCallGetCounterLoyaltyContext(
+  callable: BoundCallable<CounterLoyaltyContextWire>,
+): (
+  actor: AuthenticatedActor,
+  payload: CounterLoyaltyContextRequest,
+) => Promise<CounterLoyaltyContextWire> {
+  return toCallWithActor<CounterLoyaltyContextRequest, CounterLoyaltyContextWire>(callable);
+}
+
+export function makeCallGetCounterLoyaltyContext(functions: Functions) {
+  return toCallGetCounterLoyaltyContext(httpsCallable(functions, "getCounterLoyaltyContext"));
 }
 
 export function toCallListPurchasesForBusiness(

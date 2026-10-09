@@ -83,7 +83,6 @@ import {
 import { listTrustEventsForPurchase } from "../repositories/trustEventRepository";
 import { listNotificationIntentsForPurchase } from "../repositories/purchaseOutboxRepository";
 import { PurchaseDomainError } from "../models/purchaseErrors";
-import { IdentityDomainError } from "../../identity/models/identityErrors";
 import type { PurchaseRejectReason, PurchaseDisputeReason } from "../models/purchase";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -565,7 +564,12 @@ describe("recordPurchase — artifact policy, program eligibility, quantity, ide
         idempotencyKey: nextId("key"),
         correlationId: nextId("corr"),
       }),
-    ).rejects.toThrow(IdentityDomainError);
+    ).rejects.toMatchObject({
+      name: "PurchaseDomainError",
+      category: "VALIDATION_FAILED",
+      // EA-BL-001-CORR-002-B: an inactive/unknown artifact surfaces under the safe discriminator.
+      reason: "customer_artifact_invalid_or_not_found",
+    });
     expect(await count("purchase_records")).toBe(0);
   });
 

@@ -475,6 +475,89 @@ export async function listPurchaseRecordsForBusiness(
 }
 
 /**
+ * The narrow projection the Staff Counter's "my recent submissions" feed needs
+ * (`EA-BL-001-CORR-002-B`, D6). Deliberately a column list, not `SELECT *`: it never reads the
+ * customer identity id, the recorder, any Business Review column or any commercial column, so the
+ * feed cannot widen what Staff see even by accident.
+ */
+export type RecorderRecentPurchaseRow = {
+  readonly id: string;
+  readonly createdAt: Date;
+  readonly itemLabel: string;
+  readonly quantity: number;
+  readonly status: PurchaseStatus;
+  readonly presentedArtifactType: PresentedArtifactType;
+  readonly canonicalLoyaltyNumberValue: string;
+};
+
+/**
+ * The calling member's own most recent submissions in one Business. The recorder scope is part of
+ * the SQL itself (`recorded_by_user_id = $2`) -- the server-resolved actor, never a client filter.
+ * Includes the member's own `business_review_required` rows (the routing outcome they were already
+ * told), unlike the Business-wide list, which hides that protected queue from non-reviewers.
+ */
+export type RecorderRecentPage = {
+  readonly rows: RecorderRecentPurchaseRow[];
+  /** Keyset position of the LAST returned row (microsecond-exact), or `null` when no more rows remain. */
+  readonly next: { readonly createdAtCursor: string; readonly id: string } | null;
+};
+
+export async function listRecentPurchaseRecordsByRecorder(
+  db: Queryable,
+  params: {
+    readonly businessId: string;
+    readonly recordedByUserId: string;
+    readonly limit: number;
+    /** Keyset position to continue after (`(created_at, id)` strictly before it); omitted = newest. */
+    readonly after?: { readonly createdAtCursor: string; readonly id: string } | null;
+  },
+): Promise<RecorderRecentPage> {
+  const after = params.after ?? null;
+  const result = await db.query<{
+    id: string;
+    created_at: Date;
+    created_at_cursor: string;
+    item_label: string;
+    quantity: number;
+    status: PurchaseStatus;
+    presented_artifact_type: PresentedArtifactType;
+    canonical_loyalty_number_value: string;
+  }>(
+    `SELECT id, created_at,
+            to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS created_at_cursor,
+            item_label, quantity, status, presented_artifact_type,
+            canonical_loyalty_number_value
+       FROM purchase_records
+      WHERE business_id = $1 AND recorded_by_user_id = $2
+        AND ($4::timestamptz IS NULL OR (created_at, id) < ($4::timestamptz, $5::uuid))
+      ORDER BY created_at DESC, id DESC
+      LIMIT $3`,
+    [
+      params.businessId,
+      params.recordedByUserId,
+      params.limit + 1,
+      after?.createdAtCursor ?? null,
+      after?.id ?? null,
+    ],
+  );
+  const hasMore = result.rows.length > params.limit;
+  const pageRows = hasMore ? result.rows.slice(0, params.limit) : result.rows;
+  const last = pageRows[pageRows.length - 1];
+  return {
+    rows: pageRows.map((row) => ({
+      id: row.id,
+      createdAt: row.created_at,
+      itemLabel: row.item_label,
+      quantity: row.quantity,
+      status: row.status,
+      presentedArtifactType: row.presented_artifact_type,
+      canonicalLoyaltyNumberValue: row.canonical_loyalty_number_value,
+    })),
+    next: hasMore && last ? { createdAtCursor: last.created_at_cursor, id: last.id } : null,
+  };
+}
+
+/**
  * Business Review queue: the Business's Purchases awaiting review, oldest first
  * (`(created_at, id)`, matching `purchase_records_business_review_queue_idx`). Reads never create
  * or repair records; the caller enforces Business-scoped authority before calling.

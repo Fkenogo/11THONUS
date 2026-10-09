@@ -6689,3 +6689,72 @@ READY FOR CONTROLLED DRAFTING — PR AWAITS FOUNDER REVIEW`**.
 - **Files changed:** this log entry only.
 - **Constraints honoured:** no application code, DNS, Cloudflare resource, authentication, database, or runtime change; no new Cloudflare work package opened; the implementation programme continues per its approved schedule.
 - **Rollback:** revert this closure entry (documentation only; does not alter the merged assessment).
+
+---
+
+## 2026-10-07 — EA-BL-001-CORR-002-B — Staff Counter Implementation
+
+- **Date:** 2026-10-07
+- **Phase:** Experience Assembly, Slice B (authorised via PR #306; entry `origin/main` `4bc9c49`, post-merge CI 37642428840 green).
+- **Task:** Mobile-first Staff Counter on the production architecture, bound to the frozen prototype `11thonus-prototype@18e8d700…` (experience only).
+- **Status:** **IMPLEMENTED — FOUNDER PREVIEW / TECHNICAL REVIEW PENDING.** Not accepted, not complete, not merged.
+- **Scope:** Staff shell + Counter (camera QR scan with lazy `jsqr` fallback, Loyalty Number fallback, tokenless new-customer panel, truthful normal / business-review outcomes, Serve next, Staff-own recent activity); EN/FR; accessibility.
+- **Backend enablers:** safe public error discriminator (`reason` on `purchase_command_failed`); `listMyRecentCounterPurchases` (server-scoped, purpose-built projection). No schema, WP-COM, BR or Trust change.
+- **Idempotency correction:** `recordPurchase` classifies `functions/internal|unknown|cancelled` as uncertain/retryable so the key survives a lost response; the Counter keeps payload + `purchaseDate` + key as one intent. Authorisation still gates retries.
+- **Validation:** functions 2026 unit / 772 PostgreSQL; web 1076; Playwright harness 69 (axe, 320px, fake camera) and real preview stack 20; typecheck, lint, format clean.
+- **Preview:** seed adds Express Styling Circle; `preview:counter-checks`; runbook §13.
+- **Dependencies:** `jsqr@1.4.0`. **Migrations:** none. **Configuration:** Playwright harness project gains fake-capture-device flags.
+- **Rollback:** revert the PR.
+- **Report link:** [implementation report](../05-implementation/reports/11THONUS-EA-BL-001-CORR-002-B-staff-counter-implementation-report-2026-10-07.md)
+
+---
+
+## 2026-10-08 — EA-BL-001-CORR-002-B — Pre-Founder-Preview Correction Pass
+
+- **Date:** 2026-10-08
+- **Task:** Bounded correction/preview-readiness pass on PR #307 (entry head `529fc88`).
+- **Status:** **IMPLEMENTED — FOUNDER PREVIEW / TECHNICAL REVIEW PENDING** (unchanged). Not accepted/complete/merged. Slices C/D/E not authorised/not started.
+- **Role routing:** fail-closed completed — only `staff`/`owner`/`manager` select a shell; absent Business, empty result, missing/unknown role and request error all show the integrity error.
+- **Schema:** migration `0029` additive index `purchase_records_recorder_recent_idx (business_id, recorded_by_user_id, created_at DESC, id DESC)` for the Staff-own recent read (Founder-authorised); migration test bookkeeping updated.
+- **Review threads:** 4 → disposition recorded in the implementation report §12.
+- **Owner/Manager navigation:** unchanged by Founder disposition (no Counter link in Slice B).
+- **Preview:** stale Slice A preview stopped via its own command after verified ownership; Slice B reset/verified/checked on canonical ports.
+- **Follow-up candidate (separate):** `FU-OWNER-MANAGER-PURCHASE-IDEMPOTENCY` — existing Owner/Manager Purchases page recomputes `purchaseDate` per submit and can mint a new idempotency intent after an uncertain/lost response. PRE-EXISTING / OUT OF SLICE B / REQUIRES BOUNDED FOLLOW-UP.
+- **Physical-phone camera:** deferred to the secure phone-access / Cloudflare preview capability work.
+- **Dependencies:** none. **Configuration:** none. **Rollback:** revert the correction commit(s); `0029.down.sql` drops the index.
+- **Report link:** [implementation report §12](../05-implementation/reports/11THONUS-EA-BL-001-CORR-002-B-staff-counter-implementation-report-2026-10-07.md)
+
+## 2026-10-08 — EA-BL-001-CORR-002-B — Founder Preview Pass 1: Staff Mobile Experience Correction
+- **Founder Preview Pass 1:** APPROVE WITH BOUNDED MOBILE EXPERIENCE CORRECTION (Founder Preview NOT yet accepted). Accepted: Counter, scan, purchase, new-customer flows, business switching, prototype alignment. Correction: Staff phone-first shell with a Staff-only bottom navigation (the Business/Owner-Manager shell's bottom-bar rejection is unchanged and that shell is untouched).
+- **Status:** unchanged — **IMPLEMENTED — FOUNDER PREVIEW / TECHNICAL REVIEW PENDING**; PR #307 not merged; Slices C/D/E NOT AUTHORISED / NOT STARTED.
+- **Change:** phone-width Staff shell — simplified header, fixed bottom bar (Counter / New customer / Activity / More), in-page section navigation (no routes), More sheet (language + Switch Business / Personal), sticky Record bar stacked above the bar via `--staff-nav-offset`, safe-area handling, EN/FR, a11y. Desktop/tablet unchanged.
+- **Tests:** web unit (`StaffMobileShell`, Owner/Manager-unchanged proof), harness Playwright 320/375/390 px, real-stack preview specs (desktop + Pixel 7), `preview:verify`, `preview:counter-checks`.
+- **Dependencies:** none. **Schema/config:** none. **Backend:** none. **Rollback:** revert the correction commit(s).
+- **Follow-on (not built):** physical-phone secure Cloudflare preview capability (separate bounded task). `FU-OWNER-MANAGER-PURCHASE-IDEMPOTENCY` remains separate and unfixed.
+- **Report link:** [implementation report §13](../05-implementation/reports/11THONUS-EA-BL-001-CORR-002-B-staff-counter-implementation-report-2026-10-07.md)
+
+## 2026-10-08 — EA-BL-001-CORR-002-B — Founder Preview Pass 2: Mobile-Only Staff Shell
+- **Founder Preview Pass 2:** CORRECTION REQUIRED — the Staff Counter remained a desktop composition at wider widths. Founder disposition: Staff needs no desktop experience; one phone-oriented Staff shell at all viewport sizes, centred/constrained on larger screens. Founder Preview NOT yet accepted.
+- **Status:** unchanged — **IMPLEMENTED — FOUNDER PREVIEW / TECHNICAL REVIEW PENDING**; PR #307 not merged; Slices C/D/E NOT AUTHORISED / NOT STARTED.
+- **Change:** removed the responsive Staff branch, Staff top bar and two-column Counter; permanent bottom bar; single column; app/bar centred at `max-w-lg` (512 px); unused `useMediaQuery` hook deleted. Owner/Manager shell untouched.
+- **Tests:** harness Playwright at 320/375/390/768/1024/1440; real-stack preview specs (1280 + Pixel 7); unit tests; Owner/Manager-unchanged proof.
+- **Dependencies/schema/config/backend:** none. **Rollback:** revert the Pass 2 commit.
+- **Report link:** [implementation report §14](../05-implementation/reports/11THONUS-EA-BL-001-CORR-002-B-staff-counter-implementation-report-2026-10-07.md)
+
+## 2026-10-08 — EA-BL-001-CORR-002-B — Founder Preview Pass 3: Staff Information Architecture + Limited Loyalty Context
+- **Founder Preview Pass 3:** mobile-only shell accepted; the all-in-one Counter is too concentrated — Activity and Profile become their own views, New customer becomes a quick action, and Staff need limited loyalty progress during service. Founder Preview NOT yet accepted.
+- **D4 SUPERSEDED** (historical decision left as made, annotated): Staff get limited, transaction-scoped loyalty progress (PRD01 §8.2/§12.2).
+- **Status:** unchanged — **IMPLEMENTED — FOUNDER PREVIEW / TECHNICAL REVIEW PENDING**; PR #307 not merged; Slices C/D/E NOT AUTHORISED / NOT STARTED.
+- **Change:** new read-only callable `getCounterLoyaltyContext` (four values; Customer resolved server-side; one neutral failure token; no schema); `listMyRecentCounterPurchases` gains a keyset cursor (Activity paging; existing index); web: Counter / Activity / Profile routes + quick-action sheet (Scan / Help a new customer join), Counter kept mounted, Loyalty status card + reward-available alert before recording; Express seed positions (Jean-Claude 8, Esther 9 + 1 awaiting, Chantal reward available) + fingerprint refresh; 10 new live preview checks.
+- **Defects fixed on the way:** reserved i18next `ordinal` option; scan request handled while the Counter was hidden; sticky Record bar clamped by a nested wrapper.
+- **Experience Assembly direction recorded (not authorised):** Owner/Manager Operations (Slice C) mobile-first; Platform Operator Console desktop-first.
+- **Dependencies/config/schema:** none. **Rollback:** revert the Pass 3 commit(s).
+- **Report link:** [implementation report §15](../05-implementation/reports/11THONUS-EA-BL-001-CORR-002-B-staff-counter-implementation-report-2026-10-07.md)
+
+## 2026-10-09 — EA-BL-001-CORR-002-B — Founder Preview Pass 3 ACCEPTED (acceptance recording)
+- **Founder disposition:** Founder Preview Pass 3 ACCEPTED at head `ea8e8e6051335c7160d9e06516372bad953be65b` (CI run 37826012528 success). Earlier Pass 1/2/3 observations preserved.
+- **Status:** **IMPLEMENTED — FOUNDER ACCEPTED / TECHNICAL REVIEW PENDING**; not complete/closed/merged; PR #307 unmerged; Slices C/D/E NOT AUTHORISED / NOT STARTED.
+- **Follow-ups:** new `FU-COUNTER-LOOKUP-ABUSE-PROTECTION` (non-blocking security hardening; no thresholds); `FU-OWNER-MANAGER-PURCHASE-IDEMPOTENCY` preserved unfixed. Owner/Manager Counter recent activity deferred to `EA-BL-001-CORR-002-C` (mobile-first).
+- **Physical-phone validation:** pre-merge verification activity; not a Product Truth gate.
+- **Change:** documentation/status/PR-body only. No code, tests, dependencies, config or schema. (PR #307 carries additive migration `0029`; earlier "no schema" wording corrected.)
+- **Report link:** [implementation report §16](../05-implementation/reports/11THONUS-EA-BL-001-CORR-002-B-staff-counter-implementation-report-2026-10-07.md)

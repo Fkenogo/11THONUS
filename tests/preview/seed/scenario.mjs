@@ -165,13 +165,26 @@ async function build(s, admin, log) {
   // ---------------------------------------------------------------- programmes
   step("qualifying items + Reward Programs (published and one draft)");
   const bella = business.bella;
-  await qualifyingItems(s, bella, ["Haircut", "Braiding", "Manicure"]);
+  await qualifyingItems(s, bella, ["Haircut", "Braiding", "Manicure", "Blow-dry", "Hair wash"]);
   bella.programmes.cut = await programme(s, bella, {
     name: "Premium Cut Circle",
     reward: "A free haircut",
     items: ["Haircut", "Braiding"],
     shared: false,
     publish: true,
+  });
+  // EA-BL-001-CORR-002-B (Staff Counter preview): a published programme that accepts a Loyalty
+  // Number (so the Counter's Loyalty Number path works) and routes a Purchase of 5+ units to
+  // Business Review -- a real programme setting, created through the real callable. Together with
+  // "Premium Cut Circle" (QR only) Staff see two programmes, which also exercises the neutral
+  // customer-code refusal when a Loyalty Number is presented against a QR-only programme.
+  bella.programmes.express = await programme(s, bella, {
+    name: "Express Styling Circle",
+    reward: "A free blow-dry",
+    items: ["Blow-dry", "Hair wash"],
+    shared: true,
+    publish: true,
+    businessReviewQuantityThreshold: 5,
   });
   bella.programmes.family = await programme(s, bella, {
     name: "Family Care Circle",
@@ -321,6 +334,21 @@ async function build(s, admin, log) {
   await visits(ctx, bella, cut, "kevin", 10, { recorder: "staff_bella", startDaysAgo: 70 }); // Reward available
   await visits(ctx, bella, cut, "aline", 10, { recorder: "staff_bella", startDaysAgo: 100 }); // -> redeemed below
 
+  // Express Styling Circle accepts a typed Loyalty Number, so these positions let the Founder see the
+  // (given to customers the customer-home acceptance tests do not feature, so those homes are unchanged)
+  // Staff Counter's limited loyalty status without a camera (Founder Preview Pass 3): a normal position,
+  // one visit from a Reward with a purchase still awaiting the customer, and a Reward already available.
+  step("Bella Salon: Express Styling Circle positions (Staff loyalty status by Loyalty Number)");
+  const express = bella.programmes.express;
+  await visits(ctx, bella, express, "jeanclaude", 8, { recorder: "staff_bella", startDaysAgo: 25 }); // 8 of 10
+  await visits(ctx, bella, express, "esther", 9, { recorder: "staff_bella", startDaysAgo: 40 }); // 9 of 10
+  await visits(ctx, bella, express, "esther", 1, {
+    recorder: "staff_bella",
+    startDaysAgo: 0,
+    verify: false,
+  }); // ...plus one awaiting the customer (never counted as verified)
+  await visits(ctx, bella, express, "chantal", 10, { recorder: "staff_bella", startDaysAgo: 50 }); // Reward available
+
   step("Bella Salon: Reward redeemed by the Manager (real `confirmRedemption`)");
   // The Business read model (`listAvailableRewardsForBusiness`) deliberately carries no Reward
   // id (EA-002 finding: a missing seam for the redemption experience). The customer's OWN read
@@ -440,7 +468,11 @@ async function qualifyingItems(s, biz, names) {
   s.state.qualifyingItems[biz.name] = { ...biz.items };
 }
 
-async function programme(s, biz, { name, reward, items, shared, publish }) {
+async function programme(
+  s,
+  biz,
+  { name, reward, items, shared, publish, businessReviewQuantityThreshold },
+) {
   const created = await s.as(biz.owner, "createRewardProgram", {
     businessId: biz.businessId,
     displayName: name,
@@ -449,6 +481,7 @@ async function programme(s, biz, { name, reward, items, shared, publish }) {
     sharedLoyaltyNumberAllowed: shared,
     effectiveFrom: PROGRAMME_EFFECTIVE_FROM(),
     qualifyingItemIds: items.map((n) => biz.items[n]),
+    ...(businessReviewQuantityThreshold === undefined ? {} : { businessReviewQuantityThreshold }),
   });
   const result = {
     name,
