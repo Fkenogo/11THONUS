@@ -31,9 +31,10 @@
     "preview:migrate": "node tests/preview/cli.mjs migrate",
     "preview:verify": "node tests/preview/cli.mjs verify",
     "preview:accounts": "node tests/preview/cli.mjs accounts",
-    "test:preview-tooling": "node --test tests/preview/guards.test.mjs tests/preview/ports.test.mjs",
+    "test:preview-tooling": "node --test tests/preview/guards.test.mjs tests/preview/ports.test.mjs tests/preview/phone/policy.test.mjs",
     "prepare": "husky",
-    "preview:counter-checks": "node tests/preview/cli.mjs counter-checks"
+    "preview:counter-checks": "node tests/preview/cli.mjs counter-checks",
+    "preview:phone": "node tests/preview/phone/cli.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
