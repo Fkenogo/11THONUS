@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
+import { EventEmitter } from "node:events";
+import https from "node:https";
 import test from "node:test";
 import { accessHeaders, rawProbe, runVerification } from "./verify.mjs";
+import { PROXY_ID } from "./config.mjs";
 import { close, listen, recordingServer, startProxy } from "./test-harness.mjs";
 
 const run = (base, extra = {}) => {
@@ -81,9 +84,13 @@ test("a proxy whose bundle is bound to another host → aborts", async () => {
 
 test("valid phone proxy → verification proceeds and passes", async () => {
   const p = await startProxy();
-  const { ok, lines } = await run(p.base);
+  const { ok, lines } = await run(p.base, { readProxyLog: () => [...p.logs] });
   assert.equal(ok, true, lines.join("\n"));
   assert.match(lines.join("\n"), /target identified as the phone-preview proxy/);
+  assert.match(
+    lines.join("\n"),
+    /PASS {2}unrelated Host header\s+\[rejected by phone proxy \(421\)\]/,
+  );
   // Every destructive probe was answered by the proxy: the fake emulators never saw DELETE/PUT.
   const upstream = [...p.emulators.auth.requests, ...p.emulators.functions.requests];
   assert.ok(
@@ -93,6 +100,17 @@ test("valid phone proxy → verification proceeds and passes", async () => {
   assert.ok(
     !upstream.some((r) => /emulator\/v1|createBusiness|discoverPlatformAdministrator/.test(r.url)),
   );
+  await p.stop();
+});
+
+test("local Host-pinning rejects an unmarked 403", async () => {
+  const p = await startProxy();
+  const { ok, lines } = await run(p.base, {
+    readProxyLog: () => [...p.logs],
+    probeHost: async () => ({ status: 403, server: "cloudflare", cfRay: "ray-id" }),
+  });
+  assert.equal(ok, false);
+  assert.match(lines.join("\n"), /FAIL {2}unrelated Host header/);
   await p.stop();
 });
 
@@ -153,4 +171,151 @@ test("Access service-token headers are sent on fetch requests and on the raw Hos
   assert.equal(raw.headers.host, "127.0.0.1:4400");
   assert.equal(raw.headers["cf-access-client-id"], "id.access");
   await t.stop();
+});
+
+test("raw HTTPS Host probe keeps public TLS SNI while overriding HTTP Host", async () => {
+  const originalRequest = https.request;
+  let options;
+  https.request = (requestOptions, callback) => {
+    options = requestOptions;
+    const req = new EventEmitter();
+    req.end = () => {
+      const res = new EventEmitter();
+      res.statusCode = 403;
+      res.headers = { server: "cloudflare", "cf-ray": "ray-id" };
+      res.resume = () => queueMicrotask(() => res.emit("end"));
+      callback(res);
+    };
+    return req;
+  };
+  try {
+    const result = await rawProbe(
+      "https://11thonus-preview.miledgeventures.com",
+      "127.0.0.1:4400",
+      { "cf-access-client-id": "id.access", "cf-access-client-secret": "secret" },
+      "/host-pin-probe",
+    );
+    assert.equal(options.hostname, "11thonus-preview.miledgeventures.com");
+    assert.equal(options.servername, "11thonus-preview.miledgeventures.com");
+    assert.equal(options.headers.host, "127.0.0.1:4400");
+    assert.equal(options.path, "/host-pin-probe");
+    assert.deepEqual(result, {
+      status: 403,
+      proxy: undefined,
+      decision: undefined,
+      server: "cloudflare",
+      cfRay: "ray-id",
+    });
+  } finally {
+    https.request = originalRequest;
+  }
+});
+
+async function runPublicHostCase(response, { proxyLog = false } = {}) {
+  const p = await startProxy();
+  const lines = [];
+  const realFetch = globalThis.fetch;
+  const realRequest = https.request;
+  globalThis.fetch = (input, init) => {
+    const url = new URL(input);
+    return realFetch(`${p.base}${url.pathname}${url.search}`, init);
+  };
+  https.request = (options, callback) => {
+    const req = new EventEmitter();
+    req.end = () => {
+      if (proxyLog) {
+        p.logs.push({
+          method: "GET",
+          path: options.path,
+          decision: "deny",
+          reason: "host",
+          status: 421,
+        });
+      }
+      const res = new EventEmitter();
+      res.statusCode = response.status;
+      res.headers = {
+        ...(response.proxy ? { "x-phone-preview-proxy": response.proxy } : {}),
+        ...(response.decision ? { "x-phone-preview-decision": response.decision } : {}),
+        ...(response.server ? { server: response.server } : {}),
+        ...(response.cfRay ? { "cf-ray": response.cfRay } : {}),
+      };
+      res.resume = () => queueMicrotask(() => res.emit("end"));
+      callback(res);
+    };
+    return req;
+  };
+  try {
+    const ok = await runVerification({
+      base: "https://phone.example.test",
+      publicHost: "phone.example.test",
+      log: (line) => lines.push(line),
+      env: { CF_ACCESS_CLIENT_ID: "id.access", CF_ACCESS_CLIENT_SECRET: "secret" },
+      readProxyLog: () => [...p.logs],
+    });
+    return { ok, lines };
+  } finally {
+    globalThis.fetch = realFetch;
+    https.request = realRequest;
+    await p.stop();
+  }
+}
+
+test("public Host mismatch accepts a Cloudflare-marked 403 only when absent from proxy log", async () => {
+  const { ok, lines } = await runPublicHostCase({
+    status: 403,
+    server: "cloudflare",
+    cfRay: "ray-id",
+    proxy: undefined,
+    decision: undefined,
+  });
+  assert.equal(ok, true, lines.join("\n"));
+  assert.match(
+    lines.join("\n"),
+    /PASS {2}unrelated Host header\s+\[rejected at Cloudflare edge before tunnel\]/,
+  );
+});
+
+test("public Host mismatch rejects generic or unmarked 403", async () => {
+  for (const response of [
+    { status: 403, server: "origin" },
+    { status: 403, server: "cloudflare" },
+  ]) {
+    const { ok, lines } = await runPublicHostCase(response);
+    assert.equal(ok, false);
+    assert.match(lines.join("\n"), /FAIL {2}unrelated Host header/);
+  }
+});
+
+test("public Host mismatch accepts a logged proxy 421 denial", async () => {
+  const { ok, lines } = await runPublicHostCase(
+    { status: 421, proxy: PROXY_ID, decision: "deny" },
+    { proxyLog: true },
+  );
+  assert.equal(ok, true, lines.join("\n"));
+  assert.match(
+    lines.join("\n"),
+    /PASS {2}unrelated Host header\s+\[rejected by phone proxy \(421\)\]/,
+  );
+});
+
+test("public Host mismatch rejects proxy 421 without deny marker or log proof", async () => {
+  const { ok, lines } = await runPublicHostCase({
+    status: 421,
+    proxy: PROXY_ID,
+    decision: "static",
+  });
+  assert.equal(ok, false);
+  assert.match(lines.join("\n"), /FAIL {2}unrelated Host header/);
+});
+
+test("public Host mismatch rejects 200 and upstream-marked responses", async () => {
+  for (const response of [
+    { status: 200, proxy: PROXY_ID, decision: "static" },
+    { status: 403, proxy: PROXY_ID, decision: "functions", server: "cloudflare", cfRay: "ray-id" },
+  ]) {
+    const { ok, lines } = await runPublicHostCase(response, { proxyLog: true });
+    assert.equal(ok, false, lines.join("\n"));
+    assert.match(lines.join("\n"), /FAIL {2}unrelated Host header/);
+  }
 });
