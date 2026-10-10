@@ -9,6 +9,10 @@
 // unverified base, so a mistyped --base (e.g. the Auth or Firestore emulator) can never be wiped.
 import http from "node:http";
 import https from "node:https";
+import fs from "node:fs";
+import path from "node:path";
+import { randomUUID } from "node:crypto";
+import { previewStateDir } from "../lib/config.mjs";
 import {
   CALLABLE_ALLOWLIST,
   HEADER_DECISION,
@@ -19,6 +23,7 @@ import {
 
 const AUTH = "/identitytoolkit.googleapis.com/v1";
 const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "[::1]", "::1"]);
+const PROXY_LOG = path.join(previewStateDir, "logs", "phone-proxy-access.log");
 
 export function isLoopbackBase(base) {
   return LOOPBACK_HOSTS.has(new URL(base).hostname);
@@ -32,7 +37,7 @@ export function accessHeaders(env = process.env) {
 }
 
 /** fetch() forbids overriding Host, so the Host-pinning probe uses the raw client. */
-export function rawProbe(base, host, extraHeaders) {
+export function rawProbe(base, host, extraHeaders, requestPath = "/") {
   const url = new URL(base);
   const client = url.protocol === "https:" ? https : http;
   return new Promise((resolve, reject) => {
@@ -40,19 +45,38 @@ export function rawProbe(base, host, extraHeaders) {
       {
         hostname: url.hostname,
         port: url.port,
-        path: "/",
+        path: requestPath,
         method: "GET",
         headers: { ...extraHeaders, host },
         servername: url.hostname,
       },
       (res) => {
+        const result = {
+          status: res.statusCode,
+          proxy: res.headers[HEADER_PROXY],
+          decision: res.headers[HEADER_DECISION],
+          server: res.headers.server,
+          cfRay: res.headers["cf-ray"],
+        };
         res.resume();
-        resolve({ status: res.statusCode, decision: res.headers[HEADER_DECISION] });
+        res.once("end", () => resolve(result));
       },
     );
     req.on("error", reject);
     req.end();
   });
+}
+
+function readPhoneProxyLog() {
+  try {
+    return fs
+      .readFileSync(PROXY_LOG, "utf8")
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => JSON.parse(line));
+  } catch {
+    return null;
+  }
 }
 
 export async function runVerification({
@@ -61,6 +85,8 @@ export async function runVerification({
   log,
   env = process.env,
   allowNoAccess = false,
+  readProxyLog = readPhoneProxyLog,
+  probeHost = rawProbe,
 }) {
   const access = accessHeaders(env);
   if (!isLoopbackBase(base) && !allowNoAccess && Object.keys(access).length === 0) {
@@ -240,12 +266,47 @@ export async function runVerification({
   }
 
   // Host pinning: a request naming another local service is refused by the proxy.
-  const rebind = await rawProbe(base, "127.0.0.1:4400", access);
-  check(
-    "unrelated localhost host header refused by the proxy (421)",
-    rebind.status === 421 && rebind.decision === "deny",
-    String(rebind.status),
-  );
+  const probePath = `/__phone-preview-host-pin-${randomUUID()}`;
+  const before = await readProxyLog();
+  const rebind = await probeHost(base, "127.0.0.1:4400", access, probePath);
+  let after = await readProxyLog();
+  // The proxy writes its access log on response close; allow that callback to complete.
+  for (
+    let attempt = 0;
+    attempt < 10 &&
+    after &&
+    !after.some((entry) => entry.method === "GET" && entry.path === probePath);
+    attempt += 1
+  ) {
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    after = await readProxyLog();
+  }
+  const arrived =
+    before === null || after === null
+      ? null
+      : after.length > before.length &&
+        after
+          .slice(before.length)
+          .some((entry) => entry.method === "GET" && entry.path === probePath);
+  const proxyDenied =
+    rebind.status === 421 &&
+    rebind.proxy === PROXY_ID &&
+    rebind.decision === "deny" &&
+    arrived === true;
+  const cloudflareDenied =
+    !isLoopbackBase(base) &&
+    rebind.status === 403 &&
+    String(rebind.server ?? "").toLowerCase() === "cloudflare" &&
+    Boolean(rebind.cfRay) &&
+    !rebind.proxy &&
+    !rebind.decision &&
+    arrived === false;
+  const detail = proxyDenied
+    ? "rejected by phone proxy (421)"
+    : cloudflareDenied
+      ? "rejected at Cloudflare edge before tunnel"
+      : `unverified rejection: status=${rebind.status} proxy=${rebind.proxy ?? "none"} decision=${rebind.decision ?? "none"} log=${arrived ?? "unavailable"}`;
+  check("unrelated Host header", proxyDenied || cloudflareDenied, detail);
 
   // The admin credential must never be accepted even on an allow-listed Auth route.
   const owner = await f(`${AUTH}/accounts:signUp?key=k`, {
