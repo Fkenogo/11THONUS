@@ -177,7 +177,7 @@ test("emulator and web readiness probes run only for positively owned preview pr
   assert.match(runtime, /if \(!isOwnedAndAlive\("web"\)\) throw new Error[\s\S]*?fetch\(/);
   assert.ok(!runtime.includes("webPortAnswers"));
   assert.ok(cli.includes('isOwnedWithConfig("emulators", emulatorPortFingerprint)'));
-  assert.match(processes, /JSON\.stringify\(\{ pid: child\.pid, stamp, configFingerprint \}\)/);
+  assert.match(processes, /JSON\.stringify\(\{ pid, stamp, configFingerprint \}\)/);
 });
 
 test("preflight passes when every emulator port is free", async () => {

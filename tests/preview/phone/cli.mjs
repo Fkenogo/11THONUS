@@ -17,6 +17,7 @@ import {
   logFile,
   readPid,
   startDetached,
+  startDetachedObserved,
   stopDetached,
   tailLog,
   waitFor,
@@ -89,7 +90,7 @@ async function main() {
       if (!isOwnedAndAlive("phone-proxy"))
         throw new Error("Start the phone proxy first: `pnpm preview:phone start --host <host>`.");
       // The ONLY origin the tunnel may reach is the phone proxy.
-      startDetached(
+      await startDetachedObserved(
         "phone-tunnel",
         "cloudflared",
         ["tunnel", "--no-autoupdate", "run", "--url", PROXY_ORIGIN, name],
