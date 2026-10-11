@@ -4,6 +4,7 @@
 // `.preview/pids/<name>.pid`, so `preview:stop` can end exactly what `preview:start`
 // began — nothing else.
 import { spawn, spawnSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { previewStateDir, repoRoot } from "./config.mjs";
@@ -29,6 +30,29 @@ export function processStartStamp(pid) {
   const result = spawnSync("ps", ["-o", "lstart=", "-p", String(pid)], { encoding: "utf8" });
   const stamp = result.status === 0 ? result.stdout.trim() : "";
   return stamp.length > 0 ? stamp : undefined;
+}
+
+/**
+ * `spawn()` can return before a just-created child is visible to `ps` on macOS. Retry briefly
+ * before treating that as a failed launch; otherwise the caller may SIGTERM a healthy child before
+ * it has emitted its first log line or before ownership metadata can be written.
+ */
+export function waitForProcessStartStamp(pid, { timeoutMs = 1500, intervalMs = 25 } = {}) {
+  const deadline = Date.now() + timeoutMs;
+  const waitCell = new Int32Array(new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT));
+  do {
+    const stamp = processStartStamp(pid);
+    if (stamp) return stamp;
+    try {
+      process.kill(pid, 0);
+    } catch {
+      return undefined;
+    }
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) break;
+    Atomics.wait(waitCell, 0, 0, Math.min(intervalMs, remaining));
+  } while (Date.now() < deadline);
+  return processStartStamp(pid);
 }
 
 function readRecord(name) {
@@ -71,19 +95,38 @@ export function startDetached(name, command, args, { env, cwd = repoRoot, config
   }
   fs.rmSync(pidFile(name), { force: true }); // stale record (process gone or pid reused)
   const out = fs.openSync(logFile(name), "w");
-  const child = spawn(command, args, {
-    cwd,
-    env,
-    detached: true,
-    stdio: ["ignore", out, out],
-  });
+  let child;
+  try {
+    child = spawn(command, args, {
+      cwd,
+      env,
+      detached: true,
+      stdio: ["ignore", out, out],
+    });
+  } finally {
+    // The child has inherited the descriptors; the supervising CLI should not retain them.
+    fs.closeSync(out);
+  }
   child.unref();
-  const stamp = processStartStamp(child.pid);
+  const stamp = waitForProcessStartStamp(child.pid);
   if (!stamp) {
-    child.kill("SIGTERM");
+    if (child.pid) child.kill("SIGTERM");
     throw new Error(`Could not establish the identity of the started ${name} process.`);
   }
-  fs.writeFileSync(pidFile(name), JSON.stringify({ pid: child.pid, stamp, configFingerprint }));
+  const recordPath = pidFile(name);
+  const temporaryRecordPath = `${recordPath}.${process.pid}.${randomUUID()}.tmp`;
+  try {
+    fs.writeFileSync(
+      temporaryRecordPath,
+      JSON.stringify({ pid: child.pid, stamp, configFingerprint }),
+      { flag: "wx" },
+    );
+    fs.renameSync(temporaryRecordPath, recordPath);
+  } catch (error) {
+    fs.rmSync(temporaryRecordPath, { force: true });
+    child.kill("SIGTERM");
+    throw error;
+  }
   return child.pid;
 }
 
