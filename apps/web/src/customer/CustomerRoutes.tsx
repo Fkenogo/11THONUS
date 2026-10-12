@@ -24,6 +24,14 @@ export function CustomerRoutes({ auth, functions }: { auth: Auth; functions: Fun
           path="activity"
           element={<CustomerActivityPage auth={auth} functions={functions} />}
         />
+        <Route
+          path="activity/:purchaseRecordId"
+          element={<CustomerActivityPage auth={auth} functions={functions} />}
+        />
+        <Route
+          path="circles/:rewardProgramId"
+          element={<CustomerCirclesPage auth={auth} functions={functions} />}
+        />
         <Route path="profile" element={<CustomerProfilePage auth={auth} functions={functions} />} />
         <Route path="account" element={<Navigate to="/customer/profile" replace />} />
       </Route>

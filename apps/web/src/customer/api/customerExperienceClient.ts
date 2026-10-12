@@ -29,6 +29,7 @@ export type CustomerCircleWire = {
 
 export type CustomerExperienceActivityWire = {
   id: string;
+  purchaseRecordId?: string | null;
   businessId: string;
   businessName: string | null;
   rewardProgramId: string;

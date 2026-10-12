@@ -22,6 +22,22 @@
 
 ---
 
+## 2026-10-12 — EA-BL-001-CORR-002-B2 — Customer Confirmation, Circle Detail, Activity Detail & Sign-out
+
+- **Task:** Improve Customer-side discoverability and direct navigation after Founder physical-phone validation.
+- **Status:** Implementation validation and Founder unified review pending; PR #307 remains open/unmerged; ITR remains paused. Entry PR #307 head `c099c11b117355be2bef1dc8e72914b2602de5a5`.
+- **Phone gate:** **PHYSICAL-PHONE VALIDATION — PASSED / FOUNDER APPROVED.** B2 does not reopen physical-device validation.
+- **Changes:** Home waiting-purchase events link directly to an owned purchase detail; Activity supports purchase deep links and links events with supported references; Circle cards route to a per-programme detail view; Customer Profile exposes Firebase sign-out through `signOutCurrentSession`.
+- **Read contract:** the Customer activity projection carries `purchaseRecordId` only for purchase events, from the existing Customer-identity-filtered query. Existing `getCustomerPurchaseRecord` continues to enforce Customer ownership. Circle detail filters the existing auth-scoped Customer overview; pending units remain separate from verified progress.
+- **Authority:** Verify, Reject, and Dispute use the existing callables and distinctions. No Product Truth, purchase verification, Cycle, reward/redemption, Business Review, commercial, identity, auth provider, schema, migration, or Cloudflare change.
+- **Activity limitation:** reward-available events link to Circle detail; reward-redeemed entries remain read-only because the current read model has no distinct redemption detail. No unsupported history attribution is introduced.
+- **Join boundary:** accepted Help/email/two-device flow unchanged; phone registration remains deferred.
+- **Files:** [B2 implementation report](../05-implementation/reports/11THONUS-post-phone-ux-correction-b2-implementation-report-2026-10-12.md).
+- **Boundary:** PR #310 untouched; no merge; no ITR; no Slice C/D/E.
+- **Rollback:** revert the B2 implementation commit(s); no migration rollback is required.
+
+---
+
 ## 2026-10-12 — EA-BL-001-CORR-002-B1R — Governed Staff Redemption Binding
 
 - **Task:** Bind the existing `confirmRedemption` engine into the transaction-scoped Staff Counter after B1A.
