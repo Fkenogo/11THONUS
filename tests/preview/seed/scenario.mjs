@@ -351,16 +351,16 @@ async function build(s, admin, log) {
   await visits(ctx, bella, express, "chantal", 10, { recorder: "staff_bella", startDaysAgo: 50 }); // Reward available
 
   step("Bella Salon: Reward redeemed by the Manager (real `confirmRedemption`)");
-  // The Business read model (`listAvailableRewardsForBusiness`) deliberately carries no Reward
-  // id (EA-002 finding: a missing seam for the redemption experience). The customer's OWN read
-  // does, so the seed asks the customer's real read model which Reward is hers, then has the
-  // Manager confirm it through the real `confirmRedemption` callable.
+  // The customer's own read selects her authoritative available Reward. The governed callable
+  // additionally binds redemption to the presented customer artifact and the known programme.
   const mine = await s.read("customer_aline", "listAvailableRewardsForCustomer", {});
   const alineReward = (mine.rewards ?? mine).find((r) => r.businessId === bella.businessId);
   if (!alineReward) throw new Error("Aline's Reward was not available to redeem.");
   const redemption = await s.as("manager_bella", "confirmRedemption", {
     businessId: bella.businessId,
     rewardId: alineReward.id,
+    rewardProgramId: cut.rewardProgramId,
+    qrReference: artifacts.customer_aline.qrReference,
   });
   s.state.redemption = { aline: summariseRedemption(redemption) };
   await visits(ctx, bella, cut, "aline", 2, { recorder: "staff_bella", startDaysAgo: 5 }); // next Circle has begun

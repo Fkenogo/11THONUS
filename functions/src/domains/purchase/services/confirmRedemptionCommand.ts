@@ -236,16 +236,24 @@ export async function confirmRedemption(
     }
   }
 
+  // Preserve the pre-B1R hash for internal callers which do not supply either
+  // binding field. This keeps already-reserved idempotency keys replayable
+  // across the B1R deployment. Callable B1R requests require both values and
+  // bind the key to the resolved customer and programme as well as the Reward.
+  const hasTransactionBinding =
+    artifact !== undefined || params.request.rewardProgramId !== undefined;
   const requestHash = redemptionRequestHash(
     "confirm",
     params.userId,
     params.businessId,
     rewardId,
-    JSON.stringify([
-      rewardId,
-      expectedCustomerIdentityId ?? null,
-      params.request.rewardProgramId ?? null,
-    ]),
+    hasTransactionBinding
+      ? JSON.stringify([
+          rewardId,
+          expectedCustomerIdentityId ?? null,
+          params.request.rewardProgramId ?? null,
+        ])
+      : rewardId,
   );
   const peek = await peekIdempotencyKey(pool, params.idempotencyKey, requestHash);
   if (peek.outcome === "duplicate") {

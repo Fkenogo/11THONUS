@@ -3,11 +3,12 @@
 ## Status
 
 - Physical-phone validation: **PASSED / FOUNDER APPROVED**. This approval is carried forward unchanged.
-- B1R: implementation complete locally; no redemption Product Truth changed.
+- B1R: implementation complete; validation follow-up preserves legacy idempotency and updates the Founder Preview seed to satisfy B1R binding. No redemption Product Truth changed.
 - PR #307 entry head: `ad63568ee0b36612433b1d90be6167897cc5f371`.
 - B1R implementation commit: `e4cf7dbd33ab49c5d608a2fc3c74470fde3fbec2`.
 - At the first post-implementation inspection, PR #307 was open/unmerged at `e4cf7dbd33ab49c5d608a2fc3c74470fde3fbec2`; no workflow run was visible then. A docs-only follow-up records validation state; the final pushed head is reported in the task response.
 - Existing inline review threads: all four are resolved (three outdated, one current); no new B1R thread exists yet.
+- PR #307 is three commits behind current `main` (merge base `4bc9c49261c1db8bfdacb3d91b68d51ad59e47f9`). A local read-only merge-tree analysis reports no content conflicts; GitHub's `mergeable_state=dirty` is inconsistent and must be rechecked after the next push. No branch reconciliation was performed.
 - PR #310 was not modified. Neither PR is to be merged. ITR remains paused.
 
 ## Architecture and binding design
@@ -19,6 +20,9 @@ The Counter context now joins the one available Reward to the matching current `
 The callable requires the current presented QR/Loyalty Number artifact and expected programme reference alongside the Reward reference. After live authorization, the existing command resolves the artifact through the identity resolver and checks resolved customer and programme against the Business-scoped Reward before entering the existing transaction. A mismatch returns the same not-found category as an unrelated/unavailable Reward. The mutation still rechecks live permission at the mutation boundary. No client customer identity, role, grant, ownership, or Reward state is accepted.
 
 This was necessary because the existing engine's Business-only Reward lookup can accept any available Reward ID within that Business. A UI-only filter could not prove that the Reward belonged to the customer currently served. The added server binding prevents a same-Business cross-customer substitution without changing the redemption transition, Cycle handling, evidence, notifications, or permission rules.
+
+### Idempotency compatibility correction
+
 
 ## Experience and authority
 

@@ -48,6 +48,7 @@ import { insertQualifyingItem } from "../../qualifyingItem/repositories/qualifyi
 import { recordPurchase } from "./recordPurchaseCommand";
 import { verifyPurchase } from "./verifyPurchaseCommand";
 import { confirmRedemption } from "./confirmRedemptionCommand";
+import { redemptionRequestHash } from "./purchaseRequestHash";
 import { getRedemptionByRewardId } from "../repositories/redemptionRepository";
 import {
   listAvailableRewardsForCustomer,
@@ -946,16 +947,111 @@ describe("confirmRedemption — permission model", () => {
 // ---------------------------------------------------------------------------
 
 describe("confirmRedemption — idempotency and concurrency", () => {
-  it("replays the stored result for the same key and body, writing nothing twice", async () => {
+  it("preserves the legacy reward-only hash so an existing/internal retry replays", async () => {
     const world = await seedWorld();
     const rewardId = await availableRewardId(world);
     const key = nextId("key");
 
     const first = await confirm(world, { userId: world.owner, rewardId, idempotencyKey: key });
+    // Simulate an idempotency row written by the pre-B1R release. A deployment
+    // must keep this old material recognizable to callers omitting B1R fields.
+    await pool.query("UPDATE idempotency_keys SET request_hash = $2 WHERE idempotency_key = $1", [
+      key,
+      redemptionRequestHash("confirm", world.owner, world.businessId, rewardId, rewardId),
+    ]);
     const replay = await confirm(world, { userId: world.owner, rewardId, idempotencyKey: key });
 
     expect(replay.redemption.id).toBe(first.redemption.id);
     expect(await countRows("redemptions", rewardId)).toBe(1);
+  });
+
+  it("replays a B1R bound request with the same key, artifact, programme, and Reward", async () => {
+    const world = await seedWorld();
+    const rewardId = await availableRewardId(world);
+    const key = nextId("bound-key");
+    const request = {
+      userId: world.owner,
+      rewardId,
+      idempotencyKey: key,
+      rewardProgramId: world.program.programId,
+      artifact: { kind: "loyalty_number" as const, value: world.customer.ln },
+    };
+
+    const first = await confirm(world, request);
+    const replay = await confirm(world, request);
+    expect(replay.redemption.id).toBe(first.redemption.id);
+    expect(await countRows("redemptions", rewardId)).toBe(1);
+  });
+
+  it("conflicts when a B1R key is reused with a different resolved customer", async () => {
+    const world = await seedWorld();
+    const rewardId = await availableRewardId(world);
+    const other = await seedCustomer();
+    const key = nextId("bound-customer-key");
+    await confirm(world, {
+      userId: world.owner,
+      rewardId,
+      idempotencyKey: key,
+      rewardProgramId: world.program.programId,
+      artifact: { kind: "loyalty_number", value: world.customer.ln },
+    });
+
+    await expect(
+      confirm(world, {
+        userId: world.owner,
+        rewardId,
+        idempotencyKey: key,
+        rewardProgramId: world.program.programId,
+        artifact: { kind: "loyalty_number", value: other.ln },
+      }),
+    ).rejects.toMatchObject({ category: "IDEMPOTENCY_CONFLICT" });
+  });
+
+  it("conflicts when a B1R key is reused with a different programme", async () => {
+    const world = await seedWorld();
+    const rewardId = await availableRewardId(world);
+    const key = nextId("bound-program-key");
+    await confirm(world, {
+      userId: world.owner,
+      rewardId,
+      idempotencyKey: key,
+      rewardProgramId: world.program.programId,
+      artifact: { kind: "loyalty_number", value: world.customer.ln },
+    });
+
+    await expect(
+      confirm(world, {
+        userId: world.owner,
+        rewardId,
+        idempotencyKey: key,
+        rewardProgramId: "00000000-0000-4000-8000-000000000000",
+        artifact: { kind: "loyalty_number", value: world.customer.ln },
+      }),
+    ).rejects.toMatchObject({ category: "IDEMPOTENCY_CONFLICT" });
+  });
+
+  it("conflicts when a B1R key is reused for a different Reward", async () => {
+    const world = await seedWorld();
+    const rewardId = await availableRewardId(world);
+    const otherRewardId = await extraAvailableReward(world);
+    const key = nextId("bound-reward-key");
+    await confirm(world, {
+      userId: world.owner,
+      rewardId,
+      idempotencyKey: key,
+      rewardProgramId: world.program.programId,
+      artifact: { kind: "loyalty_number", value: world.customer.ln },
+    });
+
+    await expect(
+      confirm(world, {
+        userId: world.owner,
+        rewardId: otherRewardId,
+        idempotencyKey: key,
+        rewardProgramId: world.program.programId,
+        artifact: { kind: "loyalty_number", value: world.customer.ln },
+      }),
+    ).rejects.toMatchObject({ category: "IDEMPOTENCY_CONFLICT" });
   });
 
   it("confirms the same idempotency key against a different reward as a conflict", async () => {

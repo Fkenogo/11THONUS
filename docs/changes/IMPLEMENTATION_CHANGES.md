@@ -6780,3 +6780,11 @@ READY FOR CONTROLLED DRAFTING — PR AWAITS FOUNDER REVIEW`**.
 - **Validation:** Functions suite 2,033 passed; full web suite 1,148 passed with the Node 26 webstorage compatibility flag; focused Counter/API 87 passed; web typecheck, changed-file ESLint/Prettier, `git diff --check`, and Vite production build passed. PostgreSQL/Firestore emulator and Founder Preview checks could not run locally because the emulator's required ports were occupied; no foreign process was stopped. Exact-head CI remains to be checked after push.
 - **Status:** B1R implementation prepared on PR #307 branch for Founder review. PR #307 remains unmerged, PR #310 untouched, ITR paused, and B2 not started.
 - **Report link:** [B1R implementation report](../05-implementation/reports/11THONUS-post-phone-ux-correction-b1r-implementation-report-2026-10-12.md)
+
+## 2026-10-12 — B1R validation correction — preserve legacy redemption idempotency
+- **Finding:** the initial B1R hash included customer/programme binding in all command calls. Internal callers without B1R fields would no longer match a pre-B1R reward-only request hash and could fail to replay an existing key.
+- **Correction:** when both B1R artifact and programme fields are absent, preserve the original Reward-only fingerprint. When either field is supplied, retain the stronger Reward + resolved customer + programme hash. The callable still requires the bound request and the mutation still verifies all bindings.
+- **Regression coverage:** PostgreSQL tests now cover replay of an old-format legacy key, same-bound B1R replay, and same-key conflict for changed customer, programme, or Reward.
+- **Preview compatibility:** the Founder Preview redemption seed now supplies Aline's already-issued QR reference and the seeded programme reference to the governed callable.
+- **PR state:** current `main` is three commits ahead of the PR merge base. A local merge-tree analysis reports no content conflicts, while GitHub reports `mergeable_state=dirty`; no reconciliation was attempted pending a fresh GitHub calculation.
+- **Validation:** pending exact-head CI. No PR #310, schema, migration, dependency, config, or Product Truth changes.
