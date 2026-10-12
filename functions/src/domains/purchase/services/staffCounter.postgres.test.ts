@@ -1309,16 +1309,26 @@ describe("Staff customer context — transaction and Business scoped", () => {
     expect(await customerContext(s, { loyaltyNumberValue: s.customer.ln })).toEqual(qr);
     const purchase = await record(s, {}, s.staffId);
     const withPending = await customerContext(s, { loyaltyNumberValue: s.customer.ln });
-    expect(withPending.programmes).toEqual([
-      expect.objectContaining({
-        rewardProgramId: s.programId,
-        programmeName: "Counter Program",
-        verifiedUnits: 0,
-        requiredVerifiedUnits: 10,
-        awaitingCustomerConfirmationUnits: 1,
-        rewardStatus: "none",
-      }),
-    ]);
+    expect(withPending.programmes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rewardProgramId: s.programId,
+          programmeName: "Counter Program",
+          verifiedUnits: 0,
+          requiredVerifiedUnits: 10,
+          awaitingCustomerConfirmationUnits: 1,
+          rewardStatus: "none",
+        }),
+        expect.objectContaining({
+          rewardProgramId: qrOnly.program.id,
+          programmeName: "QR-only Program",
+          verifiedUnits: 0,
+          requiredVerifiedUnits: 10,
+          awaitingCustomerConfirmationUnits: 1,
+          rewardStatus: "none",
+        }),
+      ]),
+    );
     expect(purchase.purchase.id).toBeTruthy();
   });
 
