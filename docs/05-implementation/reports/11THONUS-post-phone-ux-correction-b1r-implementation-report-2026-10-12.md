@@ -6,7 +6,7 @@
 - B1R: implementation complete locally; no redemption Product Truth changed.
 - PR #307 entry head: `ad63568ee0b36612433b1d90be6167897cc5f371`.
 - B1R implementation commit: `e4cf7dbd33ab49c5d608a2fc3c74470fde3fbec2`.
-- PR #307 is open/unmerged at `e4cf7dbd33ab49c5d608a2fc3c74470fde3fbec2`; no workflow run was visible immediately after push, so exact-head CI remains pending.
+- At the first post-implementation inspection, PR #307 was open/unmerged at `e4cf7dbd33ab49c5d608a2fc3c74470fde3fbec2`; no workflow run was visible then. A docs-only follow-up records validation state; the final pushed head is reported in the task response.
 - Existing inline review threads: all four are resolved (three outdated, one current); no new B1R thread exists yet.
 - PR #310 was not modified. Neither PR is to be merged. ITR remains paused.
 
@@ -76,7 +76,7 @@ Validation:
 - Changed-file Prettier check and `git diff --check`: passed.
 - Web production build: passed (Vite generated the PWA bundle in `/tmp`; Vite emitted the existing large-chunk advisory).
 - PostgreSQL integration, Firebase emulator, preview verification/counter checks, and Playwright: blocked by the host preview environment. The owned Postgres container became healthy, but preview startup refused because its required Firebase emulator ports 28101, 28102, 28103, 28106, 28107 and 28108 were already occupied. No foreign processes were stopped. Preview checks consequently reported missing seed state.
-- Exact-head CI: no run was visible for the pushed SHA at the time of inspection. Existing review-thread state: all four existing threads resolved; no new thread yet.
+- Exact-head CI: no workflow run was visible at the initial post-push inspection; no run was visible for the final pushed SHA when checked again. Existing review-thread state: all four existing threads resolved; no new thread yet.
 
 ## Risks and rollback
 
