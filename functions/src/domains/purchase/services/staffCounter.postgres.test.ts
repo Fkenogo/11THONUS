@@ -873,6 +873,9 @@ describe("Staff Counter — recorder-scoped recent index (0029)", () => {
       // PostgreSQL may otherwise choose a bitmap scan from another qualifying index, which cannot
       // prove this index provides the requested ordering without a sort.
       await client.query("SET enable_bitmapscan = off");
+      // Favor the composite recorder index over the less selective business/status index on the
+      // tiny synthetic fixture; this assertion is about index applicability, not cost estimates.
+      await client.query("SET random_page_cost = 0.1");
       const plan = await client.query(
         `EXPLAIN SELECT id, created_at, item_label, quantity, status, presented_artifact_type,
                 canonical_loyalty_number_value
@@ -908,6 +911,7 @@ describe("Staff Counter — recorder-scoped recent index (0029)", () => {
     } finally {
       await client.query("RESET enable_seqscan");
       await client.query("RESET enable_bitmapscan");
+      await client.query("RESET random_page_cost");
       client.release();
     }
   });
