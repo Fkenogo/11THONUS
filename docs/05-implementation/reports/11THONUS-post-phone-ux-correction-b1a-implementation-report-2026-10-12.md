@@ -15,7 +15,7 @@
 
 ## Architecture and files
 
-New server seam: `getCounterCustomerContext` authorizes Staff at request time, applies the existing artifact resolver, reads `users/{userId}.displayName` through the narrow identity repository, then runs a parameterized Business + resolved-customer projection. Loyalty Number reads preserve the active shared-number policy. Existing Owner/Manager-wide loyalty reads are not exposed to Staff. The old four-value `getCounterLoyaltyContext` remains unchanged.
+New server seam: `getCounterCustomerContext` authorizes Staff at request time, applies the existing artifact resolver, reads `users/{userId}.displayName` through the narrow identity repository, then runs a parameterized Business + resolved-customer projection. A Loyalty Number is still refused unless the Business has an active programme that permits it; once that number has positively resolved the Customer, the context includes all of that Customer's participating programmes at this Business, including programmes that require a QR for purchase recording. The purchase-recording policy gate remains authoritative and unchanged. Existing Owner/Manager-wide loyalty reads are not exposed to Staff. The old four-value `getCounterLoyaltyContext` remains unchanged.
 
 Files changed:
 
@@ -27,8 +27,10 @@ Files changed:
 - `apps/web/src/business/hooks/queryKeys.ts`
 - `apps/web/src/business/counter/counterHooks.ts`, `CounterPage.tsx`, `CounterPage.test.tsx`, `StaffMobileShell.test.tsx`
 - `apps/web/src/business/counter/CounterCustomerContextCards.tsx`
+- `apps/web/src/dev/counterHarness/CounterHarnessPage.tsx`
 - `apps/web/src/i18n/locales/en.ts`, `fr.ts`
-- `tests/preview/counter-checks.mjs`
+- `tests/e2e/dashboard-counter-harness.spec.ts`, `tests/e2e/preview/counter.spec.ts`
+- `tests/preview/counter-checks.mjs`, `tests/preview/seed/scenario.mjs`
 - This report and `docs/changes/IMPLEMENTATION_CHANGES.md`
 
 No changes to PR #310, migrations, Firebase/Cloudflare configuration, customer schema, or redemption code.
@@ -39,7 +41,7 @@ No changes to PR #310, migrations, Firebase/Cloudflare configuration, customer s
 |---|---|
 | Focused web Counter/API tests | 83/83 passed |
 | Focused callable contract tests | 85/85 passed |
-| B1A PostgreSQL + Firestore-emulator integration cases | 6/6 passed, including the QR-only/Loyalty Number neutral-policy boundary |
+| B1A PostgreSQL + Firestore-emulator integration cases | 6/6 passed on the prior implementation; the added QR-only participation regression passed in exact-head CI `38245729043` |
 | Full Functions unit suite | 176 files, 2,031 tests passed |
 | PostgreSQL `staffCounter` suite | 53/53 passed. Its existing index-applicability fixture disables sequential/bitmap scans and sort so the tiny fixture proves the composite order-providing index path rather than asserting a cost estimate. |
 | TypeScript Functions/web | Passed |
@@ -48,18 +50,18 @@ No changes to PR #310, migrations, Firebase/Cloudflare configuration, customer s
 | Web production build | Passed (existing large-chunk advisory only) |
 | Preview syntax check | Passed |
 | Full web unit suite | 138 files, 1,144/1,144 passed using `NODE_OPTIONS=--no-experimental-webstorage` (needed for Node 26 + jsdom localStorage). |
-| `preview:verify`, `preview:counter-checks` | Not run successfully: no seed state in isolated worktree; guarded `preview:start` refused because another emulator process owns the required 28101–28108 ports. The process was not stopped or modified. |
+| `preview:verify`, `preview:counter-checks` | Not run successfully in this worktree: no preview seed state. `counter-checks` reports “No seed state found”; previous guarded startup found the required ports occupied. The other process was not stopped or modified. |
 | Playwright dashboard harness | Could not execute in this host: Playwright's configured Chromium headless shell is not installed. No browser was downloaded. |
-| Live preview E2E | Pending; guarded preview startup is blocked by occupied ports. |
+| Live preview E2E | Passed in exact-head CI `38245729043` (desktop + mobile). The UI shows QR-only participation after Loyalty Number resolution. |
 
 ## Version control and review
 
 - Entry PR #307 SHA: `a2774cc6ec7799ce92700d81b15d7769be8da240`.
-- Product implementation commit: `fe9d109dda86288126295d462e76497cd3f03900`, pushed to `feat/ea-bl-001-corr-002-b-staff-counter`. This report is a follow-up documentation commit; the final exact branch head is recorded in the task completion report.
+- Product implementation commit: `fe9d109dda86288126295d462e76497cd3f03900`; context-scope and test corrections are included through `f2cc3b509952b3972080ca2b5ecdc8c1be068ff3` on `feat/ea-bl-001-corr-002-b-staff-counter`.
 - PR #310 remains untouched at the supplied head.
-- CI runs `38233301268`, `38234447180`, and `38235532925` passed build, lint, format, typecheck and unit/component tests (Functions 2,031; web 1,144), then failed one existing recorder-index plan assertion because the cost-based planner chose another index for a tiny fixture. The test now disables sort to verify the order-providing path is applicable; the complete `staffCounter` file passes 53/53 locally. Exact-head CI is being rerun.
+- Exact-head run `38243615184` passed build, lint, format, typecheck, unit/component tests and all 799 PostgreSQL tests, then exposed a test assertion that expected one programme after the fixture had created purchases in two. The assertion was corrected to require both programmes with separate waiting counts. Run `38244313476` passed PostgreSQL, unit/component, Playwright, preview tooling, and cross-project setup, but both viewport variants caught a stale request observer listening for the old callable. Commit `f2cc3b5` updates that observer. Exact-head CI `38245729043` passed build, lint, format, typecheck, unit/component, PostgreSQL, Playwright E2E, Founder Preview tooling, cross-project port-isolation acceptance, and Firebase Emulator validation.
 - PR #307 inline review threads: 4 returned; all resolved (2 current, 2 outdated). No unresolved thread returned.
-- Neither PR is merged; no ITR started.
+- Local Functions typecheck and changed-file Prettier pass. Local PostgreSQL integration could not start because the isolated environment lacks `FIRESTORE_EMULATOR_HOST`; local `counter-checks` cannot run without preview seed state. CI covers both integration and preview execution. Neither PR is merged; no ITR started.
 
 ## Risks and rollback
 
@@ -69,4 +71,4 @@ Rollback: revert the B1A commit on `feat/ea-bl-001-corr-002-b-staff-counter`. Th
 
 ## Recommendation
 
-Founder review of the bounded context and reward-awareness language is recommended. Keep ITR paused until B1A is accepted and the exact PR head's required CI is green. Deliver B1R separately before any Staff redemption interaction. Keep Slices C/D/E unauthorized.
+Exact-head CI is green at `f2cc3b509952b3972080ca2b5ecdc8c1be068ff3`. Founder review of the bounded context and reward-awareness language is recommended; keep ITR paused until B1A is accepted. Deliver B1R separately before any Staff redemption interaction. Keep Slices C/D/E unauthorized.
