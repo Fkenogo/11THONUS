@@ -41,7 +41,7 @@ No changes to PR #310, migrations, Firebase/Cloudflare configuration, customer s
 | Focused callable contract tests | 85/85 passed |
 | B1A PostgreSQL + Firestore-emulator integration cases | 6/6 passed, including the QR-only/Loyalty Number neutral-policy boundary |
 | Full Functions unit suite | 176 files, 2,031 tests passed |
-| PostgreSQL `staffCounter` suite | 51/52 passed; one existing query-plan assertion expected the recorder index but this local planner chose a bitmap scan + sort. New B1A integration cases all passed. |
+| PostgreSQL `staffCounter` suite | 53/53 passed after making the existing index-plan fixture exclude bitmap scans while it proves the ordered recorder index path. |
 | TypeScript Functions/web | Passed |
 | ESLint changed files | Passed |
 | Prettier changed files | Passed |
@@ -57,7 +57,7 @@ No changes to PR #310, migrations, Firebase/Cloudflare configuration, customer s
 - Entry PR #307 SHA: `a2774cc6ec7799ce92700d81b15d7769be8da240`.
 - Product implementation commit: `fe9d109dda86288126295d462e76497cd3f03900`, pushed to `feat/ea-bl-001-corr-002-b-staff-counter`. This report is a follow-up documentation commit; the final exact branch head is recorded in the task completion report.
 - PR #310 remains untouched at the supplied head.
-- CI run `38232884502` covered implementation commit `fe9d109...` and was **in progress** when this report was updated; the final documentation-head CI is recorded in the task completion report.
+- CI run `38233301268` on the previous exact head passed unit/component tests (Functions 2,031; web 1,144), build, lint, format and typecheck. PostgreSQL integration reached 798/799; one existing recorder-index plan assertion allowed a competing bitmap scan. That fixture was corrected and the `staffCounter` file passes 53/53 locally; exact-head CI is being rerun.
 - PR #307 inline review threads: 4 returned; all resolved (2 current, 2 outdated). No unresolved thread returned.
 - Neither PR is merged; no ITR started.
 

@@ -870,6 +870,9 @@ describe("Staff Counter — recorder-scoped recent index (0029)", () => {
     try {
       // Tiny tables legitimately prefer a seq scan; disable it to prove the index CAN serve the query.
       await client.query("SET enable_seqscan = off");
+      // PostgreSQL may otherwise choose a bitmap scan from another qualifying index, which cannot
+      // prove this index provides the requested ordering without a sort.
+      await client.query("SET enable_bitmapscan = off");
       const plan = await client.query(
         `EXPLAIN SELECT id, created_at, item_label, quantity, status, presented_artifact_type,
                 canonical_loyalty_number_value
@@ -904,6 +907,7 @@ describe("Staff Counter — recorder-scoped recent index (0029)", () => {
       expect(pagedText).not.toMatch(/\bSort\b/);
     } finally {
       await client.query("RESET enable_seqscan");
+      await client.query("RESET enable_bitmapscan");
       client.release();
     }
   });
