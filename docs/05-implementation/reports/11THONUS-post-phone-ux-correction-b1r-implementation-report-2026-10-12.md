@@ -6,10 +6,10 @@
 - B1R: implementation complete; validation follow-up preserves legacy idempotency and updates the Founder Preview seed to satisfy B1R binding. No redemption Product Truth changed.
 - PR #307 entry head: `ad63568ee0b36612433b1d90be6167897cc5f371`.
 - B1R implementation commit: `e4cf7dbd33ab49c5d608a2fc3c74470fde3fbec2`.
-- At the first post-implementation inspection, PR #307 was open/unmerged at `e4cf7dbd33ab49c5d608a2fc3c74470fde3fbec2`; no workflow run was visible then. A docs-only follow-up records validation state; the final pushed head is reported in the task response.
-- Existing inline review threads: all four are resolved (three outdated, one current); no new B1R thread exists yet.
-- PR #307 is three commits behind current `main` (merge base `4bc9c49261c1db8bfdacb3d91b68d51ad59e47f9`). A local read-only merge-tree analysis reports no content conflicts; GitHub's `mergeable_state=dirty` is inconsistent and must be rechecked after the next push. No branch reconciliation was performed.
-- PR #310 was not modified. Neither PR is to be merged. ITR remains paused.
+- Compatibility correction and exact-head validation were completed. The branch was mechanically reconciled with the three current-main commits; both original commit histories are preserved.
+- The final report/tracker correction is being recorded after CI run `38275757199` succeeded on source head `dfaa69bdd82c0573f166f78b3894003e1b9bd2ab`. This is documentation-only; the exact head after this report update requires its own CI run.
+- PR #307 remains open, unmerged, and mergeable; its four inline review threads are resolved (three outdated, one current).
+- PR #310 was not modified or merged. ITR remains paused; B2 is not started.
 
 ## Architecture and binding design
 
@@ -22,6 +22,12 @@ The callable requires the current presented QR/Loyalty Number artifact and expec
 This was necessary because the existing engine's Business-only Reward lookup can accept any available Reward ID within that Business. A UI-only filter could not prove that the Reward belonged to the customer currently served. The added server binding prevents a same-Business cross-customer substitution without changing the redemption transition, Cycle handling, evidence, notifications, or permission rules.
 
 ### Idempotency compatibility correction
+
+Before B1R, `confirmRedemptionCommand` passed the Reward ID as the request fingerprint to the existing redemption idempotency helper. B1R initially replaced that material for every invocation with a tuple containing Reward ID, resolved customer identity, and expected programme, which would have changed reserved-key replay behavior for legacy/internal callers that omit B1R bindings.
+
+The compatibility fix preserves the exact legacy Reward-only fingerprint when both optional B1R binding inputs are absent. When either B1R artifact or programme binding is supplied, the stronger fingerprint includes Reward ID, resolved customer identity (or null), and expected programme (or null). The public callable still requires the complete B1R binding; this does not weaken the new transaction-bound path.
+
+Five PostgreSQL regressions prove legacy pre-B1R replay, B1R same-request replay, and same-key conflicts for changed customer, programme, or Reward. The Founder Preview seed now supplies Aline's issued QR reference and seeded programme reference required by the closed callable parser.
 
 
 ## Experience and authority
@@ -55,6 +61,7 @@ Implementation and tests:
 - `functions/src/domains/purchase/services/confirmRedemptionCommand.ts`
 - `functions/src/domains/purchase/services/confirmRedemptionCommand.postgres.test.ts`
 - `functions/src/domains/purchase/services/staffCounter.postgres.test.ts`
+- `tests/preview/seed/scenario.mjs`
 - `functions/src/index.ts`
 - `functions/src/index.test.ts`
 
@@ -62,6 +69,7 @@ Documentation:
 
 - `docs/changes/IMPLEMENTATION_CHANGES.md`
 - `docs/05-implementation/reports/11THONUS-post-phone-ux-correction-b1a-implementation-report-2026-10-12.md`
+- the MEDIA-001 assessment imported from current `main` during mechanical reconciliation
 - this report
 
 No dependency, configuration, migration, schema, Firebase project, Cloudflare or PR #310 change is included.
@@ -79,9 +87,9 @@ Validation:
 - Changed-file ESLint: passed after correcting a test-helper lint finding.
 - Changed-file Prettier check and `git diff --check`: passed.
 - Web production build: passed (Vite generated the PWA bundle in `/tmp`; Vite emitted the existing large-chunk advisory).
-- PostgreSQL integration, Firebase emulator, preview verification/counter checks, and Playwright: blocked by the host preview environment. The owned Postgres container became healthy, but preview startup refused because its required Firebase emulator ports 28101, 28102, 28103, 28106, 28107 and 28108 were already occupied. No foreign processes were stopped. Preview checks consequently reported missing seed state.
-- Compatibility follow-up exact-head CI run `38257093090` passed on `8cec3bdd2f61c897238049c571a74abb059e7bd5` after a workflow-dispatch trigger. All workflow steps passed: build, lint, format, typecheck, unit/component, PostgreSQL integration (including Firestore Emulator), Playwright, Founder Preview tooling, cross-project port-isolation acceptance, and Firebase Emulator validation. This exact-head run includes the legacy/B1R idempotency regressions and the updated Founder Preview redemption seed.
-- GitHub still reports PR #307 `mergeable=false` / `mergeable_state=dirty`. Current `main` is three commits ahead of merge base `4bc9c49261c1db8bfdacb3d91b68d51ad59e47f9` (`behind_by=3`), and read-only `git merge-tree` against current `origin/main` reports no conflicts. The reported dirty state is inconsistent with the local merge result; no rebase or merge was performed. Recheck GitHub's mergeability calculation before any merge action.
+- An initial local preview attempt was blocked because Firebase Emulator ports were already occupied; no foreign process was stopped. This environment limitation is superseded for validation purposes by the repository's full exact-head CI gates below.
+- Exact-head CI run `38257093090` passed on `8cec3bdd2f61c897238049c571a74abb059e7bd5`. Run `38259373589` passed on `c877af914c65cf11f4dfa08bc6cec9753a78c27e`. After main reconciliation and full tracker restoration, run `38275757199` passed on `dfaa69bdd82c0573f166f78b3894003e1b9bd2ab`; all passed build, lint, format, typecheck, unit/component, PostgreSQL integration, Playwright, Founder Preview tooling, cross-project port-isolation, and Firebase Emulator validation.
+- PR #307 was three commits behind `main` from merge base `4bc9c49261c1db8bfdacb3d91b68d51ad59e47f9`. GitHub correctly reported a real content conflict in `docs/changes/IMPLEMENTATION_CHANGES.md`: both branches prepended entries. A two-parent mechanical merge preserved both entries and the MEDIA-001 report; PR #307 now has `behind_by=0` and `mergeable=true`. No product files from `main` were merged except that report plus its tracker entry.
 - Existing inline review threads: four total, all resolved (three outdated, one current); no new B1R inline thread.
 
 ## Risks and rollback
@@ -92,8 +100,8 @@ Rollback: revert the B1R implementation commit(s) on `feat/ea-bl-001-corr-002-b-
 
 ## Validation and compatibility follow-up — 2026-10-12
 
-The legacy idempotency compatibility correction is recorded in `docs/changes/IMPLEMENTATION_CHANGES.md`. The Founder Preview redemption seed now supplies Aline's issued QR reference and the seeded programme reference required by the closed B1R callable. Exact-head CI run `38257093090` passed at code head `8cec3bdd2f61c897238049c571a74abb059e7bd5`. GitHub's `dirty` mergeability report remains unreconciled despite a clean read-only merge-tree result; this package does not rewrite the branch.
+The compatibility correction and preview-seed update are committed. PR #307's append-only documentation conflict with current `main` was mechanically reconciled without rewriting product commits; the complete tracker history, both new tracker entries, and the MEDIA-001 assessment are preserved. Exact-head CI run `38275757199` passed on `dfaa69bdd82c0573f166f78b3894003e1b9bd2ab`.
 
 ## Recommendation
 
-Keep PR #307 unmerged, PR #310 untouched, B2 unauthorized, and ITR paused. PostgreSQL/emulator/preview validation remains an environment limitation; Founder review and exact-head CI remain pending.
+Keep PR #307 unmerged and ITR paused. PR #310 remains untouched; B2 is not started. Full CI passed on the branch head preceding this report-only update. Founder review is the next decision; do not run ITR until that UX review is complete.
