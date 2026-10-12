@@ -55,9 +55,10 @@ No changes to PR #310, migrations, Firebase/Cloudflare configuration, customer s
 ## Version control and review
 
 - Entry PR #307 SHA: `a2774cc6ec7799ce92700d81b15d7769be8da240`.
-- New exact head: pending commit/push.
+- Product implementation commit: `fe9d109dda86288126295d462e76497cd3f03900`, pushed to `feat/ea-bl-001-corr-002-b-staff-counter`. This report is a follow-up documentation commit; the final exact branch head is recorded in the task completion report.
 - PR #310 remains untouched at the supplied head.
-- CI/review threads: pending exact-head push and provider check.
+- CI run `38232884502` covered implementation commit `fe9d109...` and was **in progress** when this report was updated; the final documentation-head CI is recorded in the task completion report.
+- PR #307 inline review threads: 4 returned; all resolved (2 current, 2 outdated). No unresolved thread returned.
 - Neither PR is merged; no ITR started.
 
 ## Risks and rollback
