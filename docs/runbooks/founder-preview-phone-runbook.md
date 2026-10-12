@@ -39,6 +39,8 @@ hostname, policy name and allowed identities below. Never commit identities or t
 
 ## Run
 
+Before starting the named tunnel, confirm `cloudflared --version` succeeds in the **same shell** that will run `pnpm preview:phone tunnel`. If `cloudflared` is installed through a package manager but is not available in that shell, restore that package manager's shell environment for the current session, then check the version again. Do not add a machine-specific permanent path to this runbook or the repository.
+
 ```bash
 pnpm preview:start                           # canonical Docker/PostgreSQL + emulators (+ dev web on :28109)
 pnpm preview:reset && pnpm preview:verify && pnpm preview:counter-checks && pnpm preview:status
