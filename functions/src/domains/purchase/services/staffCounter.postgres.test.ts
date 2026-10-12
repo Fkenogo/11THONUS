@@ -1270,11 +1270,42 @@ describe("Staff customer context — transaction and Business scoped", () => {
 
   it("resolves QR and Loyalty Number to the same name and bounded participating programme projection", async () => {
     const s = await setup({ threshold: null });
-    const qr = await customerContext(s, { qrReference: s.customer.qr });
-    expect(qr).toEqual({
-      customer: { displayName: "Customer Example" },
-      programmes: [],
+    const qrOnly = await createRewardProgram(db, pool, {
+      userId: s.ownerId,
+      request: {
+        businessId: s.businessId,
+        displayName: "QR-only Program",
+        rewardProgramCategoryId: "sct_rpcat",
+        rewardDescription: "One free coffee",
+        multipleUnitsAllowed: true,
+        sharedLoyaltyNumberAllowed: false,
+        businessReviewQuantityThreshold: null,
+        effectiveFrom: new Date("2026-09-14T00:00:00.000Z"),
+        qualifyingItemIds: [s.itemId],
+      } as never,
+      idempotencyKey: nextId("key_qr_only"),
+      correlationId: nextId("corr_qr_only"),
     });
+    await publishRewardProgramVersion(db, pool, {
+      userId: s.ownerId,
+      request: {
+        businessId: s.businessId,
+        rewardProgramId: qrOnly.program.id,
+        versionId: qrOnly.version.id,
+      },
+      idempotencyKey: nextId("key_qr_only_pub"),
+      correlationId: nextId("corr_qr_only_pub"),
+    });
+    await record(s, {
+      rewardProgramId: qrOnly.program.id,
+      loyaltyNumberValue: null,
+      qrReference: s.customer.qr,
+    });
+    const qr = await customerContext(s, { qrReference: s.customer.qr });
+    expect(qr.customer).toEqual({ displayName: "Customer Example" });
+    expect(qr.programmes).toEqual([
+      expect.objectContaining({ rewardProgramId: qrOnly.program.id }),
+    ]);
     expect(await customerContext(s, { loyaltyNumberValue: s.customer.ln })).toEqual(qr);
     const purchase = await record(s, {}, s.staffId);
     const withPending = await customerContext(s, { loyaltyNumberValue: s.customer.ln });

@@ -176,8 +176,9 @@ async function build(s, admin, log) {
   // EA-BL-001-CORR-002-B (Staff Counter preview): a published programme that accepts a Loyalty
   // Number (so the Counter's Loyalty Number path works) and routes a Purchase of 5+ units to
   // Business Review -- a real programme setting, created through the real callable. Together with
-  // "Premium Cut Circle" (QR only) Staff see two programmes, which also exercises the neutral
-  // customer-code refusal when a Loyalty Number is presented against a QR-only programme.
+  // "Premium Cut Circle" (QR only) remains visible in the resolved customer's bounded
+  // Business context even when Staff identified them by Loyalty Number through another eligible
+  // programme. Purchase recording against this QR-only programme still requires the QR artifact.
   bella.programmes.express = await programme(s, bella, {
     name: "Express Styling Circle",
     reward: "A free blow-dry",

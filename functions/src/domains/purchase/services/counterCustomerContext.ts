@@ -104,7 +104,6 @@ export async function getCounterCustomerContext(
     listCounterCustomerProgrammes(pool, {
       businessId: params.businessId,
       customerIdentityId,
-      presentedVia: loyaltyNumber !== null ? "loyalty_number" : "qr_identity",
     }),
   ]);
   return {

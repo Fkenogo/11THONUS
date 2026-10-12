@@ -58,7 +58,6 @@ export async function listCounterCustomerProgrammes(
   params: {
     readonly businessId: string;
     readonly customerIdentityId: string;
-    readonly presentedVia: "loyalty_number" | "qr_identity";
   },
 ): Promise<CounterCustomerProgrammeContext[]> {
   const result = await db.query<DbRow>(
@@ -102,10 +101,9 @@ export async function listCounterCustomerProgrammes(
             AND purchase.status = 'waiting_for_customer'
        ) waiting ON true
       WHERE p.business_id = $1
-        AND ($3::boolean = false OR current_version.shared_loyalty_number_allowed = true)
         AND (c.allocated_units IS NOT NULL OR COALESCE(waiting.awaiting_units, 0) > 0)
       ORDER BY p.display_name ASC, p.id ASC`,
-    [params.businessId, params.customerIdentityId, params.presentedVia === "loyalty_number"],
+    [params.businessId, params.customerIdentityId],
   );
 
   return result.rows.map((row) => ({
