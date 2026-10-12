@@ -324,9 +324,10 @@ for (const width of WIDTHS) {
       page,
     }) => {
       await page.goto(PATH);
-      await expect(page.getByTestId("counter-loyalty-progress")).toHaveCount(0);
+      await expect(page.getByTestId("counter-customer-programme")).toHaveCount(0);
       await page.getByLabel("Loyalty Number").fill("abc234");
-      const card = page.getByTestId("counter-loyalty-progress");
+      const card = page.getByTestId("counter-customer-programme").first();
+      await expect(page.getByText("Jean-Claude Habimana")).toBeVisible();
       await expect(card).toBeVisible();
       await expect(card).toContainText("8 of 10 verified");
       await expect(card).toContainText("2 more verified purchases until the 11th is on us");
@@ -346,7 +347,7 @@ for (const width of WIDTHS) {
     test("Loyalty status: pending is shown SEPARATELY and never as 10 of 10", async ({ page }) => {
       await page.goto(PATH);
       await page.getByLabel("Loyalty Number").fill("nea999");
-      const card = page.getByTestId("counter-loyalty-progress");
+      const card = page.getByTestId("counter-customer-programme").first();
       await expect(card).toContainText("9 of 10 verified");
       await expect(card).toContainText("1 purchase awaiting customer confirmation");
       await expect(card).toContainText("1 more verified purchase until the 11th is on us");
@@ -361,7 +362,7 @@ for (const width of WIDTHS) {
       const alert = page.getByTestId("counter-loyalty-reward");
       await expect(alert).toBeVisible();
       await expect(alert).toContainText("11th reward available");
-      await expect(alert).toContainText("Let the customer know their reward is ready.");
+      await expect(alert).toContainText("Ask an authorised Manager or Owner to confirm.");
       await expect(page.getByRole("button", { name: /redeem|confirm reward/i })).toHaveCount(0);
       await expectNoHorizontalOverflow(page);
       await expectAboveBottomNav(
@@ -389,7 +390,9 @@ for (const width of WIDTHS) {
       await frNav.getByRole("link", { name: "Caisse" }).click();
       await expect(page.getByRole("button", { name: "Enregistrer l'achat" })).toBeVisible();
       await page.getByLabel("Numéro de fidélité").fill("abc234");
-      await expect(page.getByTestId("counter-loyalty-progress")).toContainText("8 sur 10 vérifiés");
+      await expect(page.getByTestId("counter-customer-programme").first()).toContainText(
+        "8 sur 10 vérifiés",
+      );
       await expectNoHorizontalOverflow(page);
       const sheet = await (async () => {
         await frNav.getByRole("button", { name: "Actions rapides" }).click();
@@ -406,8 +409,10 @@ for (const width of WIDTHS) {
       await page.goto(`${PATH}?fixture=many`);
       await expect(page.getByRole("heading", { name: "Counter", level: 1 })).toBeVisible();
       await page.getByLabel("Loyalty Number").fill("abc234");
+      await expect(page.getByTestId("counter-customer-programme")).toHaveCount(2);
+      await expect(page.getByText("Jean-Claude Habimana")).toBeVisible();
       await page.getByRole("radio", { name: "Wash 10+1" }).check();
-      await expect(page.getByTestId("counter-loyalty-progress")).toBeVisible();
+      await expect(page.getByTestId("counter-customer-programme").first()).toBeVisible();
       const violations = async () =>
         (await new AxeBuilder({ page }).analyze()).violations.map(
           (v) => `${v.id}: ${v.nodes.map((n) => n.target).join(" | ")}`,

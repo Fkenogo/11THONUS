@@ -24,7 +24,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { BusinessApiProvider } from "../../business/BusinessApiContext";
 import type { BusinessContext } from "../../business/api/businessContext";
 import type {
-  CounterLoyaltyContextWire,
+  CounterCustomerContextWire,
   CounterRecentPurchaseWire,
 } from "../../business/api/purchaseMutations";
 import { StaffActivityPage } from "../../business/counter/StaffActivityPage";
@@ -105,25 +105,54 @@ const RECENT: CounterRecentPurchaseWire[] = [
 
 const BASE = "/dev/counter-harness";
 
-/** Loyalty fixtures the harness answers for (typed Loyalty Numbers; same answer in every programme). */
-const LOYALTY: Record<string, CounterLoyaltyContextWire> = {
+/** Artifact-resolved, current-Business Staff context. These are never directory results. */
+const CUSTOMER_CONTEXT: Record<string, CounterCustomerContextWire> = {
   ABC234: {
-    verifiedUnits: 8,
-    requiredVerifiedUnits: 10,
-    rewardStatus: "none",
-    awaitingCustomerConfirmationUnits: 0,
+    customer: { displayName: "Jean-Claude Habimana" },
+    programmes: [
+      {
+        rewardProgramId: "rp-1",
+        programmeName: "Premium Cut Circle",
+        verifiedUnits: 8,
+        requiredVerifiedUnits: 10,
+        awaitingCustomerConfirmationUnits: 0,
+        rewardStatus: "none",
+      },
+      {
+        rewardProgramId: "rp-2",
+        programmeName: "Family Care Circle",
+        verifiedUnits: 4,
+        requiredVerifiedUnits: 10,
+        awaitingCustomerConfirmationUnits: 0,
+        rewardStatus: "none",
+      },
+    ],
   },
   NEA999: {
-    verifiedUnits: 9,
-    requiredVerifiedUnits: 10,
-    rewardStatus: "none",
-    awaitingCustomerConfirmationUnits: 1,
+    customer: { displayName: "Esther Niyonkuru" },
+    programmes: [
+      {
+        rewardProgramId: "rp-1",
+        programmeName: "Premium Cut Circle",
+        verifiedUnits: 9,
+        requiredVerifiedUnits: 10,
+        awaitingCustomerConfirmationUnits: 1,
+        rewardStatus: "none",
+      },
+    ],
   },
   RWD777: {
-    verifiedUnits: 10,
-    requiredVerifiedUnits: 10,
-    rewardStatus: "available",
-    awaitingCustomerConfirmationUnits: 0,
+    customer: { displayName: "Chantal Uwimana" },
+    programmes: [
+      {
+        rewardProgramId: "rp-1",
+        programmeName: "Premium Cut Circle",
+        verifiedUnits: 10,
+        requiredVerifiedUnits: 10,
+        awaitingCustomerConfirmationUnits: 0,
+        rewardStatus: "available",
+      },
+    ],
   },
 };
 
@@ -136,19 +165,21 @@ function buildClient(fixture: string | null): QueryClient {
     pages: [{ purchases, nextCursor: fixture === "paged" ? "harness-cursor" : null }],
     pageParams: [undefined],
   });
-  for (const programme of programmes) {
-    for (const [loyaltyNumber, context] of Object.entries(LOYALTY)) {
-      client.setQueryData(
-        businessQueryKeys.counterLoyalty(
-          CONTEXT.businessId,
-          "anonymous",
-          programme.id,
-          "loyalty_number",
-          loyaltyNumber,
+  for (const [loyaltyNumber, context] of Object.entries(CUSTOMER_CONTEXT)) {
+    client.setQueryData(
+      businessQueryKeys.counterCustomerContext(
+        CONTEXT.businessId,
+        "anonymous",
+        "loyalty_number",
+        loyaltyNumber,
+      ),
+      {
+        ...context,
+        programmes: context.programmes.filter((entry) =>
+          programmes.some((programme) => programme.id === entry.rewardProgramId),
         ),
-        context,
-      );
-    }
+      },
+    );
   }
   return client;
 }
