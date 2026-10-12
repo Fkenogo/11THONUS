@@ -5,16 +5,17 @@
  * "Frontline Counter" with numbered Identify → Programme → Record steps, a prominent "Scan customer
  * QR", a stepper, a primary Record action and a fast "next customer" reset. (The recent-activity log is
  * its own Activity view and "new customer" a quick action since Founder Preview Pass 3.)
- * TRUTH comes from production: real authenticated context, real programmes/items, the one existing
- * `recordPurchase` authority, and server routing. Replaced on purpose: the scenario strip and mock
- * participants, name/phone search and the all-customer list, walk-in creation, the Loyalty Circle,
- * the approval-threshold note, Staff reward confirmation and the fake station label.
+ * TRUTH comes from production: real authenticated context, real programmes/items, the existing
+ * `recordPurchase` authority and server routing. Replaced prototype elements include mock
+ * participants, name/phone search, the all-customer list, walk-in creation, the approval-threshold
+ * note and fake station label. Reward confirmation is the bounded, separately governed action.
  *
  * Staff identify a customer ONLY by a scanned QR or a typed Loyalty Number (D1/D2); the server
- * resolves it. Staff never see a customer name, threshold, reviewer or review reason (N4), and never
- * verify, review or redeem here (D5). Once the customer and the Programme are known they DO see a
- * limited loyalty status for that one transaction (Founder Preview Pass 3 supersedes D4; PRD01 §8.2). Access is the existing `purchase.record` authority,
- * enforced server-side on every call; nothing on this page is a security boundary.
+ * resolves it. After positive artifact resolution, Staff see the customer display name and only
+ * current-Business programme/progress context needed for this transaction (FD-UX-1). Contact details,
+ * profile, cross-Business history, reviewer and threshold data remain excluded. Redemption is offered
+ * only from the live server eligibility signal; the governed mutation re-authorizes on submit.
+ * Access is enforced server-side on every call; nothing on this page is a security boundary.
  *
  * One intentional submission = one transaction intent (payload + `purchaseDate` + idempotency key,
  * see `counterIntent.ts`): an uncertain/network failure retries the SAME intent; only an intentional
@@ -35,6 +36,7 @@ import {
 } from "./counterErrors";
 import {
   useCounterCustomerContextQuery,
+  useConfirmCounterRedemptionMutation,
   useCounterProgrammesQuery,
   useRecordCounterPurchaseMutation,
   type CounterLoyaltyArtifact,
@@ -150,6 +152,7 @@ export function CounterPage({
 
   const programmesQuery = useCounterProgrammesQuery(businessId);
   const recordMutation = useRecordCounterPurchaseMutation(businessId);
+  const redemptionMutation = useConfirmCounterRedemptionMutation(businessId);
   const programmes = useMemo(() => programmesQuery.data ?? [], [programmesQuery.data]);
 
   // --- transaction inputs -------------------------------------------------------------------
@@ -773,6 +776,16 @@ export function CounterPage({
                 context={customerContextQuery.data}
                 programmes={programmes}
                 onAddPurchase={addPurchaseForProgramme}
+                canConfirmRedemption={customerContextQuery.data.canConfirmRedemption}
+                onConfirmRedemption={async (rewardId, rewardProgramId, idempotencyKey) => {
+                  if (!loyaltyArtifact) throw new Error("Customer artifact is no longer resolved");
+                  await redemptionMutation.mutateAsync({
+                    rewardId,
+                    rewardProgramId,
+                    idempotencyKey,
+                    artifact: loyaltyArtifact,
+                  });
+                }}
               />
             ) : null
           ) : null}

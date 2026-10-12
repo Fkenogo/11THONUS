@@ -294,6 +294,8 @@ type Setup = {
   staffId: string;
   staff2Id: string;
   staffMembershipId: string;
+  ownerMembershipId: string;
+  managerMembershipId: string;
   programId: string;
   itemId: string;
   customer: { customerId: string; ln: string; qr: string };
@@ -311,8 +313,12 @@ async function setup(
   const staffId = nextId("staff");
   const staff2Id = nextId("staff");
   await seedBusiness(businessId);
-  await seedMembership({ userId: ownerId, businessId, role: "owner" });
-  await seedMembership({ userId: managerId, businessId, role: "manager" });
+  const ownerMembershipId = await seedMembership({ userId: ownerId, businessId, role: "owner" });
+  const managerMembershipId = await seedMembership({
+    userId: managerId,
+    businessId,
+    role: "manager",
+  });
   await seedMembership({ userId: manager2Id, businessId, role: "manager" });
   const staffMembershipId = await seedMembership({ userId: staffId, businessId, role: "staff" });
   await seedMembership({ userId: staff2Id, businessId, role: "staff" });
@@ -350,6 +356,8 @@ async function setup(
     staffId,
     staff2Id,
     staffMembershipId,
+    ownerMembershipId,
+    managerMembershipId,
     programId: created.program.id,
     itemId,
     customer,
@@ -1268,6 +1276,25 @@ describe("Staff customer context — transaction and Business scoped", () => {
     });
   }
 
+  async function earnAvailableReward(s: Setup) {
+    for (let index = 0; index < 10; index += 1) {
+      const purchase = await record(s, {}, s.staffId);
+      await verifyPurchase(db, pool, {
+        customerIdentityId: s.customer.customerId,
+        request: { purchaseRecordId: purchase.purchase.id },
+        idempotencyKey: nextId("verify-ready-reward"),
+        correlationId: nextId("verify-ready-reward"),
+      });
+    }
+    const result = await pool.query<{ id: string }>(
+      "SELECT id FROM rewards WHERE business_id = $1 AND customer_identity_id = $2 AND reward_program_id = $3 AND state = 'available'",
+      [s.businessId, s.customer.customerId, s.programId],
+    );
+    const rewardId = result.rows[0]?.id ?? "";
+    expect(rewardId).toMatch(/^[0-9a-f-]{36}$/i);
+    return rewardId;
+  }
+
   it("resolves QR and Loyalty Number to the same name and bounded participating programme projection", async () => {
     const s = await setup({ threshold: null });
     const qrOnly = await createRewardProgram(db, pool, {
@@ -1330,6 +1357,61 @@ describe("Staff customer context — transaction and Business scoped", () => {
       ]),
     );
     expect(purchase.purchase.id).toBeTruthy();
+  });
+
+  it("returns authoritative reward binding and live eligibility without exposing reward ids to Staff lacking a grant", async () => {
+    const s = await setup({ threshold: null });
+    const rewardId = await earnAvailableReward(s);
+    const owner = await customerContext(s, { qrReference: s.customer.qr }, s.ownerId);
+    expect(owner.canConfirmRedemption).toBe(true);
+    expect(owner.programmes).toEqual([
+      expect.objectContaining({
+        rewardStatus: "available",
+        reward: { rewardId, description: "One free coffee" },
+      }),
+    ]);
+
+    const manager = await customerContext(s, { qrReference: s.customer.qr }, s.managerId);
+    expect(manager.canConfirmRedemption).toBe(true);
+    await db
+      .collection("businessMemberships")
+      .doc(s.managerMembershipId)
+      .update({
+        permissions: [
+          {
+            permissionId: "redemption.confirm",
+            direction: "revoke",
+            grantedBy: s.ownerId,
+            grantedAt: new Date(),
+          },
+        ],
+      });
+    const revokedManager = await customerContext(s, { qrReference: s.customer.qr }, s.managerId);
+    expect(revokedManager.canConfirmRedemption).toBe(false);
+    expect(revokedManager.programmes[0]?.reward).toEqual({ description: "One free coffee" });
+
+    const staff = await customerContext(s, { qrReference: s.customer.qr }, s.staffId);
+    expect(staff.canConfirmRedemption).toBe(false);
+    expect(staff.programmes[0]?.reward).toEqual({ description: "One free coffee" });
+    await db
+      .collection("businessMemberships")
+      .doc(s.staffMembershipId)
+      .update({
+        permissions: [
+          {
+            permissionId: "redemption.confirm",
+            direction: "grant",
+            grantedBy: s.ownerId,
+            grantedAt: new Date(),
+          },
+        ],
+      });
+    const grantedStaff = await customerContext(s, { qrReference: s.customer.qr }, s.staffId);
+    expect(grantedStaff.canConfirmRedemption).toBe(true);
+    expect(grantedStaff.programmes[0]?.reward).toEqual({
+      rewardId,
+      description: "One free coffee",
+    });
   });
 
   it("preserves QR-only policy: QR resolves, while a Loyalty Number remains a neutral refusal", async () => {

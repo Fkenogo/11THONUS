@@ -2534,11 +2534,11 @@ export const rejectBusinessReview = onCall(async (request) => {
 });
 
 /**
- * Whitelist parser: exactly `businessId` and `rewardId`.
+ * Whitelist parser: Business, Reward, Programme and one presented artifact.
  *
  * Deliberately minimal — `CAPABILITY-6-REDEMPTION-ENGINE-001` /
  * `DEC-LOY-018`. A redemption confirmation is a statement ABOUT one
- * persisted Reward, so every other field that could conceivably be sent
+ * persisted Reward in the currently served Customer/Programme context, so every other field that could conceivably be sent
  * (Customer Identity id, Reward state, Business ownership, cycle, program,
  * program version, confirmer identity or role, redeemed-at timestamp) is
  * excluded by the whitelist and server-resolved instead. The client can say
@@ -2547,9 +2547,21 @@ export const rejectBusinessReview = onCall(async (request) => {
  * mass-assignment regression test.
  */
 export function parseConfirmRedemptionRequest(value: Record<string, unknown>) {
+  const loyaltyNumberValue = parseOptionalPurchaseString(
+    value.loyaltyNumberValue,
+    "loyaltyNumberValue",
+  );
+  const qrReference = parseOptionalPurchaseString(value.qrReference, "qrReference");
+  if (Boolean(loyaltyNumberValue) === Boolean(qrReference)) {
+    throw purchaseParseError("loyaltyNumberValue");
+  }
   return {
     businessId: parseBusinessId(value.businessId),
     rewardId: parseNonEmptyString(value.rewardId),
+    rewardProgramId: parseNonEmptyString(value.rewardProgramId),
+    artifact: loyaltyNumberValue
+      ? { kind: "loyalty_number" as const, value: loyaltyNumberValue }
+      : { kind: "qr_identity" as const, value: qrReference as string },
   };
 }
 
@@ -2572,10 +2584,15 @@ export const confirmRedemption = onCall(async (request) => {
     const { userId } = await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
       verifier: firebaseAdminTokenVerifier(),
     });
+    const parsed = parseConfirmRedemptionRequest(value);
     return await confirmRedemptionCommand(db, getPurchasePostgresPool(), {
       userId,
-      ...parseConfirmRedemptionRequest(value),
-      request: { rewardId: parseNonEmptyString(value.rewardId) },
+      businessId: parsed.businessId,
+      request: {
+        rewardId: parsed.rewardId,
+        rewardProgramId: parsed.rewardProgramId,
+        artifact: parsed.artifact,
+      },
       idempotencyKey: parseClientIdempotencyKey(value.idempotencyKey),
       correlationId: randomUUID(),
     });

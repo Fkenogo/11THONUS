@@ -117,6 +117,7 @@ const CUSTOMER_CONTEXT: Record<string, CounterCustomerContextWire> = {
         requiredVerifiedUnits: 10,
         awaitingCustomerConfirmationUnits: 0,
         rewardStatus: "none",
+        reward: null,
       },
       {
         rewardProgramId: "rp-2",
@@ -125,8 +126,10 @@ const CUSTOMER_CONTEXT: Record<string, CounterCustomerContextWire> = {
         requiredVerifiedUnits: 10,
         awaitingCustomerConfirmationUnits: 0,
         rewardStatus: "none",
+        reward: null,
       },
     ],
+    canConfirmRedemption: false,
   },
   NEA999: {
     customer: { displayName: "Esther Niyonkuru" },
@@ -138,8 +141,10 @@ const CUSTOMER_CONTEXT: Record<string, CounterCustomerContextWire> = {
         requiredVerifiedUnits: 10,
         awaitingCustomerConfirmationUnits: 1,
         rewardStatus: "none",
+        reward: null,
       },
     ],
+    canConfirmRedemption: false,
   },
   RWD777: {
     customer: { displayName: "Chantal Uwimana" },
@@ -151,8 +156,10 @@ const CUSTOMER_CONTEXT: Record<string, CounterCustomerContextWire> = {
         requiredVerifiedUnits: 10,
         awaitingCustomerConfirmationUnits: 0,
         rewardStatus: "available",
+        reward: { description: "One free service" },
       },
     ],
+    canConfirmRedemption: false,
   },
 };
 

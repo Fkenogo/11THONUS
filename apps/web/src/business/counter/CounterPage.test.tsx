@@ -116,12 +116,15 @@ function setup(
     recent?: unknown[];
     loyalty?: Handler;
     customerContext?: Handler;
+    canConfirmRedemption?: boolean;
+    confirm?: Handler;
   } = {},
 ) {
   const activeProgrammes = options.programmes ?? [
     programme("rp-1", "Premium Cut Circle", [HAIRCUT]),
   ];
   const loyaltyHandler = options.loyalty ?? (async () => loyaltyContext());
+  let redemptionCommitted = false;
   handlers = {
     listRewardPrograms: async () => activeProgrammes,
     listMyRecentCounterPurchases: async () => ({
@@ -132,16 +135,40 @@ function setup(
       options.customerContext ??
       (async () => {
         const context = (await loyaltyHandler({})) as ReturnType<typeof loyaltyContext>;
+        const current = redemptionCommitted
+          ? { ...context, verifiedUnits: 0, rewardStatus: "none" as const }
+          : context;
         return {
           customer: { displayName: "Jean-Claude Habimana" },
           programmes: activeProgrammes.map((entry) => ({
             rewardProgramId: entry.program.id,
             programmeName: entry.program.displayName,
-            ...context,
+            ...current,
+            reward:
+              current.rewardStatus === "available"
+                ? {
+                    rewardId: "00000000-0000-4000-8000-000000000001",
+                    description: "One free service",
+                  }
+                : null,
           })),
+          canConfirmRedemption: !redemptionCommitted && (options.canConfirmRedemption ?? false),
         };
       }),
     recordPurchase: options.record ?? (async () => recordResult()),
+    confirmRedemption:
+      options.confirm ??
+      (async () => {
+        redemptionCommitted = true;
+        return {
+          reward: { id: "reward-1", rewardDescription: "One free service" },
+          redemption: { id: "redemption-1", redeemedAt: new Date().toISOString() },
+          completedLoyaltyCycleId: "cycle-old",
+          nextLoyaltyCycleId: "cycle-next",
+          unitsAllocatedForward: 0,
+          nextReward: null,
+        };
+      }),
   };
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: Infinity }, mutations: { retry: false } },
@@ -1052,6 +1079,122 @@ describe("Counter — resolved customer and programme context (B1A)", () => {
     expect(calls.confirmRedemption).toBeUndefined();
   });
 
+  it("requires a governed confirmation step and does not record a purchase", async () => {
+    const user = userEvt();
+    setup({
+      loyalty: async () => loyaltyContext({ verifiedUnits: 10, rewardStatus: "available" }),
+      canConfirmRedemption: true,
+    });
+    await ready();
+    await typeLoyaltyNumber(user);
+    await screen.findByTestId("counter-loyalty-reward");
+    await user.click(screen.getByRole("button", { name: "Use 11th" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveTextContent("Jean-Claude Habimana");
+    expect(dialog).toHaveTextContent("One free service");
+    expect(dialog).toHaveTextContent("No new purchase will be recorded.");
+    expect(calls.confirmRedemption).toBeUndefined();
+    await user.click(within(dialog).getByRole("button", { name: "Confirm 11th used" }));
+    await waitFor(() => expect(calls.confirmRedemption).toHaveLength(1));
+    expect(calls.confirmRedemption[0]).toMatchObject({
+      businessId: "biz-1",
+      rewardId: "00000000-0000-4000-8000-000000000001",
+      rewardProgramId: "rp-1",
+      loyaltyNumberValue: "ABC-234",
+    });
+    expect(calls.confirmRedemption[0]?.idempotencyKey).toEqual(expect.any(String));
+    expect(calls.recordPurchase).toBeUndefined();
+    expect(
+      await screen.findByText("11th used. The current Circle has been refreshed."),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("counter-loyalty-reward")).not.toBeInTheDocument();
+    expect(await screen.findByText("0 of 10 verified")).toBeInTheDocument();
+  });
+
+  it("handles permission revoked before confirmation without false success and refreshes context", async () => {
+    const user = userEvt();
+    let reads = 0;
+    setup({
+      loyalty: async () => loyaltyContext({ verifiedUnits: 10, rewardStatus: "available" }),
+      canConfirmRedemption: true,
+      customerContext: async () => {
+        reads += 1;
+        return {
+          customer: { displayName: "Jean-Claude Habimana" },
+          canConfirmRedemption: true,
+          programmes: [
+            {
+              rewardProgramId: "rp-1",
+              programmeName: "Premium Cut Circle",
+              verifiedUnits: 10,
+              requiredVerifiedUnits: 10,
+              awaitingCustomerConfirmationUnits: 0,
+              rewardStatus: "available",
+              reward: {
+                rewardId: "00000000-0000-4000-8000-000000000001",
+                description: "One free service",
+              },
+            },
+          ],
+        };
+      },
+      confirm: async () => {
+        throw Object.assign(new Error("revoked"), { code: "functions/permission-denied" });
+      },
+    });
+    await ready();
+    await typeLoyaltyNumber(user);
+    await screen.findByTestId("counter-loyalty-reward");
+    await user.click(screen.getByRole("button", { name: "Use 11th" }));
+    await user.click(
+      within(await screen.findByRole("dialog")).getByRole("button", { name: "Confirm 11th used" }),
+    );
+    expect(await screen.findByRole("alert")).toHaveTextContent("The 11th was not confirmed.");
+    expect(
+      screen.queryByText("11th used. The current Circle has been refreshed."),
+    ).not.toBeInTheDocument();
+    await waitFor(() => expect(reads).toBeGreaterThan(1));
+  });
+
+  it("reuses the redemption idempotency key after an uncertain response and ignores a double tap", async () => {
+    const user = userEvt();
+    const attemptedKeys: string[] = [];
+    let attempts = 0;
+    setup({
+      loyalty: async () => loyaltyContext({ verifiedUnits: 10, rewardStatus: "available" }),
+      canConfirmRedemption: true,
+      confirm: async (payload) => {
+        attempts += 1;
+        attemptedKeys.push(String(payload.idempotencyKey));
+        if (attempts === 1)
+          throw Object.assign(new Error("network unknown"), { code: "functions/internal" });
+        return {
+          reward: { id: "reward-1", rewardDescription: "One free service" },
+          redemption: { id: "redemption-1", redeemedAt: new Date().toISOString() },
+          completedLoyaltyCycleId: "cycle-old",
+          nextLoyaltyCycleId: "cycle-next",
+          unitsAllocatedForward: 0,
+          nextReward: null,
+        };
+      },
+    });
+    await ready();
+    await typeLoyaltyNumber(user);
+    await screen.findByTestId("counter-loyalty-reward");
+    await user.click(screen.getByRole("button", { name: "Use 11th" }));
+    const dialog = await screen.findByRole("dialog");
+    const confirm = within(dialog).getByRole("button", { name: "Confirm 11th used" });
+    fireEvent.click(confirm);
+    fireEvent.click(confirm);
+    await screen.findByRole("alert");
+    expect(attempts).toBe(1);
+    fireEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", { name: "Confirm 11th used" }),
+    );
+    await waitFor(() => expect(attempts).toBe(2));
+    expect(attemptedKeys[1]).toBe(attemptedKeys[0]);
+  });
+
   it("after a normal purchase the outcome stays truthful and the loyalty status is not carried over or advanced", async () => {
     const user = userEvt();
     setup({ loyalty: async () => loyaltyContext({ verifiedUnits: 9 }) });
@@ -1130,10 +1273,12 @@ describe("Counter — resolved customer and programme context (B1A)", () => {
       /secret@example|\+257000000|private|cust-secret|reviewer-secret|unrelated|threshold/i,
     );
     expect(Object.keys(JSON.parse(cached[0]).customer).sort()).toEqual(["displayName"]);
+    expect(JSON.parse(cached[0]).canConfirmRedemption).toBe(false);
     expect(Object.keys(JSON.parse(cached[0]).programmes[0]).sort()).toEqual([
       "awaitingCustomerConfirmationUnits",
       "programmeName",
       "requiredVerifiedUnits",
+      "reward",
       "rewardProgramId",
       "rewardStatus",
       "verifiedUnits",

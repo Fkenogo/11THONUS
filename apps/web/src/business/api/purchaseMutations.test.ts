@@ -6,6 +6,7 @@ import {
   toCallListMyRecentCounterPurchases,
   toCallGetCounterLoyaltyContext,
   toCallGetCounterCustomerContext,
+  toCallConfirmRedemption,
   toCallListPurchasesForBusiness,
   type PurchaseRecordWire,
 } from "./purchaseMutations";
@@ -270,8 +271,10 @@ describe("toCallGetCounterCustomerContext (B1A bounded response)", () => {
               requiredVerifiedUnits: 10,
               awaitingCustomerConfirmationUnits: 1,
               rewardStatus: "none",
+              reward: null,
             },
           ],
+          canConfirmRedemption: false,
         },
       };
     });
@@ -285,8 +288,47 @@ describe("toCallGetCounterCustomerContext (B1A bounded response)", () => {
           requiredVerifiedUnits: 10,
           awaitingCustomerConfirmationUnits: 1,
           rewardStatus: "none",
+          reward: null,
         },
       ],
+      canConfirmRedemption: false,
+    });
+  });
+});
+
+describe("toCallConfirmRedemption (B1R governed callable adapter)", () => {
+  it("sends only the business, bound reward reference, idempotency key and authenticated actor proof", async () => {
+    const result = {
+      reward: { rewardDescription: "One free service" },
+      completedLoyaltyCycleId: "cycle-old",
+      nextLoyaltyCycleId: "cycle-next",
+      unitsAllocatedForward: 0,
+      nextReward: null,
+    };
+    const call = toCallConfirmRedemption(async (payload) => {
+      expect(payload).toEqual({
+        businessId: "biz-1",
+        rewardId: "reward-1",
+        rewardProgramId: "programme-1",
+        loyaltyNumberValue: "ABC234",
+        idempotencyKey: "attempt-1",
+        rawToken: "t",
+        referenceType: "email",
+      });
+      return { data: result };
+    });
+    await expect(
+      call(actor, {
+        businessId: "biz-1",
+        rewardId: "reward-1",
+        rewardProgramId: "programme-1",
+        loyaltyNumberValue: "ABC234",
+        idempotencyKey: "attempt-1",
+      }),
+    ).resolves.toEqual({
+      rewardDescription: "One free service",
+      unitsAllocatedForward: 0,
+      nextRewardDescription: null,
     });
   });
 });

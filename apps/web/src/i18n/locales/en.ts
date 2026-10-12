@@ -539,6 +539,16 @@ export const en = {
         noReward: "No reward available",
         rewardAvailable: "11th reward available",
         rewardHandoff: "Ask an authorised Manager or Owner to confirm.",
+        useEleventh: "Use 11th",
+        confirmTitle: "Confirm 11th used",
+        confirmBody:
+          "Confirm that this visit will use the available 11th reward. No new purchase will be recorded.",
+        confirmAction: "Confirm 11th used",
+        confirming: "Confirming…",
+        cancel: "Cancel",
+        confirmFailure:
+          "The 11th was not confirmed. Refresh the customer context and try again if it is still available.",
+        redemptionSuccess: "11th used. The current Circle has been refreshed.",
         eligibleItems: "Eligible services",
         addPurchase: "Add purchase",
         changeProgramme: "Change programme",

@@ -16,6 +16,7 @@ import { makeCallListRewardPrograms } from "../api/rewardProgramMutations";
 import {
   isBusinessReviewRequired,
   makeCallGetCounterCustomerContext,
+  makeCallConfirmRedemption,
   makeCallGetCounterLoyaltyContext,
   makeCallListMyRecentCounterPurchases,
   makeCallRecordPurchase,
@@ -162,6 +163,7 @@ export function useCounterCustomerContextQuery(
       // Explicit field reconstruction prevents extra wire fields entering the Counter cache.
       return {
         customer: { displayName: result.customer.displayName },
+        canConfirmRedemption: result.canConfirmRedemption === true,
         programmes: result.programmes.map((programme) => ({
           rewardProgramId: programme.rewardProgramId,
           programmeName: programme.programmeName,
@@ -169,6 +171,15 @@ export function useCounterCustomerContextQuery(
           requiredVerifiedUnits: programme.requiredVerifiedUnits,
           awaitingCustomerConfirmationUnits: programme.awaitingCustomerConfirmationUnits,
           rewardStatus: programme.rewardStatus === "available" ? "available" : "none",
+          reward:
+            programme.rewardStatus === "available" && programme.reward?.rewardId
+              ? {
+                  rewardId: programme.reward.rewardId,
+                  description: programme.reward.description,
+                }
+              : programme.rewardStatus === "available" && programme.reward
+                ? { description: programme.reward.description }
+                : null,
         })),
       };
     },
@@ -176,6 +187,33 @@ export function useCounterCustomerContextQuery(
     retry: false,
     staleTime: 0,
     gcTime: 0,
+  });
+}
+
+/** Confirms one server-bound reward; every attempt uses the caller-held idempotency key. */
+export function useConfirmCounterRedemptionMutation(businessId: string) {
+  const { auth, functions } = useBusinessApiPlatform();
+  const actorState = useAuthenticatedActor(auth);
+  const queryClient = useQueryClient();
+  const confirm = makeCallConfirmRedemption(functions);
+  return useMutation({
+    mutationFn: async (input: {
+      rewardId: string;
+      rewardProgramId: string;
+      idempotencyKey: string;
+      artifact: CounterLoyaltyArtifact;
+    }) => {
+      if (actorState.status !== "ready") throw new Error("actor not ready");
+      const { artifact, ...binding } = input;
+      const artifactFields =
+        artifact.kind === "loyalty_number"
+          ? { loyaltyNumberValue: artifact.value }
+          : { qrReference: artifact.value };
+      return confirm(actorState.actor, { businessId, ...binding, ...artifactFields });
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["counterCustomerContext", businessId] });
+    },
   });
 }
 

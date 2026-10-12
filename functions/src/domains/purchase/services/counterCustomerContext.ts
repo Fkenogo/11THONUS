@@ -19,6 +19,7 @@ import { IdentityDomainError } from "../../identity/models/identityErrors";
 import { createLoyaltyNumber } from "../../loyaltyNumber/models/loyaltyNumber";
 import { createQrReference } from "../../qrIdentity/models/qrReference";
 import { authorizePurchaseRecord } from "./purchaseAuthorization";
+import { evaluatePermission } from "../../permissions/service/evaluatePermissionService";
 import {
   hasActiveLoyaltyNumberProgramme,
   listCounterCustomerProgrammes,
@@ -27,7 +28,17 @@ import { purchaseArtifactError, purchaseValidationError } from "../models/purcha
 
 export type CounterCustomerContext = {
   readonly customer: { readonly displayName: string | null };
-  readonly programmes: Awaited<ReturnType<typeof listCounterCustomerProgrammes>>;
+  readonly programmes: Array<{
+    readonly rewardProgramId: string;
+    readonly programmeName: string;
+    readonly verifiedUnits: number;
+    readonly requiredVerifiedUnits: number;
+    readonly awaitingCustomerConfirmationUnits: number;
+    readonly rewardStatus: "none" | "available";
+    readonly reward: { readonly rewardId?: string; readonly description: string } | null;
+  }>;
+  /** UX hint only. confirmRedemption re-evaluates authority at mutation time. */
+  readonly canConfirmRedemption: boolean;
 };
 
 export type CounterCustomerContextParams = {
@@ -106,8 +117,25 @@ export async function getCounterCustomerContext(
       customerIdentityId,
     }),
   ]);
+  const hasAvailableReward = programmes.some((programme) => programme.rewardStatus === "available");
+  const redemptionDecision = hasAvailableReward
+    ? await evaluatePermission(db, {
+        userId: params.userId,
+        businessId: params.businessId,
+        permission: "redemption.confirm",
+      })
+    : null;
   return {
     customer: { displayName: identity.displayName ?? null },
-    programmes,
+    programmes: programmes.map((programme) => ({
+      ...programme,
+      reward: programme.reward
+        ? {
+            ...(redemptionDecision?.allowed ? { rewardId: programme.reward.id } : {}),
+            description: programme.reward.description,
+          }
+        : null,
+    })),
+    canConfirmRedemption: redemptionDecision?.allowed ?? false,
   };
 }

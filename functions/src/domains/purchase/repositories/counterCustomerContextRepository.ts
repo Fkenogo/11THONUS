@@ -16,6 +16,7 @@ export type CounterCustomerProgrammeContext = {
   readonly requiredVerifiedUnits: number;
   readonly awaitingCustomerConfirmationUnits: number;
   readonly rewardStatus: "none" | "available";
+  readonly reward: { readonly id: string; readonly description: string } | null;
 };
 
 /** Pre-resolver policy gate: a Loyalty Number is accepted only where a current active programme permits it. */
@@ -46,6 +47,8 @@ type DbRow = {
   required_verified_units: number;
   awaiting_units: number;
   reward_available: boolean;
+  reward_id: string | null;
+  reward_description: string | null;
 };
 
 /**
@@ -66,7 +69,9 @@ export async function listCounterCustomerProgrammes(
             c.allocated_units AS verified_units,
             COALESCE(c.required_verified_units, current_version.required_verified_units) AS required_verified_units,
             COALESCE(waiting.awaiting_units, 0)::int AS awaiting_units,
-            COALESCE(c.reward_available AND c.reward_open, false) AS reward_available
+            COALESCE(c.reward_available AND c.reward_open, false) AS reward_available,
+            CASE WHEN c.reward_available AND c.reward_open THEN c.reward_id ELSE NULL END AS reward_id,
+            CASE WHEN c.reward_available AND c.reward_open THEN c.reward_description ELSE NULL END AS reward_description
        FROM reward_programs p
        JOIN reward_program_versions current_version
          ON current_version.id = p.current_version_id
@@ -75,16 +80,24 @@ export async function listCounterCustomerProgrammes(
          SELECT cycle.allocated_units,
                 cycle.state = 'reward_available' AS reward_available,
                 version.required_verified_units,
-                EXISTS (
-                  SELECT 1 FROM rewards reward
-                   WHERE reward.business_id = cycle.business_id
-                     AND reward.loyalty_cycle_id = cycle.id
-                     AND reward.state = 'available'
-                ) AS reward_open
+                available_reward.id AS reward_id,
+                available_reward.reward_description,
+                available_reward.id IS NOT NULL AS reward_open
            FROM loyalty_cycles cycle
-           JOIN reward_program_versions version
+          JOIN reward_program_versions version
              ON version.id = cycle.opened_under_version_id
             AND version.reward_program_id = cycle.reward_program_id
+          LEFT JOIN LATERAL (
+             SELECT reward.id, reward.reward_description
+               FROM rewards reward
+              WHERE reward.business_id = cycle.business_id
+                AND reward.customer_identity_id = cycle.customer_identity_id
+                AND reward.reward_program_id = cycle.reward_program_id
+                AND reward.loyalty_cycle_id = cycle.id
+                AND reward.state = 'available'
+              ORDER BY reward.created_at ASC, reward.id ASC
+              LIMIT 1
+           ) available_reward ON true
           WHERE cycle.business_id = p.business_id
             AND cycle.customer_identity_id = $2
             AND cycle.reward_program_id = p.id
@@ -113,5 +126,9 @@ export async function listCounterCustomerProgrammes(
     requiredVerifiedUnits: row.required_verified_units,
     awaitingCustomerConfirmationUnits: row.awaiting_units,
     rewardStatus: row.reward_available ? "available" : "none",
+    reward:
+      row.reward_available && row.reward_id && row.reward_description
+        ? { id: row.reward_id, description: row.reward_description }
+        : null,
   }));
 }

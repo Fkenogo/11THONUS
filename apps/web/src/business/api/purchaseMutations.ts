@@ -207,11 +207,37 @@ export type CounterCustomerProgrammeWire = {
   requiredVerifiedUnits: number;
   awaitingCustomerConfirmationUnits: number;
   rewardStatus: "none" | "available";
+  reward: { rewardId?: string; description: string } | null;
 };
 
 export type CounterCustomerContextWire = {
   customer: { displayName: string | null };
   programmes: CounterCustomerProgrammeWire[];
+  canConfirmRedemption: boolean;
+};
+
+export type ConfirmRedemptionRequest = {
+  businessId: string;
+  rewardId: string;
+  rewardProgramId: string;
+  idempotencyKey: string;
+} & (
+  | { loyaltyNumberValue: string; qrReference?: never }
+  | { qrReference: string; loyaltyNumberValue?: never }
+);
+
+type ConfirmRedemptionEngineResult = {
+  reward: { rewardDescription: string };
+  completedLoyaltyCycleId: string;
+  nextLoyaltyCycleId: string;
+  unitsAllocatedForward: number;
+  nextReward: { rewardDescription: string } | null;
+};
+
+export type ConfirmRedemptionResult = {
+  rewardDescription: string;
+  unitsAllocatedForward: number;
+  nextRewardDescription: string | null;
 };
 
 export type CounterCustomerContextRequest = {
@@ -285,6 +311,27 @@ export function toCallGetCounterCustomerContext(
 
 export function makeCallGetCounterCustomerContext(functions: Functions) {
   return toCallGetCounterCustomerContext(httpsCallable(functions, "getCounterCustomerContext"));
+}
+
+export function toCallConfirmRedemption(
+  callable: BoundCallable<ConfirmRedemptionEngineResult>,
+): (
+  actor: AuthenticatedActor,
+  payload: ConfirmRedemptionRequest,
+) => Promise<ConfirmRedemptionResult> {
+  const call = toCallWithActor<ConfirmRedemptionRequest, ConfirmRedemptionEngineResult>(callable);
+  return async (actor, payload) => {
+    const result = await call(actor, payload);
+    return {
+      rewardDescription: result.reward.rewardDescription,
+      unitsAllocatedForward: result.unitsAllocatedForward,
+      nextRewardDescription: result.nextReward?.rewardDescription ?? null,
+    };
+  };
+}
+
+export function makeCallConfirmRedemption(functions: Functions) {
+  return toCallConfirmRedemption(httpsCallable(functions, "confirmRedemption"));
 }
 
 export function toCallListPurchasesForBusiness(

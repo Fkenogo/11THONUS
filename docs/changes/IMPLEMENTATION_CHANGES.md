@@ -7,6 +7,20 @@
 
 ---
 
+## 2026-10-12 — EA-BL-001-CORR-002-B1R — Governed Staff Redemption Binding
+
+- **Task:** Bind the existing `confirmRedemption` engine into the transaction-scoped Staff Counter after B1A.
+- **Status:** Implementation pending Founder review; PR #307 remains open/unmerged; ITR paused. Entry `ad63568ee0b36612433b1d90be6167897cc5f371`.
+- **Phone gate:** **PHYSICAL-PHONE VALIDATION — PASSED / FOUNDER APPROVED.** B1R does not reopen the accepted phone evidence.
+- **Authority:** FD-UX-1/2/3A retained. Staff receives only resolved display name, current-Business programme/progress, awaiting count, available reward description and state. Reward ID is returned only when live `redemption.confirm` evaluation allows the actor; no email, phone, profile, cross-Business history, unrelated transactions, reviewer or Business Review threshold is exposed.
+- **Binding:** B1R requires the current presented QR/Loyalty Number artifact and expected programme reference with the reward reference. The server re-resolves the artifact after live authorization, then checks customer, Business, programme, and available reward against the authoritative Reward before the existing engine runs. The callable still accepts no client-supplied customer identity, role, permission, ownership, or reward state.
+- **Experience:** eligible Owner/Manager/explicitly granted Staff see `Use 11th`, then a confirmation dialog. Ineligible Staff see the bounded Manager/Owner handoff. Mutation-time permission reauthorization remains authoritative. Redemption remains separate from `recordPurchase`; no purchase or Verified Unit is issued by redemption. B1R does not change reward/cycle mechanics.
+- **Documentation:** [B1R implementation report](../05-implementation/reports/11THONUS-post-phone-ux-correction-b1r-implementation-report-2026-10-12.md). The preceding [B1A report](../05-implementation/reports/11THONUS-post-phone-ux-correction-b1a-implementation-report-2026-10-12.md) records the earlier reward-awareness-only boundary; this entry supersedes that forward-looking statement after B1R implementation.
+- **Boundary:** no PR #310 changes; no schema/migration, dependency, config, auth-provider, Cloudflare, redemption-authority, or Product Truth change; no B2 or ITR.
+- **Rollback:** revert the B1R implementation commit(s) from PR #307; no migration rollback is required.
+
+---
+
 ## 2026-10-07 — EA-BL-001-CORR-002-B — Authorisation Correction Pass (PR #306 review)
 
 - **Task:** Make the authorised Slice B contract technically precise (documentation only; no code, test, schema, config or dependency change).
@@ -6757,3 +6771,12 @@ READY FOR CONTROLLED DRAFTING — PR AWAITS FOUNDER REVIEW`**.
 - **Validation:** exact-head CI `38245729043` at `f2cc3b5` passed build, lint, format, typecheck, unit/component tests, PostgreSQL, Playwright E2E, Founder Preview tooling, cross-project port-isolation acceptance, and Firebase Emulator validation. Local Functions typecheck and Prettier pass; local Postgres and preview checks were unavailable without emulator and seeded preview state.
 - **Status:** implementation is pushed to PR #307, Founder review required; ITR paused; PR #307 and PR #310 unmerged. All four returned inline review threads are resolved. Physical-phone validation remains PASSED / FOUNDER APPROVED.
 - **Report link:** [B1A implementation report](../05-implementation/reports/11THONUS-post-phone-ux-correction-b1a-implementation-report-2026-10-12.md)
+
+## 2026-10-12 — EA-BL-001-CORR-002-B — Post-phone B1R Governed Redemption Binding
+- **Physical-phone validation:** remains **PASSED / FOUNDER APPROVED**; B1R does not reopen the device gate.
+- **Change:** transaction-scoped Staff context now binds only the resolved customer's available reward for the active Business/programme, provides server-evaluated `redemption.confirm` eligibility, and offers an explicit confirmation dialog through a Firebase callable adapter. The callable resolves the presented QR/Loyalty Number and verifies customer/programme/reward binding before calling the existing redemption command.
+- **Authority/privacy:** mutation-time permission reauthorization and existing redemption lifecycle are unchanged. The read eligibility signal is guidance only. Ineligible Staff see reward awareness and a bounded Manager/Owner handoff. Payload excludes client authority/identity claims; no eligible Reward identifier is returned to ineligible actors. Redemption does not record a purchase or issue a Verified Unit.
+- **B1R boundary:** B1R binds the existing governed action; it does not redesign redemption. No reward/cycle/product rules, permission semantics, schema, migrations, dependencies, config, auth, Cloudflare, or PR #310 changes.
+- **Validation:** Functions suite 2,033 passed; full web suite 1,148 passed with the Node 26 webstorage compatibility flag; focused Counter/API 87 passed; web typecheck, changed-file ESLint/Prettier, `git diff --check`, and Vite production build passed. PostgreSQL/Firestore emulator and Founder Preview checks could not run locally because the emulator's required ports were occupied; no foreign process was stopped. Exact-head CI remains to be checked after push.
+- **Status:** B1R implementation prepared on PR #307 branch for Founder review. PR #307 remains unmerged, PR #310 untouched, ITR paused, and B2 not started.
+- **Report link:** [B1R implementation report](../05-implementation/reports/11THONUS-post-phone-ux-correction-b1r-implementation-report-2026-10-12.md)

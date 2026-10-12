@@ -558,6 +558,16 @@ export const fr = {
         noReward: "Aucune récompense disponible",
         rewardAvailable: "11e récompense disponible",
         rewardHandoff: "Demandez à un responsable ou propriétaire autorisé de confirmer.",
+        useEleventh: "Utiliser le 11e",
+        confirmTitle: "Confirmer l’utilisation du 11e",
+        confirmBody:
+          "Confirmez que cette visite utilisera la récompense du 11e disponible. Aucun nouvel achat ne sera enregistré.",
+        confirmAction: "Confirmer l’utilisation du 11e",
+        confirming: "Confirmation…",
+        cancel: "Annuler",
+        confirmFailure:
+          "Le 11e n’a pas été confirmé. Actualisez le contexte du client et réessayez si la récompense est toujours disponible.",
+        redemptionSuccess: "11e utilisé. Le Cercle actuel a été actualisé.",
         eligibleItems: "Services admissibles",
         addPurchase: "Ajouter un achat",
         changeProgramme: "Changer de programme",

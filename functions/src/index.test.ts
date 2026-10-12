@@ -24,6 +24,7 @@ import {
   parseListMyRecentCounterPurchasesRequest,
   parseGetCounterLoyaltyContextRequest,
   parseGetCounterCustomerContextRequest,
+  parseConfirmRedemptionRequest,
   parseApproveBusinessReviewRequest,
   parseRejectBusinessReviewRequest,
   parseBusinessLoyaltyVisibilityRequest,
@@ -1321,5 +1322,55 @@ describe("parseApproveBusinessReviewRequest / parseRejectBusinessReviewRequest (
   it("requires a Business and a Purchase id", () => {
     expect(() => parseApproveBusinessReviewRequest({})).toThrow();
     expect(() => parseApproveBusinessReviewRequest({ businessId: "biz-1" })).toThrow();
+  });
+});
+
+describe("parseConfirmRedemptionRequest (mass-assignment boundary, B1R)", () => {
+  it("keeps only the Business and Reward references from an untrusted payload", () => {
+    const parsed = parseConfirmRedemptionRequest({
+      businessId: "biz-1",
+      rewardId: "00000000-0000-4000-8000-000000000001",
+      rewardProgramId: "programme-1",
+      loyaltyNumberValue: "ABC234",
+      idempotencyKey: "attempt-1",
+      customerIdentityId: "forged-customer",
+      role: "owner",
+      permission: "redemption.confirm",
+      canConfirmRedemption: true,
+      state: "available",
+      businessOwnership: "forged",
+      confirmedByUserId: "attacker",
+      confirmedByRole: "owner",
+      rewardDescription: "forged",
+    });
+    expect(parsed).toEqual({
+      businessId: "biz-1",
+      rewardId: "00000000-0000-4000-8000-000000000001",
+      rewardProgramId: "programme-1",
+      artifact: { kind: "loyalty_number", value: "ABC234" },
+    });
+    expect(Object.keys(parsed).sort()).toEqual([
+      "artifact",
+      "businessId",
+      "rewardId",
+      "rewardProgramId",
+    ]);
+  });
+
+  it("requires exactly one presented artifact and rejects malformed artifact fields", () => {
+    const base = {
+      businessId: "biz-1",
+      rewardId: "00000000-0000-4000-8000-000000000001",
+      rewardProgramId: "programme-1",
+    };
+    expect(() => parseConfirmRedemptionRequest(base)).toThrow();
+    expect(() =>
+      parseConfirmRedemptionRequest({
+        ...base,
+        loyaltyNumberValue: "ABC234",
+        qrReference: "qr-ref",
+      }),
+    ).toThrow();
+    expect(() => parseConfirmRedemptionRequest({ ...base, qrReference: 5 })).toThrow();
   });
 });

@@ -72,3 +72,7 @@ Rollback: revert the B1A commit on `feat/ea-bl-001-corr-002-b-staff-counter`. Th
 ## Recommendation
 
 Exact-head CI is green at `f2cc3b509952b3972080ca2b5ecdc8c1be068ff3`. Founder review of the bounded context and reward-awareness language is recommended; keep ITR paused until B1A is accepted. Deliver B1R separately before any Staff redemption interaction. Keep Slices C/D/E unauthorized.
+
+### B1R status update — 2026-10-12
+
+B1R implementation supersedes the forward-looking boundary above. The current B1R package binds the governed redemption action to the positively resolved transaction artifact, programme and Business, adds a two-step eligible-actor confirmation experience, and preserves the existing mutation-time permission check. See the [B1R implementation report](11THONUS-post-phone-ux-correction-b1r-implementation-report-2026-10-12.md). Physical-phone validation remains **PASSED / FOUNDER APPROVED**; ITR remains paused pending Founder review.
