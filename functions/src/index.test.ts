@@ -23,6 +23,7 @@ import {
   parseRecordPurchaseRequest,
   parseListMyRecentCounterPurchasesRequest,
   parseGetCounterLoyaltyContextRequest,
+  parseGetCounterCustomerContextRequest,
   parseApproveBusinessReviewRequest,
   parseRejectBusinessReviewRequest,
   parseBusinessLoyaltyVisibilityRequest,
@@ -1167,6 +1168,34 @@ describe("parseGetCounterLoyaltyContextRequest (mass-assignment boundary)", () =
         rewardProgramId: "rp_1",
         qrReference: 5,
       }),
+    ).toThrow();
+  });
+});
+
+describe("parseGetCounterCustomerContextRequest (B1A contract boundary)", () => {
+  it("accepts only the Business and one artifact, dropping identity and privilege claims", () => {
+    expect(
+      parseGetCounterCustomerContextRequest({
+        businessId: "biz_1",
+        loyaltyNumberValue: "ABC234",
+        customerIdentityId: "cust_secret",
+        email: "private@example.test",
+        role: "owner",
+        rewardId: "secret-reward-id",
+        businessReviewQuantityThreshold: 1,
+      }),
+    ).toEqual({
+      businessId: "biz_1",
+      loyaltyNumberValue: "ABC234",
+      qrReference: undefined,
+    });
+  });
+
+  it("requires a Business and rejects malformed presented artifacts", () => {
+    expect(() => parseGetCounterCustomerContextRequest({ loyaltyNumberValue: "ABC234" })).toThrow();
+    expect(() => parseGetCounterCustomerContextRequest({ businessId: "biz_1" })).not.toThrow();
+    expect(() =>
+      parseGetCounterCustomerContextRequest({ businessId: "biz_1", qrReference: 5 }),
     ).toThrow();
   });
 });

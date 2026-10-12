@@ -104,11 +104,18 @@ function baseHandlers(): Record<string, Handler> {
   return {
     listRewardPrograms: async () => [PROGRAMME],
     listMyRecentCounterPurchases: async () => ({ purchases: [], nextCursor: null }),
-    getCounterLoyaltyContext: async () => ({
-      verifiedUnits: 8,
-      requiredVerifiedUnits: 10,
-      rewardStatus: "none",
-      awaitingCustomerConfirmationUnits: 0,
+    getCounterCustomerContext: async () => ({
+      customer: { displayName: "Jean-Claude Habimana" },
+      programmes: [
+        {
+          rewardProgramId: PROGRAMME.program.id,
+          programmeName: PROGRAMME.program.displayName,
+          verifiedUnits: 8,
+          requiredVerifiedUnits: 10,
+          rewardStatus: "none",
+          awaitingCustomerConfirmationUnits: 0,
+        },
+      ],
     }),
   };
 }
@@ -344,7 +351,7 @@ describe("Staff places keep a transaction safe", () => {
     await screen.findByText("8 of 10 verified");
     await goTo(user, "Activity");
     await screen.findByRole("heading", { name: "Activity", level: 1 });
-    expect(calls.getCounterLoyaltyContext).toHaveLength(1);
+    expect(calls.getCounterCustomerContext).toHaveLength(1);
   });
 });
 
@@ -567,11 +574,18 @@ describe("Staff shell — EN/FR parity of the new copy", () => {
 
 describe("Staff reward-available alert reaches the Staff before recording", () => {
   it("shows the prominent alert as soon as the customer + programme are known — and offers no redemption", async () => {
-    handlers.getCounterLoyaltyContext = async () => ({
-      verifiedUnits: 10,
-      requiredVerifiedUnits: 10,
-      rewardStatus: "available",
-      awaitingCustomerConfirmationUnits: 0,
+    handlers.getCounterCustomerContext = async () => ({
+      customer: { displayName: "Chantal Uwimana" },
+      programmes: [
+        {
+          rewardProgramId: PROGRAMME.program.id,
+          programmeName: PROGRAMME.program.displayName,
+          verifiedUnits: 10,
+          requiredVerifiedUnits: 10,
+          rewardStatus: "available",
+          awaitingCustomerConfirmationUnits: 0,
+        },
+      ],
     });
     const user = userEvent.setup();
     renderShell();

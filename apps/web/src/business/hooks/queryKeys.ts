@@ -92,4 +92,10 @@ export const businessQueryKeys = {
       artifactKind,
       artifactValue,
     ] as const,
+  counterCustomerContext: (
+    businessId: string,
+    actorScope: string,
+    artifactKind: "loyalty_number" | "qr_identity",
+    artifactValue: string,
+  ) => ["counterCustomerContext", businessId, actorScope, artifactKind, artifactValue] as const,
 };

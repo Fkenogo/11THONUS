@@ -53,6 +53,7 @@ import {
   listPurchasesForBusiness,
 } from "./purchaseQueries";
 import { getCounterLoyaltyContext } from "./counterLoyaltyContext";
+import { getCounterCustomerContext } from "./counterCustomerContext";
 import { listRewardPrograms } from "../../rewardProgram/services/rewardProgramQueries";
 import { PurchaseDomainError } from "../models/purchaseErrors";
 import { toHttpsError } from "../../../index";
@@ -340,6 +341,7 @@ async function setup(
     correlationId: nextId("corr_pub"),
   });
   const customer = await seedCustomer(nextId("s"));
+  await db.collection("users").doc(customer.customerId).update({ displayName: "Customer Example" });
   return {
     businessId,
     ownerId,
@@ -1241,5 +1243,117 @@ describe("Staff loyalty context — limited and transaction-scoped", () => {
     const s = await setup(); // threshold = 5
     const wire = JSON.stringify(await context(s));
     expect(wire).not.toMatch(/threshold|review/i);
+  });
+});
+
+describe("Staff customer context — transaction and Business scoped", () => {
+  async function customerContext(
+    s: Setup,
+    artifact: { loyaltyNumberValue: string } | { qrReference: string },
+    userId = s.staffId,
+  ) {
+    return getCounterCustomerContext(db, pool, {
+      userId,
+      correlationId: nextId("counter-customer-context"),
+      businessId: s.businessId,
+      ...artifact,
+    });
+  }
+
+  it("resolves QR and Loyalty Number to the same name and bounded participating programme projection", async () => {
+    const s = await setup({ threshold: null });
+    const qr = await customerContext(s, { qrReference: s.customer.qr });
+    expect(qr).toEqual({
+      customer: { displayName: "Customer Example" },
+      programmes: [],
+    });
+    expect(await customerContext(s, { loyaltyNumberValue: s.customer.ln })).toEqual(qr);
+    const purchase = await record(s, {}, s.staffId);
+    const withPending = await customerContext(s, { loyaltyNumberValue: s.customer.ln });
+    expect(withPending.programmes).toEqual([
+      expect.objectContaining({
+        rewardProgramId: s.programId,
+        programmeName: "Counter Program",
+        verifiedUnits: 0,
+        requiredVerifiedUnits: 10,
+        awaitingCustomerConfirmationUnits: 1,
+        rewardStatus: "none",
+      }),
+    ]);
+    expect(purchase.purchase.id).toBeTruthy();
+  });
+
+  it("returns only participating programmes for this Business with verified and awaiting units separate", async () => {
+    const s = await setup({ threshold: null });
+    const waiting = await record(s, { quantity: 2 }, s.staffId);
+    const verified = await record(s, { quantity: 3 }, s.staffId);
+    await verifyPurchase(db, pool, {
+      customerIdentityId: s.customer.customerId,
+      request: { purchaseRecordId: verified.purchase.id },
+      idempotencyKey: nextId("verify-context"),
+      correlationId: nextId("verify-context-corr"),
+    });
+    const result = await customerContext(s, { loyaltyNumberValue: s.customer.ln });
+    expect(result.programmes).toEqual([
+      expect.objectContaining({
+        rewardProgramId: s.programId,
+        verifiedUnits: 3,
+        awaitingCustomerConfirmationUnits: 2,
+        rewardStatus: "none",
+      }),
+    ]);
+    expect(result.programmes[0]?.verifiedUnits).not.toBe(5);
+    expect(waiting.purchase.id).toBeTruthy();
+  });
+
+  it("shows authoritative available reward without exposing a reward identifier", async () => {
+    const s = await setup({ threshold: null });
+    const ten = await record(s, { quantity: 10 }, s.staffId);
+    await verifyPurchase(db, pool, {
+      customerIdentityId: s.customer.customerId,
+      request: { purchaseRecordId: ten.purchase.id },
+      idempotencyKey: nextId("verify-reward-context"),
+      correlationId: nextId("verify-reward-context-corr"),
+    });
+    const result = await customerContext(s, { qrReference: s.customer.qr });
+    expect(result.programmes).toEqual([
+      expect.objectContaining({ verifiedUnits: 10, rewardStatus: "available" }),
+    ]);
+    expect(JSON.stringify(result)).not.toMatch(
+      /rewardId|email|phone|auth|profile|history|reviewer|threshold|customerIdentityId/i,
+    );
+  });
+
+  it("never returns another Business' programme context, even for a member of both Businesses", async () => {
+    const a = await setup({ threshold: null });
+    const b = await setup({ threshold: null });
+    const purchase = await record(a, { quantity: 4 }, a.staffId);
+    await verifyPurchase(db, pool, {
+      customerIdentityId: a.customer.customerId,
+      request: { purchaseRecordId: purchase.purchase.id },
+      idempotencyKey: nextId("verify-foreign-context"),
+      correlationId: nextId("verify-foreign-context-corr"),
+    });
+    await seedMembership({ userId: a.staffId, businessId: b.businessId, role: "staff" });
+    const result = await customerContext(b, { loyaltyNumberValue: a.customer.ln }, a.staffId);
+    expect(result.programmes).toEqual([]);
+    expect(JSON.stringify(result)).not.toContain(a.programId);
+  });
+
+  it("denies a foreign Business and keeps malformed or unknown artifacts neutral", async () => {
+    const a = await setup();
+    const b = await setup();
+    const denied = await failure(
+      customerContext(b, { loyaltyNumberValue: a.customer.ln }, a.staffId),
+    );
+    expect((denied as PurchaseDomainError).category).toBe("AUTH_FORBIDDEN");
+    for (const artifact of [
+      { loyaltyNumberValue: "not-a-number" },
+      { loyaltyNumberValue: "ZZZ222" },
+      { qrReference: "qrdoesnotexist1" },
+    ]) {
+      const error = toHttpsError(await failure(customerContext(a, artifact)));
+      expect(error.details).toEqual({ reason: "customer_artifact_invalid_or_not_found" });
+    }
   });
 });

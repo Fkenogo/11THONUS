@@ -8,7 +8,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
@@ -115,16 +115,32 @@ function setup(
     record?: Handler;
     recent?: unknown[];
     loyalty?: Handler;
+    customerContext?: Handler;
   } = {},
 ) {
+  const activeProgrammes = options.programmes ?? [
+    programme("rp-1", "Premium Cut Circle", [HAIRCUT]),
+  ];
+  const loyaltyHandler = options.loyalty ?? (async () => loyaltyContext());
   handlers = {
-    listRewardPrograms: async () =>
-      options.programmes ?? [programme("rp-1", "Premium Cut Circle", [HAIRCUT])],
+    listRewardPrograms: async () => activeProgrammes,
     listMyRecentCounterPurchases: async () => ({
       purchases: options.recent ?? [],
       nextCursor: null,
     }),
-    getCounterLoyaltyContext: options.loyalty ?? (async () => loyaltyContext()),
+    getCounterCustomerContext:
+      options.customerContext ??
+      (async () => {
+        const context = (await loyaltyHandler({})) as ReturnType<typeof loyaltyContext>;
+        return {
+          customer: { displayName: "Jean-Claude Habimana" },
+          programmes: activeProgrammes.map((entry) => ({
+            rewardProgramId: entry.program.id,
+            programmeName: entry.program.displayName,
+            ...context,
+          })),
+        };
+      }),
     recordPurchase: options.record ?? (async () => recordResult()),
   };
   const queryClient = new QueryClient({
@@ -226,7 +242,7 @@ describe("Counter — loading, context and selections", () => {
     await ready();
     expect(screen.getByText("Premium Cut Circle")).toBeInTheDocument();
     expect(screen.queryByRole("radio")).not.toBeInTheDocument();
-    expect(screen.getByText("Haircut")).toBeInTheDocument();
+    expect(screen.getAllByText("Haircut").length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "Decrease quantity" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Increase quantity" })).toBeInTheDocument();
   });
@@ -242,9 +258,9 @@ describe("Counter — loading, context and selections", () => {
       ],
     });
     await ready();
+    await typeLoyaltyNumber(user);
     await user.click(screen.getByRole("radio", { name: "Premium Cut Circle" }));
     await user.click(screen.getByRole("radio", { name: "Braiding" }));
-    await typeLoyaltyNumber(user);
     await user.click(recordButton());
     await waitFor(() => expect(calls.recordPurchase).toHaveLength(1));
     expect(calls.recordPurchase[0]).toMatchObject({
@@ -857,21 +873,21 @@ describe("Counter — Business Review confidentiality in the browser", () => {
   });
 });
 
-describe("Counter — limited loyalty status (supersedes D4; transaction-scoped, before recording)", () => {
+describe("Counter — resolved customer and programme context (B1A)", () => {
   const userEvt = () => userEvent.setup();
 
-  it("asks for it only once the customer AND the programme are known, with exactly Business + Programme + ONE artifact", async () => {
+  it("asks for context only after a complete artifact, sending only Business + ONE artifact", async () => {
     const user = userEvt();
     setup();
     await ready();
     await user.type(loyaltyInput(), "ab");
-    expect(calls.getCounterLoyaltyContext).toBeUndefined(); // an incomplete number is never sent
+    expect(calls.getCounterCustomerContext).toBeUndefined(); // an incomplete number is never sent
     await user.type(loyaltyInput(), "c234");
     expect(await screen.findByText("8 of 10 verified")).toBeInTheDocument();
-    expect(calls.getCounterLoyaltyContext).toHaveLength(1);
-    expect(calls.getCounterLoyaltyContext[0]).toEqual({
+    expect(screen.getByText("Jean-Claude Habimana")).toBeInTheDocument();
+    expect(calls.getCounterCustomerContext).toHaveLength(1);
+    expect(calls.getCounterCustomerContext[0]).toEqual({
       businessId: "biz-1",
-      rewardProgramId: "rp-1",
       loyaltyNumberValue: "ABC234",
       rawToken: "id-token",
       referenceType: "email",
@@ -923,7 +939,7 @@ describe("Counter — limited loyalty status (supersedes D4; transaction-scoped,
     await typeLoyaltyNumber(user);
     const alert = await screen.findByTestId("counter-loyalty-reward");
     expect(alert).toHaveTextContent("11th reward available");
-    expect(alert).toHaveTextContent("Let the customer know their reward is ready.");
+    expect(alert).toHaveTextContent("Ask an authorised Manager or Owner to confirm.");
     expect(calls.recordPurchase).toBeUndefined();
     // No redemption control exists; the ordinary purchase is still recordable.
     expect(
@@ -943,12 +959,12 @@ describe("Counter — limited loyalty status (supersedes D4; transaction-scoped,
     act(() => state.handlers?.onReady());
     act(() => state.handlers?.onResult("11thonus-qr-ref-1"));
     expect(await screen.findByText("8 of 10 verified")).toBeInTheDocument();
-    const call = calls.getCounterLoyaltyContext[0];
+    const call = calls.getCounterCustomerContext[0];
     expect(call.qrReference).toBe("11thonus-qr-ref-1");
     expect(call.loyaltyNumberValue).toBeUndefined();
   });
 
-  it("with several programmes it waits for the choice, then asks about THAT programme", async () => {
+  it("with several programmes it loads all participating programme context at once", async () => {
     const user = userEvt();
     setup({
       programmes: [
@@ -958,10 +974,82 @@ describe("Counter — limited loyalty status (supersedes D4; transaction-scoped,
     });
     await ready();
     await typeLoyaltyNumber(user);
-    expect(calls.getCounterLoyaltyContext).toBeUndefined();
-    await user.click(screen.getByRole("radio", { name: "Braid Circle" }));
-    expect(await screen.findByText("8 of 10 verified")).toBeInTheDocument();
-    expect(calls.getCounterLoyaltyContext[0].rewardProgramId).toBe("rp-2");
+    expect(await screen.findAllByText("Braid Circle")).toHaveLength(2);
+    expect(await screen.findAllByText("Premium Cut Circle")).toHaveLength(2);
+    expect(calls.getCounterCustomerContext).toHaveLength(1);
+    expect(calls.getCounterCustomerContext[0]).not.toHaveProperty("rewardProgramId");
+  });
+
+  it("Add Purchase keeps the identified customer, fixes the selected programme and leaves Record explicit", async () => {
+    const user = userEvt();
+    setup({
+      programmes: [
+        programme("rp-1", "Wash 10+1", [
+          { qualifyingItemId: "basic", itemNameAtVersion: "Basic wash" },
+          { qualifyingItemId: "detail", itemNameAtVersion: "Full detail" },
+        ]),
+        programme("rp-2", "Express Styling Circle", [BRAIDING]),
+      ],
+    });
+    await ready();
+    await typeLoyaltyNumber(user);
+    const washCard = screen
+      .getByRole("heading", { level: 3, name: "Wash 10+1" })
+      .closest("article");
+    expect(washCard).not.toBeNull();
+    expect(washCard).toHaveTextContent("Eligible services");
+    expect(washCard).toHaveTextContent("Basic wash");
+    expect(washCard).toHaveTextContent("Full detail");
+    await user.click(within(washCard as HTMLElement).getByRole("button", { name: "Add purchase" }));
+    expect(screen.getByText("Change programme")).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Basic wash" })).not.toBeChecked();
+    expect(screen.getByRole("radio", { name: "Full detail" })).not.toBeChecked();
+    expect((screen.getByLabelText("Quantity") as HTMLInputElement).value).toBe("1");
+    expect(calls.recordPurchase).toBeUndefined();
+    await user.click(screen.getByRole("radio", { name: "Full detail" }));
+    expect(calls.recordPurchase).toBeUndefined();
+    await user.click(recordButton());
+    await waitFor(() => expect(calls.recordPurchase).toHaveLength(1));
+    expect(calls.recordPurchase[0]).toMatchObject({
+      loyaltyNumberValue: "ABC-234",
+      rewardProgramId: "rp-1",
+      qualifyingItemId: "detail",
+      quantity: 1,
+    });
+  });
+
+  it("Add Purchase safely preselects a sole item but does not submit", async () => {
+    const user = userEvt();
+    setup();
+    await ready();
+    await typeLoyaltyNumber(user);
+    await user.click(screen.getByRole("button", { name: "Add purchase" }));
+    expect(screen.getAllByText("Haircut").length).toBeGreaterThan(0);
+    expect(calls.recordPurchase).toBeUndefined();
+    await user.click(recordButton());
+    await waitFor(() => expect(calls.recordPurchase).toHaveLength(1));
+    expect(calls.recordPurchase[0]).toMatchObject({
+      loyaltyNumberValue: "ABC-234",
+      rewardProgramId: "rp-1",
+      qualifyingItemId: "item-cut",
+      quantity: 1,
+    });
+  });
+
+  it("shows available reward awareness and bounded handoff without a redemption control", async () => {
+    const user = userEvt();
+    setup({
+      loyalty: async () => loyaltyContext({ verifiedUnits: 10, rewardStatus: "available" }),
+    });
+    await ready();
+    await typeLoyaltyNumber(user);
+    const reward = await screen.findByTestId("counter-loyalty-reward");
+    expect(reward).toHaveTextContent("11th reward available");
+    expect(reward).toHaveTextContent("Ask an authorised Manager or Owner to confirm.");
+    expect(
+      screen.queryByRole("button", { name: /use 11th|redeem|confirm reward/i }),
+    ).not.toBeInTheDocument();
+    expect(calls.confirmRedemption).toBeUndefined();
   });
 
   it("after a normal purchase the outcome stays truthful and the loyalty status is not carried over or advanced", async () => {
@@ -997,43 +1085,69 @@ describe("Counter — limited loyalty status (supersedes D4; transaction-scoped,
     expect(await screen.findByText("Purchase recorded.")).toBeInTheDocument();
   });
 
-  it("keeps only the four whitelisted values: anything else the wire carries never reaches the DOM or the cache", async () => {
+  it("keeps only the bounded customer/programme fields: extra wire fields never reach the DOM or cache", async () => {
     const user = userEvt();
     const { queryClient } = setup({
-      loyalty: async () => ({
-        ...loyaltyContext(),
-        customerName: "Secret Person",
-        customerIdentityId: "cust-secret",
-        businessReviewQuantityThreshold: 5,
+      customerContext: async () => ({
+        customer: {
+          displayName: "Jean-Claude Habimana",
+          email: "secret@example.test",
+          phone: "+257000000",
+          profile: { secret: "private" },
+        },
+        programmes: [
+          {
+            rewardProgramId: "rp-1",
+            programmeName: "Premium Cut Circle",
+            verifiedUnits: 8,
+            requiredVerifiedUnits: 10,
+            awaitingCustomerConfirmationUnits: 0,
+            rewardStatus: "none",
+            customerIdentityId: "cust-secret",
+            businessReviewQuantityThreshold: 5,
+            reviewerIdentity: "reviewer-secret",
+            history: ["unrelated"],
+          },
+        ],
       }),
     });
     await ready();
     await typeLoyaltyNumber(user);
     await screen.findByText("8 of 10 verified");
     const html = document.body.textContent ?? "";
-    expect(html).not.toMatch(/Secret Person|cust-secret/);
+    expect(html).not.toMatch(
+      /secret@example|\+257000000|private|cust-secret|reviewer-secret|unrelated|threshold/i,
+    );
     const cached = queryClient
       .getQueryCache()
       .getAll()
-      .filter((q) => String(q.queryKey[0]) === "counterLoyalty" && q.state.data !== undefined)
+      .filter(
+        (q) => String(q.queryKey[0]) === "counterCustomerContext" && q.state.data !== undefined,
+      )
       .map((q) => JSON.stringify(q.state.data));
     expect(cached).toHaveLength(1);
-    expect(cached[0]).not.toMatch(/Secret|cust-secret|threshold|Threshold/i);
-    expect(Object.keys(JSON.parse(cached[0])).sort()).toEqual([
+    expect(cached[0]).not.toMatch(
+      /secret@example|\+257000000|private|cust-secret|reviewer-secret|unrelated|threshold/i,
+    );
+    expect(Object.keys(JSON.parse(cached[0]).customer).sort()).toEqual(["displayName"]);
+    expect(Object.keys(JSON.parse(cached[0]).programmes[0]).sort()).toEqual([
       "awaitingCustomerConfirmationUnits",
+      "programmeName",
       "requiredVerifiedUnits",
+      "rewardProgramId",
       "rewardStatus",
       "verifiedUnits",
     ]);
   });
 
-  it("shows no customer name or profile data — only the limited status", async () => {
+  it("shows the resolved display name without exposing contact or profile data", async () => {
     const user = userEvt();
     setup();
     await ready();
     await typeLoyaltyNumber(user);
-    const card = await screen.findByTestId("counter-loyalty-progress");
-    expect(card.textContent).not.toMatch(/name|phone|email|history|reviewer|threshold/i);
+    const card = await screen.findByTestId("counter-customer-programme");
+    expect(screen.getByText("Jean-Claude Habimana")).toBeInTheDocument();
+    expect(card.textContent).not.toMatch(/phone|email|history|reviewer|threshold/i);
   });
 
   it("French plural wording for 2 or more remaining", async () => {

@@ -34,13 +34,13 @@ import {
   type CounterErrorKind,
 } from "./counterErrors";
 import {
-  useCounterLoyaltyQuery,
+  useCounterCustomerContextQuery,
   useCounterProgrammesQuery,
   useRecordCounterPurchaseMutation,
   type CounterLoyaltyArtifact,
   type CounterRecordOutcome,
 } from "./counterHooks";
-import { CounterLoyaltyCard, type CounterLoyaltyCardState } from "./CounterLoyaltyCard";
+import { CounterCustomerContextCards } from "./CounterCustomerContextCards";
 import { isLoyaltyNumberComplete } from "./counterLoyalty";
 import { useStaffActionRequest } from "./staffActions";
 import { createCameraQrScanner, type QrScanner, type QrScanSession } from "./qrScanner";
@@ -156,6 +156,7 @@ export function CounterPage({
   const [loyaltyNumber, setLoyaltyNumber] = useState("");
   const [qrReference, setQrReference] = useState<string | null>(null);
   const [programmeChoice, setProgrammeChoice] = useState<string | null>(null);
+  const [shortcutProgrammeId, setShortcutProgrammeId] = useState<string | null>(null);
   const [itemChoice, setItemChoice] = useState<string | null>(null);
   const [quantityText, setQuantityText] = useState("1");
 
@@ -193,6 +194,7 @@ export function CounterPage({
 
   // --- derived selections (auto-select the only choice; never invent one) ----------------------
   const programme =
+    programmes.find((entry) => entry.id === shortcutProgrammeId) ??
     programmes.find((entry) => entry.id === programmeChoice) ??
     (programmes.length === 1 ? programmes[0] : null);
   const items = programme?.items ?? [];
@@ -210,15 +212,7 @@ export function CounterPage({
         : isLoyaltyNumberComplete(loyaltyNumber)
           ? { kind: "loyalty_number", value: loyaltyNumber.trim() }
           : null;
-  const loyaltyQuery = useCounterLoyaltyQuery(businessId, programme?.id ?? null, loyaltyArtifact);
-  const loyaltyState: CounterLoyaltyCardState | null =
-    loyaltyArtifact === null || programme === null
-      ? null
-      : loyaltyQuery.isError
-        ? { status: "error" }
-        : loyaltyQuery.data
-          ? { status: "ready", context: loyaltyQuery.data }
-          : { status: "pending" };
+  const customerContextQuery = useCounterCustomerContextQuery(businessId, loyaltyArtifact);
 
   // --- a transaction-defining edit is an intentional change: a fresh intent ---------------------
   const resetIntent = useCallback(() => {
@@ -249,6 +243,10 @@ export function CounterPage({
         setInvalid({});
         setQrReference(reference);
         setLoyaltyNumber("");
+        setProgrammeChoice(null);
+        setShortcutProgrammeId(null);
+        setItemChoice(null);
+        setQuantityText("1");
         setForeignCode(false);
         setScannerPhase("closed");
       },
@@ -335,19 +333,35 @@ export function CounterPage({
   function onLoyaltyNumberChange(value: string) {
     resetIntent();
     setQrReference(null);
+    setShortcutProgrammeId(null);
+    setItemChoice(null);
+    setQuantityText("1");
     setLoyaltyNumber(value.toUpperCase());
   }
 
   function clearScan() {
     resetIntent();
     setQrReference(null);
+    setProgrammeChoice(null);
+    setShortcutProgrammeId(null);
+    setItemChoice(null);
+    setQuantityText("1");
     setFocusTick((tick) => tick + 1);
   }
 
   function selectProgramme(id: string) {
     resetIntent();
+    setShortcutProgrammeId(null);
     setProgrammeChoice(id);
     setItemChoice(null);
+  }
+
+  function addPurchaseForProgramme(id: string) {
+    resetIntent();
+    setProgrammeChoice(id);
+    setShortcutProgrammeId(id);
+    setItemChoice(null);
+    setQuantityText("1");
   }
 
   function selectItem(id: string) {
@@ -375,6 +389,7 @@ export function CounterPage({
     setLoyaltyNumber("");
     setQrReference(null);
     setProgrammeChoice(null);
+    setShortcutProgrammeId(null);
     setItemChoice(null);
     setQuantityText("1");
     setOutcome(null);
@@ -743,8 +758,24 @@ export function CounterPage({
             )}
           </section>
 
-          {/* Loyalty status: limited, transaction-scoped, shown BEFORE the purchase is recorded ---- */}
-          {loyaltyState ? <CounterLoyaltyCard state={loyaltyState} /> : null}
+          {/* Server-resolved customer context, limited to this artifact and current Business. */}
+          {loyaltyArtifact ? (
+            customerContextQuery.isPending ? (
+              <p role="status" className={cn(CARD, "text-sm text-slate-600")}>
+                {t("counter.loyalty.checking")}
+              </p>
+            ) : customerContextQuery.isError ? (
+              <p role="status" className={cn(CARD, "text-sm text-slate-600")}>
+                {t("counter.loyalty.unavailable")}
+              </p>
+            ) : customerContextQuery.data ? (
+              <CounterCustomerContextCards
+                context={customerContextQuery.data}
+                programmes={programmes}
+                onAddPurchase={addPurchaseForProgramme}
+              />
+            ) : null
+          ) : null}
 
           {/* 2–3. Programme, item, quantity, record ------------------------------------------ */}
           {/* `contents`: the sticky Record bar must be a direct flow child of the form, so it pins above the
@@ -756,7 +787,22 @@ export function CounterPage({
                 {t("counter.programme.heading")}
               </h2>
 
-              {programmes.length === 1 ? (
+              {shortcutProgrammeId && programme ? (
+                <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-500 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-950">
+                  <span>{programme.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShortcutProgrammeId(null);
+                      setProgrammeChoice(null);
+                      setItemChoice(null);
+                    }}
+                    className="min-h-11 rounded-lg px-2 text-xs underline"
+                  >
+                    {t("counter.customerContext.changeProgramme")}
+                  </button>
+                </div>
+              ) : programmes.length === 1 ? (
                 <p className="flex min-h-12 items-center gap-2 rounded-xl border border-amber-500 bg-amber-50 px-3 text-sm font-semibold text-amber-950">
                   <CheckCircle2 className="h-4 w-4 shrink-0 text-amber-700" aria-hidden="true" />
                   <span className="sr-only">{t("counter.programme.selectedLabel")}: </span>

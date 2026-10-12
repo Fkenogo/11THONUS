@@ -15,10 +15,12 @@ import { businessQueryKeys } from "../hooks/queryKeys";
 import { makeCallListRewardPrograms } from "../api/rewardProgramMutations";
 import {
   isBusinessReviewRequired,
+  makeCallGetCounterCustomerContext,
   makeCallGetCounterLoyaltyContext,
   makeCallListMyRecentCounterPurchases,
   makeCallRecordPurchase,
   type CounterLoyaltyContextWire,
+  type CounterCustomerContextWire,
 } from "../api/purchaseMutations";
 import { toCounterProgrammes, type CounterProgramme } from "./counterProgrammes";
 import type { CounterIntent } from "./counterIntent";
@@ -131,6 +133,49 @@ export function useCounterLoyaltyQuery(
     retry: false,
     staleTime: 0,
     gcTime: 30_000,
+  });
+}
+
+/** One artifact's server-resolved, current-Business context; never a customer directory. */
+export function useCounterCustomerContextQuery(
+  businessId: string,
+  artifact: CounterLoyaltyArtifact | null,
+) {
+  const { auth, functions } = useBusinessApiPlatform();
+  const actorState = useAuthenticatedActor(auth);
+  const enabled = actorState.status === "ready" && Boolean(businessId) && artifact !== null;
+  return useQuery<CounterCustomerContextWire>({
+    queryKey: businessQueryKeys.counterCustomerContext(
+      businessId,
+      counterActorScope(auth),
+      artifact?.kind ?? "loyalty_number",
+      artifact?.value ?? "",
+    ),
+    queryFn: async () => {
+      if (artifact === null) throw new Error("no transaction context");
+      const result = await makeCallGetCounterCustomerContext(functions)(
+        requireReadyActor(actorState),
+        artifact.kind === "qr_identity"
+          ? { businessId, qrReference: artifact.value }
+          : { businessId, loyaltyNumberValue: artifact.value },
+      );
+      // Explicit field reconstruction prevents extra wire fields entering the Counter cache.
+      return {
+        customer: { displayName: result.customer.displayName },
+        programmes: result.programmes.map((programme) => ({
+          rewardProgramId: programme.rewardProgramId,
+          programmeName: programme.programmeName,
+          verifiedUnits: programme.verifiedUnits,
+          requiredVerifiedUnits: programme.requiredVerifiedUnits,
+          awaitingCustomerConfirmationUnits: programme.awaitingCustomerConfirmationUnits,
+          rewardStatus: programme.rewardStatus === "available" ? "available" : "none",
+        })),
+      };
+    },
+    enabled,
+    retry: false,
+    staleTime: 0,
+    gcTime: 0,
   });
 }
 

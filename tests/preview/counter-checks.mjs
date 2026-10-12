@@ -197,6 +197,100 @@ export async function runCounterChecks({ state, write = false, log = console.log
       ),
     );
 
+    // B1A transaction-scoped Staff context resolves the artifact first, then
+    // returns the current Business's participating programmes and bounded name.
+    const bounded = (user, artifact) =>
+      s.read(user, "getCounterCustomerContext", {
+        businessId: bella.businessId,
+        ...artifact,
+      });
+    const jeanNumber = lnOf("jeanclaude");
+    const jeanQr = state.identities.customer_jeanclaude?.qrReference;
+    const byNumber = await bounded("staff_bella", { loyaltyNumberValue: jeanNumber });
+    const byQr = jeanQr ? await bounded("staff_bella", { qrReference: jeanQr }) : null;
+    const programmeNames = byNumber.programmes.map((p) => p.programmeName).sort();
+    const contextWire = JSON.stringify(byNumber);
+    const excluded = [
+      "email",
+      "phone",
+      "customerIdentityId",
+      "authUid",
+      "identityProvider",
+      "reviewer",
+      "businessReviewQuantityThreshold",
+      "purchaseRecords",
+      "history",
+    ].filter((field) => contextWire.toLowerCase().includes(field.toLowerCase()));
+    results.push(
+      outcome(
+        "B1A Loyalty Number context includes resolved display name and multiple current-Business programmes",
+        byNumber.customer?.displayName === "Jean-Claude Habimana" &&
+          programmeNames.includes("Express Styling Circle") &&
+          programmeNames.includes("Premium Cut Circle"),
+        programmeNames.join(", "),
+      ),
+      outcome(
+        "B1A QR and Loyalty Number resolve to the same bounded customer context",
+        !!byQr &&
+          byQr.customer?.displayName === byNumber.customer?.displayName &&
+          JSON.stringify(byQr.programmes) === JSON.stringify(byNumber.programmes),
+        byQr ? `${byQr.programmes.length} programmes` : "seed QR unavailable",
+      ),
+      outcome(
+        "B1A context excludes contacts, auth/profile, history and review-only fields",
+        excluded.length === 0,
+        excluded.join(", "),
+      ),
+      outcome(
+        "B1A progress keeps awaiting confirmation separate from verified progress",
+        byNumber.programmes.some(
+          (p) => p.verifiedUnits === 8 && p.awaitingCustomerConfirmationUnits === 0,
+        ),
+        JSON.stringify(
+          byNumber.programmes.map(
+            ({ programmeName, verifiedUnits, awaitingCustomerConfirmationUnits }) => ({
+              programmeName,
+              verifiedUnits,
+              awaitingCustomerConfirmationUnits,
+            }),
+          ),
+        ),
+      ),
+    );
+    const chantal = await bounded("staff_bella", { loyaltyNumberValue: lnOf("chantal") });
+    const chantalReward = chantal.programmes.find((p) => p.programmeName === PROGRAMME);
+    const chantalWire = JSON.stringify(chantal);
+    results.push(
+      outcome(
+        "B1A reward awareness is authoritative, returns availability without a reward binding, and exposes no redemption action",
+        chantalReward?.rewardStatus === "available" &&
+          !Object.keys(chantalReward).some((key) => /reward.*id|redemption|confirm/i.test(key)) &&
+          !/confirmRedemption|redemption\.confirm/i.test(chantalWire),
+        JSON.stringify(chantalReward),
+      ),
+    );
+    const otherBusinessContext = await denied(
+      s.read("staff_bella", "getCounterCustomerContext", {
+        businessId: state.businesses.sparkle.businessId,
+        loyaltyNumberValue: jeanNumber,
+      }),
+    );
+    const unknownContext = await denied(
+      s.read("staff_bella", "getCounterCustomerContext", {
+        businessId: bella.businessId,
+        loyaltyNumberValue: "ZZZ222",
+      }),
+    );
+    results.push(
+      outcome(
+        "B1A cannot resolve another Business's context and unknown artifacts stay neutral",
+        otherBusinessContext.denied &&
+          unknownContext.denied &&
+          unknownContext.reason === "customer_artifact_invalid_or_not_found",
+        `${otherBusinessContext.code ?? "denied"} · ${unknownContext.reason ?? ""}`,
+      ),
+    );
+
     // Neutral failure: every bad artifact fails the SAME way; policy and existence are not revealed.
     const badLn = await denied(
       s.read("staff_bella", "getCounterLoyaltyContext", {

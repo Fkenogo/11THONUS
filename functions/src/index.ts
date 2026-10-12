@@ -175,6 +175,7 @@ import {
   listLoyaltyCycleProgressForBusiness as listLoyaltyCycleProgressForBusinessQuery,
 } from "./domains/purchase/services/purchaseQueries";
 import { getCounterLoyaltyContext as getCounterLoyaltyContextQuery } from "./domains/purchase/services/counterLoyaltyContext";
+import { getCounterCustomerContext as getCounterCustomerContextQuery } from "./domains/purchase/services/counterCustomerContext";
 import { getCustomerExperienceOverview } from "./domains/purchase/services/customerExperienceQueries";
 
 setGlobalOptions({ region: PLATFORM_REGION, maxInstances: 10 });
@@ -2666,6 +2667,32 @@ export const getCounterLoyaltyContext = onCall(async (request) => {
       userId,
       correlationId: randomUUID(),
       ...parseGetCounterLoyaltyContextRequest(value),
+    });
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+/** Staff-safe, transaction-scoped Customer context (`FD-UX-1`, B1A). */
+export function parseGetCounterCustomerContextRequest(value: Record<string, unknown>) {
+  return {
+    businessId: parseBusinessId(value.businessId),
+    loyaltyNumberValue: parseOptionalPurchaseString(value.loyaltyNumberValue, "loyaltyNumberValue"),
+    qrReference: parseOptionalPurchaseString(value.qrReference, "qrReference"),
+  };
+}
+
+export const getCounterCustomerContext = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId } = await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    return await getCounterCustomerContextQuery(db, getPurchasePostgresPool(), {
+      userId,
+      correlationId: randomUUID(),
+      ...parseGetCounterCustomerContextRequest(value),
     });
   } catch (error) {
     throw toHttpsError(error);

@@ -5,6 +5,7 @@ import {
   toCallRecordPurchase,
   toCallListMyRecentCounterPurchases,
   toCallGetCounterLoyaltyContext,
+  toCallGetCounterCustomerContext,
   toCallListPurchasesForBusiness,
   type PurchaseRecordWire,
 } from "./purchaseMutations";
@@ -246,5 +247,46 @@ describe("toCallGetCounterLoyaltyContext", () => {
         referenceType: "email",
       },
     ]);
+  });
+});
+
+describe("toCallGetCounterCustomerContext (B1A bounded response)", () => {
+  it("sends the current Business and one artifact and preserves only the bounded response contract", async () => {
+    const call = toCallGetCounterCustomerContext(async (payload) => {
+      expect(payload).toEqual({
+        businessId: "b-1",
+        qrReference: "qr-reference",
+        rawToken: "t",
+        referenceType: "email",
+      });
+      return {
+        data: {
+          customer: { displayName: "Jean-Claude Habimana" },
+          programmes: [
+            {
+              rewardProgramId: "rp-1",
+              programmeName: "Wash 10+1",
+              verifiedUnits: 2,
+              requiredVerifiedUnits: 10,
+              awaitingCustomerConfirmationUnits: 1,
+              rewardStatus: "none",
+            },
+          ],
+        },
+      };
+    });
+    await expect(call(actor, { businessId: "b-1", qrReference: "qr-reference" })).resolves.toEqual({
+      customer: { displayName: "Jean-Claude Habimana" },
+      programmes: [
+        {
+          rewardProgramId: "rp-1",
+          programmeName: "Wash 10+1",
+          verifiedUnits: 2,
+          requiredVerifiedUnits: 10,
+          awaitingCustomerConfirmationUnits: 1,
+          rewardStatus: "none",
+        },
+      ],
+    });
   });
 });

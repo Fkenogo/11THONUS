@@ -199,6 +199,28 @@ export type CounterLoyaltyContextRequest = {
   | { qrReference: string; loyaltyNumberValue?: never }
 );
 
+/** B1A context returned only after the presented Customer artifact resolves in this Business. */
+export type CounterCustomerProgrammeWire = {
+  rewardProgramId: string;
+  programmeName: string;
+  verifiedUnits: number;
+  requiredVerifiedUnits: number;
+  awaitingCustomerConfirmationUnits: number;
+  rewardStatus: "none" | "available";
+};
+
+export type CounterCustomerContextWire = {
+  customer: { displayName: string | null };
+  programmes: CounterCustomerProgrammeWire[];
+};
+
+export type CounterCustomerContextRequest = {
+  businessId: string;
+} & (
+  | { loyaltyNumberValue: string; qrReference?: never }
+  | { qrReference: string; loyaltyNumberValue?: never }
+);
+
 export type ListPurchasesRequest = {
   businessId: string;
   status?: string;
@@ -250,6 +272,19 @@ export function toCallGetCounterLoyaltyContext(
 
 export function makeCallGetCounterLoyaltyContext(functions: Functions) {
   return toCallGetCounterLoyaltyContext(httpsCallable(functions, "getCounterLoyaltyContext"));
+}
+
+export function toCallGetCounterCustomerContext(
+  callable: BoundCallable<CounterCustomerContextWire>,
+): (
+  actor: AuthenticatedActor,
+  payload: CounterCustomerContextRequest,
+) => Promise<CounterCustomerContextWire> {
+  return toCallWithActor<CounterCustomerContextRequest, CounterCustomerContextWire>(callable);
+}
+
+export function makeCallGetCounterCustomerContext(functions: Functions) {
+  return toCallGetCounterCustomerContext(httpsCallable(functions, "getCounterCustomerContext"));
 }
 
 export function toCallListPurchasesForBusiness(
