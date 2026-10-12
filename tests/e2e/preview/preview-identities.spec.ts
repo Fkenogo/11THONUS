@@ -78,7 +78,7 @@ test.describe("Founder Preview identities", () => {
       .getByRole("navigation", { name: "Customer navigation" })
       .getByRole("link", { name: "Circles" })
       .click();
-    const bella = page.locator("article").filter({ hasText: "Premium Cut Circle" });
+    const bella = page.getByRole("link").filter({ hasText: "Premium Cut Circle" });
     await expect(
       bella.getByRole("img", { name: "0 verified units, 1 waiting for confirmation" }),
     ).toBeVisible();
@@ -86,7 +86,7 @@ test.describe("Founder Preview identities", () => {
     await expect(bella.getByText("Reward unlocked")).toHaveCount(0);
     // Moses also has a separate Mutima reward earned with ten Verified Units; that reward is not
     // caused by the Pending Bella purchase and must remain truthful in the same overview.
-    const mutima = page.locator("article").filter({ hasText: "Mini-Mart Regulars" });
+    const mutima = page.getByRole("link").filter({ hasText: "Mini-Mart Regulars" });
     await expect(mutima.getByText("Reward unlocked")).toBeVisible();
     await page.getByRole("link", { name: "Activity" }).click();
     await expect(page.getByText("Purchase recorded").first()).toBeVisible();

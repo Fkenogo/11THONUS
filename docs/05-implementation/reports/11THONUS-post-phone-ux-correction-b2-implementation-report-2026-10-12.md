@@ -2,7 +2,7 @@
 
 ## Status
 
-**Implementation in progress — Founder unified review and exact-head CI pending.** Entry PR #307 head: `c099c11b117355be2bef1dc8e72914b2602de5a5`. Physical-phone validation remains **PASSED / FOUNDER APPROVED**. B1A remains technically accepted, B1R remains validated/technically accepted, and Independent Technical Review remains paused.
+**B2 implementation complete — Founder unified review pending.** Entry PR #307 head: `c099c11b117355be2bef1dc8e72914b2602de5a5`. Physical-phone validation remains **PASSED / FOUNDER APPROVED**. B1A remains technically accepted, B1R remains validated/technically accepted, and Independent Technical Review remains paused.
 
 ## Scope
 
@@ -40,7 +40,8 @@ No purchase verification semantics, Verified Unit issuance, Cycle mechanics, Bus
 - Full web suite on the local Node 26 runtime was not clean: 1,151 passed and 3 failed. Two failures were in the unrelated phone-auth harness storage assertions under Node's file-backed `localStorage`; the Customer Activity language assertion was fixed by explicitly resetting test language and passes in the focused rerun.
 - PostgreSQL suite with Firebase Emulator: 575 passed, 232 skipped, 5 failed during shared migration setup because `commercial_admissions` already existed. A direct run without the Firestore Emulator failed 12 suites for the missing `FIRESTORE_EMULATOR_HOST`. No Product code change was made in response; exact-head CI remains the authoritative integration result.
 - Founder Preview verify/counter checks could not run: preview was stopped and unseeded. No phone-preview infrastructure or PR #310 change was made to seed it.
-- Exact-head CI, Playwright, final PR/review state, and final recommendation will be recorded in the completion report after push.
+- Exact-head CI run `38283112725` at `cd7cc88d8887b12f34e283c600b0d0eb72d451fd` passed build, lint, format, typecheck, unit/component, PostgreSQL integration, Playwright, and Founder Preview tooling. The separate cross-project acceptance exposed stale Playwright selectors that still expected Circle cards to be `article` elements after they became accessible links. Those selectors have been corrected to target the links; the corrected exact-head workflow is pending. Firebase Emulator validation was skipped after the earlier workflow step failed.
+- CI initially confirmed the new Circle detail navigation causes Circle cards to be accessible links. Preview regression selectors were updated to match that intended B2 behavior. Final exact-head CI, PR/review state, and Founder recommendation will be recorded after the corrected workflow.
 
 ## Worktree and PR boundary
 
