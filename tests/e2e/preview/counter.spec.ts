@@ -263,7 +263,7 @@ test.describe("Staff Counter — Founder Preview (real stack)", () => {
     page.on("request", (request) => {
       const url = request.url();
       if (url.endsWith("/recordPurchase")) requests.push("recordPurchase");
-      if (url.endsWith("/getCounterLoyaltyContext")) requests.push("getCounterLoyaltyContext");
+      if (url.endsWith("/getCounterCustomerContext")) requests.push("getCounterCustomerContext");
     });
     await openCounterAsDiane(page);
     await page.getByLabel("Loyalty Number").fill(loyaltyNumberOf("jeanclaude"));
