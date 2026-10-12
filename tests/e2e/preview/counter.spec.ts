@@ -91,9 +91,12 @@ async function awaitingUnits(card: Locator): Promise<number> {
   return match ? Number(match[1]) : 0;
 }
 
-/** The limited loyalty status the Counter shows once the customer and programme are known. */
-const loyaltyProgress = (page: Page) => page.getByTestId("counter-loyalty-progress");
-const loyaltyReward = (page: Page) => page.getByTestId("counter-loyalty-reward");
+/** B1A context cards are returned only after the artifact resolves in the current Business. */
+const customerProgramme = (page: Page, programmeName: string) =>
+  page
+    .locator('[data-testid="counter-customer-programme"], [data-testid="counter-loyalty-reward"]')
+    .filter({ hasText: programmeName });
+const customerReward = (page: Page) => page.getByTestId("counter-loyalty-reward");
 
 test.describe.configure({ mode: "serial" });
 
@@ -133,8 +136,12 @@ test.describe("Staff Counter — Founder Preview (real stack)", () => {
       }
     });
     await openCounterAsDiane(page);
-    await chooseExpress(page, "Hair wash");
     await page.getByLabel("Loyalty Number").fill(loyaltyNumberOf("chantal").toLowerCase());
+    const expressCard = customerProgramme(page, "Express Styling Circle");
+    await expressCard.getByRole("button", { name: "Add purchase" }).click();
+    await expect(page.getByRole("radio", { name: "Express Styling Circle" })).toHaveCount(0);
+    await expect(page.getByRole("textbox", { name: "Quantity" })).toHaveValue("1");
+    await page.getByRole("radio", { name: "Hair wash" }).check();
     await page.getByRole("button", { name: "Record purchase" }).click();
     await expect(page.getByRole("heading", { name: "Purchase recorded." })).toBeVisible();
     await expect(
@@ -163,8 +170,8 @@ test.describe("Staff Counter — Founder Preview (real stack)", () => {
     page,
   }) => {
     await openCounterAsDiane(page);
-    await chooseExpress(page, "Blow-dry");
     await page.getByLabel("Loyalty Number").fill(loyaltyNumberOf("chantal"));
+    await chooseExpress(page, "Blow-dry");
     await page.getByRole("textbox", { name: "Quantity" }).fill("5");
     await page.getByRole("button", { name: "Record purchase" }).click();
     await expect(page.getByRole("heading", { name: "Purchase recorded." })).toBeVisible();
@@ -179,17 +186,17 @@ test.describe("Staff Counter — Founder Preview (real stack)", () => {
     page,
   }) => {
     await openCounterAsDiane(page);
-    await chooseExpress(page, "Hair wash");
     await page.getByLabel("Loyalty Number").fill("ZZZ222");
+    await chooseExpress(page, "Hair wash");
     await page.getByRole("button", { name: "Record purchase" }).click();
     const unknown = page.getByRole("alert").filter({ hasText: "couldn't find that customer code" });
     await expect(unknown).toBeVisible();
     const unknownText = await unknown.innerText();
 
     // Premium Cut is QR-only: a REAL, existing customer's number is refused with the same words.
+    await page.getByLabel("Loyalty Number").fill(loyaltyNumberOf("moses"));
     await page.getByRole("radio", { name: "Premium Cut Circle" }).check();
     await page.getByRole("radio", { name: "Haircut" }).check();
-    await page.getByLabel("Loyalty Number").fill(loyaltyNumberOf("moses"));
     await page.getByRole("button", { name: "Record purchase" }).click();
     const policy = page.getByRole("alert").filter({ hasText: "couldn't find that customer code" });
     await expect(policy).toBeVisible();
@@ -218,8 +225,8 @@ test.describe("Staff Counter — Founder Preview (real stack)", () => {
       await route.fulfill({ response: retried });
     });
 
-    await chooseExpress(page, "Hair wash");
     await page.getByLabel("Loyalty Number").fill(loyaltyNumberOf("yves"));
+    await chooseExpress(page, "Hair wash");
     await page.getByRole("button", { name: "Record purchase" }).click();
     await expect(
       page.getByRole("alert").filter({ hasText: "We couldn't confirm the result" }),
@@ -259,34 +266,39 @@ test.describe("Staff Counter — Founder Preview (real stack)", () => {
       if (url.endsWith("/getCounterLoyaltyContext")) requests.push("getCounterLoyaltyContext");
     });
     await openCounterAsDiane(page);
-    await page.getByRole("radio", { name: "Express Styling Circle" }).check();
-
     await page.getByLabel("Loyalty Number").fill(loyaltyNumberOf("jeanclaude"));
-    await expect(loyaltyProgress(page)).toContainText("8 of 10 verified");
-    await expect(loyaltyProgress(page)).toContainText(
-      "2 more verified purchases until the 11th is on us",
+    const jeanClaude = customerProgramme(page, "Express Styling Circle");
+    await expect(page.getByText("Jean-Claude Habimana")).toBeVisible();
+    await expect(jeanClaude).toContainText("8 of 10 verified");
+    await expect(jeanClaude).toContainText("2 more verified purchases until the 11th is on us");
+    await expect(customerProgramme(page, "Premium Cut Circle")).toHaveCount(1);
+    await expect(page.locator("body")).not.toContainText(
+      /@|customerIdentityId|reviewer|threshold/i,
     );
     await expectClearOfBottomBar(page, page.getByRole("button", { name: "Record purchase" }));
 
     // A purchase awaiting the customer is reported SEPARATELY and never added to the verified count.
     await page.getByLabel("Loyalty Number").fill(loyaltyNumberOf("esther"));
-    await expect(loyaltyProgress(page)).toContainText("9 of 10 verified");
-    await expect(loyaltyProgress(page)).toContainText("1 purchase awaiting customer confirmation");
-    await expect(loyaltyProgress(page)).not.toContainText("10 of 10");
+    const esther = customerProgramme(page, "Express Styling Circle");
+    await expect(esther).toContainText("9 of 10 verified");
+    await expect(esther).toContainText("1 purchase awaiting customer confirmation");
+    await expect(esther).not.toContainText("10 of 10");
 
     // Reward available: a prominent alert before any purchase is recorded; nothing is redeemed.
     await page.getByLabel("Loyalty Number").fill(loyaltyNumberOf("chantal"));
-    await expect(loyaltyReward(page)).toContainText("11th reward available");
-    await expect(loyaltyReward(page)).toContainText("Let the customer know their reward is ready.");
+    await expect(customerReward(page)).toContainText("11th reward available");
+    await expect(customerReward(page)).toContainText(
+      "Ask an authorised Manager or Owner to confirm.",
+    );
     await expect(page.getByRole("button", { name: /redeem|confirm reward/i })).toHaveCount(0);
 
-    // Reading status recorded nothing, and it names no one.
+    // Reading customer context is read-only and reveals only the bounded current-Business fields.
     expect(requests).not.toContain("recordPurchase");
-    expect(requests.filter((r) => r === "getCounterLoyaltyContext").length).toBeGreaterThanOrEqual(
+    expect(requests.filter((r) => r === "getCounterCustomerContext").length).toBeGreaterThanOrEqual(
       3,
     );
     await expect(page.locator("body")).not.toContainText(
-      /Habimana|Jean-Claude|Irakoze|Esther|Uwimana|Chantal/,
+      /@|customerIdentityId|reviewer|threshold/i,
     );
   });
 
@@ -294,10 +306,11 @@ test.describe("Staff Counter — Founder Preview (real stack)", () => {
     page,
   }) => {
     await openCounterAsDiane(page);
-    await chooseExpress(page, "Hair wash");
     await page.getByLabel("Loyalty Number").fill(loyaltyNumberOf("jeanclaude"));
-    await expect(loyaltyProgress(page)).toContainText("8 of 10 verified");
-    const awaitingBefore = await awaitingUnits(loyaltyProgress(page));
+    await chooseExpress(page, "Hair wash");
+    const progress = customerProgramme(page, "Express Styling Circle");
+    await expect(progress).toContainText("8 of 10 verified");
+    const awaitingBefore = await awaitingUnits(progress);
     await page.getByRole("button", { name: "Record purchase" }).click();
     await expect(page.getByRole("heading", { name: "Purchase recorded." })).toBeVisible();
     await expect(
@@ -306,37 +319,38 @@ test.describe("Staff Counter — Founder Preview (real stack)", () => {
 
     // Next customer: the same customer again — still 8 verified, plus ONE more awaiting confirmation.
     await page.getByRole("button", { name: "Serve next customer" }).click();
-    await chooseExpress(page, "Hair wash");
     await page.getByLabel("Loyalty Number").fill(loyaltyNumberOf("jeanclaude"));
-    await expect(loyaltyProgress(page)).toContainText("8 of 10 verified");
-    await expect(loyaltyProgress(page)).not.toContainText("9 of 10");
-    await expect.poll(() => awaitingUnits(loyaltyProgress(page))).toBe(awaitingBefore + 1);
+    await chooseExpress(page, "Hair wash");
+    const refreshed = customerProgramme(page, "Express Styling Circle");
+    await expect(refreshed).toContainText("8 of 10 verified");
+    await expect(refreshed).not.toContainText("9 of 10");
+    await expect.poll(() => awaitingUnits(refreshed)).toBe(awaitingBefore + 1);
   });
 
   test("with a reward available an ordinary purchase can still be recorded — and nothing is redeemed", async ({
     page,
   }) => {
     await openCounterAsDiane(page);
-    await chooseExpress(page, "Blow-dry");
     await page.getByLabel("Loyalty Number").fill(loyaltyNumberOf("chantal"));
-    await expect(loyaltyReward(page)).toBeVisible();
-    const awaitingBefore = await awaitingUnits(loyaltyReward(page));
+    await chooseExpress(page, "Blow-dry");
+    await expect(customerReward(page)).toBeVisible();
+    const awaitingBefore = await awaitingUnits(customerReward(page));
     await page.getByRole("button", { name: "Record purchase" }).click();
     await expect(page.getByRole("heading", { name: "Purchase recorded." })).toBeVisible();
     await page.getByRole("button", { name: "Serve next customer" }).click();
-    await chooseExpress(page, "Blow-dry");
     await page.getByLabel("Loyalty Number").fill(loyaltyNumberOf("chantal"));
+    await chooseExpress(page, "Blow-dry");
     // Still the reward (10 verified, reward open); the new purchase waits for the customer.
-    await expect(loyaltyReward(page)).toContainText("11th reward available");
-    await expect.poll(() => awaitingUnits(loyaltyReward(page))).toBe(awaitingBefore + 1);
+    await expect(customerReward(page)).toContainText("11th reward available");
+    await expect.poll(() => awaitingUnits(customerReward(page))).toBe(awaitingBefore + 1);
   });
 
   test("a code the server cannot resolve gives a quiet neutral note — never a hint why — and recording is not blocked by it", async ({
     page,
   }) => {
     await openCounterAsDiane(page);
-    await chooseExpress(page, "Blow-dry");
     await page.getByLabel("Loyalty Number").fill("ZZZ222");
+    await chooseExpress(page, "Blow-dry");
     await expect(
       page.getByText(
         "Loyalty status isn't available right now. You can still record the purchase.",
@@ -418,9 +432,10 @@ test.describe("Staff Counter — Founder Preview (real stack)", () => {
     page,
   }) => {
     await openCounterAsDiane(page);
-    await chooseExpress(page, "Blow-dry");
     await page.getByLabel("Loyalty Number").fill(loyaltyNumberOf("esther"));
-    await expect(loyaltyProgress(page)).toContainText("9 of 10 verified");
+    await chooseExpress(page, "Blow-dry");
+    const progress = customerProgramme(page, "Express Styling Circle");
+    await expect(progress).toContainText("9 of 10 verified");
     const record = page.getByRole("button", { name: "Record purchase" });
     await expectClearOfBottomBar(page, record);
 
@@ -435,7 +450,7 @@ test.describe("Staff Counter — Founder Preview (real stack)", () => {
     // The in-progress transaction survived every hop (and nothing was recorded by moving around).
     await expect(page.getByLabel("Loyalty Number")).toHaveValue(loyaltyNumberOf("esther"));
     await expect(page.getByRole("radio", { name: "Blow-dry" })).toBeChecked();
-    await expect(loyaltyProgress(page)).toContainText("9 of 10 verified");
+    await expect(progress).toContainText("9 of 10 verified");
     await expectClearOfBottomBar(page, record);
   });
 
@@ -476,9 +491,9 @@ test.describe("Staff Counter — Founder Preview (real stack)", () => {
     await expect(page.getByRole("heading", { name: "Caisse", level: 1 })).toBeVisible();
     await expect(page.getByRole("button", { name: "Enregistrer l'achat" })).toBeVisible();
     await expect(page.getByLabel("Numéro de fidélité")).toBeVisible();
-    await page.getByRole("radio", { name: "Express Styling Circle" }).check();
     await page.getByLabel("Numéro de fidélité").fill(loyaltyNumberOf("jeanclaude"));
-    await expect(loyaltyProgress(page)).toContainText("8 sur 10 vérifiés");
+    const frProgress = customerProgramme(page, "Express Styling Circle");
+    await expect(frProgress).toContainText("8 sur 10 vérifiés");
     await frNav.getByRole("link", { name: "Profil" }).click();
     await page.getByRole("button", { name: "English" }).click();
     await expect(page.getByRole("heading", { name: "Profile", level: 1 })).toBeVisible();
