@@ -41,7 +41,7 @@ No changes to PR #310, migrations, Firebase/Cloudflare configuration, customer s
 | Focused callable contract tests | 85/85 passed |
 | B1A PostgreSQL + Firestore-emulator integration cases | 6/6 passed, including the QR-only/Loyalty Number neutral-policy boundary |
 | Full Functions unit suite | 176 files, 2,031 tests passed |
-| PostgreSQL `staffCounter` suite | 53/53 passed. Its existing index-applicability fixture disables bitmap/seq scans and lowers random page cost so the tiny fixture proves the composite ordered index path rather than asserting a cost estimate. |
+| PostgreSQL `staffCounter` suite | 53/53 passed. Its existing index-applicability fixture disables sequential/bitmap scans and sort so the tiny fixture proves the composite order-providing index path rather than asserting a cost estimate. |
 | TypeScript Functions/web | Passed |
 | ESLint changed files | Passed |
 | Prettier changed files | Passed |
@@ -57,7 +57,7 @@ No changes to PR #310, migrations, Firebase/Cloudflare configuration, customer s
 - Entry PR #307 SHA: `a2774cc6ec7799ce92700d81b15d7769be8da240`.
 - Product implementation commit: `fe9d109dda86288126295d462e76497cd3f03900`, pushed to `feat/ea-bl-001-corr-002-b-staff-counter`. This report is a follow-up documentation commit; the final exact branch head is recorded in the task completion report.
 - PR #310 remains untouched at the supplied head.
-- CI runs `38233301268` and `38234447180` passed build, lint, format, typecheck and unit/component tests (Functions 2,031; web 1,144), then failed one existing recorder-index plan assertion because the cost-based planner chose another index for a tiny fixture. The test now states the planner assumptions needed to prove index applicability; the complete `staffCounter` file passes 53/53 locally. Exact-head CI is being rerun.
+- CI runs `38233301268`, `38234447180`, and `38235532925` passed build, lint, format, typecheck and unit/component tests (Functions 2,031; web 1,144), then failed one existing recorder-index plan assertion because the cost-based planner chose another index for a tiny fixture. The test now disables sort to verify the order-providing path is applicable; the complete `staffCounter` file passes 53/53 locally. Exact-head CI is being rerun.
 - PR #307 inline review threads: 4 returned; all resolved (2 current, 2 outdated). No unresolved thread returned.
 - Neither PR is merged; no ITR started.
 
