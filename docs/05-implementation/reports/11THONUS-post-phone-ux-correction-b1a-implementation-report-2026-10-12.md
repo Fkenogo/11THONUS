@@ -39,7 +39,7 @@ No changes to PR #310, migrations, Firebase/Cloudflare configuration, customer s
 |---|---|
 | Focused web Counter/API tests | 83/83 passed |
 | Focused callable contract tests | 85/85 passed |
-| B1A PostgreSQL + Firestore-emulator integration cases | 5/5 passed |
+| B1A PostgreSQL + Firestore-emulator integration cases | 6/6 passed, including the QR-only/Loyalty Number neutral-policy boundary |
 | Full Functions unit suite | 176 files, 2,031 tests passed |
 | PostgreSQL `staffCounter` suite | 51/52 passed; one existing query-plan assertion expected the recorder index but this local planner chose a bitmap scan + sort. New B1A integration cases all passed. |
 | TypeScript Functions/web | Passed |

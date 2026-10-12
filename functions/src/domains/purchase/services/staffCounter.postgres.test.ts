@@ -1283,6 +1283,17 @@ describe("Staff customer context — transaction and Business scoped", () => {
     expect(purchase.purchase.id).toBeTruthy();
   });
 
+  it("preserves QR-only policy: QR resolves, while a Loyalty Number remains a neutral refusal", async () => {
+    const s = await setup({ shared: false, threshold: null });
+    const qr = await customerContext(s, { qrReference: s.customer.qr });
+    expect(qr.customer.displayName).toBe("Customer Example");
+    expect(qr.programmes).toEqual([]);
+    const numberFailure = await failure(customerContext(s, { loyaltyNumberValue: s.customer.ln }));
+    expect(toHttpsError(numberFailure).details).toEqual({
+      reason: "customer_artifact_invalid_or_not_found",
+    });
+  });
+
   it("returns only participating programmes for this Business with verified and awaiting units separate", async () => {
     const s = await setup({ threshold: null });
     const waiting = await record(s, { quantity: 2 }, s.staffId);
