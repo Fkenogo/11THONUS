@@ -80,13 +80,19 @@ Validation:
 - Changed-file Prettier check and `git diff --check`: passed.
 - Web production build: passed (Vite generated the PWA bundle in `/tmp`; Vite emitted the existing large-chunk advisory).
 - PostgreSQL integration, Firebase emulator, preview verification/counter checks, and Playwright: blocked by the host preview environment. The owned Postgres container became healthy, but preview startup refused because its required Firebase emulator ports 28101, 28102, 28103, 28106, 28107 and 28108 were already occupied. No foreign processes were stopped. Preview checks consequently reported missing seed state.
-- Exact-head CI: no workflow run was visible at the initial post-push inspection; no run was visible for the final pushed SHA when checked again. Existing review-thread state: all four existing threads resolved; no new thread yet.
+- Compatibility follow-up exact-head CI run `38257093090` passed on `8cec3bdd2f61c897238049c571a74abb059e7bd5` after a workflow-dispatch trigger. All workflow steps passed: build, lint, format, typecheck, unit/component, PostgreSQL integration (including Firestore Emulator), Playwright, Founder Preview tooling, cross-project port-isolation acceptance, and Firebase Emulator validation. This exact-head run includes the legacy/B1R idempotency regressions and the updated Founder Preview redemption seed.
+- GitHub still reports PR #307 `mergeable=false` / `mergeable_state=dirty`. Current `main` is three commits ahead of merge base `4bc9c49261c1db8bfdacb3d91b68d51ad59e47f9` (`behind_by=3`), and read-only `git merge-tree` against current `origin/main` reports no conflicts. The reported dirty state is inconsistent with the local merge result; no rebase or merge was performed. Recheck GitHub's mergeability calculation before any merge action.
+- Existing inline review threads: four total, all resolved (three outdated, one current); no new B1R inline thread.
 
 ## Risks and rollback
 
 The main remaining risks are a same-request authorization revocation race (handled by the existing mutation-time evaluator), temporary context read failure after a successful mutation, and keeping this transaction-scoped projection narrow in future edits. Existing redemption idempotency, lock ordering, conditional transition and unique Reward redemption backstop remain unchanged.
 
 Rollback: revert the B1R implementation commit(s) on `feat/ea-bl-001-corr-002-b-staff-counter`. There is no migration or schema rollback.
+
+## Validation and compatibility follow-up — 2026-10-12
+
+The legacy idempotency compatibility correction is recorded in `docs/changes/IMPLEMENTATION_CHANGES.md`. The Founder Preview redemption seed now supplies Aline's issued QR reference and the seeded programme reference required by the closed B1R callable. Exact-head CI run `38257093090` passed at code head `8cec3bdd2f61c897238049c571a74abb059e7bd5`. GitHub's `dirty` mergeability report remains unreconciled despite a clean read-only merge-tree result; this package does not rewrite the branch.
 
 ## Recommendation
 
