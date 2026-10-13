@@ -18,6 +18,10 @@ phone ──HTTPS──▶ Cloudflare (Access) ──named tunnel──▶ 127.0
 - Everything else is denied: Emulator UI/Hub, Firestore, Storage, PostgreSQL, Auth `/emulator/*`, Auth admin
   (`/v1/projects/*`, `Bearer owner`), non-allow-listed callables, other localhost ports (Host pinning → 421).
   Allow-lists live in `tests/preview/phone/config.mjs`; the decision logic is `policy.mjs` (unit-tested).
+- The current B1A/B1R browser experience requires `getCounterCustomerContext` and `confirmRedemption` through
+  the callable proxy. The former legacy `getCounterLoyaltyContext` route is not used by the final Counter UI
+  and remains denied. B2 Customer purchase/Circle detail uses existing Customer Experience callables already
+  present in the allow-list. Do not broaden the allow-list to business-wide loyalty, identity, or admin reads.
 - The tunnel's only origin is the proxy. The tunnel/Access layer is separate from Firebase Authentication.
 
 ## One-time Cloudflare setup (Founder)
@@ -95,3 +99,12 @@ Delete only the resources recorded below.
 | Tunnel | |
 | DNS CNAME | |
 | Access application / policy | |
+
+## Current unified Founder regression status (2026-10-13)
+
+Physical-phone validation is **PASSED / FOUNDER APPROVED** for the pre-correction Slice B experience. B1A
+bounded Staff context, B1R governed redemption, and B2 Customer navigation/sign-out are incorporated in
+product head `42211cfb9bfcc4483a4251c43c46f34f69860ae7`; unified Founder regression remains pending. The
+combined phone-preview branch must include that exact product SHA and the reviewed infrastructure commits.
+Run the canonical reset, preview checks, public identity/verifier, and bounded Staff/Customer browser review
+before presenting it as ready. Desktop automation is not physical-device validation.

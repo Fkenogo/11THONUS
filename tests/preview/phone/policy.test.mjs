@@ -21,6 +21,16 @@ test("every allow-listed callable maps to the emulator callable route", () => {
   }
 });
 
+test("B1A/B1R callables are allowed and the superseded anonymous context is denied", () => {
+  for (const name of ["getCounterCustomerContext", "confirmRedemption"]) {
+    assert.deepEqual(classify(req("POST", `/__fn/${name}`)), {
+      kind: "functions",
+      path: `/demo-11thonus/europe-west1/${name}`,
+    });
+  }
+  assert.equal(classify(req("POST", "/__fn/getCounterLoyaltyContext")).kind, "deny");
+});
+
 test("non-allow-listed callables, wrong methods and content types are denied", () => {
   assert.equal(classify(req("POST", "/__fn/createBusiness")).kind, "deny");
   assert.equal(classify(req("POST", "/__fn/discoverPlatformAdministrator")).kind, "deny");

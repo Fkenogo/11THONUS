@@ -24,7 +24,7 @@ export const upstream = Object.freeze({
  * closure and CONFIRMED by tracing the real UI (Staff: sign-in → Bella Salon → Counter with a
  * Loyalty Number + programme → Activity → Profile; Customer: sign-in → Circles/Activity/Profile):
  * authenticate, getAccessibleBusinesses, getBusinessContext, listRewardPrograms,
- * getCounterLoyaltyContext, listMyRecentCounterPurchases, getMyCustomerExperienceOverview,
+ * getCounterCustomerContext, confirmRedemption, listMyRecentCounterPurchases, getMyCustomerExperienceOverview,
  * getMyCustomerIdentityPresentation and listPurchasesWaitingForCustomer were observed on the wire.
  * recordPurchase and the customer confirm/reject/dispute actions are the user-initiated writes of
  * those same screens (not exercised by the read-only trace). Owner-only mutations, onboarding,
@@ -37,7 +37,8 @@ export const CALLABLE_ALLOWLIST = Object.freeze([
   "getBusinessContext",
   // Staff Counter / Activity / Profile
   "listRewardPrograms",
-  "getCounterLoyaltyContext",
+  "getCounterCustomerContext",
+  "confirmRedemption",
   "recordPurchase",
   "listMyRecentCounterPurchases",
   // Customer
