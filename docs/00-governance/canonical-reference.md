@@ -26,11 +26,11 @@
 
 ## 2. Core Reward Model
 
-- **Rule:** Ten customer-verified qualifying units complete the earning requirement; the next eligible product or service is provided by the business as the **On Us Moment** (position 11 in the relationship). (PRD0 PD-006, §13.1–13.2; PRD6 §4.4; Consolidation Audit §4)
+- **Rule:** Ten customer-verified units of one specific qualifying item complete that item's earning requirement; its reward is provided by the business as the **On Us Moment** (position 11 in the relationship). Different qualifying items never pool into one Circle. (PRD0 PD-006, §13.1–13.2; PRD6 §4.4; FD-LOY-ITEM-CIRCLE-001)
 - **Technical threshold:** `requiredVerifiedUnits = 10` — **fixed platform rule in the MVP, not business-configurable**, stored in versioned configuration. (Consolidation Audit §4.2; TRD10 §10.9.2 Threshold Rule)
 - Recommended progress wording: "7 of 10 toward your next one on us." (TRD23 §23.10)
 - One Purchase Record may contain multiple qualifying units (e.g., five coffees → five Verified Units after verification). Legitimate multi-item purchases are never auto-rejected; high quantities may trigger review visibility only. (PD-009/PD-022; PRD6 §11; Consolidation Audit §8)
-- **Only one active or reward-available Loyalty Cycle** exists per customer per Reward Program in the MVP. (PRD6 BR-063; TRD10 §10.11.2)
+- **Only one active or reward-available Loyalty Cycle** exists per customer per Reward Program and qualifying item in the MVP. A Programme with multiple qualifying items may have multiple concurrent Circles for that customer, one per item. (PRD6 BR-063 as clarified by FD-LOY-ITEM-CIRCLE-001; TRD10 §10.11.2 requires alignment)
 - Earned rewards do not auto-expire in the MVP; expiry is architecturally supported. (PRD6 §20; Consolidation Audit §7.8)
 - **OPEN:** overflow-unit allocation policy default (hold pending until redemption) awaits formal confirmation — TRD23 OPD-006, now registered as **DEC-LOY-008** in the [Decision Register](decisions/decision-register.md). Redemption is performed by the authorized business user after online validation; it is atomic and once-only. (TRD23 §23.12)
 
@@ -117,7 +117,7 @@ Identity · Commerce Knowledge · Rules · Reward Programs · Purchase · Loyalt
 - **Customer-Verified Loyalty:** the defining differentiator — the business records, the customer verifies, only then does progress exist. (PRD0 §12)
 - **Purchase Record:** business-submitted record of qualifying commercial activity awaiting or having received customer action; not necessarily proof of payment. (Consolidation Audit §3.4)
 - **Verified Unit:** immutable credit created only from a customer-verified Purchase Record; the sole calculation unit of the Loyalty Engine. (PRD6 §9; Consolidation Audit §3.6)
-- **Loyalty Cycle:** one customer's progress toward one On Us reward within one Reward Program. (Consolidation Audit §3.7)
+- **Loyalty Cycle (Circle):** one customer's progress toward an On Us reward for one specific qualifying item within one Reward Program. (Consolidation Audit §3.7 as clarified by FD-LOY-ITEM-CIRCLE-001)
 - **On Us Moment:** the customer-facing redemption experience. (PRD4 §3; Consolidation Audit §3.8)
 - **Trust Ledger:** product-level concept for the append-only commercial history; implemented as the `trustEvents` collection. (PRD4 §21; TRD10 §10.13)
 - **Knowledge Studio:** editorial governance of the Commerce Knowledge Layer (one taxonomy platform-wide). (Knowledge Studio doc; CP-008)
