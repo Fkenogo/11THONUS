@@ -744,6 +744,7 @@ customerId: string;
 businessId: string;  
 rewardProgramId: string;  
 rewardProgramVersionId: string;  
+qualifyingItemId: string; // DEC-LOY-019: bound to the specific qualifying item from the verified Purchase Record
 loyaltyCycleId: string;  
 purchaseRecordId: string;  
 quantity: number;  
@@ -768,6 +769,7 @@ customerId: string;
 businessId: string;  
 rewardProgramId: string;  
 rewardProgramVersionId: string;  
+qualifyingItemId: string; // DEC-LOY-019: cycle tracks 10+1 progression for exactly this qualifying item
 cycleNumber: number;  
 requiredVerifiedUnits: number;  
 projectedVerifiedUnits: number;  
@@ -789,15 +791,16 @@ It is not the sole source of truth.
 
 It must be reconcilable against verifiedUnits.
 
-### Active Cycle Uniqueness
+### Active Cycle Uniqueness (DEC-LOY-019 amending DEC-LOY-002)
 
 Only one active or reward-available cycle may exist per:
 
 - customer;
 - business;
-- Reward Program.
+- Reward Program;
+- Qualifying Item.
 
-This shall be enforced through transactional server logic.
+This shall be enforced through transactional server logic. A customer may hold concurrent active cycles under the same Reward Program only if they represent distinct Qualifying Items. Two concurrent active cycles for the same Qualifying Item are strictly prohibited.
 
 # 10.12 Reward Domain Collections
 
@@ -809,6 +812,7 @@ customerId: string;
 businessId: string;  
 rewardProgramId: string;  
 rewardProgramVersionId: string;  
+qualifyingItemId: string; // DEC-LOY-019: reward is bound to the qualifying item whose Circle completed
 loyaltyCycleId: string;  
 rewardDescription: string;  
 rewardQuantity: number;  
