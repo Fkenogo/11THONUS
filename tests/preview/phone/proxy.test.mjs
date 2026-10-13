@@ -46,6 +46,27 @@ test("normal body is forwarded intact", async () => {
   await p.stop();
 });
 
+test("B1A/B1R callable envelopes and Firebase bearer tokens are forwarded unchanged", async () => {
+  const p = await startProxy({ maxBodyBytes: LIMIT });
+  for (const name of ["getCounterCustomerContext", "confirmRedemption"]) {
+    const body = JSON.stringify({
+      data: { rawToken: "firebase-id-token", businessId: "business", qrReference: "artifact" },
+    });
+    const res = await rawRequest(p.port, {
+      path: `/__fn/${name}`,
+      headers: { authorization: "Bearer firebase-id-token" },
+      write: (r) => r.end(body),
+    });
+    assert.equal(res.status, 200);
+    assert.equal(res.headers["x-phone-preview-decision"], "functions");
+    const forwarded = p.emulators.functions.requests.at(-1);
+    assert.equal(forwarded.url, `/demo-11thonus/europe-west1/${name}`);
+    assert.equal(forwarded.body.toString(), body);
+    assert.equal(forwarded.headers.authorization, "Bearer firebase-id-token");
+  }
+  await p.stop();
+});
+
 test("a body exactly at the limit is forwarded", async () => {
   const p = await startProxy({ maxBodyBytes: LIMIT });
   const body = Buffer.from(
