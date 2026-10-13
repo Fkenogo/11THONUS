@@ -156,6 +156,7 @@ export type VerifiedUnitRow = {
   readonly customerIdentityId: string;
   readonly rewardProgramId: string;
   readonly rewardProgramVersionId: string;
+  readonly qualifyingItemId: string | null;
   readonly quantity: number;
   readonly entryType: VerifiedUnitEntryType;
   readonly reversesVerifiedUnitId: string | null;
@@ -171,6 +172,7 @@ export type LoyaltyCycleStreamRow = {
   readonly businessId: string;
   readonly customerIdentityId: string;
   readonly rewardProgramId: string;
+  readonly qualifyingItemId: string | null;
   readonly nextCycleSequence: number;
   readonly createdAt: Date;
   readonly updatedAt: Date;
@@ -183,6 +185,7 @@ export type LoyaltyCycleRow = {
   readonly businessId: string;
   readonly customerIdentityId: string;
   readonly rewardProgramId: string;
+  readonly qualifyingItemId: string | null;
   readonly openedUnderVersionId: string;
   readonly sequenceNumber: number;
   readonly state: LoyaltyCycleState;
@@ -203,6 +206,7 @@ export type AllocationPositionRow = {
   readonly customerIdentityId: string;
   readonly rewardProgramId: string;
   readonly rewardProgramVersionId: string;
+  readonly qualifyingItemId: string | null;
   readonly allocatedQuantity: number;
   readonly allocationOrder: number;
   readonly state: AllocationPositionState;
@@ -234,6 +238,7 @@ export type RewardRow = {
   readonly customerIdentityId: string;
   readonly rewardProgramId: string;
   readonly rewardProgramVersionId: string;
+  readonly qualifyingItemId: string | null;
   readonly rewardDescription: string;
   readonly rewardQuantity: number;
   readonly state: RewardState;

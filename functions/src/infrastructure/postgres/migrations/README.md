@@ -200,6 +200,16 @@ migration file in this directory.
 `(business_id, recorded_by_user_id, created_at DESC, id DESC)` serving the Staff Counter's
 "my recent submissions" read. Index only; no table, column or data change.
 
+`ITEM-SPECIFIC CIRCLE PACKAGE B` adds `0030`: the additive
+`qualifying_item_id UUID NULL` column foundation across 5 core loyalty tables
+(`verified_units`, `loyalty_cycle_streams`, `loyalty_cycles`,
+`verified_unit_allocations`, `rewards`), protected by nullable foreign keys
+against `qualifying_items (id, business_id)` and
+`reward_program_version_qualifying_items (reward_program_version_id, qualifying_item_id)`,
+with supporting indexes. Transitional and additive in Package B: these columns
+are not yet loyalty authority and existing runtime writers continue to operate
+with nullable columns until later cutover packages (Packages C, D, E).
+
 Naming convention for future migrations added here by later packages:
 
 ```

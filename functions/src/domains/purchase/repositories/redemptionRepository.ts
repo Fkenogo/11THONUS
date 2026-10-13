@@ -76,6 +76,7 @@ type RewardDbRow = {
   customer_identity_id: string;
   reward_program_id: string;
   reward_program_version_id: string;
+  qualifying_item_id: string | null;
   reward_description: string;
   reward_quantity: number;
   state: RewardState;
@@ -93,6 +94,7 @@ function mapRewardRow(row: RewardDbRow): RewardRow {
     customerIdentityId: row.customer_identity_id,
     rewardProgramId: row.reward_program_id,
     rewardProgramVersionId: row.reward_program_version_id,
+    qualifyingItemId: row.qualifying_item_id ?? null,
     rewardDescription: row.reward_description,
     rewardQuantity: row.reward_quantity,
     state: row.state,

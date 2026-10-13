@@ -125,7 +125,7 @@ afterAll(async () => {
 });
 
 describe("Reward Program migrations against a real PostgreSQL instance", () => {
-  it("discovers all twenty migrations in version order", async () => {
+  it("discovers all thirty migrations in version order", async () => {
     const files = await discoverMigrationFiles(migrationsDir);
     expect(files.map((f) => f.version)).toEqual([
       "0001",
@@ -157,6 +157,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0027",
       "0028",
       "0029",
+      "0030",
     ]);
   });
 
@@ -192,6 +193,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0027",
       "0028",
       "0029",
+      "0030",
     ]);
 
     for (const table of [
@@ -263,12 +265,13 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0027",
       "0028",
       "0029",
+      "0030",
     ]);
   }, 15000);
 
   it("rolls back the full migration set and re-applies cleanly", async () => {
     await migrateUp(pool, migrationsDir);
-    await migrateDown(pool, migrationsDir, 29);
+    await migrateDown(pool, migrationsDir, 30);
 
     for (const table of [
       "reward_programs",
@@ -314,6 +317,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0027",
       "0028",
       "0029",
+      "0030",
     ]);
     const applied = await getAppliedMigrations(pool);
     expect(applied.map((a) => a.version)).toEqual([
@@ -346,6 +350,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0027",
       "0028",
       "0029",
+      "0030",
     ]);
   }, 15000);
 
@@ -388,7 +393,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
 
     // The guard refuses BEFORE dropping anything: governed redemption
     // evidence is never silently discarded by a rollback.
-    await expect(migrateDown(pool, migrationsDir, 10)).rejects.toThrow(/refusing to roll back/i);
+    await expect(migrateDown(pool, migrationsDir, 11)).rejects.toThrow(/refusing to roll back/i);
 
     const reg = await pool.query("SELECT to_regclass('public.redemptions') AS reg");
     expect(reg.rows[0].reg).not.toBeNull();
@@ -637,6 +642,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         "0027",
         "0028",
         "0029",
+        "0030",
       ]);
 
       const preserved = await pool.query<{
@@ -1514,6 +1520,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         "0027",
         "0028",
         "0029",
+        "0030",
       ]);
 
       expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
@@ -1621,6 +1628,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         "0027",
         "0028",
         "0029",
+        "0030",
       ]);
       expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
 
@@ -1695,6 +1703,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         "0027",
         "0028",
         "0029",
+        "0030",
       ]);
       expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
 
@@ -1782,6 +1791,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         "0027",
         "0028",
         "0029",
+        "0030",
       ]);
       expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
     }, 15000);
@@ -1854,6 +1864,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         "0027",
         "0028",
         "0029",
+        "0030",
       ]);
       expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
     }, 15000);
@@ -2215,7 +2226,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         [versionId, item.rows[0].id],
       );
 
-      await migrateDown(pool, migrationsDir, 11);
+      await migrateDown(pool, migrationsDir, 12);
 
       // Structural shell only: table exists, is empty, keeps the 0003
       // shape -- history is NOT reconstructed.
@@ -2255,6 +2266,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         "0027",
         "0028",
         "0029",
+        "0030",
       ]);
       expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
     }, 15000);
@@ -2454,8 +2466,8 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         await pool.query(`UPDATE purchase_records SET status = 'pending_admission' WHERE id = $1`, [
           id,
         ]);
-        // 0028 and 0027 sit above 0026: roll them back first (no BR/admission rows exist), then 0026 refuses.
-        await migrateDown(pool, migrationsDir, 3);
+        // 0029, 0028 and 0027 sit above 0026: roll them back first (no BR/admission rows exist), then 0026 refuses.
+        await migrateDown(pool, migrationsDir, 4);
         await expect(migrateDown(pool, migrationsDir, 2)).rejects.toThrow(
           /0026: refusing to roll back/i,
         );
@@ -2471,7 +2483,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
 
       it("down restores the pre-0026 schema exactly, and up re-applies cleanly (round trip)", async () => {
         const id = await seedWaitingPurchase("roundtrip");
-        await migrateDown(pool, migrationsDir, 4); // 0029, 0028, 0027 then 0026
+        await migrateDown(pool, migrationsDir, 5); // 0030, 0029, 0028, 0027 then 0026
         const defs = await pool.query<{ def: string }>(
           `SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint
             WHERE conrelid = 'purchase_records'::regclass
@@ -2492,7 +2504,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         ).rejects.toThrow(/purchase_records_status_check/);
 
         const again = await migrateUp(pool, migrationsDir);
-        expect(again.applied).toEqual(["0026", "0027", "0028", "0029"]);
+        expect(again.applied).toEqual(["0026", "0027", "0028", "0029", "0030"]);
         await pool.query(`UPDATE purchase_records SET status = 'pending_admission' WHERE id = $1`, [
           id,
         ]);
@@ -2686,7 +2698,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
 
       it("down succeeds when no Business Review data exists, restores the 0027 shape, and up re-applies", async () => {
         await seedPurchase("down-clean", "waiting_for_customer");
-        await migrateDown(pool, migrationsDir, 2);
+        await migrateDown(pool, migrationsDir, 3);
         const cols = await pool.query(
           `SELECT 1 FROM information_schema.columns WHERE table_name='purchase_records' AND column_name LIKE 'business_review_%'`,
         );
@@ -2703,12 +2715,12 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
           ).rows,
         ).toHaveLength(0);
         const again = await migrateUp(pool, migrationsDir);
-        expect(again.applied).toEqual(["0028", "0029"]);
+        expect(again.applied).toEqual(["0028", "0029", "0030"]);
       });
 
       it("down FAILS CLOSED while a Purchase is in review, and changes nothing", async () => {
         await seedPurchase("down-br", "business_review_required");
-        await expect(migrateDown(pool, migrationsDir, 2)).rejects.toThrow(
+        await expect(migrateDown(pool, migrationsDir, 3)).rejects.toThrow(
           /0028: refusing to roll back/i,
         );
         const v = await pool.query<{ max: string }>(`SELECT max(version) FROM schema_migrations`);
@@ -2728,7 +2740,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
           `UPDATE reward_program_versions SET business_review_quantity_threshold=5 WHERE id=$1`,
           [versionId],
         );
-        await expect(migrateDown(pool, migrationsDir, 2)).rejects.toThrow(
+        await expect(migrateDown(pool, migrationsDir, 3)).rejects.toThrow(
           /0028: refusing to roll back/i,
         );
       });
@@ -2736,9 +2748,271 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       it("down FAILS CLOSED while a decided Purchase keeps Business Review attribution", async () => {
         const { id } = await seedPurchase("down-decided", "business_review_required");
         await approveSql(id);
-        await expect(migrateDown(pool, migrationsDir, 2)).rejects.toThrow(
+        await expect(migrateDown(pool, migrationsDir, 3)).rejects.toThrow(
           /0028: refusing to roll back/i,
         );
+      });
+    });
+
+    describe("DEC-LOY-019 / Package B: 0030 Item-Specific Circle Additive Foundation", () => {
+      it("adds nullable qualifying_item_id column to all 5 core tables", async () => {
+        await migrateUp(pool, migrationsDir);
+        const tables = [
+          "verified_units",
+          "loyalty_cycle_streams",
+          "loyalty_cycles",
+          "verified_unit_allocations",
+          "rewards",
+        ];
+        for (const table of tables) {
+          const col = await pool.query<{
+            column_name: string;
+            is_nullable: string;
+            udt_name: string;
+          }>(
+            `SELECT column_name, is_nullable, udt_name
+             FROM information_schema.columns
+             WHERE table_name = $1 AND column_name = 'qualifying_item_id'`,
+            [table],
+          );
+          expect(col.rows).toHaveLength(1);
+          expect(col.rows[0].is_nullable).toBe("YES");
+          expect(col.rows[0].udt_name).toBe("uuid");
+        }
+      });
+
+      it("creates index on qualifying_item_id across all 5 core tables", async () => {
+        await migrateUp(pool, migrationsDir);
+        const expectedIndexes = [
+          { table: "verified_units", index: "verified_units_qualifying_item_idx" },
+          { table: "loyalty_cycle_streams", index: "loyalty_cycle_streams_qualifying_item_idx" },
+          { table: "loyalty_cycles", index: "loyalty_cycles_qualifying_item_idx" },
+          {
+            table: "verified_unit_allocations",
+            index: "verified_unit_allocations_qualifying_item_idx",
+          },
+          { table: "rewards", index: "rewards_qualifying_item_idx" },
+        ];
+        for (const { table, index } of expectedIndexes) {
+          const idx = await pool.query(
+            `SELECT indexname FROM pg_indexes WHERE tablename = $1 AND indexname = $2`,
+            [table, index],
+          );
+          expect(idx.rows).toHaveLength(1);
+        }
+      });
+
+      it("enforces foreign key constraint to qualifying_items(id) when qualifying_item_id is non-null", async () => {
+        await migrateUp(pool, migrationsDir);
+        const businessId = "biz-fk-test";
+        const programId = await insertProgram(businessId);
+        const versionId = await insertVersion(programId);
+        const nonExistentItemId = "99999999-9999-4999-8999-999999999999";
+        const cycleId = "33333333-3333-4333-8333-333333333333";
+        const unitId = "55555555-5555-4555-8555-555555555555";
+        const allocationId = "66666666-6666-4666-8666-666666666666";
+        const rewardId = "77777777-7777-4777-8777-777777777777";
+
+        // loyalty_cycle_streams FK check
+        await expect(
+          pool.query(
+            `INSERT INTO loyalty_cycle_streams (business_id, customer_identity_id, reward_program_id, qualifying_item_id)
+             VALUES ($1, 'cust-1', $2, $3)`,
+            [businessId, programId, nonExistentItemId],
+          ),
+        ).rejects.toThrow(
+          /violates foreign key constraint "loyalty_cycle_streams_item_in_business"/,
+        );
+
+        // create stream without invalid item so cycle FK check can run
+        await pool.query(
+          `INSERT INTO loyalty_cycle_streams (business_id, customer_identity_id, reward_program_id)
+           VALUES ($1, 'cust-1', $2)`,
+          [businessId, programId],
+        );
+
+        // loyalty_cycles FK check
+        await expect(
+          pool.query(
+            `INSERT INTO loyalty_cycles (id, business_id, customer_identity_id, reward_program_id, opened_under_version_id, sequence_number, state, allocated_units, correlation_id, qualifying_item_id)
+             VALUES ($1, $2, 'cust-1', $3, $4, 1, 'active', 0, 'corr-fk', $5)`,
+            [cycleId, businessId, programId, versionId, nonExistentItemId],
+          ),
+        ).rejects.toThrow(/violates foreign key constraint "loyalty_cycles_item_in_business"/);
+
+        // create cycle without invalid item so downstream FK checks can run
+        await pool.query(
+          `INSERT INTO loyalty_cycles (id, business_id, customer_identity_id, reward_program_id, opened_under_version_id, sequence_number, state, allocated_units, correlation_id)
+           VALUES ($1, $2, 'cust-1', $3, $4, 1, 'active', 0, 'corr-fk')`,
+          [cycleId, businessId, programId, versionId],
+        );
+
+        // purchase record for unit FK check
+        const purchaseRes = await pool.query<{ id: string }>(
+          `INSERT INTO purchase_records
+             (business_id, customer_identity_id, presented_artifact_type, presented_artifact_reference,
+              canonical_loyalty_number_value, reward_program_id, reward_program_version_id,
+              shared_loyalty_number_allowed, multiple_units_allowed, branch_id,
+              recorded_by_user_id, recorded_by_role, quantity, qualifying_item_id, item_label,
+              purchase_date, correlation_id)
+           VALUES ($1, 'cust-1', 'loyalty_number', 'ABC234',
+                   'ABC234', $2, $3,
+                   false, true, 'branch-1',
+                   'user-1', 'staff', 1, NULL, 'Snapshot',
+                   now(), 'corr-fk') RETURNING id`,
+          [businessId, programId, versionId],
+        );
+        const purchaseId = purchaseRes.rows[0].id;
+
+        // verified_units FK check
+        await expect(
+          pool.query(
+            `INSERT INTO verified_units (id, purchase_record_id, business_id, customer_identity_id, reward_program_id, reward_program_version_id, quantity, entry_type, reason_code, correlation_id, created_by, qualifying_item_id)
+             VALUES ($1, $2, $3, 'cust-1', $4, $5, 1, 'credit', 'purchase_verified', 'corr-fk', 'user-1', $6)`,
+            [unitId, purchaseId, businessId, programId, versionId, nonExistentItemId],
+          ),
+        ).rejects.toThrow(/violates foreign key constraint "verified_units_item_in_business"/);
+
+        // create verified_unit without invalid item
+        await pool.query(
+          `INSERT INTO verified_units (id, purchase_record_id, business_id, customer_identity_id, reward_program_id, reward_program_version_id, quantity, entry_type, reason_code, correlation_id, created_by)
+           VALUES ($1, $2, $3, 'cust-1', $4, $5, 1, 'credit', 'purchase_verified', 'corr-fk', 'user-1')`,
+          [unitId, purchaseId, businessId, programId, versionId],
+        );
+
+        // verified_unit_allocations FK check
+        await expect(
+          pool.query(
+            `INSERT INTO verified_unit_allocations (id, verified_unit_id, loyalty_cycle_id, business_id, customer_identity_id, reward_program_id, reward_program_version_id, allocated_quantity, allocation_order, state, qualifying_item_id)
+             VALUES ($1, $2, $3, $4, 'cust-1', $5, $6, 1, 0, 'allocated', $7)`,
+            [allocationId, unitId, cycleId, businessId, programId, versionId, nonExistentItemId],
+          ),
+        ).rejects.toThrow(
+          /violates foreign key constraint "verified_unit_allocations_item_in_business"/,
+        );
+
+        // rewards FK check
+        await expect(
+          pool.query(
+            `INSERT INTO rewards (id, loyalty_cycle_id, business_id, customer_identity_id, reward_program_id, reward_program_version_id, reward_description, reward_quantity, state, correlation_id, qualifying_item_id)
+             VALUES ($1, $2, $3, 'cust-1', $4, $5, 'Reward', 1, 'available', 'corr-fk', $6)`,
+            [rewardId, cycleId, businessId, programId, versionId, nonExistentItemId],
+          ),
+        ).rejects.toThrow(/violates foreign key constraint "rewards_item_in_business"/);
+      });
+
+      it("supports NULL qualifying_item_id across all 5 tables preserving legacy writers", async () => {
+        await migrateUp(pool, migrationsDir);
+        const businessId = "biz-null-test";
+        const programId = await insertProgram(businessId);
+        const versionId = await insertVersion(programId);
+        const cycleId = "33333333-3333-4333-8333-333333333333";
+        const unitId = "55555555-5555-4555-8555-555555555555";
+        const allocationId = "66666666-6666-4666-8666-666666666666";
+        const rewardId = "77777777-7777-4777-8777-777777777777";
+
+        // legacy writes with NULL qualifying_item_id (or omitted)
+        await pool.query(
+          `INSERT INTO loyalty_cycle_streams (business_id, customer_identity_id, reward_program_id)
+           VALUES ($1, 'cust-1', $2)`,
+          [businessId, programId],
+        );
+        await pool.query(
+          `INSERT INTO loyalty_cycles (id, business_id, customer_identity_id, reward_program_id, opened_under_version_id, sequence_number, state, allocated_units, correlation_id)
+           VALUES ($1, $2, 'cust-1', $3, $4, 1, 'active', 0, 'corr-null')`,
+          [cycleId, businessId, programId, versionId],
+        );
+        const purchaseRes = await pool.query<{ id: string }>(
+          `INSERT INTO purchase_records
+             (business_id, customer_identity_id, presented_artifact_type, presented_artifact_reference,
+              canonical_loyalty_number_value, reward_program_id, reward_program_version_id,
+              shared_loyalty_number_allowed, multiple_units_allowed, branch_id,
+              recorded_by_user_id, recorded_by_role, quantity, qualifying_item_id, item_label,
+              purchase_date, correlation_id)
+           VALUES ($1, 'cust-1', 'loyalty_number', 'ABC234',
+                   'ABC234', $2, $3,
+                   false, true, 'branch-1',
+                   'user-1', 'staff', 1, NULL, 'Snapshot',
+                   now(), 'corr-null') RETURNING id`,
+          [businessId, programId, versionId],
+        );
+        const purchaseId = purchaseRes.rows[0].id;
+        await pool.query(
+          `INSERT INTO verified_units (id, purchase_record_id, business_id, customer_identity_id, reward_program_id, reward_program_version_id, quantity, entry_type, reason_code, correlation_id, created_by)
+           VALUES ($1, $2, $3, 'cust-1', $4, $5, 1, 'credit', 'purchase_verified', 'corr-null', 'user-1')`,
+          [unitId, purchaseId, businessId, programId, versionId],
+        );
+        await pool.query(
+          `INSERT INTO verified_unit_allocations (id, verified_unit_id, loyalty_cycle_id, business_id, customer_identity_id, reward_program_id, reward_program_version_id, allocated_quantity, allocation_order, state)
+           VALUES ($1, $2, $3, $4, 'cust-1', $5, $6, 1, 0, 'allocated')`,
+          [allocationId, unitId, cycleId, businessId, programId, versionId],
+        );
+        await pool.query(
+          `INSERT INTO rewards (id, loyalty_cycle_id, business_id, customer_identity_id, reward_program_id, reward_program_version_id, reward_description, reward_quantity, state, correlation_id)
+           VALUES ($1, $2, $3, 'cust-1', $4, $5, 'Reward', 1, 'available', 'corr-null')`,
+          [rewardId, cycleId, businessId, programId, versionId],
+        );
+
+        // verify all 5 rows exist with NULL qualifying_item_id
+        const streamRow = await pool.query<{ qualifying_item_id: string | null }>(
+          `SELECT qualifying_item_id FROM loyalty_cycle_streams WHERE business_id = $1`,
+          [businessId],
+        );
+        expect(streamRow.rows[0].qualifying_item_id).toBeNull();
+        const cycleRow = await pool.query<{ qualifying_item_id: string | null }>(
+          `SELECT qualifying_item_id FROM loyalty_cycles WHERE id = $1`,
+          [cycleId],
+        );
+        expect(cycleRow.rows[0].qualifying_item_id).toBeNull();
+        const unitRow = await pool.query<{ qualifying_item_id: string | null }>(
+          `SELECT qualifying_item_id FROM verified_units WHERE id = $1`,
+          [unitId],
+        );
+        expect(unitRow.rows[0].qualifying_item_id).toBeNull();
+        const allocRow = await pool.query<{ qualifying_item_id: string | null }>(
+          `SELECT qualifying_item_id FROM verified_unit_allocations WHERE id = $1`,
+          [allocationId],
+        );
+        expect(allocRow.rows[0].qualifying_item_id).toBeNull();
+        const rewardRow = await pool.query<{ qualifying_item_id: string | null }>(
+          `SELECT qualifying_item_id FROM rewards WHERE id = $1`,
+          [rewardId],
+        );
+        expect(rewardRow.rows[0].qualifying_item_id).toBeNull();
+      });
+
+      it("down-migration removes qualifying_item_id columns and indexes, and up-migration re-applies cleanly", async () => {
+        await migrateUp(pool, migrationsDir);
+        // Roll back migration 0030
+        const downResult = await migrateDown(pool, migrationsDir, 1);
+        expect(downResult.rolledBack).toEqual(["0030"]);
+
+        const tables = [
+          "verified_units",
+          "loyalty_cycle_streams",
+          "loyalty_cycles",
+          "verified_unit_allocations",
+          "rewards",
+        ];
+        for (const table of tables) {
+          const col = await pool.query(
+            `SELECT 1 FROM information_schema.columns WHERE table_name = $1 AND column_name = 'qualifying_item_id'`,
+            [table],
+          );
+          expect(col.rows).toHaveLength(0);
+        }
+
+        // Re-apply migration 0030 cleanly
+        const upResult = await migrateUp(pool, migrationsDir);
+        expect(upResult.applied).toEqual(["0030"]);
+
+        for (const table of tables) {
+          const col = await pool.query(
+            `SELECT 1 FROM information_schema.columns WHERE table_name = $1 AND column_name = 'qualifying_item_id'`,
+            [table],
+          );
+          expect(col.rows).toHaveLength(1);
+        }
       });
     });
   });
