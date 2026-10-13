@@ -156,6 +156,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0026",
       "0027",
       "0028",
+      "0029",
     ]);
   });
 
@@ -190,6 +191,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0026",
       "0027",
       "0028",
+      "0029",
     ]);
 
     for (const table of [
@@ -260,12 +262,13 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0026",
       "0027",
       "0028",
+      "0029",
     ]);
   }, 15000);
 
   it("rolls back the full migration set and re-applies cleanly", async () => {
     await migrateUp(pool, migrationsDir);
-    await migrateDown(pool, migrationsDir, 28);
+    await migrateDown(pool, migrationsDir, 29);
 
     for (const table of [
       "reward_programs",
@@ -310,6 +313,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0026",
       "0027",
       "0028",
+      "0029",
     ]);
     const applied = await getAppliedMigrations(pool);
     expect(applied.map((a) => a.version)).toEqual([
@@ -341,6 +345,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       "0026",
       "0027",
       "0028",
+      "0029",
     ]);
   }, 15000);
 
@@ -383,7 +388,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
 
     // The guard refuses BEFORE dropping anything: governed redemption
     // evidence is never silently discarded by a rollback.
-    await expect(migrateDown(pool, migrationsDir, 9)).rejects.toThrow(/refusing to roll back/i);
+    await expect(migrateDown(pool, migrationsDir, 10)).rejects.toThrow(/refusing to roll back/i);
 
     const reg = await pool.query("SELECT to_regclass('public.redemptions') AS reg");
     expect(reg.rows[0].reg).not.toBeNull();
@@ -631,6 +636,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         "0026",
         "0027",
         "0028",
+        "0029",
       ]);
 
       const preserved = await pool.query<{
@@ -1507,6 +1513,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         "0026",
         "0027",
         "0028",
+        "0029",
       ]);
 
       expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
@@ -1613,6 +1620,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         "0026",
         "0027",
         "0028",
+        "0029",
       ]);
       expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
 
@@ -1686,6 +1694,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         "0026",
         "0027",
         "0028",
+        "0029",
       ]);
       expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
 
@@ -1772,6 +1781,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         "0026",
         "0027",
         "0028",
+        "0029",
       ]);
       expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
     }, 15000);
@@ -1843,6 +1853,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         "0026",
         "0027",
         "0028",
+        "0029",
       ]);
       expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
     }, 15000);
@@ -2204,7 +2215,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         [versionId, item.rows[0].id],
       );
 
-      await migrateDown(pool, migrationsDir, 10);
+      await migrateDown(pool, migrationsDir, 11);
 
       // Structural shell only: table exists, is empty, keeps the 0003
       // shape -- history is NOT reconstructed.
@@ -2243,6 +2254,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         "0026",
         "0027",
         "0028",
+        "0029",
       ]);
       expect(await tableExists("reward_program_version_qualifying_nodes")).toBe(false);
     }, 15000);
@@ -2443,8 +2455,8 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
           id,
         ]);
         // 0028 and 0027 sit above 0026: roll them back first (no BR/admission rows exist), then 0026 refuses.
-        await migrateDown(pool, migrationsDir, 2);
-        await expect(migrateDown(pool, migrationsDir, 1)).rejects.toThrow(
+        await migrateDown(pool, migrationsDir, 3);
+        await expect(migrateDown(pool, migrationsDir, 2)).rejects.toThrow(
           /0026: refusing to roll back/i,
         );
         const row = await pool.query<{ status: string }>(
@@ -2459,7 +2471,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
 
       it("down restores the pre-0026 schema exactly, and up re-applies cleanly (round trip)", async () => {
         const id = await seedWaitingPurchase("roundtrip");
-        await migrateDown(pool, migrationsDir, 3); // 0028, 0027 then 0026
+        await migrateDown(pool, migrationsDir, 4); // 0029, 0028, 0027 then 0026
         const defs = await pool.query<{ def: string }>(
           `SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint
             WHERE conrelid = 'purchase_records'::regclass
@@ -2480,7 +2492,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         ).rejects.toThrow(/purchase_records_status_check/);
 
         const again = await migrateUp(pool, migrationsDir);
-        expect(again.applied).toEqual(["0026", "0027", "0028"]);
+        expect(again.applied).toEqual(["0026", "0027", "0028", "0029"]);
         await pool.query(`UPDATE purchase_records SET status = 'pending_admission' WHERE id = $1`, [
           id,
         ]);
@@ -2674,7 +2686,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
 
       it("down succeeds when no Business Review data exists, restores the 0027 shape, and up re-applies", async () => {
         await seedPurchase("down-clean", "waiting_for_customer");
-        await migrateDown(pool, migrationsDir, 1);
+        await migrateDown(pool, migrationsDir, 2);
         const cols = await pool.query(
           `SELECT 1 FROM information_schema.columns WHERE table_name='purchase_records' AND column_name LIKE 'business_review_%'`,
         );
@@ -2691,12 +2703,12 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
           ).rows,
         ).toHaveLength(0);
         const again = await migrateUp(pool, migrationsDir);
-        expect(again.applied).toEqual(["0028"]);
+        expect(again.applied).toEqual(["0028", "0029"]);
       });
 
       it("down FAILS CLOSED while a Purchase is in review, and changes nothing", async () => {
         await seedPurchase("down-br", "business_review_required");
-        await expect(migrateDown(pool, migrationsDir, 1)).rejects.toThrow(
+        await expect(migrateDown(pool, migrationsDir, 2)).rejects.toThrow(
           /0028: refusing to roll back/i,
         );
         const v = await pool.query<{ max: string }>(`SELECT max(version) FROM schema_migrations`);
@@ -2716,7 +2728,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
           `UPDATE reward_program_versions SET business_review_quantity_threshold=5 WHERE id=$1`,
           [versionId],
         );
-        await expect(migrateDown(pool, migrationsDir, 1)).rejects.toThrow(
+        await expect(migrateDown(pool, migrationsDir, 2)).rejects.toThrow(
           /0028: refusing to roll back/i,
         );
       });
@@ -2724,7 +2736,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
       it("down FAILS CLOSED while a decided Purchase keeps Business Review attribution", async () => {
         const { id } = await seedPurchase("down-decided", "business_review_required");
         await approveSql(id);
-        await expect(migrateDown(pool, migrationsDir, 1)).rejects.toThrow(
+        await expect(migrateDown(pool, migrationsDir, 2)).rejects.toThrow(
           /0028: refusing to roll back/i,
         );
       });

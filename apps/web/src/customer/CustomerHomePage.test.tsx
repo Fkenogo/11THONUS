@@ -85,6 +85,34 @@ describe("CustomerHomePage prototype states", () => {
     expect(screen.queryByText("Reward unlocked")).toBeNull();
   });
 
+  it("offers direct Review & confirm navigation for a waiting purchase", () => {
+    state.current = {
+      circles: [],
+      availableRewards: [],
+      activity: [
+        {
+          id: "event-1",
+          purchaseRecordId: "purchase-1",
+          businessId: "biz-1",
+          businessName: "Café Lumière",
+          rewardProgramId: "program-1",
+          programmeName: "Coffee Circle",
+          itemLabel: "Coffee",
+          quantity: 1,
+          eventKind: "purchase",
+          status: "waiting_for_customer",
+          rewardDescription: null,
+          occurredAt: "2026-10-01T12:00:00.000Z",
+        },
+      ],
+    };
+    renderPage();
+    expect(screen.getByRole("link", { name: "Review & confirm" })).toHaveAttribute(
+      "href",
+      "/customer/activity/purchase-1",
+    );
+  });
+
   it("gives a server-available reward the primary card and routes its action to the canonical identity", () => {
     state.current = {
       circles: [

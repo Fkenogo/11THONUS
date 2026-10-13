@@ -32,7 +32,8 @@
     "preview:verify": "node tests/preview/cli.mjs verify",
     "preview:accounts": "node tests/preview/cli.mjs accounts",
     "test:preview-tooling": "node --test tests/preview/guards.test.mjs tests/preview/ports.test.mjs",
-    "prepare": "husky"
+    "prepare": "husky",
+    "preview:counter-checks": "node tests/preview/cli.mjs counter-checks"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",

@@ -9,6 +9,7 @@
 //   migrate  apply canonical migrations to the local preview database only
 //   verify   compare the live data to the committed expected fingerprint
 //   accounts print the preview identities and counter artifacts
+//   counter-checks  prove the Staff Counter's server-side facts (add --write for the idempotency demo)
 //
 // Local only. Every destructive/writing command first runs the production-safety guards
 // (`lib/guards.mjs`); they refuse anything that is not loopback + `demo-11thonus` +
@@ -50,6 +51,7 @@ import {
   stopPreviewProcesses,
 } from "./lib/runtime.mjs";
 import { computeFingerprint } from "./seed/fingerprint.mjs";
+import { runCounterChecks } from "./counter-checks.mjs";
 import { runFounderSlice1 } from "./seed/scenario.mjs";
 import { loadIdentities } from "./seed/session.mjs";
 
@@ -347,6 +349,16 @@ async function commandVerify({ write = false } = {}) {
   log("Founder Preview data matches the expected deterministic fingerprint.");
 }
 
+async function commandCounterChecks({ write = false } = {}) {
+  pinTarget();
+  const state = readState();
+  if (!state)
+    throw new Error("No seed state found. Run `pnpm preview:start` or `pnpm preview:reset`.");
+  if (!(await previewEmulatorsReady()))
+    throw new Error("The Founder Preview emulators are not running. Run `pnpm preview:start`.");
+  await runCounterChecks({ state, write, log });
+}
+
 function commandAccounts() {
   const { password, identities } = loadIdentities();
   const state = readState();
@@ -373,6 +385,7 @@ const commands = {
   migrate: commandMigrate,
   verify: () => commandVerify({ write: flags.includes("--write") }),
   accounts: async () => commandAccounts(),
+  "counter-checks": () => commandCounterChecks({ write: flags.includes("--write") }),
 };
 
 if (!commands[command]) {

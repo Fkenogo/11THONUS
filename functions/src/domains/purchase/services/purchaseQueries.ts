@@ -25,6 +25,7 @@
 import type { Firestore } from "firebase-admin/firestore";
 import type { PlatformPostgresPool } from "../../../infrastructure/postgres/postgresPool";
 import {
+  authorizePurchaseRecord,
   authorizeBusinessLoyaltyVisibilityRead,
   authorizeBusinessPurchaseRead,
   authorizeBusinessReviewQueueRead,
@@ -43,10 +44,12 @@ import {
   listBusinessReviewQueue as listBusinessReviewQueueRows,
   listPurchaseRecordEvents,
   listPurchaseRecordsForBusiness,
+  listRecentPurchaseRecordsByRecorder,
   listWaitingPurchasesForCustomer,
 } from "../repositories/purchaseRecordRepository";
 import { listAvailableRewardsForCustomer as listAvailableRewardRows } from "../repositories/loyaltyCycleRepository";
 import type {
+  PresentedArtifactType,
   PurchaseRecordEventRow,
   PurchaseRecordRow,
   PurchaseStatus,
@@ -138,6 +141,125 @@ export async function listPurchasesForBusiness(
   });
   return {
     purchases: reviewer ? purchases : purchases.map(redactReviewAttributionForNonReviewer),
+  };
+}
+
+const COUNTER_RECENT_DEFAULT_LIMIT = 10;
+const COUNTER_RECENT_MAX_LIMIT = 20;
+const RECENT_CURSOR_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Opaque keyset cursor for the Staff Activity view: an encoding of the last returned row's own
+ * `(created_at, id)`. It carries nothing the caller was not already given, never widens the scope
+ * (the recorder and Business predicates are applied regardless), and a tampered or malformed value
+ * is rejected as a validation failure rather than interpreted.
+ */
+function encodeRecentCursor(position: { createdAtCursor: string; id: string }): string {
+  return Buffer.from(JSON.stringify([position.createdAtCursor, position.id]), "utf8").toString(
+    "base64url",
+  );
+}
+
+function decodeRecentCursor(cursor: string): { createdAtCursor: string; id: string } {
+  try {
+    const parsed: unknown = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8"));
+    if (
+      Array.isArray(parsed) &&
+      parsed.length === 2 &&
+      typeof parsed[0] === "string" &&
+      typeof parsed[1] === "string" &&
+      RECENT_CURSOR_PATTERN.test(parsed[0]) &&
+      UUID_PATTERN.test(parsed[1])
+    ) {
+      return { createdAtCursor: parsed[0], id: parsed[1] };
+    }
+  } catch {
+    // fall through to the uniform validation failure
+  }
+  throw new PurchaseDomainError(
+    "VALIDATION_FAILED",
+    "The activity cursor is not valid.",
+    undefined,
+    "generic_validation_failed",
+  );
+}
+const CUSTOMER_CODE_HINT_LENGTH = 3;
+
+/**
+ * One row of the Staff Counter's "my recent submissions" feed (`EA-BL-001-CORR-002-B`, D6). A
+ * purpose-built projection -- not a `PurchaseRecordRow` -- so it cannot carry reviewer identity, the
+ * Business Review reason, the review threshold, the customer identity id, the recorder, or any
+ * commercial field. Never a generic customer-history surface.
+ */
+export type CounterRecentPurchase = {
+  readonly id: string;
+  /**
+   * ISO-8601 instant. A string on purpose: the callable transport serialises a `Date` as an empty
+   * object, so any Date reaching the wire must already be text.
+   */
+  readonly recordedAt: string;
+  readonly itemLabel: string;
+  readonly quantity: number;
+  /** The Purchase's own lifecycle status; the Business Review outcome is just this status (no reviewer, no reason). */
+  readonly status: PurchaseStatus;
+  readonly presentedVia: PresentedArtifactType;
+  /** Last characters of the Customer's Loyalty Number only when Staff typed it; `null` for a QR scan. */
+  readonly customerCodeHint: string | null;
+};
+
+/**
+ * The calling member's OWN most recent Counter submissions for one Business.
+ *
+ * Authority is the same live `purchase.record` evaluation as `recordPurchase` itself (Staff,
+ * authorised Manager, Owner -- one authority for the whole Counter); a suspended, removed or
+ * non-member actor fails closed. The recorder scope is the server-resolved `userId` applied in SQL:
+ * no client-supplied recorder, no Business-wide fetch, no colleague rows. Bounded, newest first.
+ * Owner/Manager keep the unchanged Business-wide `listPurchasesForBusiness`; this read never
+ * replaces or narrows it.
+ */
+export async function listMyRecentCounterPurchases(
+  db: Firestore,
+  pool: PlatformPostgresPool,
+  params: {
+    readonly userId: string;
+    readonly businessId: string;
+    readonly limit?: number | null;
+    /** Opaque cursor returned by a previous page (`nextCursor`); omitted = newest page. */
+    readonly cursor?: string | null;
+  },
+): Promise<{ readonly purchases: CounterRecentPurchase[]; readonly nextCursor: string | null }> {
+  await authorizePurchaseRecord(db, params.userId, params.businessId);
+  const limit = params.limit ?? COUNTER_RECENT_DEFAULT_LIMIT;
+  if (!Number.isInteger(limit) || limit < 1 || limit > COUNTER_RECENT_MAX_LIMIT) {
+    throw new PurchaseDomainError(
+      "VALIDATION_FAILED",
+      `Recent limit must be an integer between 1 and ${COUNTER_RECENT_MAX_LIMIT}.`,
+      undefined,
+      "generic_validation_failed",
+    );
+  }
+  const after = params.cursor ? decodeRecentCursor(params.cursor) : null;
+  const page = await listRecentPurchaseRecordsByRecorder(pool, {
+    businessId: params.businessId,
+    recordedByUserId: params.userId,
+    limit,
+    after,
+  });
+  return {
+    nextCursor: page.next ? encodeRecentCursor(page.next) : null,
+    purchases: page.rows.map((row) => ({
+      id: row.id,
+      recordedAt: row.createdAt.toISOString(),
+      itemLabel: row.itemLabel,
+      quantity: row.quantity,
+      status: row.status,
+      presentedVia: row.presentedArtifactType,
+      customerCodeHint:
+        row.presentedArtifactType === "loyalty_number"
+          ? row.canonicalLoyaltyNumberValue.slice(-CUSTOMER_CODE_HINT_LENGTH)
+          : null,
+    })),
   };
 }
 

@@ -17,6 +17,7 @@ import { DashboardTermsPage } from "./DashboardTermsPage";
 import { RewardProgramManagementPage } from "./RewardProgramManagementPage";
 import { PurchaseRecordsPage } from "./PurchaseRecordsPage";
 import { CustomerRewardsProgressPage } from "./CustomerRewardsProgressPage";
+import { CounterPage } from "../counter/CounterPage";
 
 export function BusinessDashboardRoutes({ context }: { context: BusinessContext }) {
   return (
@@ -29,6 +30,9 @@ export function BusinessDashboardRoutes({ context }: { context: BusinessContext 
         <Route path="terms" element={<DashboardTermsPage context={context} />} />
         <Route path="reward-programs" element={<RewardProgramManagementPage context={context} />} />
         <Route path="purchases" element={<PurchaseRecordsPage context={context} />} />
+        {/* `EA-BL-001-CORR-002-B`: the Counter is the frontline `purchase.record` function; an
+            authorised Owner/Manager may use it. Reachable, not added to their navigation. */}
+        <Route path="counter" element={<CounterPage context={context} />} />
         <Route
           path="customer-rewards"
           element={<CustomerRewardsProgressPage context={context} />}

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { BusinessDashboardRoutes } from "./BusinessDashboardRoutes";
 import type { BusinessContext } from "../api/businessContext";
@@ -16,6 +16,11 @@ vi.mock("../hooks/businessQueries", () => ({
   }),
   useStaffInvitationsQuery: () => ({ data: [], status: "success", refetch: vi.fn() }),
   useAccessibleBusinessesQuery: () => ({ data: [], status: "success" }),
+}));
+vi.mock("../counter/CounterPage", () => ({
+  CounterPage: ({ context }: { context: { displayName: string } }) => (
+    <h1>Counter for {context.displayName}</h1>
+  ),
 }));
 vi.mock("../hooks/businessMutations", () => ({
   useUpdateBusinessProfileMutation: () => ({ mutate: vi.fn(), isPending: false, error: undefined }),
@@ -107,5 +112,31 @@ describe("BusinessDashboardRoutes", () => {
     renderAt("/business/biz-123/dashboard/locations");
     expect(screen.getByRole("heading", { name: "Locations" })).toBeInTheDocument();
     expect(screen.getByText("Main Branch")).toBeInTheDocument();
+  });
+
+  it("EA-BL-001-CORR-002-B: an Owner/Manager can reach the Counter (purchase.record authority) inside the unchanged shell", () => {
+    renderAt("/business/biz-123/dashboard/counter");
+    expect(screen.getByRole("heading", { name: "Counter for Acme Salon" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("navigation", { name: "Business Dashboard navigation" }),
+    ).toBeInTheDocument();
+  });
+
+  it("EA-BL-001-CORR-002-B: the Owner/Manager navigation is unchanged — no Counter or Staff-shell entry was added", () => {
+    renderAt("/business/biz-123/dashboard");
+    const nav = screen.getByRole("navigation", { name: "Business Dashboard navigation" });
+    const labels = within(nav)
+      .getAllByRole("link")
+      .map((link) => link.textContent);
+    expect(labels).toEqual([
+      "Overview",
+      "Business Profile",
+      "Locations",
+      "Team",
+      "Business Terms",
+      "Reward Programs",
+      "Purchases",
+      "Customer Rewards",
+    ]);
   });
 });

@@ -48,6 +48,7 @@ import { insertQualifyingItem } from "../../qualifyingItem/repositories/qualifyi
 import { recordPurchase } from "./recordPurchaseCommand";
 import { verifyPurchase } from "./verifyPurchaseCommand";
 import { confirmRedemption } from "./confirmRedemptionCommand";
+import { redemptionRequestHash } from "./purchaseRequestHash";
 import { getRedemptionByRewardId } from "../repositories/redemptionRepository";
 import {
   listAvailableRewardsForCustomer,
@@ -238,7 +239,7 @@ async function setOverride(membershipId: string, direction: "grant" | "revoke") 
     );
 }
 
-async function seedCustomer(): Promise<{ customerId: string; ln: string }> {
+async function seedCustomer(): Promise<{ customerId: string; ln: string; qr: string }> {
   const suffix = nextId("s");
   const customerId = nextId("cust");
   customerSeq += 1;
@@ -272,6 +273,7 @@ async function seedCustomer(): Promise<{ customerId: string; ln: string }> {
     idempotencyKey: `key_ln_${suffix}`,
     requestHash: `hash_ln_${suffix}`,
   });
+  const qr = `qrcrd${customerSeq}ref`;
   await issueQrIdentityForIdentity(db, {
     eventId: `evt_qr_${suffix}`,
     correlationId: `corr_qr_${suffix}`,
@@ -281,11 +283,11 @@ async function seedCustomer(): Promise<{ customerId: string; ln: string }> {
     loyaltyNumber: ln,
     issuedAt: new Date("2026-09-27T00:10:00.000Z"),
     createdBy: customerId,
-    generator: new FixedGenerator(`qrcrd${customerSeq}ref`),
+    generator: new FixedGenerator(qr),
     idempotencyKey: `key_qr_${suffix}`,
     requestHash: `hash_qr_${suffix}`,
   });
-  return { customerId, ln };
+  return { customerId, ln, qr };
 }
 
 type Program = { programId: string; qualifyingItemId: string };
@@ -333,7 +335,7 @@ async function earnUnits(params: {
   businessId: string;
   recorderId: string;
   program: Program;
-  customer: { customerId: string; ln: string };
+  customer: { customerId: string; ln: string; qr: string };
   quantity: number;
   /**
    * The commercial occurrence of THIS purchase. `CORR-003` makes
@@ -420,12 +422,22 @@ async function extraAvailableReward(world: World): Promise<string> {
 
 function confirm(
   world: { businessId: string },
-  params: { userId: string; rewardId: string; idempotencyKey?: string },
+  params: {
+    userId: string;
+    rewardId: string;
+    idempotencyKey?: string;
+    rewardProgramId?: string;
+    artifact?: { kind: "loyalty_number"; value: string } | { kind: "qr_identity"; value: string };
+  },
 ) {
   return confirmRedemption(db, pool, {
     userId: params.userId,
     businessId: world.businessId,
-    request: { rewardId: params.rewardId },
+    request: {
+      rewardId: params.rewardId,
+      ...(params.rewardProgramId ? { rewardProgramId: params.rewardProgramId } : {}),
+      ...(params.artifact ? { artifact: params.artifact } : {}),
+    },
     idempotencyKey: params.idempotencyKey ?? nextId("key"),
     correlationId: nextId("corr"),
   });
@@ -690,6 +702,51 @@ describe("confirmRedemption — tenant isolation", () => {
   });
 });
 
+describe("confirmRedemption — Counter transaction binding (B1R)", () => {
+  it("binds a positive artifact and expected programme to the server-owned Reward", async () => {
+    const world = await seedWorld();
+    const rewardId = await availableRewardId(world);
+    const result = await confirm(world, {
+      userId: world.owner,
+      rewardId,
+      rewardProgramId: world.program.programId,
+      artifact: { kind: "loyalty_number", value: world.customer.ln },
+    });
+    expect(result.reward.id).toBe(rewardId);
+    expect(result.redemption.customerIdentityId).toBe(world.customer.customerId);
+    expect(await countRows("redemptions", rewardId)).toBe(1);
+  });
+
+  it("rejects a same-Business Reward belonging to another resolved customer", async () => {
+    const world = await seedWorld();
+    const otherCustomerRewardId = await extraAvailableReward(world);
+    const error = await confirm(world, {
+      userId: world.owner,
+      rewardId: otherCustomerRewardId,
+      rewardProgramId: world.program.programId,
+      artifact: { kind: "qr_identity", value: world.customer.qr },
+    }).catch((caught) => caught);
+    expect(error).toMatchObject({ category: "RESOURCE_NOT_FOUND" });
+    expect(await rewardState(otherCustomerRewardId)).toBe("available");
+    expect(await countRows("redemptions", otherCustomerRewardId)).toBe(0);
+  });
+
+  it("fails closed when the current programme context differs from the persisted Reward", async () => {
+    const world = await seedWorld();
+    const rewardId = await availableRewardId(world);
+    await expect(
+      confirm(world, {
+        userId: world.owner,
+        rewardId,
+        rewardProgramId: "00000000-0000-4000-8000-000000000000",
+        artifact: { kind: "qr_identity", value: world.customer.qr },
+      }),
+    ).rejects.toMatchObject({ category: "RESOURCE_NOT_FOUND" });
+    expect(await rewardState(rewardId)).toBe("available");
+    expect(await countRows("redemptions", rewardId)).toBe(0);
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Permission model (DEC-LOY-018 D-2) — resolved LIVE on every attempt.
 // ---------------------------------------------------------------------------
@@ -890,16 +947,111 @@ describe("confirmRedemption — permission model", () => {
 // ---------------------------------------------------------------------------
 
 describe("confirmRedemption — idempotency and concurrency", () => {
-  it("replays the stored result for the same key and body, writing nothing twice", async () => {
+  it("preserves the legacy reward-only hash so an existing/internal retry replays", async () => {
     const world = await seedWorld();
     const rewardId = await availableRewardId(world);
     const key = nextId("key");
 
     const first = await confirm(world, { userId: world.owner, rewardId, idempotencyKey: key });
+    // Simulate an idempotency row written by the pre-B1R release. A deployment
+    // must keep this old material recognizable to callers omitting B1R fields.
+    await pool.query("UPDATE idempotency_keys SET request_hash = $2 WHERE idempotency_key = $1", [
+      key,
+      redemptionRequestHash("confirm", world.owner, world.businessId, rewardId, rewardId),
+    ]);
     const replay = await confirm(world, { userId: world.owner, rewardId, idempotencyKey: key });
 
     expect(replay.redemption.id).toBe(first.redemption.id);
     expect(await countRows("redemptions", rewardId)).toBe(1);
+  });
+
+  it("replays a B1R bound request with the same key, artifact, programme, and Reward", async () => {
+    const world = await seedWorld();
+    const rewardId = await availableRewardId(world);
+    const key = nextId("bound-key");
+    const request = {
+      userId: world.owner,
+      rewardId,
+      idempotencyKey: key,
+      rewardProgramId: world.program.programId,
+      artifact: { kind: "loyalty_number" as const, value: world.customer.ln },
+    };
+
+    const first = await confirm(world, request);
+    const replay = await confirm(world, request);
+    expect(replay.redemption.id).toBe(first.redemption.id);
+    expect(await countRows("redemptions", rewardId)).toBe(1);
+  });
+
+  it("conflicts when a B1R key is reused with a different resolved customer", async () => {
+    const world = await seedWorld();
+    const rewardId = await availableRewardId(world);
+    const other = await seedCustomer();
+    const key = nextId("bound-customer-key");
+    await confirm(world, {
+      userId: world.owner,
+      rewardId,
+      idempotencyKey: key,
+      rewardProgramId: world.program.programId,
+      artifact: { kind: "loyalty_number", value: world.customer.ln },
+    });
+
+    await expect(
+      confirm(world, {
+        userId: world.owner,
+        rewardId,
+        idempotencyKey: key,
+        rewardProgramId: world.program.programId,
+        artifact: { kind: "loyalty_number", value: other.ln },
+      }),
+    ).rejects.toMatchObject({ category: "IDEMPOTENCY_CONFLICT" });
+  });
+
+  it("conflicts when a B1R key is reused with a different programme", async () => {
+    const world = await seedWorld();
+    const rewardId = await availableRewardId(world);
+    const key = nextId("bound-program-key");
+    await confirm(world, {
+      userId: world.owner,
+      rewardId,
+      idempotencyKey: key,
+      rewardProgramId: world.program.programId,
+      artifact: { kind: "loyalty_number", value: world.customer.ln },
+    });
+
+    await expect(
+      confirm(world, {
+        userId: world.owner,
+        rewardId,
+        idempotencyKey: key,
+        rewardProgramId: "00000000-0000-4000-8000-000000000000",
+        artifact: { kind: "loyalty_number", value: world.customer.ln },
+      }),
+    ).rejects.toMatchObject({ category: "IDEMPOTENCY_CONFLICT" });
+  });
+
+  it("conflicts when a B1R key is reused for a different Reward", async () => {
+    const world = await seedWorld();
+    const rewardId = await availableRewardId(world);
+    const otherRewardId = await extraAvailableReward(world);
+    const key = nextId("bound-reward-key");
+    await confirm(world, {
+      userId: world.owner,
+      rewardId,
+      idempotencyKey: key,
+      rewardProgramId: world.program.programId,
+      artifact: { kind: "loyalty_number", value: world.customer.ln },
+    });
+
+    await expect(
+      confirm(world, {
+        userId: world.owner,
+        rewardId: otherRewardId,
+        idempotencyKey: key,
+        rewardProgramId: world.program.programId,
+        artifact: { kind: "loyalty_number", value: world.customer.ln },
+      }),
+    ).rejects.toMatchObject({ category: "IDEMPOTENCY_CONFLICT" });
   });
 
   it("confirms the same idempotency key against a different reward as a conflict", async () => {
