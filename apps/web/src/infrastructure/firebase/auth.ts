@@ -9,18 +9,26 @@
 import { type Auth, connectAuthEmulator, getAuth } from "firebase/auth";
 import type { FirebaseApp } from "firebase/app";
 import { FIREBASE_EMULATOR_PORTS } from "./emulatorPorts";
+import { FIREBASE_PREVIEW_ORIGIN, resolvePreviewOrigin } from "./previewOrigin";
 
 const AUTH_EMULATOR_HOST = "127.0.0.1";
 
 const connectedApps = new WeakSet<FirebaseApp>();
 
-export function getFirebaseAuth(app: FirebaseApp, useEmulator: boolean): Auth {
+export function getFirebaseAuth(
+  app: FirebaseApp,
+  useEmulator: boolean,
+  previewOrigin: string | undefined = FIREBASE_PREVIEW_ORIGIN,
+): Auth {
   const auth = getAuth(app);
+  const origin = resolvePreviewOrigin(useEmulator, previewOrigin);
 
   if (useEmulator && !connectedApps.has(app)) {
-    connectAuthEmulator(auth, `http://${AUTH_EMULATOR_HOST}:${FIREBASE_EMULATOR_PORTS.auth}`, {
-      disableWarnings: true,
-    });
+    connectAuthEmulator(
+      auth,
+      origin ?? `http://${AUTH_EMULATOR_HOST}:${FIREBASE_EMULATOR_PORTS.auth}`,
+      { disableWarnings: true },
+    );
     connectedApps.add(app);
   }
 

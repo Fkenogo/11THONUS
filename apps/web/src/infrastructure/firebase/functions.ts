@@ -14,6 +14,11 @@
 import { connectFunctionsEmulator, type Functions, getFunctions } from "firebase/functions";
 import type { FirebaseApp } from "firebase/app";
 import { FIREBASE_EMULATOR_PORTS } from "./emulatorPorts";
+import {
+  FIREBASE_PREVIEW_ORIGIN,
+  PREVIEW_FUNCTIONS_PATH,
+  resolvePreviewOrigin,
+} from "./previewOrigin";
 
 /** The Version 1 Cloud Functions region (mirrors `functions/src/config/region.ts`). */
 export const FUNCTIONS_REGION = "europe-west1";
@@ -22,7 +27,18 @@ const FUNCTIONS_EMULATOR_HOST = "127.0.0.1";
 
 const connectedApps = new WeakSet<FirebaseApp>();
 
-export function getFirebaseFunctions(app: FirebaseApp, useEmulator: boolean): Functions {
+export function getFirebaseFunctions(
+  app: FirebaseApp,
+  useEmulator: boolean,
+  previewOrigin: string | undefined = FIREBASE_PREVIEW_ORIGIN,
+): Functions {
+  const origin = resolvePreviewOrigin(useEmulator, previewOrigin);
+  if (origin !== undefined) {
+    // Phone preview: the SDK's own custom-domain overload targets `<origin>/__fn/<name>` over HTTPS;
+    // token attach, callable envelopes and error mapping stay SDK-native. No emulator connection.
+    return getFunctions(app, `${origin}${PREVIEW_FUNCTIONS_PATH}`);
+  }
+
   const functions = getFunctions(app, FUNCTIONS_REGION);
 
   if (useEmulator && !connectedApps.has(app)) {
