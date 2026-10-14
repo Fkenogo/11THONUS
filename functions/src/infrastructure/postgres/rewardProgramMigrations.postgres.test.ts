@@ -2901,6 +2901,119 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         ).rejects.toThrow(/violates foreign key constraint "rewards_item_in_business"/);
       });
 
+      it("enforces version-qualification FK across all 4 version-scoped tables (verified_units, loyalty_cycles, verified_unit_allocations, rewards)", async () => {
+        await migrateUp(pool, migrationsDir);
+        const businessId = "biz-version-fk-test";
+        const programId = await insertProgram(businessId);
+        const versionId = await insertVersion(programId);
+
+        // Item 1 is bound to this version; Item 2 exists in business but is NOT bound to this version
+        const boundItemId = await insertItem(businessId, "Coffee");
+        await bindItem(versionId, boundItemId);
+        const unboundItemId = await insertItem(businessId, "Tea");
+
+        await pool.query(
+          `INSERT INTO loyalty_cycle_streams (business_id, customer_identity_id, reward_program_id)
+           VALUES ($1, 'cust-version-test', $2)`,
+          [businessId, programId],
+        );
+
+        // 1. loyalty_cycles: rejects unbound item, accepts bound item
+        const cycleUnboundId = "11111111-1111-4111-8111-111111111111";
+        await expect(
+          pool.query(
+            `INSERT INTO loyalty_cycles (id, business_id, customer_identity_id, reward_program_id, opened_under_version_id, sequence_number, state, allocated_units, correlation_id, qualifying_item_id)
+             VALUES ($1, $2, 'cust-version-test', $3, $4, 1, 'active', 0, 'corr-v1', $5)`,
+            [cycleUnboundId, businessId, programId, versionId, unboundItemId],
+          ),
+        ).rejects.toThrow(/violates foreign key constraint "loyalty_cycles_item_in_version"/);
+
+        const cycleBoundId = "22222222-2222-4222-8222-222222222222";
+        await pool.query(
+          `INSERT INTO loyalty_cycles (id, business_id, customer_identity_id, reward_program_id, opened_under_version_id, sequence_number, state, allocated_units, correlation_id, qualifying_item_id)
+           VALUES ($1, $2, 'cust-version-test', $3, $4, 1, 'active', 0, 'corr-v1', $5)`,
+          [cycleBoundId, businessId, programId, versionId, boundItemId],
+        );
+
+        // Purchase record
+        const purchaseRes = await pool.query<{ id: string }>(
+          `INSERT INTO purchase_records
+             (business_id, customer_identity_id, presented_artifact_type, presented_artifact_reference,
+              canonical_loyalty_number_value, reward_program_id, reward_program_version_id,
+              shared_loyalty_number_allowed, multiple_units_allowed, branch_id,
+              recorded_by_user_id, recorded_by_role, quantity, qualifying_item_id, item_label,
+              purchase_date, correlation_id)
+           VALUES ($1, 'cust-version-test', 'loyalty_number', 'ABC789',
+                   'ABC789', $2, $3,
+                   false, true, 'branch-1',
+                   'user-1', 'staff', 1, $4, 'Coffee',
+                   now(), 'corr-v1') RETURNING id`,
+          [businessId, programId, versionId, boundItemId],
+        );
+        const purchaseId = purchaseRes.rows[0].id;
+
+        // 2. verified_units: rejects unbound item, accepts bound item
+        const unitUnboundId = "33333333-3333-4333-8333-333333333333";
+        await expect(
+          pool.query(
+            `INSERT INTO verified_units (id, purchase_record_id, business_id, customer_identity_id, reward_program_id, reward_program_version_id, quantity, entry_type, reason_code, correlation_id, created_by, qualifying_item_id)
+             VALUES ($1, $2, $3, 'cust-version-test', $4, $5, 1, 'credit', 'purchase_verified', 'corr-v1', 'user-1', $6)`,
+            [unitUnboundId, purchaseId, businessId, programId, versionId, unboundItemId],
+          ),
+        ).rejects.toThrow(/violates foreign key constraint "verified_units_item_in_version"/);
+
+        const unitBoundId = "44444444-4444-4444-8444-444444444444";
+        await pool.query(
+          `INSERT INTO verified_units (id, purchase_record_id, business_id, customer_identity_id, reward_program_id, reward_program_version_id, quantity, entry_type, reason_code, correlation_id, created_by, qualifying_item_id)
+           VALUES ($1, $2, $3, 'cust-version-test', $4, $5, 1, 'credit', 'purchase_verified', 'corr-v1', 'user-1', $6)`,
+          [unitBoundId, purchaseId, businessId, programId, versionId, boundItemId],
+        );
+
+        // 3. verified_unit_allocations: rejects unbound item, accepts bound item
+        const allocUnboundId = "55555555-5555-4555-8555-555555555555";
+        await expect(
+          pool.query(
+            `INSERT INTO verified_unit_allocations (id, verified_unit_id, loyalty_cycle_id, business_id, customer_identity_id, reward_program_id, reward_program_version_id, allocated_quantity, allocation_order, state, qualifying_item_id)
+             VALUES ($1, $2, $3, $4, 'cust-version-test', $5, $6, 1, 0, 'allocated', $7)`,
+            [
+              allocUnboundId,
+              unitBoundId,
+              cycleBoundId,
+              businessId,
+              programId,
+              versionId,
+              unboundItemId,
+            ],
+          ),
+        ).rejects.toThrow(
+          /violates foreign key constraint "verified_unit_allocations_item_in_version"/,
+        );
+
+        const allocBoundId = "66666666-6666-4666-8666-666666666666";
+        await pool.query(
+          `INSERT INTO verified_unit_allocations (id, verified_unit_id, loyalty_cycle_id, business_id, customer_identity_id, reward_program_id, reward_program_version_id, allocated_quantity, allocation_order, state, qualifying_item_id)
+           VALUES ($1, $2, $3, $4, 'cust-version-test', $5, $6, 1, 0, 'allocated', $7)`,
+          [allocBoundId, unitBoundId, cycleBoundId, businessId, programId, versionId, boundItemId],
+        );
+
+        // 4. rewards: rejects unbound item, accepts bound item
+        const rewardUnboundId = "77777777-7777-4777-8777-777777777777";
+        await expect(
+          pool.query(
+            `INSERT INTO rewards (id, loyalty_cycle_id, business_id, customer_identity_id, reward_program_id, reward_program_version_id, reward_description, reward_quantity, state, correlation_id, qualifying_item_id)
+             VALUES ($1, $2, $3, 'cust-version-test', $4, $5, 'Reward', 1, 'available', 'corr-v1', $6)`,
+            [rewardUnboundId, cycleBoundId, businessId, programId, versionId, unboundItemId],
+          ),
+        ).rejects.toThrow(/violates foreign key constraint "rewards_item_in_version"/);
+
+        const rewardBoundId = "88888888-8888-4888-8888-888888888888";
+        await pool.query(
+          `INSERT INTO rewards (id, loyalty_cycle_id, business_id, customer_identity_id, reward_program_id, reward_program_version_id, reward_description, reward_quantity, state, correlation_id, qualifying_item_id)
+           VALUES ($1, $2, $3, 'cust-version-test', $4, $5, 'Reward', 1, 'available', 'corr-v1', $6)`,
+          [rewardBoundId, cycleBoundId, businessId, programId, versionId, boundItemId],
+        );
+      });
+
       it("supports NULL qualifying_item_id across all 5 tables preserving legacy writers", async () => {
         await migrateUp(pool, migrationsDir);
         const businessId = "biz-null-test";
@@ -2981,7 +3094,7 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
         expect(rewardRow.rows[0].qualifying_item_id).toBeNull();
       });
 
-      it("down-migration removes qualifying_item_id columns and indexes, and up-migration re-applies cleanly", async () => {
+      it("down-migration removes qualifying_item_id columns, constraints, and indexes, and up-migration re-applies cleanly", async () => {
         await migrateUp(pool, migrationsDir);
         // Roll back migration 0030
         const downResult = await migrateDown(pool, migrationsDir, 1);
@@ -3002,6 +3115,25 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
           expect(col.rows).toHaveLength(0);
         }
 
+        const constraints = [
+          "verified_units_item_in_business",
+          "verified_units_item_in_version",
+          "loyalty_cycle_streams_item_in_business",
+          "loyalty_cycles_item_in_business",
+          "loyalty_cycles_item_in_version",
+          "verified_unit_allocations_item_in_business",
+          "verified_unit_allocations_item_in_version",
+          "rewards_item_in_business",
+          "rewards_item_in_version",
+        ];
+        for (const con of constraints) {
+          const res = await pool.query(
+            `SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = $1`,
+            [con],
+          );
+          expect(res.rows).toHaveLength(0);
+        }
+
         // Re-apply migration 0030 cleanly
         const upResult = await migrateUp(pool, migrationsDir);
         expect(upResult.applied).toEqual(["0030"]);
@@ -3012,6 +3144,14 @@ describe("Reward Program migrations against a real PostgreSQL instance", () => {
             [table],
           );
           expect(col.rows).toHaveLength(1);
+        }
+
+        for (const con of constraints) {
+          const res = await pool.query(
+            `SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = $1`,
+            [con],
+          );
+          expect(res.rows).toHaveLength(1);
         }
       });
     });

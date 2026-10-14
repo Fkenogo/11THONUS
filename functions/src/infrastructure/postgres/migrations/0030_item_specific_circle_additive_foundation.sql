@@ -21,13 +21,15 @@
 -- TABLES AUGMENTED (5 core loyalty tables):
 --   1. verified_units.qualifying_item_id (UUID NULL)
 --      FK: verified_units_item_in_business -> qualifying_items(id, business_id)
+--      FK: verified_units_item_in_version -> reward_program_version_qualifying_items(reward_program_version_id, qualifying_item_id)
 --   2. loyalty_cycle_streams.qualifying_item_id (UUID NULL)
 --      FK: loyalty_cycle_streams_item_in_business -> qualifying_items(id, business_id)
 --   3. loyalty_cycles.qualifying_item_id (UUID NULL)
 --      FK: loyalty_cycles_item_in_business -> qualifying_items(id, business_id)
---      FK: loyalty_cycles_item_in_version -> reward_program_version_qualifying_items(reward_program_version_id, qualifying_item_id)
+--      FK: loyalty_cycles_item_in_version -> reward_program_version_qualifying_items(opened_under_version_id, qualifying_item_id)
 --   4. verified_unit_allocations.qualifying_item_id (UUID NULL)
 --      FK: verified_unit_allocations_item_in_business -> qualifying_items(id, business_id)
+--      FK: verified_unit_allocations_item_in_version -> reward_program_version_qualifying_items(reward_program_version_id, qualifying_item_id)
 --   5. rewards.qualifying_item_id (UUID NULL)
 --      FK: rewards_item_in_business -> qualifying_items(id, business_id)
 --      FK: rewards_item_in_version -> reward_program_version_qualifying_items(reward_program_version_id, qualifying_item_id)
@@ -35,7 +37,10 @@
 -- All columns are NULLABLE during Package B. Under PostgreSQL MATCH SIMPLE (default),
 -- foreign key constraints are not enforced when qualifying_item_id IS NULL,
 -- allowing existing runtime writes to proceed unaffected. When non-null,
--- foreign keys strictly guarantee tenant (Business) and version qualification integrity.
+-- foreign keys strictly guarantee tenant (Business) integrity across all 5 tables
+-- and version qualification integrity across the 4 version-scoped tables (verified_units,
+-- loyalty_cycles, verified_unit_allocations, rewards; loyalty_cycle_streams spans
+-- versions and carries no version column).
 --
 -- Re-runnable by design: ADD COLUMN IF NOT EXISTS, DROP CONSTRAINT IF EXISTS before
 -- ADD CONSTRAINT, and CREATE INDEX IF NOT EXISTS.
@@ -54,6 +59,18 @@ ALTER TABLE verified_units
     NOT VALID;
 
 ALTER TABLE verified_units VALIDATE CONSTRAINT verified_units_item_in_business;
+
+ALTER TABLE verified_units
+  DROP CONSTRAINT IF EXISTS verified_units_item_in_version;
+
+ALTER TABLE verified_units
+  ADD CONSTRAINT verified_units_item_in_version FOREIGN KEY
+    (reward_program_version_id, qualifying_item_id)
+    REFERENCES reward_program_version_qualifying_items
+      (reward_program_version_id, qualifying_item_id) ON DELETE RESTRICT
+    NOT VALID;
+
+ALTER TABLE verified_units VALIDATE CONSTRAINT verified_units_item_in_version;
 
 CREATE INDEX IF NOT EXISTS verified_units_qualifying_item_idx
   ON verified_units (qualifying_item_id);
@@ -129,6 +146,18 @@ ALTER TABLE verified_unit_allocations
     NOT VALID;
 
 ALTER TABLE verified_unit_allocations VALIDATE CONSTRAINT verified_unit_allocations_item_in_business;
+
+ALTER TABLE verified_unit_allocations
+  DROP CONSTRAINT IF EXISTS verified_unit_allocations_item_in_version;
+
+ALTER TABLE verified_unit_allocations
+  ADD CONSTRAINT verified_unit_allocations_item_in_version FOREIGN KEY
+    (reward_program_version_id, qualifying_item_id)
+    REFERENCES reward_program_version_qualifying_items
+      (reward_program_version_id, qualifying_item_id) ON DELETE RESTRICT
+    NOT VALID;
+
+ALTER TABLE verified_unit_allocations VALIDATE CONSTRAINT verified_unit_allocations_item_in_version;
 
 CREATE INDEX IF NOT EXISTS verified_unit_allocations_qualifying_item_idx
   ON verified_unit_allocations (qualifying_item_id);

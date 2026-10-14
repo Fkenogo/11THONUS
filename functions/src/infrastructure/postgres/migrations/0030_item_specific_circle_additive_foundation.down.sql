@@ -10,6 +10,7 @@ ALTER TABLE rewards DROP COLUMN IF EXISTS qualifying_item_id;
 
 -- verified_unit_allocations
 DROP INDEX IF EXISTS verified_unit_allocations_qualifying_item_idx;
+ALTER TABLE verified_unit_allocations DROP CONSTRAINT IF EXISTS verified_unit_allocations_item_in_version;
 ALTER TABLE verified_unit_allocations DROP CONSTRAINT IF EXISTS verified_unit_allocations_item_in_business;
 ALTER TABLE verified_unit_allocations DROP COLUMN IF EXISTS qualifying_item_id;
 
@@ -26,5 +27,6 @@ ALTER TABLE loyalty_cycle_streams DROP COLUMN IF EXISTS qualifying_item_id;
 
 -- verified_units
 DROP INDEX IF EXISTS verified_units_qualifying_item_idx;
+ALTER TABLE verified_units DROP CONSTRAINT IF EXISTS verified_units_item_in_version;
 ALTER TABLE verified_units DROP CONSTRAINT IF EXISTS verified_units_item_in_business;
 ALTER TABLE verified_units DROP COLUMN IF EXISTS qualifying_item_id;

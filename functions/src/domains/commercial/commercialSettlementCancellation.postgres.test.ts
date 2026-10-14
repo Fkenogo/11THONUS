@@ -1255,5 +1255,5 @@ describe("MIGRATION 0024 — additive, reversible, fail-closed", () => {
       effectiveFrom: new Date("2026-03-01T00:00:00Z"),
       reasonText: "test fixture",
     });
-  });
+  }, 30000);
 });

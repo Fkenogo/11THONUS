@@ -74,6 +74,8 @@ async function cleanDatabase() {
     "commercial_consumption_claims_require_event",
     "commercial_consumption_events_ledger_guard",
     "commercial_consumption_claims_reward_business_guard",
+    "commercial_admission_assert_consistent",
+    "commercial_consumption_events_earmark_guard",
     "commercial_reject_mutation",
   ]) {
     await pool.query(`DROP FUNCTION IF EXISTS ${fn}() CASCADE`);
