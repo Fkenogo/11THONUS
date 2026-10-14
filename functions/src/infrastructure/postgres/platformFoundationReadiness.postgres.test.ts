@@ -32,17 +32,7 @@ const firestoreStub = {} as Firestore;
 
 let pool: PlatformPostgresPool;
 
-beforeAll(() => {
-  if (!process.env.PLATFORM_POSTGRES_URL && process.env.PLATFORM_ENV !== "test") {
-    throw new Error(
-      "This test requires a live PostgreSQL instance. Set PLATFORM_ENV=test (and optionally " +
-        "PLATFORM_POSTGRES_URL) and run `docker compose -f docker-compose.postgres.yml up -d` first.",
-    );
-  }
-  pool = createPostgresPool(loadPostgresConfig());
-});
-
-afterEach(async () => {
+async function cleanDatabase() {
   await pool.query("DROP TABLE IF EXISTS platform_baseline_001_migration_fixture_widgets");
   // PLATFORM-BASELINE-005A: the shipped migrations directory is no longer
   // empty (see below) — its own tables must be cleaned up here too, so
@@ -56,6 +46,8 @@ afterEach(async () => {
   // WP-COM-01 (0021): Commercial tables are independent of every table below
   // (no cross-domain FK); dropped first so a re-run of migrateUp can re-create them.
   for (const table of [
+    "commercial_admission_blocks",
+    "commercial_admissions",
     "commercial_projection_failures",
     "commercial_consumption_events",
     "commercial_consumption_claims",
@@ -82,6 +74,8 @@ afterEach(async () => {
     "commercial_consumption_claims_require_event",
     "commercial_consumption_events_ledger_guard",
     "commercial_consumption_claims_reward_business_guard",
+    "commercial_admission_assert_consistent",
+    "commercial_consumption_events_earmark_guard",
     "commercial_reject_mutation",
   ]) {
     await pool.query(`DROP FUNCTION IF EXISTS ${fn}() CASCADE`);
@@ -115,6 +109,21 @@ afterEach(async () => {
   await pool.query("DROP TABLE IF EXISTS reward_program_versions CASCADE");
   await pool.query("DROP TABLE IF EXISTS reward_programs CASCADE");
   await pool.query("DROP TABLE IF EXISTS schema_migrations");
+}
+
+beforeAll(async () => {
+  if (!process.env.PLATFORM_POSTGRES_URL && process.env.PLATFORM_ENV !== "test") {
+    throw new Error(
+      "This test requires a live PostgreSQL instance. Set PLATFORM_ENV=test (and optionally " +
+        "PLATFORM_POSTGRES_URL) and run `docker compose -f docker-compose.postgres.yml up -d` first.",
+    );
+  }
+  pool = createPostgresPool(loadPostgresConfig());
+  await cleanDatabase();
+});
+
+afterEach(async () => {
+  await cleanDatabase();
 });
 
 afterAll(async () => {
@@ -248,6 +257,7 @@ describe("checkPlatformFoundationReadiness — actual shipped migrations directo
       "0027",
       "0028",
       "0029",
+      "0030",
     ]);
 
     const result = await checkPlatformFoundationReadiness(shippedReadinessDeps());

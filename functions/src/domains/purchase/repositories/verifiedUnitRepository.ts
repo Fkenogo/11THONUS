@@ -23,6 +23,7 @@ type VerifiedUnitDbRow = {
   customer_identity_id: string;
   reward_program_id: string;
   reward_program_version_id: string;
+  qualifying_item_id: string | null;
   quantity: number;
   entry_type: VerifiedUnitEntryType;
   reverses_verified_unit_id: string | null;
@@ -42,6 +43,7 @@ function mapVerifiedUnitRow(row: VerifiedUnitDbRow): VerifiedUnitRow {
     customerIdentityId: row.customer_identity_id,
     rewardProgramId: row.reward_program_id,
     rewardProgramVersionId: row.reward_program_version_id,
+    qualifyingItemId: row.qualifying_item_id ?? null,
     quantity: row.quantity,
     entryType: row.entry_type,
     reversesVerifiedUnitId: row.reverses_verified_unit_id,

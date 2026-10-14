@@ -40,6 +40,7 @@ type StreamDbRow = {
   business_id: string;
   customer_identity_id: string;
   reward_program_id: string;
+  qualifying_item_id: string | null;
   next_cycle_sequence: number;
   created_at: Date;
   updated_at: Date;
@@ -50,6 +51,7 @@ function mapStreamRow(row: StreamDbRow): LoyaltyCycleStreamRow {
     businessId: row.business_id,
     customerIdentityId: row.customer_identity_id,
     rewardProgramId: row.reward_program_id,
+    qualifyingItemId: row.qualifying_item_id ?? null,
     nextCycleSequence: row.next_cycle_sequence,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -88,6 +90,7 @@ type CycleDbRow = {
   business_id: string;
   customer_identity_id: string;
   reward_program_id: string;
+  qualifying_item_id: string | null;
   opened_under_version_id: string;
   sequence_number: number;
   state: LoyaltyCycleState;
@@ -104,6 +107,7 @@ function mapCycleRow(row: CycleDbRow): LoyaltyCycleRow {
     businessId: row.business_id,
     customerIdentityId: row.customer_identity_id,
     rewardProgramId: row.reward_program_id,
+    qualifyingItemId: row.qualifying_item_id ?? null,
     openedUnderVersionId: row.opened_under_version_id,
     sequenceNumber: row.sequence_number,
     state: row.state,
@@ -339,6 +343,7 @@ type PositionDbRow = {
   customer_identity_id: string;
   reward_program_id: string;
   reward_program_version_id: string;
+  qualifying_item_id: string | null;
   allocated_quantity: number;
   allocation_order: number;
   state: "allocated" | "pending";
@@ -355,6 +360,7 @@ function mapPositionRow(row: PositionDbRow): AllocationPositionRow {
     customerIdentityId: row.customer_identity_id,
     rewardProgramId: row.reward_program_id,
     rewardProgramVersionId: row.reward_program_version_id,
+    qualifyingItemId: row.qualifying_item_id ?? null,
     allocatedQuantity: row.allocated_quantity,
     allocationOrder: row.allocation_order,
     state: row.state,
@@ -663,6 +669,7 @@ type RewardDbRow = {
   customer_identity_id: string;
   reward_program_id: string;
   reward_program_version_id: string;
+  qualifying_item_id: string | null;
   reward_description: string;
   reward_quantity: number;
   state: RewardState;
@@ -680,6 +687,7 @@ function mapRewardRow(row: RewardDbRow): RewardRow {
     customerIdentityId: row.customer_identity_id,
     rewardProgramId: row.reward_program_id,
     rewardProgramVersionId: row.reward_program_version_id,
+    qualifyingItemId: row.qualifying_item_id ?? null,
     rewardDescription: row.reward_description,
     rewardQuantity: row.reward_quantity,
     state: row.state,
