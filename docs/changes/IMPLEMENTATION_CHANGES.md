@@ -7,6 +7,16 @@
 
 ---
 
+## 2026-10-15 — 11THONUS-CI-CONT-001 — Temporary CI Continuity Assessment (GitHub Actions billing interruption)
+
+- **Task:** Assess whether CircleCI Free can temporarily provide independent, exact-head verification of the mandatory 11thONUS suite while GitHub Actions cannot start (account billing lock). Assessment and inactive prototype only; **not** a permanent provider selection.
+- **Status:** **READY FOR TEMPORARY CI PILOT** (Founder authorisation required; nothing activated).
+- **Key findings:** `main` has **no branch protection and no required checks** (404 / empty rulesets), so no protection change is needed and a CircleCI pass is evidence, not a GitHub Actions pass. Only PR #312 (`73575800`) is infrastructure-blocked (jobs never started; billing lock); #310 and #307 have green exact-head runs. Local re-verification: build/lint/format/typecheck/functions/emulator suites pass; five web and one Postgres test timed out under load and pass in isolation; Playwright e2e not reproducible locally (browser revision missing; download not performed). Estimated ~440 credits/run, ~12% (worst case ~24%) of the 30,000/month free allowance for ~2 weeks.
+- **Files:** [report](../05-implementation/reports/11THONUS-CI-CONT-001-temporary-ci-continuity-assessment-2026-10-15.md); `.circleci/config.yml` (inactive prototype). No application, test, schema, Firebase, `ci.yml`, dependency or branch-protection change.
+- **Rollback:** disconnect CircleCI (Founder), delete `.circleci/`, revert the documentation commit.
+
+---
+
 ## 2026-10-08 — 11THONUS-MEDIA-001 — MV-206 Media Storage & Delivery Alignment Assessment
 
 - **Task:** Align 11thONUS with Miledge MV-206 v0.1 and close the project-specific media capability assessment. Documentation/assessment only; no code, schema, Storage Rules, dependency, provider, configuration, infrastructure or deployment change.

@@ -1,0 +1,126 @@
+# 11THONUS-CI-CONT-001 — TEMPORARY CI CONTINUITY PROTOTYPE (NOT ACTIVE)
+#
+# Status: proposed for Founder review only. CircleCI is NOT connected to this repository; this file
+# has no effect until a Founder-authorised pilot connects the CircleCI GitHub App. GitHub Actions
+# (`.github/workflows/ci.yml`) remains the primary CI system. Delete this directory when GitHub
+# Actions service returns (see the CI-CONT-001 report §Rollback).
+#
+# Design: mirrors `.github/workflows/ci.yml` step-for-step using the repository's own scripts. No
+# secrets, no deployment, no production Firebase access (`demo-11thonus` emulator project only).
+# A CircleCI pass is NOT a GitHub Actions pass and does not satisfy the "CI" workflow check.
+
+version: 2.1
+
+jobs:
+  verify:
+    docker:
+      - image: cimg/node:20.19
+      # Same image, credential, database and port as the GitHub Actions service container.
+      - image: postgres:16-alpine
+        command: ["postgres", "-p", "28110"]
+        environment:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: eleventhonus_platform_test
+    resource_class: large # 4 vCPU / 8 GB: Firestore emulator + Chromium + vite build
+    environment:
+      CI: "true"
+    steps:
+      - checkout
+
+      # Fail closed: the tested tree must equal the intended GitHub head SHA.
+      - run:
+          name: Verify exact head SHA (fail closed)
+          command: |
+            set -eu
+            CHECKED_OUT="$(git rev-parse HEAD)"
+            EXPECTED="<< pipeline.event.github.pull_request.head.sha >>"
+            SOURCE="pull_request.head.sha"
+            if [ -z "$EXPECTED" ]; then
+              EXPECTED="<< pipeline.event.github.after >>"
+              SOURCE="push.after"
+            fi
+            echo "event            : << pipeline.event.name >> / << pipeline.event.action >>"
+            echo "expected SHA     : $EXPECTED  (source: $SOURCE)"
+            echo "checked-out SHA  : $CHECKED_OUT"
+            echo "pipeline.git.rev : << pipeline.git.revision >>"
+            [ -n "$EXPECTED" ] || { echo "FAIL: no expected SHA available"; exit 1; }
+            if [ "$CHECKED_OUT" != "$EXPECTED" ]; then
+              echo "FAIL: checked-out SHA does not equal expected head SHA"; exit 1
+            fi
+            # Independent corroboration of the live PR head (public repo, no credentials).
+            PR="<< pipeline.event.github.pull_request.number >>"
+            if [ -n "$PR" ] && [ "$SOURCE" = "pull_request.head.sha" ]; then
+              LIVE="$(curl -fsS "https://api.github.com/repos/Fkenogo/11THONUS/pulls/$PR" | sed -n 's/.*"head": *{[^}]*"sha": *"\([0-9a-f]\{40\}\)".*/\1/p' | head -1 || true)"
+              echo "live PR head SHA : ${LIVE:-unavailable}"
+              if [ -n "$LIVE" ] && [ "$LIVE" != "$CHECKED_OUT" ]; then
+                echo "FAIL: PR head moved since trigger (stale pipeline)"; exit 1
+              fi
+            fi
+            echo "RESULT: exact-head match confirmed"
+
+      - run:
+          name: Install pnpm 9.15.9
+          command: npm install -g pnpm@9.15.9
+      - run:
+          name: Install JDK 21 (Firestore Emulator requires Java >= 21)
+          command: |
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq openjdk-21-jre-headless postgresql-client
+            java -version
+      - run: pnpm install --frozen-lockfile
+      - run:
+          name: Wait for PostgreSQL service container
+          command: for i in $(seq 1 30); do PGPASSWORD=postgres pg_isready -h localhost -p 28110 -U postgres && exit 0; sleep 2; done; exit 1
+
+      - run: { name: Build, command: pnpm build }
+      - run: { name: Lint, command: pnpm lint }
+      - run: { name: Format check, command: pnpm format:check }
+      - run: { name: Typecheck, command: pnpm typecheck }
+      - run: { name: Unit / component tests, command: pnpm test }
+      - run:
+          name: PostgreSQL integration tests (Firestore emulator wrapped)
+          command: >-
+            pnpm exec firebase emulators:exec --only firestore --project demo-11thonus
+            "PLATFORM_ENV=test PLATFORM_POSTGRES_URL=postgres://postgres:postgres@localhost:28110/eleventhonus_platform_test pnpm --filter functions test:postgres"
+      - run:
+          {
+            name: Install Playwright Chromium,
+            command: pnpm exec playwright install --with-deps chromium,
+          }
+      - run: { name: Playwright e2e, command: pnpm test:e2e }
+      - run: { name: Founder Preview tooling tests, command: pnpm test:preview-tooling }
+      - run:
+          name: Founder Preview cross-project port-isolation acceptance
+          environment:
+            PREVIEW_POSTGRES_URL: postgres://postgres:postgres@localhost:28110/eleventhonus_platform_local
+            PGPASSWORD: postgres
+          command: |
+            psql -h localhost -p 28110 -U postgres -c "CREATE DATABASE eleventhonus_platform_local"
+            node tests/preview/cross-project-acceptance.mjs
+      - run:
+          name: Stop Founder Preview (cleanup)
+          when: always
+          command: pnpm preview:stop || true
+      - run: { name: Firebase Emulator Suite validation, command: pnpm emulators:validate }
+
+      - store_artifacts:
+          path: playwright-report
+          destination: playwright-report
+          when: always
+      - store_artifacts:
+          path: test-results
+          destination: test-results
+          when: always
+      - store_artifacts:
+          path: .preview/logs
+          destination: preview-logs
+          when: always
+
+workflows:
+  # Single workflow/job so credit use is one run per trigger. Trigger rules are configured in the
+  # CircleCI project settings (PR-opened / PR-comment checkpoint triggers), not here.
+  temporary-ci-continuity:
+    jobs:
+      - verify:
+          name: circleci-continuity-verify
