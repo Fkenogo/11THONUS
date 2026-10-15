@@ -7,6 +7,17 @@
 
 ---
 
+## 2026-10-15 — 11THONUS-CI-CONT-002 — CircleCI Temporary CI Pilot: Execution & Validation (PILOT INCOMPLETE)
+
+- **Task:** Execute the Founder-authorised controlled pilot for PR #312 (`73575800…`). Temporary and reversible; no merge.
+- **Status:** **PILOT INCOMPLETE — CORRECTION REQUIRED.** Hosted run not executed; it needs the Founder's CircleCI sign-in and GitHub App authorisation (steps in the report, §C2-5).
+- **Done:** lockfile-pinned Playwright Chromium installed; local e2e **149/149**, web **1155/1155**, PostgreSQL **813/813** at the exact SHA (earlier timeouts classified as host-load exhaustion). Prototype config corrected (manual/stacked-PR support, SHA fetch-and-verify, trigger gate, YAML/live-head bugs) and validated with the official CircleCI CLI; fail-closed logic exercised against the real PR ref.
+- **Open:** cross-project acceptance (mandatory) not runnable locally — another project's emulator holds ports 4000/9099; hosted run required. 0 CircleCI credits used.
+- **Files:** [report addendum](../05-implementation/reports/11THONUS-CI-CONT-001-temporary-ci-continuity-assessment-2026-10-15.md); `.circleci/config.yml`. No application, test, dependency, lockfile, `ci.yml` or branch-protection change.
+- **Rollback:** delete CircleCI project/App authorisation, remove `.circleci/`, revert the documentation commit.
+
+---
+
 ## 2026-10-15 — 11THONUS-CI-CONT-001 — Temporary CI Continuity Assessment (GitHub Actions billing interruption)
 
 - **Task:** Assess whether CircleCI Free can temporarily provide independent, exact-head verification of the mandatory 11thONUS suite while GitHub Actions cannot start (account billing lock). Assessment and inactive prototype only; **not** a permanent provider selection.

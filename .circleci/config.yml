@@ -1,15 +1,33 @@
-# 11THONUS-CI-CONT-001 — TEMPORARY CI CONTINUITY PROTOTYPE (NOT ACTIVE)
+# 11THONUS-CI-CONT-002 — TEMPORARY CircleCI CONTINUITY PILOT CONFIG
 #
-# Status: proposed for Founder review only. CircleCI is NOT connected to this repository; this file
-# has no effect until a Founder-authorised pilot connects the CircleCI GitHub App. GitHub Actions
-# (`.github/workflows/ci.yml`) remains the primary CI system. Delete this directory when GitHub
-# Actions service returns (see the CI-CONT-001 report §Rollback).
+# TEMPORARY, REVERSIBLE. GitHub Actions (`.github/workflows/ci.yml`) remains the primary CI system.
+# This file lives only on the pilot branch `docs/ci-cont-001-circleci-assessment` and is NOT part of
+# any PR under test. A CircleCI pass is independent evidence; it is NOT a GitHub Actions pass.
+# Remove with the rollback in docs/05-implementation/reports/11THONUS-CI-CONT-001-*.md.
 #
-# Design: mirrors `.github/workflows/ci.yml` step-for-step using the repository's own scripts. No
-# secrets, no deployment, no production Firebase access (`demo-11thonus` emulator project only).
-# A CircleCI pass is NOT a GitHub Actions pass and does not satisfy the "CI" workflow check.
+# How it tests a PR head WITHOUT committing config onto the PR:
+#   1. The pipeline is triggered on THIS config branch (manual/checkpoint trigger) with the pipeline
+#      parameters `expected_sha` (+ optional `pr_number`).
+#   2. The first step fetches `refs/pull/<pr_number>/head`, checks out that exact commit and FAILS
+#      CLOSED unless  fetched SHA == checked-out SHA == expected SHA == live GitHub PR head SHA.
+#   3. Every later step runs the repository's own scripts from the target tree, in the same order as
+#      `.github/workflows/ci.yml`. No deployment, no secrets, demo-11thonus emulator project only.
+#
+# Trigger types:
+#   * manual/API/UI run  -> `expected_sha` parameter is REQUIRED (never inferred from the branch).
+#   * GitHub App PR event -> `pipeline.event.github.pull_request.head.sha` is used when
+#     `expected_sha` is empty. Not populated for manual runs; never assumed.
+#   * push events with neither value set do not start the workflow (no credit use).
 
 version: 2.1
+
+parameters:
+  expected_sha:
+    type: string
+    default: ""
+  pr_number:
+    type: string
+    default: ""
 
 jobs:
   verify:
@@ -22,48 +40,66 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: eleventhonus_platform_test
-    resource_class: large # 4 vCPU / 8 GB: Firestore emulator + Chromium + vite build
+    resource_class: large # Docker large: 4 vCPU / 8 GB (verify credit rate in the UI before running)
     environment:
       CI: "true"
     steps:
       - checkout
 
-      # Fail closed: the tested tree must equal the intended GitHub head SHA.
       - run:
-          name: Verify exact head SHA (fail closed)
+          name: Exact-head verification (fail closed)
           command: |
             set -eu
-            CHECKED_OUT="$(git rev-parse HEAD)"
-            EXPECTED="<< pipeline.event.github.pull_request.head.sha >>"
-            SOURCE="pull_request.head.sha"
+            EVIDENCE=/tmp/exact-head-evidence.txt
+            EXPECTED="<< pipeline.parameters.expected_sha >>"
+            SOURCE="pipeline parameter expected_sha (manual/checkpoint)"
+            PR="<< pipeline.parameters.pr_number >>"
             if [ -z "$EXPECTED" ]; then
-              EXPECTED="<< pipeline.event.github.after >>"
-              SOURCE="push.after"
+              EXPECTED="<< pipeline.event.github.pull_request.head.sha >>"
+              SOURCE="pipeline.event.github.pull_request.head.sha (PR event)"
+              PR="<< pipeline.event.github.pull_request.number >>"
             fi
-            echo "event            : << pipeline.event.name >> / << pipeline.event.action >>"
-            echo "expected SHA     : $EXPECTED  (source: $SOURCE)"
-            echo "checked-out SHA  : $CHECKED_OUT"
-            echo "pipeline.git.rev : << pipeline.git.revision >>"
-            [ -n "$EXPECTED" ] || { echo "FAIL: no expected SHA available"; exit 1; }
-            if [ "$CHECKED_OUT" != "$EXPECTED" ]; then
-              echo "FAIL: checked-out SHA does not equal expected head SHA"; exit 1
+            {
+              echo "trigger.type          : << pipeline.trigger.type >>"
+              echo "event                 : << pipeline.event.name >>"
+              echo "config branch/rev     : << pipeline.git.branch >> @ << pipeline.git.revision >>"
+              echo "expected SHA          : ${EXPECTED:-<none>}"
+              echo "expected SHA source   : $SOURCE"
+              echo "PR number             : ${PR:-<none>}"
+            } | tee "$EVIDENCE"
+            if ! printf '%s' "$EXPECTED" | grep -Eq '^[0-9a-f]{40}$'; then
+              echo "FAIL: expected SHA missing or not a 40-char lowercase SHA" | tee -a "$EVIDENCE"; exit 1
             fi
-            # Independent corroboration of the live PR head (public repo, no credentials).
-            PR="<< pipeline.event.github.pull_request.number >>"
-            if [ -n "$PR" ] && [ "$SOURCE" = "pull_request.head.sha" ]; then
-              LIVE="$(curl -fsS "https://api.github.com/repos/Fkenogo/11THONUS/pulls/$PR" | sed -n 's/.*"head": *{[^}]*"sha": *"\([0-9a-f]\{40\}\)".*/\1/p' | head -1 || true)"
-              echo "live PR head SHA : ${LIVE:-unavailable}"
-              if [ -n "$LIVE" ] && [ "$LIVE" != "$CHECKED_OUT" ]; then
-                echo "FAIL: PR head moved since trigger (stale pipeline)"; exit 1
-              fi
+            if [ -n "$PR" ]; then
+              git fetch --no-tags origin "refs/pull/$PR/head"
+            else
+              git fetch --no-tags origin "$EXPECTED"
             fi
-            echo "RESULT: exact-head match confirmed"
+            FETCHED="$(git rev-parse FETCH_HEAD)"
+            git checkout --detach "$EXPECTED"
+            CHECKED_OUT="$(git rev-parse HEAD)"
+            LIVE="n/a (no PR number)"
+            if [ -n "$PR" ]; then
+              LIVE="$(curl -fsS "https://api.github.com/repos/Fkenogo/11THONUS/pulls/$PR" | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>console.log(JSON.parse(d).head.sha))' || true)"
+              [ -n "$LIVE" ] || { echo "FAIL: could not read live PR head from GitHub API" | tee -a "$EVIDENCE"; exit 1; }
+            fi
+            {
+              echo "fetched ref SHA       : $FETCHED"
+              echo "checked-out SHA       : $CHECKED_OUT"
+              echo "live GitHub PR head   : $LIVE"
+            } | tee -a "$EVIDENCE"
+            [ "$CHECKED_OUT" = "$EXPECTED" ] || { echo "FAIL: checked-out != expected" | tee -a "$EVIDENCE"; exit 1; }
+            [ "$FETCHED" = "$EXPECTED" ] || { echo "FAIL: fetched ref != expected" | tee -a "$EVIDENCE"; exit 1; }
+            if [ -n "$PR" ] && [ "$LIVE" != "$EXPECTED" ]; then
+              echo "FAIL: live PR head != expected (PR moved)" | tee -a "$EVIDENCE"; exit 1
+            fi
+            echo "RESULT: EXACT-HEAD MATCH CONFIRMED" | tee -a "$EVIDENCE"
 
       - run:
           name: Install pnpm 9.15.9
           command: npm install -g pnpm@9.15.9
       - run:
-          name: Install JDK 21 (Firestore Emulator requires Java >= 21)
+          name: Install JDK 21 (Firestore Emulator requires Java >= 21) and psql
           command: |
             sudo apt-get update -qq
             sudo apt-get install -y -qq openjdk-21-jre-headless postgresql-client
@@ -80,6 +116,7 @@ jobs:
       - run: { name: Unit / component tests, command: pnpm test }
       - run:
           name: PostgreSQL integration tests (Firestore emulator wrapped)
+          no_output_timeout: 20m
           command: >-
             pnpm exec firebase emulators:exec --only firestore --project demo-11thonus
             "PLATFORM_ENV=test PLATFORM_POSTGRES_URL=postgres://postgres:postgres@localhost:28110/eleventhonus_platform_test pnpm --filter functions test:postgres"
@@ -104,23 +141,32 @@ jobs:
           command: pnpm preview:stop || true
       - run: { name: Firebase Emulator Suite validation, command: pnpm emulators:validate }
 
+      - run:
+          name: Final exact-head re-assertion
+          when: always
+          command: |
+            echo "final HEAD  $(git rev-parse HEAD)" | tee -a /tmp/exact-head-evidence.txt
+      - store_artifacts:
+          path: /tmp/exact-head-evidence.txt
+          destination: exact-head-evidence.txt
       - store_artifacts:
           path: playwright-report
           destination: playwright-report
-          when: always
       - store_artifacts:
           path: test-results
           destination: test-results
-          when: always
       - store_artifacts:
           path: .preview/logs
           destination: preview-logs
-          when: always
 
 workflows:
-  # Single workflow/job so credit use is one run per trigger. Trigger rules are configured in the
-  # CircleCI project settings (PR-opened / PR-comment checkpoint triggers), not here.
+  # One workflow, one job, one run per trigger. Starts only when an expected SHA is available
+  # (manual parameter or PR-event head SHA); plain pushes consume no credits.
   temporary-ci-continuity:
+    when:
+      or:
+        - << pipeline.parameters.expected_sha >>
+        - << pipeline.event.github.pull_request.head.sha >>
     jobs:
       - verify:
           name: circleci-continuity-verify

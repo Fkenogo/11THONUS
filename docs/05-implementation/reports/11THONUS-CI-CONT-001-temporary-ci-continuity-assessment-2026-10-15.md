@@ -176,3 +176,91 @@ Disconnect/uninstall the CircleCI GitHub App for the repository (Founder), delet
 ## 16. Recommendation
 
 **READY FOR TEMPORARY CI PILOT** — CircleCI Free can in principle run the full mandatory suite at zero cost with no new secrets, an explicit fail-closed exact-head gate using current GitHub App values, ~12 % (worst case ~24 %) of the free allowance, and a single-directory rollback. The pilot is the proof of the three unverified points (JDK install, head-vs-merge checkout, `large` rate). **Separately:** current `main` has no required checks, so no protection change is needed; a CircleCI pass is independent evidence for the Founder's merge decision and is **not** a GitHub Actions pass.
+
+---
+
+# Addendum — 11THONUS-CI-CONT-002: Pilot Execution & Validation (2026-10-15)
+
+**Scope:** controlled temporary pilot of CircleCI Free against PR #312 head `73575800df6dfada8980fef5d9c83b43d2af7464`. Temporary and reversible; **not** a permanent provider selection. PR #312 is **not** merged.
+**Disposition: PILOT INCOMPLETE — CORRECTION REQUIRED** (the hosted run has not executed: it requires Founder account/GitHub-App actions that the agent cannot and must not perform; see §C2-7).
+
+## C2-1 Preflight
+
+| Item | Result |
+| --- | --- |
+| PR #312 head | `73575800df6dfada8980fef5d9c83b43d2af7464` — unchanged; `refs/pull/312/head` resolves to the same SHA |
+| Stack | Base `feat/ea-bl-001-corr-002-b-staff-counter` (= PR #307). #312 is exactly 2 commits above #307's head `023bf3ef599d27fcd998043c0bca6926aa82356e`. #307 still open (`CLEAN`, green GitHub run at its head). **#312 cannot merge to `main` before #307** |
+| Review status | 0 review threads, 0 reviews; one Codex bot comment (usage-limit notice). No P1/P2 findings recorded; Founder approval outstanding |
+| `ci.yml` at #312 | byte-identical to `main`'s → cross-project acceptance **is mandatory** (it is a step of the single gating job) |
+| Worktrees | no existing worktree or branch of another task modified |
+
+**Deficiencies found in the CONT-001 prototype (corrected):**
+
+1. It assumed PR-event values; for a manual/checkpoint run `pipeline.event.github.pull_request.*` is **empty**, so the gate would have failed (or silently used a push SHA).
+2. CircleCI reads `.circleci/config.yml` from the triggered commit. #312's head contains none, and committing config onto the PR is prohibited. → Config now lives on the pilot branch and the job **fetches and checks out the PR head by SHA** (`refs/pull/<n>/head`).
+3. Pushes would have started the job → workflow now has a `when` gate that requires an expected SHA.
+4. Invalid YAML (unquoted colon) — caught by the official CLI.
+5. Live-head cross-check parsed multi-line JSON with `sed` and always failed → replaced with `node` (found by executing the step locally, not by inspection).
+
+## C2-2 Local verification gaps — closed (exact source `73575800…`, Node 20.20.0, pnpm 9.15.9, lockfile unmodified)
+
+| Check | Result | Duration |
+| --- | --- | ---: |
+| Playwright Chromium (lockfile `@playwright/test` 1.61.1 → headless shell rev 1228) | installed (93.5 MiB; disk: 378 GiB free on volume, 25 GiB on data volume); no dependency or lockfile change | 56 s |
+| `pnpm test:e2e` | **149 passed** (previous run: 149 "failed" solely for the missing browser) | 3.2 min |
+| `pnpm --filter web test` (full) | **140 files / 1155 tests passed** | 63 s |
+| PostgreSQL integration (emulator-wrapped, full) | **22 files / 813 tests passed** | 234 s |
+| Cross-project port-isolation acceptance | **NOT RUN locally** — fails at start: `EADDRINUSE 127.0.0.1:4000`; a different project's emulator (Klockit, `demo-klockit-local`, PID 62033) holds legacy ports 4000/9099 that this test must own. Not killed (another project's process). Must be validated in hosted CI, which is a clean host |
+
+**Timeout investigation:** the earlier 5 web failures and 1 Postgres failure were 5 s/15 s timeouts while the host load average was ~20–28 on 8 cores with other agents' servers running; the same suites pass in full on a re-run (web 63 s, Postgres 234 s vs GitHub's 201 s). Classification: **environment/resource exhaustion on a shared workstation**, no assertion, threshold or test was changed. Implication for CircleCI: use `large` (4 vCPU/8 GB); do not use `medium`.
+
+## C2-3 CircleCI configuration validation (official CLI `circleci 1.5.0`)
+
+- `circleci config validate .circleci/config.yml` → **valid**; `config process` → OK; Prettier clean.
+- Logic of the exact-head step was executed locally against the real PR ref: **match** (`expected = fetched = checked-out = live GitHub head = 73575800…`, rc 0); **stale SHA** `023bf3e` for PR 312 → `FAIL: fetched ref != expected`, rc 1; empty and malformed SHA → rc 1.
+- Not provable without a hosted run: JDK 21 `apt` install on `cimg/node:20.19`, Postgres secondary-image networking on 28110, and the `large` credit rate.
+
+## C2-4 Final pilot configuration (summary)
+
+`.circleci/config.yml` on branch `docs/ci-cont-001-circleci-assessment`: parameters `expected_sha` (required for manual runs) and `pr_number`; fail-closed exact-head step; then the repository's own scripts in `ci.yml` order (build, lint, format:check, typecheck, test, PostgreSQL+emulator, Playwright, preview-tooling, cross-project acceptance, emulator validation); `no_output_timeout` on the long step; evidence file `exact-head-evidence.txt` plus Playwright/preview artifacts stored; **no secrets, no deploy, no production services**; workflow runs only if an expected SHA exists, so ordinary pushes cost no credits.
+
+GitHub Checks note: because the pipeline is triggered on the config branch, CircleCI's GitHub Check/status attaches to **that branch's commit, not to `73575800…`**. The authoritative evidence is the pipeline's exact-head log block / `exact-head-evidence.txt`, which the report must quote with the CircleCI URL. It will not appear on PR #312's check list.
+
+## C2-5 Founder / manual steps (exact)
+
+1. Sign in at circleci.com with GitHub (Free plan; **do not** add a card or choose Performance/Scale).
+2. Authorise the CircleCI GitHub App for **only** `Fkenogo/11THONUS` (not "All repositories").
+3. Create project → GitHub App → repository `11THONUS` → config file `.circleci/config.yml`, **checkout/config branch `docs/ci-cont-001-circleci-assessment`**. In Project Settings → Triggers, create **no** push/PR trigger (manual only for the pilot).
+4. Confirm on the plan page: Free, 30,000 credits, no card; note the Docker `large` credit/min.
+5. In the project, **Trigger Pipeline** on branch `docs/ci-cont-001-circleci-assessment` with parameters `expected_sha=73575800df6dfada8980fef5d9c83b43d2af7464`, `pr_number=312`.
+6. Send the pipeline URL (and plan-usage screenshot/credits) back. No API token needs to be shared.
+
+## C2-6 Mandatory verification matrix (as of this addendum)
+
+| Requirement | Local (this host) | CircleCI hosted |
+| --- | --- | --- |
+| Build / lint / format / typecheck | PASS | **not yet run** |
+| Unit/component (functions 2034, web 1155) | PASS | not yet run |
+| PostgreSQL integration (813) | PASS | not yet run |
+| Playwright e2e (149) | PASS | not yet run |
+| Preview-tooling tests | PASS | not yet run |
+| Cross-project acceptance (mandatory) | **not runnable locally (port conflict)** | not yet run |
+| Emulator validation (877/3 skipped) | PASS (prior run, same SHA) | not yet run |
+| Exact-head verification | logic proven locally | not yet run |
+| Credits consumed | — | **0 used; no hosted run** |
+| GitHub Checks reporting | — | not yet observable |
+
+## C2-7 PR #312 merge assessment (current)
+
+| State | Value |
+| --- | --- |
+| CircleCI independently verified the exact head | **No** (not yet executed) |
+| GitHub Actions passed at `73575800…` | **No** — never started (billing lock) |
+| GitHub permits merging | Technically yes (`CLEAN`, no required checks), **but base is #307's branch**; merges into that branch, not `main` |
+| Governance permits merging | **No** — Founder approval outstanding, #307 not merged, and independent verification incomplete |
+
+Recommendation: do not merge. Complete the hosted pilot (§C2-5); the cross-project acceptance step is the only mandatory check with no passing evidence at this SHA anywhere.
+
+## C2-8 Risks, rollback
+
+Risks: unverified `large` rate; JDK/apt and secondary-image networking untested; one-off public-API call (60/h unauthenticated); GitHub Checks not on the PR head. Rollback unchanged from §14: delete the CircleCI project and revoke the GitHub App for the repository, then delete `.circleci/` (one commit) — and the pilot branch. No change to `ci.yml`, branch protection, or any PR.
