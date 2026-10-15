@@ -17,6 +17,8 @@
 #   * manual/API/UI run  -> `expected_sha` parameter is REQUIRED (never inferred from the branch).
 #   * GitHub App PR event -> `pipeline.event.github.pull_request.head.sha` is used when
 #     `expected_sha` is empty. Not populated for manual runs; never assumed.
+#   * SECURITY: the CircleCI project must have NO project/context env vars and a read-only
+#     checkout key; checkout credentials are removed before the PR tree executes.
 #   * push events with neither value set do not start the workflow (no credit use).
 
 version: 2.1
@@ -94,6 +96,16 @@ jobs:
               echo "FAIL: live PR head != expected (PR moved)" | tee -a "$EVIDENCE"; exit 1
             fi
             echo "RESULT: EXACT-HEAD MATCH CONFIRMED" | tee -a "$EVIDENCE"
+
+      - run:
+          name: Drop checkout credentials before executing PR-tree code
+          command: |
+            # The PR tree's scripts run from here on. Remove the checkout SSH key/known_hosts and
+            # point origin at the public HTTPS URL so no credential is reachable from that code.
+            rm -rf ~/.ssh
+            git remote set-url origin https://github.com/Fkenogo/11THONUS.git
+            git config --unset-all core.sshCommand || true
+            git remote -v
 
       - run:
           name: Install pnpm 9.15.9

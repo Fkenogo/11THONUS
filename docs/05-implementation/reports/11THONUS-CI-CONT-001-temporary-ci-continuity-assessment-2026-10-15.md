@@ -264,3 +264,7 @@ Recommendation: do not merge. Complete the hosted pilot (§C2-5); the cross-proj
 ## C2-8 Risks, rollback
 
 Risks: unverified `large` rate; JDK/apt and secondary-image networking untested; one-off public-API call (60/h unauthenticated); GitHub Checks not on the PR head. Rollback unchanged from §14: delete the CircleCI project and revoke the GitHub App for the repository, then delete `.circleci/` (one commit) — and the pilot branch. No change to `ci.yml`, branch protection, or any PR.
+
+## C2-9 Security review note (automated commit review, `cbca54e`)
+
+Finding: PR-tree code (install/test scripts) executes in a job that still holds CircleCI's checkout credentials. **Addressed:** a step now removes `~/.ssh` and resets `origin` to the public HTTPS URL before any PR-tree script runs. Residual conditions (Founder setup): the CircleCI project must have **no** project/context environment variables and the checkout key must be read-only; the pilot only accepts a `pr_number` for PRs the Founder has named. Repository is public and the job holds no secrets, so exposure is limited to the read-only checkout key.
