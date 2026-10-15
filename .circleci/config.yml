@@ -50,27 +50,39 @@ jobs:
 
       - run:
           name: Exact-head verification (fail closed)
+          environment:
+            P_EXPECTED_SHA: "<< pipeline.parameters.expected_sha >>"
+            P_PR_NUMBER: "<< pipeline.parameters.pr_number >>"
+            E_PR_HEAD_SHA: "<< pipeline.event.github.pull_request.head.sha >>"
+            E_PR_NUMBER: "<< pipeline.event.github.pull_request.number >>"
+            G_BRANCH: "<< pipeline.git.branch >>"
+            G_REVISION: "<< pipeline.git.revision >>"
+            T_TYPE: "<< pipeline.trigger.type >>"
+            E_NAME: "<< pipeline.event.name >>"
           command: |
             set -eu
             EVIDENCE=/tmp/exact-head-evidence.txt
-            EXPECTED="<< pipeline.parameters.expected_sha >>"
+            EXPECTED="$P_EXPECTED_SHA"
             SOURCE="pipeline parameter expected_sha (manual/checkpoint)"
-            PR="<< pipeline.parameters.pr_number >>"
+            PR="$P_PR_NUMBER"
             if [ -z "$EXPECTED" ]; then
-              EXPECTED="<< pipeline.event.github.pull_request.head.sha >>"
+              EXPECTED="$E_PR_HEAD_SHA"
               SOURCE="pipeline.event.github.pull_request.head.sha (PR event)"
-              PR="<< pipeline.event.github.pull_request.number >>"
+              PR="$E_PR_NUMBER"
             fi
             {
-              echo "trigger.type          : << pipeline.trigger.type >>"
-              echo "event                 : << pipeline.event.name >>"
-              echo "config branch/rev     : << pipeline.git.branch >> @ << pipeline.git.revision >>"
+              printf "trigger.type          : %s\n" "$T_TYPE"
+              printf "event                 : %s\n" "$E_NAME"
+              printf "config branch/rev     : %s @ %s\n" "$G_BRANCH" "$G_REVISION"
               echo "expected SHA          : ${EXPECTED:-<none>}"
               echo "expected SHA source   : $SOURCE"
               echo "PR number             : ${PR:-<none>}"
             } | tee "$EVIDENCE"
             if ! printf '%s' "$EXPECTED" | grep -Eq '^[0-9a-f]{40}$'; then
               echo "FAIL: expected SHA missing or not a 40-char lowercase SHA" | tee -a "$EVIDENCE"; exit 1
+            fi
+            if [ -n "$PR" ] && ! printf '%s' "$PR" | grep -Eq '^[0-9]+$'; then
+              echo "FAIL: pr_number must be numeric" | tee -a "$EVIDENCE"; exit 1
             fi
             if [ -n "$PR" ]; then
               git fetch --no-tags origin "refs/pull/$PR/head"
