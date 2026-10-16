@@ -7,6 +7,21 @@
 
 ---
 
+## 2026-10-16 — 11THONUS-CI-CONT-007G — Worker-Capped Configuration and Hosted Run #6 (FAILED at cross-project acceptance)
+
+- **Task:** Publish `851ae1875e1ce9fd111dc8cabe15db56d7ff8b2f` (fast-forward) and execute one hosted verification of PR #312.
+- **Status:** **PILOT FAILED — CORRECTION REQUIRED.** Pipeline `53e4d36f-fcfc-4f13-b214-b842997a271f` (number 6), job build #4, config revision `851ae18…`, 11m23s. **Not a complete pass:** the job stopped at cross-project acceptance; `pnpm emulators:validate` did not run.
+- **Verified hosted (independent of GitHub Actions):** exact-head — expected = live = fetched = checked-out = `73575800df6dfada8980fef5d9c83b43d2af7464`; credential/SSH/OIDC preflight and 13 gates; executor really exposes `nproc 36` vs `cpu.max` 4 CPUs / 8 GiB (diagnosis confirmed); install, build, lint, format, typecheck; `functions` 2034/2034 and `web` 1155/1155 (0 failed, 0 skipped; all 18 earlier failures pass); PostgreSQL integration 813/813 (22 files); **Playwright 149/149 with 2 workers, 0 flaky, 0 retried**; preview tooling 44 tests: 43 passed, 0 failed, **1 skipped** (IPv6 loopback unavailable).
+- **Failed:** cross-project port-isolation acceptance — `preview:start` fails at "registering preview identities": `fetch failed`, cause `UND_ERR_SOCKET` on the Auth emulator's first `signUp` (reproduced locally; log artifact preserved). Differential local reproduction: fails identically with IPv6 disabled **and** enabled, and on PR #307's head (green on GitHub Actions) → **not IPv6-related, not specific to #312**; mechanism unidentified; classification unresolved/environment-dependent.
+- **Credits:** 197 → 424 of 30,000 (+227 = 11.38 min × 20/min). Free plan.
+- **State:** no triggers, keys/hooks 0, 0 env vars, no contexts; PR #312 and #307 unchanged and unmerged; failure status on config commit `851ae18`.
+- **Options for Founder:** diagnose the Auth-emulator socket closure with a hosted diagnostic-only run; try the `machine` executor; use GitHub Actions as authoritative for these two gates when restored; or record the known gap.
+- **Documentation reconciliation:** local docs branch 12 ahead / 3 behind the remote config branch; rebase or merge then fast-forward when approved (report §C12-5). Stopped local containers `sim7g/pg7g/sim7h/pg7h/sim7i/pg7i` left undeleted.
+- **Files:** [report addendum §C12](../05-implementation/reports/11THONUS-CI-CONT-001-temporary-ci-continuity-assessment-2026-10-15.md). Configuration pushed (`.circleci/config.yml` only); documentation local, not pushed.
+- **Rollback:** fast-forward revert of `851ae18` if wanted (never force-push); `docker rm` the stopped containers; `docker image rm cimg/node:20.19`.
+
+---
+
 ## 2026-10-16 — 11THONUS-CI-CONT-007F — Test Worker Parallelism Correction (READY FOR HOSTED RETRY, not pushed)
 
 - **Task:** Analyse hosted failures (pipeline 5, 18 web tests) and prepare a CircleCI-only concurrency correction. No push, no hosted run.

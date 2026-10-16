@@ -1185,3 +1185,67 @@ Resource contention vs test instability: uncapped baseline (50 failures) versus 
 ## C11-4 Remaining risks, retry recommendation, rollback
 
 Risks: wall time for the full hosted suite is longer with fewer workers (estimate ~12–20 min; credits ≈ 240–400 at the confirmed 20 credits/min, 126 of 30,000 used); Postgres integration, preview tooling, **cross-project acceptance** and emulator validation have still never executed hosted; the timing-sensitive tests above. Recommendation: **one hosted retry** after approval — fast-forward push of `851ae18…` (remote must still equal `cf66dc0…`), the diagnostics step will record the real hosted limits at the start. Documentation reconciliation as §C8-8/§C10-6 (docs commits remain local and unpushed; the remote config branch is now several config commits ahead). Rollback: delete the isolated branch/worktree (or fast-forward revert if pushed); the disposable container was removed; the image `cimg/node:20.19` remains cached and can be removed with `docker image rm cimg/node:20.19`.
+
+---
+
+# Addendum — 11THONUS-CI-CONT-007G: Worker-Capped Configuration and Hosted Run #6 (2026-10-16)
+
+**Disposition: PILOT FAILED — CORRECTION REQUIRED.** CircleCI **independently verified the exact PR #312 commit** and, with the worker caps, **all mandatory gates that ran passed** — but the job stopped at **cross-project acceptance**, so **`pnpm emulators:validate` never ran**. This is therefore **not a complete CI pass**. It is independent hosted verification, **not a GitHub Actions pass**. No retry was made. Earlier addenda are preserved.
+
+## C12-1 Publication and trigger
+
+Entry checks passed (20): remote `cf66dc0…`; correction `851ae1875e1ce9fd111dc8cabe15db56d7ff8b2f` a direct descendant; diff only `.circleci/config.yml`; forwarding forms present exactly as established (`pnpm test -- --maxWorkers=2`, `pnpm test:e2e --workers=2`, no `-- --workers`); project followed; no triggers; OAuth definition `3302b753-a65d-53a6-88f4-a745357e1dc1` unchanged; 0 env vars/contexts; 0 keys/hooks; PR #312 `73575800df6dfada8980fef5d9c83b43d2af7464` based on PR #307's branch; PR #307 `023bf3ef599d27fcd998043c0bca6926aa82356e`; all mandatory steps and isolation controls present (37 steps, 13 gates); plan **Free**, 197 of 30,000 credits. Normal fast-forward push; remote verified `851ae18…`; the push started no pipeline (runs 5 → 5); documentation commits not pushed. Final recheck immediately before the single request: remote SHA, live PR head via the GitHub API, PR #307, no triggers, typed payload (`"pr_number":"312"` a JSON string).
+
+Pipeline **`53e4d36f-fcfc-4f13-b214-b842997a271f`** (number 6), URL `https://app.circleci.com/pipelines/github/Fkenogo/11THONUS/6`; job `044e5ee7-8206-45f5-add0-ad41e511ac90` (build #4, `https://circleci.com/gh/Fkenogo/11THONUS/4`); configuration revision **`851ae1875e1ce9fd111dc8cabe15db56d7ff8b2f`**; workflow 11m23s; final status **failed**.
+
+## C12-2 Hosted evidence
+
+**Exact head (step 103):** `EXACT-HEAD MATCH CONFIRMED` — expected = live = fetched = checked-out = `73575800df6dfada8980fef5d9c83b43d2af7464`, PR 312, pipeline 6, build 4; evidence JSON `result: PASS` (also stored as artifact `exact-head-evidence.json`).
+
+**Security:** SSH agent present but 0 identities; 45-name credential audit clean; CircleCI OIDC variables present and removed for later steps; 0 other process environments hold them; `BASH_ENV` created and sourced; all 13 OIDC/SSH isolation gates passed; no checkout key, no deploy key, no env vars/contexts, no secrets in logs.
+
+**Runtime facts (step 102, hosted):** `nproc 36`, `availableParallelism 36`, `cpu.max 400000 100000` (4 CPUs), `memory.max 8589934592` (8 GiB), `MemTotal 8388608 kB`. This **confirms** the pipeline-5 diagnosis: default Vitest would have used up to 35 workers on a 4-CPU quota.
+
+| Mandatory gate | Result | Passed / failed / skipped / retried | Time |
+| --- | --- | --- | ---: |
+| Credential/SSH/OIDC preflight; diagnostics; exact-head; pnpm 9.15.9; JDK 21 | passed | n/a | ≈14 s |
+| `pnpm install --frozen-lockfile`; Postgres service ready | passed | — | 14 s |
+| Build; lint; format:check; typecheck | passed | — | 15 / 20 / 15 / 11 s |
+| Unit/component, `functions` (`--maxWorkers=2`) | **passed** | 176 files; **2034 passed, 0 failed, 0 skipped**; no retries configured | 26 s |
+| Unit/component, `apps/web` (`--maxWorkers=2`) | **passed** | 140 files; **1155 passed, 0 failed, 0 skipped** (the 18 pipeline-5 failures all pass); no retries configured | 102 s |
+| PostgreSQL integration (under the Firestore emulator) | **passed** | 22 files; **813 passed, 0 failed, 0 skipped**; script exited 0 | 247 s |
+| Playwright install (`--with-deps chromium`) | passed | — | 25 s |
+| Playwright e2e (`--workers=2`) | **passed** | `Running 149 tests using 2 workers`; **149 passed, 0 failed, 0 skipped, 0 flaky, 0 retried** (no "flaky" or retry text anywhere in the output) | 135 s |
+| Founder Preview tooling (`node --test`) | **passed with 1 skip** | 44 tests: **43 passed, 0 failed, 1 skipped** — "an IPv6-only listener does not block the preview's IPv4 loopback port", self-skipped: "IPv6 loopback is unavailable in this environment" | 1 s |
+| **Cross-project port-isolation acceptance** | **FAILED** | — | 48 s |
+| `pnpm emulators:validate` | **NOT RUN** (job stopped) | — | — |
+| Cleanup (`when: always`, gate-protected) and final re-assertion | succeeded | — | 0 s |
+
+**Playwright flakiness:** none in this run; the two layout tests that were flaky under emulation locally (CONT-007F) passed cleanly here. Earlier local flakiness is not erased: it is recorded as a risk.
+
+## C12-3 The failure: cross-project acceptance (step 128)
+
+`node tests/preview/cross-project-acceptance.mjs` (decoy listeners hold legacy ports 4000/4001/9099) → `pnpm preview:start`: Functions build OK, 30 migrations applied, Firebase emulators (Auth, Functions, Firestore, UI) started and reported "All emulators ready", Commerce Knowledge and test-only Terms seeds ran, state reset, then **`registering preview identities (real Auth emulator + authenticate)` → `Founder Preview start failed: fetch failed`** → `Error: pnpm preview:start exited with 1`. Logs preserved: step output (job `044e5ee7-…` step 128) and artifact `preview-logs/emulators.log`.
+
+**Cause behind `fetch failed`** (obtained locally by loading a diagnostic `fetch` wrapper through `NODE_OPTIONS`, repository untouched): `cause = UND_ERR_SOCKET` on `POST http://127.0.0.1:28101/identitytoolkit.googleapis.com/v1/accounts:signUp?key=preview-fake-api-key` — the Auth emulator accepts the connection and then closes it. The preview tooling addresses every emulator at `127.0.0.1` (IPv4), so name resolution is not involved.
+
+**Differential reproduction (real `cimg/node:20.19` image, amd64 emulated on Apple Silicon, `--cpus=4 --memory=8g`, Postgres sidecar sharing the network namespace as on CircleCI):**
+
+| Run | Result |
+| --- | --- |
+| #312 head, **IPv6 disabled** (hosted-like: `connect ::1 → EADDRNOTAVAIL`) | **same failure**: `UND_ERR_SOCKET` at the first `signUp` |
+| #312 head, **IPv6 enabled** (control) | **same failure** (after an initial cold-start timeout artefact) |
+| **PR #307 head `023bf3e`** (passed this exact step on GitHub Actions) | **same failure** |
+| `preview:start` alone on #307 | inconclusive: Firestore emulator start timeout under emulation |
+
+Conclusions, with their limits: (1) the IPv6 hypothesis I raised first (hosted shows `EADDRNOTAVAIL ::1`) is **refuted**; (2) the failure is **not specific to PR #312's code** — a PR that is green on GitHub Actions fails identically in the same constrained container; (3) the mechanism that makes the Auth emulator drop the first request is **not identified**. Local runs are emulated amd64 and slower than hosted, so they can only support, not prove, the hosted cause; hosted and local show the same signature. **Classification: unresolved; environment/executor-dependent (infrastructure) rather than an application defect — not proven.** Hypotheses not tested: Auth-emulator/Node keep-alive behaviour under a 4-CPU quota or on this image; image/Node/firebase-tools differences from the GitHub runner. No fix is proposed without a cause; changing the acceptance test or timeouts is not authorised.
+
+## C12-4 Credits, state, risks
+
+Plan **Free**; credits **197 → 424 of 30,000: +227** for the 11m23s job (= 11.38 min × 20 credits/min, the confirmed Gen1 large rate). CircleCI posted `ci/circleci: circleci-continuity-verify` = `failure` on the configuration commit `851ae18…` (PR #312's head has no CircleCI status). After the run: no triggers, 0 deploy keys/hooks, 0 env vars, no contexts; six runs exist (two `not_run`, four failed); PR #312 and PR #307 unchanged and unmerged; no application code, test, fixture, timeout, assertion, GitHub Actions, branch protection, billing or production change.
+
+Outstanding: (a) cross-project acceptance and emulator validation have **no passing evidence at `73575800…`**; (b) the acceptance failure's mechanism is unknown and reproduces on a known-good PR in a constrained container; (c) timing-sensitive tests (`PhoneAuthHarnessPage` 80 ms assertion) and the two layout-flaky Playwright tests remain fragile although they passed hosted; (d) one preview-tooling test self-skips when IPv6 loopback is absent. Next-step options for Founder decision: (i) diagnose the Auth-emulator socket closure with a hosted diagnostic-only run (adds logging around the failing request; no gate weakened), (ii) try the `machine` executor, which has a different network/runtime (needs an executor change), (iii) accept GitHub Actions as the authoritative runner for these two gates once service is restored and treat CircleCI as covering the other gates, (iv) a Founder disposition recording the known gap. No retry is made.
+
+## C12-5 Rollback and reconciliation
+
+Rollback: nothing is required in CircleCI; the config change can be reverted with a fast-forward revert commit (never force-push); stopped, undeleted local containers `sim7g`, `pg7g`, `sim7h`, `pg7h`, `sim7i`, `pg7i` remain (a safety check blocked my deleting two of them, so none were removed; delete with `docker rm` when no longer wanted) and the cached image `cimg/node:20.19`. Documentation commits remain local and unpushed; the local documentation branch is **12 ahead / 3 behind** the remote configuration branch (`878c3e8`, `cf66dc0`, `851ae18` are config-only commits): reconcile later by rebasing the documentation commits onto `origin/docs/ci-cont-001-circleci-assessment` (disjoint files, no conflicts expected) or merging it, then a normal fast-forward push after confirming no trigger/webhook exists and that the config SHA used for any run equals the remote head.
