@@ -268,3 +268,68 @@ Risks: unverified `large` rate; JDK/apt and secondary-image networking untested;
 ## C2-9 Security review note (automated commit review, `cbca54e`)
 
 Finding: PR-tree code (install/test scripts) executes in a job that still holds CircleCI's checkout credentials. **Addressed:** a step now removes `~/.ssh` and resets `origin` to the public HTTPS URL before any PR-tree script runs. Residual conditions (Founder setup): the CircleCI project must have **no** project/context environment variables and the checkout key must be read-only; the pilot only accepts a `pr_number` for PRs the Founder has named. Repository is public and the job holds no secrets, so exposure is limited to the read-only checkout key.
+
+---
+
+# Addendum — 11THONUS-CI-CONT-002C: HOLD Disposition and Handover (2026-10-16)
+
+**Disposition: TEMPORARY CI PILOT — HOLD.** Founder decision. This is a temporary CI continuity pilot during a GitHub Actions billing interruption; GitHub Actions remains the intended primary CI provider. Nothing here is a permanent provider selection.
+
+## C2C-1 Why the pilot is on hold
+
+CircleCI onboarding is **blocked by an unresolved account/organization discovery issue. No root cause is confirmed.**
+
+| Evidence (reported by Founder, 2026-10-16) | Source |
+| --- | --- |
+| The `github/Fkenogo` organization is visible in the CircleCI browser UI | Browser |
+| `circleci org list` returns `No organizations found` under the authenticated CLI session | CLI |
+| `circleci onboard --scan --org gh/Fkenogo` does not discover the existing organization and offers to **create a new one** | CLI |
+| The Founder **cancelled** onboarding; no organization was created | Founder |
+| Earlier (CONT-002A): Fastest setup modal cannot select a config branch, Set Up Project stays disabled, refresh does not help; Project Setup → Add Pipeline unreachable because the unconfigured repo routes back to the setup modal | Browser |
+| Earlier (CONT-002B): docs direct `github/` orgs to `circleci onboard`; `circleci project create` and `circleci pipeline create` do not bootstrap an uninitialised GitHub OAuth project | Official docs / CLI help |
+
+Hypotheses only (none confirmed): the CLI session authenticated to a different CircleCI identity or token scope than the browser session; the OAuth-type org is not enumerated by the CLI's org listing; or the OAuth app's repository/organization access differs from the GitHub App's. Creative Engine's separate execution-time HTTP 403 may or may not share a cause; this is unproven.
+
+## C2C-2 State confirmation (2026-10-16)
+
+| Item | Status |
+| --- | --- |
+| New CircleCI organization / project / paid resource created by the agent | **None.** The agent has no CircleCI account access; the Founder confirms onboarding was cancelled before creating an organization |
+| CircleCI checks/statuses on pilot head `1d928ac` | **0 check-runs, 0 statuses** (GitHub API) |
+| CircleCI credits used | **0** |
+| `main` | unchanged (`b3cb64ee…`); no branch protection or permission change |
+| `.github/workflows/ci.yml`, application code, dependencies, lockfile | unchanged |
+| PR #312 head | **`73575800df6dfada8980fef5d9c83b43d2af7464`** — unchanged, `OPEN`, `CLEAN`, base `feat/ea-bl-001-corr-002-b-staff-counter`; **not merged** |
+| PR #307 | `OPEN`, head `023bf3ef599d27fcd998043c0bca6926aa82356e` — unchanged; #312 depends on it |
+| GitHub Actions at the #312 head | still never started (two `workflow_dispatch` runs failed in ~5 s: billing lock) |
+
+## C2C-3 Preserved artifacts
+
+- `.circleci/config.yml` on branch `docs/ci-cont-001-circleci-assessment` @ `1d928ac`: **validated** with the official CLI (`circleci config validate`), exact-head logic exercised locally (match / stale SHA / non-numeric PR / empty / malformed), credentials scrubbed before PR-tree execution, pipeline values passed through `environment:`. Not modified in this step.
+- Local evidence at `73575800…` (§C2-2): e2e 149/149, web 1155/1155, PostgreSQL 813/813, emulator validation 877 passed / 3 skipped, build/lint/format/typecheck pass; earlier timeouts classified as host-load exhaustion.
+
+## C2C-4 Remaining verification gaps
+
+1. **Independent hosted CI has not run** at `73575800…` (CircleCI blocked; GitHub Actions blocked by billing).
+2. **Cross-project port-isolation acceptance (mandatory step of `ci.yml`) has no passing evidence at this SHA anywhere.** Locally it fails at start with `EADDRINUSE 127.0.0.1:4000` because another project's Firebase emulator holds legacy ports 4000/9099. It can be run locally once those ports are free (a Founder decision: stop the other project's emulator), or hosted.
+3. The merge assessment in §C2-7 is unchanged: CircleCI exact-head verification **No**; GitHub Actions pass **No**; GitHub permits merging technically (into #307's branch) but **governance does not permit** it.
+
+## C2C-5 Resume procedure (if the account issue is resolved)
+
+Preconditions: GitHub Actions still unavailable; Founder re-authorises the pilot; #312 head re-checked.
+
+1. Re-check #312 head; if it is not `73575800…`, restart from the new SHA.
+2. Resolve account discovery: confirm the CLI is authenticated as the same identity that owns the `github/Fkenogo` organization in the browser (`circleci org list` must list it). If it cannot, contact CircleCI support with the evidence in §C2C-1. Do not create a second organization.
+3. Initialise the project with the documented route for `github/` organizations (`circleci onboard --scan --org gh/Fkenogo` from the pilot-branch worktree), or the web setup if branch selection works. Do **not** run any printed git commit/push commands (the config is already committed), and remove any all-pushes trigger immediately.
+4. Trigger **one** manual run: branch `docs/ci-cont-001-circleci-assessment`, parameters `expected_sha=73575800df6dfada8980fef5d9c83b43d2af7464`, `pr_number=312`.
+5. Collect pipeline URL, `exact-head-evidence.txt`, per-step results, cross-project acceptance result, and credits; complete the matrix in §C2-6; issue a final disposition.
+
+Alternative if still blocked and time-critical: free GitHub Actions minutes returning (billing resolution) supersedes the pilot entirely, and a single run of `ci.yml` via `workflow_dispatch` at the #312 SHA provides the authoritative check.
+
+## C2C-6 Remaining risks
+
+Unproven hosted assumptions (JDK 21 apt install, Postgres secondary image on 28110, `large` credit rate, branch handling for manual runs); CircleCI account/org mismatch unresolved; the stacked-PR dependency on #307; the pilot branch is unmerged and the prototype must not drift from `ci.yml`.
+
+## C2C-7 Rollback
+
+Nothing needs rollback in CircleCI (no project/org created). To remove the prototype: delete `.circleci/` and this branch (`docs/ci-cont-001-circleci-assessment`), or simply do not merge it. If a CircleCI project is later created: delete its trigger and pipeline, revoke the GitHub App repository access, then remove `.circleci/`.

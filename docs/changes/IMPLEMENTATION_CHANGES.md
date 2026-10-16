@@ -7,6 +7,18 @@
 
 ---
 
+## 2026-10-16 — 11THONUS-CI-CONT-002C — Temporary CI Pilot: HOLD Disposition and Handover
+
+- **Task:** Record the Founder's HOLD on the CircleCI temporary CI pilot. Documentation only.
+- **Status:** **TEMPORARY CI PILOT — HOLD.** CircleCI onboarding is blocked by an **unresolved account/organization discovery issue** (browser shows `github/Fkenogo`; `circleci org list` returns "No organizations found"; `circleci onboard --scan --org gh/Fkenogo` offers to create a new organization; Founder cancelled). No root cause confirmed. GitHub Actions remains the intended primary CI.
+- **Confirmed:** no CircleCI organization/project/paid resource created; 0 credits; 0 CircleCI checks on pilot head `1d928ac`; `main`, `ci.yml`, application code, lockfile, branch protection unchanged. PR #312 head `73575800…` unchanged, open, **not merged** (stacked on #307, also open).
+- **Gaps:** no independent hosted CI run; mandatory cross-project acceptance has no passing evidence at `73575800…` (local port conflict with another project's emulator).
+- **Preserved:** validated `.circleci/config.yml` (branch `docs/ci-cont-001-circleci-assessment`) and all local evidence (e2e 149, web 1155, PostgreSQL 813, emulators 877/3 skipped).
+- **Files:** [report addendum §C2C](../05-implementation/reports/11THONUS-CI-CONT-001-temporary-ci-continuity-assessment-2026-10-15.md) (resume procedure §C2C-5).
+- **Rollback:** delete `.circleci/` and the pilot branch / revert the documentation commit.
+
+---
+
 ## 2026-10-15 — 11THONUS-CI-CONT-002 — CircleCI Temporary CI Pilot: Execution & Validation (PILOT INCOMPLETE)
 
 - **Task:** Execute the Founder-authorised controlled pilot for PR #312 (`73575800…`). Temporary and reversible; no merge.
