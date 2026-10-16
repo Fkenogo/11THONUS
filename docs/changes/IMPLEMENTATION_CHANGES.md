@@ -7,6 +7,17 @@
 
 ---
 
+## 2026-10-16 — 11THONUS-CI-CONT-004 — Hosted Run Pre-Execution Checks (PILOT BLOCKED)
+
+- **Task:** Execute one authorised CircleCI hosted verification of PR #312. Pre-execution security/configuration checks were run first.
+- **Status:** **PILOT BLOCKED — SECURITY OR INFRASTRUCTURE.** The pipeline was **not triggered**; 0 credits; no run exists.
+- **Confirmed:** config branch `f76e95c…`; PR #312 `73575800…` (open, clean); PR #307 `023bf3e…` stacked base; 0 project env vars, 0 contexts; single OAuth definition `3302b753-…`; job covers every mandatory step incl. cross-project acceptance; **Google Cloud** (`eleventh-on-us-dev/-staging/eleventh-on-us`): no workload identity pools (incl. deleted), no federated/public IAM principals, no folder/org inheritance.
+- **Blockers (cannot be confirmed with authoritative access):** (1) AWS-side OIDC trust — no AWS credentials on this host, absence not verifiable; (2) CircleCI Free plan — not exposed by the CLI. Founder actions listed in the report (§C4-3).
+- **Files:** [report addendum §C4](../05-implementation/reports/11THONUS-CI-CONT-001-temporary-ci-continuity-assessment-2026-10-15.md). Documentation committed **locally, not pushed**, so the remote config branch stays at `f76e95c…`. No configuration, application, `ci.yml`, dependency or branch-protection change.
+- **Rollback:** `git reset --hard f76e95c` in the worktree; pilot removal unchanged.
+
+---
+
 ## 2026-10-16 — 11THONUS-CI-CONT-003B — OIDC Isolation Correction and Final Pilot Release
 
 - **Task:** Correct the CircleCI pilot so `CIRCLE_OIDC_TOKEN`/`CIRCLE_OIDC_TOKEN_V2` are removed before any fetched PR script runs, with fail-closed checks. Configuration/documentation only; nothing executed on CircleCI, no credits spent; CI-CONT remains on HOLD until Founder authorisation.

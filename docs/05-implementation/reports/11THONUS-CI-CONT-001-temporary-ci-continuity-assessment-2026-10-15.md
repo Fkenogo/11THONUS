@@ -638,3 +638,48 @@ Exact-head cases re-run against the real GitHub API with the revised config: pos
 ## C3B-6 Heads and release
 
 PR #312 `73575800df6dfada8980fef5d9c83b43d2af7464` (unchanged, open, clean, base `feat/ea-bl-001-corr-002-b-staff-counter`); PR #307 `023bf3ef599d27fcd998043c0bca6926aa82356e` (unchanged). The API request in §C3A-5 (definition `3302b753-a65d-53a6-88f4-a745357e1dc1`, `config.branch` = `checkout.branch` = `docs/ci-cont-001-circleci-assessment`, parameters `expected_sha=73575800…`, `pr_number=312`) is unchanged and remains **not executed**. The configuration commit to name at authorisation is the final config SHA recorded in the completion report. Rollback is unchanged: delete `.circleci/` and the pilot branch; revoke any token created for the run.
+
+---
+
+# Addendum — 11THONUS-CI-CONT-004: Hosted Run Pre-Execution Checks (2026-10-16)
+
+**Disposition: PILOT BLOCKED — SECURITY OR INFRASTRUCTURE.** The hosted pipeline was **not triggered**; **0 CircleCI credits** were used; no run exists. The Founder's STOP rule applies: two security prerequisites could not be confirmed with authoritative access. Earlier sections are preserved.
+
+## C4-1 Prerequisite results
+
+| # | Prerequisite | Result | Evidence |
+| --- | --- | --- | --- |
+| 1 | Configuration branch at `f76e95c9b87c0801445c235193ffdc3349eec760` | **Confirmed** | remote head = local head = `f76e95c…`; working tree clean; `ci.yml` unchanged vs `main` |
+| 2 | PR #312 at `73575800df6dfada8980fef5d9c83b43d2af7464` | **Confirmed** | open, `CLEAN`, base `feat/ea-bl-001-corr-002-b-staff-counter` |
+| 3 | PR #307 remains the stacked dependency | **Confirmed** | head `023bf3ef599d27fcd998043c0bca6926aa82356e`, open; it is #312's base branch |
+| 4 | CircleCI Free active, no paid resources | **NOT CONFIRMED** | the CircleCI CLI exposes no plan/billing command; org advanced settings list no plan; the plan page is web-UI only. (Earlier public pricing: Free = $0, 30,000 credits.) |
+| 5 | Zero project secrets and contexts | **Confirmed** | `circleci envvar list`: 0; `circleci context list --org gh/Fkenogo`: none; no deploy keys, webhooks or Actions secrets on GitHub |
+| 6 | No cloud OIDC trust to CircleCI | **PARTIAL** — see §C4-2 | Google Cloud confirmed clean; AWS not accessible |
+| 7 | OAuth pipeline definition and approved request | **Confirmed** | one definition `3302b753-a65d-53a6-88f4-a745357e1dc1`, `github_oauth`, path `.circleci/config.yml`; 0 runs so far; the §C3A-5 request (config.branch = checkout.branch = the pilot branch, `expected_sha`, `pr_number=312`) is unchanged |
+| 8 | Job covers all mandatory tests incl. cross-project acceptance | **Confirmed** | processed config (with parameters) has 36 steps: install, build, lint, format, typecheck, unit/component, PostgreSQL+emulator, Playwright install + e2e, preview-tooling, **cross-project acceptance**, preview cleanup, emulator validation, with 13 OIDC gates; unchanged since `f76e95c` |
+
+## C4-2 Cloud-side OIDC trust (authoritative queries, read-only)
+
+**Google Cloud** (authenticated `gcloud`; projects `eleventh-on-us-dev`, `eleventh-on-us-staging`, `eleventh-on-us`): `iam workload-identity-pools list --location=global --show-deleted` returns **[] for all three** (no pools, including deleted); project IAM bindings contain **no** `principal://`/`principalSet://`, `circleci`/`oidc` or public principals (members: 16/6/9); the projects have **no folder or organisation ancestor**, so no inherited bindings. Confirmed: **no Google Cloud trust to CircleCI** for the 11thONUS projects. (Only these three projects were queried; the account lists other, unrelated projects.)
+
+**AWS:** the AWS MCP server and CLI have **no credentials** on this host (`No AWS credentials found`; `~/.aws` has no credential files), so IAM OIDC providers (`oidc.circleci.com/org/080a287a-9598-4485-903b-128d09bd08b7`) **could not be queried**. No AWS dependency exists in 11thONUS (Firebase/Google Cloud only; no IaC or AWS configuration), but absence of AWS trust is **inferred, not verified**, which the directive forbids.
+
+## C4-3 Minimum Founder actions to unblock
+
+1. **AWS:** for each AWS account owned by Miledge (or confirm none exist), run `aws iam list-open-id-connect-providers` (read-only) and confirm none lists `oidc.circleci.com`. Alternatively state in chat that Miledge has no AWS accounts. Do not paste credentials.
+2. **CircleCI plan:** in CircleCI → Organization Settings → Plan, confirm **Free**, no payment card, no paid add-on, and note the remaining credits.
+3. Reply with explicit confirmation of 1 and 2. The run then needs no further change: it uses the Founder-held CLI session (`circleci pipeline run … --definition-id 3302b753-… --branch docs/ci-cont-001-circleci-assessment --param expected_sha=73575800df6dfada8980fef5d9c83b43d2af7464 --param pr_number=312`), so no token is displayed or stored.
+
+Re-check heads immediately before triggering; STOP if any differs from §C4-1.
+
+## C4-4 Branch pin
+
+This documentation was committed **locally only and not pushed**, so the remote configuration branch remains exactly `f76e95c…` as authorised. Push the documentation commit after the run (it changes no configuration).
+
+## C4-5 Status of PR #312 verification
+
+Unchanged: **not independently verified by CircleCI** (no run), **GitHub Actions never started**, local evidence only (e2e 149/149, web 1155/1155, PostgreSQL 813/813, emulators 877/3 skipped); cross-project acceptance has no pass at `73575800…`. No PR was merged; no branch protection, billing, application or infrastructure change was made.
+
+## C4-6 Rollback
+
+Nothing to roll back in CircleCI (no run, no resources created). Local documentation commit can be dropped with `git reset --hard f76e95c` on the worktree. Pilot removal is unchanged: delete `.circleci/` and the pilot branch.
