@@ -6954,3 +6954,13 @@ READY FOR CONTROLLED DRAFTING — PR AWAITS FOUNDER REVIEW`**.
 - **Cost:** ≈ 398 credits (692 → 1,090 of 30,000); 18 m 12 s. Not retried.
 - **Files changed:** this log and the CI-CONT-001 assessment report (§C15). No application, test, GitHub Actions, billing or branch-protection change; PR #307/#312 not merged.
 - **Next (needs Founder approval):** cap preview-suite worker count for the CI executor, then one further run.
+
+---
+
+## 2026-10-16 — 11THONUS-CI-CONT-007K — Preview acceptance Playwright concurrency correction (local, unpushed)
+
+- **Task:** investigate pipeline #7 cross-project failure and prepare a bounded local correction; hosted execution not authorized.
+- **Finding:** the acceptance script spawns `pnpm test:e2e:preview` without arguments; `playwright.config.ts` sets no `workers`; hosted default was 18 workers on a 4-CPU cgroup.
+- **Change:** local commit `49c08c28092c404f70b565948c53c0335c0762f6` on `ci/cont-007c-config` (parent `6f3a3a8…`, `.circleci/config.yml` only, +25/−2): step-scoped `npm_config_script_shell` wrapper appends `--workers=2` to that one command; marker check; extended cleanup/assertion. Local `cimg/node:20.19` run printed "Running 56 tests using 2 workers"; full-suite completion not achievable under amd64 emulation (stuck-loading failures, retries 0 in that run).
+- **Not done:** no push, no CircleCI run, no PR merge; no application, test, GitHub Actions, billing or branch-protection change; permanent `tests/preview` stale-connection repair remains an open follow-up.
+- **Rollback:** do not push, or revert `49c08c2`.

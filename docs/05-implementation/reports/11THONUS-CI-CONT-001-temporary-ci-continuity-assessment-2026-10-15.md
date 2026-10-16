@@ -1360,3 +1360,37 @@ No secrets, contexts, SSH keys, triggers, webhooks or OIDC use were added or obs
 
 ## C15-7 Recommended correction (requires Founder approval; not performed)
 Cap the preview Playwright suite's parallelism in CI without editing PR #312 or weakening it, e.g. a step-scoped, CI-only preload that makes `os.cpus()`/`os.availableParallelism()` report the cgroup limit (4) for the acceptance step only, or ask the PR owners for a `workers` setting in the `chromium-preview*` run. Then one hosted run, which would also exercise the unrun gates. The permanent fix for the underlying Auth keep-alive race still belongs in `tests/preview`.
+
+---
+
+# Addendum — 11THONUS-CI-CONT-007K: Preview Acceptance Playwright Concurrency Correction (2026-10-16)
+
+**Disposition: READY FOR HOSTED RETRY (with a stated residual risk, see C16-6).** Local correction only; nothing pushed, no pipeline triggered. Proposed config commit: `49c08c28092c404f70b565948c53c0335c0762f6` (branch `ci/cont-007c-config`, parent `6f3a3a8…` = current remote head).
+
+## C16-1 Invocation path (verified from the PR #312 tree `73575800…`)
+`.circleci/config.yml` acceptance step → `node tests/preview/cross-project-acceptance.mjs` → `spawn("pnpm", ["test:e2e:preview"], { env: process.env })` (no arguments; line 45) → package script `playwright test --project=chromium-preview --project=chromium-preview-mobile` (`package.json:17`). `playwright.config.ts` sets `fullyParallel: true`, `retries: CI ? 2 : 0`, `reporter: "html"`, **no `workers`**; Playwright 1.61.1 defaults to 50 % of logical cores and has no environment override (searched the installed runtime: only `--workers`/config). Hosted `nproc` = 36 → 18 workers on a 4-CPU cgroup. The config also declares three global `webServer` entries (web build + two dev servers), which add CPU load but are not affected by workers.
+
+## C16-2 Root cause of pipeline #7
+Not authentication and not the Auth socket race (that was fixed: shim line present, signup/seed/`preview:verify` passed, zero socket errors). 56 tests on 18 browsers starved a 4-CPU executor; failures were `page.goto` 60 s and 20 s assertion timeouts in `signInAs`. Evidence is the worker banner plus timeout-only signatures; it is an inference until a hosted run confirms it. GitHub Actions' `ubuntu-latest` (4 vCPU) resolves to 2 workers, so `--workers=2` reproduces the configuration the suite already runs under there.
+
+## C16-3 Correction (minimum, `.circleci/config.yml` only, +25/−2)
+The script does not forward arguments and no supported environment override exists, so (no `os.cpus()` spoofing, no test/script edits) the acceptance step sets `npm_config_script_shell=/tmp/ci-preview-workers-shell.sh`. pnpm 9.15.9 runs every script through that shell (verified with pnpm 9.15.9; not honoured by pnpm 12, irrelevant to CI). The wrapper appends ` --workers=2` only when the command string is exactly `playwright test --project=chromium-preview --project=chromium-preview-mobile`, writes a marker, and passes every other command through unchanged. After the acceptance script the step fails if the marker is absent (cap silently not applied). The `trap` removes the preload, wrapper and marker; the "Assert no connection shim" step now also fails if the wrapper variable/file/marker survives. Projects, reporters, retries (2 in CI), timeouts, assertions, fixtures and the acceptance script are untouched.
+
+## C16-4 Local validation (`cimg/node:20.19`, amd64 emulation on arm64, `--cpus=4 --memory=8g`, pnpm 9.15.9, PR head tree, postgres:16-alpine on 28110, real generated step run verbatim)
+- Worker cap: wrapper fired (`[ci-workers] … --workers=2`) and Playwright printed **"Running 56 tests using 2 workers"** (before, hosted: 18; local default would be 50 % of visible cores). 56 tests selected, both projects, same reporter.
+- Run 1 (`CI=true`, as hosted): Playwright's own `webServer` build did not become ready within 60 s under emulation ("Timed out waiting 60000ms from config.webServer") — an emulation limit (hosted run #7 started those servers normally). Setup/teardown ran (`preview:start`, `status`, `verify`, `reset`, `verify`, then `preview:stop`).
+- Run 2 (`CI` unset so the already-running web servers could be reused, hence **retries 0, not the hosted 2**): 22 passed, 6 failed, 28 did not run (counter.spec is `serial`, so one failure skips its remainder). Failing pages were captured stuck on "Loading your loyalty experience…" / "Loading the counter…", and the Functions emulator logged "Failed to load function definition … Timeout after 10000"; this indicates slow backend/callables under amd64 emulation, not an Auth, assertion or configuration defect, but it **cannot be proven** locally and does not demonstrate the hosted pass. No test was modified.
+- Shim scope/cleanup: Auth shim line present only in the step; afterward `/tmp/ci-*` absent and the assertion step passed ("preload file absent, CI_AUTH_EMULATOR_PORT unset, worker-cap shell absent"). Compiled config valid with parameters, 0 residual `<<`, 13 isolation gates, `pnpm emulators:validate`, `pnpm test -- --maxWorkers=2`, `pnpm test:e2e --workers=2`, build/lint/typecheck all present; only the acceptance and assertion steps changed.
+
+## C16-5 Separate engineering follow-ups (not repaired by this change)
+1. **Preview-harness stale HTTP connection defect** (`tests/preview`): pooled keep-alive sockets to the Auth emulator (timeout 5 s) go stale while `spawnSync` seeds block the event loop → `UND_ERR_SOCKET`. The `Connection: close` shim is a CI-only mitigation, not the repair; the fix (async seeds or non-pooled emulator calls) belongs to the PR owners.
+2. **Preview test fragility candidates:** the global `webServer` block starts three unrelated servers (incl. a production build) inside the preview run; `counter.spec.ts` is `serial` so one slow test hides the rest; both projects run the same specs against the same seeded data; the 20 s assertion timeout is short for a cold Functions emulator. None changed here.
+
+## C16-6 Residual hosted-only risks
+Even at 2 workers, the 4-CPU executor also hosts the Functions/Firestore/Auth emulators, Postgres and Vite; the suite may still be slow (the hosted run may pass, fail on timing, or expose a true defect). Wall time will grow (2 workers vs 18). Retries (2) mask flakiness and will be reported. Credits ≈ 400–600 for the run.
+
+## C16-7 Rollback
+Not pushed. To discard: `git branch -f` is not needed — simply do not push `49c08c2`; the remote head stays `6f3a3a8…`. After a push, revert `49c08c2` (single-file config change).
+
+## C16-8 Recommendation
+One further hosted run at `49c08c2…` (fast-forward from `6f3a3a8…`) is justified, to be approved by the Founder; stop on any gate failure without retry.
