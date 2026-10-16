@@ -28,6 +28,21 @@ parameters:
     type: string
     default: ""
 
+commands:
+  # Fail-closed gate placed immediately before every step that executes fetched PR code. Each step's
+  # shell sources $BASH_ENV (which unsets the OIDC variables and re-checks), so this gate observes the
+  # same environment the application step will see. Static messages only: values are never printed.
+  oidc_guard:
+    steps:
+      - run:
+          name: OIDC isolation gate (fail closed before application code)
+          command: |
+            if [ -n "${CIRCLE_OIDC_TOKEN-}${CIRCLE_OIDC_TOKEN_V2-}" ]; then
+              echo "FAIL: a CircleCI OIDC variable is present; refusing to execute application code" >&2
+              exit 1
+            fi
+            echo "OK: CIRCLE_OIDC_TOKEN and CIRCLE_OIDC_TOKEN_V2 are absent"
+
 jobs:
   verify:
     docker:
@@ -68,8 +83,23 @@ jobs:
             if grep -Fxq -e CIRCLE_OIDC_TOKEN -e CIRCLE_OIDC_TOKEN_V2 /tmp/env-names.txt; then
               echo "NOTE: CircleCI-issued OIDC variables present (legitimate); removing them from all later steps"
             fi
-            # BASH_ENV is sourced by every later step's shell; PR code then never sees the OIDC tokens.
-            echo 'unset CIRCLE_OIDC_TOKEN CIRCLE_OIDC_TOKEN_V2' >> "${BASH_ENV:-/dev/null}"
+            # $BASH_ENV is sourced by the shell of every later step, before its command runs. It unsets the
+            # OIDC variables and then re-checks, aborting the step (exit 1) if either survives, so
+            # fetched application scripts never start with them in their environment.
+            [ -n "${BASH_ENV:-}" ] && [ -w "$BASH_ENV" ] || { echo "FAIL: BASH_ENV is unset or not writable; OIDC isolation impossible" >&2; exit 1; }
+            {
+              echo 'unset CIRCLE_OIDC_TOKEN CIRCLE_OIDC_TOKEN_V2 2>/dev/null'
+              echo 'if [ -n "${CIRCLE_OIDC_TOKEN-}${CIRCLE_OIDC_TOKEN_V2-}" ]; then'
+              echo '  echo "FAIL: CircleCI OIDC variable survived unset; aborting step" >&2'
+              echo '  exit 1'
+              echo 'fi'
+            } >> "$BASH_ENV"
+            # Informational only (names/counts, never values): other same-user processes that still hold the
+            # variable in their own environment, which an unset in this shell cannot remove.
+            if [ -d /proc ]; then
+              N="$(grep -l -a -E '(^|\x00)CIRCLE_OIDC_TOKEN(_V2)?=' /proc/[0-9]*/environ 2>/dev/null | wc -l | tr -d ' ')"
+              echo "INFO: $N process environment(s) other than this step may hold a CircleCI OIDC variable (the agent itself); trust to any cloud role is unconfigured (see report)"
+            fi
             echo "OK: no SSH identity, no credential files, no unexpected credential-like env var names"
 
       - run:
@@ -107,9 +137,6 @@ jobs:
             finish() { rc=$?; if [ "$rc" -eq 0 ]; then emit PASS; else emit FAIL; fi; }
             trap finish EXIT
             fail() { REASON="$1"; echo "FAIL: $1" >&2; exit 1; }
-            if [ -n "${CIRCLE_OIDC_TOKEN:-}${CIRCLE_OIDC_TOKEN_V2:-}" ]; then
-              echo "WARNING: CircleCI OIDC variable(s) still visible after BASH_ENV unset (no cloud trust is configured for this project; inert)" >&2
-            fi
 
             printf '%s' "$P_EXPECTED_SHA" | grep -Eq '^[0-9a-f]{40}$' || fail "expected_sha missing or not a 40-char lowercase SHA"
             printf '%s' "$P_PR_NUMBER" | grep -Eq '^[1-9][0-9]{0,6}$' || fail "pr_number missing or not a positive integer"
@@ -149,6 +176,7 @@ jobs:
             sudo apt-get update -qq
             sudo apt-get install -y -qq openjdk-21-jre-headless postgresql-client
             java -version
+      - oidc_guard
       - run:
           name: Install dependencies (frozen lockfile)
           working_directory: ~/project
@@ -158,10 +186,15 @@ jobs:
           working_directory: ~/project
           command: for i in $(seq 1 30); do PGPASSWORD=postgres pg_isready -h localhost -p 28110 -U postgres && exit 0; sleep 2; done; exit 1
 
+      - oidc_guard
       - run: { name: Build, working_directory: ~/project, command: pnpm build }
+      - oidc_guard
       - run: { name: Lint, working_directory: ~/project, command: pnpm lint }
+      - oidc_guard
       - run: { name: Format check, working_directory: ~/project, command: pnpm format:check }
+      - oidc_guard
       - run: { name: Typecheck, working_directory: ~/project, command: pnpm typecheck }
+      - oidc_guard
       - run:
           {
             name: Unit / component tests,
@@ -169,6 +202,7 @@ jobs:
             no_output_timeout: 20m,
             command: pnpm test,
           }
+      - oidc_guard
       - run:
           name: PostgreSQL integration tests (Firestore emulator wrapped)
           working_directory: ~/project
@@ -176,12 +210,14 @@ jobs:
           command: >-
             pnpm exec firebase emulators:exec --only firestore --project demo-11thonus
             "PLATFORM_ENV=test PLATFORM_POSTGRES_URL=postgres://postgres:postgres@localhost:28110/eleventhonus_platform_test pnpm --filter functions test:postgres"
+      - oidc_guard
       - run:
           {
             name: Install Playwright Chromium,
             working_directory: ~/project,
             command: pnpm exec playwright install --with-deps chromium,
           }
+      - oidc_guard
       - run:
           {
             name: Playwright e2e,
@@ -189,12 +225,14 @@ jobs:
             no_output_timeout: 20m,
             command: pnpm test:e2e,
           }
+      - oidc_guard
       - run:
           {
             name: Founder Preview tooling tests,
             working_directory: ~/project,
             command: pnpm test:preview-tooling,
           }
+      - oidc_guard
       - run:
           name: Founder Preview cross-project port-isolation acceptance
           working_directory: ~/project
@@ -204,11 +242,19 @@ jobs:
           command: |
             psql -h localhost -p 28110 -U postgres -c "CREATE DATABASE eleventhonus_platform_local"
             node tests/preview/cross-project-acceptance.mjs
+      - oidc_guard
       - run:
           name: Stop Founder Preview (cleanup)
           working_directory: ~/project
           when: always
-          command: pnpm preview:stop || true
+          command: |
+            # Runs even after failures (when: always), so it carries its own inline OIDC gate.
+            if [ -n "${CIRCLE_OIDC_TOKEN-}${CIRCLE_OIDC_TOKEN_V2-}" ]; then
+              echo "FAIL: a CircleCI OIDC variable is present; refusing to execute application code" >&2
+              exit 1
+            fi
+            pnpm preview:stop || true
+      - oidc_guard
       - run:
           {
             name: Firebase Emulator Suite validation,

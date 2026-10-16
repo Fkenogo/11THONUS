@@ -7,6 +7,18 @@
 
 ---
 
+## 2026-10-16 — 11THONUS-CI-CONT-003B — OIDC Isolation Correction and Final Pilot Release
+
+- **Task:** Correct the CircleCI pilot so `CIRCLE_OIDC_TOKEN`/`CIRCLE_OIDC_TOKEN_V2` are removed before any fetched PR script runs, with fail-closed checks. Configuration/documentation only; nothing executed on CircleCI, no credits spent; CI-CONT remains on HOLD until Founder authorisation.
+- **Status:** **READY FOR HOSTED PILOT.**
+- **Changes:** `BASH_ENV` isolation is mandatory and self-verifying (job fails if `BASH_ENV` is missing/unwritable or a variable survives the unset); a reusable `oidc_guard` gate runs immediately before each of 13 steps that execute fetched code (first one directly before `pnpm install`); the `when: always` preview cleanup carries its own inline gate; the earlier soft warning is removed. Exact-head/OAuth mechanics, credential-name audit and all mandatory verification steps unchanged.
+- **Verified:** CLI `validate` and `process --pipeline-parameters` (the latter exposed and fixed a `<<` heredoc collision that `validate` alone missed — earlier no-parameter `process` runs expanded no job); isolation tests with dummy values (app sees 0 in shell and child process; gate and BASH_ENV checks fail closed; legit built-ins and image ENV not rejected; no values printed); exact-head cases re-run. PR #312 `73575800…` and #307 `023bf3e` unchanged, open, not merged.
+- **Residual:** same-user process access to the OIDC token cannot be removed by an unset (no cloud trust is configured in the repo; Founder check of cloud federation remains advisable).
+- **Files:** `.circleci/config.yml`; [report addendum §C3B](../05-implementation/reports/11THONUS-CI-CONT-001-temporary-ci-continuity-assessment-2026-10-15.md). No application, `ci.yml`, dependency, lockfile or branch-protection change.
+- **Rollback:** delete `.circleci/` and the pilot branch; revoke any token created for the run.
+
+---
+
 ## 2026-10-16 — 11THONUS-CI-CONT-003A — Final Security Preflight and Hosted Pilot Readiness
 
 - **Task:** Bounded security checks before one Founder-authorised hosted CircleCI run. Configuration/documentation only; nothing executed on CircleCI, no credits spent; CI-CONT remains on HOLD until authorisation.

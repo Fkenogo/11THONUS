@@ -583,3 +583,58 @@ PR #312: `73575800df6dfada8980fef5d9c83b43d2af7464` (unchanged; open, clean, bas
 **Residual risks:** the first step now fails on any unknown credential-like variable name — a legitimate-but-unlisted built-in would cost ~1 minute (~25 credits) and be visible in the printed name list; OIDC variables are removed best-effort; cloud-side OIDC trust unverified (Founder check §C3A-3); cross-project acceptance still has no pass at this SHA (first execution is hosted); JDK apt install, Postgres networking and memory remain hosted-only unknowns.
 
 **Rollback:** unchanged — delete `.circleci/` and the pilot branch (or never merge); no CircleCI resources were created in this task; revoke any API token used for the run.
+
+---
+
+# Addendum — 11THONUS-CI-CONT-003B: OIDC Isolation Correction and Final Pilot Release (2026-10-16)
+
+**Status:** CI-CONT remains on HOLD until Founder authorisation; nothing was executed on CircleCI, no credits were spent. This addendum **supersedes** the OIDC handling in §C3-5 item 4 and §C3A-1/§C3A-8 (which treated a still-visible OIDC variable as a warning). Earlier sections are preserved as history.
+
+**Recommendation: READY FOR HOSTED PILOT.**
+
+## C3B-1 Inspection of the prior design (`b880a4f`)
+
+The assert step appended `unset CIRCLE_OIDC_TOKEN CIRCLE_OIDC_TOKEN_V2` to `$BASH_ENV`, tolerating a missing `BASH_ENV` (`${BASH_ENV:-/dev/null}`), and the exact-head step only **warned** if a variable was still visible. Fetched application code (`pnpm install` lifecycle scripts onward) therefore could have started with an OIDC token present if the unset had not taken effect. That is not fail-closed and is corrected here. Application code first executes at `pnpm install --frozen-lockfile`; steps before it (git fetch, `npm i -g pnpm`, apt) run no PR code.
+
+## C3B-2 Corrections (all in `.circleci/config.yml`)
+
+1. **Self-verifying `BASH_ENV` isolation.** The assert step now **fails the job** if `BASH_ENV` is unset or not writable, and appends a block that (a) unsets both variables and (b) immediately re-checks and `exit 1`s if either survives (e.g. read-only). Because CircleCI sources `BASH_ENV` in the shell of every step before its command, no step starts with the variables set. (Written with `echo`, not a heredoc: `<<` is CircleCI template syntax.)
+2. **Mandatory gate before application code.** A reusable command `oidc_guard` (static message, no values) is inserted **immediately before every step that runs fetched code** — 13 gates: install dependencies, build, lint, format check, typecheck, unit/component tests, PostgreSQL integration, Playwright install, Playwright e2e, preview-tooling tests, cross-project acceptance, preview cleanup, emulator validation. It fails the job if `CIRCLE_OIDC_TOKEN` or `CIRCLE_OIDC_TOKEN_V2` is non-empty. Verified by processing the config with parameters: the gate is step 4, directly before step 5 (install dependencies).
+3. **Cleanup step.** `pnpm preview:stop` runs under `when: always` (so a skipped gate cannot protect it); it carries its **own inline** OIDC check.
+4. The soft **warning** in the exact-head step was removed.
+5. Unchanged: OAuth API-trigger model, `expected_sha`/`pr_number` validation and the #312 allowlist, anonymous HTTPS fetch (no `checkout`, no key), exact-head evidence artifact, credential-name audit (allowing the two OIDC names by exact match only), all mandatory verification steps and commands, `no_output_timeout` values, resource class.
+
+Names of the two variables are the only strings the isolation logic prints; their **values are never read, printed, or written** (no `set -x`, no `env` dump; only variable names are listed).
+
+## C3B-3 Built-ins are not rejected
+
+CircleCI documents 28 built-in variables; the credential audit matches `TOKEN|SECRET|PASS|KEY|CREDENTIAL|AUTH|PRIVATE|CERT` and exempts exactly `CIRCLE_OIDC_TOKEN` and `CIRCLE_OIDC_TOKEN_V2`. No other built-in or `cimg/node:20.19` image variable matches. `BASH_ENV`'s unset of the OIDC pair is a no-op when they are absent and does not touch other `CIRCLE_*` variables. The `CIRCLE_*` variables used by the evidence step (`CIRCLE_WORKFLOW_ID`, `CIRCLE_JOB`, `CIRCLE_BUILD_NUM`, `CIRCLE_BUILD_URL`) remain available.
+
+## C3B-4 Validation
+
+Official CLI: `circleci config validate` → valid. **Important correction to earlier validation:** with no parameters the workflow is removed by its `when`, so `config process` previously expanded **no job body**. Validation is now performed with `config process --pipeline-parameters` (expected_sha, pr_number), which compiles the full job — this exposed (and I fixed) a `<<` heredoc collision that `validate` alone did not report. The processed job has 36 steps, `pipeline` values fully substituted, no stray `<<`.
+
+Isolation tests (`bash -eo pipefail <step file>` with `BASH_ENV`, dummy values `DUMMY-OIDC-VALUE-AAA111/BBB222`, all 28 built-ins and the image ENV present):
+
+| Case | Result |
+| --- | --- |
+| 1. Built-ins + image ENV + both OIDC dummies, isolation active | assert OK; gate OK; a stand-in application script ran and saw **0** OIDC variables in its shell and in a child `node` process |
+| 2. Isolation not applied (empty `BASH_ENV`, assert skipped) | gate **FAIL** rc 1; application script **never ran** |
+| 3. Variable survives the unset (pre-seeded read-only) | `BASH_ENV` check **aborts the step** rc 1; application script never ran |
+| 4. Built-ins only, no OIDC | assert OK, gate OK, application ran (no false rejection) |
+| 5. Unexpected credential name (`NPM_TOKEN`) | assert **FAIL** (name only printed) |
+| `BASH_ENV` unset / unwritable | assert **FAIL** rc 1 |
+| Cleanup step with an OIDC variable present | inline gate **FAIL** rc 1 |
+| Dummy values appearing anywhere in any output | **0** |
+
+Exact-head cases re-run against the real GitHub API with the revised config: positive 312 + `73575800…` **PASS** (fetched = checked-out = `7357580`); stale SHA, wrong/non-allowlisted/invalid PR numbers, malformed/uppercase/empty SHA, `<nil>`, nonexistent PR all **FAIL closed**; injection attempts created no files.
+
+## C3B-5 Remaining risks
+
+- **Same-user process access.** Unsetting removes the variables from the step's environment, not from other same-user processes (e.g. the CircleCI agent), so deliberately hostile PR code could in principle read them from `/proc`. The assert step logs (counts only, never values) how many process environments hold them. This is bounded by: no cloud trust to CircleCI is configured in the repository, PR #312 is the Founder's own change reviewed through the PR process, and the Founder check of Google Cloud/AWS federation (§C3A-3) closes the residual. The OIDC token is inert without such a trust.
+- Real CircleCI containers were not available locally; hosted-only unknowns remain (apt JDK install, Postgres networking, memory, cross-project acceptance has no pass at this SHA, first-step failure on an unlisted credential-like variable name costs ~1 minute).
+- GitHub Checks attach to the configuration-branch commit, not to PR #312's head.
+
+## C3B-6 Heads and release
+
+PR #312 `73575800df6dfada8980fef5d9c83b43d2af7464` (unchanged, open, clean, base `feat/ea-bl-001-corr-002-b-staff-counter`); PR #307 `023bf3ef599d27fcd998043c0bca6926aa82356e` (unchanged). The API request in §C3A-5 (definition `3302b753-a65d-53a6-88f4-a745357e1dc1`, `config.branch` = `checkout.branch` = `docs/ci-cont-001-circleci-assessment`, parameters `expected_sha=73575800…`, `pr_number=312`) is unchanged and remains **not executed**. The configuration commit to name at authorisation is the final config SHA recorded in the completion report. Rollback is unchanged: delete `.circleci/` and the pilot branch; revoke any token created for the run.
