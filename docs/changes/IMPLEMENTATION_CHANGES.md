@@ -7,6 +7,18 @@
 
 ---
 
+## 2026-10-16 — 11THONUS-CI-CONT-005 — CircleCI OAuth Project Activation and HTTP 403 Assessment
+
+- **Task:** Read-only diagnosis (MILEDGE-CI-AUTH-001; handover MILEDGE-CI-INFRA-006). Nothing followed, activated, triggered, pushed or spent; hosted CI stays on HOLD.
+- **Status:** **CONDITIONAL GO** — a supported minimal activation exists (`circleci project follow --project gh/Fkenogo/11THONUS`, Founder approval required); side effects must be verified afterwards.
+- **Finding:** the CLI identity, token and command are identical to Creative Engine's successful run, so the 403 is project-specific: 11THONUS is **not followed**, has **no CircleCI deploy key**, has stale **`master`** default-branch metadata (repo default is `main`) and an implicit enabled **all-pushes** OAuth trigger (MCE: followed, read-only "CircleCI" deploy key, `main`, no triggers). Most consistent cause: project record discoverable but not activated. Inferred, not proven. Empty branch selector: not explained by config absence on `main`; the wizard is not required (`pipeline run --branch` sets config + checkout).
+- **Reconciliation:** the handover's concerns about GitHub-App `pipeline.event.*` values and `checkout`+scrub refer to `0bf306c` and are already superseded by `f76e95c`.
+- **Procedure for approval:** follow the project → verify key/hook/default branch → delete the all-pushes trigger in the UI → re-read heads → one run with the prepared command. No manual or user-level key.
+- **Files:** [report addendum §C5](../05-implementation/reports/11THONUS-CI-CONT-001-temporary-ci-continuity-assessment-2026-10-15.md). Committed locally on top of `a003718`/`f3f9bdb`; **not pushed**. No configuration, application, `ci.yml`, dependency or branch-protection change.
+- **Rollback:** unfollow, delete any "CircleCI" deploy key/hook, `circleci auth logout`; drop the local commit with `git reset --hard f3f9bdb` only if the Founder asks.
+
+---
+
 ## 2026-10-16 — 11THONUS-CI-CONT-004 (resume) — MILEDGE-CI-SEC-001 and Trigger Attempt (PILOT BLOCKED)
 
 - **Task:** Resume the authorised single hosted CircleCI run after the Founder accepted **MILEDGE-CI-SEC-001** (no AWS account exists across Miledge; AWS OIDC concern provisionally resolved).

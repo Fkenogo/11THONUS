@@ -731,3 +731,77 @@ Result: `API returned 403: {"message":"Permission denied."}` (exit 4). A follow-
 ## C4R-6 Status, risks, rollback
 
 PR #312 remains **not independently verified by CircleCI**; GitHub Actions never started; local evidence only. No PR was merged; no branch protection, billing, application, `ci.yml` or CircleCI configuration changed; nothing was created in CircleCI or AWS. The documentation commit is local and unpushed so the remote branch stays at `f76e95c` for the pinned run. Rollback: nothing to undo remotely; `git reset --hard f76e95c` drops the local documentation commits; pilot removal unchanged (delete `.circleci/` and the pilot branch).
+
+---
+
+# Addendum — 11THONUS-CI-CONT-005: Project Activation and HTTP 403 Assessment (2026-10-16)
+
+**Status:** hosted CI remains on **HOLD**. Read-only diagnosis (authority MILEDGE-CI-AUTH-001, handover MILEDGE-CI-INFRA-006); nothing was followed, activated, triggered, changed, pushed or spent. Earlier addenda are preserved. **Disposition: CONDITIONAL GO** — a supported minimal activation exists; one account action needs Founder approval, and its side effects must be verified afterwards.
+
+## C5-1 Reconciliation with the central handover
+
+The handover assessed 11thONUS at the older config commit `0bf306c` and flagged GitHub-App `pipeline.event.*` references and the `checkout`+scrub design. Both are **already superseded** by `f76e95c`: no `pipeline.event.*` value remains (`expected_sha`/`pr_number` are authoritative; `when` depends on `expected_sha` only), there is **no `checkout` step** (anonymous HTTPS fetch of `refs/pull/312/head`, no key loaded), plus OIDC isolation (13 gates), credential-name audit, exact-head JSON evidence, and parameter validation. The handover's correct open points that still apply: the project is not followed, no checkout key exists, and a deploy key is "not assumed mandatory for a public repository". Its rule "do not push to a config branch while the project is followed" is honoured (documentation commits stay local).
+
+## C5-2 Evidence: Creative Engine (MCE, succeeded) vs 11thONUS (403)
+
+| Item | Creative Engine | 11thONUS |
+| --- | --- | --- |
+| Organisation | `gh/Fkenogo` (`080a287a…`) | same |
+| Authenticated user / credential | `Fkenogo` (`63294a39…`), personal token in keychain | **same user, same CLI, same token** |
+| Operation | `circleci pipeline run --branch <config-branch> --definition-id …` | same command shape |
+| Project followed (`project list --following`) | **Yes** | **No** (followed: `klockit`, `miledge-creative-engine`) |
+| CircleCI default-branch metadata | `main` (matches repo) | **`master` — stale; GitHub repo default is `main`** |
+| GitHub deploy key | **"CircleCI", read-only, verified (id 166636156, added 2026-10-16)** | **none** |
+| GitHub webhooks | none | none |
+| Pipeline definition | implicit `github_oauth`, `.circleci/config.yml` | same (`3302b753-…`) |
+| Triggers | **none** | one implicit `github_oauth` **all-pushes**, enabled |
+| Project settings (`disable-running`, `build-prs-only`, …) | all default | identical |
+| Env vars / contexts | 0 / none | 0 / none |
+| Config / checkout branch | `--branch` sets both (handover §2.5) | identical design |
+| Result | build #2 passed | **403 `Permission denied`** |
+
+## C5-3 Root cause of the 403 (most strongly supported, not proven)
+
+Because the **identity, token, CLI and command are identical** to the successful MCE run, a token/identity/permission-scope cause and a request-contract cause are effectively excluded (a contract or type error would also yield 400, not 403, and `disable-running` is false for both). The distinguishing facts are all **project-state**: 11THONUS was never set up/followed, has no CircleCI checkout (deploy) key, and carries stale `master` default-branch metadata. **Most consistent explanation: the project record is "discoverable" but not activated (no VCS checkout authorisation established), so CircleCI refuses to run a pipeline for it.** Documented vs inferred: CircleCI documents that setting up a GitHub OAuth project creates a read-only deploy key and (historically) a push hook, and that the CLI's `project follow` "enables builds"; its user guide separately describes following as a notification subscription. That `follow` performs full activation for an existing OAuth project, and that an unactivated project returns 403 on trigger, are **inferences**, not documented guarantees.
+
+## C5-4 Incomplete setup ("Set up") and the empty branch selector
+
+- The project record exists independently of activation (API returns project ID and an implicit OAuth definition); the browser's **Set up** state means the project is listed from GitHub but not followed/activated.
+- The empty selector is **not explained by missing configuration on `main`** (MCE's `main` also has none and its branch-based config works). Candidate causes, none confirmable read-only: (1) the stale `master` default-branch record (the repo default is `main`; GitHub redirects `master`→`main`, so CircleCI's record is out of date); (2) the wizard's GitHub branch lookup runs before activation/with limited authorisation; (3) a large branch list (293 branches; the pilot branch is #60 alphabetically, so pagination alone is unlikely). The wizard is not required: the CLI `pipeline run --branch` selects the config branch directly (MCE precedent).
+
+## C5-5 Following, checkout key and trigger effects
+
+- **Is following required?** Not documented as required, but the only observed difference between a working and a failing project; treat it as the activation step.
+- **`circleci project follow --project gh/Fkenogo/11THONUS`:** supported by the CLI for `gh/` OAuth projects ("enable builds"); no-op if already followed. Expected (documented for project setup, unverified for `follow`): CircleCI adds a **repository-scoped read-only deploy key** (admin permission on the GitHub repo is required — the Founder owns it) and possibly a push webhook; it does not touch `main`, the config branch or the existing definition.
+- **Is a checkout key needed?** For *our job*: no — it fetches the public repo anonymously. For CircleCI's *own* retrieval of the config branch and pipeline start: unproven; the activation-created deploy key (same arrangement as MCE) is the minimal, documented answer. **Do not add a manual deploy key or any user-level SSH key.**
+- **Automatic triggers:** an enabled `all-pushes` OAuth trigger already exists but cannot start a workflow with this config (workflow `when` requires `expected_sha`). After activation it may start pipelines on pushes to *any* branch; branches without config could receive failed or empty CircleCI statuses (no credits). MCE has no triggers; the CLI cannot delete one (`trigger` has only `create`/`list`), so removal is a **Founder UI action** after follow.
+- **Credits:** following consumes none; a plain push starts no job.
+
+## C5-6 Minimum corrective procedure (for Founder approval; not performed)
+
+1. **Account action (Founder, as `Fkenogo`, who has admin on the repo):** run `circleci project follow --project gh/Fkenogo/11THONUS`. Affects: the CircleCI project (followed) and the GitHub repository's deploy-key list (one read-only key titled "CircleCI") and possibly its hooks. Reverse: unfollow, delete that key, delete any hook.
+2. **Immediately verify (read-only; I can do it):** `circleci project list --following` includes 11THONUS; `gh api repos/Fkenogo/11THONUS/keys` shows only a read-only "CircleCI" key; hooks; project default branch metadata; `circleci run list` still empty.
+3. **Remove the all-pushes trigger (Founder, UI):** Project Settings → Triggers/Project Setup → delete the implicit `all-pushes` trigger (to match MCE and prevent unintended builds). Do not push to any 11THONUS branch between steps 1 and 3 where avoidable; never push the local documentation commits to the config branch.
+4. Re-read all heads (below), then run **one** pipeline.
+5. If the 403 persists after activation: stop and report; do not retry blindly. Next diagnostic is the project's Settings → SSH Keys (checkout keys) and CircleCI support, not a configuration change.
+
+## C5-7 Prepared one-run invocation (NOT executed)
+
+```bash
+circleci pipeline run \
+  --project gh/Fkenogo/11THONUS \
+  --definition-id 3302b753-a65d-53a6-88f4-a745357e1dc1 \
+  --branch docs/ci-cont-001-circleci-assessment \
+  --param expected_sha=73575800df6dfada8980fef5d9c83b43d2af7464 \
+  --param pr_number=312 \
+  --json
+```
+
+`--branch` is documented as "Branch for config fetch and checkout", i.e. it sets **both** the config and checkout branch, which OAuth requires to be equal (MCE precedent). Heads at this check: config branch `f76e95c9b87c0801445c235193ffdc3349eec760`; PR #312 `73575800df6dfada8980fef5d9c83b43d2af7464` (base `feat/ea-bl-001-corr-002-b-staff-counter`, open); PR #307 `023bf3ef599d27fcd998043c0bca6926aa82356e` (base `main`, open, #312's stacked base). Re-verify before any run.
+
+## C5-8 Remaining uncertainties, risks, rollback
+
+- Whether `follow` alone (vs the wizard) activates an OAuth project and creates the key; whether CircleCI needs the key to fetch the config branch; the cause of the empty selector (stale default-branch record vs lookup) and whether it self-heals after activation; whether the stale `master` metadata affects API runs (handover and design say no).
+- Risks: a repository-scoped read-only key and possibly a hook are added to the public repo; push triggers until the all-pushes trigger is removed (no credits); statuses attach to the config commit, not PR #312's head. Cost: following 0 credits; the run ≈ 440–530 credits of 30,000 (7 used).
+- Rollback: unfollow the project; delete the "CircleCI" deploy key and any hook in GitHub; delete the trigger if recreated; `circleci auth logout` and revoke the token when the arrangement is retired (handover §9).
+- Not changed: configuration, application code, `ci.yml`, branch protection, billing, PRs.
