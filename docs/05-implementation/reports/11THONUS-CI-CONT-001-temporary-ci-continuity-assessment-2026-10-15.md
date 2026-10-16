@@ -1143,3 +1143,45 @@ Plan **Free**; organisation credits **54 → 126 of 30,000: +72** for this 3m36s
 ## C10-6 Documentation reconciliation status
 
 These documentation commits remain **local and unpushed** on `docs/ci-cont-001-circleci-assessment` (original worktree), now **behind the remote by two config commits** (`878c3e8`, `cf66dc0`) and ahead by the documentation commits. Reconciliation when approved: rebase the documentation commits onto `origin/docs/ci-cont-001-circleci-assessment` (they touch only the report and the changes log, no conflicts expected) or merge it, then a normal fast-forward push; confirm no trigger/webhook exists at push time and that the config SHA used for any run equals the remote head then.
+
+---
+
+# Addendum — 11THONUS-CI-CONT-007F: Test Worker Parallelism Correction (2026-10-16)
+
+**Disposition: READY FOR HOSTED RETRY (config committed locally, NOT pushed; no hosted run).** Proposed configuration SHA: **`851ae1875e1ce9fd111dc8cabe15db56d7ff8b2f`** (parent `cf66dc0b437b9db48f4acb54cf730fb9235e817d`; one commit touching only `.circleci/config.yml`; +17/−2) on the isolated local branch `ci/cont-007c-config`. The remote configuration branch is still `cf66dc0…`. Earlier addenda are preserved.
+
+## C11-1 Failure analysis (pipeline 5)
+
+The 18 failing `apps/web` tests (9 files): `SignInPanel.mfaChallenge` (1), `DisplayNameProfile` (1), `CounterPage` (2), `StaffMobileShell` (2), `NewBusinessPage` (3), `RewardProgramManagementPage` (3), `PhoneAuthHarnessPage` (1), `EstablishmentIdentityStep` (2), `EstablishmentLocationStep` (3). Kinds: **15 × `Test timed out in 5000ms`** and 3 assertions — `StaffMobileShell` "Unable to find role=button 'Record purchase'" (a Testing Library wait, default 1000 ms), `EstablishmentIdentityStep` "expected vi.fn() to be called with …" (user-event typing), and `PhoneAuthHarnessPage` **`expected 197 to be less than 80`**.
+
+I did not assume infrastructure for all of them. Findings: there are **no explicit timeouts** anywhere (Vitest default 5000 ms; Testing Library waits 1000 ms). The `PhoneAuthHarnessPage` test is **inherently timing-sensitive application test code**: it inserts a deliberate 100 ms delay, then asserts that a *real wall-clock* latency measured across two DOM events is below 80 ms — it fails whenever the machine is starved, and could fail even on a quiet CI worker. The other tests are user-event/render heavy and slow under contention. This is recorded as a fragility for the test owners; **no test was changed**.
+
+Concurrency evidence: `pnpm -r run test` runs the `functions` and `web` Vitest processes **concurrently**, each defaulting to `availableParallelism() − 1` workers, a value derived from the **visible** cores, not the cgroup quota. In the real executor image under Docker limits equal to CircleCI large (`--cpus=4 --memory=8g`) the container still reports **`nproc = 8`, `availableParallelism = 8`, `cpu.max = 400000 100000` (4 CPUs), `memory.max = 8 GiB`**: default Vitest ran **7 workers per package on a 4-CPU quota**. Hosted, summed per-worker times were 11–15× wall time.
+
+**Reproduction (baseline, no cap, same limits, amd64 image emulated on Apple Silicon so slower than hosted):** `apps/web` — **50 failed / 1102 passed**, 45 timeouts, 720 s. With the cap — see below.
+
+## C11-2 The fix (smallest change, CircleCI-only)
+
+1. **Vitest:** `pnpm test -- --maxWorkers=2` (documented Vitest option). **Forwarding verified:** the plain form `pnpm test --maxWorkers=2` is *rejected by pnpm itself* (`Unknown option: 'maxWorkers'`); with `--`, or `pnpm run test --maxWorkers=2`, pnpm expands the root script to `pnpm -r run test --maxWorkers\=2` and then to `vitest run --maxWorkers\=2` in **both** `apps/web` and `functions` (observed in the process list). No package script was modified.
+2. **Playwright:** `pnpm test:e2e --workers=2` (documented option). **Do not use `--`** for this script: `pnpm test:e2e -- --workers=2` yields `playwright test … -- --workers\=2 …`, and Playwright treats everything after `--` as test filters (observed: it ran all 149 tests with the default 4 workers). Without `--` the command is `playwright test --project=chromium --project=chromium-dashboard-harness --workers\=2` — projects, selections and reporters unchanged. Effective worker count verified from Playwright's own banner: default `Running 9 tests using 4 workers`; with the flag `Running 9 tests using 2 workers`.
+3. **Diagnostics step** (informational, never fatal; numbers and paths only): `nproc`, Node `availableParallelism()`/`cpus().length`, cgroup v2/v1 CPU quota and memory limit when readable, `MemTotal`. It exits 0 on a host without `/proc`/cgroup (tested on macOS) and printed no environment value (dummy secret not printed). In the constrained container it prints exactly the mismatch: `nproc: 8`, `cpu.max: 400000 100000`, `memory.max: 8589934592`, `MemTotal: 8124776 kB`.
+
+## C11-3 Validation in the real image (`cimg/node:20.19`, amd64, `--cpus=4 --memory=8g`, disposable)
+
+| Check | Result |
+| --- | --- |
+| Complete parameterised compile (CLI) | OK; 37 steps; 13 isolation gates; 0 residual `<<` |
+| All mandatory commands still present in the expanded job | install, build, lint, format:check, typecheck, `pnpm test -- --maxWorkers=2`, Postgres (emulator-wrapped), Playwright install, `pnpm test:e2e --workers=2`, preview tooling, cross-project acceptance, `emulators:validate`, exact-head fetch |
+| Vitest effective cap | sampler of concurrent worker processes: peak **5** across both packages (2 + 2 plus a transient overlap), versus 7 per package uncapped |
+| Playwright effective cap | **2 workers** (banner) vs 4 default |
+| Complete unit suite with the cap (full `pnpm test -- --maxWorkers=2`) | **pass**: `functions` 176 files / **2034** tests; `apps/web` 140 files / **1155** tests (**all 18 previously failing tests pass**); 281 s |
+| Repeat of the same | **pass** again (378 s) — stable |
+| Complete e2e with `--workers=2` (149 tests, `CI=true`) | **rc 0**: 147 passed + **2 flaky** (passed on retry; the repo retries twice in CI) — both are mobile-viewport layout tests: `dashboard-team-admin-harness` "management buttons meet the 44px touch-target minimum" and `dashboard-team-harness` "no horizontal overflow, with a long Display Name…"; 12.8 min under amd64 emulation |
+| Credential/agent/OIDC suite; `BASH_ENV` matrix; marker-bypass tests; exact-head matrix | 20/20; 13/13; marker cannot bypass OIDC/SSH checks; positive PASS and 11/11 negatives fail closed; no injection files |
+| Prettier and `git diff --check`; secret-pattern scan of the diff | clean; 0 hits |
+
+Resource contention vs test instability: uncapped baseline (50 failures) versus capped (0 failures, twice) under identical CPU/memory limits and the same emulation slowdown is direct evidence of resource contention as the main cause. The residual risks are the intrinsically timing-sensitive `PhoneAuthHarnessPage` assertion and the two layout-flaky Playwright tests; hosted hardware is faster than the emulated image here, but I cannot guarantee they will not flake.
+
+## C11-4 Remaining risks, retry recommendation, rollback
+
+Risks: wall time for the full hosted suite is longer with fewer workers (estimate ~12–20 min; credits ≈ 240–400 at the confirmed 20 credits/min, 126 of 30,000 used); Postgres integration, preview tooling, **cross-project acceptance** and emulator validation have still never executed hosted; the timing-sensitive tests above. Recommendation: **one hosted retry** after approval — fast-forward push of `851ae18…` (remote must still equal `cf66dc0…`), the diagnostics step will record the real hosted limits at the start. Documentation reconciliation as §C8-8/§C10-6 (docs commits remain local and unpushed; the remote config branch is now several config commits ahead). Rollback: delete the isolated branch/worktree (or fast-forward revert if pushed); the disposable container was removed; the image `cimg/node:20.19` remains cached and can be removed with `docker image rm cimg/node:20.19`.

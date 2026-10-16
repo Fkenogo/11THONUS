@@ -7,6 +7,20 @@
 
 ---
 
+## 2026-10-16 — 11THONUS-CI-CONT-007F — Test Worker Parallelism Correction (READY FOR HOSTED RETRY, not pushed)
+
+- **Task:** Analyse hosted failures (pipeline 5, 18 web tests) and prepare a CircleCI-only concurrency correction. No push, no hosted run.
+- **Status:** **READY FOR HOSTED RETRY.** Proposed config SHA **`851ae1875e1ce9fd111dc8cabe15db56d7ff8b2f`** (parent `cf66dc0…`, only `.circleci/config.yml`, +17/−2), committed locally on `ci/cont-007c-config`. Remote branch still `cf66dc0…`.
+- **Analysis:** 15 of 18 failures were 5000 ms timeouts; 3 were assertions, one of them (`PhoneAuthHarnessPage`, "expected 197 to be less than 80") is an inherently timing-sensitive application test (real-time latency < 80 ms) — recorded for the test owners, not changed. Cause of the rest: `pnpm -r` runs both Vitest suites concurrently, each defaulting to visible-cores−1 workers while the executor's quota is 4 vCPU (in the real image under `--cpus=4`: `nproc 8`, `cpu.max` 4 CPUs).
+- **Fix:** `pnpm test -- --maxWorkers=2` (plain `pnpm test --maxWorkers=2` is rejected by pnpm; `--` forwards it to both packages) and `pnpm test:e2e --workers=2` (no `--`: after `--` Playwright treats the flag as a test filter); plus an informational never-fatal diagnostics step (nproc, availableParallelism, cgroup CPU/memory). No test, timeout, assertion, fixture, script or application file changed.
+- **Validated in `cimg/node:20.19` (amd64, `--cpus=4 --memory=8g`):** uncapped baseline web suite 50 failed (45 timeouts); capped `pnpm test` twice: functions 2034/2034 and web 1155/1155 (all 18 previously failing pass); e2e `--workers=2`: 147 passed + 2 flaky mobile-layout tests (passed on retry), "using 2 workers" vs 4 default; full compile OK; security/OIDC/exact-head suites unchanged and passing.
+- **Open:** Postgres integration, preview tooling, cross-project acceptance and emulator validation still unexercised hosted; two layout-flaky Playwright tests and the 80 ms timing test may flake; credits ≈ 240–400 for a full run (126 of 30,000 used, 20/min confirmed).
+- **State:** PR #312 `73575800…` and #307 `023bf3e…` unchanged and unmerged; triggers none; keys/hooks 0; 0 env vars; no contexts.
+- **Files:** [report addendum §C11](../05-implementation/reports/11THONUS-CI-CONT-001-temporary-ci-continuity-assessment-2026-10-15.md). Documentation committed locally, append-only, not pushed.
+- **Rollback:** delete the isolated branch/worktree; `docker image rm cimg/node:20.19`; fast-forward revert if ever pushed.
+
+---
+
 ## 2026-10-16 — 11THONUS-CI-CONT-007E — Published Configuration and Hosted Run #5 (FAILED: web unit tests, resource)
 
 - **Task:** Publish the validated config (fast-forward, `cf66dc0b437b9db48f4acb54cf730fb9235e817d`) and execute one typed-JSON hosted run for PR #312.
