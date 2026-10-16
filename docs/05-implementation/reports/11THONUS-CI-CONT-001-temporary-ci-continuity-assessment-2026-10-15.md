@@ -858,3 +858,26 @@ The implicit **"All pushes on 11THONUS"** (`02b48f0a-731c-505d-b821-01a0666e71fd
 - Risks: read-only repo-scoped deploy key and an active webhook now exist on the public repo; push events create no-config pipelines and `error` statuses until the trigger is removed; the `error` status on `main`'s head is cosmetic. No secrets, contexts or write access.
 - Rollback: Project Settings → **Unfollow Project**; delete the "CircleCI" deploy key (id `166647185`) and webhook (id `699006072`) in GitHub (Settings → Deploy keys / Webhooks); `circleci auth logout` when retired.
 - Next (after trigger isolation is confirmed): the one-run command of §C5-7 with a final head re-check; hosted CI is **not** triggered yet. PR #312 remains unverified by CircleCI; GitHub Actions never ran; no PR merged; no configuration, `ci.yml`, application or branch-protection change.
+
+---
+
+# Addendum — 11THONUS-CI-CONT-006A: Trigger Isolation Verification (2026-10-16)
+
+**Disposition: HOLD** (one unexpected change; everything else verified). Read-only; nothing was triggered, pushed or changed.
+
+| # | Check | Result |
+| --- | --- | --- |
+| 1 | Project followed and operational | **Yes** — followed (`11THONUS`, `klockit`, `miledge-creative-engine`); CircleCI default branch `main`; `disable-running` false |
+| 2 | Pipeline definition | **Unchanged**: single `3302b753-a65d-53a6-88f4-a745357e1dc1`, `github_oauth`, `.circleci/config.yml` |
+| 3 | Automatic triggers | **None** (`circleci project trigger list`: "No triggers found") — isolation achieved |
+| 4 | Deploy key and webhook as expected | **NO — both are gone.** GitHub: 0 deploy keys, 0 webhooks (key `166647185` and hook `699006072` return 404). CircleCI's SSH Keys page: "No checkout key is currently configured!" Who removed them is not known (Founder action when deleting the trigger, or CircleCI cleanup); the audit endpoint needs a scope not granted. Creative Engine's key (`166636156`, read-only) is unchanged |
+| 5 | Config branch | `f76e95c9b87c0801445c235193ffdc3349eec760` (remote); local documentation commits `a003718`, `f3f9bdb`, `1638050`, `86b0f45` intact, worktree clean |
+| 6 | PR heads | #312 `73575800df6dfada8980fef5d9c83b43d2af7464` (`feat/loy-item-circle-pkg-b-schema` → `feat/ea-bl-001-corr-002-b-staff-counter`, open, clean); #307 `023bf3ef599d27fcd998043c0bca6926aa82356e` (→ `main`, open); stack unchanged |
+| 7 | Plan / credits | **Current plan: Free**; 21 of 30,000 credits used (all klockit/MCE; 11THONUS none) |
+| 8 | Env vars / contexts | 0 / none |
+| 9 | Additional hosted jobs | None; only the activation-time pipeline `ff7d5802-…` (`not_run`, 0 workflows) |
+| 10 | CLI invocation | Unchanged and valid: `circleci pipeline run --project gh/Fkenogo/11THONUS --definition-id 3302b753-a65d-53a6-88f4-a745357e1dc1 --branch docs/ci-cont-001-circleci-assessment --param expected_sha=73575800df6dfada8980fef5d9c83b43d2af7464 --param pr_number=312 --json` (`--branch` = config + checkout branch) |
+
+**Why HOLD.** The project is now in the same checkout-key state as when the 403 occurred (no key), with the only difference being that it is followed. Whether the 403 depended on the key or on following is still unproven. The Founder's pre-conditions listed the key as expected; it is not present.
+
+**Options for Founder disposition:** (A) *probe once as-is*: a repeat 403 creates nothing and costs nothing; if it runs, the key was not needed (our job fetches the public repo anonymously). (B) *restore the Creative Engine arrangement first*: CircleCI → Project Settings → SSH Keys → **Deploy Key → Add Deploy Key** (creates a repo-scoped read-only key and nothing else; no webhook, no trigger needed); reverse by deleting the key in GitHub. Recommended: B only if A returns 403. Please also state whether the key and webhook were removed deliberately.

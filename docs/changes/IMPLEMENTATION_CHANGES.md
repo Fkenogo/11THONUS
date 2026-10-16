@@ -7,6 +7,17 @@
 
 ---
 
+## 2026-10-16 — 11THONUS-CI-CONT-006A — Trigger Isolation Verification (HOLD)
+
+- **Task:** Read-only verification after the Founder removed the all-pushes trigger. Nothing triggered, pushed or changed.
+- **Status:** **HOLD** — one unexpected change. Verified: project followed (default branch `main`), definition `3302b753-…` unchanged, **no triggers**, config branch `f76e95c…`, #312 `73575800…` / #307 `023bf3e…` unchanged, Free plan (21/30,000 used, none by 11THONUS), 0 env vars/contexts, no new hosted job, CLI invocation valid.
+- **Deviation:** the read-only deploy key (166647185) and webhook (699006072) created at activation are **gone** (GitHub 404; CircleCI "No checkout key is currently configured"). Cause unknown. The project is back to the no-key state in which the 403 occurred, now followed.
+- **Options:** (A) one free probe as-is (403 costs nothing); (B) add a deploy key via CircleCI Project Settings → SSH Keys → Add Deploy Key. Founder to state whether removal was deliberate and choose.
+- **Files:** [report addendum §C6A](../05-implementation/reports/11THONUS-CI-CONT-001-temporary-ci-continuity-assessment-2026-10-15.md). Local commit only; remote config branch still `f76e95c…`. No configuration, application, `ci.yml` or branch-protection change.
+- **Rollback:** none needed (read-only); local docs commits can be dropped with `git reset --hard 86b0f45` if requested.
+
+---
+
 ## 2026-10-16 — 11THONUS-CI-CONT-006 — Activate Existing CircleCI OAuth Project (AWAITING TRIGGER ISOLATION)
 
 - **Task:** Follow the existing CircleCI project `gh/Fkenogo/11THONUS` (Founder-authorised; only `circleci project follow` executed). No hosted job; hosted CI not triggered.
