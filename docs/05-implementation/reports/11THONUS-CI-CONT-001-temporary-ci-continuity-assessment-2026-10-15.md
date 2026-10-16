@@ -992,3 +992,56 @@ CircleCI plan: Free; credits **21 → 28 of 30,000 (about 7 credits for this 22-
 ## C7B-6 Status of PR #312 and rollback
 
 PR #312 remains **not independently verified by CircleCI**; GitHub Actions never ran; local evidence only; cross-project acceptance still has no pass at `73575800…`. Rollback: none required; local documentation commits can be dropped with `git reset --hard fcd56c0` if requested; Unfollow Project / `circleci auth logout` when the arrangement is retired.
+
+---
+
+# Addendum — 11THONUS-CI-CONT-007C: Credential Preflight Correction and Hosted Attempt (2026-10-16)
+
+**Disposition: PILOT FAILED — CORRECTION REQUIRED (second hosted-only defect in my own preflight).** The corrected configuration was pushed (fast-forward) and one typed-JSON hosted attempt was made. The `SSH_AUTH_SOCK` false positive is fixed and verified hosted; the job then failed in the same first step on a different hosted-only assumption (`$BASH_ENV` file existence). **No fetched application code ran; no application test result exists.** No retry was made.
+
+## C8-1 Inspection and fix strategy (before any change)
+
+Reviewing the 007B evidence and the step at `f76e95c` showed **more than the reported false positive**: (1) `ssh-add -D` ran **before** `ssh-add -l`, deleting any loaded identity first, so the identity check could never fail; (2) `rm -rf ~/.ssh` removed any key files without inspecting them; (3) the check depended on `ssh-add` existing; (4) later steps still inherited `SSH_AUTH_SOCK`; (5) the shared gate and cleanup gate did not check the agent. An empty agent alone does not prove no identity is reachable (key files, `GIT_SSH_COMMAND`). Fix: exempt **only** the exact name `SSH_AUTH_SOCK`; query the agent socket directly (SSH-agent protocol request 11 / answer 12, via node) and fail closed on any identity or unverifiable reply, **before** touching anything; fail on private-key material under `~/.ssh` (names only) and on `GIT_SSH`/`GIT_SSH_COMMAND`; `BASH_ENV` unsets and self-verifies `SSH_AUTH_SOCK`/`SSH_AGENT_PID` as well as the OIDC pair; the shared gate (13 uses, renamed "OIDC and SSH-agent isolation gate") and the `when: always` cleanup step also refuse an exposed agent. Other known CircleCI variables: the 45 names observed hosted contain exactly one credential-pattern false positive (`SSH_AUTH_SOCK`); the 28 documented built-ins contain none.
+
+## C8-2 Local validation (all passed, fail-closed where required)
+
+Official CLI: `validate` valid; full parameterised compile OK (36 steps, 13 gates, 0 residual `<<`); no-parameter compile gated off. Positive: the 45 hosted names with a real empty `ssh-agent` → pass, later steps and a child `node` see none of the four variables. Negative names (`NPM_TOKEN`, `DEPLOY_KEY`, `AUTH_HEADER`, `CIRCLE_API_TOKEN`, `SSH_PASSPHRASE`, `MY_SSH_AUTH`, `SSH_KEY`, `GITHUB_PAT_SECRET`, `AWS_ACCESS_KEY_ID`) → all fail. Agent holding one identity → fail **and the identity is not deleted**; unreachable socket → pass; a socket answering a failure reply → fail. Private key under `~/.ssh` → fail (name only; key comment not leaked); only `known_hosts` → pass and removed; `GIT_SSH_COMMAND` → fail. Read-only `CIRCLE_OIDC_TOKEN` or `SSH_AUTH_SOCK` surviving the unset → later step aborted; missing `BASH_ENV` → fail; cleanup gate fails on OIDC or SSH variable. Exact-head matrix re-run against the real GitHub API (positive PASS; stale SHA, non-allowlisted/invalid PR, malformed/uppercase/empty SHA, `<nil>`, injection, nonexistent PR all fail closed). No credential values, key comments or key headers in any output. `prettier --check` and `git diff --check` clean; diff scan for secrets: none. **Gap exposed by the hosted run:** these tests pre-created the `BASH_ENV` file, which CircleCI does not.
+
+## C8-3 Configuration revision (isolated, fast-forward)
+
+Isolated worktree `/Volumes/PRODUCTION/Projects/11THONUS-worktrees/ci-cont-007c` (branch `ci/cont-007c-config`) created at the pinned `f76e95c9b87c0801445c235193ffdc3349eec760`. One commit touching **only `.circleci/config.yml`** (51 insertions, 14 deletions). Remote branch verified unmoved (`f76e95c`) before the push; normal fast-forward push (no force). **New configuration SHA: `878c3e8c6503ab8372cefd81cbf975d8d840d9d3`.** The first push attempt failed harmlessly (a shell expansion mangled the refspec; nothing was pushed). The push created no pipeline (no webhook, no triggers). Remote head = `878c3e8`; remote tree differs from the pin only in `.circleci/config.yml`.
+
+## C8-4 Hosted attempt
+
+Final preflight passed (followed; definition `3302b753-…` unchanged; no triggers; 0 env vars; no contexts; 0 deploy keys/hooks; remote head `878c3e8`; PR #312 `73575800df6dfada8980fef5d9c83b43d2af7464` based on PR #307's branch; PR #307 `023bf3ef599d27fcd998043c0bca6926aa82356e`; payload types `str/str`). One typed request via `circleci api` (no token handled) → pipeline **`d8a3dc12-9584-4591-9cc2-98e978f90bc7`** (number 4), created 2026-10-16T10:46:43Z, **configuration revision `878c3e8`** (URL: `https://app.circleci.com/pipelines/github/Fkenogo/11THONUS/4`); workflow `temporary-ci-continuity`, job `circleci-continuity-verify` `c805b84e-be2b-4463-8d5a-abff18aeedde`, job duration 10:46:45–10:46:52 (≈7 s).
+
+| Step | Result |
+| --- | --- |
+| Spin up; secondary container `postgres:16-alpine` | succeeded |
+| 101 Assert no checkout credentials or secrets | **failed** |
+| — SSH agent identity check | **passed**: "SSH agent socket present but exposes no identities (0)" |
+| — environment-name audit (the same 45 names) | **passed** — `SSH_AUTH_SOCK` false positive fixed; no other name flagged |
+| — `BASH_ENV` isolation | **failed**: `BASH_ENV is unset or not writable; OIDC isolation impossible` |
+| 102 cleanup | failed — its inline gate refused to run (OIDC variable still present); correct fail-closed behaviour |
+| 103/artifacts | succeeded (no exact-head evidence: that step never ran) |
+| Exact-head, install, build, lint, format, typecheck, unit, PostgreSQL+emulator, Playwright, preview tooling, **cross-project acceptance**, emulator validation | **not run** |
+
+## C8-5 Root cause and classification
+
+`BASH_ENV` is set in the CircleCI job (the name is in the list) but my test `[ -w "$BASH_ENV" ]` requires an **already existing** writable file; the hosted file is evidently not created until first appended to. **Classification: configuration defect in my preflight (hosted-only assumption), not an application, environment, resource or security failure.** The failure is fail-closed, and nothing sensitive was exposed.
+
+## C8-6 Proposed correction (not implemented)
+
+Replace the writability test with creation: require `BASH_ENV` non-empty, then `: >> "$BASH_ENV"` (creates it if absent; fails if the location is unwritable). Add local cases for a not-yet-existing `BASH_ENV` in a writable directory, in an unwritable directory, and a read-only existing file. To avoid further one-assumption-per-attempt iterations, **recommend** one more review pass of every remaining step for hosted-only assumptions (sudo/apt, global `npm install -g pnpm`, `~/project` creation, evidence paths) and, if the Founder approves a roughly 1 GB container-image download, validating the preflight steps inside the real `cimg/node:20.19` image locally (Docker is running) before the next hosted attempt. Another config commit moves the head again (fast-forward from `878c3e8`) and needs approval plus one more hosted attempt (≤ ~540 credits for a full run).
+
+## C8-7 Credits and state
+
+Plan: Free. Organisation credits 28 → **54 of 30,000** across this attempt (the job itself ran ≈7 s, ≈3 credits at the large rate); the per-project usage cells were not yet populated, so the remaining increase is attributed to other projects (klockit/MCE) but is **unconfirmed**. 11THONUS has now run two failed jobs (≈31 job-seconds). CircleCI posted `ci/circleci: circleci-continuity-verify` = `failure` on the configuration commit `878c3e8` (not on PR #312). After the run: no triggers, no deploy keys/webhooks, 0 env vars, no contexts; four runs exist (two `not_run`, two failed); PR #312 `73575800…` and PR #307 `023bf3e…` unchanged and unmerged. Not changed: application code, GitHub Actions, branch protection, billing, dependencies.
+
+## C8-8 Documentation reconciliation plan
+
+The local branch `docs/ci-cont-001-circleci-assessment` (docs commits `b880a4f`…`de53393` plus this one) is **8+ commits ahead of and 1 behind** the remote (`878c3e8`, a config-only commit). Both sides changed disjoint files: the remote commit only `.circleci/config.yml`; the local commits only the report and the changes log (plus the earlier config-history commits already contained in the remote). When approved: either `git rebase origin/docs/ci-cont-001-circleci-assessment` on the local branch (no conflicts expected) or merge the remote head into it, then a fast-forward push — never force. Before any push, confirm no pipeline is triggered by the push (no triggers, no webhook) and that the pinned configuration SHA used for a run equals the remote head at that moment. The isolated worktree `ci-cont-007c` (`878c3e8`) remains available for the next config correction.
+
+## C8-9 PR #312 and rollback
+
+PR #312 remains **not independently verified by CircleCI**; GitHub Actions never ran; local evidence only; cross-project acceptance has no pass at `73575800…`. Rollback: none required for CircleCI; to revert the configuration, push a fast-forward revert commit (or `git revert 878c3e8`) — never force-push; Unfollow Project and `circleci auth logout` when retired; local documentation commits can be dropped with `git reset --hard fcd56c0` if requested.

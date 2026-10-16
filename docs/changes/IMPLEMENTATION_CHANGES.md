@@ -7,6 +7,20 @@
 
 ---
 
+## 2026-10-16 — 11THONUS-CI-CONT-007C — Credential Preflight Correction and Hosted Attempt (FAILED: BASH_ENV assumption)
+
+- **Task:** Correct the `SSH_AUTH_SOCK` false positive, validate locally, push as a fast-forward, make one typed-JSON hosted attempt.
+- **Status:** **PILOT FAILED — CORRECTION REQUIRED.** New config commit **`878c3e8c6503ab8372cefd81cbf975d8d840d9d3`** (only `.circleci/config.yml`; fast-forward from `f76e95c`; remote head verified). Pipeline `d8a3dc12-9584-4591-9cc2-98e978f90bc7` (number 4), job ≈7 s: the `SSH_AUTH_SOCK` fix and the 45-name audit **passed hosted**; the same step then failed because `$BASH_ENV` does not exist as a writable file before first append (my `-w` test). No application code ran.
+- **Beyond the report:** inspection found the old SSH check was vacuous (`ssh-add -D` before `ssh-add -l`), key files were deleted unchecked, and later steps inherited the agent socket. Fixed: direct agent-protocol check before any deletion, key-file and `GIT_SSH*` checks, `BASH_ENV` unsets/self-verifies SSH vars, gates and cleanup refuse an exposed agent. 40+ local tests passed (45 hosted names, negatives, real ssh-agent with/without identity, OIDC/BASH_ENV survival, exact-head matrix).
+- **Proposed (not implemented):** create-then-append instead of `-w` for `BASH_ENV`; review remaining steps for hosted-only assumptions; optionally validate in the real `cimg/node:20.19` image locally (needs approval for a ~1 GB download); new config commit + one more hosted attempt.
+- **Credits:** org total 28 → 54 of 30,000 (job ≈3 credits; rest attributed to other projects, unconfirmed). Free plan.
+- **State:** triggers none, keys/hooks 0, 0 env vars, no contexts; #312 `73575800…`, #307 `023bf3e…` unchanged and unmerged. Statuses (`failure`) on config commit `878c3e8`.
+- **Documentation reconciliation:** local docs branch is ahead 8/behind 1 vs the remote config head; rebase onto (or merge) `origin/docs/ci-cont-001-circleci-assessment` then fast-forward push when approved; details in report §C8-8. Documentation not pushed.
+- **Files:** [report addendum §C8](../05-implementation/reports/11THONUS-CI-CONT-001-temporary-ci-continuity-assessment-2026-10-15.md); configuration pushed to the remote branch.
+- **Rollback:** fast-forward revert of `878c3e8` (never force-push); Unfollow Project / `circleci auth logout` when retired.
+
+---
+
 ## 2026-10-16 — 11THONUS-CI-CONT-007B — Typed JSON API Trigger (BLOCKED: audit false positive)
 
 - **Task:** One approved typed-JSON trigger via `circleci api` (source-verified: raw body, no coercion, stored token). Preflight all passed.
