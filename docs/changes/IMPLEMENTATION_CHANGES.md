@@ -7,6 +7,19 @@
 
 ---
 
+## 2026-10-16 — 11THONUS-CI-CONT-007B — Typed JSON API Trigger (BLOCKED: audit false positive)
+
+- **Task:** One approved typed-JSON trigger via `circleci api` (source-verified: raw body, no coercion, stored token). Preflight all passed.
+- **Status:** **PILOT BLOCKED — API OR CONFIGURATION.** Pipeline `a50df718-24ee-40ab-bc31-b11ff0b3d9cc` (number 3) was accepted, config fetched from `f76e95c`, job `circleci-continuity-verify` ran 22 s and **failed in its first step**; no fetched code ran, no application results.
+- **Cause:** my credential-name audit rejected CircleCI's built-in `SSH_AUTH_SOCK` (matches `AUTH`). The identity assertion (`ssh-add -l`) passed; no key loaded. The job environment (45 names) showed no project/context variables. Classified as configuration (false positive), not security or application. The cleanup step's OIDC gate also failed closed as designed.
+- **Cost:** 21 → 28 of 30,000 credits (~7); Free plan.
+- **Proposed (not implemented):** exempt exact `SSH_AUTH_SOCK`, keep the empty-agent check, unset it in `BASH_ENV`; revalidate locally; new config commit moves the pin (Founder to approve push/pin strategy); then one further attempt with the same typed request. Offline check on the real 45 names: proposed rule flags none; negative controls still flag.
+- **State:** triggers none, keys 0, hooks 0; config branch `f76e95c…`; #312 `73575800…` and #307 `023bf3e…` unchanged and unmerged; CircleCI statuses (`failure`/`error`) sit on config commit `f76e95c`.
+- **Files:** [report addendum §C7B](../05-implementation/reports/11THONUS-CI-CONT-001-temporary-ci-continuity-assessment-2026-10-15.md). Local commit only; no configuration, application, `ci.yml` or branch-protection change.
+- **Rollback:** none required.
+
+---
+
 ## 2026-10-16 — 11THONUS-CI-CONT-007A — Parameter Serialization Check (BLOCKED: approved syntax refuted)
 
 - **Task:** One corrected manual trigger using `--param 'pr_number="312"'` (Founder Option A). Preflight passed; verification of the syntax failed, so **nothing was triggered** (no pipeline, no job, 0 credits).

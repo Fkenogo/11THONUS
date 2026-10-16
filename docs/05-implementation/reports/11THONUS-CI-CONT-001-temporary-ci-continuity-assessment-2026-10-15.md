@@ -950,3 +950,45 @@ circleci api api/v2/project/gh/Fkenogo/11THONUS/pipeline/run -X POST \
 ## C7A-4 State and rollback
 
 Unchanged: followed project, definition, no triggers/keys/hooks, config branch `f76e95c`, both PR heads, nothing merged; PR #312 remains unverified by CircleCI. Rollback: none required; local documentation commits can be dropped with `git reset --hard 7c9b00d` if requested.
+
+---
+
+# Addendum — 11THONUS-CI-CONT-007B: Typed JSON API Trigger (2026-10-16)
+
+**Disposition: PILOT BLOCKED — API OR CONFIGURATION (credential-audit false positive).** The typed request was accepted and a real job ran, but it failed in its **first** step — before the exact-head check and before any fetched code. **No application code was fetched or executed; no application test result exists.** One request only; no retry.
+
+## C7B-1 Pre-execution verification of `circleci api`
+
+Source of the installed version (`circleci-cli` `v1.5.0`, `internal/cmd/api/api.go`): a path beginning with `api` is sent as given (so `api/v2/project/gh/Fkenogo/11THONUS/pipeline/run` is used verbatim); `-d` is a **raw body sent verbatim**, validated as JSON, `Content-Type: application/json` added, method defaults to POST; authentication is the stored token attached by the same HTTP client (`Circle-Token` header) used by `pipeline run`; only the response body is printed. No type coercion occurs, so `"pr_number":"312"` stays a JSON string (the payload was checked: both parameters `str`). No token was created, printed or logged. Preflight also passed: followed; definition `3302b753-…` unchanged; **no triggers**; 0 env vars; no contexts; **Free plan, 21 of 30,000 credits**; config branch `f76e95c9b87c0801445c235193ffdc3349eec760`; PR #312 `73575800df6dfada8980fef5d9c83b43d2af7464` based on PR #307's branch; PR #307 `023bf3ef599d27fcd998043c0bca6926aa82356e`.
+
+## C7B-2 Run
+
+Request (exactly the approved body) → HTTP success, pipeline **`a50df718-24ee-40ab-bc31-b11ff0b3d9cc`** (number 3), created 2026-10-16T10:32:07Z, revision (configuration) **`f76e95c9b87c0801445c235193ffdc3349eec760`**; workflow `temporary-ci-continuity` `833f60aa-90b7-4668-b474-5bb05ef78443`, job `circleci-continuity-verify` `ed5f7385-1725-4fbd-b827-ed9453ac3c16`. URL pattern: `https://app.circleci.com/pipelines/github/Fkenogo/11THONUS/3`. Duration: workflow 22 s (job 10:32:09–10:32:29).
+
+| Step | Result |
+| --- | --- |
+| Spin up environment; Container postgres:16-alpine; Preparing environment variables | succeeded (**the secondary container started and the 28110 service container was created**) |
+| 101 Assert no checkout credentials or secrets are reachable | **FAILED** (by design: fail-closed) |
+| 102 Stop Founder Preview (cleanup) | failed — its own inline OIDC gate correctly refused to run because step 101 never reached the `BASH_ENV` isolation |
+| 103 Final exact-head re-assertion; artifact uploads | succeeded (no exact-head evidence file exists: that step never ran) |
+| Exact-head verification, install, build, lint, format, typecheck, unit, PostgreSQL+emulator, Playwright, preview tooling, **cross-project acceptance**, emulator validation | **not run** |
+
+## C7B-3 Root cause and classification
+
+Step 101's output: 45 environment-variable **names** (values not printed) and `FAIL: credential-like environment variable names are present: SSH_AUTH_SOCK`. `SSH_AUTH_SOCK` is a standard variable CircleCI sets in every job (the job's SSH-agent socket). My name audit matches `AUTH`, so it rejected a **legitimate built-in**. The real identity assertion in the same step (`ssh-add -l` must list no key) did **not** fail, i.e. no SSH identity was loaded. The run also showed the complete job environment: **no project or context variables**; only CircleCI/image variables, including `CIRCLE_INTERNAL_SCRATCH`, `CIRCLE_INTERNAL_TASK_DATA`, `CIRCLE_SHELL_ENV`, `container`, `HOSTNAME`, `NO_PROXY`, `_` (none credential-like). **Classification: configuration defect in my credential audit (false positive) — not an application, test, environment or resource failure, and not a security event.** My earlier local test deliberately treated `SSH_AUTH_SOCK` as an unwanted name; hosted reality differs.
+
+**Offline check of the proposed rule against the real 45 names:** current rule flags only `SSH_AUTH_SOCK`; the proposed rule (additionally exempt the exact name `SSH_AUTH_SOCK`) flags nothing; a negative control with `NPM_TOKEN`, `DEPLOY_KEY`, `AUTH_HEADER` still flags all three.
+
+## C7B-4 Cost and state
+
+CircleCI plan: Free; credits **21 → 28 of 30,000 (about 7 credits for this 22-second job)** — the only compute used by 11THONUS so far. GitHub received `ci/circleci: circleci-continuity-verify` = `failure` and `CircleCI Pipeline` = `error` on the **configuration commit `f76e95c`**; PR #312's head has no CircleCI status. After the run: triggers none; deploy keys 0; webhooks 0; config branch `f76e95c`; #312 and #307 unchanged and unmerged; no configuration, application, `ci.yml` or branch-protection change.
+
+## C7B-5 Proposed correction (not implemented — Founder approval and a new hosted attempt required)
+
+1. In the assert step, add `-e SSH_AUTH_SOCK` to the exemption `grep -Fvx` list, **keep** the `ssh-add -l` empty-agent assertion, and append `unset SSH_AUTH_SOCK` to the `BASH_ENV` isolation block so PR code never sees the agent socket. Every other credential-like name (including all non-OIDC `CIRCLE_*`) still fails.
+2. Re-validate locally: `circleci config validate` and `config process --pipeline-parameters`; rerun the isolation test matrix (including a case with `SSH_AUTH_SOCK` present and no identity → pass; with an identity → fail) and the exact-head matrix.
+3. This is a configuration change on the pilot branch: it moves the pin from `f76e95c` and requires pushing the branch (including the local documentation commits) — Founder to approve the pin strategy. Then one further hosted attempt via the same typed `circleci api` request (that request itself worked as designed). Budget: ≤ ~540 credits for a full run.
+
+## C7B-6 Status of PR #312 and rollback
+
+PR #312 remains **not independently verified by CircleCI**; GitHub Actions never ran; local evidence only; cross-project acceptance still has no pass at `73575800…`. Rollback: none required; local documentation commits can be dropped with `git reset --hard fcd56c0` if requested; Unfollow Project / `circleci auth logout` when the arrangement is retired.
