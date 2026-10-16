@@ -333,3 +333,152 @@ Unproven hosted assumptions (JDK 21 apt install, Postgres secondary image on 281
 ## C2C-7 Rollback
 
 Nothing needs rollback in CircleCI (no project/org created). To remove the prototype: delete `.circleci/` and this branch (`docs/ci-cont-001-circleci-assessment`), or simply do not merge it. If a CircleCI project is later created: delete its trigger and pipeline, revoke the GitHub App repository access, then remove `.circleci/`.
+
+---
+
+# Addendum — 11THONUS-CI-CONT-003: Temporary CircleCI OAuth Activation Preparation (2026-10-16)
+
+**Status:** CI-CONT remains on **HOLD** until Founder authorisation. This addendum prepares — and does not execute — one hosted run. It is a temporary CI continuity pilot, not a permanent provider selection; GitHub Actions remains the intended primary CI. Earlier HOLD history (§C2C) is preserved.
+
+**Disposition: GO — Ready for one Founder-authorised hosted run** (hosted-only unknowns listed in §C3-9 are what the run exists to prove).
+
+## C3-1 Directive and entry state
+
+Miledge's central CircleCI organisation `gh/Fkenogo` is operational, and Miledge Creative Engine completed an independent hosted pilot with the GitHub OAuth API-trigger model (build #2: 321 Python tests, 7 JSON Schemas, exact commit verified, non-default config branch, no deployment, free plan). That proves central feasibility only. 11thONUS workload compatibility (Node/pnpm/JDK/Firestore emulator/PostgreSQL/Playwright) is unproven until a hosted run.
+
+Entry: worktree `/Volumes/PRODUCTION/Projects/11THONUS-worktrees/ci-cont-001`, branch `docs/ci-cont-001-circleci-assessment`, clean, head `0bf306c`. The main checkout has unrelated uncommitted work (left untouched). `ci.yml` identical to `main`.
+
+## C3-2 PR state (re-queried 2026-10-16)
+
+| PR | Head | Branch → base | State | Threads |
+| --- | --- | --- | --- | --- |
+| #312 | `73575800df6dfada8980fef5d9c83b43d2af7464` (**unchanged**; `refs/pull/312/head` identical) | `feat/loy-item-circle-pkg-b-schema` → `feat/ea-bl-001-corr-002-b-staff-counter` | OPEN / CLEAN | 0 / 0 unresolved |
+| #307 | `023bf3ef599d27fcd998043c0bca6926aa82356e` (unchanged) | `feat/ea-bl-001-corr-002-b-staff-counter` → `main` | OPEN / CLEAN | 4 / 0 unresolved |
+
+#312 is stacked on #307 (2 commits above its head). Neither is merged; nothing was merged.
+
+## C3-3 GitHub App → OAuth API-trigger corrections
+
+| Previous (CONT-002) | Problem under the OAuth API model | Correction |
+| --- | --- | --- |
+| `pipeline.event.github.pull_request.head.sha` / `.number` / `pipeline.event.name` fallbacks | GitHub-App-only values; empty/unavailable on OAuth API triggers | **Removed.** Only `pipeline.parameters.expected_sha` and `.pr_number` (+ `pipeline.id`, `.number`, `.git.*` for evidence) remain |
+| Workflow `when: or:[expected_sha, event head sha]` | depends on App event | `when: << pipeline.parameters.expected_sha >>` — verified: with no parameters `config process` yields `jobs: {}` and no workflow, so any plain push starts nothing and spends no credits |
+| `checkout` step (deploy-key SSH) then fetch via `origin` | would load a CircleCI checkout key into the job; credentials had to be scrubbed *after* load | **No `checkout` step.** The repo is public, so the job `git init`s and fetches `refs/pull/<n>/head` (depth 1) **anonymously over HTTPS** with git config/credential helpers disabled. No key is ever loaded; a first step asserts none is reachable |
+| Optional PR number; no allowlist | any open PR could be run | `pr_number` required, `^[1-9][0-9]{0,6}$`, and **allowlisted to 312** for this pilot |
+| Parameters in shell text (earlier) / `<<` in commands | injection risk | every pipeline value enters via quoted `environment:`; commands contain no `<<` |
+| Free-text evidence | not machine-readable | structured JSON artifact `exact-head-evidence.json` (written on PASS and FAIL via `trap`) |
+| `config.branch` vs `checkout.branch` | OAuth rejects differing values (Creative Engine finding) | trigger sets both to the pilot branch; irrelevant to the tested tree, which the job fetches itself |
+
+CircleCI's own pipeline checkout/revision (`pipeline.git.revision`, the config commit) is recorded in the evidence as `config_revision_NOT_VERIFIED_AS_TESTED_CODE` — a check attached to the configuration commit is **not** verification of the application commit.
+
+## C3-4 Exact-head proof and local validation
+
+Order of checks (any failure exits 1 and writes a FAIL evidence record): (1) `expected_sha` is 40 lowercase hex; (2) `pr_number` valid and allowlisted; (3) live GitHub PR head (public API) exists, PR is **open**, and equals expected; (4) anonymous fetch of `refs/pull/<n>/head` equals expected; (5) after `checkout --detach FETCH_HEAD`, `git rev-parse HEAD` equals expected. Evidence JSON fields: `result`, `reason`, `pr_number`, `expected_sha`, `live_pr_head_sha`, `fetched_sha`, `checked_out_sha`, CircleCI `pipeline_id`/`pipeline_number`/`workflow_id`/`job`/`build_num`/`build_url`/config branch+revision, UTC timestamp. No credentials are read or written.
+
+Executed locally against the real GitHub API/PR ref (step extracted from the validated YAML, run with `env -i` and a sandbox `HOME`):
+
+| Case | Result |
+| --- | --- |
+| Positive: PR 312 + `73575800…` | **PASS** rc 0; evidence `expected = live = fetched = checked-out` |
+| Stale SHA (`023bf3e`, PR 312) | FAIL rc 1: live PR head ≠ expected |
+| Malformed SHA / uppercase SHA / empty | FAIL rc 1 |
+| Invalid PR `0` / `312;touch /tmp/PWNED` / empty | FAIL rc 1; **no file created** |
+| Injection in SHA (`…$(touch /tmp/PWNED2)`) | FAIL rc 1; no file created |
+| Nonexistent PR 9999999 | FAIL rc 1 (cannot read PR) |
+| PR 307 + its own head | not applied in the pilot: rejected by the new allowlist (PR 307 ≠ 312) |
+| Credential-assert step: clean env / `MY_API_TOKEN` present / `CIRCLE_OIDC_TOKEN` only | OK / **FAIL** (names only printed) / OK (reserved) |
+
+`circleci config validate` → **valid**; `config process` → OK; with `--pipeline-parameters` the substituted values appear correctly. Not locally testable: fetched-SHA ≠ live-SHA race, and CircleCI-side execution of any step.
+
+## C3-5 Authentication and credential isolation
+
+1. OAuth jobs normally use a deploy/user key for `checkout`. **This job does not call `checkout`**, so a checkout key is not required and, by design, not loaded. The repo is public, so anonymous HTTPS is sufficient; a read-only key would be the fallback if the repo becomes private.
+2. Defence in depth: the first step runs `ssh-add -D`/`ssh-add -l` (fails if any identity is loaded), deletes `~/.ssh`, `~/.gitconfig`, `~/.git-credentials`, and git runs with `GIT_CONFIG_GLOBAL=/dev/null`, `GIT_CONFIG_SYSTEM=/dev/null`, `GIT_TERMINAL_PROMPT=0`.
+3. Project/context environment variables: not visible to the agent (no CircleCI access). The first step **fails the job** if any environment variable name matching `TOKEN|SECRET|PASSWORD|PASSWD|API_KEY|PRIVATE|CREDENTIAL` (excluding CircleCI-reserved `CIRCLE_*`) exists. Founder should also confirm the project has no variables/contexts attached.
+4. **Residual:** CircleCI injects reserved `CIRCLE_OIDC_TOKEN*` into jobs; they could be read by PR code. No cloud trust relationship exists for this org/project as far as the repo shows, so the token is inert, but the Founder should confirm no OIDC-trusting cloud role is configured for `gh/Fkenogo`.
+5. Hosted PR code runs with no secrets by design; STOP if the assert step fails.
+
+## C3-6 Mandatory equivalence matrix (source: `.github/workflows/ci.yml` @ `main`, identical at #312)
+
+| GitHub Actions requirement | CircleCI equivalent | Method | Covered |
+| --- | --- | --- | --- |
+| Checkout of PR head | anonymous fetch + exact-head gate (§C3-4) | `git fetch refs/pull/312/head` | Yes (stricter) |
+| pnpm 9.15.9 | `npm i -g pnpm@9.15.9` | install | Yes |
+| Node 20 | `cimg/node:20.19` | image | Yes |
+| `pnpm install --frozen-lockfile` | same | script | Yes |
+| `pnpm build` | same | script | Yes |
+| `pnpm lint` | same | script | Yes |
+| `pnpm format:check` | same | script | Yes |
+| `pnpm typecheck` | same | script | Yes |
+| `pnpm test` (functions + web unit/component) | same | script | Yes |
+| JDK 21 + `java -version` | `apt openjdk-21-jre-headless` (available on jammy and noble) + `java -version` | apt | Yes (apt install proven only hosted) |
+| PostgreSQL service `postgres:16-alpine`:28110 | secondary image, `command: postgres -p 28110`, same creds/DB; readiness loop | container | Yes (networking proven only hosted) |
+| PostgreSQL integration under Firestore emulator | identical `firebase emulators:exec` command | script | Yes |
+| `playwright install --with-deps chromium` | same | script | Yes |
+| `pnpm test:e2e` | same | script | Yes |
+| `pnpm test:preview-tooling` | same | script | Yes |
+| Cross-project port-isolation acceptance (+ `CREATE DATABASE …_local`) | same step, same env | script | Yes (**first-ever execution anywhere at this SHA is the hosted run**) |
+| Stop Founder Preview (`if: always`) | `when: always` | script | Yes |
+| `pnpm emulators:validate` | same | script | Yes |
+| Failure diagnostics artifacts | `store_artifacts … when: always` (playwright-report, test-results, preview logs, evidence JSON) | artifacts | Yes (firebase-debug logs not collected) |
+| Security/contract checks | none separate in `ci.yml`; Firestore rules/contract tests run inside `pnpm test` and `emulators:validate` | n/a | Covered via above |
+| Concurrency cancel, `push`/PR triggers, `ubuntu-latest` | not replicated (manual single run) | — | Intentional |
+
+Added vs GitHub: `CI=true` env, exact-head gate, credential assert. No test, assertion, threshold or timeout was weakened; only `no_output_timeout` (CircleCI's silence watchdog, default 10 min) was raised on long silent suites (unit 20m, PostgreSQL 25m, e2e/emulators 20m) — because the PostgreSQL suite ran 234–729 s locally.
+
+## C3-7 Resources and credits
+
+- **Docker `large`:** 4 vCPU / 8 GB, **20 credits/min (Gen1) or 24 (Gen2)** — CircleCI price list (circleci.com/product/features/resource-classes). Free plan includes Docker small–large and 30,000 credits/month (pricing page, CONT-001). Not verified in this pass (docs page 404): disk size, concurrency (30 on Free per pricing page) and whether secondary containers share the 8 GB (standard CircleCI behaviour: yes — assume shared).
+- **Local peak memory (sum of RSS of each stage's process group, ps-sampled 2 s):** unit 1,693 MB; PostgreSQL+emulator 411 MB; e2e 715 MB; `emulators:validate` 898 MB. Caveat: this undercounts children that leave the process group (Chromium helpers, possibly the JVM) and double-counts shared pages. Stages run sequentially; add ~0.2 GB for the Postgres container and a generous 3× undercount factor ≈ 5 GB worst stage < 8 GB. **OOM risk judged low but not proven**; 4 vCPU means fewer vitest/Playwright workers than the 8-core host.
+- **Runtime estimate:** GitHub 16.5–17.7 min; CircleCI add apt/JDK/pnpm install (no caching) ⇒ **~22 min (range 18–30)**.
+- **Cost:** 22 min × 20 = **~440 credits**; at 24 = **~530**; 30 min × 24 = 720 worst case. Free allowance 30,000 ⇒ **1.5–2.4 %**.
+- **Retry budget:** one initial run, plus at most **one** diagnosed retry (≤ ~1,440 credits worst case, ≤ 4.8 %). No automatic retries (workflow has none; do not enable "rerun").
+
+## C3-8 PostgreSQL / Firebase / browser compatibility
+
+- PostgreSQL `postgres:16-alpine` is the same image as GitHub's service container; `command: ["postgres","-p","28110"]` keeps `localhost:28110` (secondary containers share the primary's network namespace). Readiness via `pg_isready` loop (30×2 s). Database `eleventhonus_platform_test` from `POSTGRES_DB`; the `_local` database is created by the acceptance step as in `ci.yml`. Tests own migrations/fixtures. No managed database introduced.
+- Firebase: Emulator Suite via repository `firebase-tools`, project `demo-11thonus`, ports 28101–28108 from `firebase.json`; no credentials or production resources. JDK 21 via apt.
+- Browser: `playwright install --with-deps chromium` (apt via passwordless sudo in `cimg`); Playwright 1.61.1 pinned by lockfile — local run needed no dependency change.
+- `cimg/node:20.19` is built on `cimg/base:2025.10` (OS release not confirmed; `openjdk-21-jre-headless` exists on both Ubuntu 22.04 and 24.04).
+
+## C3-9 Remaining acceptance gaps and risks
+
+1. **Cross-project acceptance: no pass anywhere at `73575800…`.** Still not runnable locally (another project's Firebase emulator holds ports 4000/9099); the hosted run is its first execution. If it fails there, diagnose (likely product/test) before retry.
+2. Unproven until hosted: apt JDK install, secondary-container networking on 28110, Gen1-vs-Gen2 credit rate, memory headroom, the OAuth `pipeline/run` contract with `parameters` strings.
+3. GitHub Checks: the pipeline attaches status to the **configuration branch commit**, never to PR #312's head; the evidence is the pipeline URL + `exact-head-evidence.json`.
+4. OIDC token residual (§C3-5), unknown project env vars (guarded in-job).
+5. Prototype drift from `ci.yml` (short lifetime). GitHub Actions at #312 still never started.
+
+## C3-10 Proposed API trigger (NOT executed — Founder-run)
+
+Prerequisites checked by the Founder before running: pilot-branch head matches the commit named at authorisation and is pushed; `gh/Fkenogo/11THONUS` OAuth pipeline exists; Project Settings shows **no environment variables and no contexts**; plan = Free; and #312 is still `73575800…` (`gh pr view 312 --json headRefOid`).
+
+Obtain the pipeline definition ID read-only from Project Settings → Pipelines (or `circleci pipeline list --project gh/Fkenogo/11THONUS`). Put the token in a Founder-held variable without echoing it:
+
+```bash
+read -rs CIRCLE_TOKEN && export CIRCLE_TOKEN   # Founder-held personal API token; never paste into docs/chat
+DEFINITION_ID="<pipeline-definition-uuid>"
+curl --fail-with-body -sS -X POST \
+  "https://circleci.com/api/v2/project/gh/Fkenogo/11THONUS/pipeline/run" \
+  -H "Circle-Token: $CIRCLE_TOKEN" -H "content-type: application/json" \
+  -d "{\"definition_id\":\"$DEFINITION_ID\",
+       \"config\":{\"branch\":\"docs/ci-cont-001-circleci-assessment\"},
+       \"checkout\":{\"branch\":\"docs/ci-cont-001-circleci-assessment\"},
+       \"parameters\":{\"expected_sha\":\"73575800df6dfada8980fef5d9c83b43d2af7464\",\"pr_number\":\"312\"}}"
+unset CIRCLE_TOKEN
+```
+
+Equivalent CLI (uses the CLI's own stored credential): `circleci pipeline run --project gh/Fkenogo/11THONUS --definition-id "$DEFINITION_ID" --branch docs/ci-cont-001-circleci-assessment --param expected_sha=73575800df6dfada8980fef5d9c83b43d2af7464 --param pr_number=312`.
+
+Contract basis (CircleCI API v2 reference): `POST /project/{provider}/{organization}/{project}/pipeline/run`, `Circle-Token` header, body `definition_id`, `config`, `checkout`, `parameters`; endpoint supports `github_oauth` definitions; parameter limits 100 entries / 128-char keys / 512-char values (met). `config.branch` = `checkout.branch` follows the Creative Engine OAuth finding. GitHub App trigger syntax is not used.
+
+## C3-11 STOP / GO criteria
+
+- **GO to run:** all prerequisites above true; Founder explicit authorisation recorded in chat.
+- **STOP before running:** #312 or #307 head moved; the pilot-branch head differs from the authorised commit; project has variables/contexts; plan is not Free.
+- **STOP during/after:** evidence `result` is FAIL; the assert step fails; any step needs a paid resource; credits exceed 1,500 for one run. Do not re-run without a written diagnosis (classify: application/test defect, environment/config, resource exhaustion, transient, unknown).
+- **A CircleCI pass** ⇒ "CircleCI independently verified exact head `73575800…`" — not "GitHub Actions passed", not "merge approved". Merge remains a separate Founder/governance decision; #312 additionally depends on #307.
+
+## C3-12 Rollback
+
+Delete `.circleci/` and the branch `docs/ci-cont-001-circleci-assessment` (or never merge it); remove the pipeline definition/trigger in CircleCI if created; revoke any token created for the pilot. Nothing in `main`, `ci.yml`, branch protection or the application changes.

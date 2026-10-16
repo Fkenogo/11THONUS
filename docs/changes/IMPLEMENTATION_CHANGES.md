@@ -7,6 +7,18 @@
 
 ---
 
+## 2026-10-16 — 11THONUS-CI-CONT-003 — Temporary CircleCI OAuth Activation Preparation
+
+- **Task:** Prepare the CircleCI pilot configuration for one GitHub OAuth API-triggered hosted run after Miledge resolved the central `gh/Fkenogo` organisation issue (Creative Engine hosted pilot passed). Configuration/documentation only; **hosted CI not run; CI-CONT stays on HOLD until Founder authorisation.**
+- **Status:** **GO — ready for one Founder-authorised hosted run** (temporary pilot; GitHub Actions remains the intended primary CI).
+- **Changes:** `.circleci/config.yml` reworked for the OAuth model — GitHub App event values removed; explicit validated `expected_sha`/`pr_number` (allowlisted to #312); no `checkout` step (anonymous HTTPS fetch of `refs/pull/312/head`, no SSH key loaded, credential-assert step); structured `exact-head-evidence.json`; parameters only via `environment:`; plain pushes start no workflow.
+- **Verified locally:** CircleCI CLI validation; positive and 8+ negative exact-head cases against the real PR (injection attempts create no files); peak-memory sampling (≤1.7 GB per stage); Docker large = 4 vCPU/8 GB, 20/24 credits/min; est. ~440–530 credits (≈1.5–2.4% of 30,000).
+- **Open:** cross-project acceptance has no pass at `73575800…` (local port conflict; first run hosted); apt JDK, Postgres networking and OIDC-token residual are hosted-only unknowns. PR #312 `73575800…` and #307 `023bf3e` unchanged, open, not merged.
+- **Files:** [report addendum §C3](../05-implementation/reports/11THONUS-CI-CONT-001-temporary-ci-continuity-assessment-2026-10-15.md); `.circleci/config.yml`. No application, `ci.yml`, dependency, lockfile or branch-protection change.
+- **Rollback:** delete `.circleci/` and the pilot branch; remove pipeline/token in CircleCI if created.
+
+---
+
 ## 2026-10-16 — 11THONUS-CI-CONT-002C — Temporary CI Pilot: HOLD Disposition and Handover
 
 - **Task:** Record the Founder's HOLD on the CircleCI temporary CI pilot. Documentation only.

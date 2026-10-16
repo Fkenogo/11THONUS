@@ -1,25 +1,20 @@
-# 11THONUS-CI-CONT-002 — TEMPORARY CircleCI CONTINUITY PILOT CONFIG
+# 11THONUS-CI-CONT-003 — TEMPORARY CircleCI CONTINUITY PILOT CONFIG (GitHub OAuth API-trigger model)
 #
-# TEMPORARY, REVERSIBLE. GitHub Actions (`.github/workflows/ci.yml`) remains the primary CI system.
-# This file lives only on the pilot branch `docs/ci-cont-001-circleci-assessment` and is NOT part of
-# any PR under test. A CircleCI pass is independent evidence; it is NOT a GitHub Actions pass.
-# Remove with the rollback in docs/05-implementation/reports/11THONUS-CI-CONT-001-*.md.
+# TEMPORARY, REVERSIBLE, ON HOLD until Founder authorisation. GitHub Actions
+# (`.github/workflows/ci.yml`) remains the primary CI system. This file lives only on the pilot
+# branch `docs/ci-cont-001-circleci-assessment`; it is never part of any PR under test.
+# A CircleCI pass is independent evidence; it is NOT a GitHub Actions pass.
 #
-# How it tests a PR head WITHOUT committing config onto the PR:
-#   1. The pipeline is triggered on THIS config branch (manual/checkpoint trigger) with the pipeline
-#      parameters `expected_sha` (+ optional `pr_number`).
-#   2. The first step fetches `refs/pull/<pr_number>/head`, checks out that exact commit and FAILS
-#      CLOSED unless  fetched SHA == checked-out SHA == expected SHA == live GitHub PR head SHA.
-#   3. Every later step runs the repository's own scripts from the target tree, in the same order as
-#      `.github/workflows/ci.yml`. No deployment, no secrets, demo-11thonus emulator project only.
+# Trigger model (GitHub OAuth pipeline, manual API trigger — same model as the Miledge Creative
+# Engine pilot): POST /api/v2/project/gh/Fkenogo/11THONUS/pipeline/run with
+#   config.branch = checkout.branch = docs/ci-cont-001-circleci-assessment  (OAuth requires equal)
+#   parameters.expected_sha, parameters.pr_number  (both REQUIRED, validated, authoritative)
+# No `pipeline.event.*` (GitHub App) values are used anywhere. A plain push starts no workflow.
 #
-# Trigger types:
-#   * manual/API/UI run  -> `expected_sha` parameter is REQUIRED (never inferred from the branch).
-#   * GitHub App PR event -> `pipeline.event.github.pull_request.head.sha` is used when
-#     `expected_sha` is empty. Not populated for manual runs; never assumed.
-#   * SECURITY: the CircleCI project must have NO project/context env vars and a read-only
-#     checkout key; checkout credentials are removed before the PR tree executes.
-#   * push events with neither value set do not start the workflow (no credit use).
+# Source handling: the CircleCI `checkout` step is deliberately NOT used. The repository is public,
+# so the PR head is fetched anonymously over HTTPS (`refs/pull/<n>/head`, depth 1). No deploy key or
+# SSH identity is loaded, and the job asserts that none is reachable before any PR code runs.
+# Pipeline values reach the shell only through quoted `environment:` entries, never inside commands.
 
 version: 2.1
 
@@ -42,117 +37,151 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: eleventhonus_platform_test
-    resource_class: large # Docker large: 4 vCPU / 8 GB (verify credit rate in the UI before running)
+    resource_class: large # Docker large: 4 vCPU / 8 GB; 20 credits/min (Gen1) or 24 (Gen2)
     environment:
       CI: "true"
     steps:
-      - checkout
+      - run:
+          name: Assert no checkout credentials or secrets are reachable
+          command: |
+            set -eu
+            # No `checkout` step has run, so no key should exist. Assert it (defence in depth).
+            [ -n "${SSH_AUTH_SOCK:-}" ] && ssh-add -D >/dev/null 2>&1 || true
+            if [ -n "${SSH_AUTH_SOCK:-}" ] && ssh-add -l >/dev/null 2>&1; then
+              echo "FAIL: an SSH identity is loaded in the agent"; exit 1
+            fi
+            rm -rf "$HOME/.ssh" "$HOME/.gitconfig" "$HOME/.config/git" "$HOME/.git-credentials"
+            # Names only — values are never printed. CIRCLE_* are CircleCI-reserved (incl. OIDC).
+            LEAK="$(env | cut -d= -f1 | grep -Ei '(TOKEN|SECRET|PASSWORD|PASSWD|API_?KEY|PRIVATE|CREDENTIAL)' | grep -v '^CIRCLE_' || true)"
+            if [ -n "$LEAK" ]; then
+              echo "FAIL: secret-like environment variable names are present (project/context vars must be empty):"
+              echo "$LEAK"; exit 1
+            fi
+            echo "OK: no SSH identity, no credential files, no secret-like env var names"
 
       - run:
           name: Exact-head verification (fail closed)
           environment:
             P_EXPECTED_SHA: "<< pipeline.parameters.expected_sha >>"
             P_PR_NUMBER: "<< pipeline.parameters.pr_number >>"
-            E_PR_HEAD_SHA: "<< pipeline.event.github.pull_request.head.sha >>"
-            E_PR_NUMBER: "<< pipeline.event.github.pull_request.number >>"
+            P_PIPELINE_ID: "<< pipeline.id >>"
+            P_PIPELINE_NUMBER: "<< pipeline.number >>"
             G_BRANCH: "<< pipeline.git.branch >>"
             G_REVISION: "<< pipeline.git.revision >>"
-            T_TYPE: "<< pipeline.trigger.type >>"
-            E_NAME: "<< pipeline.event.name >>"
           command: |
-            set -eu
-            EVIDENCE=/tmp/exact-head-evidence.txt
-            EXPECTED="$P_EXPECTED_SHA"
-            SOURCE="pipeline parameter expected_sha (manual/checkpoint)"
-            PR="$P_PR_NUMBER"
-            if [ -z "$EXPECTED" ]; then
-              EXPECTED="$E_PR_HEAD_SHA"
-              SOURCE="pipeline.event.github.pull_request.head.sha (PR event)"
-              PR="$E_PR_NUMBER"
-            fi
-            {
-              printf "trigger.type          : %s\n" "$T_TYPE"
-              printf "event                 : %s\n" "$E_NAME"
-              printf "config branch/rev     : %s @ %s\n" "$G_BRANCH" "$G_REVISION"
-              echo "expected SHA          : ${EXPECTED:-<none>}"
-              echo "expected SHA source   : $SOURCE"
-              echo "PR number             : ${PR:-<none>}"
-            } | tee "$EVIDENCE"
-            if ! printf '%s' "$EXPECTED" | grep -Eq '^[0-9a-f]{40}$'; then
-              echo "FAIL: expected SHA missing or not a 40-char lowercase SHA" | tee -a "$EVIDENCE"; exit 1
-            fi
-            if [ -n "$PR" ] && ! printf '%s' "$PR" | grep -Eq '^[0-9]+$'; then
-              echo "FAIL: pr_number must be numeric" | tee -a "$EVIDENCE"; exit 1
-            fi
-            if [ -n "$PR" ]; then
-              git fetch --no-tags origin "refs/pull/$PR/head"
-            else
-              git fetch --no-tags origin "$EXPECTED"
-            fi
-            FETCHED="$(git rev-parse FETCH_HEAD)"
-            git checkout --detach "$EXPECTED"
-            CHECKED_OUT="$(git rev-parse HEAD)"
-            LIVE="n/a (no PR number)"
-            if [ -n "$PR" ]; then
-              LIVE="$(curl -fsS "https://api.github.com/repos/Fkenogo/11THONUS/pulls/$PR" | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>console.log(JSON.parse(d).head.sha))' || true)"
-              [ -n "$LIVE" ] || { echo "FAIL: could not read live PR head from GitHub API" | tee -a "$EVIDENCE"; exit 1; }
-            fi
-            {
-              echo "fetched ref SHA       : $FETCHED"
-              echo "checked-out SHA       : $CHECKED_OUT"
-              echo "live GitHub PR head   : $LIVE"
-            } | tee -a "$EVIDENCE"
-            [ "$CHECKED_OUT" = "$EXPECTED" ] || { echo "FAIL: checked-out != expected" | tee -a "$EVIDENCE"; exit 1; }
-            [ "$FETCHED" = "$EXPECTED" ] || { echo "FAIL: fetched ref != expected" | tee -a "$EVIDENCE"; exit 1; }
-            if [ -n "$PR" ] && [ "$LIVE" != "$EXPECTED" ]; then
-              echo "FAIL: live PR head != expected (PR moved)" | tee -a "$EVIDENCE"; exit 1
-            fi
-            echo "RESULT: EXACT-HEAD MATCH CONFIRMED" | tee -a "$EVIDENCE"
+            set -u
+            EVIDENCE=/tmp/exact-head-evidence.json
+            REPO_URL=https://github.com/Fkenogo/11THONUS.git
+            LIVE=""; FETCHED=""; CHECKED_OUT=""; REASON="unknown failure"
+            emit() {
+              EV_RESULT="$1" EV_LIVE="$LIVE" EV_FETCHED="$FETCHED" EV_CHECKED="$CHECKED_OUT" EV_REASON="$REASON" node -e '
+                const e = process.env;
+                const o = {
+                  result: e.EV_RESULT, reason: e.EV_REASON,
+                  pr_number: e.P_PR_NUMBER, expected_sha: e.P_EXPECTED_SHA,
+                  live_pr_head_sha: e.EV_LIVE, fetched_sha: e.EV_FETCHED, checked_out_sha: e.EV_CHECKED,
+                  circleci: {
+                    pipeline_id: e.P_PIPELINE_ID, pipeline_number: e.P_PIPELINE_NUMBER,
+                    workflow_id: e.CIRCLE_WORKFLOW_ID, job: e.CIRCLE_JOB, build_num: e.CIRCLE_BUILD_NUM,
+                    build_url: e.CIRCLE_BUILD_URL, config_branch: e.G_BRANCH,
+                    config_revision_NOT_VERIFIED_AS_TESTED_CODE: e.G_REVISION
+                  },
+                  timestamp_utc: new Date().toISOString()
+                };
+                require("fs").writeFileSync("/tmp/exact-head-evidence.json", JSON.stringify(o, null, 2) + "\n");
+                console.log(JSON.stringify(o, null, 2));'
+            }
+            finish() { rc=$?; if [ "$rc" -eq 0 ]; then emit PASS; else emit FAIL; fi; }
+            trap finish EXIT
+            fail() { REASON="$1"; echo "FAIL: $1" >&2; exit 1; }
 
-      - run:
-          name: Drop checkout credentials before executing PR-tree code
-          command: |
-            # The PR tree's scripts run from here on. Remove the checkout SSH key/known_hosts and
-            # point origin at the public HTTPS URL so no credential is reachable from that code.
-            rm -rf ~/.ssh
-            git remote set-url origin https://github.com/Fkenogo/11THONUS.git
-            git config --unset-all core.sshCommand || true
-            git remote -v
+            printf '%s' "$P_EXPECTED_SHA" | grep -Eq '^[0-9a-f]{40}$' || fail "expected_sha missing or not a 40-char lowercase SHA"
+            printf '%s' "$P_PR_NUMBER" | grep -Eq '^[1-9][0-9]{0,6}$' || fail "pr_number missing or not a positive integer"
+            # Pilot allowlist: this temporary pilot is authorised for PR #312 only.
+            [ "$P_PR_NUMBER" = "312" ] || fail "pr_number $P_PR_NUMBER is not authorised for this pilot (only 312)"
+
+            # 1. Live GitHub PR head (public API, no credential).
+            PRJSON="$(curl -fsS --max-time 30 "https://api.github.com/repos/Fkenogo/11THONUS/pulls/$P_PR_NUMBER")" || fail "could not read PR $P_PR_NUMBER from GitHub"
+            LIVE="$(printf '%s' "$PRJSON" | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>console.log(JSON.parse(d).head.sha))')" || fail "unparsable PR response"
+            PRSTATE="$(printf '%s' "$PRJSON" | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>console.log(JSON.parse(d).state))')"
+            [ "$PRSTATE" = "open" ] || fail "PR $P_PR_NUMBER is not open (state: $PRSTATE)"
+            [ "$LIVE" = "$P_EXPECTED_SHA" ] || fail "live PR head ($LIVE) != expected_sha"
+
+            # 2. Anonymous fetch of the PR head ref (no credentials, no credential helpers).
+            export GIT_TERMINAL_PROMPT=0 GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null
+            mkdir -p "$HOME/project" && cd "$HOME/project"
+            git init -q . && git remote add origin "$REPO_URL"
+            git fetch -q --no-tags --depth=1 origin "refs/pull/$P_PR_NUMBER/head" || fail "could not fetch refs/pull/$P_PR_NUMBER/head"
+            FETCHED="$(git rev-parse --verify FETCH_HEAD)"
+            [ "$FETCHED" = "$P_EXPECTED_SHA" ] || fail "fetched SHA ($FETCHED) != expected_sha"
+
+            # 3. Check out and confirm.
+            git checkout -q --detach FETCH_HEAD
+            CHECKED_OUT="$(git rev-parse HEAD)"
+            [ "$CHECKED_OUT" = "$P_EXPECTED_SHA" ] || fail "checked-out SHA ($CHECKED_OUT) != expected_sha"
+            REASON="expected = live = fetched = checked-out"
+            echo "RESULT: EXACT-HEAD MATCH CONFIRMED"
 
       - run:
           name: Install pnpm 9.15.9
+          working_directory: ~/project
           command: npm install -g pnpm@9.15.9
       - run:
           name: Install JDK 21 (Firestore Emulator requires Java >= 21) and psql
+          working_directory: ~/project
           command: |
             sudo apt-get update -qq
             sudo apt-get install -y -qq openjdk-21-jre-headless postgresql-client
             java -version
-      - run: pnpm install --frozen-lockfile
+      - run:
+          name: Install dependencies (frozen lockfile)
+          working_directory: ~/project
+          command: pnpm install --frozen-lockfile
       - run:
           name: Wait for PostgreSQL service container
+          working_directory: ~/project
           command: for i in $(seq 1 30); do PGPASSWORD=postgres pg_isready -h localhost -p 28110 -U postgres && exit 0; sleep 2; done; exit 1
 
-      - run: { name: Build, command: pnpm build }
-      - run: { name: Lint, command: pnpm lint }
-      - run: { name: Format check, command: pnpm format:check }
-      - run: { name: Typecheck, command: pnpm typecheck }
-      - run: { name: Unit / component tests, command: pnpm test }
+      - run: { name: Build, working_directory: ~/project, command: pnpm build }
+      - run: { name: Lint, working_directory: ~/project, command: pnpm lint }
+      - run: { name: Format check, working_directory: ~/project, command: pnpm format:check }
+      - run: { name: Typecheck, working_directory: ~/project, command: pnpm typecheck }
+      - run:
+          {
+            name: Unit / component tests,
+            working_directory: ~/project,
+            no_output_timeout: 20m,
+            command: pnpm test,
+          }
       - run:
           name: PostgreSQL integration tests (Firestore emulator wrapped)
-          no_output_timeout: 20m
+          working_directory: ~/project
+          no_output_timeout: 25m
           command: >-
             pnpm exec firebase emulators:exec --only firestore --project demo-11thonus
             "PLATFORM_ENV=test PLATFORM_POSTGRES_URL=postgres://postgres:postgres@localhost:28110/eleventhonus_platform_test pnpm --filter functions test:postgres"
       - run:
           {
             name: Install Playwright Chromium,
+            working_directory: ~/project,
             command: pnpm exec playwright install --with-deps chromium,
           }
-      - run: { name: Playwright e2e, command: pnpm test:e2e }
-      - run: { name: Founder Preview tooling tests, command: pnpm test:preview-tooling }
+      - run:
+          {
+            name: Playwright e2e,
+            working_directory: ~/project,
+            no_output_timeout: 20m,
+            command: pnpm test:e2e,
+          }
+      - run:
+          {
+            name: Founder Preview tooling tests,
+            working_directory: ~/project,
+            command: pnpm test:preview-tooling,
+          }
       - run:
           name: Founder Preview cross-project port-isolation acceptance
+          working_directory: ~/project
           environment:
             PREVIEW_POSTGRES_URL: postgres://postgres:postgres@localhost:28110/eleventhonus_platform_local
             PGPASSWORD: postgres
@@ -161,36 +190,45 @@ jobs:
             node tests/preview/cross-project-acceptance.mjs
       - run:
           name: Stop Founder Preview (cleanup)
+          working_directory: ~/project
           when: always
           command: pnpm preview:stop || true
-      - run: { name: Firebase Emulator Suite validation, command: pnpm emulators:validate }
+      - run:
+          {
+            name: Firebase Emulator Suite validation,
+            working_directory: ~/project,
+            no_output_timeout: 20m,
+            command: pnpm emulators:validate,
+          }
 
       - run:
           name: Final exact-head re-assertion
+          working_directory: ~/project
           when: always
           command: |
-            echo "final HEAD  $(git rev-parse HEAD)" | tee -a /tmp/exact-head-evidence.txt
+            echo "final HEAD  $(git rev-parse HEAD 2>/dev/null || echo unavailable)"
       - store_artifacts:
-          path: /tmp/exact-head-evidence.txt
-          destination: exact-head-evidence.txt
+          path: /tmp/exact-head-evidence.json
+          destination: exact-head-evidence.json
+          when: always
       - store_artifacts:
-          path: playwright-report
+          path: ~/project/playwright-report
           destination: playwright-report
+          when: always
       - store_artifacts:
-          path: test-results
+          path: ~/project/test-results
           destination: test-results
+          when: always
       - store_artifacts:
-          path: .preview/logs
+          path: ~/project/.preview/logs
           destination: preview-logs
+          when: always
 
 workflows:
-  # One workflow, one job, one run per trigger. Starts only when an expected SHA is available
-  # (manual parameter or PR-event head SHA); plain pushes consume no credits.
+  # One workflow, one job, one run per API trigger. Starts only when `expected_sha` is supplied,
+  # so ordinary pushes (OAuth all-pushes trigger, if any) start nothing and consume no credits.
   temporary-ci-continuity:
-    when:
-      or:
-        - << pipeline.parameters.expected_sha >>
-        - << pipeline.event.github.pull_request.head.sha >>
+    when: << pipeline.parameters.expected_sha >>
     jobs:
       - verify:
           name: circleci-continuity-verify
