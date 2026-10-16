@@ -7,6 +7,17 @@
 
 ---
 
+## 2026-10-16 — 11THONUS-CI-CONT-006 — Activate Existing CircleCI OAuth Project (AWAITING TRIGGER ISOLATION)
+
+- **Task:** Follow the existing CircleCI project `gh/Fkenogo/11THONUS` (Founder-authorised; only `circleci project follow` executed). No hosted job; hosted CI not triggered.
+- **Status:** **ACTIVATED — AWAITING TRIGGER ISOLATION.** Project followed; CircleCI default-branch record corrected `master`→`main`; OAuth definition `3302b753-…` unchanged.
+- **Created by activation:** GitHub read-only repo-scoped deploy key "CircleCI" (id 166647185, verified); active webhook to circleci.com (id 699006072; fork/public/pull_request/push/repository); an initial pipeline `ff7d5802-…` that ended `not_run` (no config on `main`, 0 workflows) and a cosmetic GitHub status `CircleCI Pipeline = error` on `main`'s head. No write access, no org-wide change; env vars/contexts still 0; Free plan; **11THONUS used no credits** (org usage 21/30,000 belongs to klockit/MCE).
+- **STOP condition:** the implicit **all-pushes trigger remains enabled**. Founder UI steps: Project Settings → Project Setup → Pipeline "11THONUS" → trigger "All pushes on 11THONUS" → Delete trigger. Agent made no trigger change.
+- **Files:** [report addendum §C6](../05-implementation/reports/11THONUS-CI-CONT-001-temporary-ci-continuity-assessment-2026-10-15.md). Committed locally after `1638050`; **not pushed**. Remote config branch still `f76e95c…`. No configuration, application, `ci.yml`, dependency or branch-protection change; PR #312/#307 unchanged and unmerged.
+- **Rollback:** Unfollow Project; delete the deploy key and webhook in GitHub; `circleci auth logout`.
+
+---
+
 ## 2026-10-16 — 11THONUS-CI-CONT-005 — CircleCI OAuth Project Activation and HTTP 403 Assessment
 
 - **Task:** Read-only diagnosis (MILEDGE-CI-AUTH-001; handover MILEDGE-CI-INFRA-006). Nothing followed, activated, triggered, pushed or spent; hosted CI stays on HOLD.

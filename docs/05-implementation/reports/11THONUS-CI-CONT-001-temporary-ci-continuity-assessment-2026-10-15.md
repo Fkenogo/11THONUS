@@ -805,3 +805,56 @@ circleci pipeline run \
 - Risks: a repository-scoped read-only key and possibly a hook are added to the public repo; push triggers until the all-pushes trigger is removed (no credits); statuses attach to the config commit, not PR #312's head. Cost: following 0 credits; the run ≈ 440–530 credits of 30,000 (7 used).
 - Rollback: unfollow the project; delete the "CircleCI" deploy key and any hook in GitHub; delete the trigger if recreated; `circleci auth logout` and revoke the token when the arrangement is retired (handover §9).
 - Not changed: configuration, application code, `ci.yml`, branch protection, billing, PRs.
+
+---
+
+# Addendum — 11THONUS-CI-CONT-006: Activate Existing CircleCI OAuth Project (2026-10-16)
+
+**Disposition: ACTIVATED — AWAITING TRIGGER ISOLATION.** Only `circleci project follow --project gh/Fkenogo/11THONUS` was executed. **No hosted pipeline job ran; no credits were consumed by 11THONUS.** The all-pushes trigger is still **enabled**, so per instruction work stops until the Founder removes it. Earlier addenda are preserved.
+
+## C6-1 Entry state (immediately before the action)
+
+| Item | State |
+| --- | --- |
+| CLI identity / org | `Fkenogo` (`63294a39…`) / `Fkenogo` github (`080a287a…`) |
+| Project | `gh/Fkenogo/11THONUS` (`1492ff55…`), CircleCI default branch `master`, **not followed** (followed: `klockit`, `miledge-creative-engine`) |
+| Pipeline definition | `3302b753-a65d-53a6-88f4-a745357e1dc1`, `github_oauth` |
+| Config branch (remote) | `f76e95c9b87c0801445c235193ffdc3349eec760`; local docs commits `a003718`, `f3f9bdb`, `1638050` intact, worktree clean |
+| PR #312 / #307 | `73575800df6dfada8980fef5d9c83b43d2af7464` / `023bf3ef599d27fcd998043c0bca6926aa82356e`, both open |
+| GitHub deploy keys / webhooks | none / none |
+| Triggers | one `github_oauth` **all-pushes**, enabled |
+| Env vars / contexts / runs | 0 / none / none |
+
+Expected side effects (stated before execution): project becomes followed; CircleCI may add a read-only deploy key and a push webhook; definition and trigger unchanged; no job.
+
+## C6-2 Result and verification
+
+`✓ Now following gh/Fkenogo/11THONUS`.
+
+| Check | Result |
+| --- | --- |
+| Followed | **Yes** (`11THONUS`, `klockit`, `miledge-creative-engine`) |
+| CircleCI default-branch metadata | **now `main`** (the stale `master` record was corrected by activation) |
+| Pipeline definition | **unchanged**: `3302b753-…`, `github_oauth`, `.circleci/config.yml`, checkout `github_oauth` |
+| Deploy key | **created**: title "CircleCI", id `166647185`, `read_only: true`, `verified: true`, added by `Fkenogo` at 2026-10-16T10:03:02Z, last used never. Repository-scoped by GitHub design (same arrangement as Creative Engine, key `166636156`, unchanged) |
+| Webhook | **created**: id `699006072`, active, target host `circleci.com`, events `fork, public, pull_request, push, repository` (notification-only; it delivers repository events to CircleCI and grants no repository access) |
+| Wider access | none found: one collaborator (`Fkenogo`, admin); no organisation-wide change; no write-enabled key; branch protection still absent (unchanged); Creative Engine's key unchanged |
+| Env vars / contexts | 0 / none |
+| Plan | **Free** (30,000 credits) |
+| Settings | `disable-running` false, `build-prs-only` false, `set-github-status` true (unchanged) |
+
+## C6-3 Pipeline record created by activation (no job, no credits)
+
+Activation immediately created pipeline `ff7d5802-fe47-44dc-9ac8-4f79343147f0` (10:03 UTC) on the repository default branch: phase `ended`, outcome **`not_run`**, error `config-fetch: No configuration was found in your project`, **0 workflows**. CircleCI posted GitHub commit status **`CircleCI Pipeline` = `error`** to `main`'s head `b3cb64eea2132dea661fbe8359a4894d5b9021ff` (GitHub Actions check on that commit remains `success`). `main` has no required checks, so this is cosmetic and was not caused by any change to `main`. **Credits:** the plan page shows 21 of 30,000 used this cycle (7 when last read); the per-project usage table lists only `klockit` and `miledge-creative-engine` — **11THONUS shows no compute**, so the increase belongs to those projects. No hosted job ran for 11THONUS.
+
+## C6-4 Trigger status — STOP
+
+The implicit **"All pushes on 11THONUS"** (`02b48f0a-731c-505d-b821-01a0666e71fd`, `github_oauth`, all-pushes) is **still enabled**. With the webhook now active, a push to any 11THONUS branch will create a pipeline: branches without config get a `not_run` pipeline and an `error` status (no credits); the pilot branch's config starts no workflow unless `expected_sha` is supplied. Creative Engine has no triggers. **Not modified by the agent.**
+
+**Founder steps (UI, as `Fkenogo`):** CircleCI → Projects → `11THONUS` → Project Settings → **Project Setup** (`/settings/project/github/Fkenogo/11THONUS/setup`) → in the **Pipeline "11THONUS"** card find the trigger **"All pushes on 11THONUS"** → **Delete trigger** (or **Edit trigger** and disable, if offered) → confirm the card lists no triggers. Do not add another trigger; do not use "Add pipeline". Until done, avoid pushing to 11THONUS branches and **do not push the local documentation commits**. Then tell me; I will verify `circleci project trigger list` shows none and re-read all heads before any run.
+
+## C6-5 Risks, rollback, next step
+
+- Risks: read-only repo-scoped deploy key and an active webhook now exist on the public repo; push events create no-config pipelines and `error` statuses until the trigger is removed; the `error` status on `main`'s head is cosmetic. No secrets, contexts or write access.
+- Rollback: Project Settings → **Unfollow Project**; delete the "CircleCI" deploy key (id `166647185`) and webhook (id `699006072`) in GitHub (Settings → Deploy keys / Webhooks); `circleci auth logout` when retired.
+- Next (after trigger isolation is confirmed): the one-run command of §C5-7 with a final head re-check; hosted CI is **not** triggered yet. PR #312 remains unverified by CircleCI; GitHub Actions never ran; no PR merged; no configuration, `ci.yml`, application or branch-protection change.
