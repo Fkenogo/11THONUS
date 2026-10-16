@@ -7,6 +7,21 @@
 
 ---
 
+## 2026-10-16 — 11THONUS-CI-CONT-007E — Published Configuration and Hosted Run #5 (FAILED: web unit tests, resource)
+
+- **Task:** Publish the validated config (fast-forward, `cf66dc0b437b9db48f4acb54cf730fb9235e817d`) and execute one typed-JSON hosted run for PR #312.
+- **Status:** **PILOT FAILED — CORRECTION REQUIRED.** Pipeline `28fe5547-b8fa-436b-b49b-dde73bd91486` (number 5), job build #3, config revision `cf66dc0…`, 3m36s.
+- **Proven hosted:** credential/SSH/OIDC preflight and 13 isolation gates; **exact-head verification: expected = live = fetched = checked-out = `73575800df6dfada8980fef5d9c83b43d2af7464`** (CircleCI independently verified the exact PR #312 tree); pnpm 9.15.9, JDK 21, install, PostgreSQL sidecar reachable on 28110, build, lint, format, typecheck; `functions` unit tests 2034/2034.
+- **Failed:** `apps/web` unit tests — 18 of 1155 failed (15× 5000 ms timeouts + 3 timing-dependent assertions). Classified as resource exhaustion (vitest default workers derive from visible CPUs; ~11–15 concurrent workers on 4 vCPU); the same tests pass locally when not starved and five of them failed locally only under heavy load. No test, assertion or timeout was changed. **Not run:** PostgreSQL integration, Playwright (149), preview tooling, cross-project acceptance, emulator validation.
+- **Proposed (not implemented):** cap workers (`VITEST_MAX_WORKERS=2`, Playwright `--workers=2`), log `nproc`/cgroup limits to confirm, revalidate locally, fast-forward push, one more attempt.
+- **Credits:** 54 → 126 of 30,000 (+72 = 3.6 min × 20/min, Gen1 large rate confirmed). Free plan.
+- **State:** no triggers, keys/hooks 0, 0 env vars, no contexts; PR #312 and #307 unchanged and unmerged; failure status on config commit `cf66dc0`.
+- **Documentation reconciliation:** local docs commits unpushed; remote config branch is two config commits ahead; rebase/merge then fast-forward when approved (report §C10-6).
+- **Files:** [report addendum §C10](../05-implementation/reports/11THONUS-CI-CONT-001-temporary-ci-continuity-assessment-2026-10-15.md); configuration pushed to the remote branch (`.circleci/config.yml` only).
+- **Rollback:** fast-forward revert of `cf66dc0` if wanted (never force-push); `docker image rm cimg/node:20.19`.
+
+---
+
 ## 2026-10-16 — 11THONUS-CI-CONT-007D — BASH_ENV Correction and Real-Image Validation (READY, not pushed)
 
 - **Task:** Correct `BASH_ENV` initialisation and validate in the real `cimg/node:20.19` image before another hosted attempt. No hosted run; nothing pushed.

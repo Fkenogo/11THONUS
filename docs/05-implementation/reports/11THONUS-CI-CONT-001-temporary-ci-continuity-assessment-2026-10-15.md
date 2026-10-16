@@ -1090,3 +1090,56 @@ PostgreSQL sidecar reachability at `localhost:28110` from the primary container 
 ## C9-5 Pin strategy, risks, rollback
 
 Push plan (needs Founder approval, a later task): fast-forward push of `cf66dc0…` from the isolated worktree to the existing remote branch (remote must still equal `878c3e8`), then one typed-JSON attempt. The original worktree's documentation commits are ahead of the remote's config history; reconciliation (rebase onto the remote head or merge, then fast-forward) remains as in §C8-8 — nothing was rebased, reset or pushed here. Risks: a further hosted-only defect in the not-yet-exercised steps; credit use ≤ ~540 for a full run (Free plan: 54 of 30,000 used at last read). Rollback: the local commit can be discarded by deleting the isolated branch/worktree; if later pushed, fast-forward revert (never force-push). The pulled image (`cimg/node:20.19`, about 2 GB) can be removed with `docker image rm cimg/node:20.19`; no other Docker state was changed.
+
+---
+
+# Addendum — 11THONUS-CI-CONT-007E: Published Configuration and Hosted Run #5 (2026-10-16)
+
+**Disposition: PILOT FAILED — CORRECTION REQUIRED (resource exhaustion in the web unit-test stage; no confirmed application defect).** The validated configuration `cf66dc0b437b9db48f4acb54cf730fb9235e817d` was published as a fast-forward and one hosted run executed the full pre-test pipeline correctly, **independently verifying the exact PR #312 commit**, then failed in `pnpm test` (web). The later gates did not run, so this is **not a CI pass**. No retry. Earlier addenda are preserved.
+
+## C10-1 Entry verification and publication
+
+Entry checks passed (18): remote head `878c3e8…`; correction commit `cf66dc0…`; direct descendant (parent = remote head); diff only `.circleci/config.yml`; original worktree documentation commits intact (`f0f1d8e` … `2f7cfbf`); no triggers; project followed; OAuth definition `3302b753-a65d-53a6-88f4-a745357e1dc1` unchanged; 0 env vars, no contexts; 0 deploy keys/hooks; PR #312 `73575800df6dfada8980fef5d9c83b43d2af7464` based on PR #307's branch; PR #307 `023bf3ef599d27fcd998043c0bca6926aa82356e`; plan **Free**, 54 of 30,000 credits. `PILOT_ISOLATION_ACTIVE` **cannot bypass** the real checks: with the marker forged, the gate still fails on any OIDC variable (`CIRCLE_OIDC_TOKEN`, `_V2`) or SSH variable (`SSH_AUTH_SOCK`, `SSH_AGENT_PID`); the marker is an additional required condition, not a substitute. Normal fast-forward push of `cf66dc0…` to `docs/ci-cont-001-circleci-assessment` (no force; documentation commits not pushed); remote SHA verified equal; **no pipeline started** from the push (runs 4 → 4).
+
+## C10-2 Hosted run
+
+Immediately before the request: remote SHA `cf66dc0…`, live PR #312 head (GitHub API) `73575800…`, PR #307 unchanged, no triggers, 0 env vars/contexts. One typed-JSON request via `circleci api` (no token handled) → pipeline **`28fe5547-b8fa-436b-b49b-dde73bd91486`** (number 5, URL `https://app.circleci.com/pipelines/github/Fkenogo/11THONUS/5`), workflow `65adadcc-2ed1-4f97-abda-1cde5242497e` (3m36s), job `circleci-continuity-verify` `0319cd5e-6476-46ae-85c6-6bd37f8e338f` (build #3, `https://circleci.com/gh/Fkenogo/11THONUS/3`). Configuration revision: **`cf66dc0b437b9db48f4acb54cf730fb9235e817d`**.
+
+**Exact-head evidence (hosted, step 102):** `RESULT: EXACT-HEAD MATCH CONFIRMED` — expected = live = fetched = checked-out = `73575800df6dfada8980fef5d9c83b43d2af7464`, PR 312, pipeline 28fe5547…, evidence JSON `result: PASS`. CircleCI independently verified that the tested tree is exactly PR #312's head.
+
+| Gate | Result | Time |
+| --- | --- | ---: |
+| Spin-up; `postgres:16-alpine` sidecar created | passed | 2 s |
+| Credential/SSH/OIDC preflight (SSH agent: 0 identities; 45-name audit; `BASH_ENV` created; OIDC/SSH unset) | **passed** | 0 s |
+| Exact-head verification | **passed** | 2 s |
+| pnpm 9.15.9 (user prefix), JDK 21 + psql | passed | 1 s, 10 s |
+| `pnpm install --frozen-lockfile` | passed | 14 s |
+| Wait for PostgreSQL service container (`localhost:28110`) | **passed** (sidecar reachable) | 0 s |
+| `pnpm build` / `lint` / `format:check` / `typecheck` | **passed** | 15 / 19 / 14 / 11 s |
+| 13 OIDC and SSH-agent isolation gates | **all passed** | 0 s each |
+| Unit/component tests (`pnpm test`) | **failed** | 124 s |
+| PostgreSQL integration; Playwright install and e2e (149); preview tooling; **cross-project acceptance**; emulator validation | **not run** (job stopped) | — |
+| Cleanup (`when: always`) and final re-assertion | succeeded | 0 s |
+
+**Unit/component detail:** `functions` — 176 files, **2034/2034 passed**. `apps/web` — 9 files failed, **18 tests failed, 1137 passed** (of 1155).
+
+## C10-3 Failure classification (exact cause)
+
+- 15 of 18 are `Test timed out in 5000ms`; the other 3 are timing-dependent assertions (`expected 197 to be less than 80`, a render lookup `Unable to find role="button" and name "Record purchase"`, a call-after-event). No OOM/killed signals appear.
+- Per-worker timings: `functions` ran 81 s wall with 937 s of summed transform time; `web` 121 s wall with 1,851 s of summed environment time — roughly 11–15 concurrent workers on a 4 vCPU executor. Vitest 4.1.10 derives its default worker count from the visible CPU count (`availableParallelism()`), which inside a container is typically the **host's** core count, not the 4-vCPU quota, and honours `VITEST_MAX_WORKERS`.
+- The same tests pass on a quiet or capped runner: locally the full web suite passed 1155/1155 twice (once at load average 24), and all five tests that timed out locally under heavy load (`SignInPanel.mfaChallenge`, `StaffMobileShell`, `RewardProgramManagementPage`, `TeamManagementPage.workforce`, `PhoneAuthHarnessPage`) pass in isolation and **also failed hosted**.
+- **Classification: resource exhaustion (CPU oversubscription of `large`) — most strongly supported, not directly measured** (`nproc`/cgroup quota were not logged). Not an application or test defect on current evidence; no assertion, timeout or test was modified.
+
+## C10-4 Proposed correction (not implemented; Founder approval and a new config commit required)
+
+1. Cap parallelism only (no test weakened): set `VITEST_MAX_WORKERS=2` for the unit/component step; add `--workers=2` to the Playwright invocation (`pnpm test:e2e --workers=2`; Playwright's default would otherwise scale with visible cores, a likely OOM risk on 8 GB). Postgres and emulator suites already run with `fileParallelism: false`.
+2. Add a one-line diagnostic early in the job: `nproc`, `node -p "os.availableParallelism()"`, cgroup `cpu.max`/memory limit, to confirm the cause directly.
+3. Re-validate locally (compile with parameters, the security matrices, run the web suite with `VITEST_MAX_WORKERS=2`), commit on the isolated branch, then a fast-forward push and one more hosted attempt. The pre-test pipeline (≈1 minute) is proven; a full run's remaining cost is the test stages.
+
+## C10-5 Credits, state, risks, rollback
+
+Plan **Free**; organisation credits **54 → 126 of 30,000: +72** for this 3m36s job, consistent with the **Gen1 large rate of 20 credits/min** (216 s × 20/60 = 72). A full run needs the remaining stages (estimated total ≈ 15–25 min ≈ 300–500 credits). CircleCI posted `ci/circleci: circleci-continuity-verify` = `failure` on the configuration commit `cf66dc0` (not on PR #312, which has no CircleCI status). After the run: no triggers, 0 deploy keys/hooks, 0 env vars, no contexts; five runs exist (two `not_run`, three failed); PR #312 `73575800…` and PR #307 `023bf3e…` unchanged and unmerged. Remaining risks: PostgreSQL integration, Playwright, preview tooling, **cross-project acceptance** (still no pass at this SHA anywhere) and emulator validation are untested hosted; memory on 8 GB with Chromium; Firebase emulator download at first run. Rollback: nothing required in CircleCI; a config revert would be a fast-forward revert commit (never force-push); the pulled image may be removed with `docker image rm cimg/node:20.19`.
+
+## C10-6 Documentation reconciliation status
+
+These documentation commits remain **local and unpushed** on `docs/ci-cont-001-circleci-assessment` (original worktree), now **behind the remote by two config commits** (`878c3e8`, `cf66dc0`) and ahead by the documentation commits. Reconciliation when approved: rebase the documentation commits onto `origin/docs/ci-cont-001-circleci-assessment` (they touch only the report and the changes log, no conflicts expected) or merge it, then a normal fast-forward push; confirm no trigger/webhook exists at push time and that the config SHA used for any run equals the remote head then.
