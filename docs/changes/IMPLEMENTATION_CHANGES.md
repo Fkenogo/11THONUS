@@ -7,6 +7,14 @@
 
 ---
 
+## 2026-10-16 — 11THONUS-CI-CONT-007I — Shim Scope Review (HOLD; corrected commit ready)
+
+- **Status:** **HOLD — MITIGATION SCOPE NOT VERIFIED** for `9b34ce4…` (tests showed it touched all loopback ports and overwrote app-supplied `Connection` headers). Nothing pushed; no hosted run; remote still `851ae18…`.
+- **Correction ready:** local `6f3a3a8c441105e69361ddcf0dd4dd22e3155075` (only `.circleci/config.yml`): Auth endpoint from `firebase.json` only, respects existing Connection header, trap-deletes the preload, asserts no shim before `pnpm emulators:validate`. Validated against the real Auth emulator in `cimg/node:20.19` (original fails 3/3, mitigated 200 at 8 s/20 s, wrong-port control fails, collateral/pass-through/log checks pass).
+- **Documentation:** local, unpushed. Permanent `tests/preview` fix still to be reported to PR owners.
+
+---
+
 ## 2026-10-16 — 11THONUS-CI-CONT-007H — Auth Emulator Socket Failure: Root-Cause Investigation (CONFIRMED, correction ready)
 
 - **Task:** Local-first diagnosis of the hosted `UND_ERR_SOCKET` failure in cross-project acceptance (pipeline 6). No hosted run, no push, PR branches untouched.

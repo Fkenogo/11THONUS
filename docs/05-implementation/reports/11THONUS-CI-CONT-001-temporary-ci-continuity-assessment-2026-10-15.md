@@ -1307,3 +1307,17 @@ Risks: the shim is a mitigation, not a repair of the underlying tooling race (wh
 ## C13-8 Recommendation for the next hosted verification
 
 One hosted run with `9b34ce4…` (fast-forward from `851ae18…`) is justified: it directly tests the cause, runs the remaining unexecuted gates (`pnpm emulators:validate`) and costs ≈ 230–300 credits (424 of 30,000 used). In parallel, report the `tests/preview` race to the PR owners. Reconciliation of documentation commits is unchanged (rebase onto the remote head, then fast-forward, when approved).
+
+---
+
+# Addendum — 11THONUS-CI-CONT-007I: Shim Scope Review (2026-10-16)
+
+**Disposition: HOLD — MITIGATION SCOPE NOT VERIFIED for `9b34ce4…`; corrected commit ready for approval.** Nothing was pushed and no hosted run was made; remote config branch still `851ae18…`.
+
+**Review of `9b34ce4` (parent `851ae18`, +22, only `.circleci/config.yml`), verified by tests, not by reading:** it failed two requirements — it added `Connection: close` to *every* loopback host and port (Functions 28102, Firestore 28103, `localhost`, `[::1]`; 5 cases failed) and it *overwrote* an application-supplied `Connection` header (keep-alive, Upgrade; 2 cases failed). It also never deleted its preload file. Activation: `NODE_OPTIONS=--require …` in the acceptance step's environment, inherited by every Node process of that step.
+
+**Minimal correction (local commit `6f3a3a8c441105e69361ddcf0dd4dd22e3155075`, parent `9b34ce4`, net vs remote +48 in `.circleci/config.yml` only):** matches only `http://127.0.0.1:<emulators.auth.port from firebase.json>` (the preview asserts its port map equals firebase.json; inert if unset), leaves any request that already has a Connection header untouched, deletes the preload on step exit (`trap`), prints one fixed non-sensitive line, and a new step asserts no shim is active before `pnpm emulators:validate`.
+
+**Validation (real `cimg/node:20.19`, real Auth emulator, firebase-tools 15.24.0):** original request fails `UND_ERR_SOCKET` 3/3; mitigated succeeds (HTTP 200) with 8 s and 20 s idle; wrong-port control fails again (exact targeting); 21/21 scope/security unit cases plus inert/odd-input cases; other loopback ports identical with and without preload (connections, headers, responses 200/401/500, ECONNREFUSED); no dummy email/password/token in output; step prefix creates the file, derives port 28101, removes the file on exit; assertion step passes clean and fails on leftover file, NODE_OPTIONS or leaked port, and ignores unrelated NODE_OPTIONS; non-numeric/missing port fails closed. Full parameterised compile OK (38 steps, 13 gates, 14/14 mandatory commands/controls present). The tooling never strips `NODE_OPTIONS` or the port variable. Permanent fix remains in `tests/preview` (async seeds or non-pooled emulator calls) — report to PR owners.
+
+**Cleanup:** disposable container `sim7j` removed; 31 other containers, images and volumes untouched. **Next:** Founder approval of `6f3a3a8…`, then fast-forward push from `851ae18…` and one hosted run (≈230–300 credits; 424 of 30,000 used).
