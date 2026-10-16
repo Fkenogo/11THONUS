@@ -482,3 +482,104 @@ Contract basis (CircleCI API v2 reference): `POST /project/{provider}/{organizat
 ## C3-12 Rollback
 
 Delete `.circleci/` and the branch `docs/ci-cont-001-circleci-assessment` (or never merge it); remove the pipeline definition/trigger in CircleCI if created; revoke any token created for the pilot. Nothing in `main`, `ci.yml`, branch protection or the application changes.
+
+---
+
+# Addendum — 11THONUS-CI-CONT-003A: Final Security Preflight and Hosted Pilot Readiness (2026-10-16)
+
+**Status:** CI-CONT remains on HOLD until Founder authorisation; nothing was executed on CircleCI and no credits were spent. Earlier sections are preserved; where §C3 conflicts with this addendum, this addendum governs.
+
+**Recommendation: READY FOR ONE HOSTED RUN** (conditions in §C3A-8).
+
+## C3A-1 Credential preflight vs. CircleCI built-ins — corrected
+
+**Finding.** The CONT-003 preflight excluded every `CIRCLE_*` name from its credential check, so it did not reject the OIDC variables — but it was both too loose (any other `CIRCLE_*`-named credential passed) and only matched `TOKEN|SECRET|PASSWORD|PASSWD|API_KEY|PRIVATE|CREDENTIAL` (a project variable such as `DEPLOY_KEY_B64` or `AUTH_HEADER` would have passed).
+
+**Facts established.** CircleCI documents 28 built-in variables (`CI`, `CIRCLECI`, `CIRCLE_BRANCH`, `CIRCLE_BUILD_NUM`, `CIRCLE_BUILD_URL`, `CIRCLE_JOB`, `CIRCLE_NODE_*`, `CIRCLE_OIDC_TOKEN`, `CIRCLE_OIDC_TOKEN_V2`, `CIRCLE_ORGANIZATION_ID`, `CIRCLE_PIPELINE_ID`, `CIRCLE_PR_*`, `CIRCLE_PROJECT_*`, `CIRCLE_PULL_REQUEST(S)`, `CIRCLE_REPOSITORY_URL`, `CIRCLE_SHA1`, `CIRCLE_TAG`, `CIRCLE_USERNAME`, `CIRCLE_WORKFLOW_*`, `CIRCLE_WORKING_DIRECTORY`). Only the two OIDC names contain a credential-like substring. The `cimg/node:20.19` image ENV (read from the registry config blob; names only) is `COMPOSE_SWITCH_VERSION, COMPOSE_VER, DEBIAN_FRONTEND, DOCKER_VERSION, LANG, LANGUAGE, LC_ALL, NODE_VERSION, PAGER, PATH, TERM`, user `circleci`, linux/amd64 — none credential-like.
+
+**Change.** Pattern widened to `TOKEN|SECRET|PASS|KEY|CREDENTIAL|AUTH|PRIVATE|CERT`; the **only** exceptions are the exact names `CIRCLE_OIDC_TOKEN` and `CIRCLE_OIDC_TOKEN_V2` (matched with `grep -Fvx`); names (never values) of every variable are printed for audit; the OIDC variables are removed from all later steps by appending `unset …` to `$BASH_ENV` (CircleCI sources it in every step). A later step only **warns** if an OIDC variable is still visible (the project has no cloud trust, §C3A-3), so an unverifiable `BASH_ENV` behaviour cannot spend the run.
+
+**Local tests** (`env -i`, sandbox `HOME`, step extracted from the validated YAML):
+
+| Case | Result |
+| --- | --- |
+| All 28 built-ins + image ENV + both OIDC variables | **OK**, rc 0, `$BASH_ENV` gets the unset line, 0 secret values printed |
+| + `NPM_TOKEN` / `AWS_ACCESS_KEY_ID` / `DEPLOY_KEY_B64` / `GH_PAT_AUTH` | **FAIL** rc 1, names only |
+| + `CIRCLE_API_TOKEN` (non-OIDC `CIRCLE_*`) | **FAIL** rc 1 |
+| + `SSH_AUTH_SOCK` | FAIL rc 1 (agent must not exist) |
+| `BASH_ENV` unset effect (script-file and `-c` forms, `-eo pipefail`) | tokens gone in later shells and children |
+
+Limitation: one earlier run in my test harness showed the unset not taking effect and I could not reproduce it in three subsequent runs; the job therefore treats a still-visible OIDC token as a warning, not a failure. Real CircleCI containers (Ubuntu bash 5) were not available locally.
+
+## C3A-2 Privileged checkout access
+
+GitHub (read-only API, 2026-10-16): **0 deploy keys, 0 repository webhooks, 0 Actions secrets** on `Fkenogo/11THONUS`; no CircleCI check-runs or commit statuses on any pilot commit or on #312/#307 heads. The pilot job uses no `checkout`/deploy key and fetches the public repo anonymously (§C3-5); it has no push, deploy or write path.
+
+## C3A-3 OIDC trust relationships
+
+- **Repository-accessible configuration:** `git grep` for `oidc.circleci`, workload-identity, `AssumeRoleWithWebIdentity`, `google_iam_workload`, `aws_iam_openid_connect_provider` and similar on `origin/main`, PR #312's head and the pilot branch found **no trust configuration**. The repository contains **no Terraform/Pulumi/CloudFormation/IAM files**; Firebase config is `firebase.json`/`.firebaserc` (projects `eleventh-on-us-dev`, `eleventh-on-us-staging`) and no deploy step exists in the pilot.
+- **Confirmed trust: none found in the repository.**
+- **Limits:** cloud-side IAM is not visible from the repository. A trust to CircleCI would live in Google Cloud (Workload Identity Federation) or AWS IAM (OIDC provider), keyed to issuer `https://oidc.circleci.com/org/080a287a-9598-4485-903b-128d09bd08b7`. I did not query any cloud account (not repository-accessible; not authorised). **Founder check:** in Google Cloud for `eleventh-on-us-dev` / `eleventh-on-us-staging` open IAM & Admin → Workload Identity Federation, and in any AWS account IAM → Identity providers; confirm no provider uses that issuer or `oidc.circleci.com`. If none exists, the OIDC token is inert even if read. The job additionally unsets it for all PR-code steps.
+
+## C3A-4 Project secrets, contexts and permissions (read-only CircleCI CLI, Founder's authenticated session)
+
+| Item | Result |
+| --- | --- |
+| Organisation | `Fkenogo` (`080a287a-9598-4485-903b-128d09bd08b7`, github) |
+| Project | `gh/Fkenogo/11THONUS`, id `1492ff55-d8ea-4321-9e04-d8c4088c4b72`; CircleCI's recorded default branch is `master` (the repository's is `main`) — not relied on, both branches are passed explicitly |
+| Project environment variables | **0** (names listed only; no values read) |
+| Org contexts | **0** |
+| Pipeline runs ever | **0** (`circleci run list`: none; no credits spent) |
+| Deployment permissions | none: no deploy key, no contexts, no cloud credentials, no deploy step in the config |
+| Project settings of note | `set-github-status` true; `build-forked-pull-requests` false; `forks-receive-secret-env-vars` true (moot: no secrets); `disable-ssh` false |
+| **Existing OAuth trigger** | one `github_oauth` trigger, event preset **all-pushes**, enabled. Currently inert (no runs; no webhook visible), and on any push the pilot config starts **no workflow** (`when: expected_sha`), so it cannot spend credits or run tests. Other branches have no config. |
+
+**Founder-side checks (not verifiable by the agent):** (1) the above env/context state is still current at run time; (2) optionally disable the all-pushes trigger or accept that other branches may later show CircleCI "no config" statuses; (3) confirm the CircleCI plan is Free and the credit balance; (4) if SSH-rerun is not wanted, set `disable-ssh` (not required for the run).
+
+## C3A-5 Pipeline definition, config branch and checkout branch
+
+`circleci pipeline list` (read-only) returns **one** definition: id **`3302b753-a65d-53a6-88f4-a745357e1dc1`**, name `11THONUS`, "Implicit pipeline definition associated with an OAuth-based project", config source `github_oauth` `Fkenogo/11THONUS` path `.circleci/config.yml`, checkout source `github_oauth` same repository. The documented API endpoint supports `github_oauth` definitions. OAuth requires `config.branch` = `checkout.branch` (Creative Engine finding); both are set to the pilot branch, whose `.circleci/config.yml` is the file CircleCI compiles. The tested tree is independently fetched by the job, so the checkout branch never determines the tested code. Because the project has a single definition, `definition_id` is unambiguous. This **supersedes the placeholder in §C3-10**:
+
+```bash
+read -rs CIRCLE_TOKEN && export CIRCLE_TOKEN   # Founder-held personal API token; never paste into chat/docs
+curl --fail-with-body -sS -X POST \
+  "https://circleci.com/api/v2/project/gh/Fkenogo/11THONUS/pipeline/run" \
+  -H "Circle-Token: $CIRCLE_TOKEN" -H "content-type: application/json" \
+  -d '{"definition_id":"3302b753-a65d-53a6-88f4-a745357e1dc1",
+       "config":{"branch":"docs/ci-cont-001-circleci-assessment"},
+       "checkout":{"branch":"docs/ci-cont-001-circleci-assessment"},
+       "parameters":{"expected_sha":"73575800df6dfada8980fef5d9c83b43d2af7464","pr_number":"312"}}'
+unset CIRCLE_TOKEN
+```
+
+CLI alternative (stored CLI credential): `circleci pipeline run --project gh/Fkenogo/11THONUS --definition-id 3302b753-a65d-53a6-88f4-a745357e1dc1 --branch docs/ci-cont-001-circleci-assessment --param expected_sha=73575800df6dfada8980fef5d9c83b43d2af7464 --param pr_number=312`. A `200` response means CircleCI ignored the request; `201` means a pipeline was created.
+
+Note (CircleCI docs): a pipeline value that is empty when placed in `environment:` becomes `<nil>`. An empty `pr_number` would therefore arrive as `<nil>` and fail the numeric check (tested), which is fail-closed.
+
+## C3A-6 Revalidation
+
+`circleci config validate` → valid; `config process` → OK; with no parameters the output contains no workflow. Exact-head cases re-run against the real GitHub API with the revised config:
+
+| Case | Result |
+| --- | --- |
+| 312 + `73575800…` | **PASS**, evidence `fetched = checked-out = 7357580` |
+| same with an OIDC variable still visible | PASS with a WARNING line |
+| stale SHA `023bf3e` for 312 | FAIL (live head ≠ expected) |
+| PR 307 + its own head | FAIL (not allowlisted) |
+| malformed / uppercase / empty SHA; PR `0` / empty / `<nil>` | FAIL |
+| `312;touch /tmp/PWNED`, `…$(touch /tmp/PWNED2)` | FAIL; **no file created** |
+| nonexistent PR | FAIL |
+
+All mandatory verification steps are unchanged from §C3-6.
+
+## C3A-7 Heads (re-queried 2026-10-16)
+
+PR #312: `73575800df6dfada8980fef5d9c83b43d2af7464` (unchanged; open, clean, base `feat/ea-bl-001-corr-002-b-staff-counter`). PR #307: `023bf3ef599d27fcd998043c0bca6926aa82356e` (unchanged; open, clean). Configuration branch: `docs/ci-cont-001-circleci-assessment` — the commit that contains this addendum is the one to name at authorisation (see the completion report for its hash); it must equal the remote head when the Founder triggers the run.
+
+## C3A-8 Conditions, risks and rollback
+
+**Run only if:** #312 and #307 heads unchanged; remote config-branch head equals the authorised commit; env vars and contexts still 0; Free plan. **STOP/diagnose-before-retry** rules in §C3-11 stand (one initial run, at most one diagnosed retry, ≤ ~1,440 credits worst case).
+
+**Residual risks:** the first step now fails on any unknown credential-like variable name — a legitimate-but-unlisted built-in would cost ~1 minute (~25 credits) and be visible in the printed name list; OIDC variables are removed best-effort; cloud-side OIDC trust unverified (Founder check §C3A-3); cross-project acceptance still has no pass at this SHA (first execution is hosted); JDK apt install, Postgres networking and memory remain hosted-only unknowns.
+
+**Rollback:** unchanged — delete `.circleci/` and the pilot branch (or never merge); no CircleCI resources were created in this task; revoke any API token used for the run.

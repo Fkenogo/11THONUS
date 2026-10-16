@@ -7,6 +7,18 @@
 
 ---
 
+## 2026-10-16 — 11THONUS-CI-CONT-003A — Final Security Preflight and Hosted Pilot Readiness
+
+- **Task:** Bounded security checks before one Founder-authorised hosted CircleCI run. Configuration/documentation only; nothing executed on CircleCI, no credits spent; CI-CONT remains on HOLD until authorisation.
+- **Status:** **READY FOR ONE HOSTED RUN.**
+- **Corrections:** credential preflight rewritten — CircleCI's two auto-issued OIDC variables are allowed by exact name (all 28 documented built-ins and the `cimg/node:20.19` image ENV pass); any other credential-like name (widened pattern incl. `KEY|AUTH|PASS|CERT`, and non-OIDC `CIRCLE_*`) fails; names printed, values never; OIDC variables unset for later steps via `BASH_ENV`.
+- **Findings:** no OIDC trust configuration in the repository (no IaC at all; cloud-side IAM not verifiable from the repo — Founder check listed); project has 0 env vars, 0 contexts, 0 runs; GitHub shows 0 deploy keys/webhooks/secrets; one implicit OAuth pipeline definition `3302b753-a65d-53a6-88f4-a745357e1dc1` (config + checkout `github_oauth`); an enabled `all-pushes` OAuth trigger exists but cannot start a workflow with the pilot config.
+- **Verified:** CLI validation; exact-head cases re-run (PASS for #312 `73575800…`; stale/malformed/injection/allowlist cases fail closed). PR #312 `73575800…` and #307 `023bf3e` unchanged, open, not merged.
+- **Files:** `.circleci/config.yml`; [report addendum §C3A](../05-implementation/reports/11THONUS-CI-CONT-001-temporary-ci-continuity-assessment-2026-10-15.md). No application, `ci.yml`, dependency, lockfile or branch-protection change.
+- **Rollback:** delete `.circleci/` and the pilot branch; revoke any token created for the run.
+
+---
+
 ## 2026-10-16 — 11THONUS-CI-CONT-003 — Temporary CircleCI OAuth Activation Preparation
 
 - **Task:** Prepare the CircleCI pilot configuration for one GitHub OAuth API-triggered hosted run after Miledge resolved the central `gh/Fkenogo` organisation issue (Creative Engine hosted pilot passed). Configuration/documentation only; **hosted CI not run; CI-CONT stays on HOLD until Founder authorisation.**

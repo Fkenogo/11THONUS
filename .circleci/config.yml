@@ -15,6 +15,8 @@
 # so the PR head is fetched anonymously over HTTPS (`refs/pull/<n>/head`, depth 1). No deploy key or
 # SSH identity is loaded, and the job asserts that none is reachable before any PR code runs.
 # Pipeline values reach the shell only through quoted `environment:` entries, never inside commands.
+# Credential preflight: names-only environment audit; CircleCI's auto-issued OIDC variables are
+# allowed exactly (and unset for later steps); every other credential-like name fails the job.
 
 version: 2.1
 
@@ -51,13 +53,24 @@ jobs:
               echo "FAIL: an SSH identity is loaded in the agent"; exit 1
             fi
             rm -rf "$HOME/.ssh" "$HOME/.gitconfig" "$HOME/.config/git" "$HOME/.git-credentials"
-            # Names only — values are never printed. CIRCLE_* are CircleCI-reserved (incl. OIDC).
-            LEAK="$(env | cut -d= -f1 | grep -Ei '(TOKEN|SECRET|PASSWORD|PASSWD|API_?KEY|PRIVATE|CREDENTIAL)' | grep -v '^CIRCLE_' || true)"
+
+            # Environment audit — NAMES ONLY, never values. Auto-issued CircleCI OIDC variables are the
+            # only credential-like names that are legitimate; they are matched EXACTLY (any other
+            # name containing TOKEN/SECRET/PASS/KEY/CREDENTIAL/AUTH/PRIVATE/CERT, including other
+            # CIRCLE_* names, fails). Ordinary built-ins (CIRCLE_*, CI, image ENV) are not rejected.
+            env | cut -d= -f1 | sort > /tmp/env-names.txt
+            echo "Environment variable names present ($(wc -l < /tmp/env-names.txt)):"; tr '\n' ' ' < /tmp/env-names.txt; echo
+            LEAK="$(grep -Ei '(TOKEN|SECRET|PASS|KEY|CREDENTIAL|AUTH|PRIVATE|CERT)' /tmp/env-names.txt | grep -Fvx -e CIRCLE_OIDC_TOKEN -e CIRCLE_OIDC_TOKEN_V2 || true)"
             if [ -n "$LEAK" ]; then
-              echo "FAIL: secret-like environment variable names are present (project/context vars must be empty):"
+              echo "FAIL: credential-like environment variable names are present (project/context vars must be empty):"
               echo "$LEAK"; exit 1
             fi
-            echo "OK: no SSH identity, no credential files, no secret-like env var names"
+            if grep -Fxq -e CIRCLE_OIDC_TOKEN -e CIRCLE_OIDC_TOKEN_V2 /tmp/env-names.txt; then
+              echo "NOTE: CircleCI-issued OIDC variables present (legitimate); removing them from all later steps"
+            fi
+            # BASH_ENV is sourced by every later step's shell; PR code then never sees the OIDC tokens.
+            echo 'unset CIRCLE_OIDC_TOKEN CIRCLE_OIDC_TOKEN_V2' >> "${BASH_ENV:-/dev/null}"
+            echo "OK: no SSH identity, no credential files, no unexpected credential-like env var names"
 
       - run:
           name: Exact-head verification (fail closed)
@@ -94,6 +107,9 @@ jobs:
             finish() { rc=$?; if [ "$rc" -eq 0 ]; then emit PASS; else emit FAIL; fi; }
             trap finish EXIT
             fail() { REASON="$1"; echo "FAIL: $1" >&2; exit 1; }
+            if [ -n "${CIRCLE_OIDC_TOKEN:-}${CIRCLE_OIDC_TOKEN_V2:-}" ]; then
+              echo "WARNING: CircleCI OIDC variable(s) still visible after BASH_ENV unset (no cloud trust is configured for this project; inert)" >&2
+            fi
 
             printf '%s' "$P_EXPECTED_SHA" | grep -Eq '^[0-9a-f]{40}$' || fail "expected_sha missing or not a 40-char lowercase SHA"
             printf '%s' "$P_PR_NUMBER" | grep -Eq '^[1-9][0-9]{0,6}$' || fail "pr_number missing or not a positive integer"
