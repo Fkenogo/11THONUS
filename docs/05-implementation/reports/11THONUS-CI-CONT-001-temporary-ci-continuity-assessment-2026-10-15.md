@@ -913,3 +913,40 @@ Next action: Founder authorises one attempt with option A (also the first checkp
 ## C7-5 Status of PR #312
 
 Still **not independently verified by CircleCI** (no job ran); GitHub Actions never ran; local evidence only (e2e 149/149, web 1155/1155, PostgreSQL 813/813, emulators 877 passed/3 skipped); cross-project acceptance has no pass at `73575800…`. No PR merged; no configuration, application, `ci.yml`, dependency or branch-protection change; no key, hook, trigger, project or organisation created. Rollback: none required; Unfollow Project and `circleci auth logout` when the arrangement is retired; local documentation commits can be dropped with `git reset --hard 5084430` if requested.
+
+---
+
+# Addendum — 11THONUS-CI-CONT-007A: Parameter Serialization Check (2026-10-16)
+
+**Disposition: PILOT BLOCKED — TRIGGER OR CONFIGURATION.** The Founder-approved Option A syntax **cannot be verified and is refuted by the CLI source**, so the corrected trigger was **not executed** (per the STOP rule). No pipeline was created, no job ran, 0 credits. Earlier addenda are preserved.
+
+## C7A-1 Preflight
+
+Project followed; definition `3302b753-a65d-53a6-88f4-a745357e1dc1` unchanged; no triggers; 0 env vars, no contexts; Free plan (21 of 30,000 used at last read); remote config branch `f76e95c9b87c0801445c235193ffdc3349eec760`; PR #312 `73575800df6dfada8980fef5d9c83b43d2af7464` open and based on PR #307's branch; PR #307 `023bf3ef599d27fcd998043c0bca6926aa82356e`; runs: only the two earlier `not_run` pipelines.
+
+## C7A-2 Why `--param 'pr_number="312"'` fails
+
+The CLI documentation does not describe `--param` typing, and no dry-run exists. Source of the installed version (`circleci-cli` tag `v1.5.0`, `internal/cmdutil/params.go`, `ParseParams`): `key=value` is split at the first `=`; `true`/`false` become booleans; **any value accepted by `strconv.ParseInt` becomes an integer**; everything else is passed **verbatim as a string**. There is no JSON/YAML unquoting. Consequences: `pr_number=312` → integer (observed failure in CONT-007); `pr_number="312"` → the **five-character string `"312"` including the quote characters** — an actual string, but one the pilot's own check rejects (`^[1-9][0-9]{0,6}$` → "pr_number missing or not a positive integer"). That run would start a job and fail closed in the exact-head step (no application code reached) after about a minute of credits for nothing. No decoration of a numeric value (quotes, sign, zero-padding, spaces) yields a clean string, and the pinned configuration cannot be modified without leaving the `f76e95c` pin.
+
+Verification attempts (all non-creating): `--debug` and loopback-mock probes against nonexistent definition IDs returned `400 uuid4 validation` / `404 Pipeline not found`; the CLI ignores host overrides. Runs remained 2. No token was displayed.
+
+## C7A-3 Options (Founder approval required for either)
+
+- **C′ (recommended): same authenticated CLI session, raw JSON body, no repository change, pin preserved.** `circleci api` sends `-d` verbatim with the stored token (no new token or credential):
+
+```bash
+circleci api api/v2/project/gh/Fkenogo/11THONUS/pipeline/run -X POST \
+  -H 'content-type: application/json' \
+  -d '{"definition_id":"3302b753-a65d-53a6-88f4-a745357e1dc1",
+       "config":{"branch":"docs/ci-cont-001-circleci-assessment"},
+       "checkout":{"branch":"docs/ci-cont-001-circleci-assessment"},
+       "parameters":{"expected_sha":"73575800df6dfada8980fef5d9c83b43d2af7464","pr_number":"312"}}'
+```
+
+  (`api…` prefix is sent as given per its help; it matches the documented v2 `pipeline/run` contract and sets config and checkout branch equal as OAuth requires. Not executed. Unverified until used: the exact path handling of the `api` subcommand; a wrong path would return 404 without creating anything.)
+- **B: configuration change.** Declare `pr_number` as `integer` (default `0`; the CLI then sends an int64 and the existing regex still applies). Requires a new config commit and push (the pinned SHA `f76e95c` is superseded), local re-validation (CLI validate/process with parameters, exact-head and OIDC isolation cases), and re-approval.
+- Tracking: the earlier statement in §C7-4 that `--param 'pr_number="312"'` was a safe free retry is **superseded** by this finding.
+
+## C7A-4 State and rollback
+
+Unchanged: followed project, definition, no triggers/keys/hooks, config branch `f76e95c`, both PR heads, nothing merged; PR #312 remains unverified by CircleCI. Rollback: none required; local documentation commits can be dropped with `git reset --hard 7c9b00d` if requested.

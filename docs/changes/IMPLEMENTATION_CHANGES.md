@@ -7,6 +7,18 @@
 
 ---
 
+## 2026-10-16 — 11THONUS-CI-CONT-007A — Parameter Serialization Check (BLOCKED: approved syntax refuted)
+
+- **Task:** One corrected manual trigger using `--param 'pr_number="312"'` (Founder Option A). Preflight passed; verification of the syntax failed, so **nothing was triggered** (no pipeline, no job, 0 credits).
+- **Status:** **PILOT BLOCKED — TRIGGER OR CONFIGURATION.**
+- **Finding:** CLI v1.5.0 source (`internal/cmdutil/params.go`): values parsing as integers become int64, `true`/`false` booleans, everything else a verbatim string with no unquoting. `pr_number="312"` would therefore send the literal five-character string with quotes, which the pilot's `^[1-9][0-9]{0,6}$` check rejects (job fails closed in the exact-head step, wasting credits). A purely numeric value cannot be sent as a string through `--param`.
+- **Options (approval needed):** C′ — `circleci api api/v2/project/gh/Fkenogo/11THONUS/pipeline/run -X POST -d '{…"pr_number":"312"…}'` using the same authenticated CLI session (raw JSON body; no config change, pin `f76e95c` preserved, no new token); B — change `pr_number` to `integer` (new config commit, moves the pin, full revalidation).
+- **State:** followed project, definition `3302b753-…` unchanged, no triggers/keys/hooks/env vars/contexts; #312 `73575800…`, #307 `023bf3e…` unchanged and unmerged; remote config branch `f76e95c…`.
+- **Files:** [report addendum §C7A](../05-implementation/reports/11THONUS-CI-CONT-001-temporary-ci-continuity-assessment-2026-10-15.md). Local commit only; no configuration, application, `ci.yml` or branch-protection change.
+- **Rollback:** none required.
+
+---
+
 ## 2026-10-16 — 11THONUS-CI-CONT-007 — Controlled Hosted Pilot Attempt (BLOCKED: parameter type)
 
 - **Task:** One authorised manual CircleCI pipeline for PR #312 (`73575800…`) after activation and trigger isolation. All 15 preflight conditions passed.
