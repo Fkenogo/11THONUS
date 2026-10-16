@@ -318,6 +318,7 @@ jobs:
             PREVIEW_POSTGRES_URL: postgres://postgres:postgres@localhost:28110/eleventhonus_platform_local
             PGPASSWORD: postgres
             NODE_OPTIONS: --require /tmp/ci-auth-emulator-connection-close.cjs
+            npm_config_script_shell: /tmp/ci-preview-workers-shell.sh
           command: |
             # CI-only mitigation of a latent race in tests/preview (pipeline 6; CI-CONT-007H/007I). The preview
             # tooling pools HTTP keep-alive sockets to the Auth emulator, which closes idle connections after
@@ -329,7 +330,7 @@ jobs:
             # The preload touches `fetch` calls to exactly http://127.0.0.1:<emulators.auth.port from firebase.json>
             # (the endpoint the preview tooling uses, asserted equal to its own port map), adds `Connection: close`
             # only when the caller set no Connection header, and changes nothing else. Repository files are not modified.
-            trap 'rm -f /tmp/ci-auth-emulator-connection-close.cjs' EXIT
+            trap 'rm -f /tmp/ci-auth-emulator-connection-close.cjs /tmp/ci-preview-workers-shell.sh /tmp/ci-preview-workers.marker' EXIT
             printf '%s\n' \
               'const of = globalThis.fetch;' \
               'let announced = false;' \
@@ -348,6 +349,22 @@ jobs:
               '  } catch (e) { /* fall through to the unmodified fetch */ }' \
               '  return of(input, init);' \
               '};' > /tmp/ci-auth-emulator-connection-close.cjs
+            # CI-only concurrency cap (pipeline 7; CI-CONT-007K). `pnpm test:e2e:preview` is
+            # `playwright test --project=chromium-preview --project=chromium-preview-mobile` and the acceptance script
+            # spawns it with no arguments, while playwright.config.ts sets no `workers`, so Playwright defaults to 50 % of
+            # the visible cores (nproc 36 -> 18 workers) on a cgroup that allows 4 CPUs; the suite then times out.
+            # pnpm runs every script through `script-shell`; this step-scoped wrapper (npm_config_script_shell) appends
+            # `--workers=2` to that one exact command string and passes every other command through unchanged.
+            # Projects, reporters, retries, timeouts, tests and the acceptance script are not modified.
+            printf '%s\n' \
+              '#!/bin/sh' \
+              'if [ "$1" = "-c" ] && [ "$2" = "playwright test --project=chromium-preview --project=chromium-preview-mobile" ]; then' \
+              '  echo "[ci-workers] preview Playwright invoked with --workers=2" >&2' \
+              '  : > /tmp/ci-preview-workers.marker' \
+              '  exec /bin/sh -c "$2 --workers=2"' \
+              'fi' \
+              'exec /bin/sh "$@"' > /tmp/ci-preview-workers-shell.sh
+            chmod 700 /tmp/ci-preview-workers-shell.sh
             CI_AUTH_EMULATOR_PORT="$(node -p 'require("./firebase.json").emulators.auth.port')"
             case "$CI_AUTH_EMULATOR_PORT" in
               ''|*[!0-9]*) echo "FAIL: could not determine the configured Auth emulator port from firebase.json" >&2; exit 1 ;;
@@ -356,6 +373,9 @@ jobs:
             echo "connection shim scope: Auth emulator 127.0.0.1:$CI_AUTH_EMULATOR_PORT only, this step only"
             psql -h localhost -p 28110 -U postgres -c "CREATE DATABASE eleventhonus_platform_local"
             node tests/preview/cross-project-acceptance.mjs
+            if [ ! -e /tmp/ci-preview-workers.marker ]; then
+              echo "FAIL: the preview Playwright worker cap was never applied (script command changed?)" >&2; exit 1
+            fi
       - oidc_guard
       - run:
           name: Stop Founder Preview (cleanup)
@@ -381,13 +401,16 @@ jobs:
           command: |
             # Evidence that `pnpm emulators:validate` (next step) runs unshimmed: the preload was scoped to the
             # cross-project acceptance step, its file is removed on that step's exit, and none of its settings leak.
+            if [ -n "${npm_config_script_shell:-}" ] || [ -e /tmp/ci-preview-workers-shell.sh ] || [ -e /tmp/ci-preview-workers.marker ]; then
+              echo "FAIL: the preview worker-cap script shell is still present" >&2; exit 1
+            fi
             if [ -n "${CI_AUTH_EMULATOR_PORT:-}" ] || [ -e /tmp/ci-auth-emulator-connection-close.cjs ]; then
               echo "FAIL: the Auth emulator connection shim is still present" >&2; exit 1
             fi
             case "${NODE_OPTIONS:-}" in
               *ci-auth-emulator-connection-close*) echo "FAIL: NODE_OPTIONS still references the connection shim" >&2; exit 1 ;;
             esac
-            echo "OK: no connection shim is active (NODE_OPTIONS=${NODE_OPTIONS:-<unset>}, preload file absent, CI_AUTH_EMULATOR_PORT unset)"
+            echo "OK: no connection shim is active (NODE_OPTIONS=${NODE_OPTIONS:-<unset>}, preload file absent, CI_AUTH_EMULATOR_PORT unset, worker-cap shell absent)"
       - oidc_guard
       - run:
           {
