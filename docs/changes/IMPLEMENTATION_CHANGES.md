@@ -6944,3 +6944,13 @@ READY FOR CONTROLLED DRAFTING — PR AWAITS FOUNDER REVIEW`**.
 - **Files changed:** this log entry only.
 - **Constraints honoured:** no application code, DNS, Cloudflare resource, authentication, database, or runtime change; no new Cloudflare work package opened; the implementation programme continues per its approved schedule.
 - **Rollback:** revert this closure entry (documentation only; does not alter the merged assessment).
+
+---
+
+## 2026-10-16 — 11THONUS-CI-CONT-007J — Hosted verification run #7 (PILOT FAILED — CORRECTION REQUIRED)
+
+- **Task:** final review of config `6f3a3a8…`, fast-forward push to `docs/ci-cont-001-circleci-assessment`, one CircleCI Free hosted run for PR #312 head `73575800…`.
+- **Result:** exact-head match, build/lint/format/typecheck, unit (1155), PostgreSQL (813), Playwright e2e (149) and preview tooling passed. The 007H Auth-socket failure is resolved (real signup and seeding succeeded). Cross-project acceptance **failed** in the preview Playwright suite (18 default workers on a 4-CPU cgroup; timeouts); `pnpm emulators:validate` and the shim-absence assertion did not run.
+- **Cost:** ≈ 398 credits (692 → 1,090 of 30,000); 18 m 12 s. Not retried.
+- **Files changed:** this log and the CI-CONT-001 assessment report (§C15). No application, test, GitHub Actions, billing or branch-protection change; PR #307/#312 not merged.
+- **Next (needs Founder approval):** cap preview-suite worker count for the CI executor, then one further run.

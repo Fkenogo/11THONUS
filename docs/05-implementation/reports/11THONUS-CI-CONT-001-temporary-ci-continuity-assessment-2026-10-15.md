@@ -1321,3 +1321,42 @@ One hosted run with `9b34ce4…` (fast-forward from `851ae18…`) is justified: 
 **Validation (real `cimg/node:20.19`, real Auth emulator, firebase-tools 15.24.0):** original request fails `UND_ERR_SOCKET` 3/3; mitigated succeeds (HTTP 200) with 8 s and 20 s idle; wrong-port control fails again (exact targeting); 21/21 scope/security unit cases plus inert/odd-input cases; other loopback ports identical with and without preload (connections, headers, responses 200/401/500, ECONNREFUSED); no dummy email/password/token in output; step prefix creates the file, derives port 28101, removes the file on exit; assertion step passes clean and fails on leftover file, NODE_OPTIONS or leaked port, and ignores unrelated NODE_OPTIONS; non-numeric/missing port fails closed. Full parameterised compile OK (38 steps, 13 gates, 14/14 mandatory commands/controls present). The tooling never strips `NODE_OPTIONS` or the port variable. Permanent fix remains in `tests/preview` (async seeds or non-pooled emulator calls) — report to PR owners.
 
 **Cleanup:** disposable container `sim7j` removed; 31 other containers, images and volumes untouched. **Next:** Founder approval of `6f3a3a8…`, then fast-forward push from `851ae18…` and one hosted run (≈230–300 credits; 424 of 30,000 used).
+
+---
+
+# Addendum — 11THONUS-CI-CONT-007J: Final Mitigation Review and One Hosted Verification Run (2026-10-16)
+
+**Disposition: PILOT FAILED — CORRECTION REQUIRED.** One hosted run was made (pipeline #7 `50426eef-f1fc-403a-a2cd-bb0bb4374141`, workflow `c40de870-3bb9-4991-bfe9-7f55930a6209`, job `9fa92fab-a3c9-45a4-bdd4-0ad1991dd4ab`, build 5). It was not retried.
+
+## C15-1 Review and publish
+`6f3a3a8c441105e69361ddcf0dd4dd22e3155075` (only `.circleci/config.yml`) was reviewed per 007I (scope: Auth emulator address/port from `firebase.json` only; existing Connection headers untouched; preload removed on success and failure; assertion step added) and fast-forward pushed to `docs/ci-cont-001-circleci-assessment`; remote SHA verified; no pipeline started automatically. The automated security-review plugin did not record an explicit result for this config commit (HTTP 429 on the docs commit; push-time sweep logged "already reviewed"); manual review is the only recorded review.
+
+## C15-2 Exact-head evidence (independent hosted verification, not a GitHub Actions pass)
+expected = live PR head = fetched = checked-out = `73575800df6dfada8980fef5d9c83b43d2af7464` (PR #312, `pr_number` "312"); config revision `6f3a3a8…`. Credential/SSH/OIDC preflight passed; executor: 4-CPU cgroup, 8 GiB, `nproc` 36.
+
+## C15-3 Gate results
+| Gate | Result |
+|---|---|
+| Build / Lint / Format / Typecheck | pass (17 s / 23 s / 22 s / 15 s) |
+| Unit / component (`--maxWorkers=2`) | pass, web 1155/1155 (125 s) |
+| PostgreSQL integration | pass, 813/813 (270 s) |
+| Playwright e2e (`--workers=2`) | pass, 149/149 (151 s) |
+| Preview tooling tests | pass, 43 pass / 1 skipped (IPv6 loopback unavailable) |
+| **Cross-project port-isolation acceptance** | **FAIL (403 s)** |
+| `pnpm emulators:validate`, "Assert no connection shim" | **NOT RUN** (skipped after the failure) |
+| Cleanup and final exact-head re-assertion | pass |
+
+## C15-4 What the cross-project failure is — and is not
+- The 007H defect is **resolved**: the shim line appeared; real Auth emulator signup/seeding (preview identities, onboarding, scenario `founder-slice-1`) completed twice; `preview:verify` reported the deterministic fingerprint; zero `UND_ERR_SOCKET`/ECONNRESET/fetch-failed occurrences in the step log.
+- The step then failed in `pnpm test:e2e:preview` (`playwright test --project=chromium-preview --project=chromium-preview-mobile`): "Running 56 tests using **18 workers**". Result: 21 passed, 7 failed, 12 flaky (retries: 2 under CI), 16 did not run; failures are `page.goto` 60 s timeouts to `http://localhost:28109/` and `toHaveURL`/`toBeVisible` 20 s timeouts in `signInAs`.
+- Probable cause (inference from the log, not yet proven): Playwright defaults to 50 % of visible cores (36 → 18 workers) while the executor is cgroup-capped to 4 CPUs, so 18 Chromium instances starve the dev server. This is the same class of oversubscription already corrected for `pnpm test`/`test:e2e` (007F), but this invocation is made by `tests/preview/cross-project-acceptance.mjs`, which passes no `--workers`, so the CI cap did not reach it. It cannot be reproduced locally on a many-core host without a CPU cap. Not an application-logic defect on present evidence.
+- Therefore: the pilot did not complete the cross-project gate, and the "shim absent for `pnpm emulators:validate`" and "emulators:validate passes" gates remain unverified. Nothing was weakened; no gate was skipped by configuration.
+
+## C15-5 Cost and timing
+Pipeline duration 18 m 12 s (job 18 m 09 s); credits 692 → 1,090 of 30,000 (≈ 398 credits, Free plan, `large`). No flaky or skipped tests in the main suites; the only skip is the IPv6 test above; the preview suite's 12 flaky/7 failed results are the failure itself.
+
+## C15-6 Security and scope
+No secrets, contexts, SSH keys, triggers, webhooks or OIDC use were added or observed; no credential values were printed. GitHub Actions, application code, test expectations, billing and branch protection untouched; PR #307/#312 not merged. The remote config branch is `6f3a3a8…`; local docs commits remain unpushed (not rebased or reset).
+
+## C15-7 Recommended correction (requires Founder approval; not performed)
+Cap the preview Playwright suite's parallelism in CI without editing PR #312 or weakening it, e.g. a step-scoped, CI-only preload that makes `os.cpus()`/`os.availableParallelism()` report the cgroup limit (4) for the acceptance step only, or ask the PR owners for a `workers` setting in the `chromium-preview*` run. Then one hosted run, which would also exercise the unrun gates. The permanent fix for the underlying Auth keep-alive race still belongs in `tests/preview`.
