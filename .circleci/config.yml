@@ -160,6 +160,21 @@ jobs:
             echo "OK: no SSH identity, no credential files, no unexpected credential-like env var names"
 
       - run:
+          name: Runtime resource diagnostics (informational, never fatal)
+          command: |
+            # Why: pipeline 5 failed from CPU oversubscription; record what the executor really exposes.
+            # Numbers and paths only: no environment values are printed. Absent files are not errors.
+            set +e
+            echo "nproc: $(nproc 2>/dev/null)"
+            echo "node availableParallelism: $(node -p 'require("os").availableParallelism()' 2>/dev/null)  cpus().length: $(node -p 'require("os").cpus().length' 2>/dev/null)"
+            for f in /sys/fs/cgroup/cpu.max /sys/fs/cgroup/cpu/cpu.cfs_quota_us /sys/fs/cgroup/cpu/cpu.cfs_period_us /sys/fs/cgroup/memory.max /sys/fs/cgroup/memory/memory.limit_in_bytes; do
+              if [ -r "$f" ]; then echo "$f: $(cat "$f" 2>/dev/null)"; fi
+            done
+            echo "MemTotal: $(awk '/^MemTotal/ {print $2 " kB"}' /proc/meminfo 2>/dev/null)"
+            echo "parallelism caps in this pipeline: vitest --maxWorkers=2 (per package), playwright --workers=2"
+            exit 0
+
+      - run:
           name: Exact-head verification (fail closed)
           environment:
             P_EXPECTED_SHA: "<< pipeline.parameters.expected_sha >>"
@@ -263,7 +278,7 @@ jobs:
             name: Unit / component tests,
             working_directory: ~/project,
             no_output_timeout: 20m,
-            command: pnpm test,
+            command: pnpm test -- --maxWorkers=2,
           }
       - oidc_guard
       - run:
@@ -286,7 +301,7 @@ jobs:
             name: Playwright e2e,
             working_directory: ~/project,
             no_output_timeout: 20m,
-            command: pnpm test:e2e,
+            command: pnpm test:e2e --workers=2,
           }
       - oidc_guard
       - run:
