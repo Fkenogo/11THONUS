@@ -7,6 +7,19 @@
 
 ---
 
+## 2026-10-16 — 11THONUS-CI-CONT-007D — BASH_ENV Correction and Real-Image Validation (READY, not pushed)
+
+- **Task:** Correct `BASH_ENV` initialisation and validate in the real `cimg/node:20.19` image before another hosted attempt. No hosted run; nothing pushed.
+- **Status:** **READY FOR HOSTED PILOT.** Proposed config SHA **`cf66dc0b437b9db48f4acb54cf730fb9235e817d`** (parent `878c3e8…`, only `.circleci/config.yml`, +39/−5), committed locally on the isolated branch `ci/cont-007c-config`. Remote branch still `878c3e8…`.
+- **Fixes:** safe create-or-append of `BASH_ENV` with path validation (no symlink/credential location); `PILOT_ISOLATION_ACTIVE` marker so gates/cleanup prove the file was sourced; pnpm 9.15.9 installed under `~/.local` (the image's prefix is unwritable and ships pnpm 10 — the old step would have failed hosted); informational `/proc` scan made non-fatal under `pipefail` (killed the step in the image; unreachable on macOS).
+- **Validation:** pulled `cimg/node:20.19` amd64 (`sha256:35e64883…`, ~2 GB); 15-step consecutive simulation passed (assert, exact-head vs GitHub, pnpm, JDK 21, gates, install, build, lint, format, typecheck), plus Playwright `--with-deps`, Firestore emulator start and targeted vitest runs — all rc 0. Local suites: 20/20, 13/13, 11/11 negatives fail closed; full parameterised compile OK; formatting/whitespace clean; no secrets or dummy values in output.
+- **Hosted-only still unproven:** PostgreSQL sidecar connection on 28110, whole-suite memory on 4 vCPU/8 GB, full test/e2e/emulator/cross-project-acceptance executions, credit rate.
+- **State:** PR #312 `73575800…` and #307 `023bf3e…` unchanged and unmerged; triggers none; keys/hooks 0; 0 env vars; no contexts.
+- **Files:** [report addendum §C9](../05-implementation/reports/11THONUS-CI-CONT-001-temporary-ci-continuity-assessment-2026-10-15.md). Documentation committed locally (append-only), not pushed.
+- **Rollback:** delete the isolated branch/worktree; `docker image rm cimg/node:20.19`; if later pushed, fast-forward revert, never force-push.
+
+---
+
 ## 2026-10-16 — 11THONUS-CI-CONT-007C — Credential Preflight Correction and Hosted Attempt (FAILED: BASH_ENV assumption)
 
 - **Task:** Correct the `SSH_AUTH_SOCK` false positive, validate locally, push as a fast-forward, make one typed-JSON hosted attempt.

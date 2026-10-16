@@ -1045,3 +1045,48 @@ The local branch `docs/ci-cont-001-circleci-assessment` (docs commits `b880a4f`�
 ## C8-9 PR #312 and rollback
 
 PR #312 remains **not independently verified by CircleCI**; GitHub Actions never ran; local evidence only; cross-project acceptance has no pass at `73575800…`. Rollback: none required for CircleCI; to revert the configuration, push a fast-forward revert commit (or `git revert 878c3e8`) — never force-push; Unfollow Project and `circleci auth logout` when retired; local documentation commits can be dropped with `git reset --hard fcd56c0` if requested.
+
+---
+
+# Addendum — 11THONUS-CI-CONT-007D: BASH_ENV Correction and Real-Image Validation (2026-10-16)
+
+**Disposition: READY FOR HOSTED PILOT (config proposed, validated, committed locally, NOT pushed).** No hosted pipeline was run and nothing was pushed to the remote configuration branch (still `878c3e8c6503ab8372cefd81cbf975d8d840d9d3`). Proposed new configuration SHA: **`cf66dc0b437b9db48f4acb54cf730fb9235e817d`** (parent `878c3e8`, one commit touching only `.circleci/config.yml`, +39/−5) on the isolated local branch `ci/cont-007c-config` in worktree `/Volumes/PRODUCTION/Projects/11THONUS-worktrees/ci-cont-007c`. Earlier addenda are preserved.
+
+## C9-1 Root cause and exact fixes
+
+1. **`BASH_ENV` (hosted pipeline 4).** CircleCI provides the `BASH_ENV` path but not the file; my `[ -w "$BASH_ENV" ]` test required an existing file. Now: reject empty, relative, control-character, symbolic-link and credential-location paths (`~/.ssh`, `.aws`, `.gnupg`, `.config/git`, `.git-credentials`, `.gitconfig`, `.netrc`, key/`known_hosts` file names, evaluated on resolved paths); if the file exists it must be a regular file owned by the job user; then `: >>` under `umask 077` (create-or-append, never truncate; prior content preserved), then verify regular/not-symlink/writable. Any failure exits 1 before any later step.
+2. **Isolation provably sourced.** The appended block now also exports `PILOT_ISOLATION_ACTIVE=1`; the shared gate (13 uses) and the `when: always` cleanup refuse to run application code unless it is set, so a later step cannot proceed if `BASH_ENV` was not actually sourced. OIDC/SSH `unset` + self-check unchanged.
+3. **Found by running the steps in the real image (not reproducible on macOS):**
+   - `npm install -g pnpm@9.15.9` **would fail** hosted with `EACCES` (npm prefix `/usr/local` is not writable by the job user; rc 243) and the image ships **pnpm 10.23.0**. Fix: `npm install -g --prefix "$HOME/.local" pnpm@9.15.9`, put `~/.local/bin` first on `PATH` through `BASH_ENV`, assert `pnpm -v = 9.15.9`.
+   - The informational `/proc/*/environ` scan could **kill the step** under `-eo pipefail` (`grep` exits 2 on unreadable entries; reproduced as rc 2 with no message). It is now non-fatal. This block was unreachable on macOS (no `/proc`), so local tests could never have caught it, and it would have failed the next hosted attempt.
+4. Unchanged: exact-head method, parameter validation and the #312 allowlist, SSH identity query (agent protocol, before any deletion), credential-name audit with exact exemptions `CIRCLE_OIDC_TOKEN`, `CIRCLE_OIDC_TOKEN_V2`, `SSH_AUTH_SOCK`, OIDC isolation, all mandatory verification steps (incl. cross-project acceptance).
+
+## C9-2 Real executor image
+
+`cimg/node:20.19` was not cached (only 24.12.0 was); pulled `linux/amd64` (hosted architecture), image id/digest `sha256:35e64883e8d21bc345b0a7b04c35ee46442c127607ed1d8d7d37d8a1ed76db81` (28 s). Disk: 15 Gi free on the host data volume (Docker held 24 GB of images; no unrelated cleanup performed). Containers were disposable (`--rm`), with **only the step scripts mounted read-only**: no host home, `.ssh`, cloud credentials, Docker socket or project directories; dummy OIDC values; no real tokens.
+
+| Image fact (confirmed) | Value |
+| --- | --- |
+| OS / shell / user | Ubuntu 24.04.3 LTS; bash 5.2.21; `circleci` uid 1001 |
+| Node / npm / git | 20.19.6 / 10.8.2 / 2.51.0 |
+| `sudo` | passwordless |
+| `ssh-add`, `ssh-agent`, `curl`, `python3`, `psql`, `pg_isready` | present |
+| `java` | **absent** (installed by the step: OpenJDK 21.0.12.1, 64–103 s emulated) |
+| `pnpm` | preinstalled **10.23.0** (not the pinned 9.15.9) |
+| npm global prefix | `/usr/local`, **not writable** |
+| `~/project` | exists; default working directory |
+| image env names | match the hosted job's 45-name list minus CircleCI-injected ones |
+
+Consecutive-step simulation (each step a new `/bin/bash -eo pipefail`, empty `ssh-agent`, `SSH_AUTH_SOCK` set, `BASH_ENV` path given but file absent, OIDC dummies set): **steps 1–15 all rc 0** — credential assert (creates `BASH_ENV`), exact-head verification against GitHub for PR #312 (final `HEAD` = `73575800df6dfada8980fef5d9c83b43d2af7464`), pnpm 9.15.9 install (`pnpm -v` = 9.15.9), JDK 21 + psql, gates, `pnpm install --frozen-lockfile` (70–83 s), `pnpm build` (63 s), lint (53 s), `format:check` (50 s), typecheck (34 s); a fresh step sees no OIDC variable. Extended run: `playwright install --with-deps chromium` on Ubuntu 24.04 (**rc 0**, 522 s emulated), `firebase emulators:exec --only firestore --project demo-11thonus` with JDK 21 (**rc 0**, emulator started), targeted `functions` and `web` vitest runs (**rc 0**). Dummy values in logs: **0**. The PR's own scripts ran only inside the disposable container with no credentials.
+
+## C9-3 Local validation results (final state)
+
+CLI `validate`: valid. **Full parameterised compile:** OK, 36 steps, 13 gates, 0 residual `<<`; no-parameter compile gated off as designed. Credential/agent/OIDC suite: **20/20 expected, 0 unexpected**; `BASH_ENV` suite: **13/13**, covering missing file in a writable dir (created, mode 0600, marker present), existing file (prior content preserved), unwritable directory (nothing created), empty/unset/relative/nonexistent-dir/control-character paths, read-only file, directory, symlink to a benign file (target untouched), symlink to a private key (key unchanged), `~/.aws`/`.gnupg` locations, three consecutive steps all sourcing the file (OIDC/SSH variables gone in shell and child process, marker present), application code not started when the file is not sourced, cleanup refused after an early failure and allowed once isolation is active. Exact-head: positive PASS; 11/11 negative cases fail closed (stale SHA, non-allowlisted/invalid/`<nil>` PR, malformed/uppercase/empty SHA, injection, nonexistent PR; no files created). `prettier --check`, `git diff --check`: clean; secret-pattern scan of the diff: 0; no key comments or dummy token values in any output.
+
+## C9-4 Remaining hosted-only assumptions
+
+PostgreSQL sidecar reachability at `localhost:28110` from the primary container (container creation confirmed hosted; connection not yet exercised); memory/CPU of the whole suite on 4 vCPU/8 GB (local peaks were ≤ 1.7 GB per stage); the PostgreSQL+emulator, unit (functions 2034 / web 1155), full Playwright e2e (149), preview-tooling, **cross-project acceptance** and `emulators:validate` executions themselves; the real `BASH_ENV` path and sourcing semantics (observed hosted: the path exists in the environment and steps run as `bash -eo pipefail`); the Gen1/Gen2 credit rate; `store_artifacts` paths. Cross-project acceptance still has no pass at `73575800…` anywhere.
+
+## C9-5 Pin strategy, risks, rollback
+
+Push plan (needs Founder approval, a later task): fast-forward push of `cf66dc0…` from the isolated worktree to the existing remote branch (remote must still equal `878c3e8`), then one typed-JSON attempt. The original worktree's documentation commits are ahead of the remote's config history; reconciliation (rebase onto the remote head or merge, then fast-forward) remains as in §C8-8 — nothing was rebased, reset or pushed here. Risks: a further hosted-only defect in the not-yet-exercised steps; credit use ≤ ~540 for a full run (Free plan: 54 of 30,000 used at last read). Rollback: the local commit can be discarded by deleting the isolated branch/worktree; if later pushed, fast-forward revert (never force-push). The pulled image (`cimg/node:20.19`, about 2 GB) can be removed with `docker image rm cimg/node:20.19`; no other Docker state was changed.
