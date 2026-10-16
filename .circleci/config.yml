@@ -45,7 +45,11 @@ commands:
               echo "FAIL: an SSH agent variable is present; refusing to execute application code" >&2
               exit 1
             fi
-            echo "OK: CIRCLE_OIDC_TOKEN, CIRCLE_OIDC_TOKEN_V2 and the SSH agent variables are absent"
+            if [ "${PILOT_ISOLATION_ACTIVE-}" != 1 ]; then
+              echo "FAIL: the BASH_ENV isolation file was not sourced; refusing to execute application code" >&2
+              exit 1
+            fi
+            echo "OK: OIDC and SSH agent variables are absent and the BASH_ENV isolation is active"
 
 jobs:
   verify:
@@ -119,18 +123,38 @@ jobs:
             # $BASH_ENV is sourced by the shell of every later step, before its command runs. It unsets the
             # OIDC and SSH-agent variables and then re-checks, aborting the step (exit 1) if any survives,
             # so fetched application scripts never start with them in their environment.
-            [ -n "${BASH_ENV:-}" ] && [ -w "$BASH_ENV" ] || { echo "FAIL: BASH_ENV is unset or not writable; OIDC isolation impossible" >&2; exit 1; }
+            # $BASH_ENV is provided by CircleCI but the file may not exist yet (hosted pipeline 4): validate the
+            # path, never follow a symlink or write into a credential location, then open it for append
+            # (creating it with mode 0600) and verify. Any problem fails the job before PR code can run.
+            be_fail() { echo "FAIL: $1; OIDC/SSH isolation impossible" >&2; exit 1; }
+            [ -n "${BASH_ENV:-}" ] || be_fail "BASH_ENV is unset or empty"
+            case "$BASH_ENV" in /*) ;; *) be_fail "BASH_ENV is not an absolute path" ;; esac
+            case "$BASH_ENV" in *[[:cntrl:]]*) be_fail "BASH_ENV contains control characters" ;; esac
+            [ ! -L "$BASH_ENV" ] || be_fail "BASH_ENV is a symbolic link"
+            BE_DIR="$(cd "$(dirname "$BASH_ENV")" 2>/dev/null && pwd -P)" || be_fail "BASH_ENV directory does not exist"
+            HOME_REAL="$(cd "$HOME" 2>/dev/null && pwd -P || echo "$HOME")"
+            case "$BE_DIR/$(basename "$BASH_ENV")" in
+              "$HOME_REAL"/.ssh/*|"$HOME_REAL"/.aws/*|"$HOME_REAL"/.gnupg/*|"$HOME_REAL"/.config/git/*|"$HOME_REAL"/.git-credentials|"$HOME_REAL"/.gitconfig|"$HOME_REAL"/.netrc|*/id_rsa|*/id_ed25519|*/id_ecdsa|*/authorized_keys|*/known_hosts)
+                be_fail "BASH_ENV points into a credential location" ;;
+            esac
+            if [ -e "$BASH_ENV" ]; then
+              { [ -f "$BASH_ENV" ] && [ -O "$BASH_ENV" ]; } || be_fail "BASH_ENV exists but is not a regular file owned by this user"
+            fi
+            ( umask 077; : >> "$BASH_ENV" ) 2>/dev/null || be_fail "BASH_ENV cannot be created or opened for append"
+            { [ -f "$BASH_ENV" ] && [ ! -L "$BASH_ENV" ] && [ -w "$BASH_ENV" ]; } || be_fail "BASH_ENV verification after creation failed"
             {
               echo 'unset CIRCLE_OIDC_TOKEN CIRCLE_OIDC_TOKEN_V2 SSH_AUTH_SOCK SSH_AGENT_PID 2>/dev/null'
               echo 'if [ -n "${CIRCLE_OIDC_TOKEN-}${CIRCLE_OIDC_TOKEN_V2-}${SSH_AUTH_SOCK-}${SSH_AGENT_PID-}" ]; then'
               echo '  echo "FAIL: a CircleCI OIDC or SSH-agent variable survived unset; aborting step" >&2'
               echo '  exit 1'
               echo 'fi'
+              echo 'export PILOT_ISOLATION_ACTIVE=1'
             } >> "$BASH_ENV"
-            # Informational only (names/counts, never values): other same-user processes that still hold the
+            # Informational only and never fatal (grep exits 2 on unreadable /proc entries; the job runs with
+            # `-eo pipefail`) — names/counts, never values: other same-user processes that still hold the
             # variable in their own environment, which an unset in this shell cannot remove.
             if [ -d /proc ]; then
-              N="$(grep -l -a -E '(^|\x00)CIRCLE_OIDC_TOKEN(_V2)?=' /proc/[0-9]*/environ 2>/dev/null | wc -l | tr -d ' ')"
+              N="$( { grep -l -a -E '(^|\x00)CIRCLE_OIDC_TOKEN(_V2)?=' /proc/[0-9]*/environ 2>/dev/null || true; } | wc -l | tr -d ' ')"
               echo "INFO: $N process environment(s) other than this step may hold a CircleCI OIDC variable (the agent itself); trust to any cloud role is unconfigured (see report)"
             fi
             echo "OK: no SSH identity, no credential files, no unexpected credential-like env var names"
@@ -201,7 +225,13 @@ jobs:
       - run:
           name: Install pnpm 9.15.9
           working_directory: ~/project
-          command: npm install -g pnpm@9.15.9
+          command: |
+            # cimg/node ships pnpm 10 and its npm prefix (/usr/local) is not writable by the job user, so a
+            # plain `npm install -g` fails with EACCES: install the pinned 9.15.9 under ~/.local instead and
+            # put it first on PATH for all later steps (via BASH_ENV).
+            npm install -g --prefix "$HOME/.local" pnpm@9.15.9
+            [ -n "${BASH_ENV:-}" ] && echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$BASH_ENV"
+            test "$("$HOME/.local/bin/pnpm" -v)" = "9.15.9"
       - run:
           name: Install JDK 21 (Firestore Emulator requires Java >= 21) and psql
           working_directory: ~/project
@@ -288,6 +318,10 @@ jobs:
             fi
             if [ -n "${SSH_AUTH_SOCK-}${SSH_AGENT_PID-}" ]; then
               echo "FAIL: an SSH agent variable is present; refusing to execute application code" >&2
+              exit 1
+            fi
+            if [ "${PILOT_ISOLATION_ACTIVE-}" != 1 ]; then
+              echo "FAIL: the BASH_ENV isolation file was not sourced; refusing to execute application code" >&2
               exit 1
             fi
             pnpm preview:stop || true
