@@ -881,3 +881,35 @@ The implicit **"All pushes on 11THONUS"** (`02b48f0a-731c-505d-b821-01a0666e71fd
 **Why HOLD.** The project is now in the same checkout-key state as when the 403 occurred (no key), with the only difference being that it is followed. Whether the 403 depended on the key or on following is still unproven. The Founder's pre-conditions listed the key as expected; it is not present.
 
 **Options for Founder disposition:** (A) *probe once as-is*: a repeat 403 creates nothing and costs nothing; if it runs, the key was not needed (our job fetches the public repo anonymously). (B) *restore the Creative Engine arrangement first*: CircleCI → Project Settings → SSH Keys → **Deploy Key → Add Deploy Key** (creates a repo-scoped read-only key and nothing else; no webhook, no trigger needed); reverse by deleting the key in GitHub. Recommended: B only if A returns 403. Please also state whether the key and webhook were removed deliberately.
+
+---
+
+# Addendum — 11THONUS-CI-CONT-007: Controlled Hosted Pilot Attempt (2026-10-16)
+
+**Disposition: PILOT BLOCKED — AUTHORIZATION OR CONFIGURATION (parameter-type contract).** CircleCI **accepted** the manual trigger (the earlier 403 is resolved), loaded the pinned configuration, and rejected the pipeline at configuration compilation because of a parameter-type mismatch. **No workflow or job ran; no application code was fetched or executed; no credits were consumed.** No retry was made. Earlier addenda are preserved.
+
+## C7-1 Preflight (all passed immediately before the trigger)
+
+CLI identity `Fkenogo`; project followed; single definition `3302b753-a65d-53a6-88f4-a745357e1dc1`; **no triggers**; 0 env vars, no contexts; Free plan (21 of 30,000 used at last read); remote config branch `f76e95c9b87c0801445c235193ffdc3349eec760` (worktree config identical); PR #312 `73575800df6dfada8980fef5d9c83b43d2af7464` open, based on PR #307's branch; PR #307 `023bf3ef599d27fcd998043c0bca6926aa82356e` open; config has no `checkout` step and uses the anonymous HTTPS fetch; MILEDGE-CI-SEC-001 recorded (§C4R-1); no runs other than the activation-time `not_run`; local documentation commits intact. (Deploy key and webhook remained absent, per §C6A and the Founder's go-ahead.)
+
+## C7-2 Trigger outcome
+
+The validated command was executed exactly once (`circleci pipeline run … --branch docs/ci-cont-001-circleci-assessment --param expected_sha=73575800… --param pr_number=312 --json`). Response: `triggered: true`, pipeline **`aa547115-3a54-42d6-8cc5-252779d1182b`** (number 2), created 2026-10-16T10:19:19Z, branch `docs/ci-cont-001-circleci-assessment`, **revision `f76e95c`** (so CircleCI fetched the configuration from the pinned non-default branch — the 403 blocker is resolved without a deploy key). CircleCI then ended the pipeline `not_run` with error: `Type error for argument pr_number: expected type: string, actual value: "312" (type integer)`. GitHub received commit status `CircleCI Pipeline` = `error` on the **configuration commit `f76e95c`** (cosmetic; not on PR #312's head, which has no CircleCI status).
+
+## C7-3 Classification and diagnosis
+
+**Configuration/contract issue, not an application, test, environment or resource failure.** The config declares `pr_number` as `string`, as intended; the CLI's `--param key=value` parses `312` as a JSON number and sends an integer. `expected_sha` is unaffected (contains letters, remains a string; a purely numeric SHA would be mis-typed the same way — not the case here). Nothing in the exact-head, OIDC or test logic was reached. Credits: none (0 workflows; the plan's compute is unchanged; 11THONUS has no compute).
+
+State after the attempt: followed; definition unchanged; triggers none; keys 0; hooks 0; env vars 0; contexts none; config branch and both PR heads unchanged; two runs exist, both `ended/not_run`.
+
+## C7-4 Proposed corrections (not implemented; Founder to choose)
+
+- **A (recommended, no repository change):** supply the value as a JSON string so the CLI sends a string: `--param 'pr_number="312"'`. The pinned configuration and all local validation stay valid. A repeat type error would again create no job and cost nothing. Requires explicit authorisation as a new attempt.
+- **B (configuration change):** declare `pr_number` as `integer` and keep the existing numeric regex — requires a new config commit on the pilot branch, a push (moving the pin from `f76e95c`), re-running the local validation suite (CLI validate/process with parameters, exact-head and OIDC isolation cases) and re-approval. Heavier; use only if A fails.
+- **C:** trigger through the API with a JSON body (`"pr_number":"312"`) using a Founder-held token — not needed unless A fails.
+
+Next action: Founder authorises one attempt with option A (also the first checkpoint for a post-follow 403 recurrence, which did not occur). All other conditions stand.
+
+## C7-5 Status of PR #312
+
+Still **not independently verified by CircleCI** (no job ran); GitHub Actions never ran; local evidence only (e2e 149/149, web 1155/1155, PostgreSQL 813/813, emulators 877 passed/3 skipped); cross-project acceptance has no pass at `73575800…`. No PR merged; no configuration, application, `ci.yml`, dependency or branch-protection change; no key, hook, trigger, project or organisation created. Rollback: none required; Unfollow Project and `circleci auth logout` when the arrangement is retired; local documentation commits can be dropped with `git reset --hard 5084430` if requested.

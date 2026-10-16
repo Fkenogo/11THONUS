@@ -7,6 +7,18 @@
 
 ---
 
+## 2026-10-16 — 11THONUS-CI-CONT-007 — Controlled Hosted Pilot Attempt (BLOCKED: parameter type)
+
+- **Task:** One authorised manual CircleCI pipeline for PR #312 (`73575800…`) after activation and trigger isolation. All 15 preflight conditions passed.
+- **Status:** **PILOT BLOCKED — AUTHORIZATION OR CONFIGURATION.** CircleCI **accepted** the request (pipeline `aa547115-3a54-42d6-8cc5-252779d1182b`, number 2; config fetched from the pinned branch at revision `f76e95c` — the earlier 403 is resolved) but ended it `not_run`: `Type error for argument pr_number: expected type: string, actual value: "312" (type integer)`. **No job ran; no application code was fetched; 0 credits.** No retry.
+- **Cause:** the CLI's `--param pr_number=312` is sent as an integer; the config declares `string`. Classified as configuration/contract, not application or environment.
+- **Proposed (not implemented):** A — re-run once with `--param 'pr_number="312"'` (no repo change, pin preserved, free if it fails again); B — change the parameter type to `integer` (new config commit, moves the pin, full revalidation); C — API with a JSON string.
+- **State:** followed; definition unchanged; no triggers/keys/hooks/env vars/contexts; GitHub status `CircleCI Pipeline = error` on config commit `f76e95c` (cosmetic); #312 `73575800…`/#307 `023bf3e…` unchanged; nothing merged.
+- **Files:** [report addendum §C7](../05-implementation/reports/11THONUS-CI-CONT-001-temporary-ci-continuity-assessment-2026-10-15.md). Local commit only; remote config branch still `f76e95c…`.
+- **Rollback:** none required; Unfollow Project / `circleci auth logout` when retired.
+
+---
+
 ## 2026-10-16 — 11THONUS-CI-CONT-006A — Trigger Isolation Verification (HOLD)
 
 - **Task:** Read-only verification after the Founder removed the all-pushes trigger. Nothing triggered, pushed or changed.
