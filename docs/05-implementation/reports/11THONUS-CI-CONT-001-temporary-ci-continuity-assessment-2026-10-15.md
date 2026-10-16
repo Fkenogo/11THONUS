@@ -1249,3 +1249,61 @@ Outstanding: (a) cross-project acceptance and emulator validation have **no pass
 ## C12-5 Rollback and reconciliation
 
 Rollback: nothing is required in CircleCI; the config change can be reverted with a fast-forward revert commit (never force-push); stopped, undeleted local containers `sim7g`, `pg7g`, `sim7h`, `pg7h`, `sim7i`, `pg7i` remain (a safety check blocked my deleting two of them, so none were removed; delete with `docker rm` when no longer wanted) and the cached image `cimg/node:20.19`. Documentation commits remain local and unpushed; the local documentation branch is **12 ahead / 3 behind** the remote configuration branch (`878c3e8`, `cf66dc0`, `851ae18` are config-only commits): reconcile later by rebasing the documentation commits onto `origin/docs/ci-cont-001-circleci-assessment` (disjoint files, no conflicts expected) or merging it, then a normal fast-forward push after confirming no trigger/webhook exists and that the config SHA used for any run equals the remote head.
+
+---
+
+# Addendum — 11THONUS-CI-CONT-007H: Auth Emulator Socket Failure — Root-Cause Investigation (2026-10-16)
+
+**Disposition: ROOT CAUSE CONFIRMED — CORRECTION READY FOR REVIEW.** No hosted run, no push, no PR change. Proposed CircleCI-only correction: configuration commit **`9b34ce4de26f9d0d47926ffff40b8bee8b3e7ee8`** (parent `851ae1875e1ce9fd111dc8cabe15db56d7ff8b2f`, only `.circleci/config.yml`, +22), local on the isolated branch `ci/cont-007c-config`. The remote configuration branch is still `851ae18…`. Earlier addenda are preserved.
+
+## C13-1 The failing code path (verified in code at `73575800…`)
+
+`cross-project-acceptance.mjs` occupies legacy ports 4000/4001/9099 with listeners that destroy any connection, then runs `pnpm preview:start`. `commandStart` (`tests/preview/cli.mjs`): build → migrate → `ensureEmulators` (spawns detached `firebase emulators:start --only auth,functions,firestore,ui`; readiness `emulatorsReady()` polls Auth `GET /` (`authEmulator.ready === true`), Functions `ping`, Firestore `/`; this process keeps using the global `fetch`) → **`seedBaseData` → `spawnSync("node", seed scripts)`** → first run so `commandReset`: `clearFirestore()` (DELETE), `clearAuthAccounts()` (DELETE `/emulator/v1/projects/demo-11thonus/accounts`), Postgres reset + migrate, **`seedBaseData` again (`spawnSync`)**, then `runFounderSlice1` → `register()` → **`POST /identitytoolkit.googleapis.com/v1/accounts:signUp`** — the failing request. All emulator URLs are `http://127.0.0.1:<port>` (explicit IPv4).
+
+## C13-2 Hosted evidence (pipeline 6, job `044e5ee7-8206-45f5-add0-ad41e511ac90`, step 128)
+
+Step 128 ran 13:13:10.2–13:13:57.9 UTC (47.7 s). Verified: build OK, 30 migrations, emulators "All emulators ready" (Auth/Functions/Firestore/UI), both seed scripts ran, reset ran, then `registering preview identities` → `fetch failed`. The stored `emulators.log` shows startup only (no error, crash, signal or exit after "ready"); hosted resource facts: `nproc 36`, `cpu.max` 4 CPUs, memory 8 GiB. **Not available hosted:** per-request timestamps, open-file/process limits, the Auth emulator's own debug log (artifact collection only kept `.preview/logs`), and the cause behind `fetch failed`. Cleanup followed normally (`preview:stop` step succeeded).
+
+## C13-3 Confirmed mechanism and its evidence
+
+1. **The Auth emulator closes idle keep-alive connections after ~5 s.** Real emulator, firebase-tools 15.24.0 (the repo's lockfile version): responses carry `Connection: keep-alive` / `Keep-Alive: timeout=5`; an idle connection was closed by the server after **6.0 s** — measured on host (Node 20.20.0) and in the CircleCI image (Node 20.19.6, Ubuntu 24.04).
+2. **The harness holds a pooled socket across a blocking window.** `seedBaseData` uses `spawnSync` (cli.mjs:132) — the Node event loop is blocked for the whole seed run, so the client cannot process the server's close or its own idle timers.
+3. **Socket-level evidence in the real flow** (diagnostic preload via `NODE_OPTIONS`, repository untouched; undici `diagnostics_channel`): socket `local:45750` was opened at 72.9 s, carried `GET /` and `DELETE …/accounts` (73.2 s), and the failing `POST accounts:signUp` was **sent on the same socket 6.6 s later**, failing with `UND_ERR_SOCKET`, `bytesWritten 789, bytesRead 611` — only the earlier responses were ever read; no new connection was created. A second instrumented run measured an idle gap of 7.9 s.
+4. **Reproduced in isolation against the real emulator** (no Postgres, no Functions, no containers beyond the runtime): with two prior requests on the pooled socket, a **blocked** event loop of ≥ 6 s then a `POST` fails (`ECONNRESET`, 3/3 and every ≥ 6 s case), while a **non-blocked** idle of 6–20 s, a blocked window ≤ 4 s, and (observed, not explained) a socket carrying only one prior request all succeed. The emulator is healthy: right after the failure a direct `GET /` returned `ready: true` and a direct `POST signUp` returned 200.
+5. **Why GitHub Actions passes** (timestamps of the green run on PR #307's head): `clearAuthAccounts` ≈ 16:50:25.6 → blocking seeds 1.8 s → first signUp ≈ 16:50:28.1: a gap of **≈ 2.6 s < 5 s**. On the CPU-capped hosted executor and in my constrained container the same sequence takes 6.6–7.9 s locally (hosted gap not logged), exceeding the server's 5 s.
+6. **Why retries/DELETE did not fail:** undici retries idempotent requests on a closed socket; the `DELETE` before the window succeeded, the non-idempotent `POST` after it cannot be retried.
+
+Residual uncertainty: the hosted blocking-window duration was not measured (no timestamps); it is inferred from the identical failing point and signature. One detail of undici's behaviour (why a socket with a single prior request survives) is not explained, but it does not affect the conclusion.
+
+## C13-4 Hypotheses examined
+
+| | Hypothesis | Verdict (evidence) |
+| --- | --- | --- |
+| A | Startup/readiness race | **Refuted.** `emulatorsReady()` requires `authEmulator.ready === true`; `DELETE accounts` succeeded on the same socket minutes after readiness; direct `POST signUp` works. |
+| B | Emulator crash/exit | **Refuted.** Process alive (`java` and the CLI present), direct probes 200 after failure, no exit/signal/error in hosted `emulators.log`, 0 OOM events. |
+| C | Resource/process limits | **Amplifier, not the direct cause.** Memory peak 1.35 GB of 8 GiB, `oom_kill 0`; CPU throttling 24/1761 periods (1.4%). CPU contention only lengthens the blocking window past 5 s. |
+| D | Request incompatibility | **Refuted.** Same request succeeds on a fresh connection and directly. |
+| E | Preview-harness behaviour | **Confirmed cause**: pooled keep-alive + blocking `spawnSync` + first non-idempotent request after the window. |
+| F | Networking (IPv6/localhost, namespaces, PG sidecar) | **Refuted.** Fails identically with IPv6 disabled and enabled, on PR #307's head, and in the Auth-only host reproduction with no Postgres or containers; requests are explicit `127.0.0.1`. |
+
+My earlier IPv6 suggestion (CONT-007G) was wrong and is withdrawn. A first isolated probe (one prior request) also failed to reproduce and was corrected by the two-request probe above.
+
+## C13-5 Minimum correction
+
+**Not in the PRs:** the defect is in `tests/preview` (PR #307/#312 content); those branches must stay untouched. The proper permanent fix belongs there (use async `spawn` for the seeds, or send `Connection: close`/a non-pooled dispatcher for emulator calls) and should be reported to the PR owners.
+
+**CircleCI-only mitigation (proposed, validated locally, not pushed):** in the cross-project acceptance step only, set `NODE_OPTIONS=--require /tmp/ci-loopback-connection-close.cjs`, a 13-line preload written by the step itself that adds `Connection: close` to `fetch` calls whose host is `127.0.0.1`, `localhost` or `[::1]`. Effect: no idle socket is ever reused, so the race cannot occur; every emulator request, assertion, gate and timeout is unchanged. It is not a retry and masks nothing: the cause is removed rather than tolerated. Verified in isolation: plain 3/3 fail, shim 3/3 pass (and a 20 s block passes). Scope: the preload also loads in child Node processes of that step (it only touches loopback fetches). It runs no PR code of its own and exposes no credentials.
+
+## C13-6 Local validation of the correction
+
+Compile OK with parameters (0 residual `<<`); the generated preload parses (`node --check`); `prettier`/`git diff --check` clean; no secret patterns. Real image, CircleCI-large limits (`--cpus=4 --memory=8g`), Postgres sidecar, compiled step run as `bash -eo pipefail`: **the originally failing segment now passes** — `preview:start` completes past `registering preview identities` to `Reset complete` and starts the web app; `preview:status`, `preview:verify`, `preview:reset` and the second `preview:verify` all pass. **Not validated locally:** the final sub-step `test:e2e:preview` timed out on Playwright's 60 s web-server start under amd64 emulation (an emulation artefact; hosted `pnpm test:e2e` started its servers fine). Two other local-only artefacts, not part of the proposal: a 10 s function-discovery timeout under emulation (worked around locally with `FUNCTIONS_DISCOVERY_TIMEOUT=120`) and cold-start timeouts on first runs.
+
+## C13-7 Cleanup, security, risks, rollback
+
+Docker: six stopped containers positively identified as this investigation's artefacts (`sim7g`, `pg7g`, `sim7h`, `pg7h`, `sim7i`, `pg7i`: images `cimg/node:20.19`/`postgres:16-alpine`, created 13:17–13:32 UTC today, commands `sleep infinity` / `postgres -p 28110`, no bind mounts) were removed one at a time; their three anonymous Postgres data volumes were removed with them after confirming each was referenced only by its own container; key logs were first saved to the session scratchpad. 31 other containers (including `11thonus-postgres-1`, Klockit, Fedoo, Tiizi) and all other images/volumes/caches were untouched; the cached `cimg/node:20.19` image remains. The Auth-only probe emulator I started on the host (port 19099, working dir `/tmp/authprobe`) was stopped; the Klockit emulator on 4000/9099 was not touched. No credentials were logged; the diagnostic preloads printed only methods, paths without query, status/cause codes and socket numbers, and probe accounts were dummy `.invalid` users on local emulators.
+
+Risks: the shim is a mitigation, not a repair of the underlying tooling race (which can also bite GitHub Actions on a slow runner); other steps that call these emulators were not changed; hosted timing of the seed window is still unmeasured. Rollback: discard the local commit/branch, or fast-forward revert if ever pushed (never force-push).
+
+## C13-8 Recommendation for the next hosted verification
+
+One hosted run with `9b34ce4…` (fast-forward from `851ae18…`) is justified: it directly tests the cause, runs the remaining unexecuted gates (`pnpm emulators:validate`) and costs ≈ 230–300 credits (424 of 30,000 used). In parallel, report the `tests/preview` race to the PR owners. Reconciliation of documentation commits is unchanged (rebase onto the remote head, then fast-forward, when approved).

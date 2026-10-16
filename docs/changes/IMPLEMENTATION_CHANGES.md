@@ -7,6 +7,19 @@
 
 ---
 
+## 2026-10-16 — 11THONUS-CI-CONT-007H — Auth Emulator Socket Failure: Root-Cause Investigation (CONFIRMED, correction ready)
+
+- **Task:** Local-first diagnosis of the hosted `UND_ERR_SOCKET` failure in cross-project acceptance (pipeline 6). No hosted run, no push, PR branches untouched.
+- **Status:** **ROOT CAUSE CONFIRMED — CORRECTION READY FOR REVIEW.** Proposed config commit **`9b34ce4de26f9d0d47926ffff40b8bee8b3e7ee8`** (parent `851ae18…`, only `.circleci/config.yml`, +22), local on `ci/cont-007c-config`; remote still `851ae18…`.
+- **Cause:** `tests/preview` pools HTTP keep-alive sockets to the Auth emulator (`Keep-Alive: timeout=5`; measured idle close 6.0 s) and runs its reference-data seeds with `spawnSync`, blocking the event loop. When the gap between `DELETE …/accounts` and the first `POST accounts:signUp` exceeds 5 s, the stale socket is reused and the POST fails. Evidence: same local socket port reused 6.6 s later (`bytesRead 611`); reproduced in isolation against the real emulator (blocked ≥ 6 s fails 3/3, unblocked idle succeeds); emulator healthy right after (direct probes 200); GitHub Actions' gap is ≈ 2.6 s (seeds 1.8 s). IPv6, #312-specific, crash, readiness and resource-exhaustion hypotheses refuted (resources only lengthen the window). The IPv6 suggestion in CONT-007G is withdrawn.
+- **Correction:** CI-only preload adding `Connection: close` to loopback fetches in the acceptance step (13 lines written by the step; `NODE_OPTIONS` scoped to that step). Locally the failing segment passes (start → status → verify → reset → verify); the last sub-step (`test:e2e:preview`) timed out on emulation-only Playwright web-server start. Upstream fix belongs in `tests/preview` (async seeds or non-pooled emulator calls) — report to PR owners.
+- **Cleanup:** six stopped diagnostic containers and their three anonymous volumes removed after individual identification; host probe emulator stopped; 31 other containers, images and volumes untouched.
+- **Recommendation:** one hosted run with `9b34ce4…` after approval (≈ 230–300 credits; 424 of 30,000 used).
+- **Files:** [report addendum §C13](../05-implementation/reports/11THONUS-CI-CONT-001-temporary-ci-continuity-assessment-2026-10-15.md). Documentation local, not pushed.
+- **Rollback:** discard the local commit/branch; fast-forward revert if ever pushed.
+
+---
+
 ## 2026-10-16 — 11THONUS-CI-CONT-007G — Worker-Capped Configuration and Hosted Run #6 (FAILED at cross-project acceptance)
 
 - **Task:** Publish `851ae1875e1ce9fd111dc8cabe15db56d7ff8b2f` (fast-forward) and execute one hosted verification of PR #312.
