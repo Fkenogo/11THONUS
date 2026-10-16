@@ -683,3 +683,51 @@ Unchanged: **not independently verified by CircleCI** (no run), **GitHub Actions
 ## C4-6 Rollback
 
 Nothing to roll back in CircleCI (no run, no resources created). Local documentation commit can be dropped with `git reset --hard f76e95c` on the worktree. Pilot removal is unchanged: delete `.circleci/` and the pilot branch.
+
+---
+
+# Addendum — 11THONUS-CI-CONT-004 (resume): MILEDGE-CI-SEC-001 and Trigger Attempt (2026-10-16)
+
+**Disposition: PILOT BLOCKED — SECURITY OR INFRASTRUCTURE.** One trigger attempt was made; CircleCI answered **HTTP 403 `Permission denied`**. **No pipeline was created, no job ran, 0 credits were consumed by the attempt.** Earlier sections (including §C4 and its 'BLOCKED' record) are preserved.
+
+## C4R-1 MILEDGE-CI-SEC-001 (recorded)
+
+The Founder accepted Miledge's AWS OIDC security disposition **MILEDGE-CI-SEC-001**: no AWS account has been created or used across Miledge Ventures or its projects, and Miledge's infrastructure records identify no AWS IAM OIDC provider or role trust associated with the CircleCI issuer. The AWS concern in §C4-2 is treated as **provisionally resolved, subject to contrary evidence**; no AWS resources were created and no further AWS investigation was performed. The Google Cloud findings of §C4-2 (no workload identity pools, no federated/public IAM principals, no inherited bindings for the three 11thONUS projects) stand as authoritative.
+
+## C4R-2 Preflight (re-run immediately before the attempt)
+
+| Check | Result |
+| --- | --- |
+| Remote configuration branch | `f76e95c9b87c0801445c235193ffdc3349eec760` (pinned; unchanged) |
+| Local documentation commit | `a003718` preserved (no reset or overwrite); the worktree's `.circleci/config.yml` equals `f76e95c` |
+| PR #312 | `73575800df6dfada8980fef5d9c83b43d2af7464`, open, clean, base `feat/ea-bl-001-corr-002-b-staff-counter` |
+| PR #307 (stacked base) | `023bf3ef599d27fcd998043c0bca6926aa82356e`, open |
+| CircleCI plan | **Current plan: Free** (Plan → overview, read in the Founder's signed-in browser, read-only): 30,000 credits/mo, resource classes S–L, 5 users; **7 of 30,000 credits used** this cycle (to Nov 15). The \$15 "subscription summary" on that page is the unsubmitted Performance-upgrade calculator, not an active subscription |
+| Project environment variables / contexts | 0 / none |
+| Pipeline definition | single `github_oauth` definition `3302b753-a65d-53a6-88f4-a745357e1dc1` |
+| Existing trigger | one `github_oauth` all-pushes trigger (unchanged, not enabled by this task, cannot start a workflow with this config) |
+| Runs before the attempt | none |
+
+## C4R-3 The attempt and its result
+
+Command (CLI, using the Founder's stored CircleCI session — no token read, displayed or stored): `circleci pipeline run --project gh/Fkenogo/11THONUS --definition-id 3302b753-a65d-53a6-88f4-a745357e1dc1 --branch docs/ci-cont-001-circleci-assessment --param expected_sha=73575800df6dfada8980fef5d9c83b43d2af7464 --param pr_number=312`.
+
+Result: `API returned 403: {"message":"Permission denied."}` (exit 4). A follow-up `circleci run list` shows **no runs**. The attempt did not execute any tests, so there is no application result and no exact-head evidence.
+
+## C4R-4 Diagnosis (read-only; no retry)
+
+- **Classification: environment/infrastructure — CircleCI authorisation boundary. Not an application, test or configuration-content failure.**
+- The session identity is the repository owner (`Fkenogo`) and the stored token is a *personal* token, so this is not the known "project tokens cannot trigger pipelines" limitation. Read-only calls with the same session succeed (org list, project get, pipeline list, env vars, contexts, run list, trigger list); only the pipeline-trigger write is denied.
+- GitHub shows the CircleCI OAuth app authorised for the Founder account (last used within the week); the repository is user-owned, so organisation third-party-app restrictions and SAML do not apply.
+- The same 403 class was reported for Miledge Creative Engine's trigger, and the project-setup branch picker stayed empty earlier. These three symptoms are consistent with a shared **CircleCI-side authorisation issue for OAuth pipeline triggering by this CLI session**, but that is a **hypothesis, not a confirmed root cause**.
+- No specific configuration/environment correction has been identified, so under the one-retry rule **no second attempt was made**.
+
+## C4R-5 Minimum Founder actions to unblock
+
+1. State which mechanism triggered Creative Engine build #2 successfully (CircleCI web "Trigger Pipeline" with a branch and parameters, or an API call with a personal API token created in the web UI under User Settings → Personal API Tokens). The same mechanism is expected to work here.
+2. Either (a) trigger the run from the CircleCI web UI for `gh/Fkenogo/11THONUS` on branch `docs/ci-cont-001-circleci-assessment` with parameters `expected_sha=73575800df6dfada8980fef5d9c83b43d2af7464` and `pr_number=312`, or (b) run the §C3A-5 `curl` with a personal token created in the web UI and held only in a shell variable, or (c) re-authenticate the CLI (`circleci auth login`) and I will make one retry.
+3. Send the pipeline URL; the review of the run (SHA evidence, per-step results, cross-project acceptance, credits) then proceeds as planned. Re-check heads before triggering; STOP if any differs from §C4R-2.
+
+## C4R-6 Status, risks, rollback
+
+PR #312 remains **not independently verified by CircleCI**; GitHub Actions never started; local evidence only. No PR was merged; no branch protection, billing, application, `ci.yml` or CircleCI configuration changed; nothing was created in CircleCI or AWS. The documentation commit is local and unpushed so the remote branch stays at `f76e95c` for the pinned run. Rollback: nothing to undo remotely; `git reset --hard f76e95c` drops the local documentation commits; pilot removal unchanged (delete `.circleci/` and the pilot branch).

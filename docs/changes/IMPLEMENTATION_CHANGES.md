@@ -7,6 +7,18 @@
 
 ---
 
+## 2026-10-16 — 11THONUS-CI-CONT-004 (resume) — MILEDGE-CI-SEC-001 and Trigger Attempt (PILOT BLOCKED)
+
+- **Task:** Resume the authorised single hosted CircleCI run after the Founder accepted **MILEDGE-CI-SEC-001** (no AWS account exists across Miledge; AWS OIDC concern provisionally resolved).
+- **Status:** **PILOT BLOCKED — SECURITY OR INFRASTRUCTURE.** One trigger attempt returned **HTTP 403 "Permission denied"**; no pipeline created, no job ran, 0 credits.
+- **Preflight (all passed):** config branch `f76e95c…` (pinned); documentation commit `a003718` preserved; PR #312 `73575800…` and #307 `023bf3e…` unchanged; **CircleCI plan: Free** (30,000 credits; 7 used); 0 env vars/contexts; single OAuth definition `3302b753-…`.
+- **Diagnosis:** CircleCI authorisation boundary for pipeline triggering by the CLI session (personal token, repo-owner identity; read calls succeed, trigger write denied). Plausibly shared with Creative Engine's earlier 403 and the empty branch picker — hypothesis only. No specific correction identified, so no retry.
+- **Needed from Founder:** trigger via the CircleCI web UI (branch + `expected_sha`/`pr_number` parameters) or a web-UI-created personal token / re-authenticated CLI; report which mechanism worked for Creative Engine build #2.
+- **Files:** [report addendum §C4R](../05-implementation/reports/11THONUS-CI-CONT-001-temporary-ci-continuity-assessment-2026-10-15.md). Documentation committed locally, not pushed (remote stays `f76e95c…`). No configuration, application, `ci.yml`, dependency or branch-protection change.
+- **Rollback:** `git reset --hard f76e95c` in the worktree; pilot removal unchanged.
+
+---
+
 ## 2026-10-16 — 11THONUS-CI-CONT-004 — Hosted Run Pre-Execution Checks (PILOT BLOCKED)
 
 - **Task:** Execute one authorised CircleCI hosted verification of PR #312. Pre-execution security/configuration checks were run first.
