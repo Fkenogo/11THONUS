@@ -317,7 +317,29 @@ jobs:
           environment:
             PREVIEW_POSTGRES_URL: postgres://postgres:postgres@localhost:28110/eleventhonus_platform_local
             PGPASSWORD: postgres
+            NODE_OPTIONS: --require /tmp/ci-loopback-connection-close.cjs
           command: |
+            # CI-only mitigation of a latent race in tests/preview (pipeline 6; CI-CONT-007H). The preview
+            # tooling pools HTTP keep-alive sockets to the Auth emulator, which closes idle connections after
+            # 5 s (`Keep-Alive: timeout=5`), but it runs its reference-data seeds with spawnSync, which blocks the
+            # Node event loop: when that window exceeds 5 s (slow or CPU-capped executors) the client cannot
+            # notice the closed socket and the next POST (accounts:signUp) fails with UND_ERR_SOCKET.
+            # GitHub Actions stays below the threshold (~1.8 s). This preload sends `Connection: close` on
+            # loopback fetches only, so no idle socket is ever reused. Repository files are not modified.
+            printf '%s\n' \
+              'const of = globalThis.fetch;' \
+              'const loopback = new Set(["127.0.0.1", "localhost", "[::1]"]);' \
+              'globalThis.fetch = function (input, init) {' \
+              '  try {' \
+              '    const u = new URL(String((input && input.url) || input));' \
+              '    if (loopback.has(u.hostname)) {' \
+              '      const h = new Headers((init && init.headers) || (input && input.headers) || undefined);' \
+              '      h.set("connection", "close");' \
+              '      return of(input, Object.assign({}, init, { headers: h }));' \
+              '    }' \
+              '  } catch (e) { /* fall through to the unmodified fetch */ }' \
+              '  return of(input, init);' \
+              '};' > /tmp/ci-loopback-connection-close.cjs
             psql -h localhost -p 28110 -U postgres -c "CREATE DATABASE eleventhonus_platform_local"
             node tests/preview/cross-project-acceptance.mjs
       - oidc_guard
