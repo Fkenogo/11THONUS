@@ -35,13 +35,17 @@ commands:
   oidc_guard:
     steps:
       - run:
-          name: OIDC isolation gate (fail closed before application code)
+          name: OIDC and SSH-agent isolation gate (fail closed before application code)
           command: |
             if [ -n "${CIRCLE_OIDC_TOKEN-}${CIRCLE_OIDC_TOKEN_V2-}" ]; then
               echo "FAIL: a CircleCI OIDC variable is present; refusing to execute application code" >&2
               exit 1
             fi
-            echo "OK: CIRCLE_OIDC_TOKEN and CIRCLE_OIDC_TOKEN_V2 are absent"
+            if [ -n "${SSH_AUTH_SOCK-}${SSH_AGENT_PID-}" ]; then
+              echo "FAIL: an SSH agent variable is present; refusing to execute application code" >&2
+              exit 1
+            fi
+            echo "OK: CIRCLE_OIDC_TOKEN, CIRCLE_OIDC_TOKEN_V2 and the SSH agent variables are absent"
 
 jobs:
   verify:
@@ -62,20 +66,49 @@ jobs:
           name: Assert no checkout credentials or secrets are reachable
           command: |
             set -eu
-            # No `checkout` step has run, so no key should exist. Assert it (defence in depth).
-            [ -n "${SSH_AUTH_SOCK:-}" ] && ssh-add -D >/dev/null 2>&1 || true
-            if [ -n "${SSH_AUTH_SOCK:-}" ] && ssh-add -l >/dev/null 2>&1; then
-              echo "FAIL: an SSH identity is loaded in the agent"; exit 1
+            # No `checkout` step has run, so no key should exist. Assert it BEFORE deleting anything, and
+            # do not rely on `ssh-add`: query the agent socket directly (SSH agent protocol, request 11,
+            # identities answer 12) with node. 0 identities or no listener = OK; any identity, or an
+            # unexpected reply, fails closed. Nothing is ever deleted from a loaded agent.
+            if [ -n "${SSH_AUTH_SOCK:-}" ]; then
+              AGENT="$(node -e '
+                const net = require("net");
+                const out = (v) => { console.log(v); process.exit(0); };
+                const s = net.connect(process.argv[1]);
+                let b = Buffer.alloc(0);
+                s.setTimeout(5000, () => out("unreachable"));
+                s.on("error", () => out("unreachable"));
+                s.on("connect", () => s.write(Buffer.from([0, 0, 0, 1, 11])));
+                s.on("data", (d) => {
+                  b = Buffer.concat([b, d]);
+                  if (b.length >= 9) out(b[4] === 12 ? String(b.readUInt32BE(5)) : "unexpected");
+                });' "$SSH_AUTH_SOCK" 2>/dev/null || echo error)"
+              case "$AGENT" in
+                0|unreachable) echo "OK: SSH agent socket present but exposes no identities ($AGENT)" ;;
+                *) echo "FAIL: SSH agent reports usable identities or an unverifiable state ($AGENT)"; exit 1 ;;
+              esac
+            fi
+            if command -v ssh-add >/dev/null 2>&1 && [ -n "${SSH_AUTH_SOCK:-}" ]; then
+              if ssh-add -l >/dev/null 2>&1; then echo "FAIL: ssh-add lists a loaded SSH identity"; exit 1; fi
+            fi
+            if [ -n "${GIT_SSH:-}${GIT_SSH_COMMAND:-}" ]; then
+              echo "FAIL: GIT_SSH or GIT_SSH_COMMAND is set"; exit 1
+            fi
+            # Private key material on disk (file NAMES only; never contents) fails closed before cleanup.
+            KEYFILES="$( { grep -rIl -E 'BEGIN [A-Z ]*PRIVATE KEY' "$HOME/.ssh" 2>/dev/null; ls "$HOME"/.ssh/id_* 2>/dev/null; } | sort -u || true)"
+            if [ -n "$KEYFILES" ]; then
+              echo "FAIL: SSH private key material found under ~/.ssh:"; echo "$KEYFILES"; exit 1
             fi
             rm -rf "$HOME/.ssh" "$HOME/.gitconfig" "$HOME/.config/git" "$HOME/.git-credentials"
 
-            # Environment audit — NAMES ONLY, never values. Auto-issued CircleCI OIDC variables are the
-            # only credential-like names that are legitimate; they are matched EXACTLY (any other
+            # Environment audit — NAMES ONLY, never values. Credential-like names that are legitimate in a
+            # CircleCI job and matched EXACTLY: the auto-issued OIDC pair and the agent socket SSH_AUTH_SOCK
+            # (its identities are verified empty above, and it is unset for later steps). Any other
             # name containing TOKEN/SECRET/PASS/KEY/CREDENTIAL/AUTH/PRIVATE/CERT, including other
             # CIRCLE_* names, fails). Ordinary built-ins (CIRCLE_*, CI, image ENV) are not rejected.
             env | cut -d= -f1 | sort > /tmp/env-names.txt
             echo "Environment variable names present ($(wc -l < /tmp/env-names.txt)):"; tr '\n' ' ' < /tmp/env-names.txt; echo
-            LEAK="$(grep -Ei '(TOKEN|SECRET|PASS|KEY|CREDENTIAL|AUTH|PRIVATE|CERT)' /tmp/env-names.txt | grep -Fvx -e CIRCLE_OIDC_TOKEN -e CIRCLE_OIDC_TOKEN_V2 || true)"
+            LEAK="$(grep -Ei '(TOKEN|SECRET|PASS|KEY|CREDENTIAL|AUTH|PRIVATE|CERT)' /tmp/env-names.txt | grep -Fvx -e CIRCLE_OIDC_TOKEN -e CIRCLE_OIDC_TOKEN_V2 -e SSH_AUTH_SOCK || true)"
             if [ -n "$LEAK" ]; then
               echo "FAIL: credential-like environment variable names are present (project/context vars must be empty):"
               echo "$LEAK"; exit 1
@@ -84,13 +117,13 @@ jobs:
               echo "NOTE: CircleCI-issued OIDC variables present (legitimate); removing them from all later steps"
             fi
             # $BASH_ENV is sourced by the shell of every later step, before its command runs. It unsets the
-            # OIDC variables and then re-checks, aborting the step (exit 1) if either survives, so
-            # fetched application scripts never start with them in their environment.
+            # OIDC and SSH-agent variables and then re-checks, aborting the step (exit 1) if any survives,
+            # so fetched application scripts never start with them in their environment.
             [ -n "${BASH_ENV:-}" ] && [ -w "$BASH_ENV" ] || { echo "FAIL: BASH_ENV is unset or not writable; OIDC isolation impossible" >&2; exit 1; }
             {
-              echo 'unset CIRCLE_OIDC_TOKEN CIRCLE_OIDC_TOKEN_V2 2>/dev/null'
-              echo 'if [ -n "${CIRCLE_OIDC_TOKEN-}${CIRCLE_OIDC_TOKEN_V2-}" ]; then'
-              echo '  echo "FAIL: CircleCI OIDC variable survived unset; aborting step" >&2'
+              echo 'unset CIRCLE_OIDC_TOKEN CIRCLE_OIDC_TOKEN_V2 SSH_AUTH_SOCK SSH_AGENT_PID 2>/dev/null'
+              echo 'if [ -n "${CIRCLE_OIDC_TOKEN-}${CIRCLE_OIDC_TOKEN_V2-}${SSH_AUTH_SOCK-}${SSH_AGENT_PID-}" ]; then'
+              echo '  echo "FAIL: a CircleCI OIDC or SSH-agent variable survived unset; aborting step" >&2'
               echo '  exit 1'
               echo 'fi'
             } >> "$BASH_ENV"
@@ -251,6 +284,10 @@ jobs:
             # Runs even after failures (when: always), so it carries its own inline OIDC gate.
             if [ -n "${CIRCLE_OIDC_TOKEN-}${CIRCLE_OIDC_TOKEN_V2-}" ]; then
               echo "FAIL: a CircleCI OIDC variable is present; refusing to execute application code" >&2
+              exit 1
+            fi
+            if [ -n "${SSH_AUTH_SOCK-}${SSH_AGENT_PID-}" ]; then
+              echo "FAIL: an SSH agent variable is present; refusing to execute application code" >&2
               exit 1
             fi
             pnpm preview:stop || true
