@@ -3,6 +3,8 @@
 **Date:** 2026-10-15 · **Type:** assessment + proposed configuration (documentation/configuration only) · **Authority:** Founder-authorised assessment.
 **Scope statement:** this is a _temporary CI continuity assessment during a GitHub Actions billing interruption_. It is **not** a permanent provider selection and **not** a portfolio-wide decision. GitHub Actions remains the intended primary CI once service is restored.
 
+> **Current status (CI-CONT-008, 2026-10-17):** the temporary CircleCI pilot is **PASSED as independent hosted verification** (CI-CONT-007L, pipeline #8, config `49c08c2…`, application `73575800…`). It is **not** a GitHub Actions result, PR #312 has no GitHub Actions run, and neither PR #307 nor #312 is merged. Earlier addenda are historical records (statements such as "not pushed" or "pilot failed" were true when written); see §C18 for closure, reconciliation and follow-ups. Chronological addenda follow below, oldest first.
+
 **Disposition: READY FOR TEMPORARY CI PILOT** (bounded, Founder-authorised pilot only — see §12 for the pilot gates and the items that are _not yet proven_).
 
 ---
@@ -1430,7 +1432,7 @@ Pushed as a fast-forward `6f3a3a8…` → `49c08c28092c404f70b565948c53c0335c076
 | `pnpm emulators:validate` | pass: 67 files, 877 passed, **3 skipped** (the three committed `it.skip("DISCLOSED FINDING…")` Firestore-emulator transaction-retry tests in `acceptBusinessTermsCommand`, `businessActivationCommand`, `businessTermsConfigRepository` — pre-existing, not introduced here) |
 | Final exact-head re-assertion | pass |
 
-Duration: 17 m 10 s (workflow 06:46:11 → 07:03:21 UTC; job ≈ 17 m 06 s). Credits: 1,131 → 1,474 of 30,000 ≈ **343 credits** (cumulative since 1,090 before this run included the prior run's rounding; this run alone ≈ 343). Retries/flaky: none anywhere. Skips: only those listed above.
+Duration: 17 m 10 s (workflow 06:46:11 → 07:03:21 UTC; job ≈ 17 m 06 s). Credits: dashboard balance 1,131 before the run → 1,474 after = **343 credits confirmed as the balance increase** (the only pipeline in that window); see §C18-3 for the estimate range and why the post-run reading may lag. Retries/flaky: none anywhere. Skips: only those listed above.
 
 ## C17-3 Findings recorded separately from the temporary CI mitigation
 **A. Permanent preview-harness defect (open, owner: PR/preview-tooling owners):** `tests/preview` pools keep-alive sockets to the Auth emulator (`Keep-Alive: timeout=5`) while `spawnSync` seeds block the Node event loop, so a stale socket can fail the first `accounts:signUp` with `UND_ERR_SOCKET` on slow or CPU-capped runners. The `Connection: close` preload and the worker-cap wrapper are CI-only mitigations in `.circleci/config.yml`; they do not repair the harness and the underlying race can also affect GitHub Actions on a slow runner.
@@ -1444,3 +1446,61 @@ Revert `49c08c2` (single-file CI config change) or delete the remote branch `doc
 
 ## C17-6 Recommendation
 Treat as sufficient temporary independent verification for Founder acceptance review while GitHub Actions is billing-locked; no further hosted attempt is needed. Re-run on GitHub Actions when available, and send findings A and B to the PR owners.
+
+---
+
+# Addendum — 11THONUS-CI-CONT-008: Pilot Acceptance, Documentation Reconciliation and Engineering Handover (2026-10-17)
+
+**Final pilot disposition — CI-CONT-007L — PASSED: Independent Temporary CircleCI Hosted Verification** (Founder-accepted). Documentation-only addendum; no hosted run, merge, configuration or account change was made.
+
+## C18-1 Accepted result, re-verified
+| Item | Value |
+|---|---|
+| Pipeline / workflow / job | #8 `a4bc1c42-74d0-4cb6-9845-7ef0f732e037` / `a0e76b85-0457-4b71-b41e-ad9d43705604` / `1f27a693-adad-439c-bc88-c3f69c0159c7`, build 6 — https://app.circleci.com/pipelines/github/Fkenogo/11THONUS/8 |
+| Configuration SHA (`config_revision`; not itself tested code) | `49c08c28092c404f70b565948c53c0335c0762f6` |
+| Tested application SHA | `73575800df6dfada8980fef5d9c83b43d2af7464` (expected = live PR #312 head = fetched = checked out) |
+| Result | workflow `success`, 13/13 OIDC/SSH/credential gates succeeded, final re-assertion `73575800…` |
+| Preview acceptance | 56 passed; 0 failed, 0 flaky, 0 skipped, 0 not run; no retries; 2 workers |
+| `pnpm emulators:validate` | 877 passed, 3 skipped (pre-existing `it.skip` disclosures) |
+| Preview tooling | 43 passed, 1 skipped (no IPv6 loopback) |
+| Unit / PostgreSQL / e2e | Functions 2034, web 1155 / 813 / 149 passed |
+| Temporary shims | Auth `Connection: close` preload and worker-cap wrapper absent before emulator validation (assertion step passed) |
+| Duration | 17 m 10 s |
+Status at 2026-10-17 re-check: PR #307 (`023bf3ef…`) and PR #312 (`73575800…`) both **OPEN, unmerged**; remote config branch head is `49c08c28…` (reconciled documentation lives on `docs/ci-cont-008-reconciliation`). **No GitHub Actions result is claimed for #312** (none exists for that head); #307 has a pre-interruption GitHub Actions success on its own head.
+
+## C18-2 Status distinctions
+| Question | Status |
+|---|---|
+| Pilot technical success (independent temporary CircleCI verification) | **Established** |
+| Permanent preview-harness correctness (Auth stale-socket race; E2E robustness) | **Not fully resolved** — mitigated in CI only; follow-ups A and B open |
+| PR #307 / #312 merge readiness | **Not yet adjudicated** |
+| GitHub Actions restoration | **Pending** a future successful GitHub Actions workflow run |
+| Temporary CI status | CircleCI configuration remains an unmerged, manual-trigger-only pilot (no automatic triggers, secrets or contexts); no further hosted attempts are authorised |
+
+## C18-3 Credit accounting (clarification; historical numbers unchanged)
+Confirmed = dashboard balance readings of the monthly credit meter (Free plan, 30,000/month). The dashboard shows a balance, not per-pipeline attribution, and it can lag.
+| Reading (UTC date) | Credits used | Note |
+|---|---|---|
+| before pipeline #7 (2026-10-16) | 692 | confirmed reading |
+| after pipeline #7 | 1,090 | confirmed reading → +398 |
+| before pipeline #8 (2026-10-17) | 1,131 | confirmed reading; **+41 with no pipeline in between** (pipeline count was 7) |
+| after pipeline #8 | 1,474 | confirmed reading → +343 |
+Interpretation: +398 and +343 are confirmed *differences between readings*. The unexplained +41 is most likely delayed posting of pipeline #7's usage (**inference**, not confirmed), which would make #7 ≈ 439 and suggests the +343 reading for #8 may also have been taken before all usage posted. Planning estimate for a hosted run of this size: ≈ 340–440 credits. Total used after the pilot's hosted runs: 1,474 of 30,000 (4.9 %) at the last confirmed reading. Earlier §C17-2 wording ("cumulative since 1,090 … included the prior run's rounding") was ambiguous and is superseded by this section.
+
+## C18-4 Corrections to earlier wording
+- Several addenda say "not pushed", "local, unpushed" or "pilot failed"; these were accurate when written and are retained as history. Current status is §C18-1/C18-2.
+- §C16-2 and the 007K/007J notes say GitHub's `ubuntu-latest` has 4 vCPUs and therefore defaults to 2 workers. That runner size was **not verified** for this repository (a 2-vCPU runner would default to 1 worker); the statement should be read as conditional. Pipeline #7 versus #8 remains the stronger evidence for the oversubscription explanation, and it too is an inference.
+- Changes-log entries 007J, 007K and 007L had been appended at the end of `docs/changes/IMPLEMENTATION_CHANGES.md`, out of position; they were moved to the top (newest-first, matching all other CI-CONT entries) with status-update notes. Their text is otherwise unchanged.
+
+## C18-5 Documentation reconciliation
+- **Divergence found:** the original local branch `docs/ci-cont-001-circleci-assessment` was 18 commits ahead and 6 behind its remote (merge base `f76e95c`). The 18 local-only commits (`a003718` … `7c509c1`, CI-CONT-004 through 007L) touch only this report and the changes log; the 6 remote-only commits (`878c3e8` … `49c08c2`) touch only `.circleci/config.yml`. File sets are disjoint, so no content merge was required. Both sides descend from the current `main` tip `b3cb64e`.
+- **Method:** a new branch `docs/ci-cont-008-reconciliation` was created from the remote head `49c08c2` and the original local tip `7c509c1` was merged with `--no-ff` (original SHAs and chronology preserved; failures and corrections retained). Verified: the resulting `docs/` tree equals the original local tip's; `.circleci/` equals the remote; no non-`docs/` file differs from the remote base. Further commits on that branch (reordering, corrections, new documents) are separate and reviewable.
+- **Not done:** the original local branch was not rewritten, rebased, reset, deleted or force-pushed; nothing was pushed to `main`; no PR was merged.
+
+## C18-6 Engineering follow-ups (two distinct issues)
+- A — [Preview harness stale HTTP connection](11THONUS-CI-CONT-008-followup-A-preview-harness-stale-http-connection-2026-10-17.md): `spawnSync` event-loop blocking × Auth emulator `Keep-Alive: timeout=5` socket reuse; compares asynchronous seeding with explicitly managed non-pooled requests; no fix selected or implemented.
+- B — [Preview/E2E robustness](11THONUS-CI-CONT-008-followup-B-preview-e2e-robustness-2026-10-17.md): worker oversubscription, nested web-server startup, serial tests, shared seeded data, timing-sensitive assertions; plus the three disclosed emulator skips as a separate acceptance observation.
+- PR handover: [#307 / #312 acceptance handover](11THONUS-CI-CONT-008-pr-307-312-acceptance-handover-2026-10-17.md).
+
+## C18-7 Rollback
+All changes here are documentation; revert the `docs/ci-cont-008-reconciliation` commits or close its PR. The CircleCI configuration and pilot state are untouched (see §C17-5 for the configuration rollback).

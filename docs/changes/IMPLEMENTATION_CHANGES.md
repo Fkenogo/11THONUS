@@ -7,6 +7,50 @@
 
 ---
 
+## 2026-10-17 — 11THONUS-CI-CONT-008 — Pilot acceptance, documentation reconciliation and engineering handover (DOCUMENTATION RECONCILED)
+
+- **Task:** documentation-only closure of the temporary CircleCI pilot after the Founder accepted CI-CONT-007L.
+- **Final pilot disposition:** **CI-CONT-007L — PASSED: Independent Temporary CircleCI Hosted Verification** — pipeline #8 `a4bc1c42-74d0-4cb6-9845-7ef0f732e037`, job `1f27a693-adad-439c-bc88-c3f69c0159c7`, config `49c08c28092c404f70b565948c53c0335c0762f6`, tested application `73575800df6dfada8980fef5d9c83b43d2af7464`; all mandatory gates passed; preview acceptance 56/56 with no flaky tests or retries; emulator validation 877 passed + 3 disclosed skips; preview tooling 43 passed + 1 skip. **Not a GitHub Actions result.** Pilot technical success established; permanent preview-harness correctness not fully resolved; PR #307/#312 merge readiness not yet adjudicated; GitHub Actions restoration pending a future successful workflow run.
+- **Reconciliation:** the 18 unpushed local documentation commits were merged (original SHAs preserved) onto the published configuration head `49c08c2` on new branch `docs/ci-cont-008-reconciliation`; docs-only diff verified; original local branch untouched. Entries 007J/007K/007L moved to the top of this log and status-annotated; credit wording clarified (confirmed balance differences vs estimates; see report §C18-3).
+- **New documents:** [follow-up A — preview-harness stale HTTP connection](../05-implementation/reports/11THONUS-CI-CONT-008-followup-A-preview-harness-stale-http-connection-2026-10-17.md); [follow-up B — preview/E2E robustness](../05-implementation/reports/11THONUS-CI-CONT-008-followup-B-preview-e2e-robustness-2026-10-17.md); [PR #307/#312 handover](../05-implementation/reports/11THONUS-CI-CONT-008-pr-307-312-acceptance-handover-2026-10-17.md); canonical report addendum §C18.
+- **Constraints honoured:** no hosted run, CircleCI setting, workflow, application code, test, dependency, billing or branch-protection change; PR #307 and #312 not merged, re-targeted or modified.
+- **Rollback:** revert the documentation commits or close the documentation PR.
+
+---
+
+## 2026-10-17 — 11THONUS-CI-CONT-007L — Final hosted verification (PILOT PASSED — FOUNDER ACCEPTANCE REVIEW REQUIRED)
+
+- **Task:** final review of config `49c08c2…` (preview worker-cap wrapper), fast-forward push from `6f3a3a8…`, one CircleCI Free hosted run for PR #312 head `73575800…` (stacked on PR #307 `023bf3ef…`).
+- **Result:** pipeline #8 / job `1f27a693-adad-439c-bc88-c3f69c0159c7` succeeded; exact-head match; unit (Functions 2034, web 1155), PostgreSQL 813, e2e 149, preview tooling 43 (1 skip), cross-project acceptance **56/56 passed on 2 workers, no retries/flaky/skips**, shim and wrapper absent before `pnpm emulators:validate`, which passed (877 passed, 3 pre-existing `it.skip`). Independent hosted verification only — not a GitHub Actions pass.
+- **Cost:** 17 m 10 s. Credits: dashboard balance 1,131 → 1,474 of 30,000 = **343 confirmed as the balance increase** while this was the only pipeline run; the post-run reading may lag, so treat ≈ 343–390 as the estimate (see report §C17-2 and §C18-3).
+- **Files changed:** this log and the CI-CONT-001 assessment report (§C17) — originally local and unpushed (reconciled and published for review by CI-CONT-008). Published config commit `49c08c28092c404f70b565948c53c0335c0762f6` (only `.circleci/config.yml`).
+- **Open follow-ups:** permanent `tests/preview` stale-socket repair and test-fragility findings (§C17-3) for PR owners; documentation commits not yet reconciled with the remote; GitHub Actions re-run when billing allows.
+- **Not done:** no merge of PR #307/#312; no change to GitHub Actions, application code, tests, billing or branch protection.
+
+---
+
+## 2026-10-16 — 11THONUS-CI-CONT-007K — Preview acceptance Playwright concurrency correction (config published and verified by 007L)
+
+- **Task:** investigate pipeline #7 cross-project failure and prepare a bounded local correction; hosted execution not authorized.
+- **Finding:** the acceptance script spawns `pnpm test:e2e:preview` without arguments; `playwright.config.ts` sets no `workers`; hosted default was 18 workers on a 4-CPU cgroup.
+- **Change:** local commit `49c08c28092c404f70b565948c53c0335c0762f6` on `ci/cont-007c-config` (parent `6f3a3a8…`, `.circleci/config.yml` only, +25/−2): step-scoped `npm_config_script_shell` wrapper appends `--workers=2` to that one command; marker check; extended cleanup/assertion. Local `cimg/node:20.19` run printed "Running 56 tests using 2 workers"; full-suite completion not achievable under amd64 emulation (stuck-loading failures, retries 0 in that run).
+- **Not done:** no push, no CircleCI run, no PR merge; no application, test, GitHub Actions, billing or branch-protection change; permanent `tests/preview` stale-connection repair remains an open follow-up.
+- **Rollback:** do not push, or revert `49c08c2`.
+- **Status update (CI-CONT-008, 2026-10-17):** the "local, unpushed" wording above is historical. Config commit `49c08c2` was published as a fast-forward in 007L and verified by hosted run #8.
+
+---
+
+## 2026-10-16 — 11THONUS-CI-CONT-007J — Hosted verification run #7 (PILOT FAILED — CORRECTION REQUIRED)
+
+- **Task:** final review of config `6f3a3a8…`, fast-forward push to `docs/ci-cont-001-circleci-assessment`, one CircleCI Free hosted run for PR #312 head `73575800…`.
+- **Result:** exact-head match, build/lint/format/typecheck, unit (1155), PostgreSQL (813), Playwright e2e (149) and preview tooling passed. The 007H Auth-socket failure is resolved (real signup and seeding succeeded). Cross-project acceptance **failed** in the preview Playwright suite (18 default workers on a 4-CPU cgroup; timeouts); `pnpm emulators:validate` and the shim-absence assertion did not run.
+- **Cost:** ≈ 398 credits (692 → 1,090 of 30,000); 18 m 12 s. Not retried.
+- **Files changed:** this log and the CI-CONT-001 assessment report (§C15). No application, test, GitHub Actions, billing or branch-protection change; PR #307/#312 not merged.
+- **Next (needs Founder approval):** cap preview-suite worker count for the CI executor, then one further run.
+- **Status update (CI-CONT-008, 2026-10-17):** superseded by 007L (run #8 passed). Credit figure is a dashboard balance difference whose post-run reading may lag; see the 007L credit note.
+
+---
+
 ## 2026-10-16 — 11THONUS-CI-CONT-007I — Shim Scope Review (HOLD; corrected commit ready)
 
 - **Status:** **HOLD — MITIGATION SCOPE NOT VERIFIED** for `9b34ce4…` (tests showed it touched all loopback ports and overwrote app-supplied `Connection` headers). Nothing pushed; no hosted run; remote still `851ae18…`.
@@ -6944,34 +6988,3 @@ READY FOR CONTROLLED DRAFTING — PR AWAITS FOUNDER REVIEW`**.
 - **Files changed:** this log entry only.
 - **Constraints honoured:** no application code, DNS, Cloudflare resource, authentication, database, or runtime change; no new Cloudflare work package opened; the implementation programme continues per its approved schedule.
 - **Rollback:** revert this closure entry (documentation only; does not alter the merged assessment).
-
----
-
-## 2026-10-16 — 11THONUS-CI-CONT-007J — Hosted verification run #7 (PILOT FAILED — CORRECTION REQUIRED)
-
-- **Task:** final review of config `6f3a3a8…`, fast-forward push to `docs/ci-cont-001-circleci-assessment`, one CircleCI Free hosted run for PR #312 head `73575800…`.
-- **Result:** exact-head match, build/lint/format/typecheck, unit (1155), PostgreSQL (813), Playwright e2e (149) and preview tooling passed. The 007H Auth-socket failure is resolved (real signup and seeding succeeded). Cross-project acceptance **failed** in the preview Playwright suite (18 default workers on a 4-CPU cgroup; timeouts); `pnpm emulators:validate` and the shim-absence assertion did not run.
-- **Cost:** ≈ 398 credits (692 → 1,090 of 30,000); 18 m 12 s. Not retried.
-- **Files changed:** this log and the CI-CONT-001 assessment report (§C15). No application, test, GitHub Actions, billing or branch-protection change; PR #307/#312 not merged.
-- **Next (needs Founder approval):** cap preview-suite worker count for the CI executor, then one further run.
-
----
-
-## 2026-10-16 — 11THONUS-CI-CONT-007K — Preview acceptance Playwright concurrency correction (local, unpushed)
-
-- **Task:** investigate pipeline #7 cross-project failure and prepare a bounded local correction; hosted execution not authorized.
-- **Finding:** the acceptance script spawns `pnpm test:e2e:preview` without arguments; `playwright.config.ts` sets no `workers`; hosted default was 18 workers on a 4-CPU cgroup.
-- **Change:** local commit `49c08c28092c404f70b565948c53c0335c0762f6` on `ci/cont-007c-config` (parent `6f3a3a8…`, `.circleci/config.yml` only, +25/−2): step-scoped `npm_config_script_shell` wrapper appends `--workers=2` to that one command; marker check; extended cleanup/assertion. Local `cimg/node:20.19` run printed "Running 56 tests using 2 workers"; full-suite completion not achievable under amd64 emulation (stuck-loading failures, retries 0 in that run).
-- **Not done:** no push, no CircleCI run, no PR merge; no application, test, GitHub Actions, billing or branch-protection change; permanent `tests/preview` stale-connection repair remains an open follow-up.
-- **Rollback:** do not push, or revert `49c08c2`.
-
----
-
-## 2026-10-17 — 11THONUS-CI-CONT-007L — Final hosted verification (PILOT PASSED — FOUNDER ACCEPTANCE REVIEW REQUIRED)
-
-- **Task:** final review of config `49c08c2…` (preview worker-cap wrapper), fast-forward push from `6f3a3a8…`, one CircleCI Free hosted run for PR #312 head `73575800…` (stacked on PR #307 `023bf3ef…`).
-- **Result:** pipeline #8 / job `1f27a693-adad-439c-bc88-c3f69c0159c7` succeeded; exact-head match; unit (Functions 2034, web 1155), PostgreSQL 813, e2e 149, preview tooling 43 (1 skip), cross-project acceptance **56/56 passed on 2 workers, no retries/flaky/skips**, shim and wrapper absent before `pnpm emulators:validate`, which passed (877 passed, 3 pre-existing `it.skip`). Independent hosted verification only — not a GitHub Actions pass.
-- **Cost:** ≈ 343 credits; 17 m 10 s.
-- **Files changed:** this log and the CI-CONT-001 assessment report (§C17) — local, unpushed. Published config commit `49c08c28092c404f70b565948c53c0335c0762f6` (only `.circleci/config.yml`).
-- **Open follow-ups:** permanent `tests/preview` stale-socket repair and test-fragility findings (§C17-3) for PR owners; documentation commits not yet reconciled with the remote; GitHub Actions re-run when billing allows.
-- **Not done:** no merge of PR #307/#312; no change to GitHub Actions, application code, tests, billing or branch protection.
