@@ -7,6 +7,246 @@
 
 ---
 
+## 2026-10-17 — 11THONUS-CI-CONT-008-CORR-001 — Resolve PR #313 review findings (documentation only)
+
+- **Task:** correct two P2 Codex review findings on PR #313 (reviewed head `7671bc35ea5ece35f4f72e07858e9df2922aa027`); merge withheld pending correction.
+- **P2-A (GitHub Actions history):** wording that said no GitHub Actions run existed for PR #312 was wrong. Runs `38527595581` and `38530159868` (`workflow_dispatch`, 2026-10-14, head `73575800…`) exist and both concluded `failure` with 0 steps ("The job was not started because your account is locked due to a billing issue"): attempted but infrastructure-blocked, **no code-verification result**. Statements corrected in the report banner, §C18-1, §C18-4 and the PR #307/#312 handover. No GitHub Actions pass is claimed; CircleCI pipeline #8 evidence unchanged.
+- **P2-B (ancestry):** verified intact. `6dbd4071…` is a `--no-ff` merge of `49c08c28…` and `7c509c11…`; all 18 original documentation commits are reachable from the PR head; the review's `fe802b0` does not exist in the repository or on GitHub. Evidence table added to report §C18-5, with the caveat that PR #313 must be merged with a merge commit to preserve it.
+- **Files changed:** the CI-CONT report, the PR #307/#312 handover and this log only. No executable configuration, CircleCI, GitHub Actions, application, billing or branch-protection change; no hosted CI triggered; PR #307/#312 not merged.
+- **Rollback:** revert the correction commit.
+
+---
+
+## 2026-10-17 — 11THONUS-CI-CONT-008 — Pilot acceptance, documentation reconciliation and engineering handover (DOCUMENTATION RECONCILED)
+
+- **Task:** documentation-only closure of the temporary CircleCI pilot after the Founder accepted CI-CONT-007L.
+- **Final pilot disposition:** **CI-CONT-007L — PASSED: Independent Temporary CircleCI Hosted Verification** — pipeline #8 `a4bc1c42-74d0-4cb6-9845-7ef0f732e037`, job `1f27a693-adad-439c-bc88-c3f69c0159c7`, config `49c08c28092c404f70b565948c53c0335c0762f6`, tested application `73575800df6dfada8980fef5d9c83b43d2af7464`; all mandatory gates passed; preview acceptance 56/56 with no flaky tests or retries; emulator validation 877 passed + 3 disclosed skips; preview tooling 43 passed + 1 skip. **Not a GitHub Actions result.** Pilot technical success established; permanent preview-harness correctness not fully resolved; PR #307/#312 merge readiness not yet adjudicated; GitHub Actions restoration pending a future successful workflow run.
+- **Reconciliation:** the 18 unpushed local documentation commits were merged (original SHAs preserved) onto the published configuration head `49c08c2` on new branch `docs/ci-cont-008-reconciliation`; docs-only diff verified; original local branch untouched. Entries 007J/007K/007L moved to the top of this log and status-annotated; credit wording clarified (confirmed balance differences vs estimates; see report §C18-3).
+- **New documents:** [follow-up A — preview-harness stale HTTP connection](../05-implementation/reports/11THONUS-CI-CONT-008-followup-A-preview-harness-stale-http-connection-2026-10-17.md); [follow-up B — preview/E2E robustness](../05-implementation/reports/11THONUS-CI-CONT-008-followup-B-preview-e2e-robustness-2026-10-17.md); [PR #307/#312 handover](../05-implementation/reports/11THONUS-CI-CONT-008-pr-307-312-acceptance-handover-2026-10-17.md); canonical report addendum §C18.
+- **Constraints honoured:** no hosted run, CircleCI setting, workflow, application code, test, dependency, billing or branch-protection change; PR #307 and #312 not merged, re-targeted or modified.
+- **Rollback:** revert the documentation commits or close the documentation PR.
+
+---
+
+## 2026-10-17 — 11THONUS-CI-CONT-007L — Final hosted verification (PILOT PASSED — FOUNDER ACCEPTANCE REVIEW REQUIRED)
+
+- **Task:** final review of config `49c08c2…` (preview worker-cap wrapper), fast-forward push from `6f3a3a8…`, one CircleCI Free hosted run for PR #312 head `73575800…` (stacked on PR #307 `023bf3ef…`).
+- **Result:** pipeline #8 / job `1f27a693-adad-439c-bc88-c3f69c0159c7` succeeded; exact-head match; unit (Functions 2034, web 1155), PostgreSQL 813, e2e 149, preview tooling 43 (1 skip), cross-project acceptance **56/56 passed on 2 workers, no retries/flaky/skips**, shim and wrapper absent before `pnpm emulators:validate`, which passed (877 passed, 3 pre-existing `it.skip`). Independent hosted verification only — not a GitHub Actions pass.
+- **Cost:** 17 m 10 s. Credits: dashboard balance 1,131 → 1,474 of 30,000 = **343 confirmed as the balance increase** while this was the only pipeline run; the post-run reading may lag, so treat ≈ 343–390 as the estimate (see report §C17-2 and §C18-3).
+- **Files changed:** this log and the CI-CONT-001 assessment report (§C17) — originally local and unpushed (reconciled and published for review by CI-CONT-008). Published config commit `49c08c28092c404f70b565948c53c0335c0762f6` (only `.circleci/config.yml`).
+- **Open follow-ups:** permanent `tests/preview` stale-socket repair and test-fragility findings (§C17-3) for PR owners; documentation commits not yet reconciled with the remote; GitHub Actions re-run when billing allows.
+- **Not done:** no merge of PR #307/#312; no change to GitHub Actions, application code, tests, billing or branch protection.
+
+---
+
+## 2026-10-16 — 11THONUS-CI-CONT-007K — Preview acceptance Playwright concurrency correction (config published and verified by 007L)
+
+- **Task:** investigate pipeline #7 cross-project failure and prepare a bounded local correction; hosted execution not authorized.
+- **Finding:** the acceptance script spawns `pnpm test:e2e:preview` without arguments; `playwright.config.ts` sets no `workers`; hosted default was 18 workers on a 4-CPU cgroup.
+- **Change:** local commit `49c08c28092c404f70b565948c53c0335c0762f6` on `ci/cont-007c-config` (parent `6f3a3a8…`, `.circleci/config.yml` only, +25/−2): step-scoped `npm_config_script_shell` wrapper appends `--workers=2` to that one command; marker check; extended cleanup/assertion. Local `cimg/node:20.19` run printed "Running 56 tests using 2 workers"; full-suite completion not achievable under amd64 emulation (stuck-loading failures, retries 0 in that run).
+- **Not done:** no push, no CircleCI run, no PR merge; no application, test, GitHub Actions, billing or branch-protection change; permanent `tests/preview` stale-connection repair remains an open follow-up.
+- **Rollback:** do not push, or revert `49c08c2`.
+- **Status update (CI-CONT-008, 2026-10-17):** the "local, unpushed" wording above is historical. Config commit `49c08c2` was published as a fast-forward in 007L and verified by hosted run #8.
+
+---
+
+## 2026-10-16 — 11THONUS-CI-CONT-007J — Hosted verification run #7 (PILOT FAILED — CORRECTION REQUIRED)
+
+- **Task:** final review of config `6f3a3a8…`, fast-forward push to `docs/ci-cont-001-circleci-assessment`, one CircleCI Free hosted run for PR #312 head `73575800…`.
+- **Result:** exact-head match, build/lint/format/typecheck, unit (1155), PostgreSQL (813), Playwright e2e (149) and preview tooling passed. The 007H Auth-socket failure is resolved (real signup and seeding succeeded). Cross-project acceptance **failed** in the preview Playwright suite (18 default workers on a 4-CPU cgroup; timeouts); `pnpm emulators:validate` and the shim-absence assertion did not run.
+- **Cost:** ≈ 398 credits (692 → 1,090 of 30,000); 18 m 12 s. Not retried.
+- **Files changed:** this log and the CI-CONT-001 assessment report (§C15). No application, test, GitHub Actions, billing or branch-protection change; PR #307/#312 not merged.
+- **Next (needs Founder approval):** cap preview-suite worker count for the CI executor, then one further run.
+- **Status update (CI-CONT-008, 2026-10-17):** superseded by 007L (run #8 passed). Credit figure is a dashboard balance difference whose post-run reading may lag; see the 007L credit note.
+
+---
+
+## 2026-10-16 — 11THONUS-CI-CONT-007I — Shim Scope Review (HOLD; corrected commit ready)
+
+- **Status:** **HOLD — MITIGATION SCOPE NOT VERIFIED** for `9b34ce4…` (tests showed it touched all loopback ports and overwrote app-supplied `Connection` headers). Nothing pushed; no hosted run; remote still `851ae18…`.
+- **Correction ready:** local `6f3a3a8c441105e69361ddcf0dd4dd22e3155075` (only `.circleci/config.yml`): Auth endpoint from `firebase.json` only, respects existing Connection header, trap-deletes the preload, asserts no shim before `pnpm emulators:validate`. Validated against the real Auth emulator in `cimg/node:20.19` (original fails 3/3, mitigated 200 at 8 s/20 s, wrong-port control fails, collateral/pass-through/log checks pass).
+- **Documentation:** local, unpushed. Permanent `tests/preview` fix still to be reported to PR owners.
+
+---
+
+## 2026-10-16 — 11THONUS-CI-CONT-007H — Auth Emulator Socket Failure: Root-Cause Investigation (CONFIRMED, correction ready)
+
+- **Task:** Local-first diagnosis of the hosted `UND_ERR_SOCKET` failure in cross-project acceptance (pipeline 6). No hosted run, no push, PR branches untouched.
+- **Status:** **ROOT CAUSE CONFIRMED — CORRECTION READY FOR REVIEW.** Proposed config commit **`9b34ce4de26f9d0d47926ffff40b8bee8b3e7ee8`** (parent `851ae18…`, only `.circleci/config.yml`, +22), local on `ci/cont-007c-config`; remote still `851ae18…`.
+- **Cause:** `tests/preview` pools HTTP keep-alive sockets to the Auth emulator (`Keep-Alive: timeout=5`; measured idle close 6.0 s) and runs its reference-data seeds with `spawnSync`, blocking the event loop. When the gap between `DELETE …/accounts` and the first `POST accounts:signUp` exceeds 5 s, the stale socket is reused and the POST fails. Evidence: same local socket port reused 6.6 s later (`bytesRead 611`); reproduced in isolation against the real emulator (blocked ≥ 6 s fails 3/3, unblocked idle succeeds); emulator healthy right after (direct probes 200); GitHub Actions' gap is ≈ 2.6 s (seeds 1.8 s). IPv6, #312-specific, crash, readiness and resource-exhaustion hypotheses refuted (resources only lengthen the window). The IPv6 suggestion in CONT-007G is withdrawn.
+- **Correction:** CI-only preload adding `Connection: close` to loopback fetches in the acceptance step (13 lines written by the step; `NODE_OPTIONS` scoped to that step). Locally the failing segment passes (start → status → verify → reset → verify); the last sub-step (`test:e2e:preview`) timed out on emulation-only Playwright web-server start. Upstream fix belongs in `tests/preview` (async seeds or non-pooled emulator calls) — report to PR owners.
+- **Cleanup:** six stopped diagnostic containers and their three anonymous volumes removed after individual identification; host probe emulator stopped; 31 other containers, images and volumes untouched.
+- **Recommendation:** one hosted run with `9b34ce4…` after approval (≈ 230–300 credits; 424 of 30,000 used).
+- **Files:** [report addendum §C13](../05-implementation/reports/11THONUS-CI-CONT-001-temporary-ci-continuity-assessment-2026-10-15.md). Documentation local, not pushed.
+- **Rollback:** discard the local commit/branch; fast-forward revert if ever pushed.
+
+---
+
+## 2026-10-16 — 11THONUS-CI-CONT-007G — Worker-Capped Configuration and Hosted Run #6 (FAILED at cross-project acceptance)
+
+- **Task:** Publish `851ae1875e1ce9fd111dc8cabe15db56d7ff8b2f` (fast-forward) and execute one hosted verification of PR #312.
+- **Status:** **PILOT FAILED — CORRECTION REQUIRED.** Pipeline `53e4d36f-fcfc-4f13-b214-b842997a271f` (number 6), job build #4, config revision `851ae18…`, 11m23s. **Not a complete pass:** the job stopped at cross-project acceptance; `pnpm emulators:validate` did not run.
+- **Verified hosted (independent of GitHub Actions):** exact-head — expected = live = fetched = checked-out = `73575800df6dfada8980fef5d9c83b43d2af7464`; credential/SSH/OIDC preflight and 13 gates; executor really exposes `nproc 36` vs `cpu.max` 4 CPUs / 8 GiB (diagnosis confirmed); install, build, lint, format, typecheck; `functions` 2034/2034 and `web` 1155/1155 (0 failed, 0 skipped; all 18 earlier failures pass); PostgreSQL integration 813/813 (22 files); **Playwright 149/149 with 2 workers, 0 flaky, 0 retried**; preview tooling 44 tests: 43 passed, 0 failed, **1 skipped** (IPv6 loopback unavailable).
+- **Failed:** cross-project port-isolation acceptance — `preview:start` fails at "registering preview identities": `fetch failed`, cause `UND_ERR_SOCKET` on the Auth emulator's first `signUp` (reproduced locally; log artifact preserved). Differential local reproduction: fails identically with IPv6 disabled **and** enabled, and on PR #307's head (green on GitHub Actions) → **not IPv6-related, not specific to #312**; mechanism unidentified; classification unresolved/environment-dependent.
+- **Credits:** 197 → 424 of 30,000 (+227 = 11.38 min × 20/min). Free plan.
+- **State:** no triggers, keys/hooks 0, 0 env vars, no contexts; PR #312 and #307 unchanged and unmerged; failure status on config commit `851ae18`.
+- **Options for Founder:** diagnose the Auth-emulator socket closure with a hosted diagnostic-only run; try the `machine` executor; use GitHub Actions as authoritative for these two gates when restored; or record the known gap.
+- **Documentation reconciliation:** local docs branch 12 ahead / 3 behind the remote config branch; rebase or merge then fast-forward when approved (report §C12-5). Stopped local containers `sim7g/pg7g/sim7h/pg7h/sim7i/pg7i` left undeleted.
+- **Files:** [report addendum §C12](../05-implementation/reports/11THONUS-CI-CONT-001-temporary-ci-continuity-assessment-2026-10-15.md). Configuration pushed (`.circleci/config.yml` only); documentation local, not pushed.
+- **Rollback:** fast-forward revert of `851ae18` if wanted (never force-push); `docker rm` the stopped containers; `docker image rm cimg/node:20.19`.
+
+---
+
+## 2026-10-16 — 11THONUS-CI-CONT-007F — Test Worker Parallelism Correction (READY FOR HOSTED RETRY, not pushed)
+
+- **Task:** Analyse hosted failures (pipeline 5, 18 web tests) and prepare a CircleCI-only concurrency correction. No push, no hosted run.
+- **Status:** **READY FOR HOSTED RETRY.** Proposed config SHA **`851ae1875e1ce9fd111dc8cabe15db56d7ff8b2f`** (parent `cf66dc0…`, only `.circleci/config.yml`, +17/−2), committed locally on `ci/cont-007c-config`. Remote branch still `cf66dc0…`.
+- **Analysis:** 15 of 18 failures were 5000 ms timeouts; 3 were assertions, one of them (`PhoneAuthHarnessPage`, "expected 197 to be less than 80") is an inherently timing-sensitive application test (real-time latency < 80 ms) — recorded for the test owners, not changed. Cause of the rest: `pnpm -r` runs both Vitest suites concurrently, each defaulting to visible-cores−1 workers while the executor's quota is 4 vCPU (in the real image under `--cpus=4`: `nproc 8`, `cpu.max` 4 CPUs).
+- **Fix:** `pnpm test -- --maxWorkers=2` (plain `pnpm test --maxWorkers=2` is rejected by pnpm; `--` forwards it to both packages) and `pnpm test:e2e --workers=2` (no `--`: after `--` Playwright treats the flag as a test filter); plus an informational never-fatal diagnostics step (nproc, availableParallelism, cgroup CPU/memory). No test, timeout, assertion, fixture, script or application file changed.
+- **Validated in `cimg/node:20.19` (amd64, `--cpus=4 --memory=8g`):** uncapped baseline web suite 50 failed (45 timeouts); capped `pnpm test` twice: functions 2034/2034 and web 1155/1155 (all 18 previously failing pass); e2e `--workers=2`: 147 passed + 2 flaky mobile-layout tests (passed on retry), "using 2 workers" vs 4 default; full compile OK; security/OIDC/exact-head suites unchanged and passing.
+- **Open:** Postgres integration, preview tooling, cross-project acceptance and emulator validation still unexercised hosted; two layout-flaky Playwright tests and the 80 ms timing test may flake; credits ≈ 240–400 for a full run (126 of 30,000 used, 20/min confirmed).
+- **State:** PR #312 `73575800…` and #307 `023bf3e…` unchanged and unmerged; triggers none; keys/hooks 0; 0 env vars; no contexts.
+- **Files:** [report addendum §C11](../05-implementation/reports/11THONUS-CI-CONT-001-temporary-ci-continuity-assessment-2026-10-15.md). Documentation committed locally, append-only, not pushed.
+- **Rollback:** delete the isolated branch/worktree; `docker image rm cimg/node:20.19`; fast-forward revert if ever pushed.
+
+---
+
+## 2026-10-16 — 11THONUS-CI-CONT-007E — Published Configuration and Hosted Run #5 (FAILED: web unit tests, resource)
+
+- **Task:** Publish the validated config (fast-forward, `cf66dc0b437b9db48f4acb54cf730fb9235e817d`) and execute one typed-JSON hosted run for PR #312.
+- **Status:** **PILOT FAILED — CORRECTION REQUIRED.** Pipeline `28fe5547-b8fa-436b-b49b-dde73bd91486` (number 5), job build #3, config revision `cf66dc0…`, 3m36s.
+- **Proven hosted:** credential/SSH/OIDC preflight and 13 isolation gates; **exact-head verification: expected = live = fetched = checked-out = `73575800df6dfada8980fef5d9c83b43d2af7464`** (CircleCI independently verified the exact PR #312 tree); pnpm 9.15.9, JDK 21, install, PostgreSQL sidecar reachable on 28110, build, lint, format, typecheck; `functions` unit tests 2034/2034.
+- **Failed:** `apps/web` unit tests — 18 of 1155 failed (15× 5000 ms timeouts + 3 timing-dependent assertions). Classified as resource exhaustion (vitest default workers derive from visible CPUs; ~11–15 concurrent workers on 4 vCPU); the same tests pass locally when not starved and five of them failed locally only under heavy load. No test, assertion or timeout was changed. **Not run:** PostgreSQL integration, Playwright (149), preview tooling, cross-project acceptance, emulator validation.
+- **Proposed (not implemented):** cap workers (`VITEST_MAX_WORKERS=2`, Playwright `--workers=2`), log `nproc`/cgroup limits to confirm, revalidate locally, fast-forward push, one more attempt.
+- **Credits:** 54 → 126 of 30,000 (+72 = 3.6 min × 20/min, Gen1 large rate confirmed). Free plan.
+- **State:** no triggers, keys/hooks 0, 0 env vars, no contexts; PR #312 and #307 unchanged and unmerged; failure status on config commit `cf66dc0`.
+- **Documentation reconciliation:** local docs commits unpushed; remote config branch is two config commits ahead; rebase/merge then fast-forward when approved (report §C10-6).
+- **Files:** [report addendum §C10](../05-implementation/reports/11THONUS-CI-CONT-001-temporary-ci-continuity-assessment-2026-10-15.md); configuration pushed to the remote branch (`.circleci/config.yml` only).
+- **Rollback:** fast-forward revert of `cf66dc0` if wanted (never force-push); `docker image rm cimg/node:20.19`.
+
+---
+
+## 2026-10-16 — 11THONUS-CI-CONT-007D — BASH_ENV Correction and Real-Image Validation (READY, not pushed)
+
+- **Task:** Correct `BASH_ENV` initialisation and validate in the real `cimg/node:20.19` image before another hosted attempt. No hosted run; nothing pushed.
+- **Status:** **READY FOR HOSTED PILOT.** Proposed config SHA **`cf66dc0b437b9db48f4acb54cf730fb9235e817d`** (parent `878c3e8…`, only `.circleci/config.yml`, +39/−5), committed locally on the isolated branch `ci/cont-007c-config`. Remote branch still `878c3e8…`.
+- **Fixes:** safe create-or-append of `BASH_ENV` with path validation (no symlink/credential location); `PILOT_ISOLATION_ACTIVE` marker so gates/cleanup prove the file was sourced; pnpm 9.15.9 installed under `~/.local` (the image's prefix is unwritable and ships pnpm 10 — the old step would have failed hosted); informational `/proc` scan made non-fatal under `pipefail` (killed the step in the image; unreachable on macOS).
+- **Validation:** pulled `cimg/node:20.19` amd64 (`sha256:35e64883…`, ~2 GB); 15-step consecutive simulation passed (assert, exact-head vs GitHub, pnpm, JDK 21, gates, install, build, lint, format, typecheck), plus Playwright `--with-deps`, Firestore emulator start and targeted vitest runs — all rc 0. Local suites: 20/20, 13/13, 11/11 negatives fail closed; full parameterised compile OK; formatting/whitespace clean; no secrets or dummy values in output.
+- **Hosted-only still unproven:** PostgreSQL sidecar connection on 28110, whole-suite memory on 4 vCPU/8 GB, full test/e2e/emulator/cross-project-acceptance executions, credit rate.
+- **State:** PR #312 `73575800…` and #307 `023bf3e…` unchanged and unmerged; triggers none; keys/hooks 0; 0 env vars; no contexts.
+- **Files:** [report addendum §C9](../05-implementation/reports/11THONUS-CI-CONT-001-temporary-ci-continuity-assessment-2026-10-15.md). Documentation committed locally (append-only), not pushed.
+- **Rollback:** delete the isolated branch/worktree; `docker image rm cimg/node:20.19`; if later pushed, fast-forward revert, never force-push.
+
+---
+
+## 2026-10-16 — 11THONUS-CI-CONT-007C — Credential Preflight Correction and Hosted Attempt (FAILED: BASH_ENV assumption)
+
+- **Task:** Correct the `SSH_AUTH_SOCK` false positive, validate locally, push as a fast-forward, make one typed-JSON hosted attempt.
+- **Status:** **PILOT FAILED — CORRECTION REQUIRED.** New config commit **`878c3e8c6503ab8372cefd81cbf975d8d840d9d3`** (only `.circleci/config.yml`; fast-forward from `f76e95c`; remote head verified). Pipeline `d8a3dc12-9584-4591-9cc2-98e978f90bc7` (number 4), job ≈7 s: the `SSH_AUTH_SOCK` fix and the 45-name audit **passed hosted**; the same step then failed because `$BASH_ENV` does not exist as a writable file before first append (my `-w` test). No application code ran.
+- **Beyond the report:** inspection found the old SSH check was vacuous (`ssh-add -D` before `ssh-add -l`), key files were deleted unchecked, and later steps inherited the agent socket. Fixed: direct agent-protocol check before any deletion, key-file and `GIT_SSH*` checks, `BASH_ENV` unsets/self-verifies SSH vars, gates and cleanup refuse an exposed agent. 40+ local tests passed (45 hosted names, negatives, real ssh-agent with/without identity, OIDC/BASH_ENV survival, exact-head matrix).
+- **Proposed (not implemented):** create-then-append instead of `-w` for `BASH_ENV`; review remaining steps for hosted-only assumptions; optionally validate in the real `cimg/node:20.19` image locally (needs approval for a ~1 GB download); new config commit + one more hosted attempt.
+- **Credits:** org total 28 → 54 of 30,000 (job ≈3 credits; rest attributed to other projects, unconfirmed). Free plan.
+- **State:** triggers none, keys/hooks 0, 0 env vars, no contexts; #312 `73575800…`, #307 `023bf3e…` unchanged and unmerged. Statuses (`failure`) on config commit `878c3e8`.
+- **Documentation reconciliation:** local docs branch is ahead 8/behind 1 vs the remote config head; rebase onto (or merge) `origin/docs/ci-cont-001-circleci-assessment` then fast-forward push when approved; details in report §C8-8. Documentation not pushed.
+- **Files:** [report addendum §C8](../05-implementation/reports/11THONUS-CI-CONT-001-temporary-ci-continuity-assessment-2026-10-15.md); configuration pushed to the remote branch.
+- **Rollback:** fast-forward revert of `878c3e8` (never force-push); Unfollow Project / `circleci auth logout` when retired.
+
+---
+
+## 2026-10-16 — 11THONUS-CI-CONT-007B — Typed JSON API Trigger (BLOCKED: audit false positive)
+
+- **Task:** One approved typed-JSON trigger via `circleci api` (source-verified: raw body, no coercion, stored token). Preflight all passed.
+- **Status:** **PILOT BLOCKED — API OR CONFIGURATION.** Pipeline `a50df718-24ee-40ab-bc31-b11ff0b3d9cc` (number 3) was accepted, config fetched from `f76e95c`, job `circleci-continuity-verify` ran 22 s and **failed in its first step**; no fetched code ran, no application results.
+- **Cause:** my credential-name audit rejected CircleCI's built-in `SSH_AUTH_SOCK` (matches `AUTH`). The identity assertion (`ssh-add -l`) passed; no key loaded. The job environment (45 names) showed no project/context variables. Classified as configuration (false positive), not security or application. The cleanup step's OIDC gate also failed closed as designed.
+- **Cost:** 21 → 28 of 30,000 credits (~7); Free plan.
+- **Proposed (not implemented):** exempt exact `SSH_AUTH_SOCK`, keep the empty-agent check, unset it in `BASH_ENV`; revalidate locally; new config commit moves the pin (Founder to approve push/pin strategy); then one further attempt with the same typed request. Offline check on the real 45 names: proposed rule flags none; negative controls still flag.
+- **State:** triggers none, keys 0, hooks 0; config branch `f76e95c…`; #312 `73575800…` and #307 `023bf3e…` unchanged and unmerged; CircleCI statuses (`failure`/`error`) sit on config commit `f76e95c`.
+- **Files:** [report addendum §C7B](../05-implementation/reports/11THONUS-CI-CONT-001-temporary-ci-continuity-assessment-2026-10-15.md). Local commit only; no configuration, application, `ci.yml` or branch-protection change.
+- **Rollback:** none required.
+
+---
+
+## 2026-10-16 — 11THONUS-CI-CONT-007A — Parameter Serialization Check (BLOCKED: approved syntax refuted)
+
+- **Task:** One corrected manual trigger using `--param 'pr_number="312"'` (Founder Option A). Preflight passed; verification of the syntax failed, so **nothing was triggered** (no pipeline, no job, 0 credits).
+- **Status:** **PILOT BLOCKED — TRIGGER OR CONFIGURATION.**
+- **Finding:** CLI v1.5.0 source (`internal/cmdutil/params.go`): values parsing as integers become int64, `true`/`false` booleans, everything else a verbatim string with no unquoting. `pr_number="312"` would therefore send the literal five-character string with quotes, which the pilot's `^[1-9][0-9]{0,6}$` check rejects (job fails closed in the exact-head step, wasting credits). A purely numeric value cannot be sent as a string through `--param`.
+- **Options (approval needed):** C′ — `circleci api api/v2/project/gh/Fkenogo/11THONUS/pipeline/run -X POST -d '{…"pr_number":"312"…}'` using the same authenticated CLI session (raw JSON body; no config change, pin `f76e95c` preserved, no new token); B — change `pr_number` to `integer` (new config commit, moves the pin, full revalidation).
+- **State:** followed project, definition `3302b753-…` unchanged, no triggers/keys/hooks/env vars/contexts; #312 `73575800…`, #307 `023bf3e…` unchanged and unmerged; remote config branch `f76e95c…`.
+- **Files:** [report addendum §C7A](../05-implementation/reports/11THONUS-CI-CONT-001-temporary-ci-continuity-assessment-2026-10-15.md). Local commit only; no configuration, application, `ci.yml` or branch-protection change.
+- **Rollback:** none required.
+
+---
+
+## 2026-10-16 — 11THONUS-CI-CONT-007 — Controlled Hosted Pilot Attempt (BLOCKED: parameter type)
+
+- **Task:** One authorised manual CircleCI pipeline for PR #312 (`73575800…`) after activation and trigger isolation. All 15 preflight conditions passed.
+- **Status:** **PILOT BLOCKED — AUTHORIZATION OR CONFIGURATION.** CircleCI **accepted** the request (pipeline `aa547115-3a54-42d6-8cc5-252779d1182b`, number 2; config fetched from the pinned branch at revision `f76e95c` — the earlier 403 is resolved) but ended it `not_run`: `Type error for argument pr_number: expected type: string, actual value: "312" (type integer)`. **No job ran; no application code was fetched; 0 credits.** No retry.
+- **Cause:** the CLI's `--param pr_number=312` is sent as an integer; the config declares `string`. Classified as configuration/contract, not application or environment.
+- **Proposed (not implemented):** A — re-run once with `--param 'pr_number="312"'` (no repo change, pin preserved, free if it fails again); B — change the parameter type to `integer` (new config commit, moves the pin, full revalidation); C — API with a JSON string.
+- **State:** followed; definition unchanged; no triggers/keys/hooks/env vars/contexts; GitHub status `CircleCI Pipeline = error` on config commit `f76e95c` (cosmetic); #312 `73575800…`/#307 `023bf3e…` unchanged; nothing merged.
+- **Files:** [report addendum §C7](../05-implementation/reports/11THONUS-CI-CONT-001-temporary-ci-continuity-assessment-2026-10-15.md). Local commit only; remote config branch still `f76e95c…`.
+- **Rollback:** none required; Unfollow Project / `circleci auth logout` when retired.
+
+---
+
+## 2026-10-16 — 11THONUS-CI-CONT-006A — Trigger Isolation Verification (HOLD)
+
+- **Task:** Read-only verification after the Founder removed the all-pushes trigger. Nothing triggered, pushed or changed.
+- **Status:** **HOLD** — one unexpected change. Verified: project followed (default branch `main`), definition `3302b753-…` unchanged, **no triggers**, config branch `f76e95c…`, #312 `73575800…` / #307 `023bf3e…` unchanged, Free plan (21/30,000 used, none by 11THONUS), 0 env vars/contexts, no new hosted job, CLI invocation valid.
+- **Deviation:** the read-only deploy key (166647185) and webhook (699006072) created at activation are **gone** (GitHub 404; CircleCI "No checkout key is currently configured"). Cause unknown. The project is back to the no-key state in which the 403 occurred, now followed.
+- **Options:** (A) one free probe as-is (403 costs nothing); (B) add a deploy key via CircleCI Project Settings → SSH Keys → Add Deploy Key. Founder to state whether removal was deliberate and choose.
+- **Files:** [report addendum §C6A](../05-implementation/reports/11THONUS-CI-CONT-001-temporary-ci-continuity-assessment-2026-10-15.md). Local commit only; remote config branch still `f76e95c…`. No configuration, application, `ci.yml` or branch-protection change.
+- **Rollback:** none needed (read-only); local docs commits can be dropped with `git reset --hard 86b0f45` if requested.
+
+---
+
+## 2026-10-16 — 11THONUS-CI-CONT-006 — Activate Existing CircleCI OAuth Project (AWAITING TRIGGER ISOLATION)
+
+- **Task:** Follow the existing CircleCI project `gh/Fkenogo/11THONUS` (Founder-authorised; only `circleci project follow` executed). No hosted job; hosted CI not triggered.
+- **Status:** **ACTIVATED — AWAITING TRIGGER ISOLATION.** Project followed; CircleCI default-branch record corrected `master`→`main`; OAuth definition `3302b753-…` unchanged.
+- **Created by activation:** GitHub read-only repo-scoped deploy key "CircleCI" (id 166647185, verified); active webhook to circleci.com (id 699006072; fork/public/pull_request/push/repository); an initial pipeline `ff7d5802-…` that ended `not_run` (no config on `main`, 0 workflows) and a cosmetic GitHub status `CircleCI Pipeline = error` on `main`'s head. No write access, no org-wide change; env vars/contexts still 0; Free plan; **11THONUS used no credits** (org usage 21/30,000 belongs to klockit/MCE).
+- **STOP condition:** the implicit **all-pushes trigger remains enabled**. Founder UI steps: Project Settings → Project Setup → Pipeline "11THONUS" → trigger "All pushes on 11THONUS" → Delete trigger. Agent made no trigger change.
+- **Files:** [report addendum §C6](../05-implementation/reports/11THONUS-CI-CONT-001-temporary-ci-continuity-assessment-2026-10-15.md). Committed locally after `1638050`; **not pushed**. Remote config branch still `f76e95c…`. No configuration, application, `ci.yml`, dependency or branch-protection change; PR #312/#307 unchanged and unmerged.
+- **Rollback:** Unfollow Project; delete the deploy key and webhook in GitHub; `circleci auth logout`.
+
+---
+
+## 2026-10-16 — 11THONUS-CI-CONT-005 — CircleCI OAuth Project Activation and HTTP 403 Assessment
+
+- **Task:** Read-only diagnosis (MILEDGE-CI-AUTH-001; handover MILEDGE-CI-INFRA-006). Nothing followed, activated, triggered, pushed or spent; hosted CI stays on HOLD.
+- **Status:** **CONDITIONAL GO** — a supported minimal activation exists (`circleci project follow --project gh/Fkenogo/11THONUS`, Founder approval required); side effects must be verified afterwards.
+- **Finding:** the CLI identity, token and command are identical to Creative Engine's successful run, so the 403 is project-specific: 11THONUS is **not followed**, has **no CircleCI deploy key**, has stale **`master`** default-branch metadata (repo default is `main`) and an implicit enabled **all-pushes** OAuth trigger (MCE: followed, read-only "CircleCI" deploy key, `main`, no triggers). Most consistent cause: project record discoverable but not activated. Inferred, not proven. Empty branch selector: not explained by config absence on `main`; the wizard is not required (`pipeline run --branch` sets config + checkout).
+- **Reconciliation:** the handover's concerns about GitHub-App `pipeline.event.*` values and `checkout`+scrub refer to `0bf306c` and are already superseded by `f76e95c`.
+- **Procedure for approval:** follow the project → verify key/hook/default branch → delete the all-pushes trigger in the UI → re-read heads → one run with the prepared command. No manual or user-level key.
+- **Files:** [report addendum §C5](../05-implementation/reports/11THONUS-CI-CONT-001-temporary-ci-continuity-assessment-2026-10-15.md). Committed locally on top of `a003718`/`f3f9bdb`; **not pushed**. No configuration, application, `ci.yml`, dependency or branch-protection change.
+- **Rollback:** unfollow, delete any "CircleCI" deploy key/hook, `circleci auth logout`; drop the local commit with `git reset --hard f3f9bdb` only if the Founder asks.
+
+---
+
+## 2026-10-16 — 11THONUS-CI-CONT-004 (resume) — MILEDGE-CI-SEC-001 and Trigger Attempt (PILOT BLOCKED)
+
+- **Task:** Resume the authorised single hosted CircleCI run after the Founder accepted **MILEDGE-CI-SEC-001** (no AWS account exists across Miledge; AWS OIDC concern provisionally resolved).
+- **Status:** **PILOT BLOCKED — SECURITY OR INFRASTRUCTURE.** One trigger attempt returned **HTTP 403 "Permission denied"**; no pipeline created, no job ran, 0 credits.
+- **Preflight (all passed):** config branch `f76e95c…` (pinned); documentation commit `a003718` preserved; PR #312 `73575800…` and #307 `023bf3e…` unchanged; **CircleCI plan: Free** (30,000 credits; 7 used); 0 env vars/contexts; single OAuth definition `3302b753-…`.
+- **Diagnosis:** CircleCI authorisation boundary for pipeline triggering by the CLI session (personal token, repo-owner identity; read calls succeed, trigger write denied). Plausibly shared with Creative Engine's earlier 403 and the empty branch picker — hypothesis only. No specific correction identified, so no retry.
+- **Needed from Founder:** trigger via the CircleCI web UI (branch + `expected_sha`/`pr_number` parameters) or a web-UI-created personal token / re-authenticated CLI; report which mechanism worked for Creative Engine build #2.
+- **Files:** [report addendum §C4R](../05-implementation/reports/11THONUS-CI-CONT-001-temporary-ci-continuity-assessment-2026-10-15.md). Documentation committed locally, not pushed (remote stays `f76e95c…`). No configuration, application, `ci.yml`, dependency or branch-protection change.
+- **Rollback:** `git reset --hard f76e95c` in the worktree; pilot removal unchanged.
+
+---
+
+## 2026-10-16 — 11THONUS-CI-CONT-004 — Hosted Run Pre-Execution Checks (PILOT BLOCKED)
+
+- **Task:** Execute one authorised CircleCI hosted verification of PR #312. Pre-execution security/configuration checks were run first.
+- **Status:** **PILOT BLOCKED — SECURITY OR INFRASTRUCTURE.** The pipeline was **not triggered**; 0 credits; no run exists.
+- **Confirmed:** config branch `f76e95c…`; PR #312 `73575800…` (open, clean); PR #307 `023bf3e…` stacked base; 0 project env vars, 0 contexts; single OAuth definition `3302b753-…`; job covers every mandatory step incl. cross-project acceptance; **Google Cloud** (`eleventh-on-us-dev/-staging/eleventh-on-us`): no workload identity pools (incl. deleted), no federated/public IAM principals, no folder/org inheritance.
+- **Blockers (cannot be confirmed with authoritative access):** (1) AWS-side OIDC trust — no AWS credentials on this host, absence not verifiable; (2) CircleCI Free plan — not exposed by the CLI. Founder actions listed in the report (§C4-3).
+- **Files:** [report addendum §C4](../05-implementation/reports/11THONUS-CI-CONT-001-temporary-ci-continuity-assessment-2026-10-15.md). Documentation committed **locally, not pushed**, so the remote config branch stays at `f76e95c…`. No configuration, application, `ci.yml`, dependency or branch-protection change.
+- **Rollback:** `git reset --hard f76e95c` in the worktree; pilot removal unchanged.
+
+---
+
 ## 2026-10-16 — 11THONUS-CI-CONT-003B — OIDC Isolation Correction and Final Pilot Release
 
 - **Task:** Correct the CircleCI pilot so `CIRCLE_OIDC_TOKEN`/`CIRCLE_OIDC_TOKEN_V2` are removed before any fetched PR script runs, with fail-closed checks. Configuration/documentation only; nothing executed on CircleCI, no credits spent; CI-CONT remains on HOLD until Founder authorisation.
