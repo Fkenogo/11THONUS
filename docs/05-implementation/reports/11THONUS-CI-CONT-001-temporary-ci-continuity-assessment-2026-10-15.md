@@ -3,7 +3,7 @@
 **Date:** 2026-10-15 · **Type:** assessment + proposed configuration (documentation/configuration only) · **Authority:** Founder-authorised assessment.
 **Scope statement:** this is a _temporary CI continuity assessment during a GitHub Actions billing interruption_. It is **not** a permanent provider selection and **not** a portfolio-wide decision. GitHub Actions remains the intended primary CI once service is restored.
 
-> **Current status (CI-CONT-008, 2026-10-17):** the temporary CircleCI pilot is **PASSED as independent hosted verification** (CI-CONT-007L, pipeline #8, config `49c08c2…`, application `73575800…`). It is **not** a GitHub Actions result, PR #312 has no GitHub Actions run, and neither PR #307 nor #312 is merged. Earlier addenda are historical records (statements such as "not pushed" or "pilot failed" were true when written); see §C18 for closure, reconciliation and follow-ups. Chronological addenda follow below, oldest first.
+> **Current status (CI-CONT-008, 2026-10-17):** the temporary CircleCI pilot is **PASSED as independent hosted verification** (CI-CONT-007L, pipeline #8, config `49c08c2…`, application `73575800…`). It is **not** a GitHub Actions result: PR #312 has no *successfully executed* GitHub Actions job (two dispatch attempts, runs `38527595581` and `38530159868`, were blocked before any step by the account billing lock), and neither PR #307 nor #312 is merged. Earlier addenda are historical records (statements such as "not pushed" or "pilot failed" were true when written); see §C18 for closure, reconciliation and follow-ups. Chronological addenda follow below, oldest first.
 
 **Disposition: READY FOR TEMPORARY CI PILOT** (bounded, Founder-authorised pilot only — see §12 for the pilot gates and the items that are _not yet proven_).
 
@@ -1466,7 +1466,7 @@ Treat as sufficient temporary independent verification for Founder acceptance re
 | Unit / PostgreSQL / e2e | Functions 2034, web 1155 / 813 / 149 passed |
 | Temporary shims | Auth `Connection: close` preload and worker-cap wrapper absent before emulator validation (assertion step passed) |
 | Duration | 17 m 10 s |
-Status at 2026-10-17 re-check: PR #307 (`023bf3ef…`) and PR #312 (`73575800…`) both **OPEN, unmerged**; remote config branch head is `49c08c28…` (reconciled documentation lives on `docs/ci-cont-008-reconciliation`). **No GitHub Actions result is claimed for #312** (none exists for that head); #307 has a pre-interruption GitHub Actions success on its own head.
+Status at 2026-10-17 re-check: PR #307 (`023bf3ef…`) and PR #312 (`73575800…`) both **OPEN, unmerged**; remote config branch head is `49c08c28…` (reconciled documentation lives on `docs/ci-cont-008-reconciliation`). **No GitHub Actions pass is claimed for #312**: its only GitHub Actions runs are the two billing-blocked `workflow_dispatch` attempts (`38527595581`, `38530159868`; failure, 0 steps, no job started), which give no verification result; #307 has a pre-interruption GitHub Actions success on its own head.
 
 ## C18-2 Status distinctions
 | Question | Status |
@@ -1490,11 +1490,23 @@ Interpretation: +398 and +343 are confirmed *differences between readings*. The 
 ## C18-4 Corrections to earlier wording
 - Several addenda say "not pushed", "local, unpushed" or "pilot failed"; these were accurate when written and are retained as history. Current status is §C18-1/C18-2.
 - §C16-2 and the 007K/007J notes say GitHub's `ubuntu-latest` has 4 vCPUs and therefore defaults to 2 workers. That runner size was **not verified** for this repository (a 2-vCPU runner would default to 1 worker); the statement should be read as conditional. Pipeline #7 versus #8 remains the stronger evidence for the oversubscription explanation, and it too is an inference.
+- §C18-1 (and the PR #307/#312 handover) first stated that no GitHub Actions run existed for PR #312. That was wrong: two billing-blocked `workflow_dispatch` runs (`38527595581`, `38530159868`) exist (see the GitHub Actions history in §C18-1 and the 007K-era state note in this report). Corrected in CI-CONT-008-CORR-001; accepted CircleCI pipeline #8 evidence is unchanged.
 - Changes-log entries 007J, 007K and 007L had been appended at the end of `docs/changes/IMPLEMENTATION_CHANGES.md`, out of position; they were moved to the top (newest-first, matching all other CI-CONT entries) with status-update notes. Their text is otherwise unchanged.
 
 ## C18-5 Documentation reconciliation
 - **Divergence found:** the original local branch `docs/ci-cont-001-circleci-assessment` was 18 commits ahead and 6 behind its remote (merge base `f76e95c`). The 18 local-only commits (`a003718` … `7c509c1`, CI-CONT-004 through 007L) touch only this report and the changes log; the 6 remote-only commits (`878c3e8` … `49c08c2`) touch only `.circleci/config.yml`. File sets are disjoint, so no content merge was required. Both sides descend from the current `main` tip `b3cb64e`.
 - **Method:** a new branch `docs/ci-cont-008-reconciliation` was created from the remote head `49c08c2` and the original local tip `7c509c1` was merged with `--no-ff` (original SHAs and chronology preserved; failures and corrections retained). Verified: the resulting `docs/` tree equals the original local tip's; `.circleci/` equals the remote; no non-`docs/` file differs from the remote base. Further commits on that branch (reordering, corrections, new documents) are separate and reviewable.
+- **Ancestry evidence (verified with `git rev-list --parents` / `git merge-base --is-ancestor` on the PR branch):**
+
+  | Commit | Parents | Role |
+  |---|---|---|
+  | `49c08c28092c404f70b565948c53c0335c0762f6` | `6f3a3a8c441105e69361ddcf0dd4dd22e3155075` | published configuration head (PR base) |
+  | `7c509c11c3ec410385ecafcb2150c256e9dd820d` | `5166c2eb3e14dc5ff34730fdc57fdf2d1db95820` | original local documentation tip (CI-CONT-007L), unchanged |
+  | `6dbd407144603029810c0c2d70b24e7bb1ef3d6f` | `49c08c28…` (first), `7c509c11…` (second) | the `--no-ff` merge commit |
+  | `7671bc35ea5ece35f4f72e07858e9df2922aa027` | `6dbd4071…` | reviewed PR head |
+
+  The 18 original documentation commits (`a003718` … `7c509c1`) and the merge commit are all reachable from the reviewed PR head; `git rev-list 49c08c2..7671bc3` lists 20 commits, matching the PR's commit list (18 originals + merge + correction). Original SHAs are preserved. The Codex review referenced a commit `fe802b0` with the single parent `49c08c2`: that object does **not** exist in this repository or on GitHub (`git cat-file` and the commits API both fail), so it is not part of this PR's history; it appears to be a synthetic single-parent snapshot in the review environment (inference, not provable from here). The statement above therefore stands for the real branch history.
+  **Merge-method caveat:** the preserved ancestry reaches the base branch only if PR #313 is merged with a **merge commit**; a squash or rebase merge would discard the original SHAs and the merge parentage. Recommend a merge commit.
 - **Not done:** the original local branch was not rewritten, rebased, reset, deleted or force-pushed; nothing was pushed to `main`; no PR was merged.
 
 ## C18-6 Engineering follow-ups (two distinct issues)

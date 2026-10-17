@@ -7,6 +7,16 @@
 
 ---
 
+## 2026-10-17 — 11THONUS-CI-CONT-008-CORR-001 — Resolve PR #313 review findings (documentation only)
+
+- **Task:** correct two P2 Codex review findings on PR #313 (reviewed head `7671bc35ea5ece35f4f72e07858e9df2922aa027`); merge withheld pending correction.
+- **P2-A (GitHub Actions history):** wording that said no GitHub Actions run existed for PR #312 was wrong. Runs `38527595581` and `38530159868` (`workflow_dispatch`, 2026-10-14, head `73575800…`) exist and both concluded `failure` with 0 steps ("The job was not started because your account is locked due to a billing issue"): attempted but infrastructure-blocked, **no code-verification result**. Statements corrected in the report banner, §C18-1, §C18-4 and the PR #307/#312 handover. No GitHub Actions pass is claimed; CircleCI pipeline #8 evidence unchanged.
+- **P2-B (ancestry):** verified intact. `6dbd4071…` is a `--no-ff` merge of `49c08c28…` and `7c509c11…`; all 18 original documentation commits are reachable from the PR head; the review's `fe802b0` does not exist in the repository or on GitHub. Evidence table added to report §C18-5, with the caveat that PR #313 must be merged with a merge commit to preserve it.
+- **Files changed:** the CI-CONT report, the PR #307/#312 handover and this log only. No executable configuration, CircleCI, GitHub Actions, application, billing or branch-protection change; no hosted CI triggered; PR #307/#312 not merged.
+- **Rollback:** revert the correction commit.
+
+---
+
 ## 2026-10-17 — 11THONUS-CI-CONT-008 — Pilot acceptance, documentation reconciliation and engineering handover (DOCUMENTATION RECONCILED)
 
 - **Task:** documentation-only closure of the temporary CircleCI pilot after the Founder accepted CI-CONT-007L.
