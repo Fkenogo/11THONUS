@@ -6964,3 +6964,14 @@ READY FOR CONTROLLED DRAFTING — PR AWAITS FOUNDER REVIEW`**.
 - **Change:** local commit `49c08c28092c404f70b565948c53c0335c0762f6` on `ci/cont-007c-config` (parent `6f3a3a8…`, `.circleci/config.yml` only, +25/−2): step-scoped `npm_config_script_shell` wrapper appends `--workers=2` to that one command; marker check; extended cleanup/assertion. Local `cimg/node:20.19` run printed "Running 56 tests using 2 workers"; full-suite completion not achievable under amd64 emulation (stuck-loading failures, retries 0 in that run).
 - **Not done:** no push, no CircleCI run, no PR merge; no application, test, GitHub Actions, billing or branch-protection change; permanent `tests/preview` stale-connection repair remains an open follow-up.
 - **Rollback:** do not push, or revert `49c08c2`.
+
+---
+
+## 2026-10-17 — 11THONUS-CI-CONT-007L — Final hosted verification (PILOT PASSED — FOUNDER ACCEPTANCE REVIEW REQUIRED)
+
+- **Task:** final review of config `49c08c2…` (preview worker-cap wrapper), fast-forward push from `6f3a3a8…`, one CircleCI Free hosted run for PR #312 head `73575800…` (stacked on PR #307 `023bf3ef…`).
+- **Result:** pipeline #8 / job `1f27a693-adad-439c-bc88-c3f69c0159c7` succeeded; exact-head match; unit (Functions 2034, web 1155), PostgreSQL 813, e2e 149, preview tooling 43 (1 skip), cross-project acceptance **56/56 passed on 2 workers, no retries/flaky/skips**, shim and wrapper absent before `pnpm emulators:validate`, which passed (877 passed, 3 pre-existing `it.skip`). Independent hosted verification only — not a GitHub Actions pass.
+- **Cost:** ≈ 343 credits; 17 m 10 s.
+- **Files changed:** this log and the CI-CONT-001 assessment report (§C17) — local, unpushed. Published config commit `49c08c28092c404f70b565948c53c0335c0762f6` (only `.circleci/config.yml`).
+- **Open follow-ups:** permanent `tests/preview` stale-socket repair and test-fragility findings (§C17-3) for PR owners; documentation commits not yet reconciled with the remote; GitHub Actions re-run when billing allows.
+- **Not done:** no merge of PR #307/#312; no change to GitHub Actions, application code, tests, billing or branch protection.

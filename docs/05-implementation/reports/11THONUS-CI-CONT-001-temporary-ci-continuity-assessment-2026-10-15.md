@@ -1394,3 +1394,53 @@ Not pushed. To discard: `git branch -f` is not needed — simply do not push `49
 
 ## C16-8 Recommendation
 One further hosted run at `49c08c2…` (fast-forward from `6f3a3a8…`) is justified, to be approved by the Founder; stop on any gate failure without retry.
+
+---
+
+# Addendum — 11THONUS-CI-CONT-007L: Final Worker-Cap Review and Hosted Verification (2026-10-17)
+
+**Disposition: PILOT PASSED — FOUNDER ACCEPTANCE REVIEW REQUIRED.** This is independent hosted verification on CircleCI Free; it is **not** a GitHub Actions pass and does not replace one. One hosted run was made (pipeline #8 `a4bc1c42-74d0-4cb6-9845-7ef0f732e037`, workflow `a0e76b85-0457-4b71-b41e-ad9d43705604`, job `1f27a693-adad-439c-bc88-c3f69c0159c7`, build 6; https://app.circleci.com/pipelines/github/Fkenogo/11THONUS/8). No retry was needed or made.
+
+## C17-1 Pre-push review of `49c08c2` (wrapper properties, tested with pnpm 9.15.9 and the real generated step script)
+| Property | Result |
+|---|---|
+| Adds `--workers=2` to exactly the preview command, keeping its projects | pass (`test --project=chromium-preview --project=chromium-preview-mobile --workers=2`) |
+| Unrelated commands unchanged (quoting preserved; `pnpm test:e2e`, `emulators:validate`-style scripts) | pass |
+| Exit codes propagate (0, 1, 7); SIGTERM → 143 identical to a no-wrapper baseline; wrapper `exec`s, so no extra process remains | pass |
+| Cannot silently skip the suite; fails if the command is never intercepted (not run, or script text drifted) | pass (rc 1 with explicit message) |
+| Wrapper, marker, preload removed on success and failure | pass (3/3 absent in every case) |
+| Cannot reach `pnpm emulators:validate` | pass: assertion step fails on leaked variable, wrapper file, marker or preload (3 negative tests) |
+| Auth shim scope and OIDC/SSH/credential gates unchanged | pass: diff touches only the trap line and the assertion text/lines; 13 gates compile; compiled config valid, 0 residual `<<` |
+
+Pushed as a fast-forward `6f3a3a8…` → `49c08c28092c404f70b565948c53c0335c0762f6` (direct descendant, only `.circleci/config.yml`); remote verified; no pipeline started automatically. Prerequisites reconfirmed before the run: PR #312 head `73575800…` OPEN (stacked on PR #307 head `023bf3ef…`), project followed, definition `3302b753-a65d-53a6-88f4-a745357e1dc1` (github_oauth), no triggers, no project env vars, no contexts, Free plan.
+
+## C17-2 Results (job succeeded; 13/13 OIDC/SSH gates succeeded)
+| Gate | Result |
+|---|---|
+| Exact head | expected = live = fetched = checked-out = `73575800df6dfada8980fef5d9c83b43d2af7464`; config revision `49c08c2…` |
+| Credential/SSH/OIDC preflight | pass; agent socket exposes 0 identities; OIDC variables removed from later steps |
+| Build / lint / format / typecheck | pass (14 s / 18 s / 14 s / 10 s) |
+| Functions + web unit | pass: Functions 2034/2034 (176 files), web 1155/1155 (140 files), `--maxWorkers=2` |
+| PostgreSQL integration | pass: 813/813 (22 files) |
+| Standard Playwright e2e | pass: 149/149, 2 workers, no retries |
+| Preview tooling | pass: 43 pass, 0 fail, 1 skipped (IPv6 loopback unavailable on executor) |
+| Real Auth signup and seeding | pass (shim line present; scenario `founder-slice-1` seeded twice; `preview:verify` fingerprint matched; zero socket errors) |
+| **Cross-project acceptance** | **pass: "Running 56 tests using 2 workers" — 56 passed, 0 failed, 0 flaky, 0 skipped, 0 not run; no retries** (1.2 m; step 214 s); legacy ports 4000/4001/9099 stayed open with no connections |
+| Shim/wrapper absent before emulator validation | pass ("preload file absent, CI_AUTH_EMULATOR_PORT unset, worker-cap shell absent") |
+| `pnpm emulators:validate` | pass: 67 files, 877 passed, **3 skipped** (the three committed `it.skip("DISCLOSED FINDING…")` Firestore-emulator transaction-retry tests in `acceptBusinessTermsCommand`, `businessActivationCommand`, `businessTermsConfigRepository` — pre-existing, not introduced here) |
+| Final exact-head re-assertion | pass |
+
+Duration: 17 m 10 s (workflow 06:46:11 → 07:03:21 UTC; job ≈ 17 m 06 s). Credits: 1,131 → 1,474 of 30,000 ≈ **343 credits** (cumulative since 1,090 before this run included the prior run's rounding; this run alone ≈ 343). Retries/flaky: none anywhere. Skips: only those listed above.
+
+## C17-3 Findings recorded separately from the temporary CI mitigation
+**A. Permanent preview-harness defect (open, owner: PR/preview-tooling owners):** `tests/preview` pools keep-alive sockets to the Auth emulator (`Keep-Alive: timeout=5`) while `spawnSync` seeds block the Node event loop, so a stale socket can fail the first `accounts:signUp` with `UND_ERR_SOCKET` on slow or CPU-capped runners. The `Connection: close` preload and the worker-cap wrapper are CI-only mitigations in `.circleci/config.yml`; they do not repair the harness and the underlying race can also affect GitHub Actions on a slow runner.
+**B. Preview test fragility candidates (open):** `playwright.config.ts` sets no `workers` (default 50 % of visible cores — 18 on this executor); the preview run also starts three unrelated global `webServer` entries (including a production build); `counter.spec.ts` is `serial` so one failure hides the rest; both projects share seeded data; assertion timeouts are 20 s. The 18-worker failure in pipeline #7 is consistent with CPU oversubscription, and this passing run (same code, same executor, 2 workers) supports that inference without proving it.
+
+## C17-4 Security and scope
+No secrets, contexts, deploy keys, webhooks or triggers were created; no credentials printed. GitHub Actions, application code, tests, retries, timeouts, billing and branch protection untouched; PR #307/#312 not merged. Remote config branch head is `49c08c28…`. Local documentation commits (including `5166c2e` and this addendum) remain unpushed and unreconciled with the remote (local branch ahead/behind; reconcile only when authorized, never force).
+
+## C17-5 Rollback
+Revert `49c08c2` (single-file CI config change) or delete the remote branch `docs/ci-cont-001-circleci-assessment`; no repository application files were changed.
+
+## C17-6 Recommendation
+Treat as sufficient temporary independent verification for Founder acceptance review while GitHub Actions is billing-locked; no further hosted attempt is needed. Re-run on GitHub Actions when available, and send findings A and B to the PR owners.
