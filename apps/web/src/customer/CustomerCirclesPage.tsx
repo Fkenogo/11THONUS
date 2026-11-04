@@ -1,12 +1,14 @@
 import type { Auth } from "firebase/auth";
 import type { Functions } from "firebase/functions";
 import { Gift } from "lucide-react";
+import { Link, useParams } from "react-router-dom";
 import { useTranslation } from "../i18n";
 import { CustomerLoyaltyCircle } from "./components/CustomerLoyaltyCircle";
 import { useCustomerExperienceOverviewQuery } from "./hooks/experienceQueries";
 
 export function CustomerCirclesPage({ auth, functions }: { auth: Auth; functions: Functions }) {
   const { t } = useTranslation("customer");
+  const { rewardProgramId } = useParams<{ rewardProgramId: string }>();
   const query = useCustomerExperienceOverviewQuery({ auth, functions });
 
   if (query.isPending)
@@ -37,6 +39,69 @@ export function CustomerCirclesPage({ auth, functions }: { auth: Auth; functions
   }
 
   const circles = query.data.circles;
+  const selectedCircle = rewardProgramId
+    ? circles.find((circle) => circle.rewardProgramId === rewardProgramId)
+    : undefined;
+  if (rewardProgramId) {
+    return selectedCircle ? (
+      <div className="space-y-4">
+        <Link
+          to="/customer/circles"
+          className="inline-flex min-h-11 items-center text-sm font-semibold text-amber-800 underline"
+        >
+          {t("experience.backToCircles")}
+        </Link>
+        <article className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <header className="space-y-1">
+            <p className="break-words text-xs font-semibold uppercase tracking-wide text-slate-500">
+              {selectedCircle.businessName ?? t("experience.businessFallback")}
+            </p>
+            <h1 className="break-words font-display text-lg font-bold text-slate-900">
+              {selectedCircle.programmeName}
+            </h1>
+            {selectedCircle.cycleNumber ? (
+              <p className="text-xs text-slate-500">
+                {t("experience.cycleNumber", { count: selectedCircle.cycleNumber })}
+              </p>
+            ) : null}
+          </header>
+          <div className="flex justify-center rounded-xl bg-slate-50 py-2">
+            <CustomerLoyaltyCircle circle={selectedCircle} />
+          </div>
+          <div className="space-y-2 text-sm">
+            <p className="font-semibold">
+              {t("experience.verifiedOfTen", { count: selectedCircle.verifiedUnits })}
+            </p>
+            {selectedCircle.pendingUnits > 0 ? (
+              <p className="rounded-lg bg-amber-50 p-3 text-amber-950">
+                {t("experience.awaitingDetail", { count: selectedCircle.pendingUnits })}
+              </p>
+            ) : null}
+            {selectedCircle.rewardAvailable ? (
+              <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 font-bold text-amber-950">
+                {t("experience.rewardAvailableDetail", {
+                  reward: selectedCircle.rewardDescription ?? t("experience.qualifyingItem"),
+                })}
+              </p>
+            ) : null}
+            {selectedCircle.rewardDescription && !selectedCircle.rewardAvailable ? (
+              <p className="text-slate-600">{selectedCircle.rewardDescription}</p>
+            ) : null}
+          </div>
+        </article>
+      </div>
+    ) : (
+      <section
+        role="status"
+        className="rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-600"
+      >
+        {t("experience.circleUnavailable")}
+        <Link to="/customer/circles" className="ml-2 font-semibold text-amber-800 underline">
+          {t("experience.backToCircles")}
+        </Link>
+      </section>
+    );
+  }
   return (
     <div className="space-y-4">
       <header className="flex items-end justify-between gap-3 px-1">
@@ -62,9 +127,10 @@ export function CustomerCirclesPage({ auth, functions }: { auth: Auth; functions
         </section>
       ) : (
         circles.map((circle) => (
-          <article
+          <Link
+            to={`/customer/circles/${circle.rewardProgramId}`}
             key={circle.id}
-            className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+            className="block min-h-12 space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm focus-visible:outline-2 focus-visible:outline-amber-600"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
@@ -92,7 +158,7 @@ export function CustomerCirclesPage({ auth, functions }: { auth: Auth; functions
             <p className="rounded-xl border border-amber-100 bg-amber-50/50 p-3 text-xs leading-relaxed text-amber-950">
               {t("experience.rewardDescription")}
             </p>
-          </article>
+          </Link>
         ))
       )}
     </div>

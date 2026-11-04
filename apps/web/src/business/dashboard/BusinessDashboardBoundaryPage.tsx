@@ -8,15 +8,17 @@
 
 import { useParams } from "react-router-dom";
 import { useTranslation } from "../../i18n";
-import { useBusinessContextQuery } from "../hooks/businessQueries";
+import { useAccessibleBusinessesQuery, useBusinessContextQuery } from "../hooks/businessQueries";
+import { StaffRoutes } from "../counter/StaffShell";
 import { BusinessDashboardRoutes } from "./BusinessDashboardRoutes";
 
 export function BusinessDashboardBoundaryPage() {
   const { businessId } = useParams<{ businessId: string }>();
   const { t } = useTranslation("business");
   const query = useBusinessContextQuery(businessId);
+  const accessible = useAccessibleBusinessesQuery();
 
-  if (query.status === "pending") {
+  if (query.status === "pending" || accessible.status === "pending") {
     return (
       <main className="flex min-h-screen items-center justify-center p-8">
         <p>{t("resolve.loading")}</p>
@@ -24,7 +26,7 @@ export function BusinessDashboardBoundaryPage() {
     );
   }
 
-  if (query.status === "error") {
+  if (query.status === "error" || accessible.status === "error") {
     return (
       <main className="flex min-h-screen items-center justify-center p-8 text-center">
         <h1 className="mb-2 text-lg font-semibold">{t("integrityError.title")}</h1>
@@ -33,5 +35,25 @@ export function BusinessDashboardBoundaryPage() {
     );
   }
 
-  return <BusinessDashboardRoutes context={query.data} />;
+  // `EA-BL-001-CORR-002-B` (D8): the role for THIS Business selects the experience — UX routing only;
+  // the server remains the authority for every operation. Staff get the bounded Counter shell;
+  // Owner/Manager keep the existing Business Dashboard, unchanged. Anything else — the Business is
+  // absent from the accessible result, or the role is missing/unrecognised — FAILS CLOSED to the
+  // integrity error below and is never treated as Owner/Manager.
+  const role = accessible.data?.find(
+    (business) => business.businessId === query.data.businessId,
+  )?.role;
+  if (role === "staff") {
+    return <StaffRoutes context={query.data} />;
+  }
+  if (role === "owner" || role === "manager") {
+    return <BusinessDashboardRoutes context={query.data} />;
+  }
+
+  return (
+    <main className="flex min-h-screen items-center justify-center p-8 text-center">
+      <h1 className="mb-2 text-lg font-semibold">{t("integrityError.title")}</h1>
+      <p>{t("integrityError.body")}</p>
+    </main>
+  );
 }

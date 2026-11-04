@@ -11,6 +11,7 @@
  */
 
 import { useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import type { Auth } from "firebase/auth";
 import type { Functions } from "firebase/functions";
 import { useTranslation } from "../i18n";
@@ -67,16 +68,19 @@ function WaitingRow({
 
 export function CustomerActivityPage({ auth, functions }: { auth: Auth; functions: Functions }) {
   const { t } = useTranslation("customer");
+  const { purchaseRecordId } = useParams<{ purchaseRecordId: string }>();
+  const navigate = useNavigate();
   const platform: CustomerPlatform = { auth, functions };
   const overviewQuery = useCustomerExperienceOverviewQuery(platform);
   const waitingQuery = useWaitingPurchasesQuery(platform);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const detailQuery = useCustomerPurchaseQuery(platform, selectedId ?? undefined);
+  const activeId = purchaseRecordId ?? selectedId;
+  const detailQuery = useCustomerPurchaseQuery(platform, activeId ?? undefined);
 
   const [rejectReason, setRejectReason] = useState<string>(REJECT_REASONS[0]);
   const [disputeReason, setDisputeReason] = useState<string>(DISPUTE_REASONS[0]);
   const [notice, setNotice] = useState<string | null>(null);
-  const [detailMode, setDetailMode] = useState<"none" | "reject" | "dispute">("none");
+  const [detailMode, setDetailMode] = useState<"none" | "choices" | "reject" | "dispute">("none");
 
   const verifyMutation = useVerifyPurchaseMutation(platform);
   const rejectMutation = useRejectPurchaseMutation(platform);
@@ -121,111 +125,151 @@ export function CustomerActivityPage({ auth, functions }: { auth: Auth; function
 
   return (
     <div className="mx-auto flex max-w-md flex-col gap-6">
-      <h1 className="font-display text-lg font-bold text-slate-900">
-        {t("experience.activityTitle")}
-      </h1>
-      <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-          {t("experience.activityTitle")}
-        </h2>
-        {overviewQuery.isPending ? (
-          <p className="text-xs text-slate-500">{t("entry.loading")}</p>
+      <header className="flex items-center gap-3">
+        {purchaseRecordId ? (
+          <Link
+            to="/customer/activity"
+            className="min-h-11 rounded-lg px-3 text-sm font-semibold text-amber-800 underline"
+          >
+            {t("purchase.backToActivity")}
+          </Link>
         ) : null}
-        {overviewQuery.isError ? (
-          <div role="alert" className="text-xs text-rose-800">
-            <p>{t("experience.overviewError")}</p>
-            <button
-              type="button"
-              onClick={() => void overviewQuery.refetch()}
-              className="mt-2 min-h-11 font-semibold underline"
-            >
-              {t("experience.retry")}
-            </button>
-          </div>
-        ) : null}
-        {!overviewQuery.isPending &&
-        !overviewQuery.isError &&
-        overviewQuery.data.activity.length === 0 ? (
-          <p className="text-xs text-slate-500">{t("experience.activityEmpty")}</p>
-        ) : null}
-        <ol className="divide-y divide-slate-100">
-          {(overviewQuery.data?.activity ?? []).map((item) => {
-            const title =
-              item.eventKind === "reward_available"
-                ? t("experience.activityRewardAvailable")
-                : item.eventKind === "reward_redeemed"
-                  ? t("experience.activityRewardRedeemed")
-                  : item.status === "waiting_for_customer"
-                    ? t("experience.activityRecorded")
-                    : item.status === "pending_admission"
-                      ? t("experience.activityAdmission")
-                      : item.status === "awaiting_business_confirmation"
-                        ? t("experience.activityBusinessReview")
-                        : item.status === "verified"
-                          ? t("experience.activityVerified")
-                          : item.status === "rejected"
-                            ? t("experience.activityRejected")
-                            : item.status === "under_review"
-                              ? t("experience.activityUnderReview")
-                              : t("experience.activityOtherStatus");
-            const detail =
-              item.quantity && item.itemLabel
-                ? t("experience.activityQuantity", { count: item.quantity, item: item.itemLabel })
-                : (item.rewardDescription ?? item.programmeName);
-            return (
-              <li
-                key={`${item.eventKind}-${item.id}-${item.occurredAt}`}
-                className="flex items-start justify-between gap-3 py-3 text-xs"
+        <h1 className="font-display text-lg font-bold text-slate-900">
+          {purchaseRecordId ? t("purchase.detailTitle") : t("experience.activityTitle")}
+        </h1>
+      </header>
+      {!purchaseRecordId ? (
+        <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+            {t("experience.activityTitle")}
+          </h2>
+          {overviewQuery.isPending ? (
+            <p className="text-xs text-slate-500">{t("entry.loading")}</p>
+          ) : null}
+          {overviewQuery.isError ? (
+            <div role="alert" className="text-xs text-rose-800">
+              <p>{t("experience.overviewError")}</p>
+              <button
+                type="button"
+                onClick={() => void overviewQuery.refetch()}
+                className="mt-2 min-h-11 font-semibold underline"
               >
-                <span className="flex min-w-0 items-start gap-2.5">
-                  <span
-                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${item.eventKind === "reward_redeemed" ? "bg-emerald-100 text-emerald-800" : item.status === "waiting_for_customer" ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-700"}`}
-                  >
-                    {item.eventKind === "reward_redeemed" || item.eventKind === "reward_available"
-                      ? "🎁"
-                      : item.status === "waiting_for_customer"
-                        ? "⏳"
-                        : "✓"}
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block font-bold text-slate-900">{title}</span>
-                    <span className="block truncate text-[11px] text-slate-500">{detail}</span>
-                    <span className="block truncate text-[11px] text-slate-500">
-                      {item.businessName ?? t("experience.businessFallback")}
+                {t("experience.retry")}
+              </button>
+            </div>
+          ) : null}
+          {!overviewQuery.isPending &&
+          !overviewQuery.isError &&
+          overviewQuery.data.activity.length === 0 ? (
+            <p className="text-xs text-slate-500">{t("experience.activityEmpty")}</p>
+          ) : null}
+          <ol className="divide-y divide-slate-100">
+            {(overviewQuery.data?.activity ?? []).map((item) => {
+              const title =
+                item.eventKind === "reward_available"
+                  ? t("experience.activityRewardAvailable")
+                  : item.eventKind === "reward_redeemed"
+                    ? t("experience.activityRewardRedeemed")
+                    : item.status === "waiting_for_customer"
+                      ? t("experience.activityRecorded")
+                      : item.status === "pending_admission"
+                        ? t("experience.activityAdmission")
+                        : item.status === "awaiting_business_confirmation"
+                          ? t("experience.activityBusinessReview")
+                          : item.status === "verified"
+                            ? t("experience.activityVerified")
+                            : item.status === "rejected"
+                              ? t("experience.activityRejected")
+                              : item.status === "under_review"
+                                ? t("experience.activityUnderReview")
+                                : t("experience.activityOtherStatus");
+              const detail =
+                item.quantity && item.itemLabel
+                  ? t("experience.activityQuantity", { count: item.quantity, item: item.itemLabel })
+                  : (item.rewardDescription ?? item.programmeName);
+              const href =
+                item.eventKind === "purchase" && item.purchaseRecordId
+                  ? `/customer/activity/${item.purchaseRecordId}`
+                  : item.eventKind === "reward_available"
+                    ? `/customer/circles/${item.rewardProgramId}`
+                    : null;
+              const activityContent = (
+                <>
+                  <span className="flex min-w-0 items-start gap-2.5">
+                    <span
+                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${item.eventKind === "reward_redeemed" ? "bg-emerald-100 text-emerald-800" : item.status === "waiting_for_customer" ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-700"}`}
+                    >
+                      {item.eventKind === "reward_redeemed" || item.eventKind === "reward_available"
+                        ? "🎁"
+                        : item.status === "waiting_for_customer"
+                          ? "⏳"
+                          : "✓"}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block font-bold text-slate-900">{title}</span>
+                      <span className="block truncate text-[11px] text-slate-500">{detail}</span>
+                      <span className="block truncate text-[11px] text-slate-500">
+                        {item.businessName ?? t("experience.businessFallback")}
+                      </span>
                     </span>
                   </span>
-                </span>
-                <time className="shrink-0 text-[10px] text-slate-400">
-                  {new Date(item.occurredAt).toLocaleDateString()}
-                </time>
-              </li>
-            );
-          })}
-        </ol>
-      </section>
+                  <time className="shrink-0 text-[10px] text-slate-400">
+                    {new Date(item.occurredAt).toLocaleDateString()}
+                  </time>
+                </>
+              );
+              return (
+                <li
+                  key={`${item.eventKind}-${item.id}-${item.occurredAt}`}
+                  className="flex items-start justify-between gap-3 py-3 text-xs"
+                >
+                  {href ? (
+                    <Link
+                      to={href}
+                      className="flex min-h-12 min-w-0 flex-1 items-start justify-between gap-3 rounded-lg text-left focus-visible:outline-2 focus-visible:outline-amber-600"
+                    >
+                      {activityContent}
+                      <span className="sr-only">{t("purchase.openDetail")}</span>
+                    </Link>
+                  ) : (
+                    <div className="flex min-w-0 flex-1 items-start justify-between gap-3">
+                      {activityContent}
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ol>
+        </section>
+      ) : null}
 
       <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-          {t("purchase.waitingTitle")}
-        </h2>
-        {waitingQuery.isPending ? <p>{t("entry.loading")}</p> : null}
-        {waitingQuery.data?.purchases.length === 0 ? <p>{t("purchase.waitingEmpty")}</p> : null}
-        <ul className="flex flex-col gap-2">
-          {(waitingQuery.data?.purchases ?? []).map((purchase) => (
-            <WaitingRow
-              key={purchase.id}
-              purchase={purchase}
-              selected={selectedId === purchase.id}
-              onSelect={() => {
-                setSelectedId(purchase.id);
-                setDetailMode("none");
-                setNotice(null);
-              }}
-            />
-          ))}
-        </ul>
+        {!purchaseRecordId ? (
+          <>
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+              {t("purchase.waitingTitle")}
+            </h2>
+            {waitingQuery.isPending ? <p>{t("entry.loading")}</p> : null}
+            {waitingQuery.data?.purchases.length === 0 ? <p>{t("purchase.waitingEmpty")}</p> : null}
+            <ul className="flex flex-col gap-2">
+              {(waitingQuery.data?.purchases ?? []).map((purchase) => (
+                <WaitingRow
+                  key={purchase.id}
+                  purchase={purchase}
+                  selected={selectedId === purchase.id}
+                  onSelect={() => {
+                    setSelectedId(purchase.id);
+                    navigate(`/customer/activity/${purchase.id}`);
+                    setDetailMode("none");
+                    setNotice(null);
+                  }}
+                />
+              ))}
+            </ul>
+          </>
+        ) : null}
 
-        {selectedId ? (
+        {activeId ? (
           <section
             aria-labelledby="customer-purchase-detail-heading"
             className="flex flex-col gap-3"
@@ -238,9 +282,20 @@ export function CustomerActivityPage({ auth, functions }: { auth: Auth; function
               <div className="flex flex-col gap-2 text-sm">
                 <p className="font-medium">{detailQuery.data.purchase.itemLabel}</p>
                 <p>{t("purchase.quantityLabel", { count: detailQuery.data.purchase.quantity })}</p>
-                <p>{t("purchase.recordedByBusiness")}</p>
+                <p>
+                  {overviewQuery.data?.activity.find((event) => event.purchaseRecordId === activeId)
+                    ?.businessName ?? t("experience.businessFallback")}
+                </p>
+                <p>
+                  {overviewQuery.data?.activity.find((event) => event.purchaseRecordId === activeId)
+                    ?.programmeName ?? t("experience.programmeFallback")}
+                </p>
+                <p>{new Date(detailQuery.data.purchase.purchaseDate).toLocaleString()}</p>
                 {detailQuery.data.purchase.notes ? <p>{detailQuery.data.purchase.notes}</p> : null}
                 <p>{t(`purchase.status.${detailQuery.data.purchase.status}`)}</p>
+                {detailQuery.data.purchase.status === "waiting_for_customer" ? (
+                  <p>{t("purchase.confirmationExplanation")}</p>
+                ) : null}
                 {notice ? <p role="status">{notice}</p> : null}
                 {detailQuery.data.purchase.status === "waiting_for_customer" ? (
                   <div className="flex flex-col gap-2">
@@ -249,24 +304,35 @@ export function CustomerActivityPage({ auth, functions }: { auth: Auth; function
                       disabled={acting}
                       onClick={() => doVerify(detailQuery.data.purchase.id)}
                     >
-                      {verifyMutation.isPending ? t("purchase.verifying") : t("purchase.verify")}
+                      {verifyMutation.isPending
+                        ? t("purchase.verifying")
+                        : t("purchase.confirmPurchase")}
                     </Button>
-                    <div className="flex gap-2">
-                      <Button
-                        type="button"
-                        disabled={acting}
-                        onClick={() => setDetailMode(detailMode === "reject" ? "none" : "reject")}
-                      >
-                        {t("purchase.reject")}
-                      </Button>
-                      <Button
-                        type="button"
-                        disabled={acting}
-                        onClick={() => setDetailMode(detailMode === "dispute" ? "none" : "dispute")}
-                      >
-                        {t("purchase.dispute")}
-                      </Button>
-                    </div>
+                    <Button
+                      type="button"
+                      disabled={acting}
+                      onClick={() => setDetailMode(detailMode === "choices" ? "none" : "choices")}
+                    >
+                      {t("purchase.thisIsIncorrect")}
+                    </Button>
+                    {detailMode === "choices" ? (
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          disabled={acting}
+                          onClick={() => setDetailMode("reject")}
+                        >
+                          {t("purchase.reject")}
+                        </Button>
+                        <Button
+                          type="button"
+                          disabled={acting}
+                          onClick={() => setDetailMode("dispute")}
+                        >
+                          {t("purchase.dispute")}
+                        </Button>
+                      </div>
+                    ) : null}
                     {detailMode === "reject" ? (
                       <div className="flex flex-col gap-2">
                         <p className="font-medium">{t("purchase.rejectTitle")}</p>
@@ -328,6 +394,9 @@ export function CustomerActivityPage({ auth, functions }: { auth: Auth; function
                   </div>
                 ) : null}
               </div>
+            ) : null}
+            {detailQuery.isError || (!detailQuery.isPending && !detailQuery.data) ? (
+              <p role="alert">{t("purchase.detailUnavailable")}</p>
             ) : null}
           </section>
         ) : null}

@@ -57,6 +57,17 @@ const DevDashboardHarnessRoute = import.meta.env.DEV
     )
   : null;
 
+// EA-BL-001-CORR-002-B: development-only Staff Counter harness (real shell + page against local
+// fixture data, no Firebase/network) for real-browser layout/a11y checks. Same literal
+// `import.meta.env.DEV` build-time exclusion as the harness above.
+const DevCounterHarnessRoute = import.meta.env.DEV
+  ? lazy(() =>
+      import("./dev/counterHarness/CounterHarnessPage").then((m) => ({
+        default: m.CounterHarnessPage,
+      })),
+    )
+  : null;
+
 // ENG-P3-002C-PREVIEW-001: preview-only sign-in entry point for the Founder-QA
 // business-onboarding hosted preview. Unlike the two routes above, this one is
 // NOT gated on `import.meta.env.DEV` (a hosted preview is always a `vite build`,
@@ -195,6 +206,16 @@ function App({ auth, functions }: AppProps) {
             element={
               <Suspense fallback={null}>
                 <DevDashboardHarnessRoute />
+              </Suspense>
+            }
+          />
+        )}
+        {DevCounterHarnessRoute && (
+          <Route
+            path="/dev/counter-harness/*"
+            element={
+              <Suspense fallback={null}>
+                <DevCounterHarnessRoute />
               </Suspense>
             }
           />

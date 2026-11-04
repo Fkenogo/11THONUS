@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS purchase_records_recorder_recent_idx;

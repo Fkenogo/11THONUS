@@ -1,7 +1,7 @@
-> **Title:** PRD Section 6 — Reward Programs, Verified Units and Loyalty Cycle Management  
-> **Version:** 1.0 · **Status:** Draft for review (pre-freeze) · **Classification:** Authoritative Product  
-> **Governing document:** 11thONUS Platform Constitution  
-> **Source-of-truth path:** `docs/01-product/prd/06-reward-programs-and-loyalty-cycles.md`  
+> **Title:** PRD Section 6 — Reward Programs, Verified Units and Loyalty Cycle Management
+> **Version:** 1.0 · **Status:** Draft for review (pre-freeze) · **Classification:** Authoritative Product
+> **Governing document:** 11thONUS Platform Constitution
+> **Source-of-truth path:** `docs/01-product/prd/06-reward-programs-and-loyalty-cycles.md`
 > **Last controlled update:** 2026-07-16 (Phase 2 — relocated and renamed; metadata block added)
 
 # 11thONUS
@@ -115,6 +115,10 @@ Verified Units Required = **10**
 Reward = **1 On Us Unit**
 
 The architecture must support future configurable rules without redesign.
+
+### Item-Specific Circle Invariant (DEC-LOY-019 / FD-LOY-ITEM-CIRCLE-001)
+
+Within a Reward Programme containing one or more qualifying items, each qualifying item defines an independent Loyalty Circle track for each participating customer. A customer's verified units for distinct qualifying items never pool into the same Circle. Only one active or reward-available Loyalty Cycle may exist per customer per Reward Program and Qualifying Item (amending BR-063 / DEC-LOY-002).
 
 ## 4.5 Verification
 
@@ -270,31 +274,18 @@ This allows legitimate family, business and group purchases.
 
 # 12\. Loyalty Cycle
 
-Every customer maintains independent Loyalty Cycles.
+Every customer maintains independent Loyalty Cycles for each Qualifying Item within each Reward Programme (DEC-LOY-019 / FD-LOY-ITEM-CIRCLE-001).
 
 One customer may therefore have:
 
 Bella Salon
-
-Premium Haircut
-
-Cycle 5
-
-Progress
-
-8 Verified Units
+- Premium Haircut Circle: Cycle 5, Progress: 8 Verified Units
+- Hair Wash Circle: Cycle 1, Progress: 2 Verified Units
 
 Joe's Coffee
+- Regular Coffee Circle: Cycle 2, Progress: 3 Verified Units
 
-Regular Coffee
-
-Cycle 2
-
-Progress
-
-3 Verified Units
-
-These cycles never interact.
+These cycles never interact, and verified units from different qualifying items within the same Reward Programme never pool together.
 
 # 13\. Loyalty Cycle Structure
 
@@ -303,6 +294,8 @@ Each Loyalty Cycle contains:
 Cycle Number
 
 Reward Program
+
+Qualifying Item (DEC-LOY-019)
 
 Customer
 
@@ -584,7 +577,7 @@ The architecture shall support future Verified Commerce capabilities.
 | BR-060  | Only Verified Units contribute to Loyalty Cycles.                                                      |
 | BR-061  | Businesses define qualifying products and product equivalence.                                         |
 | BR-062  | One Purchase Record may generate multiple Verified Units.                                              |
-| BR-063  | Only one active Loyalty Cycle exists per Reward Program in the MVP.                                    |
+| BR-063  | Only one active Loyalty Cycle exists per customer per Reward Program and Qualifying Item in the MVP (DEC-LOY-019 amending DEC-LOY-002). Multiple active Cycles within one Reward Program are permitted only across different Qualifying Items. |
 | BR-064  | Reaching the required Verified Units makes the reward available immediately.                           |
 | BR-065  | Redeeming a reward closes the active Loyalty Cycle and opens the next.                                 |
 | BR-066  | Historical Loyalty Cycles remain immutable.                                                            |

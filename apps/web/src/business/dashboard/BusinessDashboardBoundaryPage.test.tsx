@@ -1,12 +1,31 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { BusinessDashboardBoundaryPage } from "./BusinessDashboardBoundaryPage";
 
 const mockUseBusinessContextQuery = vi.fn();
+const mockUseAccessibleBusinessesQuery = vi.fn();
 vi.mock("../hooks/businessQueries", () => ({
   useBusinessContextQuery: (businessId: string) => mockUseBusinessContextQuery(businessId),
+  useAccessibleBusinessesQuery: () => mockUseAccessibleBusinessesQuery(),
 }));
+vi.mock("../counter/StaffShell", () => ({
+  StaffRoutes: ({ context }: { context: { displayName: string } }) => (
+    <div>staff counter for {context.displayName}</div>
+  ),
+}));
+
+function accessibleAs(role: "owner" | "manager" | "staff", businessId = "b-1") {
+  mockUseAccessibleBusinessesQuery.mockReturnValue({
+    status: "success",
+    data: [{ businessId, displayName: "Acme Salon", status: "active", role }],
+  });
+}
+
+beforeEach(() => {
+  mockUseBusinessContextQuery.mockReset();
+  accessibleAs("owner");
+});
 vi.mock("./BusinessDashboardRoutes", () => ({
   BusinessDashboardRoutes: ({ context }: { context: { displayName: string } }) => (
     <div>dashboard shell for {context.displayName}</div>
@@ -57,5 +76,97 @@ describe("BusinessDashboardBoundaryPage", () => {
     renderPage("/business/b-1/dashboard/team");
     expect(await screen.findByText("dashboard shell for Acme Salon")).toBeInTheDocument();
     expect(mockUseBusinessContextQuery).toHaveBeenCalledWith("b-1");
+  });
+
+  describe("role-aware landing (EA-BL-001-CORR-002-B, D8 — UX routing only)", () => {
+    const success = {
+      status: "success",
+      data: { businessId: "b-1", displayName: "Acme Salon", status: "active" },
+    };
+
+    it("lands Staff on the Counter experience, not the Owner/Manager Dashboard", async () => {
+      mockUseBusinessContextQuery.mockReturnValue(success);
+      accessibleAs("staff");
+      renderPage();
+      expect(await screen.findByText("staff counter for Acme Salon")).toBeInTheDocument();
+      expect(screen.queryByText(/dashboard shell/)).not.toBeInTheDocument();
+    });
+
+    it.each(["owner", "manager"] as const)(
+      "keeps the existing Business Dashboard for %s — unchanged",
+      async (role) => {
+        mockUseBusinessContextQuery.mockReturnValue(success);
+        accessibleAs(role);
+        renderPage();
+        expect(await screen.findByText("dashboard shell for Acme Salon")).toBeInTheDocument();
+        expect(screen.queryByText(/staff counter/)).not.toBeInTheDocument();
+      },
+    );
+
+    it("uses the role for THIS Business, not another Business the person also staffs", async () => {
+      mockUseBusinessContextQuery.mockReturnValue(success);
+      mockUseAccessibleBusinessesQuery.mockReturnValue({
+        status: "success",
+        data: [
+          { businessId: "other", displayName: "Other", status: "active", role: "staff" },
+          { businessId: "b-1", displayName: "Acme Salon", status: "active", role: "owner" },
+        ],
+      });
+      renderPage();
+      expect(await screen.findByText("dashboard shell for Acme Salon")).toBeInTheDocument();
+    });
+
+    it("waits for the role before showing any shell (a Staff member never glimpses the admin shell)", () => {
+      mockUseBusinessContextQuery.mockReturnValue(success);
+      mockUseAccessibleBusinessesQuery.mockReturnValue({ status: "pending" });
+      renderPage();
+      expect(screen.getByText("Loading your business…")).toBeInTheDocument();
+      expect(screen.queryByText(/dashboard shell/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/staff counter/)).not.toBeInTheDocument();
+    });
+
+    it("FAILS CLOSED when the Business is absent from a successful accessible-businesses result", () => {
+      mockUseBusinessContextQuery.mockReturnValue(success);
+      mockUseAccessibleBusinessesQuery.mockReturnValue({
+        status: "success",
+        data: [{ businessId: "someone-else", displayName: "X", status: "active", role: "owner" }],
+      });
+      renderPage();
+      expect(screen.getByText("Something went wrong")).toBeInTheDocument();
+      expect(screen.queryByText(/dashboard shell/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/staff counter/)).not.toBeInTheDocument();
+    });
+
+    it("FAILS CLOSED when the accessible-businesses result is empty", () => {
+      mockUseBusinessContextQuery.mockReturnValue(success);
+      mockUseAccessibleBusinessesQuery.mockReturnValue({ status: "success", data: [] });
+      renderPage();
+      expect(screen.getByText("Something went wrong")).toBeInTheDocument();
+      expect(screen.queryByText(/dashboard shell/)).not.toBeInTheDocument();
+    });
+
+    it.each([undefined, null, "", "customer", "admin", "Owner", "STAFF"])(
+      "FAILS CLOSED for a missing/unrecognised role (%j) — never Owner/Manager",
+      (role) => {
+        mockUseBusinessContextQuery.mockReturnValue(success);
+        mockUseAccessibleBusinessesQuery.mockReturnValue({
+          status: "success",
+          data: [{ businessId: "b-1", displayName: "Acme Salon", status: "active", role }],
+        });
+        renderPage();
+        expect(screen.getByText("Something went wrong")).toBeInTheDocument();
+        expect(screen.queryByText(/dashboard shell/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/staff counter/)).not.toBeInTheDocument();
+      },
+    );
+
+    it("FAILS CLOSED when the role cannot be read: no shell of either kind (never treated as Owner/Manager)", () => {
+      mockUseBusinessContextQuery.mockReturnValue(success);
+      mockUseAccessibleBusinessesQuery.mockReturnValue({ status: "error" });
+      renderPage();
+      expect(screen.getByText("Something went wrong")).toBeInTheDocument();
+      expect(screen.queryByText(/dashboard shell/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/staff counter/)).not.toBeInTheDocument();
+    });
   });
 });

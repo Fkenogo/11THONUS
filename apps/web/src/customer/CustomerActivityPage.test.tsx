@@ -1,6 +1,6 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { i18n } from "../i18n";
 import { CustomerActivityPage } from "./CustomerActivityPage";
 import type { CustomerPurchaseWire } from "./api/purchaseClient";
@@ -65,10 +65,19 @@ function purchaseWire(overrides: Partial<CustomerPurchaseWire> = {}): CustomerPu
 
 const platform = { auth: {} as never, functions: {} as never };
 
-function renderPage() {
+function renderPage(path = "/customer/activity") {
   return render(
-    <MemoryRouter>
-      <CustomerActivityPage auth={platform.auth} functions={platform.functions} />
+    <MemoryRouter initialEntries={[path]}>
+      <Routes>
+        <Route
+          path="/customer/activity"
+          element={<CustomerActivityPage auth={platform.auth} functions={platform.functions} />}
+        />
+        <Route
+          path="/customer/activity/:purchaseRecordId"
+          element={<CustomerActivityPage auth={platform.auth} functions={platform.functions} />}
+        />
+      </Routes>
     </MemoryRouter>,
   );
 }
@@ -76,6 +85,10 @@ function renderPage() {
 afterEach(async () => {
   await i18n.changeLanguage("en");
   vi.clearAllMocks();
+});
+
+beforeEach(async () => {
+  await i18n.changeLanguage("en");
 });
 
 describe("CustomerActivityPage", () => {
@@ -86,6 +99,16 @@ describe("CustomerActivityPage", () => {
     expect(screen.getByText("Waiting for you")).toBeInTheDocument();
     expect(screen.getByText("Coffee")).toBeInTheDocument();
     expect(screen.getByText("Quantity: 2")).toBeInTheDocument();
+  });
+
+  it("loads an owned purchase from a direct detail route", () => {
+    const purchase = purchaseWire();
+    waitingResult = { data: { purchases: [] } };
+    detailResult = { data: { purchase, events: [] } };
+    renderPage("/customer/activity/p-1");
+    expect(screen.getByRole("heading", { name: "Purchase detail", level: 1 })).toBeInTheDocument();
+    expect(screen.getByText("Coffee")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Confirm purchase" })).toBeInTheDocument();
   });
 
   it("renders the waiting list in French with full parity", async () => {
@@ -102,7 +125,7 @@ describe("CustomerActivityPage", () => {
     detailResult = { data: { purchase: purchaseWire(), events: [] } };
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: /Coffee/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Verify" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm purchase" }));
     expect(mockVerify).toHaveBeenCalledWith({ purchaseRecordId: "p-1" });
   });
 
@@ -111,6 +134,7 @@ describe("CustomerActivityPage", () => {
     detailResult = { data: { purchase: purchaseWire(), events: [] } };
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: /Coffee/ }));
+    fireEvent.click(screen.getByRole("button", { name: "This is incorrect" }));
     fireEvent.click(screen.getByRole("button", { name: "Reject" }));
     const selects = screen.getAllByRole("combobox");
     fireEvent.change(selects[0], { target: { value: "wrong_customer" } });
@@ -123,6 +147,7 @@ describe("CustomerActivityPage", () => {
     detailResult = { data: { purchase: purchaseWire(), events: [] } };
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: /Coffee/ }));
+    fireEvent.click(screen.getByRole("button", { name: "This is incorrect" }));
     fireEvent.click(screen.getByRole("button", { name: "Raise a dispute" }));
     expect(screen.getByRole("option", { name: "Wrong quantity" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Wrong item" })).toBeInTheDocument();
@@ -163,7 +188,7 @@ describe("CustomerActivityPage", () => {
     detailResult = { data: { purchase: purchaseWire(), events: [] } };
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: /Coffee/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Verify" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm purchase" }));
     expect(
       await screen.findByText(
         "Received. This purchase is saved and will be counted as soon as it can be admitted.",
@@ -179,7 +204,7 @@ describe("CustomerActivityPage", () => {
     detailResult = { data: { purchase: purchaseWire(), events: [] } };
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: /Coffee/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Verify" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm purchase" }));
     expect(
       await screen.findByText("Verified. Your loyalty units were issued."),
     ).toBeInTheDocument();

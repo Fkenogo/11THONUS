@@ -118,6 +118,7 @@ export async function listCustomerPendingUnits(
 
 type ActivityDbRow = {
   id: string;
+  purchase_record_id: string | null;
   business_id: string;
   reward_program_id: string;
   programme_name: string;
@@ -131,6 +132,7 @@ type ActivityDbRow = {
 
 export type CustomerExperienceActivity = {
   readonly id: string;
+  readonly purchaseRecordId: string | null;
   readonly businessId: string;
   readonly rewardProgramId: string;
   readonly programmeName: string;
@@ -148,7 +150,7 @@ export async function listCustomerExperienceActivity(
 ): Promise<CustomerExperienceActivity[]> {
   const result = await db.query<ActivityDbRow>(
     `SELECT activity.* FROM (
-       SELECT e.id, p.business_id, p.reward_program_id, rp.display_name AS programme_name,
+       SELECT e.id, p.id AS purchase_record_id, p.business_id, p.reward_program_id, rp.display_name AS programme_name,
               p.item_label, p.quantity, 'purchase'::text AS event_kind,
               CASE WHEN e.to_status = 'business_review_required'
                    THEN 'awaiting_business_confirmation' ELSE e.to_status END AS event_status,
@@ -159,14 +161,14 @@ export async function listCustomerExperienceActivity(
          JOIN reward_programs rp ON rp.id = p.reward_program_id
         WHERE p.customer_identity_id = $1
        UNION ALL
-       SELECT r.id, r.business_id, r.reward_program_id, rp.display_name,
+       SELECT r.id, NULL::uuid AS purchase_record_id, r.business_id, r.reward_program_id, rp.display_name,
               NULL::text, NULL::integer, 'reward_available'::text, r.state,
               r.reward_description, r.available_at
          FROM rewards r
          JOIN reward_programs rp ON rp.id = r.reward_program_id
         WHERE r.customer_identity_id = $1 AND r.state = 'available'
        UNION ALL
-       SELECT d.id, d.business_id, d.reward_program_id, rp.display_name,
+       SELECT d.id, NULL::uuid AS purchase_record_id, d.business_id, d.reward_program_id, rp.display_name,
               NULL::text, NULL::integer, 'reward_redeemed'::text, r.state,
               r.reward_description, d.redeemed_at
          FROM redemptions d
@@ -180,6 +182,7 @@ export async function listCustomerExperienceActivity(
   );
   return result.rows.map((row) => ({
     id: row.id,
+    purchaseRecordId: row.purchase_record_id,
     businessId: row.business_id,
     rewardProgramId: row.reward_program_id,
     programmeName: row.programme_name,

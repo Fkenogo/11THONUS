@@ -20,6 +20,38 @@
 
 ---
 
+---
+
+## 2026-10-12 — EA-BL-001-CORR-002-B2 — Customer Confirmation, Circle Detail, Activity Detail & Sign-out
+
+- **Task:** Improve Customer-side discoverability and direct navigation after Founder physical-phone validation.
+- **Status:** Implementation validation and Founder unified review pending; PR #307 remains open/unmerged; ITR remains paused. Entry PR #307 head `c099c11b117355be2bef1dc8e72914b2602de5a5`.
+- **Phone gate:** **PHYSICAL-PHONE VALIDATION — PASSED / FOUNDER APPROVED.** B2 does not reopen physical-device validation.
+- **Changes:** Home waiting-purchase events link directly to an owned purchase detail; Activity supports purchase deep links and links events with supported references; Circle cards route to a per-programme detail view; Customer Profile exposes Firebase sign-out through `signOutCurrentSession`.
+- **Read contract:** the Customer activity projection carries `purchaseRecordId` only for purchase events, from the existing Customer-identity-filtered query. Existing `getCustomerPurchaseRecord` continues to enforce Customer ownership. Circle detail filters the existing auth-scoped Customer overview; pending units remain separate from verified progress.
+- **Authority:** Verify, Reject, and Dispute use the existing callables and distinctions. No Product Truth, purchase verification, Cycle, reward/redemption, Business Review, commercial, identity, auth provider, schema, migration, or Cloudflare change.
+- **Activity limitation:** reward-available events link to Circle detail; reward-redeemed entries remain read-only because the current read model has no distinct redemption detail. No unsupported history attribution is introduced.
+- **Join boundary:** accepted Help/email/two-device flow unchanged; phone registration remains deferred.
+- **Files:** [B2 implementation report](../05-implementation/reports/11THONUS-post-phone-ux-correction-b2-implementation-report-2026-10-12.md).
+- **Boundary:** PR #310 untouched; no merge; no ITR; no Slice C/D/E.
+- **Rollback:** revert the B2 implementation commit(s); no migration rollback is required.
+
+---
+
+## 2026-10-12 — EA-BL-001-CORR-002-B1R — Governed Staff Redemption Binding
+
+- **Task:** Bind the existing `confirmRedemption` engine into the transaction-scoped Staff Counter after B1A.
+- **Status:** Implementation pending Founder review; PR #307 remains open/unmerged; ITR paused. Entry `ad63568ee0b36612433b1d90be6167897cc5f371`.
+- **Phone gate:** **PHYSICAL-PHONE VALIDATION — PASSED / FOUNDER APPROVED.** B1R does not reopen the accepted phone evidence.
+- **Authority:** FD-UX-1/2/3A retained. Staff receives only resolved display name, current-Business programme/progress, awaiting count, available reward description and state. Reward ID is returned only when live `redemption.confirm` evaluation allows the actor; no email, phone, profile, cross-Business history, unrelated transactions, reviewer or Business Review threshold is exposed.
+- **Binding:** B1R requires the current presented QR/Loyalty Number artifact and expected programme reference with the reward reference. The server re-resolves the artifact after live authorization, then checks customer, Business, programme, and available reward against the authoritative Reward before the existing engine runs. The callable still accepts no client-supplied customer identity, role, permission, ownership, or reward state.
+- **Experience:** eligible Owner/Manager/explicitly granted Staff see `Use 11th`, then a confirmation dialog. Ineligible Staff see the bounded Manager/Owner handoff. Mutation-time permission reauthorization remains authoritative. Redemption remains separate from `recordPurchase`; no purchase or Verified Unit is issued by redemption. B1R does not change reward/cycle mechanics.
+- **Documentation:** [B1R implementation report](../05-implementation/reports/11THONUS-post-phone-ux-correction-b1r-implementation-report-2026-10-12.md). The preceding [B1A report](../05-implementation/reports/11THONUS-post-phone-ux-correction-b1a-implementation-report-2026-10-12.md) records the earlier reward-awareness-only boundary; this entry supersedes that forward-looking statement after B1R implementation.
+- **Boundary:** no PR #310 changes; no schema/migration, dependency, config, auth-provider, Cloudflare, redemption-authority, or Product Truth change; no B2 or ITR.
+- **Rollback:** revert the B1R implementation commit(s) from PR #307; no migration rollback is required.
+
+---
+
 ## 2026-10-07 — EA-BL-001-CORR-002-B — Authorisation Correction Pass (PR #306 review)
 
 - **Task:** Make the authorised Slice B contract technically precise (documentation only; no code, test, schema, config or dependency change).
@@ -6689,3 +6721,108 @@ READY FOR CONTROLLED DRAFTING — PR AWAITS FOUNDER REVIEW`**.
 - **Files changed:** this log entry only.
 - **Constraints honoured:** no application code, DNS, Cloudflare resource, authentication, database, or runtime change; no new Cloudflare work package opened; the implementation programme continues per its approved schedule.
 - **Rollback:** revert this closure entry (documentation only; does not alter the merged assessment).
+
+---
+
+## 2026-10-07 — EA-BL-001-CORR-002-B — Staff Counter Implementation
+
+- **Date:** 2026-10-07
+- **Phase:** Experience Assembly, Slice B (authorised via PR #306; entry `origin/main` `4bc9c49`, post-merge CI 37642428840 green).
+- **Task:** Mobile-first Staff Counter on the production architecture, bound to the frozen prototype `11thonus-prototype@18e8d700…` (experience only).
+- **Status:** **IMPLEMENTED — FOUNDER PREVIEW / TECHNICAL REVIEW PENDING.** Not accepted, not complete, not merged.
+- **Scope:** Staff shell + Counter (camera QR scan with lazy `jsqr` fallback, Loyalty Number fallback, tokenless new-customer panel, truthful normal / business-review outcomes, Serve next, Staff-own recent activity); EN/FR; accessibility.
+- **Backend enablers:** safe public error discriminator (`reason` on `purchase_command_failed`); `listMyRecentCounterPurchases` (server-scoped, purpose-built projection). No schema, WP-COM, BR or Trust change.
+- **Idempotency correction:** `recordPurchase` classifies `functions/internal|unknown|cancelled` as uncertain/retryable so the key survives a lost response; the Counter keeps payload + `purchaseDate` + key as one intent. Authorisation still gates retries.
+- **Validation:** functions 2026 unit / 772 PostgreSQL; web 1076; Playwright harness 69 (axe, 320px, fake camera) and real preview stack 20; typecheck, lint, format clean.
+- **Preview:** seed adds Express Styling Circle; `preview:counter-checks`; runbook §13.
+- **Dependencies:** `jsqr@1.4.0`. **Migrations:** none. **Configuration:** Playwright harness project gains fake-capture-device flags.
+- **Rollback:** revert the PR.
+- **Report link:** [implementation report](../05-implementation/reports/11THONUS-EA-BL-001-CORR-002-B-staff-counter-implementation-report-2026-10-07.md)
+
+---
+
+## 2026-10-08 — EA-BL-001-CORR-002-B — Pre-Founder-Preview Correction Pass
+
+- **Date:** 2026-10-08
+- **Task:** Bounded correction/preview-readiness pass on PR #307 (entry head `529fc88`).
+- **Status:** **IMPLEMENTED — FOUNDER PREVIEW / TECHNICAL REVIEW PENDING** (unchanged). Not accepted/complete/merged. Slices C/D/E not authorised/not started.
+- **Role routing:** fail-closed completed — only `staff`/`owner`/`manager` select a shell; absent Business, empty result, missing/unknown role and request error all show the integrity error.
+- **Schema:** migration `0029` additive index `purchase_records_recorder_recent_idx (business_id, recorded_by_user_id, created_at DESC, id DESC)` for the Staff-own recent read (Founder-authorised); migration test bookkeeping updated.
+- **Review threads:** 4 → disposition recorded in the implementation report §12.
+- **Owner/Manager navigation:** unchanged by Founder disposition (no Counter link in Slice B).
+- **Preview:** stale Slice A preview stopped via its own command after verified ownership; Slice B reset/verified/checked on canonical ports.
+- **Follow-up candidate (separate):** `FU-OWNER-MANAGER-PURCHASE-IDEMPOTENCY` — existing Owner/Manager Purchases page recomputes `purchaseDate` per submit and can mint a new idempotency intent after an uncertain/lost response. PRE-EXISTING / OUT OF SLICE B / REQUIRES BOUNDED FOLLOW-UP.
+- **Physical-phone camera:** deferred to the secure phone-access / Cloudflare preview capability work.
+- **Dependencies:** none. **Configuration:** none. **Rollback:** revert the correction commit(s); `0029.down.sql` drops the index.
+- **Report link:** [implementation report §12](../05-implementation/reports/11THONUS-EA-BL-001-CORR-002-B-staff-counter-implementation-report-2026-10-07.md)
+
+## 2026-10-08 — EA-BL-001-CORR-002-B — Founder Preview Pass 1: Staff Mobile Experience Correction
+- **Founder Preview Pass 1:** APPROVE WITH BOUNDED MOBILE EXPERIENCE CORRECTION (Founder Preview NOT yet accepted). Accepted: Counter, scan, purchase, new-customer flows, business switching, prototype alignment. Correction: Staff phone-first shell with a Staff-only bottom navigation (the Business/Owner-Manager shell's bottom-bar rejection is unchanged and that shell is untouched).
+- **Status:** unchanged — **IMPLEMENTED — FOUNDER PREVIEW / TECHNICAL REVIEW PENDING**; PR #307 not merged; Slices C/D/E NOT AUTHORISED / NOT STARTED.
+- **Change:** phone-width Staff shell — simplified header, fixed bottom bar (Counter / New customer / Activity / More), in-page section navigation (no routes), More sheet (language + Switch Business / Personal), sticky Record bar stacked above the bar via `--staff-nav-offset`, safe-area handling, EN/FR, a11y. Desktop/tablet unchanged.
+- **Tests:** web unit (`StaffMobileShell`, Owner/Manager-unchanged proof), harness Playwright 320/375/390 px, real-stack preview specs (desktop + Pixel 7), `preview:verify`, `preview:counter-checks`.
+- **Dependencies:** none. **Schema/config:** none. **Backend:** none. **Rollback:** revert the correction commit(s).
+- **Follow-on (not built):** physical-phone secure Cloudflare preview capability (separate bounded task). `FU-OWNER-MANAGER-PURCHASE-IDEMPOTENCY` remains separate and unfixed.
+- **Report link:** [implementation report §13](../05-implementation/reports/11THONUS-EA-BL-001-CORR-002-B-staff-counter-implementation-report-2026-10-07.md)
+
+## 2026-10-08 — EA-BL-001-CORR-002-B — Founder Preview Pass 2: Mobile-Only Staff Shell
+- **Founder Preview Pass 2:** CORRECTION REQUIRED — the Staff Counter remained a desktop composition at wider widths. Founder disposition: Staff needs no desktop experience; one phone-oriented Staff shell at all viewport sizes, centred/constrained on larger screens. Founder Preview NOT yet accepted.
+- **Status:** unchanged — **IMPLEMENTED — FOUNDER PREVIEW / TECHNICAL REVIEW PENDING**; PR #307 not merged; Slices C/D/E NOT AUTHORISED / NOT STARTED.
+- **Change:** removed the responsive Staff branch, Staff top bar and two-column Counter; permanent bottom bar; single column; app/bar centred at `max-w-lg` (512 px); unused `useMediaQuery` hook deleted. Owner/Manager shell untouched.
+- **Tests:** harness Playwright at 320/375/390/768/1024/1440; real-stack preview specs (1280 + Pixel 7); unit tests; Owner/Manager-unchanged proof.
+- **Dependencies/schema/config/backend:** none. **Rollback:** revert the Pass 2 commit.
+- **Report link:** [implementation report §14](../05-implementation/reports/11THONUS-EA-BL-001-CORR-002-B-staff-counter-implementation-report-2026-10-07.md)
+
+## 2026-10-08 — EA-BL-001-CORR-002-B — Founder Preview Pass 3: Staff Information Architecture + Limited Loyalty Context
+- **Founder Preview Pass 3:** mobile-only shell accepted; the all-in-one Counter is too concentrated — Activity and Profile become their own views, New customer becomes a quick action, and Staff need limited loyalty progress during service. Founder Preview NOT yet accepted.
+- **D4 SUPERSEDED** (historical decision left as made, annotated): Staff get limited, transaction-scoped loyalty progress (PRD01 §8.2/§12.2).
+- **Status:** unchanged — **IMPLEMENTED — FOUNDER PREVIEW / TECHNICAL REVIEW PENDING**; PR #307 not merged; Slices C/D/E NOT AUTHORISED / NOT STARTED.
+- **Change:** new read-only callable `getCounterLoyaltyContext` (four values; Customer resolved server-side; one neutral failure token; no schema); `listMyRecentCounterPurchases` gains a keyset cursor (Activity paging; existing index); web: Counter / Activity / Profile routes + quick-action sheet (Scan / Help a new customer join), Counter kept mounted, Loyalty status card + reward-available alert before recording; Express seed positions (Jean-Claude 8, Esther 9 + 1 awaiting, Chantal reward available) + fingerprint refresh; 10 new live preview checks.
+- **Defects fixed on the way:** reserved i18next `ordinal` option; scan request handled while the Counter was hidden; sticky Record bar clamped by a nested wrapper.
+- **Experience Assembly direction recorded (not authorised):** Owner/Manager Operations (Slice C) mobile-first; Platform Operator Console desktop-first.
+- **Dependencies/config/schema:** none. **Rollback:** revert the Pass 3 commit(s).
+- **Report link:** [implementation report §15](../05-implementation/reports/11THONUS-EA-BL-001-CORR-002-B-staff-counter-implementation-report-2026-10-07.md)
+
+## 2026-10-09 — EA-BL-001-CORR-002-B — Founder Preview Pass 3 ACCEPTED (acceptance recording)
+- **Founder disposition:** Founder Preview Pass 3 ACCEPTED at head `ea8e8e6051335c7160d9e06516372bad953be65b` (CI run 37826012528 success). Earlier Pass 1/2/3 observations preserved.
+- **Status:** **IMPLEMENTED — FOUNDER ACCEPTED / TECHNICAL REVIEW PENDING**; not complete/closed/merged; PR #307 unmerged; Slices C/D/E NOT AUTHORISED / NOT STARTED.
+- **Follow-ups:** new `FU-COUNTER-LOOKUP-ABUSE-PROTECTION` (non-blocking security hardening; no thresholds); `FU-OWNER-MANAGER-PURCHASE-IDEMPOTENCY` preserved unfixed. Owner/Manager Counter recent activity deferred to `EA-BL-001-CORR-002-C` (mobile-first).
+- **Physical-phone validation:** pre-merge verification activity; not a Product Truth gate.
+- **Change:** documentation/status/PR-body only. No code, tests, dependencies, config or schema. (PR #307 carries additive migration `0029`; earlier "no schema" wording corrected.)
+- **Report link:** [implementation report §16](../05-implementation/reports/11THONUS-EA-BL-001-CORR-002-B-staff-counter-implementation-report-2026-10-07.md)
+
+## 2026-10-12 — EA-BL-001-CORR-002-B — Post-phone B1A Staff Context + Fast Purchase
+- **Physical-phone validation:** **PASSED / FOUNDER APPROVED**. Phone evidence remains accepted and is not reopened by subsequent UX corrections.
+- **Authority:** FD-UX-1 bounded transaction-scoped/current-Business Staff context; FD-UX-2 programme-to-purchase shortcut; FD-UX-3A reward awareness only. B1R redemption assembly remains separate and required before Staff can confirm redemption.
+- **Change:** new `getCounterCustomerContext` read seam resolves one QR/Loyalty Number before returning display name and participating current-Business programme/Circle progress, awaiting customer confirmation, and authoritative reward availability. It omits contact/auth/profile/history, reward binding, reviewer and Business Review threshold. Counter cards show eligible services and reward handoff; Add Purchase retains the artifact, preselects programme and quantity 1, safely preselects only a sole item, and preserves explicit Record.
+- **Preserved authority:** no redemption mutation/control or client-side permission check; no change to `redemption.confirm`, purchase verification, Business Review, Verified Units, cycle/reward creation, schema, auth, Cloudflare, or Slices C/D/E.
+- **Validation:** focused Counter + Staff shell 106/106; Functions unit 2,031/2,031; full web 1,144/1,144 (Node 26 experimental webstorage disabled for jsdom); B1A PostgreSQL/emulator 6/6; Staff Counter PostgreSQL file 53/53; Functions/web typecheck, changed-file lint/format, web build passed. Three exact-head CI runs passed build, lint, format, typecheck and unit tests, then exposed the cost-based planner choosing another index in the pre-existing tiny-fixture plan assertion. The fixture now disables sorting to prove the ordered composite index remains applicable. Exact-head CI is rerunning. Preview commands could not run because guarded startup found required emulator ports owned by another process; no process was stopped. Playwright harness could not launch because this host lacks its configured Chromium binary.
+- **Post-preview correction:** CI run `38241468078` showed that Loyalty Number resolution returned only programmes that allowed that number, hiding a participating QR-only programme. Commit `362316657d0dcb850fa86941334d0d0bf246a051` removes the presentation-method filter from the post-resolution Business/customer context projection while preserving the neutral resolver gate and the purchase-record shared-number policy. A PostgreSQL regression now records a QR-only participation and asserts QR and Loyalty Number context match; preview seed commentary reflects the same boundary.
+- **Preview test correction:** CI run `38244313476` passed the product checks but its desktop/mobile cases had a stale request observer collecting `getCounterLoyaltyContext` while asserting `getCounterCustomerContext`; commit `f2cc3b509952b3972080ca2b5ecdc8c1be068ff3` fixes the observer.
+- **Validation:** exact-head CI `38245729043` at `f2cc3b5` passed build, lint, format, typecheck, unit/component tests, PostgreSQL, Playwright E2E, Founder Preview tooling, cross-project port-isolation acceptance, and Firebase Emulator validation. Local Functions typecheck and Prettier pass; local Postgres and preview checks were unavailable without emulator and seeded preview state.
+- **Status:** implementation is pushed to PR #307, Founder review required; ITR paused; PR #307 and PR #310 unmerged. All four returned inline review threads are resolved. Physical-phone validation remains PASSED / FOUNDER APPROVED.
+- **Report link:** [B1A implementation report](../05-implementation/reports/11THONUS-post-phone-ux-correction-b1a-implementation-report-2026-10-12.md)
+
+## 2026-10-12 — EA-BL-001-CORR-002-B — Post-phone B1R Governed Redemption Binding
+- **Physical-phone validation:** remains **PASSED / FOUNDER APPROVED**; B1R does not reopen the device gate.
+- **Change:** transaction-scoped Staff context now binds only the resolved customer's available reward for the active Business/programme, provides server-evaluated `redemption.confirm` eligibility, and offers an explicit confirmation dialog through a Firebase callable adapter. The callable resolves the presented QR/Loyalty Number and verifies customer/programme/reward binding before calling the existing redemption command.
+- **Authority/privacy:** mutation-time permission reauthorization and existing redemption lifecycle are unchanged. The read eligibility signal is guidance only. Ineligible Staff see reward awareness and a bounded Manager/Owner handoff. Payload excludes client authority/identity claims; no eligible Reward identifier is returned to ineligible actors. Redemption does not record a purchase or issue a Verified Unit.
+- **B1R boundary:** B1R binds the existing governed action; it does not redesign redemption. No reward/cycle/product rules, permission semantics, schema, migrations, dependencies, config, auth, Cloudflare, or PR #310 changes.
+- **Validation:** Functions suite 2,033 passed; full web suite 1,148 passed with the Node 26 webstorage compatibility flag; focused Counter/API 87 passed; web typecheck, changed-file ESLint/Prettier, `git diff --check`, and Vite production build passed. PostgreSQL/Firestore emulator and Founder Preview checks could not run locally because the emulator's required ports were occupied; no foreign process was stopped. Exact-head CI remains to be checked after push.
+- **Status:** B1R implementation prepared on PR #307 branch for Founder review. PR #307 remains unmerged, PR #310 untouched, ITR paused, and B2 not started.
+- **Report link:** [B1R implementation report](../05-implementation/reports/11THONUS-post-phone-ux-correction-b1r-implementation-report-2026-10-12.md)
+
+## 2026-10-12 — B1R validation correction — preserve legacy redemption idempotency
+- **Finding:** the initial B1R hash included customer/programme binding in all command calls. Internal callers without B1R fields would no longer match a pre-B1R reward-only request hash and could fail to replay an existing key.
+- **Correction:** when both B1R artifact and programme fields are absent, preserve the original Reward-only fingerprint. When either field is supplied, retain the stronger Reward + resolved customer + programme hash. The callable still requires the bound request and the mutation still verifies all bindings.
+- **Regression coverage:** PostgreSQL tests now cover replay of an old-format legacy key, same-bound B1R replay, and same-key conflict for changed customer, programme, or Reward.
+- **Preview compatibility:** the Founder Preview redemption seed now supplies Aline's already-issued QR reference and the seeded programme reference to the governed callable.
+- **PR reconciliation:** current `main` was three commits ahead of the PR merge base and added the MEDIA-001 assessment plus this tracker entry. GitHub reported `mergeable_state=dirty`; direct three-way comparison confirmed a content conflict in this append-only tracker because both branches prepended entries. The mechanical merge preserves both entries and the MEDIA-001 report.
+- **Validation:** exact-head CI run `38257093090` passed at `8cec3bdd2f61c897238049c571a74abb059e7bd5`; `38259373589` passed at `c877af914c65cf11f4dfa08bc6cec9753a78c27e`; reconciled two-parent commit `c400c950c7190e3981aa88c86a84c9a416f39098` passed `38273456853`; and full tracker-restoration head `dfaa69bdd82c0573f166f78b3894003e1b9bd2ab` passed `38275757199`. All four full workflows passed build, lint, format, typecheck, unit/component, PostgreSQL integration, Playwright, Founder Preview tooling, port-isolation, and Firebase Emulator validation. The reconciliation preserves current-main ancestry. No PR #310, schema, migration, dependency, config, or Product Truth changes.
+
+## 2026-10-12 — Post-phone UX Correction B2 — Customer confirmation, Circle detail, activity detail, sign-out
+- **Status:** B2 implementation is complete on PR #307; Founder unified review remains pending and ITR remains paused. Physical-phone validation remains **PASSED / FOUNDER APPROVED**. B1A remains technically accepted; B1R remains validated/technically accepted.
+- **Change:** Customer Home links waiting purchases directly to the owned purchase detail with “Review & confirm”; Customer Activity supports direct purchase detail routes while retaining the existing Verify / Reject / Dispute callables; Circle cards open the selected Customer-scoped Circle detail; supported purchase activity events open purchase detail, reward-available events open Circle detail, and redeemed events remain read-only; Customer Profile adds sign-out using `signOutCurrentSession`.
+- **Authority/privacy:** purchase detail remains server ownership-checked; Circle state comes from the authenticated Customer overview; awaiting units stay separate from verified units; no backend Product Truth, schema, auth architecture, PR #310, or new-customer join changes.
+- **Validation:** focused Customer and B1A/B1R regressions 120 passed; Customer read-model tests 6 passed; Functions suite 2,034 passed; typecheck, build, changed-file lint/format passed. Full local web suite had unrelated Node 26 phone-auth storage failures; local preview/emulator validation was constrained by stopped preview and occupied configured ports. Initial exact-head CI `38283112725` caught stale E2E selectors that expected Circle cards as `article`; selectors were corrected to target the now-accessible links. Full exact-head CI run `38285377584` passed build, lint, format, typecheck, unit/component, PostgreSQL integration, Playwright, Founder Preview tooling, cross-project port-isolation acceptance, and Firebase Emulator validation. No merge, PR #310 modification, or ITR.
+- **Report:** [B2 implementation report](../05-implementation/reports/11THONUS-post-phone-ux-correction-b2-implementation-report-2026-10-12.md)

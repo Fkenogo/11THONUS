@@ -1,7 +1,7 @@
-> **Title:** PRD Section 4 — Customer-Verified Loyalty Engine (CVLE)  
-> **Version:** 1.0 · **Status:** Draft for review (pre-freeze) · **Classification:** Authoritative Product  
-> **Governing document:** 11thONUS Platform Constitution  
-> **Source-of-truth path:** `docs/01-product/prd/04-customer-verified-loyalty.md`  
+> **Title:** PRD Section 4 — Customer-Verified Loyalty Engine (CVLE)
+> **Version:** 1.0 · **Status:** Draft for review (pre-freeze) · **Classification:** Authoritative Product
+> **Governing document:** 11thONUS Platform Constitution
+> **Source-of-truth path:** `docs/01-product/prd/04-customer-verified-loyalty.md`
 > **Last controlled update:** 2026-07-16 (Phase 4 — §19 gained IDs FR-CVLE-001..013 per DEC-GOV-006; no wording changed)
 
 # 11thONUS
@@ -53,21 +53,33 @@ The following terms become official platform terminology.
 
 ## Reward Program
 
-A business-defined loyalty program.
+A business-defined grouping / container for one or more item-specific loyalty offers (DEC-LOY-019).
 
 Examples:
 
-Premium Haircut
+Express Styling
 
-Medium Pizza
+Artisan Pizza
 
-SUV Wash
+Signature Wash
+
+## Qualifying Item
+
+The specific Business-defined product or service being accumulated (DEC-LOY-016 / DEC-LOY-019).
+
+Examples:
+
+Blow-dry
+
+Medium Margherita
+
+Full Detail Wash
 
 Regular Coffee
 
 ## Verified Unit
 
-A qualifying unit that has been verified by the registered customer.
+A verified quantity of one specific qualifying item, confirmed by the registered customer.
 
 One verified coffee
 
@@ -81,7 +93,7 @@ Five verified coffees
 
 Five Verified Units.
 
-The engine counts Verified Units.
+The engine counts Verified Units of that specific item.
 
 Not transactions.
 
@@ -89,19 +101,19 @@ Not visits.
 
 Not receipts.
 
-## Loyalty Cycle
+## Loyalty Cycle (Circle)
 
-A complete earn-and-redeem cycle within one Reward Program.
+A complete earn-and-redeem cycle for ONE specific qualifying item within a Reward Program (DEC-LOY-019).
 
-Example
+Example (Blow-dry Circle)
 
 Cycle 1
 
-10 Verified Units
+10 Verified Blow-dry Units
 
 ↓
 
-Reward Available
+Blow-dry Reward Available
 
 ↓
 
@@ -127,11 +139,11 @@ This is the emotional experience presented to customers.
 
 Every Reward Program operates independently.
 
-Progress never mixes between Reward Programs.
+Furthermore, within any Reward Program, each Qualifying Item operates independently. Progress and Verified Units never mix between Reward Programs, nor between different Qualifying Items within the same Reward Program (DEC-LOY-019).
 
 ### CVLE-002
 
-Every customer maintains independent Loyalty Cycles for every Reward Program.
+Every customer maintains independent Loyalty Cycles for each Qualifying Item within every Reward Program (DEC-LOY-019).
 
 ### CVLE-003
 
@@ -175,9 +187,9 @@ Status
 
 ## Qualification Rules
 
-Qualifying Products
+Qualifying Products / Items (each defining an independent Circle track per DEC-LOY-019)
 
-Required Verified Units
+Required Verified Units (10 for MVP)
 
 Multiple Units Allowed
 
