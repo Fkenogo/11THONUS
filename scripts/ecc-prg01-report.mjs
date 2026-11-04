@@ -44,7 +44,8 @@ const body = pr?.body ?? "";
 const handoverFields = {
   source: /\b(sha|commit|baseline|head)\b/i.test(body),
   verification: /\b(tests?|testing|ci|checks?|verification|evidence)\b/i.test(body),
-  authority: /\b(approvals?|approved|approve|approving|founder|decisions?|authori[sz]ations?)\b/i.test(body),
+  authority:
+    /\b(approvals?|approved|approve|approving|founder|decisions?|authori[sz]ations?)\b/i.test(body),
   continuation: /\b(next|handover|follow.up|blocker|pending)\b/i.test(body),
 };
 const missing = Object.entries(handoverFields)
@@ -94,7 +95,13 @@ const lines = [
   `| Merge base | ${short(mergeBase)} |`,
   `| Head includes current main | ${upToDate === null ? "UNKNOWN" : upToDate ? "YES" : "NO — reconcile"} |`,
   `| Root AGENTS.md | ${agentEntry ? "PRESENT" : "UNKNOWN"} |`,
-  `| Handover description markers | ${!pr ? "NOT_APPLICABLE (no PR event)" : missing.length ? "MISSING: " + missing.join(", ") : "PRESENT (content not validated)"} |`,
+  `| Handover description markers | ${
+    !pr
+      ? "NOT_APPLICABLE (no PR event)"
+      : missing.length
+        ? "MISSING: " + missing.join(", ")
+        : "PRESENT (content not validated)"
+  } |`,
   "",
   "### Observations",
   ...(signals.length ? signals.map((s) => "- " + s) : ["- No machine-detectable exceptions."]),
