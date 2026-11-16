@@ -91,4 +91,28 @@ describe("customer experience reads", () => {
     expect("confirmedByUserId" in rows[0]).toBe(false);
     expect(seen[0].sql).not.toContain("confirmed_by_user_id");
   });
+
+  it("returns a Customer-owned purchase reference for purchase activity links", async () => {
+    const { pool, seen } = fakePool([
+      [
+        {
+          id: "event-1",
+          purchase_record_id: "purchase-1",
+          business_id: "biz-1",
+          reward_program_id: "program-1",
+          programme_name: "Coffee Circle",
+          item_label: "Coffee",
+          quantity: 1,
+          event_kind: "purchase",
+          event_status: "waiting_for_customer",
+          reward_description: null,
+          occurred_at: new Date("2026-10-01T12:00:00Z"),
+        },
+      ],
+    ]);
+    const rows = await listCustomerExperienceActivity(pool, "cust-1");
+    expect(rows[0]).toMatchObject({ id: "event-1", purchaseRecordId: "purchase-1" });
+    expect(seen[0].values).toEqual(["cust-1"]);
+    expect(seen[0].sql).toContain("p.customer_identity_id = $1");
+  });
 });

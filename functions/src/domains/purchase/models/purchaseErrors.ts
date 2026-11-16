@@ -10,15 +10,41 @@
 import type { ErrorCategory } from "../../../shared/errors/errorCategories";
 import type { PlatformFieldError } from "../../../shared/errors/platformError";
 
+/**
+ * Safe public failure discriminator for the Staff Counter (`EA-BL-001-CORR-002-B`, assessment
+ * §23.2). A closed, stable set of tokens that may cross the callable boundary as
+ * `HttpsError.details.reason`; the domain `message` itself still never does. Each token names a
+ * category the Counter can turn into truthful copy -- never a cause the caller could use to probe
+ * policy or identity (a shared-number policy refusal, an unknown vs. inactive customer artifact,
+ * and a foreign-Business item all collapse into the neutral token for their family).
+ */
+export const PURCHASE_FAILURE_REASONS = [
+  "customer_artifact_invalid_or_not_found",
+  "programme_unavailable",
+  "qualifying_item_invalid",
+  "quantity_invalid",
+  "generic_validation_failed",
+] as const;
+
+export type PurchaseFailureReason = (typeof PURCHASE_FAILURE_REASONS)[number];
+
 export class PurchaseDomainError extends Error {
   readonly category: ErrorCategory;
   readonly fieldErrors?: PlatformFieldError[];
+  /** Present only on validation failures; see {@link PurchaseFailureReason}. */
+  readonly reason?: PurchaseFailureReason;
 
-  constructor(category: ErrorCategory, message: string, fieldErrors?: PlatformFieldError[]) {
+  constructor(
+    category: ErrorCategory,
+    message: string,
+    fieldErrors?: PlatformFieldError[],
+    reason?: PurchaseFailureReason,
+  ) {
     super(message);
     this.name = "PurchaseDomainError";
     this.category = category;
     this.fieldErrors = fieldErrors;
+    this.reason = reason;
   }
 }
 
@@ -55,15 +81,30 @@ export function purchaseOwnershipError(): PurchaseDomainError {
 }
 
 export function purchaseValidationError(message: string): PurchaseDomainError {
-  return new PurchaseDomainError("VALIDATION_FAILED", message);
+  return new PurchaseDomainError(
+    "VALIDATION_FAILED",
+    message,
+    undefined,
+    "generic_validation_failed",
+  );
 }
 
+/**
+ * The presented Customer artifact is malformed, unknown, or no longer active. Deliberately one
+ * token for all of them (and for the neutral shared-number refusal below): the Counter learns only
+ * "that customer code did not work", never which identities or policies exist.
+ */
 export function purchaseArtifactError(message: string): PurchaseDomainError {
-  return new PurchaseDomainError("VALIDATION_FAILED", message);
+  return new PurchaseDomainError(
+    "VALIDATION_FAILED",
+    message,
+    undefined,
+    "customer_artifact_invalid_or_not_found",
+  );
 }
 
 export function purchaseProgramError(message: string): PurchaseDomainError {
-  return new PurchaseDomainError("VALIDATION_FAILED", message);
+  return new PurchaseDomainError("VALIDATION_FAILED", message, undefined, "programme_unavailable");
 }
 
 /**
@@ -78,18 +119,26 @@ export function purchaseQualifyingItemError(): PurchaseDomainError {
   return new PurchaseDomainError(
     "VALIDATION_FAILED",
     "The selected qualifying item is not available for this Reward Program.",
+    undefined,
+    "qualifying_item_invalid",
   );
 }
 
+/**
+ * Shared-Loyalty-Number policy refusal. Mapped to the NEUTRAL customer-code token so the public
+ * discriminator never reveals the programme's shared-number policy (assessment §23.2).
+ */
 export function purchaseSharedPolicyError(): PurchaseDomainError {
   return new PurchaseDomainError(
     "VALIDATION_FAILED",
     "This Reward Program does not allow Loyalty Number recording: present the Customer's current QR Identity.",
+    undefined,
+    "customer_artifact_invalid_or_not_found",
   );
 }
 
 export function purchaseQuantityError(message: string): PurchaseDomainError {
-  return new PurchaseDomainError("VALIDATION_FAILED", message);
+  return new PurchaseDomainError("VALIDATION_FAILED", message, undefined, "quantity_invalid");
 }
 
 export function purchaseIdempotencyConflictError(): PurchaseDomainError {

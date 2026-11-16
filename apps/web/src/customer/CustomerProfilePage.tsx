@@ -1,16 +1,32 @@
-import { Link, useOutletContext } from "react-router-dom";
-import { Shield } from "lucide-react";
+import { Link, useNavigate, useOutletContext } from "react-router-dom";
+import { LogOut, Shield } from "lucide-react";
+import { useState } from "react";
 import type { Auth } from "firebase/auth";
 import type { Functions } from "firebase/functions";
 import { useTranslation } from "../i18n";
 import type { CustomerShellContext } from "./CustomerShell";
 import { useCustomerExperienceOverviewQuery } from "./hooks/experienceQueries";
+import { signOutCurrentSession } from "../authentication/signOutFlow";
 
 export function CustomerProfilePage({ auth, functions }: { auth: Auth; functions: Functions }) {
   const { t } = useTranslation("customer");
   const { identity, openIdentity } = useOutletContext<CustomerShellContext>();
   const overview = useCustomerExperienceOverviewQuery({ auth, functions });
   const displayName = identity?.displayName || t("experience.memberFallback");
+  const navigate = useNavigate();
+  const [signingOut, setSigningOut] = useState(false);
+  const [signOutFailed, setSignOutFailed] = useState(false);
+  async function signOut() {
+    setSigningOut(true);
+    setSignOutFailed(false);
+    try {
+      await signOutCurrentSession(auth);
+      navigate("/", { replace: true });
+    } catch {
+      setSignOutFailed(true);
+      setSigningOut(false);
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -71,6 +87,23 @@ export function CustomerProfilePage({ auth, functions }: { auth: Auth; functions
       >
         {t("nav.activity")}
       </Link>
+      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <button
+          type="button"
+          onClick={() => void signOut()}
+          disabled={signingOut}
+          aria-busy={signingOut}
+          className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 text-sm font-semibold text-slate-800 focus-visible:outline-2 focus-visible:outline-amber-600 disabled:opacity-60"
+        >
+          <LogOut aria-hidden="true" className="h-4 w-4" />
+          {signingOut ? t("experience.signingOut") : t("experience.signOut")}
+        </button>
+        {signOutFailed ? (
+          <p role="alert" className="mt-2 text-sm text-rose-800">
+            {t("experience.signOutError")}
+          </p>
+        ) : null}
+      </section>
     </div>
   );
 }

@@ -163,6 +163,7 @@ import {
   rejectBusinessReview as rejectBusinessReviewCommand,
 } from "./domains/purchase/services/businessReviewCommands";
 import {
+  listMyRecentCounterPurchases as listMyRecentCounterPurchasesQuery,
   listPurchasesForBusiness as listPurchasesForBusinessQuery,
   getPurchaseRecordForBusiness as getPurchaseRecordForBusinessQuery,
   listBusinessReviewQueue as listBusinessReviewQueueQuery,
@@ -173,6 +174,8 @@ import {
   listAvailableRewardsForBusiness as listAvailableRewardsForBusinessQuery,
   listLoyaltyCycleProgressForBusiness as listLoyaltyCycleProgressForBusinessQuery,
 } from "./domains/purchase/services/purchaseQueries";
+import { getCounterLoyaltyContext as getCounterLoyaltyContextQuery } from "./domains/purchase/services/counterLoyaltyContext";
+import { getCounterCustomerContext as getCounterCustomerContextQuery } from "./domains/purchase/services/counterCustomerContext";
 import { getCustomerExperienceOverview } from "./domains/purchase/services/customerExperienceQueries";
 
 setGlobalOptions({ region: PLATFORM_REGION, maxInstances: 10 });
@@ -309,10 +312,13 @@ export function toHttpsError(error: unknown): HttpsError {
   if (error instanceof PurchaseDomainError) {
     // `PLATFORM-BASELINE-006A`: same stable-message posture — the domain
     // message (which may name purchase/customer/program ids or the exact
-    // idempotency key) is never echoed.
+    // idempotency key) is never echoed. `EA-BL-001-CORR-002-B`: a validation failure may carry a
+    // closed, safe `reason` token (see `PurchaseFailureReason`) so the Staff Counter can choose
+    // truthful copy; nothing else about the failure crosses the boundary.
     return new HttpsError(
       CATEGORY_TO_HTTPS[error.category] ?? "internal",
       "purchase_command_failed",
+      error.reason === undefined ? undefined : { reason: error.reason },
     );
   }
   return new HttpsError("internal", "authentication_failed");
@@ -2274,30 +2280,45 @@ function getPurchasePostgresPool(): PlatformPostgresPool {
   return getRewardProgramPostgresPool();
 }
 
+/**
+ * Boundary-parse failure for the purchase callables. Carries the same closed `reason` tokens the
+ * domain errors do (`EA-BL-001-CORR-002-B`) so a malformed artifact or quantity is as truthful to
+ * the Counter as a domain-level one; every other field is the generic token.
+ */
+function purchaseParseError(field: string): HttpsError {
+  const reason =
+    field === "loyaltyNumberValue" || field === "qrReference"
+      ? "customer_artifact_invalid_or_not_found"
+      : field === "quantity"
+        ? "quantity_invalid"
+        : "generic_validation_failed";
+  return new HttpsError("invalid-argument", "purchase_command_failed", { field, reason });
+}
+
 function parseOptionalPurchaseString(value: unknown, field: string): string | undefined {
   if (value === undefined || value === null) {
     return undefined;
   }
   if (typeof value !== "string" || value.trim().length === 0) {
-    throw new HttpsError("invalid-argument", "purchase_command_failed", { field });
+    throw purchaseParseError(field);
   }
   return value;
 }
 
 function parsePurchaseQuantity(value: unknown): number {
   if (typeof value !== "number" || !Number.isInteger(value) || value < 1) {
-    throw new HttpsError("invalid-argument", "purchase_command_failed", { field: "quantity" });
+    throw purchaseParseError("quantity");
   }
   return value;
 }
 
 function parsePurchaseIsoDate(value: unknown, field: string): Date {
   if (typeof value !== "string" || value.trim().length === 0) {
-    throw new HttpsError("invalid-argument", "purchase_command_failed", { field });
+    throw purchaseParseError(field);
   }
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) {
-    throw new HttpsError("invalid-argument", "purchase_command_failed", { field });
+    throw purchaseParseError(field);
   }
   return parsed;
 }
@@ -2513,11 +2534,11 @@ export const rejectBusinessReview = onCall(async (request) => {
 });
 
 /**
- * Whitelist parser: exactly `businessId` and `rewardId`.
+ * Whitelist parser: Business, Reward, Programme and one presented artifact.
  *
  * Deliberately minimal — `CAPABILITY-6-REDEMPTION-ENGINE-001` /
  * `DEC-LOY-018`. A redemption confirmation is a statement ABOUT one
- * persisted Reward, so every other field that could conceivably be sent
+ * persisted Reward in the currently served Customer/Programme context, so every other field that could conceivably be sent
  * (Customer Identity id, Reward state, Business ownership, cycle, program,
  * program version, confirmer identity or role, redeemed-at timestamp) is
  * excluded by the whitelist and server-resolved instead. The client can say
@@ -2526,9 +2547,21 @@ export const rejectBusinessReview = onCall(async (request) => {
  * mass-assignment regression test.
  */
 export function parseConfirmRedemptionRequest(value: Record<string, unknown>) {
+  const loyaltyNumberValue = parseOptionalPurchaseString(
+    value.loyaltyNumberValue,
+    "loyaltyNumberValue",
+  );
+  const qrReference = parseOptionalPurchaseString(value.qrReference, "qrReference");
+  if (Boolean(loyaltyNumberValue) === Boolean(qrReference)) {
+    throw purchaseParseError("loyaltyNumberValue");
+  }
   return {
     businessId: parseBusinessId(value.businessId),
     rewardId: parseNonEmptyString(value.rewardId),
+    rewardProgramId: parseNonEmptyString(value.rewardProgramId),
+    artifact: loyaltyNumberValue
+      ? { kind: "loyalty_number" as const, value: loyaltyNumberValue }
+      : { kind: "qr_identity" as const, value: qrReference as string },
   };
 }
 
@@ -2551,10 +2584,15 @@ export const confirmRedemption = onCall(async (request) => {
     const { userId } = await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
       verifier: firebaseAdminTokenVerifier(),
     });
+    const parsed = parseConfirmRedemptionRequest(value);
     return await confirmRedemptionCommand(db, getPurchasePostgresPool(), {
       userId,
-      ...parseConfirmRedemptionRequest(value),
-      request: { rewardId: parseNonEmptyString(value.rewardId) },
+      businessId: parsed.businessId,
+      request: {
+        rewardId: parsed.rewardId,
+        rewardProgramId: parsed.rewardProgramId,
+        artifact: parsed.artifact,
+      },
       idempotencyKey: parseClientIdempotencyKey(value.idempotencyKey),
       correlationId: randomUUID(),
     });
@@ -2579,6 +2617,99 @@ export const listPurchasesForBusiness = onCall(async (request) => {
       businessId: parseBusinessId(value.businessId),
       status: value.status,
       ...parsePurchasePagination(value),
+    });
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+/**
+ * Staff Counter "my recent submissions" (`EA-BL-001-CORR-002-B`, D6). Whitelist transport: exactly
+ * `businessId` and an optional bounded `limit` -- no recorder id, status filter or offset crosses the
+ * wire; the recorder is the server-authenticated actor. Gated by the live `purchase.record`
+ * evaluation (the Counter's one authority) and scoped to the caller's own submissions in SQL.
+ */
+export function parseListMyRecentCounterPurchasesRequest(value: Record<string, unknown>) {
+  return {
+    businessId: parseBusinessId(value.businessId),
+    ...(value.limit === undefined
+      ? {}
+      : { limit: parsePurchasePagination({ limit: value.limit }).limit }),
+    // Opaque keyset cursor from a previous page (Staff Activity view). Validated server-side.
+    ...(value.cursor === undefined || value.cursor === null
+      ? {}
+      : { cursor: parseOptionalPurchaseString(value.cursor, "cursor") }),
+  };
+}
+
+export const listMyRecentCounterPurchases = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId } = await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    return await listMyRecentCounterPurchasesQuery(db, getPurchasePostgresPool(), {
+      userId,
+      ...parseListMyRecentCounterPurchasesRequest(value),
+    });
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+/**
+ * Staff Counter limited loyalty context (`EA-BL-001-CORR-002-B`, Founder Preview Pass 3). Whitelist
+ * transport: exactly `businessId`, `rewardProgramId` and ONE presented artifact (`loyaltyNumberValue`
+ * XOR `qrReference`) -- the Customer is resolved server-side, so no Customer id crosses the wire in
+ * either direction. Exported only for the mass-assignment regression test.
+ */
+export function parseGetCounterLoyaltyContextRequest(value: Record<string, unknown>) {
+  return {
+    businessId: parseBusinessId(value.businessId),
+    rewardProgramId: parseNonEmptyString(value.rewardProgramId),
+    loyaltyNumberValue: parseOptionalPurchaseString(value.loyaltyNumberValue, "loyaltyNumberValue"),
+    qrReference: parseOptionalPurchaseString(value.qrReference, "qrReference"),
+  };
+}
+
+export const getCounterLoyaltyContext = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId } = await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    return await getCounterLoyaltyContextQuery(db, getPurchasePostgresPool(), {
+      userId,
+      correlationId: randomUUID(),
+      ...parseGetCounterLoyaltyContextRequest(value),
+    });
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+/** Staff-safe, transaction-scoped Customer context (`FD-UX-1`, B1A). */
+export function parseGetCounterCustomerContextRequest(value: Record<string, unknown>) {
+  return {
+    businessId: parseBusinessId(value.businessId),
+    loyaltyNumberValue: parseOptionalPurchaseString(value.loyaltyNumberValue, "loyaltyNumberValue"),
+    qrReference: parseOptionalPurchaseString(value.qrReference, "qrReference"),
+  };
+}
+
+export const getCounterCustomerContext = onCall(async (request) => {
+  const value = (request.data ?? {}) as Record<string, unknown>;
+  const db = getFirestore(getAdminApp());
+  try {
+    const { userId } = await resolveAuthenticatedBusinessActor(db, parseActorRequest(value), {
+      verifier: firebaseAdminTokenVerifier(),
+    });
+    return await getCounterCustomerContextQuery(db, getPurchasePostgresPool(), {
+      userId,
+      correlationId: randomUUID(),
+      ...parseGetCounterCustomerContextRequest(value),
     });
   } catch (error) {
     throw toHttpsError(error);

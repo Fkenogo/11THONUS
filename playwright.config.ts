@@ -26,7 +26,16 @@ export default defineConfig({
       // server/baseURL instead. `ENG-P3-002-UI-IMP-C` adds its own Profile/
       // Locations harness spec alongside the existing shell one, same pattern.
       name: "chromium-dashboard-harness",
-      use: { ...devices["Desktop Chrome"], baseURL: "http://localhost:5183" },
+      use: {
+        ...devices["Desktop Chrome"],
+        baseURL: "http://localhost:5183",
+        // EA-BL-001-CORR-002-B: a synthetic capture device and an auto-accepted permission prompt,
+        // so the Counter harness can drive the scanner view with a real MediaStream in headless
+        // Chromium. Harmless to every other harness spec (none opens a camera).
+        launchOptions: {
+          args: ["--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream"],
+        },
+      },
       testMatch: /dashboard-.*-harness\.spec\.ts/,
     },
     {

@@ -124,6 +124,12 @@ export function CustomerHomePage({ auth, functions }: { auth: Auth; functions: F
                   {t("experience.cycleComplete", { count: rewardCircle.cycleNumber ?? 1 })}
                 </span>
               </div>
+              <Link
+                to={`/customer/circles/${rewardCircle.rewardProgramId}`}
+                className="inline-flex min-h-11 items-center font-semibold text-white underline underline-offset-2"
+              >
+                {t("experience.circleDetail")}
+              </Link>
             </section>
           ) : latestRedemption ? (
             <section className="space-y-3 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 p-5 text-white shadow-lg shadow-emerald-500/20">
@@ -164,7 +170,7 @@ export function CustomerHomePage({ auth, functions }: { auth: Auth; functions: F
               </div>
               <CustomerLoyaltyCircle circle={closestCircle} />
               <Link
-                to="/customer/circles"
+                to={`/customer/circles/${closestCircle.rewardProgramId}`}
                 className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/70 p-3 text-left transition hover:border-slate-200 hover:bg-slate-50"
               >
                 <span className="min-w-0">
@@ -233,7 +239,7 @@ export function CustomerHomePage({ auth, functions }: { auth: Auth; functions: F
                 {circles.map((circle) => (
                   <li key={circle.id}>
                     <Link
-                      to="/customer/circles"
+                      to={`/customer/circles/${circle.rewardProgramId}`}
                       className="flex min-h-14 items-center justify-between gap-2 rounded-xl border border-slate-100 bg-slate-50/50 p-3 transition hover:border-slate-200 hover:bg-slate-50"
                     >
                       <span className="flex min-w-0 items-center gap-3">
@@ -300,18 +306,44 @@ export function CustomerHomePage({ auth, functions }: { auth: Auth; functions: F
                         {new Date(item.occurredAt).toLocaleDateString()}
                       </span>
                     </span>
-                    <span
-                      className={`shrink-0 rounded border px-2 py-1 text-[10px] font-semibold ${item.status === "verified" || item.eventKind === "reward_redeemed" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-800"}`}
-                    >
-                      {item.eventKind === "reward_redeemed"
-                        ? t("experience.activityRewardRedeemed")
-                        : item.status === "verified"
-                          ? t("experience.activityVerified")
-                          : item.status === "pending_admission"
-                            ? t("experience.activityAdmission")
-                            : item.status === "awaiting_business_confirmation"
-                              ? t("experience.activityBusinessReview")
-                              : t("experience.activityWaiting")}
+                    <span className="flex shrink-0 flex-col items-end gap-1">
+                      <span
+                        className={`rounded border px-2 py-1 text-[10px] font-semibold ${item.status === "verified" || item.eventKind === "reward_redeemed" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-800"}`}
+                      >
+                        {item.eventKind === "reward_redeemed"
+                          ? t("experience.activityRewardRedeemed")
+                          : item.status === "verified"
+                            ? t("experience.activityVerified")
+                            : item.status === "pending_admission"
+                              ? t("experience.activityAdmission")
+                              : item.status === "awaiting_business_confirmation"
+                                ? t("experience.activityBusinessReview")
+                                : t("experience.activityWaiting")}
+                      </span>
+                      {item.eventKind === "purchase" &&
+                      item.purchaseRecordId &&
+                      item.status === "waiting_for_customer" ? (
+                        <Link
+                          to={`/customer/activity/${item.purchaseRecordId}`}
+                          className="min-h-11 inline-flex items-center font-bold text-amber-800 underline underline-offset-2"
+                        >
+                          {t("purchase.reviewConfirm")}
+                        </Link>
+                      ) : item.eventKind === "purchase" && item.purchaseRecordId ? (
+                        <Link
+                          to={`/customer/activity/${item.purchaseRecordId}`}
+                          className="min-h-11 inline-flex items-center font-semibold text-amber-800 underline underline-offset-2"
+                        >
+                          {t("purchase.detailTitle")}
+                        </Link>
+                      ) : item.eventKind === "reward_available" && item.rewardProgramId ? (
+                        <Link
+                          to={`/customer/circles/${item.rewardProgramId}`}
+                          className="min-h-11 inline-flex items-center font-semibold text-amber-800 underline underline-offset-2"
+                        >
+                          {t("experience.circleDetail")}
+                        </Link>
+                      ) : null}
                     </span>
                   </li>
                 ))}

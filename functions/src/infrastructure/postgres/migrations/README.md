@@ -195,6 +195,11 @@ created directly by `migrationRunner.ts`'s `ensureMigrationsTable` — it is
 migration-system metadata intrinsic to the mechanism, not a numbered
 migration file in this directory.
 
+`EA-BL-001-CORR-002-B` adds `0029`: the additive
+`purchase_records_recorder_recent_idx` on
+`(business_id, recorded_by_user_id, created_at DESC, id DESC)` serving the Staff Counter's
+"my recent submissions" read. Index only; no table, column or data change.
+
 Naming convention for future migrations added here by later packages:
 
 ```

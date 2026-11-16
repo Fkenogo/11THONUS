@@ -63,6 +63,7 @@
  */
 
 import type { Firestore } from "firebase-admin/firestore";
+import { randomUUID } from "node:crypto";
 import type { PlatformPostgresPool } from "../../../infrastructure/postgres/postgresPool";
 import { withPlatformTransaction } from "../../../infrastructure/postgres/postgresTransaction";
 import {
@@ -72,6 +73,14 @@ import {
 } from "../../rewardProgram/repositories/idempotencyRepository";
 import { redemptionRequestHash } from "./purchaseRequestHash";
 import { authorizeRedemptionConfirm } from "./purchaseAuthorization";
+import {
+  lookupCustomerIdentityByLoyaltyNumber,
+  lookupCustomerIdentityByQrReference,
+} from "../../identity/repositories/identityLookupRepository";
+import { IdentityDomainError } from "../../identity/models/identityErrors";
+import { createLoyaltyNumber } from "../../loyaltyNumber/models/loyaltyNumber";
+import { createQrReference } from "../../qrIdentity/models/qrReference";
+import { hasActiveLoyaltyNumberProgramme } from "../repositories/counterCustomerContextRepository";
 import {
   lockRewardById,
   peekRewardScopeById,
@@ -102,10 +111,17 @@ import {
   redemptionCycleStateError,
   redemptionRewardNotFoundError,
   redemptionStaleStateError,
+  PurchaseDomainError,
 } from "../models/purchaseErrors";
 
 export type ConfirmRedemptionRequest = {
   readonly rewardId: string;
+  /** Current transaction artifact; the command resolves it after authorization and binds it to the Reward. */
+  readonly artifact?:
+    | { readonly kind: "loyalty_number"; readonly value: string }
+    | { readonly kind: "qr_identity"; readonly value: string };
+  /** Expected Programme from the server context; compared to the persisted Reward, never trusted as authority. */
+  readonly rewardProgramId?: string;
 };
 
 /**
@@ -168,17 +184,76 @@ export async function confirmRedemption(
   // Live authority, resolved on EVERY attempt before any state is read or
   // written. Never skipped, never cached, never taken from the request.
   // This first evaluation is the accountable one and is audited (004C).
-  await authorizeRedemptionConfirm(db, params.userId, params.businessId, {
-    idempotencyKey: params.idempotencyKey,
-    requireAudit: true,
-  });
+  const { role: authorizedRole } = await authorizeRedemptionConfirm(
+    db,
+    params.userId,
+    params.businessId,
+    {
+      idempotencyKey: params.idempotencyKey,
+      requireAudit: true,
+    },
+  );
 
+  const artifact = params.request.artifact;
+  let expectedCustomerIdentityId: string | undefined;
+  if (artifact) {
+    const lookupEnvelope = {
+      eventId: randomUUID(),
+      correlationId: params.correlationId,
+      actor: { actorType: "user" as const, actorId: params.userId, role: authorizedRole },
+      occurredAt: new Date().toISOString(),
+    };
+    try {
+      if (artifact.kind === "loyalty_number") {
+        const loyaltyNumber = createLoyaltyNumber(artifact.value);
+        if (!(await hasActiveLoyaltyNumberProgramme(pool, params.businessId))) {
+          throw redemptionRewardNotFoundError(rewardId);
+        }
+        const lookup = await lookupCustomerIdentityByLoyaltyNumber(db, {
+          ...lookupEnvelope,
+          loyaltyNumber,
+          purpose: "merchant_transaction",
+        });
+        expectedCustomerIdentityId = lookup.customerIdentityId;
+      } else {
+        const qrReference = createQrReference(artifact.value);
+        const lookup = await lookupCustomerIdentityByQrReference(db, {
+          ...lookupEnvelope,
+          qrReference,
+          purpose: "merchant_transaction",
+        });
+        expectedCustomerIdentityId = lookup.customerIdentityId;
+      }
+    } catch (error) {
+      if (error instanceof PurchaseDomainError) throw error;
+      if (
+        error instanceof IdentityDomainError &&
+        (error.category === "RESOURCE_NOT_FOUND" || error.category === "VALIDATION_FAILED")
+      ) {
+        throw redemptionRewardNotFoundError(rewardId);
+      }
+      throw error;
+    }
+  }
+
+  // Preserve the pre-B1R hash for internal callers which do not supply either
+  // binding field. This keeps already-reserved idempotency keys replayable
+  // across the B1R deployment. Callable B1R requests require both values and
+  // bind the key to the resolved customer and programme as well as the Reward.
+  const hasTransactionBinding =
+    artifact !== undefined || params.request.rewardProgramId !== undefined;
   const requestHash = redemptionRequestHash(
     "confirm",
     params.userId,
     params.businessId,
     rewardId,
-    rewardId,
+    hasTransactionBinding
+      ? JSON.stringify([
+          rewardId,
+          expectedCustomerIdentityId ?? null,
+          params.request.rewardProgramId ?? null,
+        ])
+      : rewardId,
   );
   const peek = await peekIdempotencyKey(pool, params.idempotencyKey, requestHash);
   if (peek.outcome === "duplicate") {
@@ -221,6 +296,14 @@ export async function confirmRedemption(
       businessId: params.businessId,
     });
     if (!peeked) {
+      throw redemptionRewardNotFoundError(rewardId);
+    }
+    if (
+      (expectedCustomerIdentityId !== undefined &&
+        peeked.customerIdentityId !== expectedCustomerIdentityId) ||
+      (params.request.rewardProgramId !== undefined &&
+        peeked.rewardProgramId !== params.request.rewardProgramId)
+    ) {
       throw redemptionRewardNotFoundError(rewardId);
     }
 

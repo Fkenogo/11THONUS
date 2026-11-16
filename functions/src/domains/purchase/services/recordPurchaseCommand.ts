@@ -54,6 +54,7 @@ import {
   lookupCustomerIdentityByLoyaltyNumber,
   lookupCustomerIdentityByQrReference,
 } from "../../identity/repositories/identityLookupRepository";
+import { IdentityDomainError } from "../../identity/models/identityErrors";
 import { getLoyaltyNumberAssignmentForIdentity } from "../../loyaltyNumber/repositories/loyaltyNumberRepository";
 import { createLoyaltyNumber } from "../../loyaltyNumber/models/loyaltyNumber";
 import { createQrReference } from "../../qrIdentity/models/qrReference";
@@ -232,18 +233,33 @@ export async function recordPurchase(
     actor: { actorType: "user" as const, actorId: params.userId, role },
     occurredAt: new Date().toISOString(),
   };
-  const lookup =
-    artifact.type === "loyalty_number"
-      ? await lookupCustomerIdentityByLoyaltyNumber(db, {
-          ...lookupEnvelope,
-          loyaltyNumber: artifact.reference,
-          purpose: "merchant_transaction",
-        })
-      : await lookupCustomerIdentityByQrReference(db, {
-          ...lookupEnvelope,
-          qrReference: artifact.reference,
-          purpose: "merchant_transaction",
-        });
+  let lookup: Awaited<ReturnType<typeof lookupCustomerIdentityByLoyaltyNumber>>;
+  try {
+    lookup =
+      artifact.type === "loyalty_number"
+        ? await lookupCustomerIdentityByLoyaltyNumber(db, {
+            ...lookupEnvelope,
+            loyaltyNumber: artifact.reference,
+            purpose: "merchant_transaction",
+          })
+        : await lookupCustomerIdentityByQrReference(db, {
+            ...lookupEnvelope,
+            qrReference: artifact.reference,
+            purpose: "merchant_transaction",
+          });
+  } catch (error) {
+    // An unknown / inactive / malformed customer artifact is the one lookup failure the Counter can
+    // act on ("check the code"): surface it under the safe discriminator (`EA-BL-001-CORR-002-B`)
+    // instead of the identity domain's own error, which would reach the client as an authentication
+    // failure. Anything else (repository outage, forbidden purpose) propagates unchanged.
+    if (
+      error instanceof IdentityDomainError &&
+      (error.category === "RESOURCE_NOT_FOUND" || error.category === "VALIDATION_FAILED")
+    ) {
+      throw purchaseArtifactError("The presented Customer artifact did not resolve to a Customer.");
+    }
+    throw error;
+  }
   const customerIdentityId = lookup.customerIdentityId;
 
   // Step 5a: canonical Loyalty Number snapshot (server-derived, total over

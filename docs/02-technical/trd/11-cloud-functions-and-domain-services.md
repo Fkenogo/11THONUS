@@ -663,13 +663,13 @@ For the MVP, the default policy should be explicitly configured.
 
 Recommended MVP rule:
 
-Additional verified units shall not enter a new Loyalty Cycle until the current reward is redeemed.
+Additional verified units shall not enter a new Loyalty Cycle until the current reward for that Qualifying Item is redeemed.
 
-Those units shall remain recorded as unapplied verified units associated with the customer and Reward Program.
+Those units shall remain recorded as unapplied verified units associated with the customer, Reward Program, and Qualifying Item (`(business_id, customer_id, reward_program_id, qualifying_item_id)` per DEC-LOY-019 amending DEC-LOY-002).
 
 Alternative rules may be introduced later through Rules Studio.
 
-This policy prevents silently losing legitimate units while preserving one open cycle per Reward Program.
+This policy prevents silently losing legitimate units while preserving one open cycle per Qualifying Item within the Reward Program.
 
 # 11.21 Pending Verified Unit Allocation
 
